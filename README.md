@@ -1,7 +1,7 @@
 # Die Projektstruktur
 
 ```
-└───src
+──src
     ├───app
     ├───components
     ├───config
