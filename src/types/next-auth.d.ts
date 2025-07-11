@@ -1,3 +1,4 @@
+import { UserRole } from '@/lib/mongo/models/User';
 import NextAuth from 'next-auth';
 
 declare module 'next-auth' {
@@ -7,22 +8,13 @@ declare module 'next-auth' {
         name: string;
         firstname: string;
         lastname: string;
-        role: string;
+        role: UserRole;
         isActive: boolean;
         emailVerified: boolean;
     }
 
     interface Session {
-        user: {
-            id: string;
-            email: string;
-            name: string;
-            firstname: string;
-            lastname: string;
-            role: string;
-            isActive: boolean;
-            emailVerified: boolean;
-        };
+        user: User;
     }
 }
 
@@ -30,7 +22,7 @@ declare module 'next-auth/jwt' {
     interface JWT {
         firstname: string;
         lastname: string;
-        role: string;
+        role: UserRole
         isActive: boolean;
         emailVerified: boolean;
     }
