@@ -1,25 +1,19 @@
 import { MongoClient } from 'mongodb';
-import { env } from '@/config/env';
+import { env } from '@/config/environment';
 
 let clientPromise: Promise<MongoClient> | null = null;
-let globalAny = (global as any) || globalThis;
+let  globalCache = (global as any) || globalThis;
 
 if (process.env.NODE_ENV === 'development') {
   // In development mode, use a global variable to avoid creating multiple clients
-    if (!globalAny._mongoClientPromise) {
-        if (!env.data || !env.data.DATABASE_URL) {
-            throw new Error('DATABASE_URL is not defined in env.data');
-            }
-        const client = new MongoClient(env.data.DATABASE_URL, {});
-        globalAny._mongoClientPromise = client.connect();
+    if (!globalCache._mongoClientPromise) {
+        const client = new MongoClient(env.database.url, { });
+        globalCache._mongoClientPromise = client.connect();
         }
-    clientPromise = globalAny._mongoClientPromise;
+    clientPromise = globalCache._mongoClientPromise;
 } else {
     // In production mode, create a new client for each connection
-    if (!env.data || !env.data.DATABASE_URL) {
-        throw new Error('DATABASE_URL is not defined in env.data');
-        }
-    const client = new MongoClient(env.data.DATABASE_URL, {});
+    const client = new MongoClient(env.database.url, {});
     clientPromise = client.connect();
 }
 
