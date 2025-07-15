@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signIn } from 'next-auth/react';
-import { LoginSchema, LoginData } from '@/lib/mongo/models/User';
+import { LoginSchema, LoginData } from '@/types/user';
 import Link from 'next/link';
 
 export default function SignInForm() {
@@ -14,6 +14,11 @@ export default function SignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  if (searchParams == null) {
+    console.error('Search parameters are null');
+    return <div>Error: Unable to retrieve search parameters.</div>;
+    
+  }
   const message = searchParams.get('message');
 
   const { 
@@ -29,20 +34,63 @@ export default function SignInForm() {
     setIsLoading(true);
     
     try {
+      console.log('Attempting sign in with:', { email: data.email });
+      
       const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
         redirect: false,
+        callbackUrl: '/dashboard'
       });
 
+      console.log('Sign in result:', result);
+
       if (result?.error) {
+        console.error('Sign in error:', result.error);
         setError('E-Mail oder Passwort ist falsch');
       } else if (result?.ok) {
+        console.log('Sign in successful, redirecting to dashboard...');
+        
+        // Warten auf Session-Update
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Redirect mit Next.js Router
         router.push('/dashboard');
+        
+        // Fallback für schwierige Fälle
+        setTimeout(() => {
+          if (window.location.pathname !== '/dashboard') {
+            window.location.replace('/dashboard');
+          }
+        }, 1000);
+      } else {
+        console.warn('Unexpected sign in result:', result);
+        setError('Anmeldung fehlgeschlagen. Unerwartete Antwort.');
       }
     } catch (err) {
+      console.error('Sign in exception:', err);
       setError('Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.');
     } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Alternative Methode für den Fall, dass die obige nicht funktioniert
+  async function onSubmitWithRedirect(data: LoginData) {
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      // Direkter Redirect mit NextAuth
+      await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        callbackUrl: '/dashboard',
+        redirect: true
+      });
+    } catch (err) {
+      console.error('Sign in exception:', err);
+      setError('Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.');
       setIsLoading(false);
     }
   }
@@ -124,9 +172,9 @@ export default function SignInForm() {
 
         <div className="flex items-center justify-between">
           <div className="text-sm">
-            <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
               Passwort vergessen?
-            </a>
+            </Link>
           </div>
         </div>
       </form>

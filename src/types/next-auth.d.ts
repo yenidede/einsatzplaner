@@ -1,4 +1,4 @@
-import { UserRole } from '@/lib/mongo/models/User';
+import { UserRole } from '@/types/user';
 import NextAuth from 'next-auth';
 
 declare module 'next-auth' {

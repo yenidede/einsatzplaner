@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import clientPromise from "@/lib/mongo/client";
-import { CreateUserSchema, USERS_COLLECTION, userHelpers } from "@/lib/mongo/models/User";
+import { USERS_COLLECTION, userHelpers, UserFactory } from "@/lib/mongo/models/User";
 
 export async function POST(req: Request) {
     try {
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         const passwordHash = await hash(userData.password, 12);
         
         // User für Erstellung vorbereiten
-        const userToCreate = userHelpers.prepareUserForCreation({
+        const userToCreate = UserFactory.create({
             ...userData,
             password: passwordHash
         });
