@@ -77,7 +77,7 @@ const authOptions: NextAuthOptions = {
         maxAge: 30 * 24 * 60 * 60, // 30 Tage
     },
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger }) {
             if (user) {
                 token.firstname = user.firstname;
                 token.lastname = user.lastname;
@@ -85,6 +85,34 @@ const authOptions: NextAuthOptions = {
                 token.isActive = user.isActive;
                 token.emailVerified = typeof user.emailVerified === 'boolean' ? user.emailVerified : false;
             }
+            
+            // ✅ Bei Session-Update die aktuellen Daten aus der DB holen
+            if (trigger === 'update' && token.sub) {
+                try {
+                    const client = await clientPromise;
+                    if (client) {
+                        const db = client.db();
+                        const collection = db.collection<User>(USERS_COLLECTION);
+                        
+                        // Aktuellen User aus DB laden
+                        const currentUser = await collection.findOne({ 
+                            _id: new (require('mongodb').ObjectId)(token.sub)
+                        });
+                        
+                        if (currentUser) {
+                            token.firstname = currentUser.firstname;
+                            token.lastname = currentUser.lastname;
+                            token.role = currentUser.role;
+                            token.email = currentUser.email;
+                            token.isActive = currentUser.isActive;
+                            token.emailVerified = currentUser.emailVerified || false;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error refreshing user data:', error);
+                }
+            }
+            
             return token;
         },
         async session({ session, token }) {
@@ -95,8 +123,17 @@ const authOptions: NextAuthOptions = {
                 session.user.role = token.role as "Organisationsverwaltung" | "Einsatzverwaltung" | "Helfer";
                 session.user.isActive = token.isActive as boolean;
                 session.user.emailVerified = token.emailVerified as boolean;
+                session.user.email = token.email as string;
+                session.user.name = `${token.firstname} ${token.lastname}`;
             }
             return session;
+        },
+        async redirect({ url, baseUrl }) {
+            // Allows relative callback URLs
+            if (url.startsWith("/")) return `${baseUrl}${url}`;
+            // Allows callback URLs on the same origin
+            else if (new URL(url).origin === baseUrl) return url;
+            return `${baseUrl}/dashboard`;
         }
     },
     pages: {
@@ -104,6 +141,7 @@ const authOptions: NextAuthOptions = {
         error: '/signin',
     },
     secret: process.env.NEXTAUTH_SECRET,
+    debug: process.env.NODE_ENV === 'development',
 };
 
 const handler = NextAuth(authOptions);
