@@ -14,6 +14,8 @@ export const CreateUserSchema = zod.object({
     firstname: zod.string().min(2, 'Vorname muss mindestens 2 Zeichen lang sein'),
     lastname: zod.string().min(2, 'Nachname muss mindestens 1 Zeichen lang sein'),
     role: UserRoleSchema.default('Helfer'),
+    organizationName: zod.string().optional(),
+    invitedBy: zod.string().optional(), // ObjectId als String
 });
 
 // Zod Schema für User-Update
@@ -46,49 +48,107 @@ export interface User {
     firstname: string;
     lastname: string;
     role: UserRole;
+    organizationName: string;
+    invitedBy?: ObjectId;
     isActive: boolean;
     emailVerified?: boolean;
+    // Reset password fields
+    resetToken?: string;
+    resetTokenExpiry?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
 
-export interface UserWithoutPassword extends Omit<User, 'password'> {}
+// User ohne Password für API Responses
+export interface UserWithoutPassword extends Omit<User, 'password' | 'resetToken' | 'resetTokenExpiry'> {}
 
 // Collection name constant
 export const USERS_COLLECTION = 'users';
 
-// Helper functions for database operations
+
+// Repository Pattern für User Database Operations
+export class UserRepository {
+    constructor(private db: any) {}
+
+    async createIndexes(): Promise<void> {
+        await this.db.collection(USERS_COLLECTION).createIndex({ email: 1 }, { unique: true });
+        await this.db.collection(USERS_COLLECTION).createIndex({ createdAt: 1 });
+        await this.db.collection(USERS_COLLECTION).createIndex({ role: 1 });
+        await this.db.collection(USERS_COLLECTION).createIndex({ isActive: 1 });
+    }
+
+    async findByEmail(email: string): Promise<User | null> {
+        return await this.db.collection(USERS_COLLECTION).findOne({ email });
+    }
+
+    async findById(id: ObjectId): Promise<User | null> {
+        return await this.db.collection(USERS_COLLECTION).findOne({ _id: id });
+    }
+
+    async create(user: Omit<User, '_id'>): Promise<User> {
+        const result = await this.db.collection(USERS_COLLECTION).insertOne(user);
+        return { ...user, _id: result.insertedId };
+    }
+
+    async update(id: ObjectId, updateData: Partial<User>): Promise<void> {
+        await this.db.collection(USERS_COLLECTION).updateOne(
+            { _id: id },
+            { $set: { ...updateData, updatedAt: new Date() } }
+        );
+    }
+
+    async findByRole(role: UserRole): Promise<User[]> {
+        return await this.db.collection(USERS_COLLECTION)
+            .find({ role, isActive: true })
+            .toArray();
+    }
+}
+
+// Factory Pattern für User Creation
+export class UserFactory {
+    static create(userData: CreateUserData): Omit<User, '_id'> {
+        const validatedData = CreateUserSchema.parse(userData);
+        
+        const now = new Date();
+        return {
+            ...validatedData,
+            organizationName: validatedData.organizationName ?? '',
+            invitedBy: validatedData.invitedBy ? new ObjectId(validatedData.invitedBy) : undefined,
+            isActive: true,
+            emailVerified: false,
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
+
+    static createFromInvitation(invitation: any, password: string): Omit<User, '_id'> {
+        const now = new Date();
+        return {
+            email: invitation.email,
+            password,
+            firstname: invitation.firstname,
+            lastname: invitation.lastname,
+            role: invitation.role,
+            organizationName: invitation.organizationName,
+            invitedBy: invitation.invitedBy,
+            isActive: true,
+            emailVerified: true,
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
+}
+
+// Helper functions for validation and sanitization
 export const userHelpers = {
-    // Create indexes for the users collection
-    createIndexes: async (db: any) => {
-        await db.collection(USERS_COLLECTION).createIndex({ email: 1 }, { unique: true });
-        await db.collection(USERS_COLLECTION).createIndex({ createdAt: 1 });
-    },
-    
     // Remove password from user object
     sanitizeUser: (user: User): UserWithoutPassword => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
     },
     
-    // Prepare user data for creation with validation
-    prepareUserForCreation: (userData: CreateUserData): Omit<User, '_id'> => {
-        // Validate input data
-        const validatedData = CreateUserSchema.parse(userData);
-        
-        const now = new Date();
-        return {
-            ...validatedData,
-            isActive: true,
-            emailVerified: false,
-            createdAt: now,
-            updatedAt: now,
-        };
-    },
-    
     // Prepare user data for update with validation
     prepareUserForUpdate: (userData: UpdateUserData): UpdateUserData & { updatedAt: Date } => {
-        // Validate input data
         const validatedData = UpdateUserSchema.parse(userData);
         
         return {
@@ -112,4 +172,3 @@ export const userHelpers = {
         return UpdateUserSchema.parse(userData);
     },
 };
-

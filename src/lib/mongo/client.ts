@@ -1,19 +1,28 @@
 import { MongoClient } from 'mongodb';
-import { env } from '@/config/environment';
 
-let clientPromise: Promise<MongoClient> | null = null;
-let  globalCache = (global as any) || globalThis;
+if (!process.env.DATABASE_URL) {
+    throw new Error('Please define the DATABASE_URL environment variable inside .env.local');
+}
+
+const uri = process.env.DATABASE_URL;
+let client: MongoClient;
+let clientPromise: Promise<MongoClient>;
 
 if (process.env.NODE_ENV === 'development') {
-  // In development mode, use a global variable to avoid creating multiple clients
-    if (!globalCache._mongoClientPromise) {
-        const client = new MongoClient(env.database.url, { });
-        globalCache._mongoClientPromise = client.connect();
-        }
-    clientPromise = globalCache._mongoClientPromise;
+    // In development mode, use a global variable so that the value
+    // is preserved across module reloads caused by HMR (Hot Module Replacement).
+    let globalWithMongo = global as typeof globalThis & {
+        _mongoClientPromise?: Promise<MongoClient>;
+    };
+
+    if (!globalWithMongo._mongoClientPromise) {
+        client = new MongoClient(uri);
+        globalWithMongo._mongoClientPromise = client.connect();
+    }
+    clientPromise = globalWithMongo._mongoClientPromise;
 } else {
-    // In production mode, create a new client for each connection
-    const client = new MongoClient(env.database.url, {});
+    // In production mode, it's best to not use a global variable.
+    client = new MongoClient(uri);
     clientPromise = client.connect();
 }
 
