@@ -1,0 +1,216 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model change_log {
+  id         String   @id @default(uuid())
+  einsatz_id String
+  user_id    String
+  type_id    String
+  created_at DateTime @default(now())
+  einsatz    einsatz  @relation(fields: [einsatz_id], references: [id])
+  user       user     @relation(fields: [user_id], references: [id])
+  change_type change_type @relation(fields: [type_id], references: [id])
+}
+
+model change_type {
+  id         String   @id @default(uuid())
+  change_type String
+  change_log change_log[]
+}
+
+model custom_field {
+  id            String   @id @default(uuid())
+  template_id   String?
+  einsatz_id    String?
+  name          String?
+  type_id       String?
+  is_required   Boolean?
+  placeholder   String?
+  default_value String?
+  einsatz_template einsatz_template? @relation(fields: [template_id], references: [id])
+  einsatz       einsatz?             @relation(fields: [einsatz_id], references: [id])
+  type          type?                @relation(fields: [type_id], references: [id])
+  custom_field_dropdown custom_field_dropdown[]
+  custom_field_value custom_field_value[]
+}
+
+model custom_field_dropdown {
+  id              String   @id @default(uuid())
+  custom_field_id String
+  value           String
+  identifier      String
+  custom_field    custom_field @relation(fields: [custom_field_id], references: [id])
+}
+
+model custom_field_value {
+  id              BigInt   @id @default(autoincrement())
+  einsatz_id      String?
+  custom_field_id String?
+  value           String?
+  einsatz         einsatz?      @relation(fields: [einsatz_id], references: [id])
+  custom_field    custom_field? @relation(fields: [custom_field_id], references: [id])
+}
+
+model einsatz {
+  id                String   @id @default(uuid())
+  name              String
+  org_id            String
+  created_by        String
+  created_at        DateTime @default(now())
+  updated_at        DateTime?
+  date              DateTime
+  start_time        DateTime
+  end_time          DateTime
+  participant_count Int?
+  price_per_person  Float?
+  total_price       Float?
+  category_id       BigInt?
+  status_id         BigInt?
+  organization      organization @relation(fields: [org_id], references: [id])
+  user              user        @relation(fields: [created_by], references: [id])
+  einsatz_category  einsatz_category? @relation(fields: [category_id], references: [id])
+  einsatz_status    einsatz_status?   @relation(fields: [status_id], references: [id])
+  einsatz_comment   einsatz_comment[]
+  einsatz_helper    einsatz_helper[]
+  change_log        change_log[]
+  custom_field      custom_field[]
+  custom_field_value custom_field_value[]
+}
+
+model einsatz_category {
+  id         BigInt   @id @default(autoincrement())
+  value      String
+  identifier String
+  einsatz    einsatz[]
+}
+
+model einsatz_comment {
+  id         BigInt   @id @default(autoincrement())
+  created_at DateTime @default(now())
+  einsatz_id String
+  user_id    String
+  comment    String
+  einsatz    einsatz @relation(fields: [einsatz_id], references: [id])
+  user       user    @relation(fields: [user_id], references: [id])
+}
+
+model einsatz_helper {
+  id         BigInt   @id @default(autoincrement())
+  einsatz_id String
+  user_id    String
+  joined_at  DateTime @default(now())
+  left_at    DateTime?
+  einsatz    einsatz @relation(fields: [einsatz_id], references: [id])
+  user       user    @relation(fields: [user_id], references: [id])
+}
+
+model einsatz_status {
+  id     BigInt   @id @default(autoincrement())
+  status Json
+  einsatz einsatz[]
+}
+
+model einsatz_template {
+  id         String   @id @default(uuid())
+  org_id     String?
+  name       String?
+  created_by String?
+  created_at DateTime @default(now())
+  organization organization? @relation(fields: [org_id], references: [id])
+  user         user?         @relation(fields: [created_by], references: [id])
+  custom_field custom_field[]
+}
+
+model organization {
+  id                   String   @id @default(uuid())
+  name                 String
+  logo_url             String?
+  description          String?
+  helper_name_singular String?  @default("Vermittler:in")
+  helper_name_plural   String?  @default("Vermittler:innen")
+  created_at           DateTime @default(now())
+  updated_at           DateTime?
+  einsatz              einsatz[]
+  einsatz_template     einsatz_template[]
+  organization_property organization_property[]
+  user_organization_role user_organization_role[]
+}
+
+model organization_property {
+  id        String   @id @default(uuid())
+  org_id    String?
+  key       String
+  property  String
+  is_required Boolean? @default(false)
+  type_id   String?
+  organization organization? @relation(fields: [org_id], references: [id])
+  type        type?         @relation(fields: [type_id], references: [id])
+  user_property user_property[]
+}
+
+model roles {
+  id           String   @id @default(uuid())
+  name         String
+  abbreviation String?
+  user_organization_role user_organization_role[]
+}
+
+model type {
+  id   String   @id @default(uuid())
+  name String?
+  custom_field custom_field[]
+  organization_property organization_property[]
+}
+
+model user {
+  id         String   @id @default(uuid())
+  email      String  @unique
+  firstname  String?
+  lastname   String?
+  password   String
+  phone      String?
+  created_at DateTime @default(now())
+  updated_at DateTime?
+  logo_url   String?
+  description String?
+  einsatz    einsatz[]
+  einsatz_comment einsatz_comment[]
+  einsatz_helper einsatz_helper[]
+  einsatz_template einsatz_template[]
+  change_log change_log[]
+  user_organization_role user_organization_role[]
+}
+
+model user_organization_role {
+  id      String   @id @default(uuid())
+  user_id String   @unique
+  org_id  String   @unique
+  created_at DateTime @default(now())
+  role_id String   @unique
+  user    user     @relation(fields: [user_id], references: [id])
+  organization organization @relation(fields: [org_id], references: [id])
+  roles   roles    @relation(fields: [role_id], references: [id])
+  user_property user_property[]
+}
+
+model user_property {
+  id               String   @id @default(uuid())
+  user_org_role_id String?
+  property_id      String?
+  user_organization_role user_organization_role? @relation(fields: [user_org_role_id], references: [id])
+  organization_property organization_property? @relation(fields: [property_id], references: [id])
+}
