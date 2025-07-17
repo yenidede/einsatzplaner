@@ -2,8 +2,9 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
-import clientPromise from '@/lib/mongo/client';
-import { User, userHelpers, USERS_COLLECTION } from '@/lib/mongo/models/User';
+import prisma from '@/lib/prisma';
+import { getUserByIdWithOrgAndRole, getUserByEmail } from '@/DataAccessLayer/user';
+import { UserRole } from '@/types/user';
 
 const authOptions: NextAuthOptions = {
     providers: [
@@ -13,59 +14,45 @@ const authOptions: NextAuthOptions = {
                 email: { label: 'Email', type: 'email' },
                 password: { label: 'Passwort', type: 'password' }
             },
-            async authorize(credentials) {
+            async authorize(credentials)  {
                 try {
                     if (!credentials?.email || !credentials?.password) {
                         return null;
                     }
 
-                    // Validiere Login-Daten
-                    const loginData = userHelpers.validateLogin(credentials);
-
-                    // Verbinde zur Datenbank
-                    const client = await clientPromise;
-                    if (!client) {
-                        throw new Error('Datenbankverbindung fehlgeschlagen');
-                    }
-                    const db = client.db();
-                    const collection = db.collection<User>(USERS_COLLECTION);
-
-                    // Finde User in der Datenbank
-                    const user = await collection.findOne({ email: loginData.email });
+                    // User inkl. Rollenbeziehung holen
+                    const user = await getUserByEmail(credentials.email);
 
                     if (!user) {
                         return null;
                     }
 
-                    // Überprüfe Passwort
-                    const isPasswordValid = await compare(loginData.password, user.password);
+                    // Passwort prüfen
+                    const isPasswordValid = await compare(credentials.password, user.password);
 
                     if (!isPasswordValid) {
                         return null;
                     }
 
-                    // Überprüfe ob User aktiv ist
-                    if (!user.isActive) {
-                        return null;
-                    }
+                    // Rolle aus erster user_organization_role holen (falls vorhanden)
+                    const userOrgRole = user.user_organization_role[0];
+                    const role = userOrgRole?.roles?.name as UserRole | null;
+                    const orgId = userOrgRole?.organization?.id ?? null;
 
-                    // Gebe User ohne Passwort zurück
-                    const sanitizedUser = userHelpers.sanitizeUser(user);
-                    
-                    return {
-                        id: user._id!.toString(),
-                        email: sanitizedUser.email,
-                        name: `${sanitizedUser.firstname} ${sanitizedUser.lastname}`,
-                        firstname: sanitizedUser.firstname,
-                        lastname: sanitizedUser.lastname,
-                        role: sanitizedUser.role,
-                        isActive: sanitizedUser.isActive,
-                        emailVerified: sanitizedUser.emailVerified || false,
-                    };
-                } catch (error) {
-                    console.error('Login Fehler:', error);
-                    return null;
-                }
+// User-Objekt für Session zurückgeben (muss User-Typ entsprechen)
+                return {
+                    id: user.id,
+                    email: user.email,
+                    name: `${user.firstname ?? ''} ${user.lastname ?? ''}`,
+                    firstname: user.firstname ?? '',
+                    lastname: user.lastname ?? '',
+                    role : role,
+                    orgId : orgId,
+                };
+            } catch (error) {
+                console.error('Login Fehler:', error);
+                return null;
+            }
             }
         })
     ],
@@ -82,37 +69,28 @@ const authOptions: NextAuthOptions = {
                 token.firstname = user.firstname;
                 token.lastname = user.lastname;
                 token.role = user.role;
-                token.isActive = user.isActive;
-                token.emailVerified = typeof user.emailVerified === 'boolean' ? user.emailVerified : false;
+                token.orgId = user.orgId;
+                token.email = user.email;
             }
-            
-            // ✅ Bei Session-Update die aktuellen Daten aus der DB holen
+
+            // Bei Session-Update die aktuellen Daten aus der DB holen
             if (trigger === 'update' && token.sub) {
                 try {
-                    const client = await clientPromise;
-                    if (client) {
-                        const db = client.db();
-                        const collection = db.collection<User>(USERS_COLLECTION);
-                        
-                        // Aktuellen User aus DB laden
-                        const currentUser = await collection.findOne({ 
-                            _id: new (require('mongodb').ObjectId)(token.sub)
-                        });
-                        
-                        if (currentUser) {
-                            token.firstname = currentUser.firstname;
-                            token.lastname = currentUser.lastname;
-                            token.role = currentUser.role;
-                            token.email = currentUser.email;
-                            token.isActive = currentUser.isActive;
-                            token.emailVerified = currentUser.emailVerified || false;
-                        }
+                    const currentUser = await getUserByIdWithOrgAndRole(token.sub!);
+
+                    if (currentUser) {
+                        token.firstname = currentUser.firstname ?? '';
+                        token.lastname = currentUser.lastname ?? '';
+                        const userOrgRole = currentUser.user_organization_role[0];
+                        token.role = userOrgRole?.roles?.name as UserRole;
+                        token.orgId = userOrgRole?.organization?.id ?? null;
+                        token.email = currentUser.email;
                     }
                 } catch (error) {
                     console.error('Error refreshing user data:', error);
                 }
             }
-            
+
             return token;
         },
         async session({ session, token }) {
@@ -120,18 +98,15 @@ const authOptions: NextAuthOptions = {
                 session.user.id = token.sub!;
                 session.user.firstname = token.firstname as string;
                 session.user.lastname = token.lastname as string;
-                session.user.role = token.role as "Organisationsverwaltung" | "Einsatzverwaltung" | "Helfer";
-                session.user.isActive = token.isActive as boolean;
-                session.user.emailVerified = token.emailVerified as boolean;
+                session.user.role = token.role as UserRole;
+                session.user.orgId = token.orgId as string; // orgId ggf. als session.orgId speichern, nicht als session.user.orgId
                 session.user.email = token.email as string;
                 session.user.name = `${token.firstname} ${token.lastname}`;
             }
             return session;
         },
         async redirect({ url, baseUrl }) {
-            // Allows relative callback URLs
             if (url.startsWith("/")) return `${baseUrl}${url}`;
-            // Allows callback URLs on the same origin
             else if (new URL(url).origin === baseUrl) return url;
             return `${baseUrl}/dashboard`;
         }

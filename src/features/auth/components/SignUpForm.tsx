@@ -119,7 +119,22 @@ export default function SignupForm() {
               <p className="mt-1 text-sm text-red-600">{errors.lastname.message}</p>
             )}
           </div>
-
+          <div className="mb-4">
+  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+    Telefonnummer
+  </label>
+  <input
+    id="phone"
+    type="text"
+    autoComplete="tel"
+    className="appearance-none rounded relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+    placeholder="Telefonnummer"
+    {...register('phone')}
+  />
+  {errors.phone && (
+    <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
+  )}
+</div>
           <div className="mb-4">
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
               Passwort
