@@ -76,11 +76,11 @@ export class EmailService {
 
     async sendInvitationEmail(email: string, subject: string, htmlContent: string) {
         if (!this.transporter) {
-            console.log('📧 E-Mail-Service deaktiviert. Einladungs-E-Mail:');
+            /* console.log('📧 E-Mail-Service deaktiviert. Einladungs-E-Mail:');
             console.log(`   → An: ${email}`);
             console.log(`   → Betreff: ${subject}`);
             console.log(`   → Inhalt: ${htmlContent}`);
-            throw new Error('E-Mail-Service ist nicht konfiguriert. Bitte konfigurieren Sie SMTP_USER und SMTP_PASS in den Umgebungsvariablen.');
+             */throw new Error('E-Mail-Service ist nicht konfiguriert. Bitte konfigurieren Sie SMTP_USER und SMTP_PASS in den Umgebungsvariablen.');
         }
 
         try {

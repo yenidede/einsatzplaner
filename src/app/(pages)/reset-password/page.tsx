@@ -16,6 +16,17 @@ export default function ResetPasswordPage({ token }: ResetPasswordPageProps) {
     const [success, setSuccess] = useState('');
     const router = useRouter();
 
+    const handleReset = async (newPassword: string) => {
+        const token = new URLSearchParams(window.location.search).get('token');
+        const res = await fetch('/api/auth/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, newPassword }),
+        });
+        const data = await res.json();
+        // Zeige Erfolg oder Fehler im UI
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -29,24 +40,12 @@ export default function ResetPasswordPage({ token }: ResetPasswordPageProps) {
         }
 
         try {
-            const response = await fetch('/api/auth/reset-password', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ token, password }),
-            });
+            await handleReset(password);
 
-            const data = await response.json();
-
-            if (response.ok) {
-                setSuccess('Passwort erfolgreich zurückgesetzt! Sie werden zur Anmeldung weitergeleitet...');
-                setTimeout(() => {
-                    router.push('/signin');
-                }, 3000);
-            } else {
-                setError(data.error || 'Ein Fehler ist aufgetreten');
-            }
+            setSuccess('Passwort erfolgreich zurückgesetzt! Sie werden zur Anmeldung weitergeleitet...');
+            setTimeout(() => {
+                router.push('/signin');
+            }, 3000);
         } catch (err) {
             setError('Netzwerkfehler. Bitte versuchen Sie es später erneut.');
         } finally {
