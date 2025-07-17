@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
-import clientPromise from '@/lib/mongo/client';
-import { USERS_COLLECTION } from '@/lib/mongo/models/User';
+import { getUserWithValidResetToken, resetUserPassword } from '@/DataAccessLayer/user';
+
+
 
 export async function POST(request: NextRequest) {
     try {
@@ -21,15 +22,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const client = await clientPromise;
-        const db = client.db();
-        const users = db.collection(USERS_COLLECTION);
-
-        // Finde User mit gültigem Token
-        const user = await users.findOne({
-            resetToken: token,
-            resetTokenExpiry: { $gt: new Date() }
-        });
+        // Finde User mit gültigem Token und Ablaufdatum
+        const user = await getUserWithValidResetToken(token);
 
         if (!user) {
             return NextResponse.json(
@@ -42,19 +36,7 @@ export async function POST(request: NextRequest) {
         const hashedPassword = await hash(newPassword, 12);
 
         // Update Passwort und lösche Reset-Token
-        await users.updateOne(
-            { _id: user._id },
-            {
-                $set: {
-                    password: hashedPassword,
-                    updatedAt: new Date()
-                },
-                $unset: {
-                    resetToken: 1,
-                    resetTokenExpiry: 1
-                }
-            }
-        );
+        await resetUserPassword(user, hashedPassword);
 
         return NextResponse.json(
             { message: 'Passwort erfolgreich zurückgesetzt' },

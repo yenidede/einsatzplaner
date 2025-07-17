@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hash } from 'bcryptjs';
-import crypto from 'crypto';
-import clientPromise from '@/lib/mongo/client';
-import { USERS_COLLECTION } from '@/lib/mongo/models/User';
+import prisma from '@/lib/prisma';
+import { randomBytes } from 'crypto';
 import { emailService } from '@/lib/email/EmailService';
+import { getUserByEmail, updateUserResetToken } from '@/DataAccessLayer/user';
+
+
 
 export async function POST(request: NextRequest) {
     try {
         const { email } = await request.json();
-        
+        const hour = 3600000; // 1 Stunde in Millisekunden
         if (!email) {
             return NextResponse.json(
                 { error: 'E-Mail-Adresse ist erforderlich' },
@@ -16,12 +17,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const client = await clientPromise;
-        const db = client.db();
-        const users = db.collection(USERS_COLLECTION);
-
         // Prüfe ob User existiert
-        const user = await users.findOne({ email });
+        const user = await getUserByEmail(email);
         if (!user) {
             // Aus Sicherheitsgründen immer erfolgreiche Antwort senden
             return NextResponse.json(
@@ -31,20 +28,11 @@ export async function POST(request: NextRequest) {
         }
 
         // Generiere Reset-Token
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 Stunde
+        const resetToken = randomBytes(32).toString('hex');
+        const resetTokenExpiry = new Date(Date.now() + hour); // 1 Stunde
 
         // Speichere Reset-Token in der Datenbank
-        await users.updateOne(
-            { email },
-            { 
-                $set: { 
-                    resetToken,
-                    resetTokenExpiry,
-                    updatedAt: new Date()
-                }
-            }
-        );
+        await updateUserResetToken(email, resetToken, resetTokenExpiry);
 
         // E-Mail senden
         try {
@@ -54,7 +42,7 @@ export async function POST(request: NextRequest) {
             console.error('Error sending password reset email:', emailError);
             // Fallback: Log the reset link in console
             console.log(`Reset-Token für ${email}: ${resetToken}`);
-            console.log(`Reset-Link: ${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`);
+            console.log(`Reset-Link: ${process.env.NEXTAUTH_URL}/api/auth/reset-password?token=${resetToken}`);
         }
 
         return NextResponse.json(
