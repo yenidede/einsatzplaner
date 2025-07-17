@@ -9,12 +9,12 @@ declare module 'next-auth' {
         firstname: string;
         lastname: string;
         role: UserRole;
-        isActive: boolean;
-        emailVerified: boolean;
+        orgId: string | null;
     }
 
     interface Session {
         user: User;
+        orgId?: string | null;
     }
 }
 
@@ -22,8 +22,8 @@ declare module 'next-auth/jwt' {
     interface JWT {
         firstname: string;
         lastname: string;
-        role: UserRole
-        isActive: boolean;
-        emailVerified: boolean;
+        role: UserRole;
+        orgId: string | null;
+        email: string;
     }
 }
