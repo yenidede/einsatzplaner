@@ -1,5 +1,8 @@
-import React from "react";
+"use client";
 
-export default function calendar() {
-  return <div>calendar</div>;
-}
+// Re-export from the new modular structure
+export { FullCalendarGroupSchedule } from "./FullCalendarGroupSchedule";
+export type { CalendarProps, Einsatz, ScheduleGroup } from "./types";
+
+// For backward compatibility
+export { FullCalendarGroupSchedule as default } from "./FullCalendarGroupSchedule";
