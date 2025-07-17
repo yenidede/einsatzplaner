@@ -1,57 +1,73 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { hash } from "bcryptjs";
-import clientPromise from "@/lib/mongo/client";
-import { USERS_COLLECTION, userHelpers, UserFactory } from "@/lib/mongo/models/User";
+import { createUserWithOrgAndRole } from "@/DataAccessLayer/user";
+import { CreateUserSchema } from "@/types/user";
+import prisma from "@/lib/prisma";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        // Validierung mit User-Model Schema
-        const userData = userHelpers.validateUserCreation(body);
-        
-        // Prüfe ob Email bereits existiert
-        const client = await clientPromise;
-        if (!client) {
-            return NextResponse.json({ error: "Datenbankverbindung fehlgeschlagen" }, { status: 500 });
+
+        // Validierung mit Zod
+        const parseResult = CreateUserSchema.safeParse(body);
+        if (!parseResult.success) {
+            return NextResponse.json({ error: "Ungültige Eingabedaten", details: parseResult.error.issues }, { status: 400 });
         }
-        const db = client.db();
-        
-        const existingUser = await db.collection(USERS_COLLECTION).findOne({ 
-            email: userData.email 
-        });
+        const userData = parseResult.data;
+
+        // Prüfe, ob E-Mail bereits existiert
+        const { getUserByEmail } = await import('@/DataAccessLayer/user');
+        const existingUser = await getUserByEmail(userData.email);
         if (existingUser) {
             return NextResponse.json({ error: "E-Mail bereits registriert" }, { status: 400 });
         }
 
+        // Organisation anhand des Namens suchen oder anlegen
+        let organization = await prisma.organization.findFirst({
+            where: { name: userData.organizationName }
+        });
+        if (!organization) {
+            organization = await prisma.organization.create({
+                data: { name: userData.organizationName }
+            });
+        }
+
+        // Rolle anhand des Namens suchen
+        const defaultRoleName = "Helfer"; // oder wie deine Standardrolle heißt
+        const roleRecord = await prisma.roles.findFirst({
+            where: { name: defaultRoleName }
+        });
+        if (!roleRecord) {
+            return NextResponse.json({ error: "Standardrolle nicht gefunden" }, { status: 400 });
+        }
+
         // Passwort hashen
         const passwordHash = await hash(userData.password, 12);
-        
-        // User für Erstellung vorbereiten
-        const userToCreate = UserFactory.create({
-            ...userData,
-            password: passwordHash
+
+        // User anlegen
+        const user = await createUserWithOrgAndRole({
+            email: userData.email,
+            firstname: userData.firstname,
+            lastname: userData.lastname,
+            password: passwordHash,
+            phone: userData.phone,
+            orgId: organization.id,
+            roleId: roleRecord.id,
         });
 
-        // User in Datenbank erstellen
-        const result = await db.collection(USERS_COLLECTION).insertOne(userToCreate);
-    
-        return NextResponse.json({ 
+        return NextResponse.json({
             message: "Registrierung erfolgreich",
             user: {
-                id: result.insertedId,
-                email: userData.email,
-                firstname: userData.firstname,
-                lastname: userData.lastname,
-                role: userData.role
+                id: user.id,
+                email: user.email,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                role: user.user_organization_role[0]?.roles?.name,
+                orgId: user.user_organization_role[0]?.organization?.id,
             }
         }, { status: 201 });
     } catch (error) {
         console.error("Fehler bei der Registrierung:", error);
-        
-        if (error instanceof Error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
-        }
-        
         return NextResponse.json({ error: "Registrierung fehlgeschlagen" }, { status: 500 });
     }
 }

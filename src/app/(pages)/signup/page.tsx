@@ -10,6 +10,7 @@ export default function SignUpPage() {
         confirmPassword: '',
         firstname: '',
         lastname: '',
+        phone: '',
         organizationName: ''
     });
     const [loading, setLoading] = useState(false);
@@ -47,6 +48,7 @@ export default function SignUpPage() {
                     confirmPassword: '',
                     firstname: '',
                     lastname: '',
+                    phone: '',
                     organizationName: ''
                 });
             } else {
@@ -116,6 +118,15 @@ export default function SignUpPage() {
                         onChange={(value) => updateField('organizationName', value)}
                         required
                         placeholder="Ihre Organisation"
+                    />
+
+                    <FormField
+                        label="Telefonnummer"
+                        type="text"
+                        value={formData.phone}
+                        onChange={(value) => updateField('phone', value)}
+                        required
+                        placeholder="Ihre Telefonnummer"
                     />
 
                     <FormField
