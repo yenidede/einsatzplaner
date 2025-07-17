@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+h1 {
+  @apply text-2xl font-semibold leading-loose;
+}
+
+body {
+  @apply text-slate-800 bg-slate-50;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
