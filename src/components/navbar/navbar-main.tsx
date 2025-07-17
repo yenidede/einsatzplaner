@@ -17,15 +17,14 @@ import {
 
 // Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
-  { href: "#", label: "Home" },
-  { href: "#", label: "Features" },
-  { href: "#", label: "Pricing" },
-  { href: "#", label: "About" },
+  { href: "/benutzeransicht", label: "Helferansicht" },
+  { href: "/einsatzverwaltung", label: "Einsatzverwaltung" },
+  { href: "/auswertungen", label: "Auswertungen" },
 ];
 
 export default function Component() {
   return (
-    <header className="border-b px-4 md:px-6">
+    <header className="border-b px-4 md:px-6 position-fixed top-0">
       <div className="flex h-16 items-center justify-between gap-4">
         {/* Left side */}
         <div className="flex items-center gap-2">

@@ -27,10 +27,10 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body className={`${inter.variable} ${geistMono.variable} antialiased`}>
-      <NextAuthSessionProvider>
-        <Navbar />
-        {children}
-      </NextAuthSessionProvider>
+        <NextAuthSessionProvider>
+          <Navbar />
+          <main className="px-4 md:px-6 py-8">{children}</main>
+        </NextAuthSessionProvider>
       </body>
     </html>
   );
