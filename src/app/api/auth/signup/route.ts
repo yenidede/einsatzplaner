@@ -1,8 +1,9 @@
 import { NextResponse, NextRequest } from "next/server";
 import { hash } from "bcryptjs";
-import { createUserWithOrgAndRole } from "@/DataAccessLayer/user";
+import {  createUserWithOrgAndRole, getOrCreateOrganizationByName, getOrCreateRoleByName, getUserByEmail} from "@/DataAccessLayer/user";
 import { CreateUserSchema } from "@/types/user";
-import prisma from "@/lib/prisma";
+
+
 
 export async function POST(req: NextRequest) {
     try {
@@ -16,31 +17,21 @@ export async function POST(req: NextRequest) {
         const userData = parseResult.data;
 
         // Prüfe, ob E-Mail bereits existiert
-        const { getUserByEmail } = await import('@/DataAccessLayer/user');
         const existingUser = await getUserByEmail(userData.email);
         if (existingUser) {
             return NextResponse.json({ error: "E-Mail bereits registriert" }, { status: 400 });
         }
 
         // Organisation anhand des Namens suchen oder anlegen
-        let organization = await prisma.organization.findFirst({
-            where: { name: userData.organizationName }
-        });
-        if (!organization) {
-            organization = await prisma.organization.create({
-                data: { name: userData.organizationName }
-            });
-        }
+        const organization = await getOrCreateOrganizationByName(userData.organizationName);
 
         // Rolle anhand des Namens suchen
         const defaultRoleName = "Helfer"; // oder wie deine Standardrolle heißt
-        const roleRecord = await prisma.roles.findFirst({
-            where: { name: defaultRoleName }
-        });
-        if (!roleRecord) {
-            return NextResponse.json({ error: "Standardrolle nicht gefunden" }, { status: 400 });
-        }
 
+        const roleRecord = await getOrCreateRoleByName(defaultRoleName);
+        if (!roleRecord) {
+            return NextResponse.json({ error: "Rolle konnte nicht erstellt oder gefunden werden" }, { status: 500 });
+        }
         // Passwort hashen
         const passwordHash = await hash(userData.password, 12);
 
