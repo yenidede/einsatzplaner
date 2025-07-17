@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import {z}  from 'zod';
+
 
 // User roles enum
 export const UserRole = {
@@ -21,8 +22,10 @@ export const CreateUserSchema = z.object({
   password: z.string().min(8, 'Passwort muss mindestens 8 Zeichen haben'),
   firstname: z.string().min(2, 'Vorname muss mindestens 2 Zeichen haben'),
   lastname: z.string().min(2, 'Nachname muss mindestens 2 Zeichen haben'),
-  role: UserRoleSchema,
-  organizationName: z.string().min(2, 'Organisationsname muss mindestens 2 Zeichen haben')
+  role: UserRoleSchema.optional(),
+  phone: z.string().optional(),
+  organizationName: z.string().min(2, 'Organisationsname muss mindestens 2 Zeichen haben'),
+
 });
 
 export type CreateUserData = z.infer<typeof CreateUserSchema>;
@@ -47,3 +50,4 @@ export const LoginSchema = z.object({
 });
 
 export type LoginData = z.infer<typeof LoginSchema>;
+
