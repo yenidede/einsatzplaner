@@ -1,7 +1,7 @@
 import InfoMenu from "@/components/navbar/info-menu";
 import Logo from "@/components/logo";
 import NotificationMenu from "@/components/navbar/notification-menu";
-import UserMenu from "@/components/navbar//user-menu";
+import UserMenu from "@/components/navbar/user-menu";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -17,7 +17,7 @@ import {
 
 // Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
-  { href: "/benutzeransicht", label: "Helferansicht" },
+  { href: "/helferansicht", label: "Helferansicht" },
   { href: "/einsatzverwaltung", label: "Einsatzverwaltung" },
   { href: "/auswertungen", label: "Auswertungen" },
 ];
