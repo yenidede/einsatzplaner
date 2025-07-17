@@ -28,6 +28,7 @@
     "next-auth": "^4.24.11",
     "nodemailer": "^6.10.1",
     "prisma": "^6.11.1",
+    "radix-ui": "^1.4.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.60.0",

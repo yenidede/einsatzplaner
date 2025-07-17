@@ -19,8 +19,52 @@
 ```
 
 ## .env Datei
+
+### Email Configuration
+SMTP_USER als auch SMTP_From sind beides die Email Adresse
+Besuche diesen Link um ein App-Passwort von Google zu kriegen und setze sie dann bei SMTP_PASS ein
+https://myaccount.google.com/apppasswords
 ```
-DATABASE_URL="mongodb+srv://<name>:<password>@cluster0.whufizw.mongodb.net/<db>?retryWrites=true&w=majority"
+# .env.local (einzige Datei)
+# ==============================================
+# Environment Configuration
+# ==============================================
+
+# Environment (ändere nur diesen Wert!)
+NODE_ENV=production
+
+# Database Configuration
+# DATABASE_URL="postgresql://postgres.fgxvzejucaxteqvnhojt:1SgIUIbf7oki6qT6@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
+# DATABASE_URL="postgresql://postgres:1SgIUIbf7oki6qT6@db.fgxvzejucaxteqvnhojt.supabase.co:5432/postgres"
+# Connect to Supabase via connection pooling
+DATABASE_URL="postgresql://postgres.fgxvzejucaxteqvnhojt:1SgIUIbf7oki6qT6@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+# Direct connection to the database. Used for migrations
+DIRECT_URL="postgresql://postgres.fgxvzejucaxteqvnhojt:1SgIUIbf7oki6qT6@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
+# NextAuth Configuration
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET="lKKpo4oYOQZgS3aZdV1SM815HqB63OiVLid9g5Q3b8"
+
+# Debug Settings
+DEBUG=true
+LOG_LEVEL=debug
+
+# Email Configuration (aktiviert für Gmail)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=oemer.yenidede066@gmail.com
+SMTP_FROM=oemer.yenidede066@gmail.com
+SMTP_PASS=
+
+# Cron Job Security
+CRON_SECRET=your-secret-cron-token-here
+
+# Invitation Settings
+INVITATION_EXPIRY_DAYS=7
+INVITATION_REMINDER_DAYS=3
+INVITATION_MAX_REMINDERS=2
+INVITATION_ANONYMIZE_AFTER_DAYS=365
+
+
 ```
-Entweder kopieren und die Variablen ersetzen oder bei MongoDB -> Database -> Cluster -> Connect -> auf MongoDB for VS Code
-Da kriegt man auch den Link, jedoch ist der letzte Abschnitt (nach dem / ) nicht enthalten und muss noch manuell hinzugefügt werden.
+

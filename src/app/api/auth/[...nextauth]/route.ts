@@ -23,16 +23,16 @@ const authOptions: NextAuthOptions = {
                     // User inkl. Rollenbeziehung holen
                     const user = await getUserByEmail(credentials.email);
 
-                    if (!user) {
-                        return null;
-                    }
+          if (!user) {
+            return null;
+          }
 
                     // Passwort prüfen
                     const isPasswordValid = await compare(credentials.password, user.password);
 
-                    if (!isPasswordValid) {
-                        return null;
-                    }
+          if (!isPasswordValid) {
+            return null;
+          }
 
                     // Rolle aus erster user_organization_role holen (falls vorhanden)
                     const userOrgRole = user.user_organization_role[0];
