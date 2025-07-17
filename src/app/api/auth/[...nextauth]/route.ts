@@ -14,7 +14,7 @@ const authOptions: NextAuthOptions = {
                 email: { label: 'Email', type: 'email' },
                 password: { label: 'Passwort', type: 'password' }
             },
-            async authorize(credentials)  {
+            async authorize(credentials) : Promise<any> {
                 try {
                     if (!credentials?.email || !credentials?.password) {
                         return null;
