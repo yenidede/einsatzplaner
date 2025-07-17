@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { compare } from "bcryptjs";
-import clientPromise from "@/lib/mongo/client";
-import { USERS_COLLECTION } from "@/lib/mongo/models/User";
+
 
 // Data Transfer Object (DTO) Pattern
 interface SignInRequest {
