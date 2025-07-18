@@ -5,11 +5,15 @@ declare module 'next-auth' {
     interface User {
         id: string;
         email: string;
-        name: string;
         firstname: string;
         lastname: string;
         role: UserRole;
         orgId: string | null;
+        phone: string | null;
+        initials: string; // Assuming you have a way to generate initials
+        logo_url?: string | null;
+        description?: string | null;
+        last_login
     }
 
     interface Session {
