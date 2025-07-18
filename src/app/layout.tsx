@@ -1,8 +1,11 @@
+
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import NextAuthSessionProvider from "@/components/SessionProvider";
 import "@/styles/globals.css";
 import Navbar from "@/components/navbar/navbar-main";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import QueryProvider from "@/components/QueryProvider";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -27,10 +30,12 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body className={`${inter.variable} ${geistMono.variable} antialiased`}>
-        <NextAuthSessionProvider>
-          <Navbar />
-          <main className="px-4 md:px-6 py-8">{children}</main>
-        </NextAuthSessionProvider>
+        <QueryProvider>
+          <NextAuthSessionProvider>
+            <Navbar />
+            <main className="px-4 md:px-6 py-8">{children}</main>
+          </NextAuthSessionProvider>
+        </QueryProvider>
       </body>
     </html>
   );
