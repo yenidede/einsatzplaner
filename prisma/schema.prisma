@@ -184,6 +184,7 @@ model user {
   resetToken             String?
   resetTokenExpires      DateTime?
   last_login             DateTime?                @db.Timestamp(6)
+  hasLogoinCalendar         Boolean                 @default(true)
   change_log             change_log[]
   einsatz                einsatz[]
   einsatz_comment        einsatz_comment[]
@@ -198,7 +199,8 @@ model user_organization_role {
   user_id       String          @db.Uuid
   org_id        String          @db.Uuid
   created_at    DateTime        @default(now()) @db.Timestamptz(6)
-  role_id       String          @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  role_id       String          @db.Uuid
+  hasGetMailNotification Boolean @default(true)
   organization  organization    @relation(fields: [org_id], references: [id], onDelete: Cascade)
   roles         roles           @relation(fields: [role_id], references: [id], onDelete: Cascade)
   user          user            @relation(fields: [user_id], references: [id], onDelete: Cascade)

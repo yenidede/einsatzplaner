@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import UserSettings from '@/features/auth/components/UserSettings';
+import UserSettings from '@/features/settings/components/UserSettings';
 import { UserService, FetchHttpClient } from '@/features/auth/services/UserService';
 import { UserFormValidator } from '@/features/auth/validators/UserValidator';
 
