@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { UserService, UserUpdateData, ApiResponse, UserProfile } from '../services/UserService';
-import { UserFormValidator } from '../validators/UserValidator';
+import { UserService, UserUpdateData, ApiResponse, UserProfile } from '../../auth/services/UserService';
+import { UserFormValidator } from '../../auth/validators/UserValidator';
 
 // Hook Options Interface
 export interface UseUserSettingsOptions {
