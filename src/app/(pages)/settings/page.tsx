@@ -14,93 +14,90 @@ import {LabelSettings} from "@/features/settings/components/ui/LabelSettings";
 import {InputSettings} from "@/features/settings/components/ui/InputSettings";
 import { Settings } from "lucide-react";
 import SettingsIcon from "@/components/icon/SettingsIcon";
-import { hasCustomGetInitialProps } from "next/dist/build/utils";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import OrganisationIcon from "@/features/settings/components/ui/OrganisationIcon";
 
 export default function SettingsPage() {
-    const id = useId();
-    const [showLogos, setShowLogos] = useState<boolean>(true);
-    const [getMailFromOrganization, setGetMailFromOrganization] = useState<boolean>(true);
-    const { data: session, status } = useSession();
-    const router = useRouter();
-    const [user, setUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+  const id = useId();
+  const [showLogos, setShowLogos] = useState<boolean>(true);
+  const [getMailFromOrganization, setGetMailFromOrganization] = useState<boolean>(true);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [email, setEmail] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
 
-    
-      const handleSave = async () => {
-    await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user.id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        email : user.email,
-        logo_url: user.logo_url,
-        phone : user.phone,
-        hasLogoinCalendar: showLogos,
-        hasGetMailNotification: getMailFromOrganization,
-      }),
-    });
+  const queryClient = useQueryClient();
 
-    // Optional: Feedback anzeigen oder Seite neu laden
-    // z.B. alert("Gespeichert!");
-  };
-  // User laden
+  // Lade Userdaten mit TanStack Query
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["userSettings", session?.user?.id],
+    enabled: !!session?.user?.id,
+    queryFn: async () => {
+      const res = await fetch(`/api/settings?userId=${session?.user.id}`);
+      if (!res.ok) throw new Error("Fehler beim Laden");
+      return res.json();
+    },
+  });
+
+  // Setze Userdaten, Email und Phone, wenn Query-Daten geladen sind
   useEffect(() => {
-    if (status === "loading") return;
-    if (!session?.user?.id) {
-      router.replace("/signin");
-      return;
+    if (data) {
+      setUser(data);
+      setEmail(data.email ?? "");
+      setPhone(data.phone ?? "");
+      setShowLogos(data.hasLogoinCalendar ?? true);
+      setGetMailFromOrganization(data.hasGetMailNotification ?? true);
     }
-    fetch(`/api/settings?userId=${session.user.id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data || data.error) {
-          router.replace("/signin");
-        } else {
-          setUser(data);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [session?.user?.id, status, router]);
+  }, [data]);
 
-    useEffect(() => {
-  const handleEsc = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      router.back();
-    }
+  // Mutation zum Speichern
+  type UserSettings = {
+    userId: any;
+    firstname: any;
+    lastname: any;
+    email: string;
+    logo_url: any;
+    phone: string;
+    hasLogoinCalendar: boolean;
+    hasGetMailNotification: boolean;
   };
-        window.addEventListener("keydown", handleEsc);
-        return () => window.removeEventListener("keydown", handleEsc);
-    }, [router]);  
 
-    const [email, setEmail] = useState<string>("");
-    useEffect(() => {
-      if (user?.email) {
-        setEmail(user.email);
-      }
-    }, [user?.email]);
+  const mutation = useMutation<UserSettings, Error, UserSettings>({
+    mutationFn: async (newSettings) => {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newSettings),
+      });
+      if (!res.ok) throw new Error("Fehler beim Speichern");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userSettings", session?.user.id] });
+    },
+  });
 
-    const [phone, setPhone] = useState<string>("");
+  const handleSave = () => {
+    if (!user) return;
+    mutation.mutate({
+      userId: user.id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email,
+      logo_url: user.logo_url,
+      phone,
+      hasLogoinCalendar: showLogos,
+      hasGetMailNotification: getMailFromOrganization,
+    });
+  };
 
-    useEffect(() => {
-      if (user?.phone !== undefined) {
-        setPhone(user.phone ?? "") ;
-      }
-    }, [user?.phone]);
-    useEffect(() => {
-  if (user && phone !== user.phone) {
-    setUser({ ...user, phone });
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [phone]);
-
-
-  if (loading || !user) {
+  if (isLoading || !user) {
     return <div>Lade Einstellungen…</div>;
   }
-
-
+  if (error) {
+    return <div>Fehler beim Laden der Einstellungen.</div>;
+  }
 
   // Initialen für Avatar
   const initials = `${user.firstname?.[0] || ""}${user.lastname?.[0] || ""}`.toUpperCase();
@@ -127,8 +124,7 @@ export default function SettingsPage() {
             <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
                 <div data-left-icon="true" data-right-icon="false" data-right-text="true" data-state="default" data-type="default" className="self-stretch px-2 py-1.5 bg-slate-100 rounded-md inline-flex justify-start items-center gap-2">
                     <div className="w-4 h-4 relative overflow-hidden">
-                        <div className="w-3 h-3.5 left-[1.99px] top-[1.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-1 h-1 left-[6px] top-[6px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
+                        <SettingsIcon className="w-4 h-4 relative overflow-hidden" />
                     </div>
                     <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">Allgemein</div>
                     <div className="justify-start"></div>
@@ -153,38 +149,20 @@ export default function SettingsPage() {
                     <div className="justify-start"></div>
                 </div>
                 <div data-left-icon="true" data-right-icon="false" data-right-text="true" data-state="default" data-type="default" className="self-stretch px-2 py-1.5 bg-white inline-flex justify-start items-center gap-2">
-                    <div className="w-4 h-4 relative overflow-hidden">
-                        <div className="w-2.5 h-3.5 left-[2.67px] top-[1.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-1 h-[2.67px] left-[6px] top-[12px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[5.33px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[10.67px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[8px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[8px] top-[6.67px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[8px] top-[9.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[10.67px] top-[6.67px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[10.67px] top-[9.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[5.33px] top-[6.67px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[5.33px] top-[9.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                    </div>
+                        <OrganisationIcon></OrganisationIcon>
                     <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">Café JMH</div>
                     <div className="justify-start"></div>
                 </div>
             </div>
             <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
-                <div data-state="Default" data-type="with icon" className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2">
-                    <div className="w-4 h-4 relative overflow-hidden">
-                        <div className="w-1 h-3 left-[2px] top-[2px] absolute outline outline-2 outline-offset-[-1px] outline-slate-900" />
-                        <div className="w-[3.33px] h-1.5 left-[10.67px] top-[4.67px] absolute outline outline-2 outline-offset-[-1px] outline-slate-900" />
-                        <div className="w-2 h-0 left-[6px] top-[8px] absolute outline outline-2 outline-offset-[-1px] outline-slate-900" />
-                    </div>
-                    <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
+                <div data-state="Default" data-type="with icon" className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2"
+                    onClick={()=>signOut()}>
                         <LogoutIcon className="w-4 h-4 relative overflow-hidden">
                         </LogoutIcon>
-                        <button className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal " >
+                        <span className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
                             Ausloggen
-                        </button>
+                        </span>
                     </div>
-                </div>
             </div>
         </div>
         <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
