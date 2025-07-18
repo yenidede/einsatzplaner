@@ -12,12 +12,11 @@ import {
   type CalendarEvent,
 } from "@/components/event-calendar";
 
-// Using date-fns format with custom formatting:
-// 'h' - hours (1-12)
-// 'a' - am/pm
-// ':mm' - minutes with leading zero (only if the token 'mm' is present)
+// Using date-fns format with 24-hour formatting:
+// 'HH' - hours (00-23) with leading zero
+// ':mm' - minutes with leading zero
 const formatTimeWithOptionalMinutes = (date: Date) => {
-  return format(date, getMinutes(date) === 0 ? "h:mm" : "h:mm").toLowerCase();
+  return format(date, "HH:mm");
 };
 
 interface EventWrapperProps {
