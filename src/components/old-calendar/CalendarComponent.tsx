@@ -18,7 +18,7 @@ import { getLocale } from "./utils";
  * Main Calendar component with FullCalendar integration
  */
 export const CalendarComponent: FC<CalendarProps> = ({
-  calendarData,
+  scheduleData,
   onEventClick,
   maxEventsPerDay = 4,
 }) => {
@@ -26,7 +26,7 @@ export const CalendarComponent: FC<CalendarProps> = ({
   const calendarRef = useRef<FullCalendar>(null);
 
   const { events, selectedEvent, isModalOpen, handleEventClick, closeModal } =
-    useCalendarState(calendarData);
+    useCalendarState(scheduleData);
 
   const onCalendarEventClick = (eventInfo: EventClickArg) => {
     handleEventClick(eventInfo, onEventClick);
