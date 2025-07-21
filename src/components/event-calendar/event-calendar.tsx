@@ -357,7 +357,7 @@ export function EventCalendar({
                   Woche <DropdownMenuShortcut>W</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setView("day")}>
-                  Tag <DropdownMenuShortcut>D</DropdownMenuShortcut>
+                  Tag <DropdownMenuShortcut>T</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setView("agenda")}>
                   Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
