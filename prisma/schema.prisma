@@ -22,19 +22,11 @@ model change_log {
 
 model change_type {
   id              String       @id @default(uuid()) @db.Uuid
-  custom_field_id String       @db.Uuid
-  value           String
-  identifier      String
-  custom_field    custom_field @relation(fields: [custom_field_id], references: [id], onDelete: Cascade)
-}
-
-model custom_field_value {
-  einsatz_id      String       @db.Uuid
-  custom_field_id String       @db.Uuid
-  value           String
-  id              String       @id @default(uuid()) @db.Uuid
-  custom_field    custom_field @relation(fields: [custom_field_id], references: [id], onDelete: Cascade)
-  einsatz         einsatz      @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
+  change_type     String
+  message         String?
+  change_icon_url String?
+  change_color    String
+  change_log      change_log[]
 }
 
 model einsatz {
@@ -156,26 +148,28 @@ model type {
 }
 
 model user {
-  id                     String                   @id @default(uuid()) @db.Uuid
-  email                  String                   @unique
-  firstname              String?
-  lastname               String?
-  password               String
-  phone                  String?
-  created_at             DateTime                 @default(now())
-  updated_at             DateTime?
-  logo_url               String?
-  description            String?
-  resetToken             String?
-  resetTokenExpires      DateTime?
-  last_login             DateTime?                @db.Timestamp(6)
-  change_log             change_log[]
-  einsatz                einsatz[]
-  einsatz_comment        einsatz_comment[]
-  einsatz_helper         einsatz_helper[]
-  einsatz_template       einsatz_template[]
-  invitation             invitation[]
-  user_organization_role user_organization_role[]
+  id                      String                   @id @default(uuid()) @db.Uuid
+  email                   String                   @unique
+  firstname               String?
+  lastname                String?
+  password                String
+  phone                   String?
+  created_at              DateTime                 @default(now())
+  updated_at              DateTime?
+  picture_url             String?
+  description             String?
+  resetToken              String?
+  resetTokenExpires       DateTime?
+  last_login              DateTime?                @db.Timestamp(6)
+  hasLogoinCalendar       Boolean                  @default(true)
+  last_read_notifications DateTime?                @db.Timestamptz(6)
+  change_log              change_log[]
+  einsatz                 einsatz[]
+  einsatz_comment         einsatz_comment[]
+  einsatz_helper          einsatz_helper[]
+  einsatz_template        einsatz_template[]
+  invitation              invitation[]
+  user_organization_role  user_organization_role[]
 }
 
 model user_organization_role {

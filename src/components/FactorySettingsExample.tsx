@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import UserSettings from '@/features/auth/components/UserSettings';
+import UserSettings from '@/features/settings/components/UserSettings';
 import { AuthServiceProvider, ProductionAuthFactory } from '@/features/auth/factories/AuthServiceFactory';
 
 export default function FactorySettingsPage() {

@@ -1,14 +1,18 @@
 import prisma from '@/lib/prisma';
 import { hash } from 'crypto';
-
+//#region Auth DAL
 export async function getUserByEmail(email: string) {
     return await prisma.user.findUnique({
         where: { email },
         include: {
             user_organization_role: {
                 include: {
-                    roles: true,
-                    organization: true
+                    organization: true,
+                    role_assignments: {
+                        include: {
+                            role: true
+                        }
+                    }
                 }
             }
         }
@@ -41,8 +45,7 @@ export async function createUserWithOrgAndRole(data: {
     include: {
       user_organization_role: {
         include: {
-          organization: true,
-          roles: true,
+        organization: true,
         },
       },
     },
@@ -53,12 +56,15 @@ export async function getUserByIdWithOrgAndRole(userId: string) {
     return await prisma.user.findUnique({
         where: { id: userId },
         include: {
-            user_organization_role: {
+                user_organization_role: {
                 include: {
                     organization: true,
-                    roles: true,
-                },
-            },
+                    role_assignments: {
+                    include: {
+                        role: true
+                    }
+                    }
+                }}
         },
     });
 }
@@ -95,9 +101,10 @@ export async function updateLastLogin(userId: string) {
             updated_at: new Date(),
         },
     });
-  }
-
+}
+//#endregion
 //#region Reset Password DAL
+
 export async function updateUserResetToken(email: string, resetToken: string, resetTokenExpiry: Date) {
     return await prisma.user.update({
         where: { email },
@@ -132,4 +139,50 @@ export async function resetUserPassword(user: { id: string }, hashedPassword: st
         }
     });
 }
+//#endregion
+//#region User Settings DAL
+export async function updateUserSettings(userId: string, body: any) {
+    const currentUser = await prisma.user.findUnique({
+        where: { id: userId }
+    });
+
+    if (!currentUser) {
+        throw new Error('User not found');
+    }
+
+    const updateData: any = {
+        email: body.email || currentUser.email,
+        firstname: body.firstname || currentUser.firstname,
+        lastname: body.lastname || currentUser.lastname,
+        hasLogoinCalendar: body.hasLogoinCalendar ?? currentUser.hasLogoinCalendar,
+        updated_at: new Date(),
+        phone: body.phone ?? currentUser.phone
+    };
+
+    return prisma.user.update({
+        where: { id: userId },
+        data: updateData
+    });
+}
+
+export async function updateUserOrgSettings(userOrgId: string, body: any) {
+    const currentUserOrg = await prisma.user_organization_role.findUnique({
+        where: { id: userOrgId }
+    });
+
+    if (!currentUserOrg) {
+        throw new Error('UserOrg not found');
+    }
+
+    const updateData: any = {
+        hasGetMailNotification: body.getMailFromOrganization ?? currentUserOrg.hasGetMailNotification,
+        updated_at: new Date()
+    };
+
+    return prisma.user_organization_role.update({
+        where: { id: userOrgId },
+        data: updateData
+    });
+}
+
 //#endregion

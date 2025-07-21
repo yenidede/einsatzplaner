@@ -2,10 +2,10 @@
 
 'use client';
 
-import { FormField, Alert, Button, FormSection } from './ui/FormComponents';
+import { FormField, Alert, Button, FormSection } from '../../auth/components/ui/FormComponents';
 import { useUserSettings } from '../hooks/useUserSettings';
-import { UserService, UserServiceFactory, FetchHttpClient } from '../services/UserService';
-import { UserFormValidator } from '../validators/UserValidator';
+import { UserService, UserServiceFactory, FetchHttpClient } from '../../auth/services/UserService';
+import { UserFormValidator } from '../../auth/validators/UserValidator';
 
 interface UserSettingsProps {
     userId:  string;
