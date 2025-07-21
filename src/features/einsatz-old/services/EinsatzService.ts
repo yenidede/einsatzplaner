@@ -1,26 +1,36 @@
-import { Einsatz, EinsatzFormData, EinsatzFilter, AutosaveData } from '@/features/einsatz/types/einsatz';
-import { EinsatzModel } from '@/lib/mongo/models/Einsatz';
+import {
+  Einsatz,
+  EinsatzFormData,
+  EinsatzFilter,
+  AutosaveData,
+} from "@/features/einsatz-old/types/einsatz";
+import { EinsatzModel } from "@/lib/mongo/models/Einsatz";
 
 export class EinsatzService {
-  
-  static async createEinsatz(einsatzData: EinsatzFormData, userId: string): Promise<Einsatz> {
+  static async createEinsatz(
+    einsatzData: EinsatzFormData,
+    userId: string
+  ): Promise<Einsatz> {
     const validation = EinsatzModel.validateEinsatz(einsatzData);
     if (validation.length > 0) {
-      throw new Error(`Validierung fehlgeschlagen: ${validation.join(', ')}`);
+      throw new Error(`Validierung fehlgeschlagen: ${validation.join(", ")}`);
     }
 
     const einsatz = await EinsatzModel.create({
       ...einsatzData,
-      createdBy: userId
+      createdBy: userId,
     });
 
     return einsatz;
   }
 
-  static async updateEinsatz(id: string, updateData: Partial<EinsatzFormData>): Promise<boolean> {
+  static async updateEinsatz(
+    id: string,
+    updateData: Partial<EinsatzFormData>
+  ): Promise<boolean> {
     const validation = EinsatzModel.validateEinsatz(updateData);
     if (validation.length > 0) {
-      throw new Error(`Validierung fehlgeschlagen: ${validation.join(', ')}`);
+      throw new Error(`Validierung fehlgeschlagen: ${validation.join(", ")}`);
     }
 
     return await EinsatzModel.update(id, updateData);
@@ -42,7 +52,7 @@ export class EinsatzService {
       anzahlHelfer: result.anzahlHelfer,
       createdBy: result.createdBy,
       // Add other properties as needed from the Einsatz type
-      ...(result as any)
+      ...(result as any),
     };
     return einsatz;
   }
@@ -51,11 +61,16 @@ export class EinsatzService {
     filter?: EinsatzFilter,
     page: number = 1,
     limit: number = 10
-  ): Promise<{ einsaetze: Einsatz[]; total: number; page: number; totalPages: number }> {
+  ): Promise<{
+    einsaetze: Einsatz[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
     const skip = (page - 1) * limit;
     const [rawEinsaetze, total] = await Promise.all([
       EinsatzModel.findAll(filter, limit, skip),
-      EinsatzModel.count(filter)
+      EinsatzModel.count(filter),
     ]);
 
     const einsaetze: Einsatz[] = rawEinsaetze.map((result: any) => ({
@@ -70,14 +85,14 @@ export class EinsatzService {
       anzahlHelfer: result.anzahlHelfer,
       createdBy: result.createdBy,
       // Add other properties as needed from the Einsatz type
-      ...(result as any)
+      ...(result as any),
     }));
 
     return {
       einsaetze,
       total,
       page,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -86,17 +101,20 @@ export class EinsatzService {
   }
 
   // Autosave-Funktionalität
-  static async saveAutosave(einsatzId: string | undefined, formData: Partial<EinsatzFormData>): Promise<void> {
+  static async saveAutosave(
+    einsatzId: string | undefined,
+    formData: Partial<EinsatzFormData>
+  ): Promise<void> {
     const autosaveData: AutosaveData = {
       einsatzId,
       formData,
       lastSaved: new Date(),
-      isDirty: true
+      isDirty: true,
     };
 
     // Speichere in localStorage (client-side) oder temporäre Collection (server-side)
-    if (typeof window !== 'undefined') {
-      const key = `autosave_${einsatzId || 'new'}`;
+    if (typeof window !== "undefined") {
+      const key = `autosave_${einsatzId || "new"}`;
       localStorage.setItem(key, JSON.stringify(autosaveData));
     } else {
       // Server-side: Speichere in temporärer Collection
@@ -104,9 +122,11 @@ export class EinsatzService {
     }
   }
 
-  static async getAutosave(einsatzId: string | undefined): Promise<AutosaveData | null> {
-    if (typeof window !== 'undefined') {
-      const key = `autosave_${einsatzId || 'new'}`;
+  static async getAutosave(
+    einsatzId: string | undefined
+  ): Promise<AutosaveData | null> {
+    if (typeof window !== "undefined") {
+      const key = `autosave_${einsatzId || "new"}`;
       const data = localStorage.getItem(key);
       return data ? JSON.parse(data) : null;
     }
@@ -114,55 +134,64 @@ export class EinsatzService {
   }
 
   static async clearAutosave(einsatzId: string | undefined): Promise<void> {
-    if (typeof window !== 'undefined') {
-      const key = `autosave_${einsatzId || 'new'}`;
+    if (typeof window !== "undefined") {
+      const key = `autosave_${einsatzId || "new"}`;
       localStorage.removeItem(key);
     }
   }
 
   // Geschäftslogik für Warnungen
-  static checkHelferWarning(anzahlHelfer: number, minimumHelfer: number = 2): boolean {
+  static checkHelferWarning(
+    anzahlHelfer: number,
+    minimumHelfer: number = 2
+  ): boolean {
     return anzahlHelfer < minimumHelfer;
   }
 
   static validateTimeRange(uhrzeitVon: string, uhrzeitBis: string): boolean {
-    const [vonHour, vonMin] = uhrzeitVon.split(':').map(Number);
-    const [bisHour, bisMin] = uhrzeitBis.split(':').map(Number);
-    
+    const [vonHour, vonMin] = uhrzeitVon.split(":").map(Number);
+    const [bisHour, bisMin] = uhrzeitBis.split(":").map(Number);
+
     const vonMinutes = vonHour * 60 + vonMin;
     const bisMinutes = bisHour * 60 + bisMin;
-    
+
     return bisMinutes > vonMinutes;
   }
 
   static calculateDuration(uhrzeitVon: string, uhrzeitBis: string): number {
-    const [vonHour, vonMin] = uhrzeitVon.split(':').map(Number);
-    const [bisHour, bisMin] = uhrzeitBis.split(':').map(Number);
-    
+    const [vonHour, vonMin] = uhrzeitVon.split(":").map(Number);
+    const [bisHour, bisMin] = uhrzeitBis.split(":").map(Number);
+
     const vonMinutes = vonHour * 60 + vonMin;
     const bisMinutes = bisHour * 60 + bisMin;
-    
+
     return bisMinutes - vonMinutes;
   }
 
-  static calculateTotalPrice(anzahlTeilnehmer: number, einzelpreis: number): number {
+  static calculateTotalPrice(
+    anzahlTeilnehmer: number,
+    einzelpreis: number
+  ): number {
     return anzahlTeilnehmer * einzelpreis;
   }
 
   // Filter-Hilfsfunktionen
-  static buildDateFilter(dateFrom?: string, dateTo?: string): { from?: Date; to?: Date } | undefined {
+  static buildDateFilter(
+    dateFrom?: string,
+    dateTo?: string
+  ): { from?: Date; to?: Date } | undefined {
     if (!dateFrom && !dateTo) return undefined;
-    
+
     const filter: { from?: Date; to?: Date } = {};
-    
+
     if (dateFrom) {
       filter.from = new Date(dateFrom);
     }
-    
+
     if (dateTo) {
       filter.to = new Date(dateTo);
     }
-    
+
     return filter;
   }
 
@@ -172,39 +201,39 @@ export class EinsatzService {
       name: {
         required: true,
         minLength: 2,
-        maxLength: 200
+        maxLength: 200,
       },
       kategorie: {
         required: true,
-        options: ['Freizeit (KiJu)', 'Rüstzeuge (KiJu)', 'Sonstiges'] // Aus Screenshot
+        options: ["Freizeit (KiJu)", "Rüstzeuge (KiJu)", "Sonstiges"], // Aus Screenshot
       },
       datum: {
         required: true,
-        minDate: new Date()
+        minDate: new Date(),
       },
       uhrzeitVon: {
         required: true,
-        pattern: /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/
+        pattern: /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
       },
       uhrzeitBis: {
         required: true,
-        pattern: /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/
+        pattern: /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
       },
       anzahlTeilnehmer: {
         required: true,
         min: 1,
-        max: 999
+        max: 999,
       },
       einzelpreis: {
         required: true,
         min: 0,
-        max: 9999.99
+        max: 9999.99,
       },
       anzahlHelfer: {
         required: true,
         min: 1,
-        max: 50
-      }
+        max: 50,
+      },
     };
   }
 }

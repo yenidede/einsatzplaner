@@ -1,12 +1,12 @@
-import EinsaetzeManager from '@/features/einsatz/components/EinsaetzeManager';
-import { getServerSession } from 'next-auth';
-import { redirect } from 'next/navigation';
+import EinsaetzeManager from "@/features/einsatz-old/components/EinsaetzeManager";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
 export default async function EinsaetzePage() {
   const session = await getServerSession();
-  
+
   if (!session?.user) {
-    redirect('/signin');
+    redirect("/signin");
   }
 
   return (

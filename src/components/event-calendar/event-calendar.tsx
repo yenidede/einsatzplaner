@@ -92,7 +92,7 @@ export function EventCalendar({
         case "w":
           setView("week");
           break;
-        case "d":
+        case "t":
           setView("day");
           break;
         case "a":
@@ -129,7 +129,7 @@ export function EventCalendar({
     } else if (view === "day") {
       setCurrentDate(addDays(currentDate, 1));
     } else if (view === "agenda") {
-      // For agenda view, go forward 30 days (a full month)
+      // For agenda view, go forward
       setCurrentDate(addDays(currentDate, AgendaDaysToShow));
     }
   };
