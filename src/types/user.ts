@@ -38,7 +38,11 @@ export interface UserWithoutPassword {
   lastname: string;
   role: UserRole;
   organizationName: string;
-  isActive: boolean;
+  phone?: string | null;
+  initials: string; // Assuming you have a way to generate initials
+  picture_url?: string | null;
+  description?: string | null;
+  last_login?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
