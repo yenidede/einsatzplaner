@@ -134,7 +134,7 @@ model organization_property {
 }
 
 model roles {
-  id                   String                 @id @default(uuid()) @db.Uuid
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                 String
   abbreviation         String?
   user_role_assignment user_role_assignment[]
@@ -213,7 +213,7 @@ model einsatz_field {
   field_id   String  @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   value      String?
   einsatz    einsatz @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
-  field      field   @relation(fields: [field_id], references: [id], onDelete: SetNull)
+  field      field   @relation(fields: [field_id], references: [id], onDelete: Cascade)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
