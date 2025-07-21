@@ -11,12 +11,12 @@ declare module 'next-auth' {
         orgId: string | null;
         phone: string | null;
         initials: string; // Assuming you have a way to generate initials
-        logo_url?: string | null;
-        description?: string | null;
+        picture_ur?: string | null;
+        picture_url?: string | null;
         last_login
     }
 
-    interface Session {
+    interface Session {     
         user: User;
         orgId?: string | null;
     }

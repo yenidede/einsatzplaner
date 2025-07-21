@@ -62,12 +62,11 @@ class AuthenticationService {
     }
 
     static generateToken(user: any): string {
-        // Simplified token generation without JWT dependency
-        // In production, use proper JWT or session management
+        // Token enthält jetzt alle Rollen als Array
         return Buffer.from(JSON.stringify({
             userId: user._id,
             email: user.email,
-            role: user.role,
+            roles: user.roles,
             timestamp: Date.now()
         })).toString('base64');
     }
@@ -165,10 +164,19 @@ export async function POST(req: Request) {
         // Check if user is active (optional: if you have isActive field)
 
         // Generate token (replace with JWT in production)
+        // Alle Rollen aus allen user_organization_role-Einträgen sammeln
+        const allRoles = Array.isArray(user.user_organization_role)
+            ? user.user_organization_role.flatMap(uor =>
+                Array.isArray(uor.role_assignments)
+                    ? uor.role_assignments.map(ra => ra.role?.name).filter(Boolean)
+                    : []
+            )
+            : [];
+
         const token = AuthenticationService.generateToken({
             _id: user.id,
             email: user.email,
-            role: user.user_organization_role?.[0]?.roles?.name || "",
+            roles: allRoles,
         });
 
         // Update last login (optional: if you have lastLogin field)
@@ -185,7 +193,7 @@ export async function POST(req: Request) {
         RateLimitingService.resetAttempts(ip);
 
         // Return success response
-        const response: SignInResponse = {
+        const response = {
             message: "Anmeldung erfolgreich",
             token,
             user: {
@@ -193,7 +201,7 @@ export async function POST(req: Request) {
                 email: user.email,
                 firstname: user.firstname || "",
                 lastname: user.lastname || "",
-                role: user.user_organization_role?.[0]?.roles?.name || "",
+                roles: allRoles,
             }
         };
 

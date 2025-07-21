@@ -12,10 +12,16 @@ import { Label } from "@/features/settings/components/ui/label";
 
 import {LabelSettings} from "@/features/settings/components/ui/LabelSettings";
 import {InputSettings} from "@/features/settings/components/ui/InputSettings";
-import { Settings } from "lucide-react";
+import { Settings, Upload } from "lucide-react";
 import SettingsIcon from "@/components/icon/SettingsIcon";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import OrganisationIcon from "@/features/settings/components/ui/OrganisationIcon";
+import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadProfilePictureIcon";
+import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
+import OrganizationCard from "@/features/settings/components/OrganizationCard";
+import OrganizationNotification from '@/features/settings/components/OrganizationNotification'
+
+
 
 export default function SettingsPage() {
   const id = useId();
@@ -26,6 +32,7 @@ export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -48,6 +55,7 @@ export default function SettingsPage() {
       setPhone(data.phone ?? "");
       setShowLogos(data.hasLogoinCalendar ?? true);
       setGetMailFromOrganization(data.hasGetMailNotification ?? true);
+      (data.organizations || []);
     }
   }, [data]);
 
@@ -57,7 +65,7 @@ export default function SettingsPage() {
     firstname: any;
     lastname: any;
     email: string;
-    logo_url: any;
+    picture_url: any;
     phone: string;
     hasLogoinCalendar: boolean;
     hasGetMailNotification: boolean;
@@ -78,19 +86,52 @@ export default function SettingsPage() {
     },
   });
 
-  const handleSave = () => {
-    if (!user) return;
-    mutation.mutate({
-      userId: user.id,
-      firstname: user.firstname,
-      lastname: user.lastname,
-      email,
-      logo_url: user.logo_url,
-      phone,
-      hasLogoinCalendar: showLogos,
-      hasGetMailNotification: getMailFromOrganization,
+const handleSave = async () => {
+  if (!user) return;
+  let pictureUrl = user.picture_url;
+  if (profilePictureFile) {
+    const formData = new FormData();
+    formData.append("file", profilePictureFile);
+    formData.append("userId", user.id);
+    const res = await fetch("/api/upload-profile-picture", {
+      method: "POST",
+      body: formData,
     });
-  };
+    if (res.ok) {
+      const data = await res.json();
+      pictureUrl = data.url;
+    }
+  }
+  mutation.mutate({
+          userId: user.id,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email,
+          picture_url: pictureUrl,
+          phone,
+          hasLogoinCalendar: showLogos,
+          hasGetMailNotification: getMailFromOrganization,
+  });
+  
+         // Organisationseinstellungen speichern
+         if (user.organizations && user.organizations.length > 0) {
+           for (const org of user.organizations) {
+             await fetch("/api/settings", {
+               method: "PUT",
+               headers: { "Content-Type": "application/json" },
+               body: JSON.stringify({
+                 userId: user.id,
+                 userOrgId: org.userOrgRoleId,
+                 hasGetMailNotification: org.hasGetMailNotification,
+               }),
+             });
+           }
+         }
+};
+
+const handleProfilePictureUpload = (file: File) => {
+  setProfilePictureFile(file);
+};
 
   if (isLoading || !user) {
     return <div>Lade Einstellungen…</div>;
@@ -101,6 +142,24 @@ export default function SettingsPage() {
 
   // Initialen für Avatar
   const initials = `${user.firstname?.[0] || ""}${user.lastname?.[0] || ""}`.toUpperCase();
+
+    async function handleOrganizationLeave(id: any) {
+        if (!user) return;
+        const confirmed = window.confirm("Möchtest du die Organisation wirklich verlassen?");
+        if (!confirmed) return;
+        try {
+            const res = await fetch("/api/organization/leave", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: user.id, organizationId: id }),
+            });
+            if (!res.ok) throw new Error("Fehler beim Verlassen der Organisation");
+            // Aktualisiere die Userdaten nach dem Verlassen
+            queryClient.invalidateQueries({ queryKey: ["userSettings", user.id] });
+        } catch (err) {
+            alert("Fehler beim Verlassen der Organisation.");
+        }
+    }
 
   return (
 <div className="w-[842px] bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex flex-col justify-center items-center">
@@ -131,28 +190,15 @@ export default function SettingsPage() {
                 </div>
                 <div className="self-stretch h-px bg-slate-200" />
                 <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">Organisationsverwaltung</div>
-                <div data-left-icon="true" data-right-icon="false" data-right-text="true" data-state="default" data-type="default" className="self-stretch px-2 py-1.5 bg-white inline-flex justify-start items-center gap-2">
-                    <div className="w-4 h-4 relative overflow-hidden">
-                        <div className="w-2.5 h-3.5 left-[2.67px] top-[1.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-1 h-[2.67px] left-[6px] top-[12px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[5.33px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[10.67px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[8px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[8px] top-[6.67px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[8px] top-[9.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[10.67px] top-[6.67px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[10.67px] top-[9.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[5.33px] top-[6.67px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
-                        <div className="w-[0.01px] h-0 left-[5.33px] top-[9.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-700" />
+                {user.organizations && user.organizations.filter((org: any) => org.roles && org.roles.includes('Organisationsverwaltung')).length > 0 ? (
+                  user.organizations.filter((org: any) => org.roles && org.roles.includes('Organisationsverwaltung')).map((org: any) => (
+                    <div key={org.id} data-left-icon="true" data-right-icon="false" data-right-text="true" data-state="default" data-type="default" className="self-stretch px-2 py-1.5 bg-white inline-flex justify-start items-center gap-2">
+                      <OrganisationIcon />
+                      <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">{org.name}</div>
+                      <div className="justify-start"></div>
                     </div>
-                    <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">Jüdisches Museum Hoh...</div>
-                    <div className="justify-start"></div>
-                </div>
-                <div data-left-icon="true" data-right-icon="false" data-right-text="true" data-state="default" data-type="default" className="self-stretch px-2 py-1.5 bg-white inline-flex justify-start items-center gap-2">
-                        <OrganisationIcon></OrganisationIcon>
-                    <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">Café JMH</div>
-                    <div className="justify-start"></div>
-                </div>
+                  ))
+                ) : null}
             </div>
             <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
                 <div data-state="Default" data-type="with icon" className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2"
@@ -174,27 +220,66 @@ export default function SettingsPage() {
                     <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
                         <div className="self-stretch px-4 flex flex-col justify-start items-start gap-2">
                             <div className="inline-flex justify-start items-center gap-2">
-                                <div data-type="avatar initials" className="w-10 h-10 px-2 py-1.5 bg-slate-200 rounded-[20px] inline-flex flex-col justify-center items-center gap-2.5">
+                                {profilePictureFile ? (
+                                  <img
+                                    src={URL.createObjectURL(profilePictureFile)}
+                                    alt="Profilbild Vorschau"
+                                    className="w-10 h-10 rounded-full object-cover border"
+                                  />
+                                ) : user.picture_url ? (
+                                  <img
+                                    src={user.picture_url}
+                                    alt="Profilbild"
+                                    className="w-10 h-10 rounded-full object-cover border"
+                                  />
+                                ) : (
+                                  <div data-type="avatar initials" className="w-10 h-10 px-2 py-1.5 bg-slate-200 rounded-[20px] inline-flex flex-col justify-center items-center gap-2.5">
                                     <div className="justify-start text-slate-900 text-base font-normal font-['Inter'] leading-7">{initials}</div>
-                                </div>
+                                  </div>
+                                )}
                                 <div className="inline-flex flex-col justify-center items-start">
                                     <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-normal">{user.firstname} {user.lastname}</div>
                                 </div>
+                                
                             </div>
+                            <div className="inline-flex justify-start items-start gap-2">
+{/*                                 <ProfilePictureUpload
+                                    onUpload={handleProfilePictureUpload}
+                                />
+                            <UploadProfilePictureIcon />{/* */}
+                                <button
+                                    type="button"
+                                    className="px-4 py-2 bg-slate-900 text-white rounded-md inline-flex justify-center items-center gap-2"
+                                    onClick={() => (document.querySelector('input[type=file]') as HTMLInputElement | null)?.click()}
+                                >
+                                    <UploadProfilePictureIcon />
+                                    <span>Profilbild hochladen</span>
+                                </button>
+                                <ProfilePictureUpload
+                                    onUpload={handleProfilePictureUpload}
+                                />
                             <div className="inline-flex justify-end items-start gap-2">
-                                <div className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2">
-                                    <div className="w-4 h-4 relative overflow-hidden">
-                                        <div className="w-3 h-3 left-[2px] top-[2px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-white" />
-                                        <div className="w-1 h-0 left-[10.67px] top-[3.33px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-white" />
-                                        <div className="w-0 h-1 left-[12.67px] top-[1.33px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-white" />
-                                        <div className="w-[2.67px] h-[2.67px] left-[4.67px] top-[4.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-white" />
-                                        <div className="w-2.5 h-1.5 left-[4px] top-[7.55px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-white" />
-                                    </div>
-                                    <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Profilbild hochladen</div>
                                 </div>
-                                <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
+                                    <button
+                                    type="button" 
+                                    className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
+                                    onClick={() => {
+                                        if (!user) return;
+                                        setProfilePictureFile(null);
+                                        mutation.mutate({
+                                            userId: user.id,
+                                            firstname: user.firstname,
+                                            lastname: user.lastname,
+                                            email,
+                                            picture_url: null,
+                                            phone,
+                                            hasLogoinCalendar: showLogos,
+                                            hasGetMailNotification: getMailFromOrganization,
+                                        });
+                                    }}
+                                >
                                     <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Profilbild entfernen</div>
-                                </div>
+                                </button>
                             </div>
                         </div>
                         <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
@@ -280,39 +365,36 @@ export default function SettingsPage() {
                     </div>
                 </div>
                 <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-                    <div className="flex-1 px-4 flex justify-start items-start gap-4">
-                        <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                            <div className="justify-start"><span className="text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Emails von </span><span className="text-slate-800 text-sm font-bold font-['Inter'] leading-tight">Jüdisches Museum Hohenems</span><span className="text-slate-800 text-sm font-medium font-['Inter'] leading-tight"> erhalten</span></div>
-                                <div className="inline-flex items-center gap-2">
-                                  <Switch
-                                    id={id}
-                                    checked={getMailFromOrganization}
-                                    onCheckedChange={setGetMailFromOrganization}
-                                    aria-label="Toggle switch"
-                                  />
-                                  <Label     htmlFor={id} className="text-sm font-medium">
-                                    {getMailFromOrganization ? "On" : "Off"}
-                                  </Label>
-                                </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-                    <div className="flex-1 px-4 flex justify-start items-start gap-4">
-                        <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                            <div className="justify-start"><span className="text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Emails von </span><span className="text-slate-800 text-sm font-bold font-['Inter'] leading-tight">Café JMH</span><span className="text-slate-800 text-sm font-medium font-['Inter'] leading-tight"> erhalten</span></div>
-                                <div className="inline-flex items-center gap-2">
-                                  <Switch
-                                    id={id}
-                                    checked={getMailFromOrganization}
-                                    onCheckedChange={setGetMailFromOrganization}
-                                    aria-label="Toggle switch"
-                                  />
-                                  <Label     htmlFor={id} className="text-sm font-medium">
-                                    {getMailFromOrganization ? "On" : "Off"}
-                                  </Label>
-                                </div>
-                        </div>
+                    <div className="flex-1 px-4 flex flex-col gap-2">
+                      {user.organizations && user.organizations.length > 0 ? (
+                        user.organizations.map((org: any, idx: number) => (
+                          <div key={org.id} className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
+                            <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
+                              Emails von <span className="font-bold">{org.name}</span> erhalten
+                            </Label>
+                            <div className="inline-flex items-center gap-2">
+                              <Switch
+                                id={`org-switch-${org.id}`}
+                                checked={org.hasGetMailNotification}
+                                onCheckedChange={checked => {
+                                  // Nur lokalen State ändern, nicht speichern
+                                  setUser((prev: any) => {
+                                    const orgs = [...prev.organizations];
+                                    orgs[idx] = { ...orgs[idx], hasGetMailNotification: checked };
+                                    return { ...prev, organizations: orgs };
+                                  });
+                                }}
+                                aria-label={`Toggle switch for ${org.name}`}
+                              />
+                              <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
+                                {org.hasGetMailNotification ? "On" : "Off"}
+                              </Label>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-slate-500">Keine Organisationen für Benachrichtigungen.</div>
+                      )}
                     </div>
                 </div>
             </div>
@@ -322,124 +404,23 @@ export default function SettingsPage() {
                         <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">Meine Organisationen</div>
                     </div>
                 </div>
-                <div className="self-stretch px-4 py-6 flex flex-col justify-start items-start gap-4">
-                    <div className="inline-flex justify-start items-center gap-4">
-                        <div className="w-16 h-4 relative overflow-hidden">
-                            <div className="w-3 h-3.5 left-[41.12px] top-[0.51px] absolute bg-orange-700" />
-                            <div className="w-2.5 h-4 left-[53.70px] top-[0.24px] absolute bg-orange-700" />
-                            <div className="w-2.5 h-3.5 left-[28.56px] top-[0.06px] absolute bg-orange-700" />
-                            <div className="w-[0.80px] h-1 left-[2.02px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-[2.54px] h-1 left-[3.75px] top-0 absolute bg-orange-700" />
-                            <div className="w-[2.83px] h-[3.17px] left-[7.23px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-[0.45px] h-[3.17px] left-[10.86px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.29px] left-[12.15px] top-[0.87px] absolute bg-orange-700" />
-                            <div className="w-[2.84px] h-[3.29px] left-[14.76px] top-[0.87px] absolute bg-orange-700" />
-                            <div className="w-[2.51px] h-[3.17px] left-[18.31px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.18px] left-[21.80px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.29px] left-[24.15px] top-[0.87px] absolute bg-orange-700" />
-                            <div className="w-1 h-[3.17px] left-[5.89px] top-[6.05px] absolute bg-orange-700" />
-                            <div className="w-[2.54px] h-[3.22px] left-[10.36px] top-[6.03px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.29px] left-[13.69px] top-[6px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.17px] left-[16.46px] top-[6.05px] absolute bg-orange-700" />
-                            <div className="w-[2.54px] h-[3.23px] left-[18.93px] top-[6.05px] absolute bg-orange-700" />
-                            <div className="w-1 h-[3.17px] left-[22.42px] top-[6.05px] absolute bg-orange-700" />
-                            <div className="w-[2.51px] h-[3.18px] left-0 top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-[3.33px] h-[3.38px] left-[3.30px] top-[11.20px] absolute bg-orange-700" />
-                            <div className="w-[2.54px] h-[3.18px] left-[7.40px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.18px] left-[10.89px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-[2.87px] h-[3.16px] left-[13.42px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.18px] left-[17.26px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-1 h-[3.16px] left-[19.80px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.29px] left-[24.17px] top-[11.11px] absolute bg-orange-700" />
-                        </div>
-                        <div className="inline-flex flex-col justify-center items-start gap-0.5">
-                            <div className="justify-start text-slate-800 text-xl font-normal font-['Inter'] leading-7">Jüdisches Museum Hohenems</div>
-                            <div className="inline-flex justify-start items-start gap-1">
-                                <div className="p-1 bg-rose-400 rounded-md flex justify-center items-center gap-2.5">
-                                    <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">Superadmin</div>
-                                </div>
-                                <div className="p-1 bg-red-300 rounded-md flex justify-center items-center gap-2.5">
-                                    <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">OV</div>
-                                </div>
-                                <div className="p-1 bg-orange-300 rounded-md flex justify-center items-center gap-2.5">
-                                    <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">EV</div>
-                                </div>
-                                <div className="p-1 bg-cyan-200 rounded-md flex justify-center items-center gap-2.5">
-                                    <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">Helfer:in</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="self-stretch flex flex-col justify-start items-end gap-2.5">
-                        <div data-state="Default" data-type="with icon" className="px-4 py-2 bg-red-500 rounded-md inline-flex justify-center items-center gap-2">
-                            <div className="w-4 h-4 relative overflow-hidden">
-                                <div className="w-3 h-0 left-[2px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                                <div className="w-2.5 h-2.5 left-[3.33px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                                <div className="w-1.5 h-[2.67px] left-[5.33px] top-[1.33px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                            </div>
-                            <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Organisation verlassen</div>
-                        </div>
-                    </div>
-                </div>
-                <div className="self-stretch px-4 py-6 flex flex-col justify-start items-start gap-4">
-                    <div className="inline-flex justify-start items-center gap-4">
-                        <div className="w-16 h-4 relative overflow-hidden">
-                            <div className="w-3 h-3.5 left-[41.12px] top-[0.51px] absolute bg-orange-700" />
-                            <div className="w-2.5 h-4 left-[53.70px] top-[0.24px] absolute bg-orange-700" />
-                            <div className="w-2.5 h-3.5 left-[28.56px] top-[0.06px] absolute bg-orange-700" />
-                            <div className="w-[0.80px] h-1 left-[2.02px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-[2.54px] h-1 left-[3.75px] top-0 absolute bg-orange-700" />
-                            <div className="w-[2.83px] h-[3.17px] left-[7.23px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-[0.45px] h-[3.17px] left-[10.86px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.29px] left-[12.15px] top-[0.87px] absolute bg-orange-700" />
-                            <div className="w-[2.84px] h-[3.29px] left-[14.76px] top-[0.87px] absolute bg-orange-700" />
-                            <div className="w-[2.51px] h-[3.17px] left-[18.31px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.18px] left-[21.80px] top-[0.93px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.29px] left-[24.15px] top-[0.87px] absolute bg-orange-700" />
-                            <div className="w-1 h-[3.17px] left-[5.89px] top-[6.05px] absolute bg-orange-700" />
-                            <div className="w-[2.54px] h-[3.22px] left-[10.36px] top-[6.03px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.29px] left-[13.69px] top-[6px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.17px] left-[16.46px] top-[6.05px] absolute bg-orange-700" />
-                            <div className="w-[2.54px] h-[3.23px] left-[18.93px] top-[6.05px] absolute bg-orange-700" />
-                            <div className="w-1 h-[3.17px] left-[22.42px] top-[6.05px] absolute bg-orange-700" />
-                            <div className="w-[2.51px] h-[3.18px] left-0 top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-[3.33px] h-[3.38px] left-[3.30px] top-[11.20px] absolute bg-orange-700" />
-                            <div className="w-[2.54px] h-[3.18px] left-[7.40px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.18px] left-[10.89px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-[2.87px] h-[3.16px] left-[13.42px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.18px] left-[17.26px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-1 h-[3.16px] left-[19.80px] top-[11.18px] absolute bg-orange-700" />
-                            <div className="w-0.5 h-[3.29px] left-[24.17px] top-[11.11px] absolute bg-orange-700" />
-                        </div>
-                        <div className="inline-flex flex-col justify-center items-start gap-0.5">
-                            <div className="justify-start text-slate-800 text-xl font-normal font-['Inter'] leading-7">Café JMH</div>
-                            <div className="inline-flex justify-start items-start gap-1">
-                                <div className="p-1 bg-rose-400 rounded-md flex justify-center items-center gap-2.5">
-                                    <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">Superadmin</div>
-                                </div>
-                                <div className="p-1 bg-red-300 rounded-md flex justify-center items-center gap-2.5">
-                                    <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">OV</div>
-                                </div>
-                                <div className="p-1 bg-orange-300 rounded-md flex justify-center items-center gap-2.5">
-                                    <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">EV</div>
-                                </div>
-                                <div className="p-1 bg-cyan-200 rounded-md flex justify-center items-center gap-2.5">
-                                    <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">Helfer:in</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="self-stretch flex flex-col justify-start items-end gap-2.5">
-                        <div data-state="Default" data-type="with icon" className="px-4 py-2 bg-red-500 rounded-md inline-flex justify-center items-center gap-2">
-                            <div className="w-4 h-4 relative overflow-hidden">
-                                <div className="w-3 h-0 left-[2px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                                <div className="w-2.5 h-2.5 left-[3.33px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                                <div className="w-1.5 h-[2.67px] left-[5.33px] top-[1.33px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                            </div>
-                            <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Organisation verlassen</div>
-                        </div>
-                    </div>
-                </div>
+                {user.organizations && user.organizations.length > 0 ? (
+  user.organizations.map((org: any) => {
+    console.log('Organisation:', org.name, 'Rollen:', org.roles);
+    return (
+      <div key={org.id} style={{cursor: 'pointer'}} onClick={() => router.push(`/organization/${org.id}`)}>
+        <OrganizationCard
+          name={org.name}
+          roles={org.roles}
+          // logo={<DeinLogo/>} // Optional
+          onLeave={() => {handleOrganizationLeave(org.id)}}
+        />
+      </div>
+    );
+  })
+) : (
+  <div className="text-slate-500">Du bist in keiner Organisation.</div>
+)}
             </div>
         </div>
     </div>
