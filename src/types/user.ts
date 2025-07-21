@@ -40,7 +40,7 @@ export interface UserWithoutPassword {
   organizationName: string;
   phone?: string | null;
   initials: string; // Assuming you have a way to generate initials
-  logo_url?: string | null;
+  picture_url?: string | null;
   description?: string | null;
   last_login?: Date | null;
   createdAt: Date;

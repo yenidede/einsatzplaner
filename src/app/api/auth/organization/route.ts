@@ -17,10 +17,10 @@ export async function GET(req: Request) {
 
 // Organisation bearbeiten
 export async function PUT(req: Request) {
-    const { id, name, description, logo_url } = await req.json();
+    const { id, name, description } = await req.json();
     const org = await prisma.organization.update({
         where: { id },
-        data: { name, description, logo_url }
+        data: { name, description }
     });
     return NextResponse.json(org);
 }
