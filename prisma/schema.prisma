@@ -5,8 +5,8 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = "postgresql://postgres.fgxvzejucaxteqvnhojt:1SgIUIbf7oki6qT6@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-  directUrl = "postgresql://postgres.fgxvzejucaxteqvnhojt:1SgIUIbf7oki6qT6@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model change_log {
@@ -22,11 +22,19 @@ model change_log {
 
 model change_type {
   id              String       @id @default(uuid()) @db.Uuid
-  change_type     String
-  message         String?
-  change_icon_url String?
-  change_color    String
-  change_log      change_log[]
+  custom_field_id String       @db.Uuid
+  value           String
+  identifier      String
+  custom_field    custom_field @relation(fields: [custom_field_id], references: [id], onDelete: Cascade)
+}
+
+model custom_field_value {
+  einsatz_id      String       @db.Uuid
+  custom_field_id String       @db.Uuid
+  value           String
+  id              String       @id @default(uuid()) @db.Uuid
+  custom_field    custom_field @relation(fields: [custom_field_id], references: [id], onDelete: Cascade)
+  einsatz         einsatz      @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
 }
 
 model einsatz {
@@ -60,7 +68,7 @@ model einsatz {
 model einsatz_category {
   value      String
   identifier String
-  id         String    @id @db.Uuid
+  id         String    @id @default(uuid()) @db.Uuid
   einsatz    einsatz[]
 }
 
@@ -69,7 +77,7 @@ model einsatz_comment {
   einsatz_id String   @db.Uuid
   user_id    String   @db.Uuid
   comment    String
-  id         String   @id @db.Uuid
+  id         String   @id @default(uuid()) @db.Uuid
   einsatz    einsatz  @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
@@ -78,14 +86,14 @@ model einsatz_helper {
   einsatz_id String   @db.Uuid
   user_id    String   @db.Uuid
   joined_at  DateTime @default(now())
-  id         String   @id @db.Uuid
+  id         String   @id @default(uuid()) @db.Uuid
   einsatz    einsatz  @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model einsatz_status {
   status  Json
-  id      String    @id @db.Uuid
+  id      String    @id @default(uuid()) @db.Uuid
   einsatz einsatz[]
 }
 
@@ -148,28 +156,26 @@ model type {
 }
 
 model user {
-  id                      String                   @id @default(uuid()) @db.Uuid
-  email                   String                   @unique
-  firstname               String?
-  lastname                String?
-  password                String
-  phone                   String?
-  created_at              DateTime                 @default(now())
-  updated_at              DateTime?
-  picture_url             String?
-  description             String?
-  resetToken              String?
-  resetTokenExpires       DateTime?
-  last_login              DateTime?                @db.Timestamp(6)
-  hasLogoinCalendar       Boolean                  @default(true)
-  last_read_notifications DateTime?                @db.Timestamptz(6)
-  change_log              change_log[]
-  einsatz                 einsatz[]
-  einsatz_comment         einsatz_comment[]
-  einsatz_helper          einsatz_helper[]
-  einsatz_template        einsatz_template[]
-  invitation              invitation[]
-  user_organization_role  user_organization_role[]
+  id                     String                   @id @default(uuid()) @db.Uuid
+  email                  String                   @unique
+  firstname              String?
+  lastname               String?
+  password               String
+  phone                  String?
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime?
+  logo_url               String?
+  description            String?
+  resetToken             String?
+  resetTokenExpires      DateTime?
+  last_login             DateTime?                @db.Timestamp(6)
+  change_log             change_log[]
+  einsatz                einsatz[]
+  einsatz_comment        einsatz_comment[]
+  einsatz_helper         einsatz_helper[]
+  einsatz_template       einsatz_template[]
+  invitation             invitation[]
+  user_organization_role user_organization_role[]
 }
 
 model user_organization_role {
