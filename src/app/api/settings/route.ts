@@ -4,41 +4,73 @@ import prisma from "@/lib/prisma";
 
 // GET Handler für Userdaten
 export async function GET(req: Request) {
-    try {
-        const { searchParams } = new URL(req.url);
-        const userId = searchParams.get('userId');
-        if (!userId) {
-            return NextResponse.json({ error: "Benutzer-ID fehlt" }, { status: 400 });
-        }
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                user_organization_role: {
-                    include: {
-                        roles: true,
-                        organization: true
-                    }
-                }
-            }
-        });
-        if (!user) {
-            return NextResponse.json({ error: "Benutzer nicht gefunden" }, { status: 404 });
-        }
-        return NextResponse.json({
-            id: user.id,
-            email: user.email,
-            firstname: user.firstname,
-            lastname: user.lastname,
-            phone: user.phone,
-            logo_url: user.logo_url,
-            hasLogoinCalendar: user.hasLogoinCalendar,
-            role: user.user_organization_role?.[0]?.roles?.name || "",
-            orgId: user.user_organization_role?.[0]?.organization?.id || ""
-        });
-    } catch (error) {
-        console.error("API Error (GET):", error);
-        return NextResponse.json({ error: "Fehler beim Laden der Benutzerdaten" }, { status: 500 });
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+        return new Response(JSON.stringify({ error: "Missing userId" }), { status: 400 });
     }
+
+    // Hole Userdaten
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+            id: true,
+            firstname: true,
+            lastname: true,
+            email: true,
+            phone: true,
+            picture_url: true,
+            hasLogoinCalendar: true,
+        },
+    });
+
+    
+    // Hole alle Organisationen inkl. aller Rollen für den User (korrektes Mapping)
+    const organizations = await prisma.user_organization_role.findMany({
+        where: { user_id: userId },
+        select: {
+            id: true,
+            hasGetMailNotification: true,
+            organization: {
+                select: {
+                    id: true,
+                    name: true,
+                },
+            },
+            role_assignments: {
+                select: {
+                    role: {
+                        select: {
+                            name: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    // Response zusammenbauen
+    return new Response(
+        JSON.stringify({
+            ...user,
+            organizations: organizations.map(entry => {
+                // Extrahiere alle Rollennamen als Array
+                const rollen = Array.isArray(entry.role_assignments)
+                  ? entry.role_assignments.map(r => r.role?.name).filter(Boolean)
+                  : [];
+                return {
+                    id: entry.organization.id,
+                    orgId: entry.organization.id,
+                    userOrgRoleId: entry.id,
+                    name: entry.organization.name,
+                    roles: rollen,
+                    hasGetMailNotification: entry.hasGetMailNotification,
+                };
+            }),
+        }),
+        { status: 200 }
+    );
 }
 
 // POST Handler (für Kompatibilität)
@@ -50,7 +82,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const { userId, userOrgId, email, firstname, lastname, showLogosInCalendar, getMailFromOrganization } = body;
+        const { userId, userOrgId, email, firstname, lastname, hasLogoinCalendar, hasGetMailNotification } = body;
 
         if (!userId) {
             return NextResponse.json({ error: "Benutzer-ID fehlt" }, { status: 400 });
@@ -61,28 +93,29 @@ export async function PUT(req: Request) {
             email,
             firstname,
             lastname,
-            logo_url: body.logo_url,
+            picture_url: body.picture_url,
             phone: body.phone,
             updated_at: new Date(),
         };
-        if (showLogosInCalendar !== undefined) {
-            updateUserData.showLogosInCalendar = showLogosInCalendar;
+        if (hasLogoinCalendar !== undefined) {
+            updateUserData.hasLogoinCalendar = hasLogoinCalendar;
         }
 
         await prisma.user.update({
             where: { id: userId },
-            data: updateUserData,
         });
 
+
         // User-Org-Settings updaten (optional)
-        if (userOrgId && getMailFromOrganization !== undefined) {
+        if (userOrgId && hasGetMailNotification !== undefined) {
             await prisma.user_organization_role.update({
                 where: { id: userOrgId },
                 data: {
-                    hasGetMailNotification: getMailFromOrganization,
+                    hasGetMailNotification: hasGetMailNotification,
                 },
             });
         }
+        console.log("User updated:", { userId, email, firstname, lastname, hasLogoinCalendar, hasGetMailNotification });
 
         return NextResponse.json({ success: true, message: "Profil erfolgreich aktualisiert" });
     } catch (error) {
@@ -129,7 +162,7 @@ async function handleUserUpdate(req: Request) {
             where: { id: userId },
             data: updateData
         });
-
+        console.log("User updated:", updatedUser);
         return NextResponse.json({
             success: true,
             message: "Profil erfolgreich aktualisiert",

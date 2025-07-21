@@ -1,14 +1,18 @@
 import prisma from '@/lib/prisma';
 import { hash } from 'crypto';
-
+//#region Auth DAL
 export async function getUserByEmail(email: string) {
     return await prisma.user.findUnique({
         where: { email },
         include: {
             user_organization_role: {
                 include: {
-                    roles: true,
-                    organization: true
+                    organization: true,
+                    role_assignments: {
+                        include: {
+                            role: true
+                        }
+                    }
                 }
             }
         }
@@ -41,8 +45,7 @@ export async function createUserWithOrgAndRole(data: {
     include: {
       user_organization_role: {
         include: {
-          organization: true,
-          roles: true,
+        organization: true,
         },
       },
     },
@@ -53,12 +56,15 @@ export async function getUserByIdWithOrgAndRole(userId: string) {
     return await prisma.user.findUnique({
         where: { id: userId },
         include: {
-            user_organization_role: {
+                user_organization_role: {
                 include: {
                     organization: true,
-                    roles: true,
-                },
-            },
+                    role_assignments: {
+                    include: {
+                        role: true
+                    }
+                    }
+                }}
         },
     });
 }
@@ -95,8 +101,8 @@ export async function updateLastLogin(userId: string) {
             updated_at: new Date(),
         },
     });
-  }
-
+}
+//#endregion
 //#region Reset Password DAL
 
 export async function updateUserResetToken(email: string, resetToken: string, resetTokenExpiry: Date) {
@@ -134,7 +140,7 @@ export async function resetUserPassword(user: { id: string }, hashedPassword: st
     });
 }
 //#endregion
-
+//#region User Settings DAL
 export async function updateUserSettings(userId: string, body: any) {
     const currentUser = await prisma.user.findUnique({
         where: { id: userId }
@@ -179,3 +185,4 @@ export async function updateUserOrgSettings(userOrgId: string, body: any) {
     });
 }
 
+//#endregion
