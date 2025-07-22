@@ -1,28 +1,45 @@
-import { isSameDay } from "date-fns"
+import { isSameDay } from "date-fns";
 
-import type { CalendarEvent, EventColor } from "@/components/event-calendar"
+import type { CalendarEvent } from "@/components/event-calendar";
+import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
+import { CalendarMode } from "./types";
 
 /**
  * Get CSS classes for event colors
  */
-export function getEventColorClasses(color?: EventColor | string): string {
-  const eventColor = color || "sky"
-
-  switch (eventColor) {
-    case "sky":
-      return "bg-sky-200/50 hover:bg-sky-200/40 text-sky-950/80 dark:bg-sky-400/25 dark:hover:bg-sky-400/20 dark:text-sky-200 shadow-sky-700/8"
-    case "amber":
-      return "bg-amber-200/50 hover:bg-amber-200/40 text-amber-950/80 dark:bg-amber-400/25 dark:hover:bg-amber-400/20 dark:text-amber-200 shadow-amber-700/8"
-    case "violet":
-      return "bg-violet-200/50 hover:bg-violet-200/40 text-violet-950/80 dark:bg-violet-400/25 dark:hover:bg-violet-400/20 dark:text-violet-200 shadow-violet-700/8"
-    case "rose":
-      return "bg-rose-200/50 hover:bg-rose-200/40 text-rose-950/80 dark:bg-rose-400/25 dark:hover:bg-rose-400/20 dark:text-rose-200 shadow-rose-700/8"
-    case "emerald":
-      return "bg-emerald-200/50 hover:bg-emerald-200/40 text-emerald-950/80 dark:bg-emerald-400/25 dark:hover:bg-emerald-400/20 dark:text-emerald-200 shadow-emerald-700/8"
-    case "orange":
-      return "bg-orange-200/50 hover:bg-orange-200/40 text-orange-950/80 dark:bg-orange-400/25 dark:hover:bg-orange-400/20 dark:text-orange-200 shadow-orange-700/8"
-    default:
-      return "bg-sky-200/50 hover:bg-sky-200/40 text-sky-950/80 dark:bg-sky-400/25 dark:hover:bg-sky-400/20 dark:text-sky-200 shadow-sky-700/8"
+export function getEventColorClasses(
+  status: EinsatzStatus | string,
+  mode: CalendarMode
+): string {
+  if (typeof status === "string") {
+    switch (status) {
+      case "eigene":
+        return "bg-blue-200/50 hover:bg-blue-200/40 text-blue-950/80 dark:bg-blue-400/25 dark:hover:bg-blue-400/20 dark:text-blue-200 shadow-blue-700/8";
+      default:
+        return "bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8";
+    }
+  }
+  if (mode === "helper") {
+    switch (status.helper_text) {
+      case "vergeben":
+        return "bg-red-200/50 hover:bg-red-200/40 text-red-950/80 dark:bg-red-400/25 dark:hover:bg-red-400/20 dark:text-red-200 shadow-red-700/8";
+      case "offen":
+        return "bg-lime-200/50 hover:bg-lime-200/40 text-lime-950/80 dark:bg-lime-400/25 dark:hover:bg-lime-400/20 dark:text-lime-200 shadow-lime-700/8";
+      default:
+        return "bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8";
+    }
+  } else {
+    // (mode === "verwaltung")
+    switch (status.verwalter_text) {
+      case "offen":
+        return "bg-red-200/50 hover:bg-red-200/40 text-red-950/80 dark:bg-red-400/25 dark:hover:bg-red-400/20 dark:text-red-200 shadow-red-700/8";
+      case "vergeben":
+        return "bg-orange-200/50 hover:bg-orange-200/40 text-orange-950/80 dark:bg-orange-400/25 dark:hover:bg-orange-400/20 dark:text-orange-200 shadow-orange-700/8";
+      case "bestätigt":
+        return "bg-green-200/50 hover:bg-green-200/40 text-green-950/80 dark:bg-green-400/25 dark:hover:bg-green-400/20 dark:text-green-200 shadow-green-700/8";
+      default:
+        return "bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8";
+    }
   }
 }
 
@@ -34,13 +51,13 @@ export function getBorderRadiusClasses(
   isLastDay: boolean
 ): string {
   if (isFirstDay && isLastDay) {
-    return "rounded" // Both ends rounded
+    return "rounded"; // Both ends rounded
   } else if (isFirstDay) {
-    return "rounded-l rounded-r-none" // Only left end rounded
+    return "rounded-l rounded-r-none"; // Only left end rounded
   } else if (isLastDay) {
-    return "rounded-r rounded-l-none" // Only right end rounded
+    return "rounded-r rounded-l-none"; // Only right end rounded
   } else {
-    return "rounded-none" // No rounded corners
+    return "rounded-none"; // No rounded corners
   }
 }
 
@@ -48,9 +65,9 @@ export function getBorderRadiusClasses(
  * Check if an event is a multi-day event
  */
 export function isMultiDayEvent(event: CalendarEvent): boolean {
-  const eventStart = new Date(event.start)
-  const eventEnd = new Date(event.end)
-  return event.allDay || eventStart.getDate() !== eventEnd.getDate()
+  const eventStart = new Date(event.start);
+  const eventEnd = new Date(event.end);
+  return event.allDay || eventStart.getDate() !== eventEnd.getDate();
 }
 
 /**
@@ -62,10 +79,10 @@ export function getEventsForDay(
 ): CalendarEvent[] {
   return events
     .filter((event) => {
-      const eventStart = new Date(event.start)
-      return isSameDay(day, eventStart)
+      const eventStart = new Date(event.start);
+      return isSameDay(day, eventStart);
     })
-    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 }
 
 /**
@@ -73,14 +90,14 @@ export function getEventsForDay(
  */
 export function sortEvents(events: CalendarEvent[]): CalendarEvent[] {
   return [...events].sort((a, b) => {
-    const aIsMultiDay = isMultiDayEvent(a)
-    const bIsMultiDay = isMultiDayEvent(b)
+    const aIsMultiDay = isMultiDayEvent(a);
+    const bIsMultiDay = isMultiDayEvent(b);
 
-    if (aIsMultiDay && !bIsMultiDay) return -1
-    if (!aIsMultiDay && bIsMultiDay) return 1
+    if (aIsMultiDay && !bIsMultiDay) return -1;
+    if (!aIsMultiDay && bIsMultiDay) return 1;
 
-    return new Date(a.start).getTime() - new Date(b.start).getTime()
-  })
+    return new Date(a.start).getTime() - new Date(b.start).getTime();
+  });
 }
 
 /**
@@ -91,17 +108,17 @@ export function getSpanningEventsForDay(
   day: Date
 ): CalendarEvent[] {
   return events.filter((event) => {
-    if (!isMultiDayEvent(event)) return false
+    if (!isMultiDayEvent(event)) return false;
 
-    const eventStart = new Date(event.start)
-    const eventEnd = new Date(event.end)
+    const eventStart = new Date(event.start);
+    const eventEnd = new Date(event.end);
 
     // Only include if it's not the start day but is either the end day or a middle day
     return (
       !isSameDay(day, eventStart) &&
       (isSameDay(day, eventEnd) || (day > eventStart && day < eventEnd))
-    )
-  })
+    );
+  });
 }
 
 /**
@@ -112,14 +129,14 @@ export function getAllEventsForDay(
   day: Date
 ): CalendarEvent[] {
   return events.filter((event) => {
-    const eventStart = new Date(event.start)
-    const eventEnd = new Date(event.end)
+    const eventStart = new Date(event.start);
+    const eventEnd = new Date(event.end);
     return (
       isSameDay(day, eventStart) ||
       isSameDay(day, eventEnd) ||
       (day > eventStart && day < eventEnd)
-    )
-  })
+    );
+  });
 }
 
 /**
@@ -131,13 +148,13 @@ export function getAgendaEventsForDay(
 ): CalendarEvent[] {
   return events
     .filter((event) => {
-      const eventStart = new Date(event.start)
-      const eventEnd = new Date(event.end)
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
       return (
         isSameDay(day, eventStart) ||
         isSameDay(day, eventEnd) ||
         (day > eventStart && day < eventEnd)
-      )
+      );
     })
-    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 }

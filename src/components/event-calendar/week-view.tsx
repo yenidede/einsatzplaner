@@ -30,12 +30,14 @@ import {
   type CalendarEvent,
 } from "@/components/event-calendar";
 import { EndHour, StartHour } from "@/components/event-calendar/constants";
+import { CalendarMode } from "./types";
 
 interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
+  mode: CalendarMode;
 }
 
 interface PositionedEvent {
@@ -52,6 +54,7 @@ export function WeekView({
   events,
   onEventSelect,
   onEventCreate,
+  mode,
 }: WeekViewProps) {
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -284,6 +287,7 @@ export function WeekView({
                         view="month"
                         isFirstDay={isFirstDay}
                         isLastDay={isLastDay}
+                        mode={mode}
                       >
                         {/* Show title if it's the first day of the event or the first visible day in the week */}
                         <div

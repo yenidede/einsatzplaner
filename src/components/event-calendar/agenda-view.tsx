@@ -11,17 +11,20 @@ import {
   EventItem,
   getAgendaEventsForDay,
 } from "@/components/event-calendar";
+import { CalendarMode } from "./types";
 
 interface AgendaViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
+  mode: CalendarMode;
 }
 
 export function AgendaView({
   currentDate,
   events,
   onEventSelect,
+  mode,
 }: AgendaViewProps) {
   // Show events for the next days based on constant
   const days = useMemo(() => {
@@ -79,6 +82,7 @@ export function AgendaView({
                     event={event}
                     view="agenda"
                     onClick={(e) => handleEventClick(event, e)}
+                    mode={mode}
                   />
                 ))}
               </div>
