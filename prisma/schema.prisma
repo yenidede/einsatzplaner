@@ -30,38 +30,36 @@ model change_type {
 }
 
 model einsatz {
-  id                String            @id @default(uuid()) @db.Uuid
-  name              String
-  created_at        DateTime          @default(now())
-  updated_at        DateTime?
-  start_date        DateTime
-  participant_count Int?
-  price_per_person  Float?
-  total_price       Float?
-  start_time        DateTime
-  end_time          DateTime
-  org_id            String            @db.Uuid
-  created_by        String            @db.Uuid
-  category_id       String?           @db.Uuid
-  status_id         String?           @db.Uuid
-  end_date          DateTime?         @db.Timestamp(6)
-  template_id       String?           @db.Uuid
-  change_log        change_log[]
-  einsatz_category  einsatz_category? @relation(fields: [category_id], references: [id], onDelete: Cascade)
-  user              user              @relation(fields: [created_by], references: [id], onDelete: Cascade)
-  organization      organization      @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  einsatz_status    einsatz_status?   @relation(fields: [status_id], references: [id], onDelete: Cascade)
-  einsatz_template  einsatz_template? @relation(fields: [template_id], references: [id])
-  einsatz_comment   einsatz_comment[]
-  einsatz_field     einsatz_field[]
-  einsatz_helper    einsatz_helper[]
+  id                  String                @id @default(uuid()) @db.Uuid
+  name                String
+  created_at          DateTime              @default(now())
+  updated_at          DateTime?
+  start_date          DateTime
+  participant_count   Int?
+  price_per_person    Float?
+  total_price         Float?
+  start_time          DateTime
+  end_time            DateTime
+  org_id              String                @db.Uuid
+  created_by          String                @db.Uuid
+  status_id           String?               @db.Uuid
+  end_date            DateTime?             @db.Timestamp(6)
+  template_id         String?               @db.Uuid
+  change_log          change_log[]
+  user                user                  @relation(fields: [created_by], references: [id], onDelete: Cascade)
+  organization        organization          @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  einsatz_status      einsatz_status?       @relation(fields: [status_id], references: [id], onDelete: Cascade)
+  einsatz_template    einsatz_template?     @relation(fields: [template_id], references: [id])
+  einsatz_comment     einsatz_comment[]
+  einsatz_field       einsatz_field[]
+  einsatz_helper      einsatz_helper[]
+  einsatz_to_category einsatz_to_category[]
 }
 
 model einsatz_category {
-  value      String
-  identifier String
-  id         String    @id @default(uuid()) @db.Uuid
-  einsatz    einsatz[]
+  value               String
+  id                  String                @id @default(uuid()) @db.Uuid
+  einsatz_to_category einsatz_to_category[]
 }
 
 model einsatz_comment {
@@ -248,4 +246,13 @@ model user_role_assignment {
   user_organization_role    user_organization_role @relation(fields: [user_organization_role_id], references: [id], onDelete: Cascade)
 
   @@unique([user_organization_role_id, role_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model einsatz_to_category {
+  id               BigInt           @id @default(autoincrement())
+  einsatz_id       String           @db.Uuid
+  category_id      String           @db.Uuid
+  einsatz_category einsatz_category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  einsatz          einsatz          @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
 }
