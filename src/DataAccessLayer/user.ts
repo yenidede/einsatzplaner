@@ -1,5 +1,18 @@
 import prisma from "@/lib/prisma";
 
+type UserSettingsUpdate = {
+  email?: string;
+  firstname?: string;
+  lastname?: string;
+  hasLogoinCalendar?: boolean;
+  updated_at?: Date;
+  phone?: string;
+};
+
+type UserOrgSettingsUpdate = {
+  getMailFromOrganization?: boolean;
+};
+
 //#region User Retrieval
 export async function getUserByEmail(email: string) {
   try {
@@ -31,7 +44,7 @@ export async function getUserByEmail(email: string) {
         },
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to retrieve user by email: ${error.message}`);
   }
 }
@@ -53,7 +66,7 @@ export async function getUserByIdWithOrgAndRole(userId: string) {
         },
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to retrieve user by ID: ${error.message}`);
   }
 }
@@ -109,7 +122,7 @@ export async function createUserWithOrgAndRoles(data: {
         },
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to create user: ${error.message}`);
   }
 }
@@ -129,7 +142,7 @@ export async function getOrCreateOrganizationByName(name: string) {
     }
 
     return organization;
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to get or create organization: ${error.message}`);
   }
 }
@@ -161,8 +174,10 @@ export async function getUsersWithRolesByOrgId(orgId: string) {
         },
       },
     });
-  } catch (error) {
-    throw new Error(`Failed to retrieve users by organization ID: ${error.message}`);
+  } catch (error: any) {
+    throw new Error(
+      `Failed to retrieve users by organization ID: ${error.message}`
+    );
   }
 }
 //#endregion
@@ -177,7 +192,7 @@ export async function updateLastLogin(userId: string) {
         updated_at: new Date(),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to update last login: ${error.message}`);
   }
 }
@@ -196,7 +211,7 @@ export async function updateUserResetToken(
         updated_at: new Date(),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to update reset token: ${error.message}`);
   }
 }
@@ -211,8 +226,10 @@ export async function getUserWithValidResetToken(token: string) {
         },
       },
     });
-  } catch (error) {
-    throw new Error(`Failed to retrieve user with valid reset token: ${error.message}`);
+  } catch (error: any) {
+    throw new Error(
+      `Failed to retrieve user with valid reset token: ${error.message}`
+    );
   }
 }
 
@@ -230,7 +247,7 @@ export async function resetUserPassword(
         resetTokenExpires: null,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to reset user password: ${error.message}`);
   }
 }
@@ -254,7 +271,8 @@ export async function updateUserSettings(
       email: body.email || currentUser.email,
       firstname: body.firstname || currentUser.firstname || undefined,
       lastname: body.lastname || currentUser.lastname || undefined,
-      hasLogoinCalendar: body.hasLogoinCalendar ?? currentUser.hasLogoinCalendar,
+      hasLogoinCalendar:
+        body.hasLogoinCalendar ?? currentUser.hasLogoinCalendar,
       updated_at: new Date(),
       phone: body.phone ?? (currentUser.phone || undefined),
     };
@@ -291,7 +309,9 @@ export async function updateUserOrgSettings(
       data: updateData,
     });
   } catch (error) {
-    throw new Error(`Failed to update user organization settings: ${error.message}`);
+    throw new Error(
+      `Failed to update user organization settings: ${error.message}`
+    );
   }
 }
 //#endregion
