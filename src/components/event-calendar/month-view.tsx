@@ -203,6 +203,7 @@ export function MonthView({
                               onClick={(e) => handleEventClick(event, e)}
                               isFirstDay={isFirstDay}
                               isLastDay={isLastDay}
+                              mode={mode}
                             />
                           </div>
                         );

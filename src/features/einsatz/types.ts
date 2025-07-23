@@ -13,7 +13,13 @@ export type EinsatzForCalendar = {
   einsatz_to_category: {
     einsatz_category: { value: string; abbreviation: string };
   }[];
-  status: EinsatzStatus;
+  einsatz_status: {
+    id: string;
+    verwalter_color: string;
+    verwalter_text: string;
+    helper_color: string;
+    helper_text: string;
+  };
   einsatz_helper: { user_id: string }[]; // Array of user IDs assigned to the event
   helpers_needed: number;
   _count: {
