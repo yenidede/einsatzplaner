@@ -70,7 +70,6 @@ function EventWrapper({
     // User is a helper for this event
     statusForColor = "eigene";
   }
-  console.log(event);
   return (
     <button
       className={cn(

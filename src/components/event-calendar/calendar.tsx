@@ -14,6 +14,7 @@ const mapEinsaetzeToCalendarEvents = (
   return einsaetze.map((einsatz) => {
     const categories = einsatz.einsatz_to_category;
     const hasCategories = categories && categories.length > 0;
+
     return {
       id: einsatz.id,
       title: hasCategories
@@ -24,7 +25,7 @@ const mapEinsaetzeToCalendarEvents = (
       start: einsatz.start,
       end: einsatz.end,
       allDay: einsatz.all_day,
-      status: einsatz.status,
+      status: einsatz.einsatz_status,
       assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
     };
   });
@@ -39,7 +40,7 @@ export default function Calendar({ mode }: { mode: CalendarMode }) {
   };
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Lade Kalender...</div>}>
       <CalendarClient einsaetze={getEinsaetzeData()} mode={mode} />
     </Suspense>
   );
