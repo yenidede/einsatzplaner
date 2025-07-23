@@ -34,12 +34,14 @@ import {
   type CalendarEvent,
 } from "@/components/event-calendar";
 import { DefaultStartHour } from "@/components/event-calendar/constants";
+import { CalendarMode } from "./types";
 
 interface MonthViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
+  mode: CalendarMode;
 }
 
 export function MonthView({
@@ -47,6 +49,7 @@ export function MonthView({
   events,
   onEventSelect,
   onEventCreate,
+  mode,
 }: MonthViewProps) {
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
@@ -182,6 +185,7 @@ export function MonthView({
                                 view="month"
                                 isFirstDay={isFirstDay}
                                 isLastDay={isLastDay}
+                                mode={mode}
                               />
                             </div>
                           );
@@ -199,6 +203,7 @@ export function MonthView({
                               onClick={(e) => handleEventClick(event, e)}
                               isFirstDay={isFirstDay}
                               isLastDay={isLastDay}
+                              mode={mode}
                             />
                           </div>
                         );
@@ -247,6 +252,7 @@ export function MonthView({
                                       view="month"
                                       isFirstDay={isFirstDay}
                                       isLastDay={isLastDay}
+                                      mode={mode}
                                     />
                                   );
                                 })}

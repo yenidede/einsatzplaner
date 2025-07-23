@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { DraggableAttributes } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { differenceInMinutes, format, isPast } from "date-fns";
+import { useSession } from "next-auth/react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -11,6 +12,8 @@ import {
   getEventColorClasses,
   type CalendarEvent,
 } from "@/components/event-calendar";
+import { CalendarMode } from "./types";
+import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -32,6 +35,7 @@ interface EventWrapperProps {
   dndAttributes?: DraggableAttributes;
   onMouseDown?: (e: React.MouseEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
+  mode: CalendarMode;
 }
 
 // Shared wrapper component for event styling
@@ -48,6 +52,7 @@ function EventWrapper({
   dndAttributes,
   onMouseDown,
   onTouchStart,
+  mode,
 }: EventWrapperProps) {
   // Always use the currentTime (if provided) to determine if the event is in the past
   const displayEnd = currentTime
@@ -58,12 +63,18 @@ function EventWrapper({
     : new Date(event.end);
 
   const isEventInPast = isPast(displayEnd);
+  const userId = useSession().data?.user?.id;
+  let statusForColor: EinsatzStatus | string = event.status || "fallback";
 
+  if (event.assignedUsers.some((assignedUserId) => assignedUserId === userId)) {
+    // User is a helper for this event
+    statusForColor = "eigene";
+  }
   return (
     <button
       className={cn(
         "focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full overflow-hidden px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2",
-        getEventColorClasses(event.color),
+        getEventColorClasses(statusForColor || "fallback", mode),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
       )}
@@ -95,6 +106,7 @@ interface EventItemProps {
   dndAttributes?: DraggableAttributes;
   onMouseDown?: (e: React.MouseEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
+  mode: CalendarMode;
 }
 
 export function EventItem({
@@ -112,10 +124,19 @@ export function EventItem({
   dndAttributes,
   onMouseDown,
   onTouchStart,
+  mode,
 }: EventItemProps) {
-  const eventColor = event.color;
-
   // Use the provided currentTime (for dragging) or the event's actual time
+  const userId = useSession().data?.user?.id;
+  let statusForColor: EinsatzStatus | string = event.status || "fallback";
+
+  if (
+    event.assignedUsers?.some((assignedUserId) => assignedUserId === userId)
+  ) {
+    // User is a helper for this event
+    statusForColor = "eigene";
+  }
+
   const displayStart = useMemo(() => {
     return currentTime || new Date(event.start);
   }, [currentTime, event.start]);
@@ -166,6 +187,7 @@ export function EventItem({
         dndAttributes={dndAttributes}
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
+        mode={mode}
       >
         {children || (
           <span className="truncate">
@@ -202,6 +224,7 @@ export function EventItem({
         dndAttributes={dndAttributes}
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
+        mode={mode}
       >
         {durationMinutes < 45 ? (
           <div className="truncate">
@@ -231,7 +254,7 @@ export function EventItem({
     <button
       className={cn(
         "focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90",
-        getEventColorClasses(eventColor),
+        getEventColorClasses(statusForColor, mode), // Use statusForColor instead of event.status
         className
       )}
       data-past-event={isPast(new Date(event.end)) || undefined}

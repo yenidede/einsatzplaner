@@ -2,8 +2,16 @@
 
 import prisma from "@/lib/prisma";
 import type { einsatz as Einsatz } from "@/generated/prisma";
+import type { EinsatzForCalendar } from "@/features/einsatz/types";
 
 // TODO: Create auth layer that calls the underlying DAL functions
+export async function getAllEinsaetze(org_ids: string[]) {
+  return getAllEinsaetzeFromDb(org_ids);
+}
+
+export async function getAllEinsaetzeForCalendar(org_ids: string[]) {
+  return getAllEinsatzeForCalendarFromDb(org_ids);
+}
 
 async function getEinsatzByIdFromDb(
   id: string,
@@ -22,6 +30,58 @@ async function getAllEinsaetzeFromDb(org_ids: string[]): Promise<Einsatz[]> {
     return [];
   }
   return prisma.einsatz.findMany({
+    where: {
+      org_id: {
+        in: org_ids,
+      },
+    },
+  });
+}
+
+async function getAllEinsatzeForCalendarFromDb(
+  org_ids: string[]
+): Promise<EinsatzForCalendar[]> {
+  if (!org_ids || org_ids.length === 0) {
+    return [];
+  }
+  return prisma.einsatz.findMany({
+    select: {
+      id: true,
+      title: true,
+      start: true,
+      end: true,
+      all_day: true,
+      einsatz_status: {
+        select: {
+          id: true,
+          verwalter_color: true,
+          verwalter_text: true,
+          helper_color: true,
+          helper_text: true,
+        },
+      },
+      einsatz_to_category: {
+        select: {
+          einsatz_category: {
+            select: {
+              value: true,
+              abbreviation: true,
+            },
+          },
+        },
+      },
+      einsatz_helper: {
+        select: {
+          user_id: true,
+        },
+      },
+      helpers_needed: true,
+      _count: {
+        select: {
+          einsatz_helper: true,
+        },
+      },
+    },
     where: {
       org_id: {
         in: org_ids,

@@ -46,6 +46,7 @@ import {
   WeekCellsHeight,
   WeekView,
 } from "@/components/event-calendar";
+import { CalendarMode } from "./types";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -54,6 +55,7 @@ export interface EventCalendarProps {
   onEventDelete?: (eventId: string) => void;
   className?: string;
   initialView?: CalendarView;
+  mode: CalendarMode;
 }
 
 export function EventCalendar({
@@ -63,6 +65,7 @@ export function EventCalendar({
   onEventDelete,
   className,
   initialView = "month",
+  mode,
 }: EventCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>(initialView);
@@ -168,6 +171,7 @@ export function EventCalendar({
       start: startTime,
       end: addHours(startTime, 1),
       allDay: false,
+      assignedUsers: [],
     };
     setSelectedEvent(newEvent);
     setIsEventDialogOpen(true);
@@ -388,6 +392,7 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              mode={mode}
             />
           )}
           {view === "week" && (
@@ -396,6 +401,7 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              mode={mode}
             />
           )}
           {view === "day" && (
@@ -404,6 +410,7 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              mode={mode}
             />
           )}
           {view === "agenda" && (
@@ -411,6 +418,7 @@ export function EventCalendar({
               currentDate={currentDate}
               events={events}
               onEventSelect={handleEventSelect}
+              mode={mode}
             />
           )}
         </div>

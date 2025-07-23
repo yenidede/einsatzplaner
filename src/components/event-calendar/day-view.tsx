@@ -25,12 +25,14 @@ import {
   type CalendarEvent,
 } from "@/components/event-calendar";
 import { EndHour, StartHour } from "@/components/event-calendar/constants";
+import { CalendarMode } from "./types";
 
 interface DayViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
+  mode: CalendarMode;
 }
 
 interface PositionedEvent {
@@ -47,6 +49,7 @@ export function DayView({
   events,
   onEventSelect,
   onEventCreate,
+  mode,
 }: DayViewProps) {
   const hours = useMemo(() => {
     const dayStart = startOfDay(currentDate);
@@ -214,6 +217,7 @@ export function DayView({
                     view="month"
                     isFirstDay={isFirstDay}
                     isLastDay={isLastDay}
+                    mode={mode}
                   >
                     {/* Always show the title in day view for better usability */}
                     <div>{event.title}</div>

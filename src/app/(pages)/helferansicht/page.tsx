@@ -10,7 +10,7 @@ export default function Helferansicht() {
         anschließend automatisch informiert.
       </p>
       <div className="mt-6">
-        <Calendar />
+        <Calendar mode="helper" />
       </div>
     </>
   );
