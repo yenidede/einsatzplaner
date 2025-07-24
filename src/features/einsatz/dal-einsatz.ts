@@ -2,15 +2,199 @@
 
 import prisma from "@/lib/prisma";
 import type { einsatz as Einsatz } from "@/generated/prisma";
-import type { EinsatzForCalendar } from "@/features/einsatz/types";
+import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
 
-// TODO: Create auth layer that calls the underlying DAL functions
+// TODO: Add auth check
+export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDetailed | null> {
+  const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
+
+  if (!einsaetzeFromDb) return null;
+
+  return {
+    ...einsaetzeFromDb,
+    einsatz_status: einsaetzeFromDb.einsatz_status,
+    assigned_users: einsaetzeFromDb.einsatz_helper.map(helper => helper.user_id),
+    einsatz_fields: einsaetzeFromDb.einsatz_field.map(field => ({
+      id: field.id,
+      einsatz_id: field.einsatz_id,
+      field_id: field.field_id,
+      value: field.value,
+    })),
+    categories: einsaetzeFromDb.einsatz_to_category.map(cat => cat.einsatz_category.id),
+    comments: einsaetzeFromDb.einsatz_comment.map(comment => ({
+      id: comment.id,
+      einsatz_id: comment.einsatz_id,
+      user_id: comment.user_id,
+      created_at: comment.created_at,
+      comment: comment.comment,
+      user: {
+        id: comment.user.id,
+        firstname: comment.user.firstname,
+        lastname: comment.user.lastname,
+      },
+    })),
+    change_log: einsaetzeFromDb.change_log.map(log => ({
+      id: log.id,
+      einsatz_id: log.einsatz_id,
+      user_id: log.user_id,
+      type_id: log.type_id,
+      created_at: log.created_at,
+      affected_user: log.affected_user,
+      user: {
+        id: log.user.id,
+        firstname: log.user.firstname,
+        lastname: log.user.lastname,
+      },
+    })),
+  };
+}
+
 export async function getAllEinsaetze(org_ids: string[]) {
   return getAllEinsaetzeFromDb(org_ids);
 }
 
 export async function getAllEinsaetzeForCalendar(org_ids: string[]) {
   return getAllEinsatzeForCalendarFromDb(org_ids);
+}
+
+export async function getAllTemplatesWithFields(org_id: string) {
+  return prisma.einsatz_template.findMany({
+    where: {
+      org_id,
+    },
+    include: {
+      template_icon: {
+        select: {
+          icon_url: true,
+        }
+      },
+      template_field: {
+        select: {
+          field: {
+            include: {
+              type: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        }
+      }
+    },
+  })
+}
+
+export async function getOrganizationsByIds(org_ids: string[]) {
+  return prisma.organization.findMany({
+    where: { id: { in: org_ids } },
+  });
+}
+
+export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
+  return createEinsatzInDb({data})
+}
+
+export async function updateEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
+  const { id, ...updateData } = data;
+
+  if (!id) {
+    throw new Error("Einsatz must have an id for update");
+  }
+
+  try {
+    return prisma.einsatz.update({
+      where: { id, org_id: updateData.org_id },
+      data: {
+        ...updateData,
+        einsatz_to_category: {
+          // delete all existing categories and add the new ones
+          deleteMany: {},
+          create: updateData.categories.map((category) => ({
+            einsatz_category: { connect: { id: category } },
+          })),
+        },
+        einsatz_field: {
+          deleteMany: {},
+          create: updateData.einsatz_fields.map((field) => ({
+            field: { connect: { id: field.id } },
+            value: field.value,
+          })),
+        },
+        einsatz_helper: {
+          set: updateData.assignedUsers?.map((userId) => ({ id: userId })) || [],
+        },
+      },
+    });
+  } catch (error) {
+    throw new Error(`Failed to update Einsatz with ID ${id}: ${error}`);
+  }
+}
+
+export async function deleteEinsatzById(einsatzId: string): Promise<void> {
+  // TODO: check if logged in user has permission to delete this Einsatz
+  
+  const einsatz = await prisma.einsatz.findUnique({
+    where: { id: einsatzId },
+  });
+  if (!einsatz) {
+    throw new Error(`Einsatz with ID ${einsatzId} not found`);
+  }
+
+  try {
+    await prisma.einsatz.delete({
+      where: {
+        id: einsatz.id,
+      },
+    });
+  } catch (error) {
+    throw new Error(`Failed to delete Einsatz with ID ${einsatzId}: ${error}`);
+  }
+}
+
+async function createEinsatzInDb({data}: {data: EinsatzCreate}): Promise<Einsatz> {
+  const {
+    title,
+    start,
+    end,
+    org_id,
+    created_by,
+    helpers_needed,
+    categories,
+    einsatz_fields,
+    assignedUsers = [],
+    status_id = "offen",
+    template_id = null,
+    all_day = false,
+  } = data;
+
+  return prisma.einsatz.create({
+    data: {
+      title,
+      start,
+      end,
+      org_id,
+      created_by,
+      helpers_needed,
+      all_day,
+      einsatz_to_category: {
+        create: categories.map((category) => ({
+          einsatz_category: { connect: { id: category } },
+        })),
+      },
+      einsatz_field: {
+        create: einsatz_fields.map((field) => ({
+          field: { connect: { id: field.id } },
+          value: field.value,
+        })),
+      },
+      einsatz_helper: {
+        connect: assignedUsers.map((userId) => ({ id: userId })),
+      },
+      status_id, // Set the status ID
+      template_id, // Set the template ID if provided
+    },
+  });
 }
 
 async function getEinsatzByIdFromDb(
@@ -92,15 +276,16 @@ async function getAllEinsatzeForCalendarFromDb(
 
 async function getEinsatzWithDetailsByIdFromDb(
   einsatzId: string
-): Promise<Einsatz | null> {
+) {
   return prisma.einsatz.findUnique({
     where: { id: einsatzId },
     include: {
       einsatz_helper: {
         select: {
+          id: true,
+          einsatz_id: true,
+          user_id: true,
           joined_at: true,
-        },
-        include: {
           user: {
             select: {
               id: true,
@@ -112,10 +297,11 @@ async function getEinsatzWithDetailsByIdFromDb(
       },
       einsatz_comment: {
         select: {
+          id: true,
+          einsatz_id: true,
+          user_id: true,
           created_at: true,
           comment: true,
-        },
-        include: {
           user: {
             select: {
               id: true,
@@ -134,6 +320,11 @@ async function getEinsatzWithDetailsByIdFromDb(
       change_log: {
         select: {
           id: true,
+          einsatz_id: true,
+          created_at: true,
+          user_id: true,
+          type_id: true,
+          affected_user: true,
           user: {
             select: {
               id: true,
@@ -142,16 +333,26 @@ async function getEinsatzWithDetailsByIdFromDb(
             },
           },
           change_type: true,
-          created_at: true,
         },
       },
       einsatz_field: {
         select: {
+          id: true,
+          einsatz_id: true,
+          field_id: true,
           value: true,
-        },
-        include: {
           field: {
-            include: {
+            select: {
+              id: true,
+              name: true,
+              type_id: true,
+              is_required: true,
+              placeholder: true,
+              default_value: true,
+              group_name: true,
+              is_multiline: true,
+              min: true,
+              max: true,
               type: {
                 select: {
                   name: true,

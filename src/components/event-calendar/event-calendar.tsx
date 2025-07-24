@@ -36,7 +36,6 @@ import {
   AgendaDaysToShow,
   AgendaView,
   CalendarDndProvider,
-  CalendarEvent,
   CalendarView,
   DayView,
   EventDialog,
@@ -46,12 +45,23 @@ import {
   WeekCellsHeight,
   WeekView,
 } from "@/components/event-calendar";
-import { CalendarMode } from "./types";
+import { CalendarEvent, CalendarMode } from "./types";
+import {
+  einsatz as Einsatz,
+  organization as Organization,
+} from "@/generated/prisma";
+import { EinsatzCreate } from "@/features/einsatz/types";
+import {
+  createEinsatz,
+  getOrganizationsByIds,
+} from "@/features/einsatz/dal-einsatz";
+import { useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
-  onEventAdd?: (event: CalendarEvent) => void;
-  onEventUpdate?: (event: CalendarEvent) => void;
+  onEventAdd?: (event: EinsatzCreate) => void;
+  onEventUpdate?: (event: EinsatzCreate) => void;
   onEventDelete?: (eventId: string) => void;
   className?: string;
   initialView?: CalendarView;
@@ -70,14 +80,24 @@ export function EventCalendar({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>(initialView);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
-    null
-  );
+  const [selectedEvent, setSelectedEvent] = useState<
+    EinsatzCreate | string | null
+  >(null);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  // TODO use logged in user data
+  const { data: userData } = useSession();
+  const orgsQuery = useQuery({
+    queryKey: ["organization"],
+    queryFn: () =>
+      getOrganizationsByIds(
+        userData?.orgs || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]
+      ),
+  });
 
   // Add keyboard shortcuts for view switching
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip if user is typing in an input, textarea or contentEditable element
+      // Skip if user is typing in an input, textarea or^ contentEditable element
       // or if the event dialog is open
       if (
         isEventDialogOpen ||
@@ -141,7 +161,7 @@ export function EventCalendar({
     setCurrentDate(new Date());
   };
 
-  const handleEventSelect = (event: CalendarEvent) => {
+  const handleEventSelect = (event: EinsatzCreate | string) => {
     console.log("Event selected:", event); // Debug log
     setSelectedEvent(event);
     setIsEventDialogOpen(true);
@@ -165,19 +185,27 @@ export function EventCalendar({
       startTime.setMilliseconds(0);
     }
 
-    const newEvent: CalendarEvent = {
-      id: "",
-      title: "",
+    const currentOrg = selectedOrg || orgsQuery.data?.[0];
+    if (!currentOrg) {
+      console.error("No organization selected or available");
+      return;
+    }
+
+    const newEvent: EinsatzCreate = {
+      title: `Neue ${currentOrg.einsatz_name_singular}`,
       start: startTime,
       end: addHours(startTime, 1),
-      allDay: false,
-      assignedUsers: [],
+      org_id: currentOrg?.id,
+      created_by: "5ae139a7-476c-4d76-95cb-4dcb4e909da9", // TODO: Set this to the current user ID
+      helpers_needed: 0,
+      categories: [],
+      einsatz_fields: [],
     };
     setSelectedEvent(newEvent);
     setIsEventDialogOpen(true);
   };
 
-  const handleEventSave = (event: CalendarEvent) => {
+  const handleEventSave = (event: EinsatzCreate) => {
     if (event.id) {
       onEventUpdate?.(event);
       // Show toast notification when an event is updated
@@ -221,7 +249,7 @@ export function EventCalendar({
     }
   };
 
-  const handleEventUpdate = (updatedEvent: CalendarEvent) => {
+  const handleEventUpdate = (updatedEvent: Einsatz) => {
     onEventUpdate?.(updatedEvent);
 
     // Show toast notification when an event is updated via drag and drop
@@ -424,7 +452,7 @@ export function EventCalendar({
         </div>
 
         <EventDialog
-          event={selectedEvent}
+          einsatz={selectedEvent}
           isOpen={isEventDialogOpen}
           onClose={() => {
             setIsEventDialogOpen(false);

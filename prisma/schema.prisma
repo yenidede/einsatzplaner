@@ -10,7 +10,7 @@ datasource db {
 }
 
 model change_log {
-  id                                  String      @id @default(uuid()) @db.Uuid
+  id                                  String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz_id                          String      @db.Uuid
   user_id                             String      @db.Uuid
   type_id                             String      @db.Uuid
@@ -70,7 +70,7 @@ model einsatz_comment {
   einsatz_id String   @db.Uuid
   user_id    String   @db.Uuid
   comment    String
-  id         String   @id @default(uuid()) @db.Uuid
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz    einsatz  @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
@@ -90,16 +90,17 @@ model einsatz_template {
   name           String?
   created_by     String?          @db.Uuid
   created_at     DateTime         @default(now())
-  icon_url       String?
   description    String?
+  icon_id        String           @default(dbgenerated("'17effde3-bacb-4cd9-9303-c0467a6e437b'::uuid")) @db.Uuid
   einsatz        einsatz[]
   user           user?            @relation(fields: [created_by], references: [id], onDelete: Cascade)
+  template_icon  template_icon    @relation(fields: [icon_id], references: [id], onDelete: NoAction)
   organization   organization?    @relation(fields: [org_id], references: [id], onDelete: Cascade)
   template_field template_field[]
 }
 
 model organization {
-  id                     String                   @id @default(uuid()) @db.Uuid
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
   logo_url               String?
   description            String?
@@ -117,7 +118,7 @@ model organization {
 }
 
 model organization_property {
-  id            String          @id @default(uuid()) @db.Uuid
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   org_id        String          @db.Uuid
   key           String
   property      String
@@ -146,7 +147,7 @@ model type {
 }
 
 model user {
-  id                                        String                   @id @default(uuid()) @db.Uuid
+  id                                        String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                                     String                   @unique
   firstname                                 String?
   lastname                                  String?
@@ -207,10 +208,10 @@ model invitation {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model einsatz_field {
-  id         BigInt  @id @default(autoincrement())
-  einsatz_id String  @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  field_id   String  @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  einsatz_id String  @db.Uuid
+  field_id   String  @db.Uuid
   value      String?
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz    einsatz @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   field      field   @relation(fields: [field_id], references: [id], onDelete: Cascade)
 }
@@ -226,7 +227,7 @@ model field {
   group_name     String?
   is_multiline   Boolean?
   min            Int?             @db.SmallInt
-  mac            Int?             @db.SmallInt
+  max            Int?             @db.SmallInt
   einsatz_field  einsatz_field[]
   type           type?            @relation(fields: [type_id], references: [id], onDelete: Cascade, map: "custom_field_type_id_fkey")
   template_field template_field[]
@@ -243,7 +244,7 @@ model template_field {
 }
 
 model user_role_assignment {
-  id                        String                 @id @db.Uuid
+  id                        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_organization_role_id String                 @db.Uuid
   role_id                   String                 @db.Uuid
   roles                     roles                  @relation(fields: [role_id], references: [id], onDelete: Cascade)
@@ -254,9 +255,9 @@ model user_role_assignment {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model einsatz_to_category {
-  id               BigInt           @id @default(autoincrement())
   einsatz_id       String           @db.Uuid
   category_id      String           @db.Uuid
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz_category einsatz_category @relation(fields: [category_id], references: [id], onDelete: Cascade)
   einsatz          einsatz          @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
 }
@@ -269,4 +270,11 @@ model einsatz_status {
   helper_text     String
   verwalter_text  String
   einsatz         einsatz[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model template_icon {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  icon_url         String             @default("")
+  einsatz_template einsatz_template[]
 }

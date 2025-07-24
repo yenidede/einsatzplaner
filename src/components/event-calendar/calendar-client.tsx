@@ -4,6 +4,14 @@ import { useState, use } from "react";
 
 import { EventCalendar, type CalendarEvent } from "@/components/event-calendar";
 import { CalendarMode } from "./types";
+import { EinsatzCreateToCalendarEvent } from "./einsatz-service";
+import QueryProvider from "../QueryProvider";
+import { EinsatzCreate } from "@/features/einsatz/types";
+import {
+  createEinsatz,
+  deleteEinsatzById,
+  updateEinsatz,
+} from "@/features/einsatz/dal-einsatz";
 
 export default function Component({
   einsaetze,
@@ -16,14 +24,16 @@ export default function Component({
 
   const [events, setEvents] = useState<CalendarEvent[]>(resolvedEinsaetze);
 
-  const handleEventAdd = (event: CalendarEvent) => {
-    setEvents([...events, event]);
+  const handleEventAdd = (event: EinsatzCreate) => {
+    const calendarEvent = EinsatzCreateToCalendarEvent(event);
+    setEvents([...events, calendarEvent]);
   };
 
-  const handleEventUpdate = (updatedEvent: CalendarEvent) => {
+  const handleEventUpdate = (updatedEvent: EinsatzCreate) => {
+    const calendarEvent = EinsatzCreateToCalendarEvent(updatedEvent);
     setEvents(
       events.map((event) =>
-        event.id === updatedEvent.id ? updatedEvent : event
+        event.id === calendarEvent.id ? calendarEvent : event
       )
     );
   };
@@ -33,12 +43,14 @@ export default function Component({
   };
 
   return (
-    <EventCalendar
-      events={events}
-      onEventAdd={handleEventAdd}
-      onEventUpdate={handleEventUpdate}
-      onEventDelete={handleEventDelete}
-      mode={mode}
-    />
+    <QueryProvider>
+      <EventCalendar
+        events={events}
+        onEventAdd={handleEventAdd}
+        onEventUpdate={handleEventUpdate}
+        onEventDelete={handleEventDelete}
+        mode={mode}
+      />
+    </QueryProvider>
   );
 }
