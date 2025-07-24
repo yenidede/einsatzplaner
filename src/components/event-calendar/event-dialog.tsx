@@ -91,45 +91,57 @@ export function EventDialog({
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
   });
 
-  // string = existing einsatz (should be edited)
+  // type string means einsatz (enter exit mode)
   const currentEinsatz =
     typeof einsatz === "string" ? detailedEinsatz : einsatz;
 
   useEffect(() => {
     console.log("useEffect triggered with currentEinsatz:", currentEinsatz);
     if (currentEinsatz && typeof currentEinsatz === "object") {
-      // Check if this is for creating a new einsatz (EinsatzCreate)
+      // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         console.log("Handling new einsatz creation");
         const createEinsatz = currentEinsatz as EinsatzCreate;
         setTitle(createEinsatz.title || "");
-        //setDescription(createEinsatz.updated_at?.toString() || "");
+        setDescription(""); // Clear description for new einsatz
 
-        const start = new Date(createEinsatz.start);
-        const end = new Date(createEinsatz.end);
+        // Safely handle start and end dates
+        if (createEinsatz.start) {
+          const start = new Date(createEinsatz.start);
+          setStartDate(start);
+          setStartTime(formatTimeForInput(start));
+        }
 
-        setStartDate(start);
-        setEndDate(end);
-        setStartTime(formatTimeForInput(start));
-        setEndTime(formatTimeForInput(end));
+        if (createEinsatz.end) {
+          const end = new Date(createEinsatz.end);
+          setEndDate(end);
+          setEndTime(formatTimeForInput(end));
+        }
+
         setAllDay(createEinsatz.all_day || false);
         setLocation(createEinsatz.status_id || "");
         setError(null); // Reset error when opening dialog
       } else {
-        // This is for editing an existing einsatz (loaded from query)
+        // Edit existing einsatz (loaded from query)
         console.log("Handling existing einsatz edit");
         setTitle(currentEinsatz.title || "");
         if ("updated_at" in currentEinsatz) {
           setDescription(currentEinsatz.updated_at?.toString() || "");
         }
 
-        const start = new Date(currentEinsatz.start);
-        const end = new Date(currentEinsatz.end);
+        // Safely handle start and end dates
+        if (currentEinsatz.start) {
+          const start = new Date(currentEinsatz.start);
+          setStartDate(start);
+          setStartTime(formatTimeForInput(start));
+        }
 
-        setStartDate(start);
-        setEndDate(end);
-        setStartTime(formatTimeForInput(start));
-        setEndTime(formatTimeForInput(end));
+        if (currentEinsatz.end) {
+          const end = new Date(currentEinsatz.end);
+          setEndDate(end);
+          setEndTime(formatTimeForInput(end));
+        }
+
         setAllDay(currentEinsatz.all_day || false);
         setLocation(currentEinsatz.status_id || "");
         setError(null); // Reset error when opening dialog
