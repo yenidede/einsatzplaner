@@ -39,17 +39,20 @@ import {
   EndHour,
   StartHour,
 } from "@/components/event-calendar/constants";
+import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
+import type { einsatz as Einsatz } from "@/generated/prisma";
+import { useQuery } from "@tanstack/react-query";
 
 interface EventDialogProps {
-  event: CalendarEvent | null;
+  einsatz: Einsatz | string | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (event: CalendarEvent) => void;
+  onSave: (einsatz: Einsatz) => void;
   onDelete: (eventId: string) => void;
 }
 
 export function EventDialog({
-  event,
+  einsatz,
   isOpen,
   onClose,
   onSave,
@@ -61,38 +64,60 @@ export function EventDialog({
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [startTime, setStartTime] = useState(`${DefaultStartHour}:00`);
   const [endTime, setEndTime] = useState(`${DefaultEndHour}:00`);
-  const [allDay, setAllDay] = useState(false);
+  const [all_day, setAllDay] = useState(false);
   const [location, setLocation] = useState("");
   const [color, setColor] = useState<EventColor>("sky");
   const [error, setError] = useState<string | null>(null);
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
 
-  // Debug log to check what event is being passed
+  // Fetch detailed einsatz data when einsatz is a string (ID)
+  const {
+    data: detailedEinsatz,
+    isLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["einsatz", einsatz],
+    queryFn: () => {
+      console.log("Query function called with einsatz:", einsatz);
+      return getEinsatzWithDetailsById(einsatz as string);
+    },
+    enabled: typeof einsatz === "string" && !!einsatz && isOpen,
+  });
+
+  // Use the detailed data or the original object
+  const currentEinsatz =
+    typeof einsatz === "string" ? detailedEinsatz : einsatz;
+
+  // Debug log to check what einsatz is being passed
   useEffect(() => {
-    console.log("EventDialog received event:", event);
-  }, [event]);
+    console.log("EventDialog received einsatz:", einsatz, typeof einsatz);
+    console.log("Query enabled:", typeof einsatz === "string" && !!einsatz);
+    console.log("Query isLoading:", isLoading);
+    console.log("Query error:", queryError);
+    console.log("Detailed einsatz from query:", detailedEinsatz);
+    console.log("Current einsatz (after query):", currentEinsatz);
+  }, [einsatz, currentEinsatz, isLoading, queryError, detailedEinsatz]);
 
   useEffect(() => {
-    if (event) {
-      setTitle(event.title || "");
-      setDescription(event.description || "");
+    if (currentEinsatz && typeof currentEinsatz === "object") {
+      setTitle(currentEinsatz.title || "");
+      setDescription(currentEinsatz.updated_at?.toString() || "");
 
-      const start = new Date(event.start);
-      const end = new Date(event.end);
+      const start = new Date(currentEinsatz.start);
+      const end = new Date(currentEinsatz.end);
 
       setStartDate(start);
       setEndDate(end);
       setStartTime(formatTimeForInput(start));
       setEndTime(formatTimeForInput(end));
-      setAllDay(event.allDay || false);
-      setLocation(event.location || "");
-      setColor((event.color as EventColor) || "sky");
+      setAllDay(currentEinsatz.all_day || false);
+      setLocation(currentEinsatz.status_id || "");
       setError(null); // Reset error when opening dialog
     } else {
       resetForm();
     }
-  }, [event]);
+  }, [currentEinsatz]);
 
   const resetForm = () => {
     setTitle("");
@@ -134,7 +159,7 @@ export function EventDialog({
     const start = new Date(startDate);
     const end = new Date(endDate);
 
-    if (!allDay) {
+    if (!all_day) {
       const [startHours = 0, startMinutes = 0] = startTime
         .split(":")
         .map(Number);
@@ -169,20 +194,27 @@ export function EventDialog({
     const eventTitle = title.trim() ? title : "(no title)";
 
     onSave({
-      id: event?.id || "",
+      id: currentEinsatz?.id || "",
       title: eventTitle,
-      description,
-      start,
-      end,
-      allDay,
-      location,
-      color,
+      created_at: currentEinsatz?.created_at || new Date(),
+      updated_at: currentEinsatz?.updated_at || null,
+      start: start,
+      end: end,
+      all_day,
+      participant_count: currentEinsatz?.participant_count ?? null,
+      price_per_person: currentEinsatz?.price_per_person ?? null,
+      total_price: currentEinsatz?.total_price ?? null,
+      org_id: currentEinsatz?.org_id ?? "",
+      status_id: location,
+      created_by: currentEinsatz?.created_by ?? "",
+      template_id: currentEinsatz?.template_id ?? null,
+      helpers_needed: currentEinsatz?.helpers_needed ?? -1,
     });
   };
 
   const handleDelete = () => {
-    if (event?.id) {
-      onDelete(event.id);
+    if (currentEinsatz?.id) {
+      onDelete(currentEinsatz.id);
     }
   };
 
@@ -235,11 +267,13 @@ export function EventDialog({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{event?.id ? "Edit Event" : "Create Event"}</DialogTitle>
+          <DialogTitle>
+            {currentEinsatz?.id ? "Edit einsatz" : "Create einsatz"}
+          </DialogTitle>
           <DialogDescription className="sr-only">
-            {event?.id
-              ? "Edit the details of this event"
-              : "Add a new event to your calendar"}
+            {currentEinsatz?.id
+              ? "Edit the details of this einsatz"
+              : "Add a new einsatz to your calendar"}
           </DialogDescription>
         </DialogHeader>
         {error && (
@@ -316,7 +350,7 @@ export function EventDialog({
               </Popover>
             </div>
 
-            {!allDay && (
+            {!all_day && (
               <div className="min-w-28 *:not-first:mt-1.5">
                 <Label htmlFor="start-time">Start Time</Label>
                 <Select value={startTime} onValueChange={setStartTime}>
@@ -381,7 +415,7 @@ export function EventDialog({
               </Popover>
             </div>
 
-            {!allDay && (
+            {!all_day && (
               <div className="min-w-28 *:not-first:mt-1.5">
                 <Label htmlFor="end-time">End Time</Label>
                 <Select value={endTime} onValueChange={setEndTime}>
@@ -403,7 +437,7 @@ export function EventDialog({
           <div className="flex items-center gap-2">
             <Checkbox
               id="all-day"
-              checked={allDay}
+              checked={all_day}
               onCheckedChange={(checked) => setAllDay(checked === true)}
             />
             <Label htmlFor="all-day">All day</Label>
@@ -444,12 +478,12 @@ export function EventDialog({
           </fieldset>
         </div>
         <DialogFooter className="flex-row sm:justify-between">
-          {event?.id && (
+          {currentEinsatz?.id && (
             <Button
               variant="outline"
               size="icon"
               onClick={handleDelete}
-              aria-label="Delete event"
+              aria-label="Delete einsatz"
             >
               <RiDeleteBinLine size={16} aria-hidden="true" />
             </Button>
