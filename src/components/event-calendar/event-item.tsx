@@ -73,7 +73,7 @@ function EventWrapper({
   return (
     <button
       className={cn(
-        "focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full overflow-hidden px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2",
+        "focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2",
         getEventColorClasses(statusForColor || "fallback", mode),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
@@ -178,8 +178,8 @@ export function EventItem({
         isDragging={isDragging}
         onClick={onClick}
         className={cn(
-          "mt-[var(--event-gap)] items-center text-xs sm:text-sm",
-          event.allDay ? "h-auto py-1" : "h-[var(--event-height)] min-h-fit",
+          "mt-[var(--event-gap)] items-center text-[0.7rem] sm:text-xs",
+          event.allDay ? "h-auto py-1" : "min-h-fit h-auto py-1",
           className
         )}
         currentTime={currentTime}
@@ -190,16 +190,16 @@ export function EventItem({
         mode={mode}
       >
         {children || (
-          <span className="truncate">
+          <div className="flex flex-col w-full">
             {!event.allDay && (
-              <span className="truncate font-normal opacity-70 sm:text-[11px] block">
+              <div className="font-normal opacity-70 text-[0.6875rem] sm:text-[0.6875rem] leading-tight">
                 {formatTimeWithOptionalMinutes(displayStart)}
                 {"-"}
-                {formatTimeWithOptionalMinutes(displayEnd)}{" "}
-              </span>
+                {formatTimeWithOptionalMinutes(displayEnd)}
+              </div>
             )}
-            {event.title}
-          </span>
+            <div className="leading-tight break-words">{event.title}</div>
+          </div>
         )}
       </EventWrapper>
     );
@@ -227,7 +227,7 @@ export function EventItem({
         mode={mode}
       >
         {durationMinutes < 45 ? (
-          <div className="truncate">
+          <div className="leading-tight break-words">
             {event.title}{" "}
             {showTime && (
               <span className="opacity-70">
@@ -237,9 +237,11 @@ export function EventItem({
           </div>
         ) : (
           <>
-            <div className="truncate font-medium">{event.title}</div>
+            <div className="font-medium leading-tight break-words">
+              {event.title}
+            </div>
             {showTime && (
-              <div className="truncate font-normal opacity-70 sm:text-[11px]">
+              <div className="font-normal opacity-70 sm:text-[11px] leading-tight break-words">
                 {getEventTime()}
               </div>
             )}
