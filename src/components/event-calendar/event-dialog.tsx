@@ -40,7 +40,10 @@ import {
   StartHour,
 } from "@/components/event-calendar/constants";
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
-import type { einsatz as Einsatz } from "@/generated/prisma";
+import type {
+  einsatz as Einsatz,
+  organization as Organization,
+} from "@/generated/prisma";
 import { useQuery } from "@tanstack/react-query";
 import { EinsatzCreate } from "@/features/einsatz/types";
 
@@ -50,11 +53,13 @@ interface EventDialogProps {
   onClose: () => void;
   onSave: (einsatz: Einsatz) => void;
   onDelete: (eventId: string) => void;
+  activeOrg: Organization | null;
 }
 
 export function EventDialog({
   einsatz,
   isOpen,
+  activeOrg,
   onClose,
   onSave,
   onDelete,
@@ -290,14 +295,14 @@ export function EventDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="">
         <DialogHeader>
           <DialogTitle>
             {isLoading
-              ? "Loading..."
+              ? "Laden..."
               : currentEinsatz?.id
-              ? "Edit Einsatz"
-              : "Create einsatz"}
+              ? "Bearbeite " + currentEinsatz.title
+              : "Erstelle " + (activeOrg?.einsatz_name_singular ?? " Einsatz")}
           </DialogTitle>
           <DialogDescription className="sr-only">
             {currentEinsatz?.id

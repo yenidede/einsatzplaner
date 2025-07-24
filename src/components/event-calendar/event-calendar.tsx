@@ -192,7 +192,7 @@ export function EventCalendar({
     }
 
     const newEvent: EinsatzCreate = {
-      title: `Neue ${currentOrg.einsatz_name_singular}`,
+      title: "",
       start: startTime,
       end: addHours(startTime, 1),
       org_id: currentOrg?.id,
@@ -452,6 +452,7 @@ export function EventCalendar({
         </div>
 
         <EventDialog
+          activeOrg={selectedOrg}
           einsatz={selectedEvent}
           isOpen={isEventDialogOpen}
           onClose={() => {
