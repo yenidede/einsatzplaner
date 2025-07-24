@@ -42,9 +42,10 @@ import {
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import type { einsatz as Einsatz } from "@/generated/prisma";
 import { useQuery } from "@tanstack/react-query";
+import { EinsatzCreate } from "@/features/einsatz/types";
 
 interface EventDialogProps {
-  einsatz: Einsatz | string | null;
+  einsatz: EinsatzCreate | string | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (einsatz: Einsatz) => void;
@@ -85,36 +86,51 @@ export function EventDialog({
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
   });
 
-  // Use the detailed data or the original object
+  // string = existing einsatz (should be edited)
   const currentEinsatz =
     typeof einsatz === "string" ? detailedEinsatz : einsatz;
 
-  // Debug log to check what einsatz is being passed
   useEffect(() => {
-    console.log("EventDialog received einsatz:", einsatz, typeof einsatz);
-    console.log("Query enabled:", typeof einsatz === "string" && !!einsatz);
-    console.log("Query isLoading:", isLoading);
-    console.log("Query error:", queryError);
-    console.log("Detailed einsatz from query:", detailedEinsatz);
-    console.log("Current einsatz (after query):", currentEinsatz);
-  }, [einsatz, currentEinsatz, isLoading, queryError, detailedEinsatz]);
-
-  useEffect(() => {
+    console.log("useEffect triggered with currentEinsatz:", currentEinsatz);
     if (currentEinsatz && typeof currentEinsatz === "object") {
-      setTitle(currentEinsatz.title || "");
-      setDescription(currentEinsatz.updated_at?.toString() || "");
+      // Check if this is for creating a new einsatz (EinsatzCreate)
+      if (!currentEinsatz.id) {
+        console.log("Handling new einsatz creation");
+        const createEinsatz = currentEinsatz as EinsatzCreate;
+        setTitle(createEinsatz.title || "");
+        //setDescription(createEinsatz.updated_at?.toString() || "");
 
-      const start = new Date(currentEinsatz.start);
-      const end = new Date(currentEinsatz.end);
+        const start = new Date(createEinsatz.start);
+        const end = new Date(createEinsatz.end);
 
-      setStartDate(start);
-      setEndDate(end);
-      setStartTime(formatTimeForInput(start));
-      setEndTime(formatTimeForInput(end));
-      setAllDay(currentEinsatz.all_day || false);
-      setLocation(currentEinsatz.status_id || "");
-      setError(null); // Reset error when opening dialog
+        setStartDate(start);
+        setEndDate(end);
+        setStartTime(formatTimeForInput(start));
+        setEndTime(formatTimeForInput(end));
+        setAllDay(createEinsatz.all_day || false);
+        setLocation(createEinsatz.status_id || "");
+        setError(null); // Reset error when opening dialog
+      } else {
+        // This is for editing an existing einsatz (loaded from query)
+        console.log("Handling existing einsatz edit");
+        setTitle(currentEinsatz.title || "");
+        if ("updated_at" in currentEinsatz) {
+          setDescription(currentEinsatz.updated_at?.toString() || "");
+        }
+
+        const start = new Date(currentEinsatz.start);
+        const end = new Date(currentEinsatz.end);
+
+        setStartDate(start);
+        setEndDate(end);
+        setStartTime(formatTimeForInput(start));
+        setEndTime(formatTimeForInput(end));
+        setAllDay(currentEinsatz.all_day || false);
+        setLocation(currentEinsatz.status_id || "");
+        setError(null); // Reset error when opening dialog
+      }
     } else {
+      console.log("No currentEinsatz, resetting form");
       resetForm();
     }
   }, [currentEinsatz]);
@@ -193,11 +209,20 @@ export function EventDialog({
     // Use generic title if empty
     const eventTitle = title.trim() ? title : "(no title)";
 
+    const createdAt =
+      currentEinsatz && "created_at" in currentEinsatz
+        ? currentEinsatz.created_at
+        : new Date();
+    const updatedAt =
+      currentEinsatz && "updated_at" in currentEinsatz
+        ? currentEinsatz.updated_at
+        : null;
+
     onSave({
       id: currentEinsatz?.id || "",
       title: eventTitle,
-      created_at: currentEinsatz?.created_at || new Date(),
-      updated_at: currentEinsatz?.updated_at || null,
+      created_at: createdAt,
+      updated_at: updatedAt,
       start: start,
       end: end,
       all_day,
@@ -268,7 +293,11 @@ export function EventDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {currentEinsatz?.id ? "Edit einsatz" : "Create einsatz"}
+            {isLoading
+              ? "Loading..."
+              : currentEinsatz?.id
+              ? "Edit Einsatz"
+              : "Create einsatz"}
           </DialogTitle>
           <DialogDescription className="sr-only">
             {currentEinsatz?.id
