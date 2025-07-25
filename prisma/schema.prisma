@@ -62,6 +62,8 @@ model einsatz_category {
   value               String
   id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   abbreviation        String                @default("")
+  org_id              String                @db.Uuid
+  organization        organization          @relation(fields: [org_id], references: [id], onDelete: Cascade)
   einsatz_to_category einsatz_to_category[]
 }
 
@@ -111,6 +113,7 @@ model organization {
   einsatz_name_singular  String                   @default("Einsatz")
   einsatz_name_plural    String                   @default("Einsätze")
   einsatz                einsatz[]
+  einsatz_category       einsatz_category[]
   einsatz_template       einsatz_template[]
   invitation             invitation[]
   organization_property  organization_property[]
@@ -142,6 +145,7 @@ model type {
   description           String?
   icon_url              String?
   sort_order            Int?                    @db.SmallInt
+  datatype              String?
   field                 field[]
   organization_property organization_property[]
 }
@@ -228,6 +232,7 @@ model field {
   is_multiline   Boolean?
   min            Int?             @db.SmallInt
   max            Int?             @db.SmallInt
+  allowed_values String[]
   einsatz_field  einsatz_field[]
   type           type?            @relation(fields: [type_id], references: [id], onDelete: Cascade, map: "custom_field_type_id_fkey")
   template_field template_field[]
