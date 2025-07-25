@@ -85,12 +85,6 @@ export async function getAllTemplatesWithFields(org_id: string) {
   })
 }
 
-export async function getOrganizationsByIds(org_ids: string[]) {
-  return prisma.organization.findMany({
-    where: { id: { in: org_ids } },
-  });
-}
-
 export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
   return createEinsatzInDb({data})
 }

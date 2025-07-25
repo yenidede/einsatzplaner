@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RiCalendarLine, RiDeleteBinLine } from "@remixicon/react";
 import { format, isBefore } from "date-fns";
+import { de } from "date-fns/locale"; // Add German locale import
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,9 +44,22 @@ import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import type {
   einsatz as Einsatz,
   organization as Organization,
+  einsatz_field as EinsatzField,
+  einsatz_status as EinsatzStatus,
+  einsatz_template as EinsatzTemplate,
+  einsatz_category as EinsatzCategory,
 } from "@/generated/prisma";
 import { useQuery } from "@tanstack/react-query";
-import { EinsatzCreate } from "@/features/einsatz/types";
+import { EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
+import FormGroup from "../form/formGroup";
+import FormField from "../form/formInputField";
+import { MultiSelect } from "../form/multi-select";
+import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import MultiSelectFormField from "../form/multiSelectFormField";
+import FormInputFieldCustom from "../form/formInputFieldCustom";
+import ToggleItemBig from "../form/toggle-item-big";
+import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
 
 interface EventDialogProps {
   einsatz: EinsatzCreate | string | null;
@@ -64,18 +78,30 @@ export function EventDialog({
   onSave,
   onDelete,
 }: EventDialogProps) {
+  // TODO
+  const activeOrgId = "0c39989e-07bc-4074-92bc-aa274e5f22d0"; // remove this!!!
+  // TODO
+  const [activeTemplate, setActiveTemplate] = useState<EinsatzTemplate | null>(
+    null
+  );
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [einsatzCategoriesIds, setEinsatzCategoriesIds] = useState<string[]>(
+    []
+  );
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [startTime, setStartTime] = useState(`${DefaultStartHour}:00`);
   const [endTime, setEndTime] = useState(`${DefaultEndHour}:00`);
   const [all_day, setAllDay] = useState(false);
-  const [location, setLocation] = useState("");
-  const [color, setColor] = useState<EventColor>("sky");
-  const [error, setError] = useState<string | null>(null);
+  const [participantCount, setParticipantCount] = useState(0);
+  const [pricePerPerson, setPricePerPerson] = useState<number>(0);
+  const [helpersNeeded, setHelpersNeeded] = useState<number>(-1);
+  const [assignedUsers, setAssignedUsers] = useState<string[]>([]);
+  const [customFields, setCustomFields] = useState<EinsatzField[]>([]);
+
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch detailed einsatz data when einsatz is a string (ID)
   const {
@@ -91,19 +117,28 @@ export function EventDialog({
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
   });
 
+  const categoriesQuery = useQuery({
+    queryKey: ["categories", activeOrg?.id ?? activeOrgId],
+    queryFn: () => getCategoriesByOrgIds([activeOrg?.id ?? activeOrgId]),
+    enabled: isOpen,
+  });
+
+  const templatesQuery = useQuery({
+    queryKey: ["templates", activeOrg?.id ?? activeOrgId],
+    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrg?.id ?? activeOrgId),
+    enabled: isOpen,
+  });
+
   // type string means einsatz (enter exit mode)
   const currentEinsatz =
     typeof einsatz === "string" ? detailedEinsatz : einsatz;
 
   useEffect(() => {
-    console.log("useEffect triggered with currentEinsatz:", currentEinsatz);
     if (currentEinsatz && typeof currentEinsatz === "object") {
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
-        console.log("Handling new einsatz creation");
         const createEinsatz = currentEinsatz as EinsatzCreate;
         setTitle(createEinsatz.title || "");
-        setDescription(""); // Clear description for new einsatz
 
         // Safely handle start and end dates
         if (createEinsatz.start) {
@@ -119,15 +154,11 @@ export function EventDialog({
         }
 
         setAllDay(createEinsatz.all_day || false);
-        setLocation(createEinsatz.status_id || "");
         setError(null); // Reset error when opening dialog
       } else {
         // Edit existing einsatz (loaded from query)
         console.log("Handling existing einsatz edit");
         setTitle(currentEinsatz.title || "");
-        if ("updated_at" in currentEinsatz) {
-          setDescription(currentEinsatz.updated_at?.toString() || "");
-        }
 
         // Safely handle start and end dates
         if (currentEinsatz.start) {
@@ -143,7 +174,6 @@ export function EventDialog({
         }
 
         setAllDay(currentEinsatz.all_day || false);
-        setLocation(currentEinsatz.status_id || "");
         setError(null); // Reset error when opening dialog
       }
     } else {
@@ -154,14 +184,11 @@ export function EventDialog({
 
   const resetForm = () => {
     setTitle("");
-    setDescription("");
     setStartDate(new Date());
     setEndDate(new Date());
     setStartTime(`${DefaultStartHour}:00`);
     setEndTime(`${DefaultEndHour}:00`);
     setAllDay(false);
-    setLocation("");
-    setColor("sky");
     setError(null);
   };
 
@@ -174,14 +201,13 @@ export function EventDialog({
   // Memoize time options so they're only calculated once
   const timeOptions = useMemo(() => {
     const options = [];
-    for (let hour = StartHour; hour <= EndHour; hour++) {
+    for (let hour = StartHour; hour <= EndHour - 1; hour++) {
       for (let minute = 0; minute < 60; minute += 15) {
         const formattedHour = hour.toString().padStart(2, "0");
         const formattedMinute = minute.toString().padStart(2, "0");
         const value = `${formattedHour}:${formattedMinute}`;
-        // Use a fixed date to avoid unnecessary date object creations
-        const date = new Date(2000, 0, 1, hour, minute);
-        const label = format(date, "h:mm a");
+        // Use German 24-hour format (HH:mm)
+        const label = `${formattedHour}:${formattedMinute}`;
         options.push({ value, label });
       }
     }
@@ -247,7 +273,7 @@ export function EventDialog({
       price_per_person: currentEinsatz?.price_per_person ?? null,
       total_price: currentEinsatz?.total_price ?? null,
       org_id: currentEinsatz?.org_id ?? "",
-      status_id: location,
+      status_id: currentEinsatz?.status_id ?? "",
       created_by: currentEinsatz?.created_by ?? "",
       template_id: currentEinsatz?.template_id ?? null,
       helpers_needed: currentEinsatz?.helpers_needed ?? -1,
@@ -257,6 +283,56 @@ export function EventDialog({
   const handleDelete = () => {
     if (currentEinsatz?.id) {
       onDelete(currentEinsatz.id);
+    }
+  };
+
+  const setDefaultFormValues = (data: {
+    template?: EinsatzTemplate;
+    title?: string;
+    categories?: EinsatzCategory[];
+    start?: Date;
+    end?: Date;
+    all_day?: boolean;
+    participant_count?: number | null;
+    price_per_person?: number | null;
+    helpers_needed?: number;
+    assignedUsers?: string[];
+    customFields?: EinsatzField[];
+  }) => {
+    if (data.template) {
+      setActiveTemplate(data.template);
+    }
+    if (data.title) {
+      setTitle(data.title);
+    }
+    if (data.categories) {
+      setEinsatzCategoriesIds(data.categories.map((cat) => cat.value));
+    }
+    if (data.start) {
+      setStartDate(data.start);
+      setStartTime(formatTimeForInput(data.start));
+    }
+    if (data.end) {
+      setEndDate(data.end);
+      setEndTime(formatTimeForInput(data.end));
+    }
+    if (data.all_day !== undefined) {
+      setAllDay(data.all_day);
+    }
+    if (data.participant_count) {
+      setParticipantCount(data.participant_count);
+    }
+    if (data.price_per_person) {
+      setPricePerPerson(data.price_per_person);
+    }
+    if (data.helpers_needed !== undefined) {
+      setHelpersNeeded(data.helpers_needed);
+    }
+    if (data.assignedUsers) {
+      setAssignedUsers(data.assignedUsers);
+    }
+    if (data.customFields) {
+      setCustomFields(data.customFields);
     }
   };
 
@@ -307,13 +383,13 @@ export function EventDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="">
+      <DialogContent className="!max-w-[55rem]">
         <DialogHeader>
           <DialogTitle>
             {isLoading
               ? "Laden..."
               : currentEinsatz?.id
-              ? "Bearbeite " + currentEinsatz.title
+              ? "Bearbeite " + title
               : "Erstelle " + (activeOrg?.einsatz_name_singular ?? " Einsatz")}
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -327,201 +403,221 @@ export function EventDialog({
             {error}
           </div>
         )}
-        <div className="grid gap-4 py-4">
-          <div className="*:not-first:mt-1.5">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
+        <div className="grid gap-8 py-4">
+          <FormGroup>
+            {templatesQuery.isLoading ? (
+              <div>Lade Vorlagen ...</div>
+            ) : !activeTemplate ? (
+              // template not yet set, show options
+              <FormInputFieldCustom name="Vorlage auswählen">
+                <div className="flex flex-wrap gap-4 mt-1.5">
+                  {templatesQuery.data?.map((t) => (
+                    <ToggleItemBig
+                      key={t.id}
+                      text={t.name ?? "Vorlage"}
+                      description={t.description ?? ""}
+                      iconUrl={t.template_icon.icon_url.trim()}
+                      onClick={() => {
+                        setActiveTemplate(t);
+                      }}
+                    />
+                  ))}
+                </div>
+              </FormInputFieldCustom>
+            ) : (
+              // option to switch template (TODO later)
+              <div>
+                <span className="font-semibold">{activeTemplate?.name}</span>{" "}
+                ausgewählt.
+              </div>
+            )}
+          </FormGroup>
+          {/* possible to override the rems if categories should be larger */}
+          <FormGroup className="grid grid-cols-[repeat(auto-fit,minmax(17rem,1fr))]">
+            <FormField
+              name="Einsatz Name"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
-          </div>
-
-          <div className="*:not-first:mt-1.5">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+            <MultiSelectFormField
+              name="Kategorien"
+              options={
+                categoriesQuery?.data
+                  ? categoriesQuery?.data?.map((cat) => ({
+                      value: cat.id,
+                      label: cat.value,
+                    }))
+                  : []
+              }
+              defaultValue={einsatzCategoriesIds}
+              placeholder="Kategorien auswählen"
+              animation={1}
+              onValueChange={(selectedValues) => {
+                setEinsatzCategoriesIds(selectedValues);
+              }}
             />
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex-1 *:not-first:mt-1.5">
-              <Label htmlFor="start-date">Start Date</Label>
-              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="start-date"
-                    variant={"outline"}
-                    className={cn(
-                      "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    <span
+          </FormGroup>
+          <div className="flex flex-col gap-4">
+            <FormGroup className="flex flex-row">
+              <FormInputFieldCustom className="flex-1" name="Start Datum">
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="start_datum"
+                      variant={"outline"}
                       className={cn(
-                        "truncate",
+                        "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
                         !startDate && "text-muted-foreground"
                       )}
                     >
-                      {startDate ? format(startDate, "PPP") : "Pick a date"}
-                    </span>
-                    <RiCalendarLine
-                      size={16}
-                      className="text-muted-foreground/80 shrink-0"
-                      aria-hidden="true"
-                    />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    defaultMonth={startDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        setStartDate(date);
-                        // If end date is before the new start date, update it to match the start date
-                        if (isBefore(endDate, date)) {
-                          setEndDate(date);
+                      <span
+                        className={cn(
+                          "truncate",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        {startDate
+                          ? format(startDate, "PPP", { locale: de })
+                          : "Datum auswählen"}
+                      </span>
+                      <RiCalendarLine
+                        size={16}
+                        className="text-muted-foreground/80 shrink-0"
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-2" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      defaultMonth={startDate}
+                      locale={de}
+                      onSelect={(date) => {
+                        if (date) {
+                          setStartDate(date);
+                          // If end date is before the new start date, update it to match the start date
+                          if (isBefore(endDate, date)) {
+                            setEndDate(date);
+                          }
+                          setError(null);
+                          setStartDateOpen(false);
                         }
-                        setError(null);
-                        setStartDateOpen(false);
-                      }
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {!all_day && (
-              <div className="min-w-28 *:not-first:mt-1.5">
-                <Label htmlFor="start-time">Start Time</Label>
-                <Select value={startTime} onValueChange={setStartTime}>
-                  <SelectTrigger id="start-time">
-                    <SelectValue placeholder="Select time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex-1 *:not-first:mt-1.5">
-              <Label htmlFor="end-date">End Date</Label>
-              <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="end-date"
-                    variant={"outline"}
-                    className={cn(
-                      "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
-                      !endDate && "text-muted-foreground"
-                    )}
-                  >
-                    <span
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </FormInputFieldCustom>
+              {!all_day && (
+                <div className="min-w-28 *:not-first:mt-1.5">
+                  <FormInputFieldCustom name="Start Zeit">
+                    <Select value={startTime} onValueChange={setStartTime}>
+                      <SelectTrigger id="start_time">
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormInputFieldCustom>
+                </div>
+              )}
+            </FormGroup>
+            <FormGroup className="flex flex-row">
+              <FormInputFieldCustom className="flex-1" name="Ende Datum">
+                <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="ende_datum"
+                      variant={"outline"}
                       className={cn(
-                        "truncate",
+                        "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
                         !endDate && "text-muted-foreground"
                       )}
                     >
-                      {endDate ? format(endDate, "PPP") : "Pick a date"}
-                    </span>
-                    <RiCalendarLine
-                      size={16}
-                      className="text-muted-foreground/80 shrink-0"
-                      aria-hidden="true"
+                      <span
+                        className={cn(
+                          "truncate",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        {endDate
+                          ? format(endDate, "PPP", { locale: de })
+                          : "Datum auswählen"}
+                      </span>
+                      <RiCalendarLine
+                        size={16}
+                        className="text-muted-foreground/80 shrink-0"
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-2" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      defaultMonth={endDate}
+                      locale={de}
+                      onSelect={(date) => {
+                        if (date) {
+                          setEndDate(date);
+                          setError(null);
+                          setEndDateOpen(false);
+                        }
+                      }}
                     />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    defaultMonth={endDate}
-                    disabled={{ before: startDate }}
-                    onSelect={(date) => {
-                      if (date) {
-                        setEndDate(date);
-                        setError(null);
-                        setEndDateOpen(false);
-                      }
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
+                  </PopoverContent>
+                </Popover>
+              </FormInputFieldCustom>
+              {!all_day && (
+                <div className="min-w-28 *:not-first:mt-1.5">
+                  <FormInputFieldCustom name="Ende Zeit">
+                    <Select value={endTime} onValueChange={setEndTime}>
+                      <SelectTrigger id="end_time">
+                        <SelectValue placeholder="Zeit auswählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormInputFieldCustom>
+                </div>
+              )}
+            </FormGroup>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="all-day"
+                checked={all_day}
+                onCheckedChange={(checked) => setAllDay(checked === true)}
+              />
+              <Label htmlFor="all-day">Ganztägig</Label>
             </div>
-
-            {!all_day && (
-              <div className="min-w-28 *:not-first:mt-1.5">
-                <Label htmlFor="end-time">End Time</Label>
-                <Select value={endTime} onValueChange={setEndTime}>
-                  <SelectTrigger id="end-time">
-                    <SelectValue placeholder="Select time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="all-day"
-              checked={all_day}
-              onCheckedChange={(checked) => setAllDay(checked === true)}
+          <FormGroup>
+            <FormField
+              name="Teilnehmeranzahl"
+              type="number"
+              value={participantCount || ""}
+              placeholder=""
+              onChange={(e) => setParticipantCount(Number(e.target.value) || 0)}
             />
-            <Label htmlFor="all-day">All day</Label>
-          </div>
-
-          <div className="*:not-first:mt-1.5">
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
+            <FormField
+              className="flex-1"
+              name="Preis pro Person"
+              type="number"
+              value={pricePerPerson || ""}
+              onChange={(e) => setPricePerPerson(Number(e.target.value) || 0)}
             />
-          </div>
-          <fieldset className="space-y-4">
-            <legend className="text-foreground text-sm leading-none font-medium">
-              Etiquette
-            </legend>
-            <RadioGroup
-              className="flex gap-1.5"
-              defaultValue={colorOptions[0]?.value}
-              value={color}
-              onValueChange={(value: EventColor) => setColor(value)}
-            >
-              {colorOptions.map((colorOption) => (
-                <RadioGroupItem
-                  key={colorOption.value}
-                  id={`color-${colorOption.value}`}
-                  value={colorOption.value}
-                  aria-label={colorOption.label}
-                  className={cn(
-                    "size-6 shadow-none",
-                    colorOption.bgClass,
-                    colorOption.borderClass
-                  )}
-                />
-              ))}
-            </RadioGroup>
-          </fieldset>
+          </FormGroup>
         </div>
         <DialogFooter className="flex-row sm:justify-between">
           {currentEinsatz?.id && (
@@ -529,16 +625,16 @@ export function EventDialog({
               variant="outline"
               size="icon"
               onClick={handleDelete}
-              aria-label="Delete einsatz"
+              aria-label="Einsatz löschen"
             >
               <RiDeleteBinLine size={16} aria-hidden="true" />
             </Button>
           )}
           <div className="flex flex-1 justify-end gap-2">
             <Button variant="outline" onClick={onClose}>
-              Cancel
+              Abbrechen
             </Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave}>Speichern</Button>
           </div>
         </DialogFooter>
       </DialogContent>

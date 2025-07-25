@@ -1,5 +1,7 @@
 "use client";
 
+// TODO at getOrganizationsByIds,
+
 import { useEffect, useMemo, useState } from "react";
 import { RiCalendarCheckLine } from "@remixicon/react";
 import {
@@ -51,10 +53,8 @@ import {
   organization as Organization,
 } from "@/generated/prisma";
 import { EinsatzCreate } from "@/features/einsatz/types";
-import {
-  createEinsatz,
-  getOrganizationsByIds,
-} from "@/features/einsatz/dal-einsatz";
+import { createEinsatz } from "@/features/einsatz/dal-einsatz";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -85,12 +85,12 @@ export function EventCalendar({
   >(null);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   // TODO use logged in user data
-  const { data: userData } = useSession();
+  const { data: sessionData } = useSession();
   const orgsQuery = useQuery({
-    queryKey: ["organization"],
+    queryKey: ["organizations"], // also map all orgs by id
     queryFn: () =>
       getOrganizationsByIds(
-        userData?.orgs || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]
+        sessionData?.orgs || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]
       ),
   });
 
