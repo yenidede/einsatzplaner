@@ -1,11 +1,11 @@
-
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import NextAuthSessionProvider from "@/components/SessionProvider";
 import "@/styles/globals.css";
 import Navbar from "@/components/navbar/navbar-main";
-import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import QueryProvider from "@/components/QueryProvider";
+import { Toaster } from "sonner";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -34,6 +34,7 @@ export default function RootLayout({
           <NextAuthSessionProvider>
             <Navbar />
             <main className="px-4 md:px-6 py-8">{children}</main>
+            <Toaster position="bottom-left" />
           </NextAuthSessionProvider>
         </QueryProvider>
       </body>

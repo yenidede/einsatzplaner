@@ -13,7 +13,7 @@ export default function FormField({
 }) {
   const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
   return (
-    <div className="*:not-first:mt-1.5">
+    <div className="not-first:mt-1.5">
       <Label htmlFor={sanitizedId}>Name</Label>
       <Input id={sanitizedId} value={value} {...props} />
     </div>

@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { RiCalendarLine, RiDeleteBinLine } from "@remixicon/react";
-import { format, isBefore } from "date-fns";
-import { de } from "date-fns/locale"; // Add German locale import
+import { useEffect, useState } from "react";
+import { RiDeleteBinLine } from "@remixicon/react";
+import { isBefore } from "date-fns";
 
 import { cn } from "@/lib/utils";
+import z from "zod";
+
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -17,23 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import type { CalendarEvent, EventColor } from "@/components/event-calendar";
 import {
   DefaultEndHour,
   DefaultStartHour,
@@ -44,22 +26,91 @@ import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import type {
   einsatz as Einsatz,
   organization as Organization,
-  einsatz_field as EinsatzField,
-  einsatz_status as EinsatzStatus,
-  einsatz_template as EinsatzTemplate,
-  einsatz_category as EinsatzCategory,
 } from "@/generated/prisma";
 import { useQuery } from "@tanstack/react-query";
 import { EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
 import FormGroup from "../form/formGroup";
-import FormField from "../form/formInputField";
-import { MultiSelect } from "../form/multi-select";
-import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
-import { getOrganizationsByIds } from "@/features/organization/org-dal";
-import MultiSelectFormField from "../form/multiSelectFormField";
 import FormInputFieldCustom from "../form/formInputFieldCustom";
 import ToggleItemBig from "../form/toggle-item-big";
+import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
+import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
+import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
+
+export const ZodEinsatzFormData = z
+  .object({
+    title: z.string().min(1, "Titel ist erforderlich"),
+    einsatzCategoriesIds: z.array(z.uuid()).optional(),
+    startDate: z.date(),
+    endDate: z.date(),
+    startTime: z
+      .string()
+      .regex(
+        /^([01]\d|2[0-3]):([0-5]\d)$/,
+        "Invalid time format. Must be in HH:MM (24-hour) format."
+      ),
+    endTime: z
+      .string()
+      .regex(
+        /^([01]\d|2[0-3]):([0-5]\d)$/,
+        "Invalid time format. Must be in HH:MM (24-hour) format."
+      ),
+    all_day: z.boolean(),
+    participantCount: z
+      .number()
+      .min(0, "Teilnehmeranzahl darf nicht negativ sein"),
+    pricePerPerson: z.number().min(0, "Preis darf nicht negativ sein"),
+    helpersNeeded: z.number().min(0, "Helfer-Anzahl muss 0 oder größer sein"),
+    assignedUsers: z.array(z.uuid()),
+  })
+  .refine(
+    (data) => {
+      // Ensure end date is not before start date
+      if (!data.all_day) {
+        // For timed events, compare the full date-time
+        const startDateTime = new Date(data.startDate);
+        const endDateTime = new Date(data.endDate);
+
+        const [startHours, startMinutes] = data.startTime
+          .split(":")
+          .map(Number);
+        const [endHours, endMinutes] = data.endTime.split(":").map(Number);
+
+        startDateTime.setHours(startHours, startMinutes, 0, 0);
+        endDateTime.setHours(endHours, endMinutes, 0, 0);
+
+        return endDateTime > startDateTime;
+      } else {
+        // For all-day events, just compare dates
+        return data.endDate >= data.startDate;
+      }
+    },
+    {
+      message: "Enddatum/zeit muss nach Startdatum/zeit liegen",
+      path: ["endDate"],
+    }
+  );
+
+export type EinsatzFormData = z.infer<typeof ZodEinsatzFormData>;
+
+// Helper function to get user-friendly field names
+function getFieldDisplayName(fieldName: string): string {
+  const fieldNames: Record<string, string> = {
+    title: "Titel",
+    einsatzCategoriesIds: "Kategorien",
+    startDate: "Startdatum",
+    endDate: "Enddatum",
+    startTime: "Startzeit",
+    endTime: "Endzeit",
+    all_day: "Ganztägig",
+    participantCount: "Teilnehmeranzahl",
+    pricePerPerson: "Preis pro Person",
+    helpersNeeded: "Helfer benötigt",
+    assignedUsers: "Zugewiesene Benutzer",
+  };
+
+  return fieldNames[fieldName] || fieldName;
+}
 
 interface EventDialogProps {
   einsatz: EinsatzCreate | string | null;
@@ -78,30 +129,113 @@ export function EventDialog({
   onSave,
   onDelete,
 }: EventDialogProps) {
+  // Defaults for the defaultFormFields (no template loaded yet)
+  const [formData, setFormData] = useState<EinsatzFormData>({
+    title: "",
+    einsatzCategoriesIds: [],
+    startDate: new Date(),
+    endDate: new Date(),
+    startTime: `${DefaultStartHour}:00`,
+    endTime: `${DefaultEndHour}:00`,
+    all_day: false,
+    participantCount: 20,
+    pricePerPerson: 0,
+    helpersNeeded: 1,
+    assignedUsers: [],
+  });
+
+  const handleFormDataChange = (updates: Partial<EinsatzFormData>) => {
+    const updatedFormData = { ...formData, ...updates };
+
+    // Validate just the updated fields using partial schema
+    const partialResult = ZodEinsatzFormData.partial().safeParse(updates);
+
+    // Update errors based on partial validation
+    setErrors((prevErrors) => {
+      const newErrors = { ...prevErrors };
+
+      if (!partialResult.success) {
+        // Add errors for the fields being updated
+        const flattenedErrors = partialResult.error.flatten();
+
+        // Merge new field errors with existing ones
+        Object.entries(flattenedErrors.fieldErrors).forEach(
+          ([field, fieldErrors]) => {
+            newErrors.fieldErrors[field] = fieldErrors;
+          }
+        );
+
+        // Add any form-level errors
+        if (flattenedErrors.formErrors.length > 0) {
+          newErrors.formErrors = [
+            ...new Set([
+              ...newErrors.formErrors,
+              ...flattenedErrors.formErrors,
+            ]),
+          ];
+        }
+      } else {
+        // Clear errors for the fields that are now valid
+        Object.keys(updates).forEach((field) => {
+          delete newErrors.fieldErrors[field];
+        });
+      }
+
+      return newErrors;
+    });
+
+    // Also run full validation for relationship checks (like date/time dependencies)
+    const fullResult = ZodEinsatzFormData.safeParse(updatedFormData);
+
+    if (!fullResult.success) {
+      // Only update relationship errors (like endDate validation)
+      const relationshipErrors = fullResult.error.issues.filter(
+        (issue) => issue.code === "custom" || issue.path.includes("endDate")
+      );
+
+      if (relationshipErrors.length > 0) {
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          fieldErrors: {
+            ...prevErrors.fieldErrors,
+            ...relationshipErrors.reduce((acc, error) => {
+              const field = error.path[0] as string;
+              acc[field] = [error.message];
+              return acc;
+            }, {} as Record<string, string[]>),
+          },
+        }));
+      }
+    } else {
+      // Clear relationship errors if full validation passes
+      setErrors((prevErrors) => {
+        const newErrors = { ...prevErrors };
+        // Only clear endDate errors that are relationship-based
+        if (
+          newErrors.fieldErrors.endDate?.some(
+            (error) => error.includes("nach") || error.includes("Enddatum")
+          )
+        ) {
+          delete newErrors.fieldErrors.endDate;
+        }
+        return newErrors;
+      });
+    }
+
+    setFormData((prev) => ({ ...prev, ...updates }));
+  };
+
   // TODO
   const activeOrgId = "0c39989e-07bc-4074-92bc-aa274e5f22d0"; // remove this!!!
   // TODO
-  const [activeTemplate, setActiveTemplate] = useState<EinsatzTemplate | null>(
-    null
-  );
-  const [title, setTitle] = useState("");
-  const [einsatzCategoriesIds, setEinsatzCategoriesIds] = useState<string[]>(
-    []
-  );
-  const [startDate, setStartDate] = useState<Date>(new Date());
-  const [endDate, setEndDate] = useState<Date>(new Date());
-  const [startTime, setStartTime] = useState(`${DefaultStartHour}:00`);
-  const [endTime, setEndTime] = useState(`${DefaultEndHour}:00`);
-  const [all_day, setAllDay] = useState(false);
-  const [participantCount, setParticipantCount] = useState(0);
-  const [pricePerPerson, setPricePerPerson] = useState<number>(0);
-  const [helpersNeeded, setHelpersNeeded] = useState<number>(-1);
-  const [assignedUsers, setAssignedUsers] = useState<string[]>([]);
-  const [customFields, setCustomFields] = useState<EinsatzField[]>([]);
-
-  const [startDateOpen, setStartDateOpen] = useState(false);
-  const [endDateOpen, setEndDateOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{
+    fieldErrors: Record<string, string[]>;
+    formErrors: string[];
+  }>({
+    fieldErrors: {},
+    formErrors: [],
+  });
 
   // Fetch detailed einsatz data when einsatz is a string (ID)
   const {
@@ -111,7 +245,6 @@ export function EventDialog({
   } = useQuery({
     queryKey: ["einsatz", einsatz],
     queryFn: () => {
-      console.log("Query function called with einsatz:", einsatz);
       return getEinsatzWithDetailsById(einsatz as string);
     },
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
@@ -120,13 +253,18 @@ export function EventDialog({
   const categoriesQuery = useQuery({
     queryKey: ["categories", activeOrg?.id ?? activeOrgId],
     queryFn: () => getCategoriesByOrgIds([activeOrg?.id ?? activeOrgId]),
-    enabled: isOpen,
   });
 
   const templatesQuery = useQuery({
     queryKey: ["templates", activeOrg?.id ?? activeOrgId],
     queryFn: () => getAllTemplatesWithIconByOrgId(activeOrg?.id ?? activeOrgId),
-    enabled: isOpen,
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ["users", activeOrg?.id ?? activeOrgId, "helpers"],
+    queryFn: () => {
+      return getAllUsersWithRolesByOrgId(activeOrg?.id ?? activeOrgId);
+    },
   });
 
   // type string means einsatz (enter exit mode)
@@ -138,43 +276,62 @@ export function EventDialog({
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
-        setTitle(createEinsatz.title || "");
+        handleFormDataChange({ title: createEinsatz.title || "" });
 
         // Safely handle start and end dates
         if (createEinsatz.start) {
           const start = new Date(createEinsatz.start);
-          setStartDate(start);
-          setStartTime(formatTimeForInput(start));
+          handleFormDataChange({
+            startDate: start,
+            startTime: formatTimeForInput(start),
+          });
         }
 
         if (createEinsatz.end) {
           const end = new Date(createEinsatz.end);
-          setEndDate(end);
-          setEndTime(formatTimeForInput(end));
+          handleFormDataChange({
+            endDate: end,
+            endTime: formatTimeForInput(end),
+          });
         }
 
-        setAllDay(createEinsatz.all_day || false);
-        setError(null); // Reset error when opening dialog
+        handleFormDataChange({
+          all_day: createEinsatz.all_day || false,
+        });
+        // Reset errors when opening dialog
+        setErrors({
+          fieldErrors: {},
+          formErrors: [],
+        });
       } else {
         // Edit existing einsatz (loaded from query)
-        console.log("Handling existing einsatz edit");
-        setTitle(currentEinsatz.title || "");
+        handleFormDataChange({ title: currentEinsatz.title || "" });
 
         // Safely handle start and end dates
         if (currentEinsatz.start) {
           const start = new Date(currentEinsatz.start);
-          setStartDate(start);
-          setStartTime(formatTimeForInput(start));
+          handleFormDataChange({
+            startDate: start,
+            startTime: formatTimeForInput(start),
+          });
         }
 
         if (currentEinsatz.end) {
           const end = new Date(currentEinsatz.end);
-          setEndDate(end);
-          setEndTime(formatTimeForInput(end));
+          handleFormDataChange({
+            endDate: end,
+            endTime: formatTimeForInput(end),
+          });
         }
 
-        setAllDay(currentEinsatz.all_day || false);
-        setError(null); // Reset error when opening dialog
+        handleFormDataChange({
+          all_day: currentEinsatz.all_day || false,
+        });
+        // Reset errors when opening dialog
+        setErrors({
+          fieldErrors: {},
+          formErrors: [],
+        });
       }
     } else {
       console.log("No currentEinsatz, resetting form");
@@ -183,13 +340,18 @@ export function EventDialog({
   }, [currentEinsatz]);
 
   const resetForm = () => {
-    setTitle("");
-    setStartDate(new Date());
-    setEndDate(new Date());
-    setStartTime(`${DefaultStartHour}:00`);
-    setEndTime(`${DefaultEndHour}:00`);
-    setAllDay(false);
-    setError(null);
+    handleFormDataChange({
+      title: "",
+      startDate: new Date(),
+      endDate: new Date(),
+      startTime: `${DefaultStartHour}:00`,
+      endTime: `${DefaultEndHour}:00`,
+      all_day: false,
+    });
+    setErrors({
+      fieldErrors: {},
+      formErrors: [],
+    });
   };
 
   const formatTimeForInput = (date: Date) => {
@@ -198,31 +360,35 @@ export function EventDialog({
     return `${hours}:${minutes.toString().padStart(2, "0")}`;
   };
 
-  // Memoize time options so they're only calculated once
-  const timeOptions = useMemo(() => {
-    const options = [];
-    for (let hour = StartHour; hour <= EndHour - 1; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const formattedHour = hour.toString().padStart(2, "0");
-        const formattedMinute = minute.toString().padStart(2, "0");
-        const value = `${formattedHour}:${formattedMinute}`;
-        // Use German 24-hour format (HH:mm)
-        const label = `${formattedHour}:${formattedMinute}`;
-        options.push({ value, label });
-      }
-    }
-    return options;
-  }, []); // Empty dependency array ensures this only runs once
-
   const handleSave = () => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    // Full validation before saving
+    const result = ZodEinsatzFormData.safeParse(formData);
 
-    if (!all_day) {
-      const [startHours = 0, startMinutes = 0] = startTime
+    if (!result.success) {
+      const flattenedErrors = result.error.flatten();
+      setErrors({
+        fieldErrors: flattenedErrors.fieldErrors,
+        formErrors: flattenedErrors.formErrors || [],
+      });
+      return;
+    }
+
+    // Clear errors if validation passes
+    setErrors({
+      fieldErrors: {},
+      formErrors: [],
+    });
+
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+
+    if (!formData.all_day) {
+      const [startHours = 0, startMinutes = 0] = formData.startTime
         .split(":")
         .map(Number);
-      const [endHours = 0, endMinutes = 0] = endTime.split(":").map(Number);
+      const [endHours = 0, endMinutes = 0] = formData.endTime
+        .split(":")
+        .map(Number);
 
       if (
         startHours < StartHour ||
@@ -230,9 +396,17 @@ export function EventDialog({
         endHours < StartHour ||
         endHours > EndHour
       ) {
-        setError(
-          `Selected time must be between ${StartHour}:00 and ${EndHour}:00`
-        );
+        setErrors({
+          fieldErrors: {
+            startTime: [
+              `Selected time must be between ${StartHour}:00 and ${EndHour}:00`,
+            ],
+            endTime: [
+              `Selected time must be between ${StartHour}:00 and ${EndHour}:00`,
+            ],
+          },
+          formErrors: [],
+        });
         return;
       }
 
@@ -245,12 +419,17 @@ export function EventDialog({
 
     // Validate that end date is not before start date
     if (isBefore(end, start)) {
-      setError("End date cannot be before start date");
+      setErrors({
+        fieldErrors: {
+          endDate: ["End date cannot be before start date"],
+        },
+        formErrors: [],
+      });
       return;
     }
 
     // Use generic title if empty
-    const eventTitle = title.trim() ? title : "(no title)";
+    const eventTitle = formData.title.trim() ? formData.title : "(no title)";
 
     const createdAt =
       currentEinsatz && "created_at" in currentEinsatz
@@ -268,7 +447,7 @@ export function EventDialog({
       updated_at: updatedAt,
       start: start,
       end: end,
-      all_day,
+      all_day: formData.all_day,
       participant_count: currentEinsatz?.participant_count ?? null,
       price_per_person: currentEinsatz?.price_per_person ?? null,
       total_price: currentEinsatz?.total_price ?? null,
@@ -286,110 +465,15 @@ export function EventDialog({
     }
   };
 
-  const setDefaultFormValues = (data: {
-    template?: EinsatzTemplate;
-    title?: string;
-    categories?: EinsatzCategory[];
-    start?: Date;
-    end?: Date;
-    all_day?: boolean;
-    participant_count?: number | null;
-    price_per_person?: number | null;
-    helpers_needed?: number;
-    assignedUsers?: string[];
-    customFields?: EinsatzField[];
-  }) => {
-    if (data.template) {
-      setActiveTemplate(data.template);
-    }
-    if (data.title) {
-      setTitle(data.title);
-    }
-    if (data.categories) {
-      setEinsatzCategoriesIds(data.categories.map((cat) => cat.value));
-    }
-    if (data.start) {
-      setStartDate(data.start);
-      setStartTime(formatTimeForInput(data.start));
-    }
-    if (data.end) {
-      setEndDate(data.end);
-      setEndTime(formatTimeForInput(data.end));
-    }
-    if (data.all_day !== undefined) {
-      setAllDay(data.all_day);
-    }
-    if (data.participant_count) {
-      setParticipantCount(data.participant_count);
-    }
-    if (data.price_per_person) {
-      setPricePerPerson(data.price_per_person);
-    }
-    if (data.helpers_needed !== undefined) {
-      setHelpersNeeded(data.helpers_needed);
-    }
-    if (data.assignedUsers) {
-      setAssignedUsers(data.assignedUsers);
-    }
-    if (data.customFields) {
-      setCustomFields(data.customFields);
-    }
-  };
-
-  // Updated color options to match types.ts
-  const colorOptions: Array<{
-    value: EventColor;
-    label: string;
-    bgClass: string;
-    borderClass: string;
-  }> = [
-    {
-      value: "sky",
-      label: "Sky",
-      bgClass: "bg-sky-400 data-[state=checked]:bg-sky-400",
-      borderClass: "border-sky-400 data-[state=checked]:border-sky-400",
-    },
-    {
-      value: "amber",
-      label: "Amber",
-      bgClass: "bg-amber-400 data-[state=checked]:bg-amber-400",
-      borderClass: "border-amber-400 data-[state=checked]:border-amber-400",
-    },
-    {
-      value: "violet",
-      label: "Violet",
-      bgClass: "bg-violet-400 data-[state=checked]:bg-violet-400",
-      borderClass: "border-violet-400 data-[state=checked]:border-violet-400",
-    },
-    {
-      value: "rose",
-      label: "Rose",
-      bgClass: "bg-rose-400 data-[state=checked]:bg-rose-400",
-      borderClass: "border-rose-400 data-[state=checked]:border-rose-400",
-    },
-    {
-      value: "emerald",
-      label: "Emerald",
-      bgClass: "bg-emerald-400 data-[state=checked]:bg-emerald-400",
-      borderClass: "border-emerald-400 data-[state=checked]:border-emerald-400",
-    },
-    {
-      value: "orange",
-      label: "Orange",
-      bgClass: "bg-orange-400 data-[state=checked]:bg-orange-400",
-      borderClass: "border-orange-400 data-[state=checked]:border-orange-400",
-    },
-  ];
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="!max-w-[55rem]">
-        <DialogHeader>
+      <DialogContent className="!max-w-[55rem] flex flex-col max-h-[90vh]">
+        <DialogHeader className="flex-shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>
             {isLoading
               ? "Laden..."
               : currentEinsatz?.id
-              ? "Bearbeite " + title
+              ? "Bearbeite " + formData.title
               : "Erstelle " + (activeOrg?.einsatz_name_singular ?? " Einsatz")}
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -398,50 +482,81 @@ export function EventDialog({
               : "Add a new einsatz to your calendar"}
           </DialogDescription>
         </DialogHeader>
-        {error && (
-          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm">
-            {error}
+
+        {/* Display form-level errors */}
+        {errors.formErrors.length > 0 && (
+          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm flex-shrink-0">
+            <ul className="list-disc list-inside">
+              {errors.formErrors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
           </div>
         )}
-        <div className="grid gap-8 py-4">
-          <FormGroup>
-            {templatesQuery.isLoading ? (
-              <div>Lade Vorlagen ...</div>
-            ) : !activeTemplate ? (
-              // template not yet set, show options
-              <FormInputFieldCustom name="Vorlage auswählen">
-                <div className="flex flex-wrap gap-4 mt-1.5">
-                  {templatesQuery.data?.map((t) => (
-                    <ToggleItemBig
-                      key={t.id}
-                      text={t.name ?? "Vorlage"}
-                      description={t.description ?? ""}
-                      iconUrl={t.template_icon.icon_url.trim()}
-                      onClick={() => {
-                        setActiveTemplate(t);
-                      }}
-                    />
-                  ))}
+
+        {/* Display field-level errors summary */}
+        {Object.keys(errors.fieldErrors).length > 0 && (
+          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm flex-shrink-0">
+            <p className="font-medium mb-2">
+              Bitte korrigieren Sie folgende Fehler:
+            </p>
+            <ul className="list-disc list-inside space-y-1">
+              {Object.entries(errors.fieldErrors).map(([field, fieldErrors]) =>
+                fieldErrors.map((error, index) => (
+                  <li key={`${field}-${index}`}>
+                    <span className="font-medium">
+                      {getFieldDisplayName(field)}:
+                    </span>{" "}
+                    {error}
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="grid gap-8 py-4">
+            <FormGroup>
+              {templatesQuery.isLoading ? (
+                <div>Lade Vorlagen ...</div>
+              ) : !activeTemplateId ? (
+                // template not yet set, show options
+                <FormInputFieldCustom name="Vorlage auswählen">
+                  <div className="flex flex-wrap gap-4 mt-1.5">
+                    {templatesQuery.data?.map((t) => (
+                      <ToggleItemBig
+                        key={t.id}
+                        text={t.name ?? "Vorlage"}
+                        description={t.description ?? ""}
+                        iconUrl={t.template_icon.icon_url.trim()}
+                        onClick={() => {
+                          setActiveTemplateId(t.id);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </FormInputFieldCustom>
+              ) : (
+                // option to switch template (TODO later)
+                <div>
+                  <span className="font-semibold">
+                    {
+                      templatesQuery.data?.find(
+                        (t) => t.id === activeTemplateId
+                      )?.name
+                    }
+                  </span>{" "}
+                  ausgewählt.
                 </div>
-              </FormInputFieldCustom>
-            ) : (
-              // option to switch template (TODO later)
-              <div>
-                <span className="font-semibold">{activeTemplate?.name}</span>{" "}
-                ausgewählt.
-              </div>
-            )}
-          </FormGroup>
-          {/* possible to override the rems if categories should be larger */}
-          <FormGroup className="grid grid-cols-[repeat(auto-fit,minmax(17rem,1fr))]">
-            <FormField
-              name="Einsatz Name"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <MultiSelectFormField
-              name="Kategorien"
-              options={
+              )}
+            </FormGroup>
+            {/* Form Fields */}
+            <DefaultFormFields
+              formData={formData}
+              onFormDataChange={handleFormDataChange}
+              errors={errors}
+              categoriesOptions={
                 categoriesQuery?.data
                   ? categoriesQuery?.data?.map((cat) => ({
                       value: cat.id,
@@ -449,177 +564,19 @@ export function EventDialog({
                     }))
                   : []
               }
-              defaultValue={einsatzCategoriesIds}
-              placeholder="Kategorien auswählen"
-              animation={1}
-              onValueChange={(selectedValues) => {
-                setEinsatzCategoriesIds(selectedValues);
-              }}
+              usersOptions={
+                usersQuery?.data
+                  ? usersQuery.data.map((user) => ({
+                      value: user.id,
+                      label: user.firstname + " " + user.lastname,
+                    }))
+                  : []
+              }
+              activeOrg={activeOrg}
             />
-          </FormGroup>
-          <div className="flex flex-col gap-4">
-            <FormGroup className="flex flex-row">
-              <FormInputFieldCustom className="flex-1" name="Start Datum">
-                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="start_datum"
-                      variant={"outline"}
-                      className={cn(
-                        "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "truncate",
-                          !startDate && "text-muted-foreground"
-                        )}
-                      >
-                        {startDate
-                          ? format(startDate, "PPP", { locale: de })
-                          : "Datum auswählen"}
-                      </span>
-                      <RiCalendarLine
-                        size={16}
-                        className="text-muted-foreground/80 shrink-0"
-                        aria-hidden="true"
-                      />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-2" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      defaultMonth={startDate}
-                      locale={de}
-                      onSelect={(date) => {
-                        if (date) {
-                          setStartDate(date);
-                          // If end date is before the new start date, update it to match the start date
-                          if (isBefore(endDate, date)) {
-                            setEndDate(date);
-                          }
-                          setError(null);
-                          setStartDateOpen(false);
-                        }
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </FormInputFieldCustom>
-              {!all_day && (
-                <div className="min-w-28 *:not-first:mt-1.5">
-                  <FormInputFieldCustom name="Start Zeit">
-                    <Select value={startTime} onValueChange={setStartTime}>
-                      <SelectTrigger id="start_time">
-                        <SelectValue placeholder="Select time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormInputFieldCustom>
-                </div>
-              )}
-            </FormGroup>
-            <FormGroup className="flex flex-row">
-              <FormInputFieldCustom className="flex-1" name="Ende Datum">
-                <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="ende_datum"
-                      variant={"outline"}
-                      className={cn(
-                        "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
-                        !endDate && "text-muted-foreground"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "truncate",
-                          !endDate && "text-muted-foreground"
-                        )}
-                      >
-                        {endDate
-                          ? format(endDate, "PPP", { locale: de })
-                          : "Datum auswählen"}
-                      </span>
-                      <RiCalendarLine
-                        size={16}
-                        className="text-muted-foreground/80 shrink-0"
-                        aria-hidden="true"
-                      />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-2" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      defaultMonth={endDate}
-                      locale={de}
-                      onSelect={(date) => {
-                        if (date) {
-                          setEndDate(date);
-                          setError(null);
-                          setEndDateOpen(false);
-                        }
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </FormInputFieldCustom>
-              {!all_day && (
-                <div className="min-w-28 *:not-first:mt-1.5">
-                  <FormInputFieldCustom name="Ende Zeit">
-                    <Select value={endTime} onValueChange={setEndTime}>
-                      <SelectTrigger id="end_time">
-                        <SelectValue placeholder="Zeit auswählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormInputFieldCustom>
-                </div>
-              )}
-            </FormGroup>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="all-day"
-                checked={all_day}
-                onCheckedChange={(checked) => setAllDay(checked === true)}
-              />
-              <Label htmlFor="all-day">Ganztägig</Label>
-            </div>
           </div>
-
-          <FormGroup>
-            <FormField
-              name="Teilnehmeranzahl"
-              type="number"
-              value={participantCount || ""}
-              placeholder=""
-              onChange={(e) => setParticipantCount(Number(e.target.value) || 0)}
-            />
-            <FormField
-              className="flex-1"
-              name="Preis pro Person"
-              type="number"
-              value={pricePerPerson || ""}
-              onChange={(e) => setPricePerPerson(Number(e.target.value) || 0)}
-            />
-          </FormGroup>
         </div>
-        <DialogFooter className="flex-row sm:justify-between">
+        <DialogFooter className="flex-row sm:justify-between flex-shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
           {currentEinsatz?.id && (
             <Button
               variant="outline"

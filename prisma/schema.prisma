@@ -116,38 +116,18 @@ model organization {
   einsatz_category       einsatz_category[]
   einsatz_template       einsatz_template[]
   invitation             invitation[]
-  organization_property  organization_property[]
   user_organization_role user_organization_role[]
-}
-
-model organization_property {
-  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  org_id        String          @db.Uuid
-  key           String
-  property      String
-  is_required   Boolean         @default(false)
-  type_id       String          @db.Uuid
-  organization  organization    @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  type          type            @relation(fields: [type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user_property user_property[]
-}
-
-model roles {
-  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                 String
-  abbreviation         String?
-  user_role_assignment user_role_assignment[]
+  user_property          user_property[]
 }
 
 model type {
-  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                  String?
-  description           String?
-  icon_url              String?
-  sort_order            Int?                    @db.SmallInt
-  datatype              String?
-  field                 field[]
-  organization_property organization_property[]
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String?
+  description String?
+  icon_url    String?
+  sort_order  Int?    @db.SmallInt
+  datatype    String?
+  field       field[]
 }
 
 model user {
@@ -174,26 +154,27 @@ model user {
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
   user_organization_role                    user_organization_role[]
+  user_property_value                       user_property_value[]
 }
 
 model user_organization_role {
-  id                     String                 @id(map: "user_organization_rol_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id                String                 @db.Uuid
-  org_id                 String                 @db.Uuid
-  created_at             DateTime               @default(now()) @db.Timestamptz(6)
-  hasGetMailNotification Boolean                @default(true)
-  organization           organization           @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  user                   user                   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  user_property          user_property[]
-  user_role_assignment   user_role_assignment[]
+  id           String       @id(map: "user_organization_rol_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String       @db.Uuid
+  org_id       String       @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  role_id      String       @db.Uuid
+  organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  role         role         @relation(fields: [role_id], references: [id], onDelete: NoAction)
+  user         user         @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model user_property {
-  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_org_role_id       String?                 @db.Uuid
-  property_id            String?                 @db.Uuid
-  organization_property  organization_property?  @relation(fields: [property_id], references: [id], onDelete: Cascade)
-  user_organization_role user_organization_role? @relation(fields: [user_org_role_id], references: [id], onDelete: Cascade)
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  field_id            String                @db.Uuid
+  org_id              String                @db.Uuid
+  field               field                 @relation(fields: [field_id], references: [id], onDelete: Cascade)
+  organization        organization          @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  user_property_value user_property_value[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -236,6 +217,7 @@ model field {
   einsatz_field  einsatz_field[]
   type           type?            @relation(fields: [type_id], references: [id], onDelete: Cascade, map: "custom_field_type_id_fkey")
   template_field template_field[]
+  user_property  user_property[]
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -246,16 +228,6 @@ model template_field {
   field_id         String           @db.Uuid
   field            field            @relation(fields: [field_id], references: [id], onDelete: Cascade)
   einsatz_template einsatz_template @relation(fields: [template_id], references: [id], onDelete: Cascade)
-}
-
-model user_role_assignment {
-  id                        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_organization_role_id String                 @db.Uuid
-  role_id                   String                 @db.Uuid
-  roles                     roles                  @relation(fields: [role_id], references: [id], onDelete: Cascade)
-  user_organization_role    user_organization_role @relation(fields: [user_organization_role_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_organization_role_id, role_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -282,4 +254,22 @@ model template_icon {
   id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   icon_url         String             @default("")
   einsatz_template einsatz_template[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model role {
+  id                     String                   @id(map: "roles_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String
+  abbreviation           String?
+  user_organization_role user_organization_role[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user_property_value {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String        @db.Uuid
+  user_property_id String        @db.Uuid
+  value            String
+  user             user          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_property    user_property @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
 }

@@ -23,6 +23,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { toast } from "sonner";
 
 /**
  * Variants for the multi-select component to handle different styles.
@@ -54,6 +55,10 @@ const multiSelectVariants = cva(
 export interface MultiSelectProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof multiSelectVariants> {
+  // custom: limit the allowed selected items
+  allowedActiveItems?: number;
+  allowedActiveItemsReachedMessage?: string;
+
   /**
    * An array of option objects to be displayed in the multi-select component.
    * Each option object has a label, value, and an optional icon.
@@ -126,6 +131,8 @@ export const MultiSelect = React.forwardRef<
       defaultValue = [],
       placeholder = "Select options",
       animation = 0,
+      allowedActiveItems,
+      allowedActiveItemsReachedMessage = "Maximale Anzahl an Elementen erreicht.",
       maxCount = 3,
       modalPopover = false,
       asChild = false,
@@ -138,6 +145,16 @@ export const MultiSelect = React.forwardRef<
       React.useState<string[]>(defaultValue);
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
     const [isAnimating, setIsAnimating] = React.useState(false);
+
+    if (
+      isPopoverOpen &&
+      allowedActiveItems &&
+      selectedValues.length >= allowedActiveItems
+    ) {
+      props.disabled = true;
+      toast.error(allowedActiveItemsReachedMessage);
+      setIsPopoverOpen(false);
+    }
 
     const handleInputKeyDown = (
       event: React.KeyboardEvent<HTMLInputElement>
@@ -167,6 +184,10 @@ export const MultiSelect = React.forwardRef<
     };
 
     const handleTogglePopover = () => {
+      if (allowedActiveItems && selectedValues.length >= allowedActiveItems) {
+        toast.error(allowedActiveItemsReachedMessage);
+        return;
+      }
       setIsPopoverOpen((prev) => !prev);
     };
 
@@ -180,7 +201,9 @@ export const MultiSelect = React.forwardRef<
       if (selectedValues.length === options.length) {
         handleClear();
       } else {
-        const allValues = options.map((option) => option.value);
+        const allValues = options
+          .slice(0, allowedActiveItems ?? options.length)
+          .map((option) => option.value);
         setSelectedValues(allValues);
         onValueChange(allValues);
       }
