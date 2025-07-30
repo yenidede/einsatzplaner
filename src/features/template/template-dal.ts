@@ -19,6 +19,28 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
                 icon_url: true,
             },
         },
+        template_field: {
+          select: {
+            field: {
+              select: {
+                name: true,
+                type: {
+                  select: {
+                    datatype: true,
+                  }
+                },
+                is_required: true,
+                placeholder: true,
+                default_value: true,
+                group_name: true,
+                is_multiline: true,
+                min: true,
+                max: true,
+                allowed_values: true,
+              }
+            }
+          }
+        }
     }
   });
   return templates;

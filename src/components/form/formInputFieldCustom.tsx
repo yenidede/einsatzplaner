@@ -17,10 +17,10 @@ export default function FormField({
 }) {
   const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
   return (
-    <div className={"*:not-first:mt-1.5 " + className}>
+    <div className={className}>
       <Label htmlFor={sanitizedId}>
         {name}
-        {children}
+        <div className="mt-1.5"> {children}</div>
       </Label>
     </div>
   );
