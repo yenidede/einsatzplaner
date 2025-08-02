@@ -36,6 +36,7 @@ import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 
 export const ZodEinsatzFormData = z
   .object({
@@ -60,7 +61,7 @@ export const ZodEinsatzFormData = z
       .number()
       .min(0, "Teilnehmeranzahl darf nicht negativ sein"),
     pricePerPerson: z.number().min(0, "Preis darf nicht negativ sein"),
-    helpersNeeded: z.number().min(0, "Helfer-Anzahl muss 0 oder größer sein"),
+    helpersNeeded: z.number().min(-1, "Helfer-Anzahl muss 0 oder größer sein"),
     assignedUsers: z.array(z.uuid()),
   })
   .refine(
@@ -82,12 +83,29 @@ export const ZodEinsatzFormData = z
         return endDateTime > startDateTime;
       } else {
         // For all-day events, just compare dates
+        data.endDate.setHours(0, 0, 0, 0);
+        data.startDate.setHours(0, 0, 0, 0);
         return data.endDate >= data.startDate;
       }
     },
     {
       message: "Enddatum/zeit muss nach Startdatum/zeit liegen",
       path: ["endDate"],
+    }
+  )
+  .refine(
+    (data) => {
+      // Check if assigned users don't exceed helpers needed
+      // Only validate if helpersNeeded is set (> 0) and we have assigned users
+      if (data.helpersNeeded >= 0 && data.assignedUsers.length > 0) {
+        return data.assignedUsers.length <= data.helpersNeeded;
+      }
+      return true; // Always valid if helpersNeeded is -1 (unlimited) or 0
+    },
+    {
+      message:
+        "Anzahl zugewiesener Personen darf die benötigten Helfer nicht überschreiten",
+      path: ["assignedUsers"],
     }
   );
 
@@ -348,6 +366,7 @@ export function EventDialog({
       endTime: `${DefaultEndHour}:00`,
       all_day: false,
     });
+    setActiveTemplateId(null);
     setErrors({
       fieldErrors: {},
       formErrors: [],
@@ -358,6 +377,39 @@ export function EventDialog({
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = Math.floor(date.getMinutes() / 15) * 15;
     return `${hours}:${minutes.toString().padStart(2, "0")}`;
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    setActiveTemplateId(templateId);
+
+    // TODO: add alert dialog
+
+    // Load template data and populate form
+    const selectedTemplate = templatesQuery.data?.find(
+      (t) => t.id === templateId
+    );
+    if (selectedTemplate) {
+      // Populate form with template data
+      const templateUpdates: Partial<EinsatzFormData> = {};
+
+      // Set default values from template if available
+      if (selectedTemplate.participant_count_default !== null) {
+        templateUpdates.participantCount =
+          selectedTemplate.participant_count_default;
+      }
+      if (selectedTemplate.price_person_default !== null) {
+        templateUpdates.pricePerPerson = selectedTemplate.price_person_default;
+      }
+      if (selectedTemplate.helpers_needed_default !== null) {
+        templateUpdates.helpersNeeded = selectedTemplate.helpers_needed_default;
+      }
+      if (selectedTemplate.all_day_default !== null) {
+        templateUpdates.all_day = selectedTemplate.all_day_default;
+      }
+
+      // Apply template values to form
+      handleFormDataChange(templateUpdates);
+    }
   };
 
   const handleSave = () => {
@@ -531,7 +583,7 @@ export function EventDialog({
                         description={t.description ?? ""}
                         iconUrl={t.template_icon.icon_url.trim()}
                         onClick={() => {
-                          setActiveTemplateId(t.id);
+                          handleTemplateSelect(t.id);
                         }}
                       />
                     ))}
