@@ -1,0 +1,305 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { RiCalendarLine } from "@remixicon/react";
+import { format, isBefore } from "date-fns";
+import { de } from "date-fns/locale";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DefaultEndHour,
+  DefaultStartHour,
+  EndHour,
+  StartHour,
+} from "@/components/event-calendar/constants";
+import type { organization as Organization } from "@/generated/prisma";
+import FormGroup from "../form/formGroup";
+import FormField from "../form/formInputField";
+import MultiSelectFormField from "../form/multiSelectFormField";
+import FormInputFieldCustom from "../form/formInputFieldCustom";
+import type { EinsatzFormData } from "@/components/event-calendar/event-dialog";
+
+interface DefaultFormFieldsProps {
+  formData: EinsatzFormData;
+  onFormDataChange: (updates: Partial<EinsatzFormData>) => void;
+  errors: {
+    fieldErrors: Record<string, string[]>;
+    formErrors: string[];
+  };
+  categoriesOptions: Array<{ value: string; label: string }>;
+  usersOptions: Array<{ value: string; label: string }>;
+  activeOrg: Organization | null;
+}
+
+export function DefaultFormFields({
+  formData,
+  onFormDataChange,
+  errors,
+  categoriesOptions,
+  usersOptions,
+  activeOrg,
+}: DefaultFormFieldsProps) {
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
+
+  // Memoize time options so they're only calculated once
+  const timeOptions = useMemo(() => {
+    const options = [];
+    for (let hour = StartHour; hour <= EndHour - 1; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const formattedHour = hour.toString().padStart(2, "0");
+        const formattedMinute = minute.toString().padStart(2, "0");
+        const value = `${formattedHour}:${formattedMinute}`;
+        const label = `${formattedHour}:${formattedMinute}`;
+        options.push({ value, label });
+      }
+    }
+    return options;
+  }, []);
+
+  const handleChange = (field: keyof EinsatzFormData, value: any) => {
+    onFormDataChange({ [field]: value });
+  };
+
+  return (
+    <>
+      {/* Title and Categories */}
+      <FormGroup className="grid grid-cols-[repeat(auto-fit,minmax(17rem,1fr))]">
+        <FormField
+          name="Einsatzname"
+          value={formData.title}
+          onChange={(e) => handleChange("title", e.target.value)}
+        />
+        <MultiSelectFormField
+          name="Kategorien"
+          options={categoriesOptions}
+          defaultValue={formData.einsatzCategoriesIds}
+          placeholder="Kategorien auswählen"
+          animation={1}
+          onValueChange={(selectedValues) => {
+            handleChange("einsatzCategoriesIds", selectedValues);
+          }}
+        />
+      </FormGroup>
+
+      {/* Date and Time Fields */}
+      <div className="flex flex-col gap-4">
+        <FormGroup className="flex flex-row">
+          <FormInputFieldCustom className="flex-1" name="Start Datum">
+            <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="start_datum"
+                  variant={"outline"}
+                  className={cn(
+                    "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+                    !formData.startDate && "text-muted-foreground"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "truncate",
+                      !formData.startDate && "text-muted-foreground"
+                    )}
+                  >
+                    {formData.startDate
+                      ? format(formData.startDate, "PPP", { locale: de })
+                      : "Datum auswählen"}
+                  </span>
+                  <RiCalendarLine
+                    size={16}
+                    className="text-muted-foreground/80 shrink-0"
+                    aria-hidden="true"
+                  />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.startDate}
+                  defaultMonth={formData.startDate}
+                  locale={de}
+                  onSelect={(date) => {
+                    if (date) {
+                      handleChange("startDate", date);
+                      // If end date is before the new start date, update it to match the start date
+                      if (isBefore(formData.endDate, date)) {
+                        handleChange("endDate", date);
+                      }
+                      setStartDateOpen(false);
+                    }
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </FormInputFieldCustom>
+          {!formData.all_day && (
+            <div className="min-w-28 *:not-first:mt-1.5">
+              <FormInputFieldCustom name="Start Zeit">
+                <Select
+                  value={formData.startTime}
+                  onValueChange={(value) => handleChange("startTime", value)}
+                >
+                  <SelectTrigger id="start_time">
+                    <SelectValue placeholder="Select time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormInputFieldCustom>
+            </div>
+          )}
+        </FormGroup>
+        <FormGroup className="flex flex-row">
+          <FormInputFieldCustom className="flex-1" name="Ende Datum">
+            <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="ende_datum"
+                  variant={"outline"}
+                  className={cn(
+                    "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+                    !formData.endDate && "text-muted-foreground"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "truncate",
+                      !formData.endDate && "text-muted-foreground"
+                    )}
+                  >
+                    {formData.endDate
+                      ? format(formData.endDate, "PPP", { locale: de })
+                      : "Datum auswählen"}
+                  </span>
+                  <RiCalendarLine
+                    size={16}
+                    className="text-muted-foreground/80 shrink-0"
+                    aria-hidden="true"
+                  />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.endDate}
+                  defaultMonth={formData.endDate}
+                  locale={de}
+                  onSelect={(date) => {
+                    if (date) {
+                      handleChange("endDate", date);
+                      setEndDateOpen(false);
+                    }
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </FormInputFieldCustom>
+          {!formData.all_day && (
+            <div className="min-w-28 *:not-first:mt-1.5">
+              <FormInputFieldCustom name="Ende Zeit">
+                <Select
+                  value={formData.endTime}
+                  onValueChange={(value) => handleChange("endTime", value)}
+                >
+                  <SelectTrigger id="end_time">
+                    <SelectValue placeholder="Zeit auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormInputFieldCustom>
+            </div>
+          )}
+        </FormGroup>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="all-day"
+            checked={formData.all_day}
+            onCheckedChange={(checked) =>
+              handleChange("all_day", checked === true)
+            }
+          />
+          <Label htmlFor="all-day">Ganztägig</Label>
+        </div>
+      </div>
+
+      {/* Participant and Price Fields */}
+      <FormGroup>
+        <FormField
+          name="Teilnehmeranzahl"
+          type="number"
+          value={formData.participantCount || ""}
+          placeholder=""
+          onChange={(e) =>
+            handleChange("participantCount", Number(e.target.value) || 0)
+          }
+        />
+        <FormField
+          className="flex-1"
+          step={0.25}
+          name="Preis pro Person (€)"
+          type="number"
+          min={0}
+          value={formData.pricePerPerson ?? ""}
+          onChange={(e) =>
+            handleChange("pricePerPerson", Number(e.target.value) || 0)
+          }
+        />
+      </FormGroup>
+
+      {/* Helpers and User Selection */}
+      <FormGroup>
+        <FormField
+          name={"Anzahl " + (activeOrg?.einsatz_name_plural ?? "Helfer")}
+          type="number"
+          min={0}
+          value={formData.helpersNeeded >= 0 ? formData.helpersNeeded : ""}
+          placeholder=""
+          onChange={(e) =>
+            handleChange("helpersNeeded", Number(e.target.value) || -1)
+          }
+        />
+        <MultiSelectFormField
+          name="Ausgewählte Personen"
+          options={usersOptions}
+          defaultValue={formData.assignedUsers}
+          placeholder="Personen auswählen"
+          animation={1}
+          allowedActiveItems={
+            formData.helpersNeeded > 0 ? formData.helpersNeeded : undefined
+          }
+          onValueChange={(selectedValues) => {
+            handleChange("assignedUsers", selectedValues);
+          }}
+        />
+      </FormGroup>
+    </>
+  );
+}

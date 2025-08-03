@@ -1,6 +1,27 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Fluid Responsive see more: https://finsweet.com/client-first/docs/fluid-responsive */
+/* this makes sizes scale automatically if the screen gets bigger */
+html {
+  font-size: calc(0.75rem + 0.41666666666666663vw);
+}
+@media screen and (max-width: 1920px) {
+  html {
+    font-size: calc(0.75rem + 0.41666666666666674vw);
+  }
+}
+@media screen and (max-width: 1440px) {
+  html {
+    font-size: calc(0.9376951092611863rem + 0.20811654526534862vw);
+  }
+}
+@media screen and (max-width: 479px) {
+  html {
+    font-size: 1rem;
+  }
+}
+
 h1 {
   @apply text-2xl font-semibold leading-loose;
 }
