@@ -36,7 +36,7 @@ import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
-import { AlertDialog } from "@/components/ui/alert-dialog";
+import { useAlertDialog } from "@/contexts/AlertDialogContext";
 
 export const ZodEinsatzFormData = z
   .object({
@@ -147,6 +147,8 @@ export function EventDialog({
   onSave,
   onDelete,
 }: EventDialogProps) {
+  const { showDialog } = useAlertDialog();
+
   // Defaults for the defaultFormFields (no template loaded yet)
   const [formData, setFormData] = useState<EinsatzFormData>({
     title: "",
@@ -379,15 +381,24 @@ export function EventDialog({
     return `${hours}:${minutes.toString().padStart(2, "0")}`;
   };
 
-  const handleTemplateSelect = (templateId: string) => {
-    setActiveTemplateId(templateId);
-
-    // TODO: add alert dialog
-
-    // Load template data and populate form
+  const handleTemplateSelect = async (templateId: string) => {
     const selectedTemplate = templatesQuery.data?.find(
       (t) => t.id === templateId
     );
+
+    const dialogResult = await showDialog({
+      title: `${selectedTemplate?.name || "Vorlage"} laden?`,
+      description: `Ausgefüllte Felder werden möglicherweise Überschrieben.`,
+    });
+
+    if (dialogResult !== "success") {
+      // User cancelled, do not load template
+      return;
+    }
+
+    setActiveTemplateId(templateId);
+
+    // Load template data and populate form
     if (selectedTemplate) {
       // Populate form with template data
       const templateUpdates: Partial<EinsatzFormData> = {};
@@ -511,9 +522,16 @@ export function EventDialog({
     });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (currentEinsatz?.id) {
-      onDelete(currentEinsatz.id);
+      const result = await showDialog({
+        title: "Einsatz löschen",
+        description: `Sind Sie sicher, dass Sie den Einsatz "${formData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
+      });
+
+      if (result === "success") {
+        onDelete(currentEinsatz.id);
+      }
     }
   };
 
