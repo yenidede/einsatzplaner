@@ -12,14 +12,14 @@ import { boolean, z, ZodString, ZodType } from "zod";
  * @throws Error if an unsupported field type is encountered.
  */
 
-type validationOptions = {
+type ValidationOptions = {
   isMultiline?: boolean | null,
   isRequired?: boolean | null,
   min?: number | null,
   max?: number | null,
   allowedValues?: string[] | null,
 }
-export function generateDynamicSchema(fields: { fieldId: string; type: string | null | undefined; options: validationOptions }[]) {
+export function generateDynamicSchema(fields: { fieldId: string; type: string | null | undefined; options: ValidationOptions }[]) {
   const schemaShape: Record<string, z.ZodType<any>> = {};
 
   fields.forEach((field) => {
