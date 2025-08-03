@@ -354,7 +354,6 @@ export function EventDialog({
         });
       }
     } else {
-      console.log("No currentEinsatz, resetting form");
       resetForm();
     }
   }, [currentEinsatz]);
