@@ -38,6 +38,20 @@ import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
 
+const DEFAULTFORMDATA: EinsatzFormData = {
+  title: "",
+  einsatzCategoriesIds: [],
+  startDate: new Date(),
+  endDate: new Date(),
+  startTime: `${DefaultStartHour}:00`,
+  endTime: `${DefaultEndHour}:00`,
+  all_day: false,
+  participantCount: 20,
+  pricePerPerson: 0,
+  helpersNeeded: 1,
+  assignedUsers: [],
+};
+
 export const ZodEinsatzFormData = z
   .object({
     title: z.string().min(1, "Titel ist erforderlich"),
@@ -150,21 +164,11 @@ export function EventDialog({
   const { showDialog } = useAlertDialog();
 
   // Defaults for the defaultFormFields (no template loaded yet)
-  const [formData, setFormData] = useState<EinsatzFormData>({
-    title: "",
-    einsatzCategoriesIds: [],
-    startDate: new Date(),
-    endDate: new Date(),
-    startTime: `${DefaultStartHour}:00`,
-    endTime: `${DefaultEndHour}:00`,
-    all_day: false,
-    participantCount: 20,
-    pricePerPerson: 0,
-    helpersNeeded: 1,
-    assignedUsers: [],
-  });
+  const [formData, setFormData] = useState<EinsatzFormData>(DEFAULTFORMDATA);
+  const [hasFormBeenModified, setHasFormBeenModified] = useState(false);
 
   const handleFormDataChange = (updates: Partial<EinsatzFormData>) => {
+    setHasFormBeenModified(true);
     const updatedFormData = { ...formData, ...updates };
 
     // Validate just the updated fields using partial schema
@@ -372,6 +376,7 @@ export function EventDialog({
       fieldErrors: {},
       formErrors: [],
     });
+    setHasFormBeenModified(false);
   };
 
   const formatTimeForInput = (date: Date) => {
@@ -380,19 +385,37 @@ export function EventDialog({
     return `${hours}:${minutes.toString().padStart(2, "0")}`;
   };
 
+  const checkIfFormIsModified = (o1: EinsatzFormData, o2: EinsatzFormData) => {
+    if (o1.participantCount !== o2.participantCount) {
+      return true;
+    }
+    if (o1.pricePerPerson !== o2.pricePerPerson) {
+      return true;
+    }
+    if (o1.helpersNeeded !== o2.helpersNeeded) {
+      return true;
+    }
+    if (o1.all_day !== o2.all_day) {
+      return true;
+    }
+    return false;
+  };
+
   const handleTemplateSelect = async (templateId: string) => {
     const selectedTemplate = templatesQuery.data?.find(
       (t) => t.id === templateId
     );
 
-    const dialogResult = await showDialog({
-      title: `${selectedTemplate?.name || "Vorlage"} laden?`,
-      description: `Ausgefüllte Felder werden möglicherweise Überschrieben.`,
-    });
+    if (checkIfFormIsModified(DEFAULTFORMDATA, formData)) {
+      const dialogResult = await showDialog({
+        title: `${selectedTemplate?.name || "Vorlage"} laden?`,
+        description: `Ausgefüllte Felder werden möglicherweise Überschrieben.`,
+      });
 
-    if (dialogResult !== "success") {
-      // User cancelled, do not load template
-      return;
+      if (dialogResult !== "success") {
+        // User cancelled, do not load template
+        return;
+      }
     }
 
     setActiveTemplateId(templateId);
