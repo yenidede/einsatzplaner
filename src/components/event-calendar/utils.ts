@@ -79,7 +79,7 @@ export function mapDbDataTypeToFormFieldType(datatype: string | null | undefined
   if (datatype) {
     if (defaultTypes.includes(datatype)) return "default";
     if (datatype === "boolean") return "checkbox"
-    if (datatype === "select") return "select"
+    if (datatype === "select") return "select";
   }
   throw new Error("Can't map datatype: " + datatype + " to its FormField.");
 }
