@@ -77,7 +77,7 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
 export function mapDbDataTypeToFormFieldType(datatype: string | null | undefined): FormFieldType {
   const defaultTypes = ["text", "number", "currency", "phone", "mail"];
   if (datatype) {
-    if (defaultTypes.includes(datatype)) return "default"
+    if (defaultTypes.includes(datatype)) return "default";
     if (datatype === "boolean") return "checkbox"
     if (datatype === "select") return "select"
   }
