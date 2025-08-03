@@ -146,15 +146,17 @@ export const MultiSelect = React.forwardRef<
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
     const [isAnimating, setIsAnimating] = React.useState(false);
 
-    if (
-      isPopoverOpen &&
-      allowedActiveItems &&
-      selectedValues.length >= allowedActiveItems
-    ) {
-      props.disabled = true;
-      toast.error(allowedActiveItemsReachedMessage);
-      setIsPopoverOpen(false);
-    }
+    // Determine if the popover should be disabled
+    React.useEffect(() => {
+      if (
+        isPopoverOpen &&
+        allowedActiveItems &&
+        selectedValues.length >= allowedActiveItems
+      ) {
+        toast.error(allowedActiveItemsReachedMessage);
+        setIsPopoverOpen(false);
+      }
+    }, [isPopoverOpen, allowedActiveItems, selectedValues.length]);
 
     const handleInputKeyDown = (
       event: React.KeyboardEvent<HTMLInputElement>
