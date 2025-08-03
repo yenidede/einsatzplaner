@@ -23,6 +23,7 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
           select: {
             field: {
               select: {
+                id: true,
                 name: true,
                 type: {
                   select: {
