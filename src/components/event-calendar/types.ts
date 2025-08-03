@@ -23,3 +23,19 @@ export type EventColor =
   | "rose"
   | "emerald"
   | "orange";
+
+export type FormFieldType = "default" | "select" | "multi-select" | "checkbox";
+
+export type CustomFormField = {
+  id: string,
+  displayName: string,
+  placeholder?: string | null,
+  defaultValue?: any,
+  required?: boolean,
+  groupName?: string | null,
+  type: FormFieldType,
+  isMultiline?: boolean | null,
+  min?: number | null,
+  max?: number | null,
+  allowedValues?: string[]
+}

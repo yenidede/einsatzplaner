@@ -2,7 +2,88 @@ import { isSameDay } from "date-fns";
 
 import type { CalendarEvent } from "@/components/event-calendar";
 import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
-import { CalendarMode } from "./types";
+import { CalendarMode, FormFieldType } from "./types";
+import { boolean, z, ZodString, ZodType } from "zod";
+
+/**
+ * Generates a Zod schema dynamically based on user-added fields.
+ * @param fields - Array of field definitions with name and type.
+ * @returns A Zod object schema.
+ * @throws Error if an unsupported field type is encountered.
+ */
+
+type validationOptions = {
+  isMultiline?: boolean | null,
+  isRequired?: boolean | null,
+  min?: number | null,
+  max?: number | null,
+  allowedValues?: string[] | null,
+}
+export function generateDynamicSchema(fields: { fieldId: string; type: string | null | undefined; options: validationOptions }[]) {
+  const schemaShape: Record<string, z.ZodType<any>> = {};
+
+  fields.forEach((field) => {
+    const { fieldId, type, options } = field;
+
+    if (!type) { console.log("no type specified:", field); return; };
+
+    let fieldSchema;
+
+    switch (type) {
+      case "text":
+        fieldSchema = z.string().min(1, "Text darf nicht leer sein");
+        if (options.min)
+          fieldSchema = fieldSchema.min(options.min);
+        if (options.max)
+          fieldSchema = fieldSchema.max(options.max);
+        break;
+      case "number":
+        fieldSchema = z.number();
+        if (options.min)
+          fieldSchema = fieldSchema.gte(options.min);
+        if (options.max)
+          fieldSchema = fieldSchema.lte(options.max);
+        break;
+      case "currency":
+        fieldSchema = z.number();
+        if (options.min)
+          fieldSchema = fieldSchema.gte(options.min);
+        if (options.max)
+          fieldSchema = fieldSchema.lte(options.max);
+        break;
+      case "boolean":
+        fieldSchema = z.boolean();
+        break;
+      case "phone":
+        fieldSchema = z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number. Example: +1234567890");
+        break;
+      case "mail":
+        fieldSchema = z.email("Invalid email address");
+        break;
+      case "select":
+        fieldSchema = z.enum(options.allowedValues as readonly string[]);
+        break;
+      default:
+        throw new Error("Field Type " + type + " unsupported");
+    }
+    if (options.isRequired !== true) fieldSchema = fieldSchema?.optional();
+
+    if (fieldSchema) schemaShape[fieldId] = fieldSchema;
+  });
+
+  return z.object(schemaShape);
+}
+
+export function mapDbDataTypeToFormFieldType(datatype: string | null | undefined): FormFieldType {
+  const defaultTypes = ["text", "number", "currency", "phone", "mail"];
+  if (datatype) {
+    if (defaultTypes.includes(datatype)) return "default"
+    if (datatype === "boolean") return "checkbox"
+    if (datatype === "select") return "select"
+  }
+  throw new Error("Can't map datatype: " + datatype + " to its FormField.");
+}
+
 
 /**
  * Get CSS classes for event colors
@@ -29,11 +110,11 @@ export function getEventColorClasses(
         return "bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8";
     }
   } else if (mode === "verwaltung") {
-      switch (status.verwalter_text) {
-        case "offen":
-          return "bg-red-200/50 hover:bg-red-200/40 text-red-950/80 dark:bg-red-400/25 dark:hover:bg-red-400/20 dark:text-red-200 shadow-red-700/8";
-        case "vergeben":
-          return "bg-orange-200/50 hover:bg-orange-200/40 text-orange-950/80 dark:bg-orange-400/25 dark:hover:bg-orange-400/20 dark:text-orange-200 shadow-orange-700/8";
+    switch (status.verwalter_text) {
+      case "offen":
+        return "bg-red-200/50 hover:bg-red-200/40 text-red-950/80 dark:bg-red-400/25 dark:hover:bg-red-400/20 dark:text-red-200 shadow-red-700/8";
+      case "vergeben":
+        return "bg-orange-200/50 hover:bg-orange-200/40 text-orange-950/80 dark:bg-orange-400/25 dark:hover:bg-orange-400/20 dark:text-orange-200 shadow-orange-700/8";
       case "bestätigt":
         return "bg-green-200/50 hover:bg-green-200/40 text-green-950/80 dark:bg-green-400/25 dark:hover:bg-green-400/20 dark:text-green-200 shadow-green-700/8";
       default:
