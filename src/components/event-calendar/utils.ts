@@ -4,6 +4,7 @@ import type { CalendarEvent } from "@/components/event-calendar";
 import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
 import { CalendarMode, FormFieldType } from "./types";
 import { boolean, z, ZodString, ZodType } from "zod";
+import { th } from "date-fns/locale";
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -61,7 +62,8 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
         fieldSchema = z.email("Invalid email address");
         break;
       case "select":
-        fieldSchema = z.enum(options.allowedValues as readonly string[]);
+        if (!options.allowedValues) throw new Error("Select field requires allowedValues");
+        fieldSchema = z.enum(options.allowedValues);
         break;
       default:
         throw new Error("Field Type " + type + " unsupported");
