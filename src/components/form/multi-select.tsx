@@ -175,7 +175,6 @@ export const MultiSelect = React.forwardRef<
         : [...selectedValues, option];
       setSelectedValues(newSelectedValues);
       onValueChange(newSelectedValues);
-      console.log(option, "was clicked");
     };
 
     const handleClear = () => {
