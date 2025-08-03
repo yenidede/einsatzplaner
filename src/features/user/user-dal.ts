@@ -38,7 +38,5 @@ export async function getAllUsersWithRolesByOrgId(org_id: string, role: string |
         },
       },
   }});
-  
-  console.log("Found users:", users.length, users);
   return users;
 }
