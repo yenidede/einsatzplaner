@@ -3,7 +3,7 @@
 import Prisma from "@/lib/prisma";
 
 export async function getAllUsersWithRolesByOrgId(org_id: string, role: string | null = null) {
-  console.log("getAllUsersWithRolesByOrgId called with org_id:", org_id, "role:", role);
+  
   
   const roleFilter = role ? { role: { name: role } } : {};
 
