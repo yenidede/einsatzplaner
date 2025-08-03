@@ -6,6 +6,7 @@ import { isBefore } from "date-fns";
 
 import { cn } from "@/lib/utils";
 import z from "zod";
+import { generateDynamicSchema, mapDbDataTypeToFormFieldType } from "./utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,7 @@ import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
+import { CustomFormField, FormFieldType } from "./types";
 
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -163,13 +165,76 @@ export function EventDialog({
 }: EventDialogProps) {
   const { showDialog } = useAlertDialog();
 
+  // TODO
+  const activeOrgId = "0c39989e-07bc-4074-92bc-aa274e5f22d0"; // remove this!!!
+  // TODO
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+
   // Defaults for the defaultFormFields (no template loaded yet)
-  const [formData, setFormData] = useState<EinsatzFormData>(DEFAULTFORMDATA);
-  const [hasFormBeenModified, setHasFormBeenModified] = useState(false);
+  const [defaultFormData, setDefaultFormData] =
+    useState<EinsatzFormData>(DEFAULTFORMDATA);
+  const [dynamicSchema, setDynamicSchema] = useState<z.ZodObject<any> | null>(
+    null
+  );
+  const [dynamicFormFields, setDynamicFormFields] = useState<CustomFormField[]>(
+    [
+      {
+        id: "kostenaufwand",
+        displayName: "Kostenaufwand",
+        placeholder: "Geben Sie den Kostenaufwand ein",
+        defaultValue: 12.2,
+        required: true,
+        groupName: "Finanzen",
+        min: 0,
+        type: "default",
+      },
+    ]
+  );
+
+  const [errors, setErrors] = useState<{
+    fieldErrors: Record<string, string[]>;
+    formErrors: string[];
+  }>({
+    fieldErrors: {},
+    formErrors: [],
+  });
+
+  // Fetch detailed einsatz data when einsatz is a string (ID)
+  const {
+    data: detailedEinsatz,
+    isLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["einsatz", einsatz],
+    queryFn: () => {
+      return getEinsatzWithDetailsById(einsatz as string);
+    },
+    enabled: typeof einsatz === "string" && !!einsatz && isOpen,
+  });
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories", activeOrg?.id ?? activeOrgId],
+    queryFn: () => getCategoriesByOrgIds([activeOrg?.id ?? activeOrgId]),
+  });
+
+  const templatesQuery = useQuery({
+    queryKey: ["templates", activeOrg?.id ?? activeOrgId],
+    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrg?.id ?? activeOrgId),
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ["users", activeOrg?.id ?? activeOrgId, "helpers"],
+    queryFn: () => {
+      return getAllUsersWithRolesByOrgId(activeOrg?.id ?? activeOrgId);
+    },
+  });
+
+  // type string means einsatz (enter exit mode)
+  const currentEinsatz =
+    typeof einsatz === "string" ? detailedEinsatz : einsatz;
 
   const handleFormDataChange = (updates: Partial<EinsatzFormData>) => {
-    setHasFormBeenModified(true);
-    const updatedFormData = { ...formData, ...updates };
+    const updatedFormData = { ...defaultFormData, ...updates };
 
     // Validate just the updated fields using partial schema
     const partialResult = ZodEinsatzFormData.partial().safeParse(updates);
@@ -246,54 +311,8 @@ export function EventDialog({
       });
     }
 
-    setFormData((prev) => ({ ...prev, ...updates }));
+    setDefaultFormData((prev) => ({ ...prev, ...updates }));
   };
-
-  // TODO
-  const activeOrgId = "0c39989e-07bc-4074-92bc-aa274e5f22d0"; // remove this!!!
-  // TODO
-  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const [errors, setErrors] = useState<{
-    fieldErrors: Record<string, string[]>;
-    formErrors: string[];
-  }>({
-    fieldErrors: {},
-    formErrors: [],
-  });
-
-  // Fetch detailed einsatz data when einsatz is a string (ID)
-  const {
-    data: detailedEinsatz,
-    isLoading,
-    error: queryError,
-  } = useQuery({
-    queryKey: ["einsatz", einsatz],
-    queryFn: () => {
-      return getEinsatzWithDetailsById(einsatz as string);
-    },
-    enabled: typeof einsatz === "string" && !!einsatz && isOpen,
-  });
-
-  const categoriesQuery = useQuery({
-    queryKey: ["categories", activeOrg?.id ?? activeOrgId],
-    queryFn: () => getCategoriesByOrgIds([activeOrg?.id ?? activeOrgId]),
-  });
-
-  const templatesQuery = useQuery({
-    queryKey: ["templates", activeOrg?.id ?? activeOrgId],
-    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrg?.id ?? activeOrgId),
-  });
-
-  const usersQuery = useQuery({
-    queryKey: ["users", activeOrg?.id ?? activeOrgId, "helpers"],
-    queryFn: () => {
-      return getAllUsersWithRolesByOrgId(activeOrg?.id ?? activeOrgId);
-    },
-  });
-
-  // type string means einsatz (enter exit mode)
-  const currentEinsatz =
-    typeof einsatz === "string" ? detailedEinsatz : einsatz;
 
   useEffect(() => {
     if (currentEinsatz && typeof currentEinsatz === "object") {
@@ -362,21 +381,59 @@ export function EventDialog({
     }
   }, [currentEinsatz]);
 
+  // Generate the dynamic schema whenever templatesQuery.data is fetched
+  useEffect(() => {
+    if (templatesQuery.data) {
+      const fields =
+        templatesQuery.data.find((t) => t.id === activeTemplateId)
+          ?.template_field || [];
+      try {
+        const mappedFields = fields.map((f) => {
+          return {
+            fieldId: f.field.id,
+            type: f.field.type?.datatype,
+            options: {
+              isMultiline: f.field.is_multiline,
+              isRequired: f.field.is_required,
+              min: f.field.min,
+              max: f.field.max,
+              allowedValues: f.field.allowed_values,
+            },
+          };
+        });
+        const schema = generateDynamicSchema(mappedFields);
+        setDynamicSchema(schema);
+        const asdfasdfadf: CustomFormField[] = [];
+        setDynamicFormFields(
+          fields.map((f) => {
+            return {
+              id: f.field.id,
+              displayName: f.field.name || f.field.id,
+              placeholder: f.field.placeholder,
+              defaultValue: f.field.default_value,
+              required: f.field.is_required,
+              isMultiline: f.field.is_multiline,
+              min: f.field.min,
+              max: f.field.max,
+              allowedValues: f.field.allowed_values,
+              type: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+            };
+          })
+        );
+      } catch (error) {
+        console.error("Error generating schema:", error);
+      }
+    }
+    console.log("custom fields schema changed to:", dynamicSchema);
+  }, [activeTemplateId, templatesQuery.data]);
+
   const resetForm = () => {
-    handleFormDataChange({
-      title: "",
-      startDate: new Date(),
-      endDate: new Date(),
-      startTime: `${DefaultStartHour}:00`,
-      endTime: `${DefaultEndHour}:00`,
-      all_day: false,
-    });
+    handleFormDataChange(DEFAULTFORMDATA);
     setActiveTemplateId(null);
     setErrors({
       fieldErrors: {},
       formErrors: [],
     });
-    setHasFormBeenModified(false);
   };
 
   const formatTimeForInput = (date: Date) => {
@@ -406,7 +463,8 @@ export function EventDialog({
       (t) => t.id === templateId
     );
 
-    if (checkIfFormIsModified(DEFAULTFORMDATA, formData)) {
+    // function checks if values that are set below in handleTemplateSelect have been modified - could add check if some data is undefined
+    if (checkIfFormIsModified(DEFAULTFORMDATA, defaultFormData)) {
       const dialogResult = await showDialog({
         title: `${selectedTemplate?.name || "Vorlage"} laden?`,
         description: `Ausgefüllte Felder werden möglicherweise Überschrieben.`,
@@ -447,7 +505,7 @@ export function EventDialog({
 
   const handleSave = () => {
     // Full validation before saving
-    const result = ZodEinsatzFormData.safeParse(formData);
+    const result = ZodEinsatzFormData.safeParse(defaultFormData);
 
     if (!result.success) {
       const flattenedErrors = result.error.flatten();
@@ -464,14 +522,14 @@ export function EventDialog({
       formErrors: [],
     });
 
-    const start = new Date(formData.startDate);
-    const end = new Date(formData.endDate);
+    const start = new Date(defaultFormData.startDate);
+    const end = new Date(defaultFormData.endDate);
 
-    if (!formData.all_day) {
-      const [startHours = 0, startMinutes = 0] = formData.startTime
+    if (!defaultFormData.all_day) {
+      const [startHours = 0, startMinutes = 0] = defaultFormData.startTime
         .split(":")
         .map(Number);
-      const [endHours = 0, endMinutes = 0] = formData.endTime
+      const [endHours = 0, endMinutes = 0] = defaultFormData.endTime
         .split(":")
         .map(Number);
 
@@ -514,7 +572,9 @@ export function EventDialog({
     }
 
     // Use generic title if empty
-    const eventTitle = formData.title.trim() ? formData.title : "(no title)";
+    const eventTitle = defaultFormData.title.trim()
+      ? defaultFormData.title
+      : "(no title)";
 
     const createdAt =
       currentEinsatz && "created_at" in currentEinsatz
@@ -532,7 +592,7 @@ export function EventDialog({
       updated_at: updatedAt,
       start: start,
       end: end,
-      all_day: formData.all_day,
+      all_day: defaultFormData.all_day,
       participant_count: currentEinsatz?.participant_count ?? null,
       price_per_person: currentEinsatz?.price_per_person ?? null,
       total_price: currentEinsatz?.total_price ?? null,
@@ -548,7 +608,7 @@ export function EventDialog({
     if (currentEinsatz?.id) {
       const result = await showDialog({
         title: "Einsatz löschen",
-        description: `Sind Sie sicher, dass Sie den Einsatz "${formData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
+        description: `Sind Sie sicher, dass Sie den Einsatz "${defaultFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
       });
 
       if (result === "success") {
@@ -565,7 +625,7 @@ export function EventDialog({
             {isLoading
               ? "Laden..."
               : currentEinsatz?.id
-              ? "Bearbeite " + formData.title
+              ? "Bearbeite " + defaultFormData.title
               : "Erstelle " + (activeOrg?.einsatz_name_singular ?? " Einsatz")}
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -645,7 +705,7 @@ export function EventDialog({
             </FormGroup>
             {/* Form Fields */}
             <DefaultFormFields
-              formData={formData}
+              formData={defaultFormData}
               onFormDataChange={handleFormDataChange}
               errors={errors}
               categoriesOptions={
@@ -666,6 +726,7 @@ export function EventDialog({
               }
               activeOrg={activeOrg}
             />
+            {/* TODO: render dynamic form fields */}
           </div>
         </div>
         <DialogFooter className="flex-row sm:justify-between flex-shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">

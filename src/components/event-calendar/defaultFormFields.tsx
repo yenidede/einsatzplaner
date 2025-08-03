@@ -263,7 +263,7 @@ export function DefaultFormFields({
         />
         <FormField
           className="flex-1"
-          step={0.25}
+          step={0.1}
           name="Preis pro Person (€)"
           type="number"
           min={0}
