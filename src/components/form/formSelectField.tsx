@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface Option {
+export interface Option {
   value: string;
   label: string;
 }
@@ -16,7 +16,7 @@ interface Option {
 interface FormSelectFieldProps {
   name: string;
   value?: string;
-  options: Option[];
+  options: Option[] | string[];
   placeholder?: string;
   onValueChange?: (value: string) => void;
 }
@@ -32,6 +32,15 @@ export default function FormSelectField({
   Omit<React.ComponentProps<typeof Select>, "value" | "onValueChange">) {
   const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
 
+  // Convert string array to Option array if needed
+  const normalizedOptions: Option[] =
+    options.length > 0 && typeof options[0] === "string"
+      ? (options as string[]).map((option) => ({
+          value: option.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase(),
+          label: option,
+        }))
+      : (options as Option[]);
+
   return (
     <div className="not-first:mt-1.5">
       <Label htmlFor={sanitizedId}>{name}</Label>
@@ -40,7 +49,7 @@ export default function FormSelectField({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {options.map((option) => (
+          {normalizedOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
             </SelectItem>
