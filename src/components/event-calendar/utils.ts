@@ -86,6 +86,19 @@ export function mapDbDataTypeToFormFieldType(datatype: string | null | undefined
   throw new Error("Can't map datatype: " + datatype + " to its FormField.");
 }
 
+export function mapDbDataTypeToInputProps(datatype: string | null | undefined): React.ComponentProps<"input"> | null {
+  const defaultTypes = ["text", "number", "currency", "phone", "mail"];
+  if (datatype) {
+    if (!defaultTypes.includes(datatype)) return null;
+    if (datatype === "text") return { type: "text" };
+    if (datatype === "phone") return { type: "tel" };
+    if (datatype === "mail") return { type: "email" };
+    if (datatype === "number") return { type: "number" };
+    if (datatype === "currency") return { type: "number", step: "0.10" };
+  }
+  throw new Error("Can't map datatype: " + datatype + " to its FormField.");
+}
+
 
 /**
  * Get CSS classes for event colors
