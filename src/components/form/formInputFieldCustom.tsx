@@ -17,7 +17,6 @@ export default function FormField({
   children,
 }: FormFieldProps) {
   const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
-  console.log("errors in FormField", errors);
   return (
     <div className={className}>
       <Label htmlFor={sanitizedId}>
