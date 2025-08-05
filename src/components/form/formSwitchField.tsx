@@ -24,7 +24,7 @@ export default function FormSwitchField({
         aria-invalid={errors.length > 0}
         {...props}
       />
-      {errors && errors.length > 0 && <ErrorDisplay errors={errors} />}
+      {errors.length > 0 && <ErrorDisplay errors={errors} />}
     </div>
   );
 }
