@@ -20,7 +20,7 @@ export default function FormField({
       <Label htmlFor={sanitizedId}>{name}</Label>
       <Input
         aria-invalid={errors.length > 0}
-        className={`mt-1.5 ${className}`}
+        className={cn("mt-1.5", className)}
         id={sanitizedId}
         {...props}
       />
