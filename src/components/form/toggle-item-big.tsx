@@ -6,6 +6,7 @@ type ToggleItemBigProps = {
   text: string;
   onClick: () => void;
   description?: string;
+  className?: string;
   iconUrl?: string | null;
 };
 
@@ -14,13 +15,14 @@ export default function ToggleItemBig({
   text,
   description,
   iconUrl,
+  className,
 }: ToggleItemBigProps) {
   return (
     <Toggle
       size="xl"
       variant="outline"
       onClick={onClick}
-      className="flex flex-col items-center justify-center gap-0"
+      className={"flex flex-col items-center justify-center gap-0 " + className}
     >
       {iconUrl && (
         <Image
