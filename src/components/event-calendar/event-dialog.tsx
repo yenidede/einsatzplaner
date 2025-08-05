@@ -266,7 +266,49 @@ export function EventDialog({
   const handleDynamicFormDataChange = (
     updates: Partial<z.infer<typeof dynamicSchema>>
   ) => {
-    const updatedData = { ...dynamicFormData, ...updates };
+    // Validate using dynamic schema if it exists
+    if (dynamicSchema) {
+      // Validate just the updated fields using partial schema
+      const partialResult = dynamicSchema.partial().safeParse(updates);
+
+      // Update errors based on partial validation
+      setErrors((prevErrors) => {
+        const newErrors = { ...prevErrors };
+
+        if (!partialResult.success) {
+          // Add errors for the fields being updated
+          const flattenedErrors = z.flattenError(partialResult.error);
+
+          // Merge new field errors with existing ones
+          Object.entries(flattenedErrors.fieldErrors).forEach(
+            ([field, fieldErrors]) => {
+              if (fieldErrors) {
+                newErrors.fieldErrors[field] = fieldErrors;
+              }
+            }
+          );
+
+          // Add any form-level errors
+          if (flattenedErrors.formErrors.length > 0) {
+            newErrors.formErrors = [
+              ...new Set([
+                ...newErrors.formErrors,
+                ...flattenedErrors.formErrors,
+              ]),
+            ];
+          }
+        } else {
+          // Clear errors for the fields that are now valid
+          Object.keys(updates).forEach((field) => {
+            delete newErrors.fieldErrors[field];
+          });
+        }
+
+        return newErrors;
+      });
+    } else {
+      console.warn("No dynamic schema available for validation");
+    }
 
     setDynamicFormData((prev) => ({ ...prev, ...updates }));
   };
@@ -283,7 +325,7 @@ export function EventDialog({
 
       if (!partialResult.success) {
         // Add errors for the fields being updated
-        const flattenedErrors = partialResult.error.flatten();
+        const flattenedErrors = z.flattenError(partialResult.error);
 
         // Merge new field errors with existing ones
         Object.entries(flattenedErrors.fieldErrors).forEach(
@@ -386,6 +428,7 @@ export function EventDialog({
         });
       } else {
         // Edit existing einsatz (loaded from query)
+        setActiveTemplateId(currentEinsatz.template_id || null);
         handleFormDataChange({ title: currentEinsatz.title || "" });
 
         // Safely handle start and end dates
@@ -441,7 +484,6 @@ export function EventDialog({
         });
         const schema = generateDynamicSchema(mappedFields);
         setDynamicSchema(schema);
-        const asdfasdfadf: CustomFormField[] = [];
         setDynamicFormFields(
           fields.map((f) => {
             return {
@@ -545,6 +587,18 @@ export function EventDialog({
         templateUpdates.all_day = selectedTemplate.all_day_default;
       }
 
+      // Calculate total price after both participant count and price per person are set
+      const finalParticipantCount =
+        templateUpdates.participantCount ??
+        staticFormData.participantCount ??
+        DEFAULTFORMDATA.participantCount;
+      const finalPricePerPerson =
+        templateUpdates.pricePerPerson ??
+        staticFormData.pricePerPerson ??
+        DEFAULTFORMDATA.pricePerPerson;
+
+      templateUpdates.totalPrice = finalParticipantCount * finalPricePerPerson;
+
       // Apply template values to form
       handleFormDataChange(templateUpdates);
     }
@@ -555,7 +609,7 @@ export function EventDialog({
     const result = ZodEinsatzFormData.safeParse(staticFormData);
 
     if (!result.success) {
-      const flattenedErrors = result.error.flatten();
+      const flattenedErrors = z.flattenError(result.error);
       setErrors({
         fieldErrors: flattenedErrors.fieldErrors,
         formErrors: flattenedErrors.formErrors || [],

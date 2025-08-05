@@ -44,7 +44,7 @@ export default function DynamicFormFields({
             key={field.id}
             name={field.displayName}
             options={field.allowedValues ?? []}
-            value={formData?.[field.id]}
+            value={formData?.[field.id] ?? ""}
             placeholder={field.placeholder ?? "Feld auswählen..."}
             required={field.required}
             onValueChange={(value) => handleFieldChange(field.id, value)}
@@ -56,7 +56,7 @@ export default function DynamicFormFields({
           <FormMultiSelectField
             key={field.id}
             name={field.displayName}
-            options={field.allowedValues ?? ["option1"]}
+            options={field.allowedValues ?? ["(problem loading options)"]}
             onValueChange={(val) => {
               handleFieldChange(field.id, val);
             }}
@@ -75,7 +75,7 @@ export default function DynamicFormFields({
             key={field.id}
             name={field.displayName}
             placeholder={field.placeholder ?? ""}
-            value={formData?.[field.id]}
+            value={formData?.[field.id] ?? ""}
             required={field.required}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             errors={errors[field.id] || []}
@@ -87,7 +87,7 @@ export default function DynamicFormFields({
             key={field.id}
             name={field.displayName}
             placeholder={field.placeholder ?? undefined}
-            value={formData?.[field.id]}
+            value={formData?.[field.id] ?? ""}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             errors={errors[field.id] || []}
             {...field.inputProps}
