@@ -7,8 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ErrorDisplay from "./errorDisplay";
 
-interface Option {
+export interface Option {
   value: string;
   label: string;
 }
@@ -16,8 +17,9 @@ interface Option {
 interface FormSelectFieldProps {
   name: string;
   value?: string;
-  options: Option[];
+  options: Option[] | string[];
   placeholder?: string;
+  errors: string[];
   onValueChange?: (value: string) => void;
 }
 
@@ -26,27 +28,44 @@ export default function FormSelectField({
   value,
   options,
   placeholder = "Auswählen...",
+  errors,
   onValueChange,
   ...props
 }: FormSelectFieldProps &
   Omit<React.ComponentProps<typeof Select>, "value" | "onValueChange">) {
   const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
 
+  // Convert string array to Option array if needed
+  const normalizedOptions: Option[] =
+    options.length > 0 && typeof options[0] === "string"
+      ? (options as string[]).map((option) => ({
+          value: option.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase(),
+          label: option,
+        }))
+      : (options as Option[]);
+
   return (
-    <div className="not-first:mt-1.5">
+    <div>
       <Label htmlFor={sanitizedId}>{name}</Label>
-      <Select value={value} onValueChange={onValueChange} {...props}>
-        <SelectTrigger id={sanitizedId}>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="mt-1.5">
+        <Select value={value} onValueChange={onValueChange} {...props}>
+          <SelectTrigger id={sanitizedId}>
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {normalizedOptions.map((option) => (
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                aria-invalid={errors.length > 0}
+              >
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {errors.length > 0 && <ErrorDisplay errors={errors} />}
     </div>
   );
 }

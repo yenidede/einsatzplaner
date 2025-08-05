@@ -1,31 +1,30 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import * as SwitchPrimitive from "@radix-ui/react-switch";
 import ErrorDisplay from "./errorDisplay";
-import { cn } from "@/lib/utils";
 
 type FormFieldProps = {
   name: string;
   errors: string[];
-};
+} & React.ComponentProps<typeof SwitchPrimitive.Root>;
 
-export default function FormField({
+export default function FormSwitchField({
   name,
   errors,
-  className,
   ...props
-}: FormFieldProps & React.ComponentProps<"input">) {
+}: FormFieldProps) {
   const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
   return (
-    <div>
+    <div className="flex flex-col gap-3">
       <Label htmlFor={sanitizedId}>{name}</Label>
-      <Input
-        aria-invalid={errors.length > 0}
-        className={cn("mt-1.5", className)}
+      <Switch
+        className="mt-1.5"
         id={sanitizedId}
+        aria-invalid={errors.length > 0}
         {...props}
       />
-      {errors && errors.length > 0 && <ErrorDisplay errors={errors} />}
+      {errors.length > 0 && <ErrorDisplay errors={errors} />}
     </div>
   );
 }

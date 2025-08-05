@@ -24,7 +24,8 @@ export type EventColor =
   | "emerald"
   | "orange";
 
-export type FormFieldType = "default" | "select" | "multi-select" | "checkbox";
+export type FormFieldType = "default" | "textarea" | "select" | "multi-select" | "checkbox";
+export type FormFieldInputType = ("text" | "number" | "tel" | "email") | null;
 
 export type CustomFormField = {
   id: string,
@@ -34,6 +35,7 @@ export type CustomFormField = {
   required?: boolean,
   groupName?: string | null,
   type: FormFieldType,
+  inputProps: React.ComponentProps<"input"> | null,
   isMultiline?: boolean | null,
   min?: number | null,
   max?: number | null,

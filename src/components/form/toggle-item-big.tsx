@@ -1,11 +1,13 @@
 import React from "react";
 import { Toggle } from "@/components/ui/toggle";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 type ToggleItemBigProps = {
   text: string;
   onClick: () => void;
   description?: string;
+  className?: string;
   iconUrl?: string | null;
 };
 
@@ -14,13 +16,17 @@ export default function ToggleItemBig({
   text,
   description,
   iconUrl,
+  className,
 }: ToggleItemBigProps) {
   return (
     <Toggle
       size="xl"
       variant="outline"
       onClick={onClick}
-      className="flex flex-col items-center justify-center gap-0"
+      className={cn(
+        "flex flex-col items-center justify-center gap-0",
+        className
+      )}
     >
       {iconUrl && (
         <Image

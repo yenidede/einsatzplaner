@@ -1,31 +1,29 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import ErrorDisplay from "./errorDisplay";
-import { cn } from "@/lib/utils";
 
 type FormFieldProps = {
   name: string;
   errors: string[];
 };
 
-export default function FormField({
+export default function FormTextareaField({
   name,
   errors,
-  className,
   ...props
-}: FormFieldProps & React.ComponentProps<"input">) {
+}: FormFieldProps & React.ComponentProps<"textarea">) {
   const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
   return (
     <div>
       <Label htmlFor={sanitizedId}>{name}</Label>
-      <Input
-        aria-invalid={errors.length > 0}
-        className={cn("mt-1.5", className)}
+      <Textarea
+        className="mt-1.5"
         id={sanitizedId}
+        aria-invalid={errors.length > 0}
         {...props}
       />
-      {errors && errors.length > 0 && <ErrorDisplay errors={errors} />}
+      {errors.length > 0 && <ErrorDisplay errors={errors} />}
     </div>
   );
 }

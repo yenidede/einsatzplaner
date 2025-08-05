@@ -61,7 +61,8 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
         fieldSchema = z.email("Invalid email address");
         break;
       case "select":
-        fieldSchema = z.enum(options.allowedValues as readonly string[]);
+        if (!options.allowedValues) throw new Error("Select field requires allowedValues");
+        fieldSchema = z.enum(options.allowedValues as [string, ...string[]]);
         break;
       default:
         throw new Error("Field Type " + type + " unsupported");
@@ -80,6 +81,19 @@ export function mapDbDataTypeToFormFieldType(datatype: string | null | undefined
     if (defaultTypes.includes(datatype)) return "default";
     if (datatype === "boolean") return "checkbox"
     if (datatype === "select") return "select";
+  }
+  throw new Error("Can't map datatype: " + datatype + " to its FormField.");
+}
+
+export function mapDbDataTypeToInputProps(datatype: string | null | undefined): React.ComponentProps<"input"> | null {
+  const defaultTypes = ["text", "number", "currency", "phone", "mail"];
+  if (datatype) {
+    if (!defaultTypes.includes(datatype)) return null;
+    if (datatype === "text") return { type: "text" };
+    if (datatype === "phone") return { type: "tel" };
+    if (datatype === "mail") return { type: "email" };
+    if (datatype === "number") return { type: "number" };
+    if (datatype === "currency") return { type: "number", step: "0.10" };
   }
   throw new Error("Can't map datatype: " + datatype + " to its FormField.");
 }

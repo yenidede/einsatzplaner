@@ -39,7 +39,9 @@ import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
 import { CustomFormField, FormFieldType } from "./types";
+import DynamicFormFields from "./dynamicFormfields";
 
+// Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
   einsatzCategoriesIds: [],
@@ -50,6 +52,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   all_day: false,
   participantCount: 20,
   pricePerPerson: 0,
+  totalPrice: 0,
   helpersNeeded: 1,
   assignedUsers: [],
 };
@@ -77,6 +80,7 @@ export const ZodEinsatzFormData = z
       .number()
       .min(0, "Teilnehmeranzahl darf nicht negativ sein"),
     pricePerPerson: z.number().min(0, "Preis darf nicht negativ sein"),
+    totalPrice: z.number().min(0, "Gesamtpreis darf nicht negativ sein"),
     helpersNeeded: z.number().min(-1, "Helfer-Anzahl muss 0 oder größer sein"),
     assignedUsers: z.array(z.uuid()),
   })
@@ -107,6 +111,19 @@ export const ZodEinsatzFormData = z
     {
       message: "Enddatum/zeit muss nach Startdatum/zeit liegen",
       path: ["endDate"],
+    }
+  )
+  .refine(
+    (data) => {
+      // Ensure totalPrice is consistent with individual prices
+      const calculatedTotal = data.participantCount * data.pricePerPerson;
+      const difference = Math.abs(data.totalPrice - calculatedTotal);
+      return difference < 0.11;
+    },
+    {
+      message:
+        "Gesamtpreis stimmt nicht mit Teilnehmern und Preis pro Person überein",
+      path: ["totalPrice"],
     }
   )
   .refine(
@@ -170,12 +187,13 @@ export function EventDialog({
   // TODO
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
 
-  // Defaults for the defaultFormFields (no template loaded yet)
-  const [defaultFormData, setDefaultFormData] =
+  const [staticFormData, setStaticFormData] =
     useState<EinsatzFormData>(DEFAULTFORMDATA);
+  // state for validation on dynamic form data - generated once after template was selected
   const [dynamicSchema, setDynamicSchema] = useState<z.ZodObject<any> | null>(
     null
   );
+  // used for rendering of dynamic form fields
   const [dynamicFormFields, setDynamicFormFields] = useState<CustomFormField[]>(
     [
       {
@@ -187,9 +205,14 @@ export function EventDialog({
         groupName: "Finanzen",
         min: 0,
         type: "default",
+        inputProps: { type: "number", step: "0.10" },
       },
     ]
   );
+  // stores the dynamic form data in key-value pairs
+  const [dynamicFormData, setDynamicFormData] = useState<Record<string, any>>({
+    kostenaufwand: 12.2,
+  });
 
   const [errors, setErrors] = useState<{
     fieldErrors: Record<string, string[]>;
@@ -233,8 +256,58 @@ export function EventDialog({
   const currentEinsatz =
     typeof einsatz === "string" ? detailedEinsatz : einsatz;
 
+  const handleDynamicFormDataChange = (
+    updates: Partial<z.infer<typeof dynamicSchema>>
+  ) => {
+    // Validate using dynamic schema if it exists
+    if (dynamicSchema) {
+      // Validate just the updated fields using partial schema
+      const partialResult = dynamicSchema.partial().safeParse(updates);
+
+      // Update errors based on partial validation
+      setErrors((prevErrors) => {
+        const newErrors = { ...prevErrors };
+
+        if (!partialResult.success) {
+          // Add errors for the fields being updated
+          const flattenedErrors = z.flattenError(partialResult.error);
+
+          // Merge new field errors with existing ones
+          Object.entries(flattenedErrors.fieldErrors).forEach(
+            ([field, fieldErrors]) => {
+              if (fieldErrors) {
+                newErrors.fieldErrors[field] = fieldErrors;
+              }
+            }
+          );
+
+          // Add any form-level errors
+          if (flattenedErrors.formErrors.length > 0) {
+            newErrors.formErrors = [
+              ...new Set([
+                ...newErrors.formErrors,
+                ...flattenedErrors.formErrors,
+              ]),
+            ];
+          }
+        } else {
+          // Clear errors for the fields that are now valid
+          Object.keys(updates).forEach((field) => {
+            delete newErrors.fieldErrors[field];
+          });
+        }
+
+        return newErrors;
+      });
+    } else {
+      console.warn("No dynamic schema available for validation");
+    }
+
+    setDynamicFormData((prev) => ({ ...prev, ...updates }));
+  };
+
   const handleFormDataChange = (updates: Partial<EinsatzFormData>) => {
-    const updatedFormData = { ...defaultFormData, ...updates };
+    const updatedFormData = { ...staticFormData, ...updates };
 
     // Validate just the updated fields using partial schema
     const partialResult = ZodEinsatzFormData.partial().safeParse(updates);
@@ -245,7 +318,7 @@ export function EventDialog({
 
       if (!partialResult.success) {
         // Add errors for the fields being updated
-        const flattenedErrors = partialResult.error.flatten();
+        const flattenedErrors = z.flattenError(partialResult.error);
 
         // Merge new field errors with existing ones
         Object.entries(flattenedErrors.fieldErrors).forEach(
@@ -311,7 +384,7 @@ export function EventDialog({
       });
     }
 
-    setDefaultFormData((prev) => ({ ...prev, ...updates }));
+    setStaticFormData((prev) => ({ ...prev, ...updates }));
   };
 
   useEffect(() => {
@@ -348,6 +421,7 @@ export function EventDialog({
         });
       } else {
         // Edit existing einsatz (loaded from query)
+        setActiveTemplateId(currentEinsatz.template_id || null);
         handleFormDataChange({ title: currentEinsatz.title || "" });
 
         // Safely handle start and end dates
@@ -403,7 +477,6 @@ export function EventDialog({
         });
         const schema = generateDynamicSchema(mappedFields);
         setDynamicSchema(schema);
-        const asdfasdfadf: CustomFormField[] = [];
         setDynamicFormFields(
           fields.map((f) => {
             return {
@@ -417,8 +490,16 @@ export function EventDialog({
               max: f.field.max,
               allowedValues: f.field.allowed_values,
               type: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+              inputProps:
+                f.field.type?.datatype === "number" ? { type: "number" } : {},
             };
           })
+        );
+        setDynamicFormData(
+          fields.reduce((acc, f) => {
+            acc[f.field.id] = f.field.default_value;
+            return acc;
+          }, {} as Record<string, any>)
         );
       } catch (error) {
         console.error("Error generating schema:", error);
@@ -464,7 +545,7 @@ export function EventDialog({
     );
 
     // function checks if values that are set below in handleTemplateSelect have been modified - could add check if some data is undefined
-    if (checkIfFormIsModified(DEFAULTFORMDATA, defaultFormData)) {
+    if (checkIfFormIsModified(DEFAULTFORMDATA, staticFormData)) {
       const dialogResult = await showDialog({
         title: `${selectedTemplate?.name || "Vorlage"} laden?`,
         description: `Ausgefüllte Felder werden möglicherweise Überschrieben.`,
@@ -498,6 +579,18 @@ export function EventDialog({
         templateUpdates.all_day = selectedTemplate.all_day_default;
       }
 
+      // Calculate total price after both participant count and price per person are set
+      const finalParticipantCount =
+        templateUpdates.participantCount ??
+        staticFormData.participantCount ??
+        DEFAULTFORMDATA.participantCount;
+      const finalPricePerPerson =
+        templateUpdates.pricePerPerson ??
+        staticFormData.pricePerPerson ??
+        DEFAULTFORMDATA.pricePerPerson;
+
+      templateUpdates.totalPrice = finalParticipantCount * finalPricePerPerson;
+
       // Apply template values to form
       handleFormDataChange(templateUpdates);
     }
@@ -505,10 +598,10 @@ export function EventDialog({
 
   const handleSave = () => {
     // Full validation before saving
-    const result = ZodEinsatzFormData.safeParse(defaultFormData);
+    const result = ZodEinsatzFormData.safeParse(staticFormData);
 
     if (!result.success) {
-      const flattenedErrors = result.error.flatten();
+      const flattenedErrors = z.flattenError(result.error);
       setErrors({
         fieldErrors: flattenedErrors.fieldErrors,
         formErrors: flattenedErrors.formErrors || [],
@@ -522,14 +615,14 @@ export function EventDialog({
       formErrors: [],
     });
 
-    const start = new Date(defaultFormData.startDate);
-    const end = new Date(defaultFormData.endDate);
+    const start = new Date(staticFormData.startDate);
+    const end = new Date(staticFormData.endDate);
 
-    if (!defaultFormData.all_day) {
-      const [startHours = 0, startMinutes = 0] = defaultFormData.startTime
+    if (!staticFormData.all_day) {
+      const [startHours = 0, startMinutes = 0] = staticFormData.startTime
         .split(":")
         .map(Number);
-      const [endHours = 0, endMinutes = 0] = defaultFormData.endTime
+      const [endHours = 0, endMinutes = 0] = staticFormData.endTime
         .split(":")
         .map(Number);
 
@@ -572,8 +665,8 @@ export function EventDialog({
     }
 
     // Use generic title if empty
-    const eventTitle = defaultFormData.title.trim()
-      ? defaultFormData.title
+    const eventTitle = staticFormData.title.trim()
+      ? staticFormData.title
       : "(no title)";
 
     const createdAt =
@@ -592,7 +685,7 @@ export function EventDialog({
       updated_at: updatedAt,
       start: start,
       end: end,
-      all_day: defaultFormData.all_day,
+      all_day: staticFormData.all_day,
       participant_count: currentEinsatz?.participant_count ?? null,
       price_per_person: currentEinsatz?.price_per_person ?? null,
       total_price: currentEinsatz?.total_price ?? null,
@@ -608,7 +701,7 @@ export function EventDialog({
     if (currentEinsatz?.id) {
       const result = await showDialog({
         title: "Einsatz löschen",
-        description: `Sind Sie sicher, dass Sie den Einsatz "${defaultFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
+        description: `Sind Sie sicher, dass Sie den Einsatz "${staticFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
       });
 
       if (result === "success") {
@@ -625,7 +718,7 @@ export function EventDialog({
             {isLoading
               ? "Laden..."
               : currentEinsatz?.id
-              ? "Bearbeite " + defaultFormData.title
+              ? "Bearbeite " + staticFormData.title
               : "Erstelle " + (activeOrg?.einsatz_name_singular ?? " Einsatz")}
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -646,27 +739,6 @@ export function EventDialog({
           </div>
         )}
 
-        {/* Display field-level errors summary */}
-        {Object.keys(errors.fieldErrors).length > 0 && (
-          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm flex-shrink-0">
-            <p className="font-medium mb-2">
-              Bitte korrigieren Sie folgende Fehler:
-            </p>
-            <ul className="list-disc list-inside space-y-1">
-              {Object.entries(errors.fieldErrors).map(([field, fieldErrors]) =>
-                fieldErrors.map((error, index) => (
-                  <li key={`${field}-${index}`}>
-                    <span className="font-medium">
-                      {getFieldDisplayName(field)}:
-                    </span>{" "}
-                    {error}
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-        )}
-
         <div className="flex-1 overflow-y-auto">
           <div className="grid gap-8 py-4">
             <FormGroup>
@@ -674,7 +746,7 @@ export function EventDialog({
                 <div>Lade Vorlagen ...</div>
               ) : !activeTemplateId ? (
                 // template not yet set, show options
-                <FormInputFieldCustom name="Vorlage auswählen">
+                <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
                   <div className="flex flex-wrap gap-4 mt-1.5">
                     {templatesQuery.data?.map((t) => (
                       <ToggleItemBig
@@ -685,6 +757,7 @@ export function EventDialog({
                         onClick={() => {
                           handleTemplateSelect(t.id);
                         }}
+                        className="w-full sm:w-auto"
                       />
                     ))}
                   </div>
@@ -705,7 +778,7 @@ export function EventDialog({
             </FormGroup>
             {/* Form Fields */}
             <DefaultFormFields
-              formData={defaultFormData}
+              formData={staticFormData}
               onFormDataChange={handleFormDataChange}
               errors={errors}
               categoriesOptions={
@@ -726,7 +799,12 @@ export function EventDialog({
               }
               activeOrg={activeOrg}
             />
-            {/* TODO: render dynamic form fields */}
+            <DynamicFormFields
+              fields={dynamicFormFields}
+              formData={dynamicFormData}
+              errors={errors.fieldErrors}
+              onFormDataChange={handleDynamicFormDataChange}
+            />
           </div>
         </div>
         <DialogFooter className="flex-row sm:justify-between flex-shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
