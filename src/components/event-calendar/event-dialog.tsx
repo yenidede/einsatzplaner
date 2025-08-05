@@ -118,13 +118,6 @@ export const ZodEinsatzFormData = z
       // Ensure totalPrice is consistent with individual prices
       const calculatedTotal = data.participantCount * data.pricePerPerson;
       const difference = Math.abs(data.totalPrice - calculatedTotal);
-      console.log(
-        data.totalPrice,
-        "vs calculated:",
-        calculatedTotal,
-        "difference:",
-        difference
-      );
       return difference < 0.11;
     },
     {
