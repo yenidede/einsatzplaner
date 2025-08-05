@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ErrorDisplay from "./errorDisplay";
 
 export interface Option {
   value: string;
@@ -18,6 +19,7 @@ interface FormSelectFieldProps {
   value?: string;
   options: Option[] | string[];
   placeholder?: string;
+  errors: string[];
   onValueChange?: (value: string) => void;
 }
 
@@ -26,6 +28,7 @@ export default function FormSelectField({
   value,
   options,
   placeholder = "Auswählen...",
+  errors,
   onValueChange,
   ...props
 }: FormSelectFieldProps &
@@ -42,20 +45,27 @@ export default function FormSelectField({
       : (options as Option[]);
 
   return (
-    <div className="not-first:mt-1.5">
+    <div>
       <Label htmlFor={sanitizedId}>{name}</Label>
-      <Select value={value} onValueChange={onValueChange} {...props}>
-        <SelectTrigger id={sanitizedId}>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {normalizedOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="mt-1.5">
+        <Select value={value} onValueChange={onValueChange} {...props}>
+          <SelectTrigger id={sanitizedId}>
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {normalizedOptions.map((option) => (
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                aria-invalid={errors.length > 0}
+              >
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {errors.length > 0 && <ErrorDisplay errors={errors} />}
     </div>
   );
 }

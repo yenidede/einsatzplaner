@@ -34,6 +34,7 @@ import FormField from "../form/formInputField";
 import MultiSelectFormField from "../form/multiSelectFormField";
 import FormInputFieldCustom from "../form/formInputFieldCustom";
 import type { EinsatzFormData } from "@/components/event-calendar/event-dialog";
+import { sanitizeString } from "../form/utils";
 
 interface DefaultFormFieldsProps {
   formData: EinsatzFormData;
@@ -79,12 +80,14 @@ export function DefaultFormFields({
 
   return (
     <>
-      {/* Title and Categories */}
+      {/* Title and Categories - CORRECT */}
       <FormGroup className="grid grid-cols-[repeat(auto-fit,minmax(17rem,1fr))]">
         <FormField
           name="Einsatzname"
           value={formData.title}
           onChange={(e) => handleChange("title", e.target.value)}
+          // errors are always accessed through handleChange name. Here "title"
+          errors={errors.fieldErrors["title"] || []}
         />
         <MultiSelectFormField
           name="Kategorien"
@@ -95,13 +98,18 @@ export function DefaultFormFields({
           onValueChange={(selectedValues) => {
             handleChange("einsatzCategoriesIds", selectedValues);
           }}
+          errors={errors.fieldErrors["einsatzCategoriesIds"] || []}
         />
       </FormGroup>
 
-      {/* Date and Time Fields */}
+      {/* Date and Time Fields - CORRECT */}
       <div className="flex flex-col gap-4">
         <FormGroup className="flex flex-row">
-          <FormInputFieldCustom className="flex-1" name="Start Datum">
+          <FormInputFieldCustom
+            className="flex-1"
+            name="Start Datum"
+            errors={errors.fieldErrors["startDate"] || []}
+          >
             <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -151,7 +159,10 @@ export function DefaultFormFields({
           </FormInputFieldCustom>
           {!formData.all_day && (
             <div className="min-w-28 *:not-first:mt-1.5">
-              <FormInputFieldCustom name="Start Zeit">
+              <FormInputFieldCustom
+                name="Start Zeit"
+                errors={errors.fieldErrors["startTime"] || []}
+              >
                 <Select
                   value={formData.startTime}
                   onValueChange={(value) => handleChange("startTime", value)}
@@ -172,7 +183,11 @@ export function DefaultFormFields({
           )}
         </FormGroup>
         <FormGroup className="flex flex-row">
-          <FormInputFieldCustom className="flex-1" name="Ende Datum">
+          <FormInputFieldCustom
+            className="flex-1"
+            name="Ende Datum"
+            errors={errors.fieldErrors["endDate"] || []}
+          >
             <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -217,8 +232,11 @@ export function DefaultFormFields({
             </Popover>
           </FormInputFieldCustom>
           {!formData.all_day && (
-            <div className="min-w-28 *:not-first:mt-1.5">
-              <FormInputFieldCustom name="Ende Zeit">
+            <div className="min-w-28">
+              <FormInputFieldCustom
+                name="Ende Zeit"
+                errors={errors.fieldErrors["endTime"] || []}
+              >
                 <Select
                   value={formData.endTime}
                   onValueChange={(value) => handleChange("endTime", value)}
@@ -251,27 +269,57 @@ export function DefaultFormFields({
       </div>
 
       {/* Participant and Price Fields */}
-      <FormGroup>
-        <FormField
-          name="Teilnehmeranzahl"
-          type="number"
-          value={formData.participantCount || ""}
-          placeholder=""
-          onChange={(e) =>
-            handleChange("participantCount", Number(e.target.value) || 0)
-          }
-        />
-        <FormField
-          className="flex-1"
-          step={0.1}
-          name="Preis pro Person (€)"
-          type="number"
-          min={0}
-          value={formData.pricePerPerson ?? ""}
-          onChange={(e) =>
-            handleChange("pricePerPerson", Number(e.target.value) || 0)
-          }
-        />
+      <FormGroup className="grid grid-cols-2 grid-rows-2 sm:flex sm:flex-row">
+        <div className="col-span-2 grow">
+          <FormField
+            name="Teilnehmeranzahl"
+            type="number"
+            value={formData.participantCount || ""}
+            placeholder=""
+            errors={errors.fieldErrors["participantCount"] || []}
+            onChange={(e) =>
+              handleChange("participantCount", Number(e.target.value) || 0)
+            }
+          />
+        </div>
+        <div className="grow">
+          <FormField
+            step={0.1}
+            name="Preis p. Person (€)"
+            type="number"
+            min={0}
+            value={formData.pricePerPerson ?? ""}
+            errors={errors.fieldErrors["pricePerPerson"] || []}
+            className="grow"
+            onChange={(e) => {
+              handleChange("pricePerPerson", Number(e.target.value) || 0);
+              handleChange(
+                "totalPrice",
+                Number(e.target.value) * formData.participantCount || 0
+              );
+            }}
+          />
+        </div>
+        <div className="sm:w-28 sm:min-w-28">
+          <FormField
+            step={0.1}
+            name="Gesamtpreis (€)"
+            type="number"
+            min={0}
+            value={formData.totalPrice ?? ""}
+            errors={errors.fieldErrors["totalPrice"] || []}
+            className="shrink-[20]"
+            onChange={(e) => {
+              handleChange("totalPrice", Number(e.target.value) || 0);
+              handleChange(
+                "pricePerPerson",
+                formData.participantCount > 0
+                  ? Number(e.target.value) / formData.participantCount || 0
+                  : 0
+              );
+            }}
+          />
+        </div>
       </FormGroup>
 
       {/* Helpers and User Selection */}
@@ -282,6 +330,7 @@ export function DefaultFormFields({
           min={0}
           value={formData.helpersNeeded >= 0 ? formData.helpersNeeded : ""}
           placeholder=""
+          errors={errors.fieldErrors["helpersNeeded"] || []}
           onChange={(e) =>
             handleChange("helpersNeeded", Number(e.target.value) || -1)
           }
@@ -292,6 +341,7 @@ export function DefaultFormFields({
           defaultValue={formData.assignedUsers}
           placeholder="Personen auswählen"
           animation={1}
+          errors={errors.fieldErrors["assignedUsers"] || []}
           allowedActiveItems={
             formData.helpersNeeded > 0 ? formData.helpersNeeded : undefined
           }

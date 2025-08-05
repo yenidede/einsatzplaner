@@ -52,6 +52,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   all_day: false,
   participantCount: 20,
   pricePerPerson: 0,
+  totalPrice: 0,
   helpersNeeded: 1,
   assignedUsers: [],
 };
@@ -79,6 +80,7 @@ export const ZodEinsatzFormData = z
       .number()
       .min(0, "Teilnehmeranzahl darf nicht negativ sein"),
     pricePerPerson: z.number().min(0, "Preis darf nicht negativ sein"),
+    totalPrice: z.number().min(0, "Gesamtpreis darf nicht negativ sein"),
     helpersNeeded: z.number().min(-1, "Helfer-Anzahl muss 0 oder größer sein"),
     assignedUsers: z.array(z.uuid()),
   })
@@ -109,6 +111,17 @@ export const ZodEinsatzFormData = z
     {
       message: "Enddatum/zeit muss nach Startdatum/zeit liegen",
       path: ["endDate"],
+    }
+  )
+  .refine(
+    (data) => {
+      // Ensure totalPrice is consistent with individual prices
+      return data.totalPrice === data.participantCount * data.pricePerPerson;
+    },
+    {
+      message:
+        "Gesamtpreis stimmt nicht mit Teilnehmern und Preis pro Person überein",
+      path: ["totalPrice"],
     }
   )
   .refine(
@@ -206,6 +219,8 @@ export function EventDialog({
     fieldErrors: {},
     formErrors: [],
   });
+
+  console.log("errors: ", errors.fieldErrors);
 
   // Fetch detailed einsatz data when einsatz is a string (ID)
   const {
@@ -671,27 +686,6 @@ export function EventDialog({
           </div>
         )}
 
-        {/* Display field-level errors summary */}
-        {Object.keys(errors.fieldErrors).length > 0 && (
-          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm flex-shrink-0">
-            <p className="font-medium mb-2">
-              Bitte korrigieren Sie folgende Fehler:
-            </p>
-            <ul className="list-disc list-inside space-y-1">
-              {Object.entries(errors.fieldErrors).map(([field, fieldErrors]) =>
-                fieldErrors.map((error, index) => (
-                  <li key={`${field}-${index}`}>
-                    <span className="font-medium">
-                      {getFieldDisplayName(field)}:
-                    </span>{" "}
-                    {error}
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-        )}
-
         <div className="flex-1 overflow-y-auto">
           <div className="grid gap-8 py-4">
             <FormGroup>
@@ -699,7 +693,7 @@ export function EventDialog({
                 <div>Lade Vorlagen ...</div>
               ) : !activeTemplateId ? (
                 // template not yet set, show options
-                <FormInputFieldCustom name="Vorlage auswählen">
+                <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
                   <div className="flex flex-wrap gap-4 mt-1.5">
                     {templatesQuery.data?.map((t) => (
                       <ToggleItemBig
@@ -710,6 +704,7 @@ export function EventDialog({
                         onClick={() => {
                           handleTemplateSelect(t.id);
                         }}
+                        className="w-full sm:w-auto"
                       />
                     ))}
                   </div>
