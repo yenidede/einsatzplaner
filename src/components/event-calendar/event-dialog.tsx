@@ -220,7 +220,6 @@ export function EventDialog({
     formErrors: [],
   });
 
-  console.log("errors: ", errors.fieldErrors);
 
   // Fetch detailed einsatz data when einsatz is a string (ID)
   const {
