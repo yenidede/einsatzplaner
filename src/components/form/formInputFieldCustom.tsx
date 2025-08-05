@@ -21,15 +21,7 @@ export default function FormField({
     <div className={className}>
       <Label htmlFor={sanitizedId}>
         {name}
-        <div
-          className={cn(
-            "mt-1.5",
-            errors.length > 0 &&
-              "border-destructive ring-destructive/20 dark:ring-destructive/40"
-          )}
-        >
-          {children}
-        </div>
+        <div className="mt-1.5">{children}</div>
       </Label>
       {errors.length > 0 && <ErrorDisplay errors={errors} />}
     </div>

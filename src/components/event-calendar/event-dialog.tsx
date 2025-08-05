@@ -496,11 +496,10 @@ export function EventDialog({
           })
         );
         setDynamicFormData(
-          fields.map((f) => {
-            return {
-              [f.field.id]: f.field.default_value,
-            };
-          })
+          fields.reduce((acc, f) => {
+            acc[f.field.id] = f.field.default_value;
+            return acc;
+          }, {} as Record<string, any>)
         );
       } catch (error) {
         console.error("Error generating schema:", error);
