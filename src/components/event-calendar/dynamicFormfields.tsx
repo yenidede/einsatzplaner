@@ -23,7 +23,7 @@ export default function DynamicFormFields({
   onFormDataChange,
 }: DynamicFormFieldsProps) {
   const handleFieldChange = (fieldId: string, value: any) => {
-    onFormDataChange({ fieldId, value });
+    onFormDataChange({ [fieldId]: value });
   };
 
   const renderField = (field: CustomFormField) => {
