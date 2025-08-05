@@ -116,7 +116,16 @@ export const ZodEinsatzFormData = z
   .refine(
     (data) => {
       // Ensure totalPrice is consistent with individual prices
-      return data.totalPrice === data.participantCount * data.pricePerPerson;
+      const calculatedTotal = data.participantCount * data.pricePerPerson;
+      const difference = Math.abs(data.totalPrice - calculatedTotal);
+      console.log(
+        data.totalPrice,
+        "vs calculated:",
+        calculatedTotal,
+        "difference:",
+        difference
+      );
+      return difference < 0.11;
     },
     {
       message:
@@ -219,7 +228,6 @@ export function EventDialog({
     fieldErrors: {},
     formErrors: [],
   });
-
 
   // Fetch detailed einsatz data when einsatz is a string (ID)
   const {

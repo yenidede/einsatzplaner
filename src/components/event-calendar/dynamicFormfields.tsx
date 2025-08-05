@@ -33,9 +33,9 @@ export default function DynamicFormFields({
           <FormSwitchField
             key={field.id}
             name={field.displayName}
-            checked={formData?.[field.id]}
-            onCheckedChange={(checked) => handleFieldChange(field.id, !checked)}
-            errors={errors[field.id]}
+            checked={formData?.[field.id] ?? false}
+            onCheckedChange={(checked) => handleFieldChange(field.id, checked)}
+            errors={errors[field.id] || []}
           />
         );
       case "select":
@@ -48,7 +48,7 @@ export default function DynamicFormFields({
             placeholder={field.placeholder ?? "Feld auswählen..."}
             required={field.required}
             onValueChange={(value) => handleFieldChange(field.id, value)}
-            errors={errors[field.id]}
+            errors={errors[field.id] || []}
           />
         );
       case "multi-select":
@@ -66,7 +66,7 @@ export default function DynamicFormFields({
                 : field.defaultValue
             }
             aria-required={field.required}
-            errors={errors[field.id]}
+            errors={errors[field.id] || []}
           />
         );
       case "textarea":
@@ -78,7 +78,7 @@ export default function DynamicFormFields({
             value={formData?.[field.id]}
             required={field.required}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
-            errors={errors[field.id]}
+            errors={errors[field.id] || []}
           />
         );
       case "default":
@@ -89,7 +89,7 @@ export default function DynamicFormFields({
             placeholder={field.placeholder ?? undefined}
             value={formData?.[field.id]}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
-            errors={errors[field.id]}
+            errors={errors[field.id] || []}
             {...field.inputProps}
           />
         );
