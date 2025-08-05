@@ -277,9 +277,13 @@ export function DefaultFormFields({
             value={formData.participantCount || ""}
             placeholder=""
             errors={errors.fieldErrors["participantCount"] || []}
-            onChange={(e) =>
-              handleChange("participantCount", Number(e.target.value) || 0)
-            }
+            onChange={(e) => {
+              const participantCount = Number(e.target.value) || 0;
+              onFormDataChange({
+                participantCount,
+                totalPrice: formData.pricePerPerson * participantCount,
+              });
+            }}
           />
         </div>
         <div className="grow">
@@ -292,11 +296,11 @@ export function DefaultFormFields({
             errors={errors.fieldErrors["pricePerPerson"] || []}
             className="grow"
             onChange={(e) => {
-              handleChange("pricePerPerson", Number(e.target.value) || 0);
-              handleChange(
-                "totalPrice",
-                Number(e.target.value) * formData.participantCount || 0
-              );
+              const pricePerPerson = Number(e.target.value) || 0;
+              onFormDataChange({
+                pricePerPerson,
+                totalPrice: pricePerPerson * formData.participantCount || 0,
+              });
             }}
           />
         </div>
@@ -310,13 +314,15 @@ export function DefaultFormFields({
             errors={errors.fieldErrors["totalPrice"] || []}
             className="shrink-[20]"
             onChange={(e) => {
-              handleChange("totalPrice", Number(e.target.value) || 0);
-              handleChange(
-                "pricePerPerson",
+              const totalPrice = Number(e.target.value) || 0;
+              const pricePerPerson =
                 formData.participantCount > 0
-                  ? Number(e.target.value) / formData.participantCount || 0
-                  : 0
-              );
+                  ? totalPrice / formData.participantCount
+                  : 0;
+              onFormDataChange({
+                totalPrice,
+                pricePerPerson: Math.round(pricePerPerson * 100) / 100,
+              });
             }}
           />
         </div>

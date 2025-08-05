@@ -2,6 +2,7 @@ import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import ErrorDisplay from "./errorDisplay";
+import { cn } from "@/lib/utils";
 
 type FormFieldProps = {
   name: string;
