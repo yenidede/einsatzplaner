@@ -7,7 +7,6 @@ import { Option } from "../form/formSelectField";
 import FormMultiSelectField from "../form/multiSelectFormField";
 import { CustomFormField } from "./types";
 import FormTextareaField from "../form/formTextareaField";
-import { sanitizeString } from "../form/utils";
 
 type DynamicFormFieldsProps = {
   fields: CustomFormField[];
