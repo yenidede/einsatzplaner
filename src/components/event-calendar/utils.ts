@@ -62,7 +62,7 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
         break;
       case "select":
         if (!options.allowedValues) throw new Error("Select field requires allowedValues");
-        fieldSchema = z.enum(["asdfadf", "asdfadsf"]);
+        fieldSchema = z.enum(options.allowedValues as [string, ...string[]]);
         break;
       default:
         throw new Error("Field Type " + type + " unsupported");
