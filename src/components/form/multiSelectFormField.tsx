@@ -27,8 +27,6 @@ export default function MultiSelectFormField({
           label: option,
         }))
       : (options as Option[]);
-  console.log("errors in Multiselect", errors);
-
   return (
     <div>
       <Label htmlFor={sanitizedId}>{name}</Label>
