@@ -25,11 +25,15 @@ export default function Component({
 
   const [events, setEvents] = useState<CalendarEvent[]>(resolvedEinsaetze);
 
-  const handleEventAdd = (event: EinsatzCreate) => {
-    const calendarEvent = EinsatzCreateToCalendarEvent(event);
+  const handleEventAdd = async (event: EinsatzCreate) => {
+    // generate the uuid here, to allow optimistic updates (bg save to database)
+    const newEventId = crypto.randomUUID();
+    event.id = newEventId;
+    const calendarEvent = await EinsatzCreateToCalendarEvent(event);
+
     setEvents([...events, calendarEvent]);
     try {
-      createEinsatz({ data: event });
+      await createEinsatz({ data: event });
       toast.success("Einsatz '" + event.title + "' wurde erstellt.");
     } catch (error) {
       toast.error("Fehler beim Erstellen des Einsatzes: " + error);
@@ -38,7 +42,7 @@ export default function Component({
   };
 
   const handleEventUpdate = async (updatedEvent: EinsatzCreate) => {
-    const calendarEvent = EinsatzCreateToCalendarEvent(updatedEvent);
+    const calendarEvent = await EinsatzCreateToCalendarEvent(updatedEvent);
     const oldEvent = events.find((e) => e.id === calendarEvent.id);
     setEvents(
       events.map((event) =>
