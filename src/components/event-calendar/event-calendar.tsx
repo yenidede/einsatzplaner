@@ -198,7 +198,6 @@ export function EventCalendar({
       org_id: currentOrg?.id,
       created_by: "5ae139a7-476c-4d76-95cb-4dcb4e909da9", // TODO: Set this to the current user ID
       helpers_needed: 0,
-
       categories: [],
       einsatz_fields: [],
     };

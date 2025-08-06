@@ -3,7 +3,7 @@ import { isSameDay } from "date-fns";
 import type { CalendarEvent } from "@/components/event-calendar";
 import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
 import { CalendarMode, FormFieldType } from "./types";
-import { boolean, z, ZodString, ZodType } from "zod";
+import { z } from "zod";
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.

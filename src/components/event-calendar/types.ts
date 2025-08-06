@@ -8,7 +8,6 @@ export interface CalendarEvent {
   start: Date;
   end: Date;
   allDay?: boolean;
-  color?: EventColor;
   status?: EinsatzStatus;
   location?: string;
   assignedUsers: string[]; // Array of user IDs assigned to the event
