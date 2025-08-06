@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { RiDeleteBinLine } from "@remixicon/react";
 import { isBefore } from "date-fns";
 
-import { cn } from "@/lib/utils";
 import z from "zod";
 import { generateDynamicSchema, mapDbDataTypeToFormFieldType } from "./utils";
 
@@ -22,6 +22,7 @@ import {
   DefaultStartHour,
   EndHour,
   StartHour,
+  StatusValuePairs,
 } from "@/components/event-calendar/constants";
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import type {
@@ -40,6 +41,7 @@ import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
 import { CustomFormField, FormFieldType } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
+import { randomUUID } from "crypto";
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -167,7 +169,7 @@ interface EventDialogProps {
   einsatz: EinsatzCreate | string | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (einsatz: Einsatz) => void;
+  onSave: (einsatz: EinsatzCreate) => void;
   onDelete: (eventId: string) => void;
   activeOrg: Organization | null;
 }
@@ -184,6 +186,7 @@ export function EventDialog({
 
   // TODO
   const activeOrgId = "0c39989e-07bc-4074-92bc-aa274e5f22d0"; // remove this!!!
+  const currentUserId = "5ae139a7-476c-4d76-95cb-4dcb4e909da9";
   // TODO
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
 
@@ -505,7 +508,6 @@ export function EventDialog({
         console.error("Error generating schema:", error);
       }
     }
-    console.log("custom fields schema changed to:", dynamicSchema);
   }, [activeTemplateId, templatesQuery.data]);
 
   const resetForm = () => {
@@ -598,10 +600,11 @@ export function EventDialog({
 
   const handleSave = () => {
     // Full validation before saving
-    const result = ZodEinsatzFormData.safeParse(staticFormData);
+    const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
+    //const parsedDataDynamic = dynamicSchema?.safeParse(dynamicFormData);
 
-    if (!result.success) {
-      const flattenedErrors = z.flattenError(result.error);
+    if (!parsedDataStatic.success) {
+      const flattenedErrors = z.flattenError(parsedDataStatic.error);
       setErrors({
         fieldErrors: flattenedErrors.fieldErrors,
         formErrors: flattenedErrors.formErrors || [],
@@ -615,8 +618,8 @@ export function EventDialog({
       formErrors: [],
     });
 
-    const start = new Date(staticFormData.startDate);
-    const end = new Date(staticFormData.endDate);
+    const startDateFull = new Date(staticFormData.startDate);
+    const endDateFull = new Date(staticFormData.endDate);
 
     if (!staticFormData.all_day) {
       const [startHours = 0, startMinutes = 0] = staticFormData.startTime
@@ -646,15 +649,15 @@ export function EventDialog({
         return;
       }
 
-      start.setHours(startHours, startMinutes, 0);
-      end.setHours(endHours, endMinutes, 0);
+      startDateFull.setHours(startHours, startMinutes, 0);
+      endDateFull.setHours(endHours, endMinutes, 0);
     } else {
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
+      startDateFull.setHours(0, 0, 0, 0);
+      endDateFull.setHours(23, 59, 59, 999);
     }
 
     // Validate that end date is not before start date
-    if (isBefore(end, start)) {
+    if (isBefore(endDateFull, startDateFull)) {
       setErrors({
         fieldErrors: {
           endDate: ["End date cannot be before start date"],
@@ -664,36 +667,38 @@ export function EventDialog({
       return;
     }
 
-    // Use generic title if empty
-    const eventTitle = staticFormData.title.trim()
-      ? staticFormData.title
-      : "(no title)";
+    // If einsatz was changed, always remove bestätigt status
+    const status =
+      parsedDataStatic.data.assignedUsers.length >=
+      parsedDataStatic.data.helpersNeeded
+        ? StatusValuePairs.vergeben
+        : StatusValuePairs.offen;
 
-    const createdAt =
-      currentEinsatz && "created_at" in currentEinsatz
-        ? currentEinsatz.created_at
-        : new Date();
-    const updatedAt =
-      currentEinsatz && "updated_at" in currentEinsatz
-        ? currentEinsatz.updated_at
-        : null;
+    const einsatzFields = Object.entries(dynamicFormData).map(
+      ([field_id, value]: [string, any]) => {
+        return {
+          field_id,
+          value: value,
+        };
+      }
+    );
 
     onSave({
-      id: currentEinsatz?.id || "",
-      title: eventTitle,
-      created_at: createdAt,
-      updated_at: updatedAt,
-      start: start,
-      end: end,
-      all_day: staticFormData.all_day,
-      participant_count: currentEinsatz?.participant_count ?? null,
-      price_per_person: currentEinsatz?.price_per_person ?? null,
-      total_price: currentEinsatz?.total_price ?? null,
-      org_id: currentEinsatz?.org_id ?? "",
-      status_id: currentEinsatz?.status_id ?? "",
-      created_by: currentEinsatz?.created_by ?? "",
-      template_id: currentEinsatz?.template_id ?? null,
-      helpers_needed: currentEinsatz?.helpers_needed ?? -1,
+      id: currentEinsatz?.id,
+      title: parsedDataStatic.data.title,
+      start: startDateFull,
+      end: endDateFull,
+      all_day: parsedDataStatic.data.all_day,
+      participant_count: parsedDataStatic.data.participantCount ?? null,
+      price_per_person: parsedDataStatic.data.pricePerPerson ?? null,
+      total_price: parsedDataStatic.data.totalPrice ?? null,
+      org_id: currentEinsatz?.org_id ?? activeOrg?.id ?? activeOrgId,
+      status_id: status,
+      created_by: currentUserId,
+      template_id: activeTemplateId ?? undefined,
+      helpers_needed: parsedDataStatic.data.helpersNeeded,
+      categories: [],
+      einsatz_fields: einsatzFields,
     });
   };
 

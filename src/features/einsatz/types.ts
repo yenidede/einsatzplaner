@@ -1,7 +1,7 @@
 import type { einsatz as EinsatzRawDb, einsatz_comment as CommentRawDb, change_log as ChangeLogRawDb } from "@/generated/prisma";
 export type Einsatz = EinsatzRawDb;
-import type { 
-  einsatz_status as EinsatzStatus, 
+import type {
+  einsatz_status as EinsatzStatus,
   einsatz_field as EinsatzField,
   field as Field,
 } from "@/generated/prisma";
@@ -40,6 +40,11 @@ export type EinsatzForCalendar = {
   };
 };
 
+export type EinsatzFieldCreate = {
+  field_id: string,
+  value: any | null,
+}
+
 export type EinsatzCreate = {
   id?: string;
   title: string;
@@ -48,10 +53,10 @@ export type EinsatzCreate = {
   org_id: string;
   created_by: string;
   helpers_needed: number;
-  categories: string[]; 
-  einsatz_fields: EinsatzField[];
-  assignedUsers?: string[]; // Array of user IDs to assign to the event
-  status_id?: string; // Optional status ID for the event - set automatically to "offen" if not provided
+  categories: string[];
+  einsatz_fields: EinsatzFieldCreate[];
+  assignedUsers?: string[];
+  status_id?: string; // newly created einsatz doesnt need status. Only when saving to db.
   template_id?: string;
   all_day?: boolean;
   participant_count?: number | null;
