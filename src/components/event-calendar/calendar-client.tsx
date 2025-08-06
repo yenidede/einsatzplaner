@@ -68,12 +68,12 @@ export default function Component({
     }
   };
 
-  const handleEventDelete = async (eventId: string) => {
+  const handleEventDelete = async (eventId: string, eventTitle: string) => {
     const oldEvent = events.find((event) => event.id === eventId);
     setEvents(events.filter((event) => event.id !== eventId));
     try {
       await deleteEinsatzById(eventId);
-      toast.success("Einsatz '" + eventId + "' wurde gelöscht.");
+      toast.success("Einsatz '" + eventTitle + "' wurde gelöscht.");
     } catch (error) {
       toast.error("Fehler beim Löschen des Einsatzes: " + error);
       console.error("Error deleting Einsatz:", error);

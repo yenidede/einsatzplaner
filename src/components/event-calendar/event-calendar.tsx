@@ -62,7 +62,7 @@ export interface EventCalendarProps {
   events?: CalendarEvent[];
   onEventAdd?: (event: EinsatzCreate) => void;
   onEventUpdate?: (event: EinsatzCreate) => void;
-  onEventDelete?: (eventId: string) => void;
+  onEventDelete?: (eventId: string, eventTitle: string) => void;
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;
@@ -208,42 +208,19 @@ export function EventCalendar({
   const handleEventSave = (event: EinsatzCreate) => {
     if (event.id) {
       onEventUpdate?.(event);
-      // Show toast notification when an event is updated
-      toast(`Event "${event.title}" updated`, {
-        description: format(new Date(event.start), "MMM d, yyyy", {
-          locale: de,
-        }),
-      });
     } else {
       onEventAdd?.({
         ...event,
-      });
-      // Show toast notification when an event is added
-      toast(`Event "${event.title}" added`, {
-        description: format(new Date(event.start), "MMM d, yyyy", {
-          locale: de,
-        }),
       });
     }
     setIsEventDialogOpen(false);
     setSelectedEvent(null);
   };
 
-  const handleEventDelete = (eventId: string) => {
-    const deletedEvent = events.find((e) => e.id === eventId);
-    onEventDelete?.(eventId);
+  const handleEventDelete = (eventId: string, eventTitle: string) => {
+    onEventDelete?.(eventId, eventTitle);
     setIsEventDialogOpen(false);
     setSelectedEvent(null);
-
-    // Show toast notification when an event is deleted
-    if (deletedEvent) {
-      toast(`Event "${deletedEvent.title}" deleted`, {
-        description: format(new Date(deletedEvent.start), "MMM d, yyyy", {
-          locale: de,
-        }),
-        position: "bottom-left",
-      });
-    }
   };
 
   const handleEventUpdate = (updatedEvent: EinsatzCreate) => {
