@@ -198,6 +198,7 @@ export function EventCalendar({
       org_id: currentOrg?.id,
       created_by: "5ae139a7-476c-4d76-95cb-4dcb4e909da9", // TODO: Set this to the current user ID
       helpers_needed: 0,
+
       categories: [],
       einsatz_fields: [],
     };
@@ -213,19 +214,16 @@ export function EventCalendar({
         description: format(new Date(event.start), "MMM d, yyyy", {
           locale: de,
         }),
-        position: "bottom-left",
       });
     } else {
       onEventAdd?.({
         ...event,
-        id: Math.random().toString(36).substring(2, 11),
       });
       // Show toast notification when an event is added
       toast(`Event "${event.title}" added`, {
         description: format(new Date(event.start), "MMM d, yyyy", {
           locale: de,
         }),
-        position: "bottom-left",
       });
     }
     setIsEventDialogOpen(false);
@@ -249,7 +247,7 @@ export function EventCalendar({
     }
   };
 
-  const handleEventUpdate = (updatedEvent: Einsatz) => {
+  const handleEventUpdate = (updatedEvent: EinsatzCreate) => {
     onEventUpdate?.(updatedEvent);
 
     // Show toast notification when an event is updated via drag and drop

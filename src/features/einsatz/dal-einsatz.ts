@@ -85,12 +85,12 @@ export async function getAllTemplatesWithFields(org_id: string) {
   })
 }
 
-export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
-  return createEinsatzInDb({data})
+export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
+  return createEinsatzInDb({ data })
 }
 
-export async function updateEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
-  const { id, ...updateData } = data;
+export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }): Promise<Einsatz> {
+  const { id, categories, einsatz_fields, assignedUsers, org_id, ...updateData } = data;
 
   if (!id) {
     throw new Error("Einsatz must have an id for update");
@@ -98,25 +98,32 @@ export async function updateEinsatz({data}: {data: EinsatzCreate}): Promise<Eins
 
   try {
     return prisma.einsatz.update({
-      where: { id, org_id: updateData.org_id },
+      where: { id },
       data: {
         ...updateData,
+        updated_at: new Date(),
         einsatz_to_category: {
           // delete all existing categories and add the new ones
-          deleteMany: {},
-          create: updateData.categories.map((category) => ({
-            einsatz_category: { connect: { id: category } },
-          })),
+          ...(categories && {
+            deleteMany: {},
+            create: categories.map((category) => ({
+              einsatz_category: { connect: { id: category } },
+            })),
+          }),
         },
         einsatz_field: {
-          deleteMany: {},
-          create: updateData.einsatz_fields.map((field) => ({
-            field: { connect: { id: field.id } },
-            value: field.value,
-          })),
+          ...(einsatz_fields && {
+            deleteMany: {},
+            create: einsatz_fields.map((field) => ({
+              field: { connect: { id: field.field_id } },
+              value: field.value,
+            })),
+          })
         },
         einsatz_helper: {
-          set: updateData.assignedUsers?.map((userId) => ({ id: userId })) || [],
+          ...(assignedUsers && {
+            set: assignedUsers.map((userId) => ({ id: userId })),
+          }),
         },
       },
     });
@@ -127,7 +134,7 @@ export async function updateEinsatz({data}: {data: EinsatzCreate}): Promise<Eins
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   // TODO: check if logged in user has permission to delete this Einsatz
-  
+
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
   });
@@ -146,7 +153,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   }
 }
 
-async function createEinsatzInDb({data}: {data: EinsatzCreate}): Promise<Einsatz> {
+async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
   const {
     title,
     start,
@@ -178,15 +185,15 @@ async function createEinsatzInDb({data}: {data: EinsatzCreate}): Promise<Einsatz
       },
       einsatz_field: {
         create: einsatz_fields.map((field) => ({
-          field: { connect: { id: field.id } },
+          field: { connect: { id: field.field_id } },
           value: field.value,
         })),
       },
       einsatz_helper: {
         connect: assignedUsers.map((userId) => ({ id: userId })),
       },
-      status_id, // Set the status ID
-      template_id, // Set the template ID if provided
+      status_id,
+      template_id,
     },
   });
 }
