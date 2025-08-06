@@ -42,7 +42,7 @@ export type EinsatzForCalendar = {
 
 export type EinsatzFieldCreate = {
   field_id: string,
-  value: any | null,
+  value: string | null,
 }
 
 export type EinsatzCreate = {

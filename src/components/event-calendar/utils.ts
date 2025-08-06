@@ -38,14 +38,14 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
           fieldSchema = fieldSchema.max(options.max);
         break;
       case "number":
-        fieldSchema = z.number();
+        fieldSchema = z.int();
         if (options.min)
           fieldSchema = fieldSchema.gte(options.min);
         if (options.max)
           fieldSchema = fieldSchema.lte(options.max);
         break;
       case "currency":
-        fieldSchema = z.number();
+        fieldSchema = z.float64();
         if (options.min)
           fieldSchema = fieldSchema.gte(options.min);
         if (options.max)
@@ -73,6 +73,77 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
   });
 
   return z.object(schemaShape);
+}
+
+export function mapStringValueToType(value: string | null | undefined, fieldType: string | undefined | null): any {
+  if (value === null || value === undefined) return null;
+  if (!fieldType) return value; // return as is (text)
+  console.log("Mapping value:", value, "to type:", fieldType);
+  switch (fieldType) {
+    case "text":
+    case "phone":
+    case "mail":
+      return value;
+    case "number":
+      console.log("Mapping number value:", value);
+      return parseInt(value, 10);
+    case "currency":
+      return parseFloat(value);
+    case "boolean":
+      console.log("Mapping boolean value:", value);
+      return value === "TRUE";
+    case "select":
+      return value.split(",");
+    default:
+      throw new Error("Unsupported type for mapping: " + fieldType);
+  }
+};
+
+export function mapTypeToStringValue(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) throw new Error("Invalid date object: " + value);
+    return value.toISOString();
+  }
+  if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+  if (Number.isNaN(value) || value === Infinity || value === -Infinity) {
+    return "0";
+  }
+  return value.toString();
+};
+
+type fieldsForSchema = {
+  field: {
+    type: {
+      datatype: string | null;
+    } | null;
+    id: string;
+    is_multiline: boolean | null;
+    is_required: boolean;
+    min: number | null;
+    max: number | null;
+    allowed_values: string[];
+    name: string | null;
+    placeholder: string | null;
+    default_value: string | null;
+    group_name: string | null;
+  };
+}[]
+
+export function mapFieldsForSchema(fields: fieldsForSchema) {
+  return fields.map((f) => {
+    return {
+      fieldId: f.field.id,
+      type: f.field.type?.datatype,
+      options: {
+        isMultiline: f.field.is_multiline,
+        isRequired: f.field.is_required,
+        min: f.field.min,
+        max: f.field.max,
+        allowedValues: f.field.allowed_values,
+      },
+    };
+  });
 }
 
 export function mapDbDataTypeToFormFieldType(datatype: string | null | undefined): FormFieldType {

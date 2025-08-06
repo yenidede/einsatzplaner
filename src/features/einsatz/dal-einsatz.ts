@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import type { einsatz as Einsatz } from "@/generated/prisma";
 import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
+import { ValidateEinsatzCreate } from "./validation-service";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDetailed | null> {
@@ -90,11 +91,18 @@ export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<
 }
 
 export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }): Promise<Einsatz> {
+  if (data.template_id && false) {
+    const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
+  }
+
   const { id, categories, einsatz_fields, assignedUsers, org_id, ...updateData } = data;
 
   if (!id) {
     throw new Error("Einsatz must have an id for update");
   }
+
+  console.log("Updating Einsatz with data:", updateData);
+  console.log("Dynamic fields:", einsatz_fields);
 
   try {
     return prisma.einsatz.update({

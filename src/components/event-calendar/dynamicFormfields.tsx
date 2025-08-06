@@ -26,7 +26,7 @@ export default function DynamicFormFields({
   };
 
   const renderField = (field: CustomFormField) => {
-    switch (field.type) {
+    switch (field.inputType) {
       case "checkbox":
         return (
           <FormSwitchField

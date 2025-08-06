@@ -6,7 +6,13 @@ import { RiDeleteBinLine } from "@remixicon/react";
 import { isBefore } from "date-fns";
 
 import z from "zod";
-import { generateDynamicSchema, mapDbDataTypeToFormFieldType } from "./utils";
+import {
+  generateDynamicSchema,
+  mapDbDataTypeToFormFieldType,
+  mapFieldsForSchema,
+  mapStringValueToType,
+  mapTypeToStringValue,
+} from "./utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +45,7 @@ import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
-import { CustomFormField, FormFieldType } from "./types";
+import { CustomFormField, FormFieldType, SupportedDataTypes } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
 import { randomUUID } from "crypto";
 
@@ -170,7 +176,7 @@ interface EventDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (einsatz: EinsatzCreate) => void;
-  onDelete: (eventId: string) => void;
+  onDelete: (eventId: string, eventTitle: string) => void;
   activeOrg: Organization | null;
 }
 
@@ -198,24 +204,12 @@ export function EventDialog({
   );
   // used for rendering of dynamic form fields
   const [dynamicFormFields, setDynamicFormFields] = useState<CustomFormField[]>(
-    [
-      {
-        id: "kostenaufwand",
-        displayName: "Kostenaufwand",
-        placeholder: "Geben Sie den Kostenaufwand ein",
-        defaultValue: 12.2,
-        required: true,
-        groupName: "Finanzen",
-        min: 0,
-        type: "default",
-        inputProps: { type: "number", step: "0.10" },
-      },
-    ]
+    []
   );
   // stores the dynamic form data in key-value pairs
-  const [dynamicFormData, setDynamicFormData] = useState<Record<string, any>>({
-    kostenaufwand: 12.2,
-  });
+  const [dynamicFormData, setDynamicFormData] = useState<Record<string, any>>(
+    {}
+  );
 
   const [errors, setErrors] = useState<{
     fieldErrors: Record<string, string[]>;
@@ -255,13 +249,18 @@ export function EventDialog({
     },
   });
 
-  // type string means einsatz (enter exit mode)
+  // type string means edit einsatz (uuid)
   const currentEinsatz =
     typeof einsatz === "string" ? detailedEinsatz : einsatz;
 
-  const handleDynamicFormDataChange = (
-    updates: Partial<z.infer<typeof dynamicSchema>>
-  ) => {
+  const handleDynamicFormDataChange = (updates: Record<string, any>) => {
+    Object.entries(updates).forEach(([key, value]) => {
+      if (typeof value === "string") {
+        // Convert string values to appropriate types based on dynamic schema
+        const fieldType = dynamicFormFields.find((f) => f.id === key)?.dataType;
+        updates[key] = mapStringValueToType(value, fieldType);
+      }
+    });
     // Validate using dynamic schema if it exists
     if (dynamicSchema) {
       // Validate just the updated fields using partial schema
@@ -396,25 +395,22 @@ export function EventDialog({
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
         handleFormDataChange({ title: createEinsatz.title || "" });
-
-        // Safely handle start and end dates
         if (createEinsatz.start) {
-          const start = new Date(createEinsatz.start);
+          const start = createEinsatz.start;
           handleFormDataChange({
             startDate: start,
             startTime: formatTimeForInput(start),
           });
         }
-
         if (createEinsatz.end) {
-          const end = new Date(createEinsatz.end);
+          const end = createEinsatz.end;
           handleFormDataChange({
             endDate: end,
             endTime: formatTimeForInput(end),
           });
         }
-
         handleFormDataChange({
+          title: createEinsatz.title || "",
           all_day: createEinsatz.all_day || false,
         });
         // Reset errors when opening dialog
@@ -423,30 +419,27 @@ export function EventDialog({
           formErrors: [],
         });
       } else {
+        const einsatzDetailed = currentEinsatz as EinsatzDetailed;
         // Edit existing einsatz (loaded from query)
         setActiveTemplateId(currentEinsatz.template_id || null);
-        handleFormDataChange({ title: currentEinsatz.title || "" });
-
-        // Safely handle start and end dates
-        if (currentEinsatz.start) {
-          const start = new Date(currentEinsatz.start);
-          handleFormDataChange({
-            startDate: start,
-            startTime: formatTimeForInput(start),
-          });
-        }
-
-        if (currentEinsatz.end) {
-          const end = new Date(currentEinsatz.end);
-          handleFormDataChange({
-            endDate: end,
-            endTime: formatTimeForInput(end),
-          });
-        }
-
-        handleFormDataChange({
-          all_day: currentEinsatz.all_day || false,
+        setStaticFormData({
+          title: einsatzDetailed.title || "",
+          all_day: einsatzDetailed.all_day || false,
+          startDate: einsatzDetailed.start || new Date(),
+          startTime:
+            formatTimeForInput(einsatzDetailed.start) ||
+            DefaultStartHour + ":00",
+          endDate: einsatzDetailed.end || new Date(),
+          endTime:
+            formatTimeForInput(einsatzDetailed.end) || DefaultEndHour + ":00",
+          participantCount: einsatzDetailed.participant_count || 0,
+          pricePerPerson: einsatzDetailed.price_per_person || 0,
+          totalPrice: einsatzDetailed.total_price || 0,
+          helpersNeeded: einsatzDetailed.helpers_needed || 0,
+          assignedUsers: einsatzDetailed.assigned_users || [],
+          einsatzCategoriesIds: einsatzDetailed.categories || [],
         });
+
         // Reset errors when opening dialog
         setErrors({
           fieldErrors: {},
@@ -465,19 +458,7 @@ export function EventDialog({
         templatesQuery.data.find((t) => t.id === activeTemplateId)
           ?.template_field || [];
       try {
-        const mappedFields = fields.map((f) => {
-          return {
-            fieldId: f.field.id,
-            type: f.field.type?.datatype,
-            options: {
-              isMultiline: f.field.is_multiline,
-              isRequired: f.field.is_required,
-              min: f.field.min,
-              max: f.field.max,
-              allowedValues: f.field.allowed_values,
-            },
-          };
-        });
+        const mappedFields = mapFieldsForSchema(fields);
         const schema = generateDynamicSchema(mappedFields);
         setDynamicSchema(schema);
         setDynamicFormFields(
@@ -492,7 +473,9 @@ export function EventDialog({
               min: f.field.min,
               max: f.field.max,
               allowedValues: f.field.allowed_values,
-              type: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+              inputType: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+              dataType:
+                (f.field.type?.datatype as SupportedDataTypes) || "text",
               inputProps:
                 f.field.type?.datatype === "number" ? { type: "number" } : {},
             };
@@ -500,7 +483,14 @@ export function EventDialog({
         );
         setDynamicFormData(
           fields.reduce((acc, f) => {
-            acc[f.field.id] = f.field.default_value;
+            const value =
+              detailedEinsatz?.einsatz_fields?.find(
+                (ef) => ef.field_id === f.field.id // load data from einsatz_field if exists,
+              )?.value ?? f.field.default_value; //  else use default value
+            acc[f.field.id] = mapStringValueToType(
+              value,
+              f.field.type?.datatype || "string"
+            );
             return acc;
           }, {} as Record<string, any>)
         );
@@ -678,7 +668,7 @@ export function EventDialog({
       ([field_id, value]: [string, any]) => {
         return {
           field_id,
-          value: value,
+          value: mapTypeToStringValue(value),
         };
       }
     );
@@ -710,7 +700,7 @@ export function EventDialog({
       });
 
       if (result === "success") {
-        onDelete(currentEinsatz.id);
+        onDelete(currentEinsatz.id, currentEinsatz.title);
       }
     }
   };
