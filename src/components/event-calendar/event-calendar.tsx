@@ -56,7 +56,7 @@ import { EinsatzCreate } from "@/features/einsatz/types";
 import { createEinsatz } from "@/features/einsatz/dal-einsatz";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -77,6 +77,7 @@ export function EventCalendar({
   initialView = "month",
   mode,
 }: EventCalendarProps) {
+  const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>(initialView);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
@@ -213,12 +214,24 @@ export function EventCalendar({
         ...event,
       });
     }
+
+    // Invalidate einsatz queries to refresh the cache
+    queryClient.invalidateQueries({
+      queryKey: ["einsatz"],
+    });
+
     setIsEventDialogOpen(false);
     setSelectedEvent(null);
   };
 
   const handleEventDelete = (eventId: string, eventTitle: string) => {
     onEventDelete?.(eventId, eventTitle);
+
+    // Invalidate einsatz queries to refresh the cache
+    queryClient.invalidateQueries({
+      queryKey: ["einsatz"],
+    });
+
     setIsEventDialogOpen(false);
     setSelectedEvent(null);
   };
@@ -427,7 +440,7 @@ export function EventCalendar({
 
         <EventDialog
           activeOrg={selectedOrg}
-          einsatz={selectedEvent}
+          einsatz={selectedEvent as EinsatzCreate}
           isOpen={isEventDialogOpen}
           onClose={() => {
             setIsEventDialogOpen(false);

@@ -7,32 +7,11 @@ import type {
   CalendarEvent,
 } from "@/features/einsatz/types";
 import { CalendarMode } from "./types";
-
-const mapEinsaetzeToCalendarEvents = (
-  einsaetze: EinsatzForCalendar[]
-): CalendarEvent[] => {
-  return einsaetze.map((einsatz) => {
-    const categories = einsatz.einsatz_to_category;
-    const hasCategories = categories && categories.length > 0;
-
-    return {
-      id: einsatz.id,
-      title: hasCategories
-        ? `${einsatz.title} (${categories
-            .map((c) => c.einsatz_category.abbreviation)
-            .join(", ")})`
-        : einsatz.title,
-      start: einsatz.start,
-      end: einsatz.end,
-      allDay: einsatz.all_day,
-      status: einsatz.einsatz_status,
-      assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
-    };
-  });
-};
+import { mapEinsaetzeToCalendarEvents } from "./utils";
 
 export default function Calendar({ mode }: { mode: CalendarMode }) {
   const getEinsaetzeData = async () => {
+    // hydrate client before rendering => faster initial load
     const einsaetze = await getAllEinsaetzeForCalendar([
       "0c39989e-07bc-4074-92bc-aa274e5f22d0", //JMH for testing
     ]);
@@ -41,7 +20,7 @@ export default function Calendar({ mode }: { mode: CalendarMode }) {
 
   return (
     <Suspense fallback={<div>Lade Kalender...</div>}>
-      <CalendarClient einsaetze={getEinsaetzeData()} mode={mode} />
+      <CalendarClient einsaetzeProp={getEinsaetzeData()} mode={mode} />
     </Suspense>
   );
 }

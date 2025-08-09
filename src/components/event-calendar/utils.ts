@@ -1,9 +1,9 @@
 import { isSameDay } from "date-fns";
 
-import type { CalendarEvent } from "@/components/event-calendar";
 import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
-import { CalendarMode, FormFieldType } from "./types";
+import { CalendarEvent, CalendarMode, FormFieldType } from "./types";
 import { z } from "zod";
+import { Einsatz, EinsatzForCalendar } from "@/features/einsatz/types";
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -74,6 +74,29 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
 
   return z.object(schemaShape);
 }
+
+export const mapEinsaetzeToCalendarEvents = (
+  einsaetze: EinsatzForCalendar[]
+): CalendarEvent[] => {
+  return einsaetze.map((einsatz) => {
+    const categories = einsatz.einsatz_to_category;
+    const hasCategories = categories && categories.length > 0;
+
+    return {
+      id: einsatz.id,
+      title: hasCategories
+        ? `${einsatz.title} (${categories
+          .map((c) => c.einsatz_category.abbreviation)
+          .join(", ")})`
+        : einsatz.title,
+      start: einsatz.start,
+      end: einsatz.end,
+      allDay: einsatz.all_day,
+      status: einsatz.einsatz_status,
+      assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
+    };
+  });
+};
 
 export function mapStringValueToType(value: string | null | undefined, fieldType: string | undefined | null): any {
   if (value === null || value === undefined) return null;
