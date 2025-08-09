@@ -34,7 +34,7 @@ import FormField from "../form/formInputField";
 import MultiSelectFormField from "../form/multiSelectFormField";
 import FormInputFieldCustom from "../form/formInputFieldCustom";
 import type { EinsatzFormData } from "@/components/event-calendar/event-dialog";
-import { sanitizeString } from "../form/utils";
+import { calcTotal, calcPricePerPersonFromTotal } from "../form/utils";
 
 interface DefaultFormFieldsProps {
   formData: EinsatzFormData;
@@ -58,6 +58,8 @@ export function DefaultFormFields({
 }: DefaultFormFieldsProps) {
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
+
+  // Currency helpers moved to shared form utils
 
   // Memoize time options so they're only calculated once
   const timeOptions = useMemo(() => {
@@ -92,7 +94,7 @@ export function DefaultFormFields({
         <MultiSelectFormField
           name="Kategorien"
           options={categoriesOptions}
-          defaultValue={formData.einsatzCategoriesIds}
+          value={formData.einsatzCategoriesIds ?? []}
           placeholder="Kategorien auswählen"
           animation={1}
           onValueChange={(selectedValues) => {
@@ -281,14 +283,17 @@ export function DefaultFormFields({
               const participantCount = Number(e.target.value) || 0;
               onFormDataChange({
                 participantCount,
-                totalPrice: formData.pricePerPerson * participantCount,
+                totalPrice: calcTotal(
+                  formData.pricePerPerson ?? 0,
+                  participantCount
+                ),
               });
             }}
           />
         </div>
         <div className="grow">
           <FormField
-            step={0.1}
+            step={0.01}
             name="Preis p. Person (€)"
             type="number"
             min={0}
@@ -299,14 +304,17 @@ export function DefaultFormFields({
               const pricePerPerson = Number(e.target.value) || 0;
               onFormDataChange({
                 pricePerPerson,
-                totalPrice: pricePerPerson * formData.participantCount || 0,
+                totalPrice: calcTotal(
+                  pricePerPerson,
+                  formData.participantCount ?? 0
+                ),
               });
             }}
           />
         </div>
         <div className="sm:w-28 sm:min-w-28">
           <FormField
-            step={0.1}
+            step={0.01}
             name="Gesamtpreis (€)"
             type="number"
             min={0}
@@ -315,13 +323,13 @@ export function DefaultFormFields({
             className="shrink-[20]"
             onChange={(e) => {
               const totalPrice = Number(e.target.value) || 0;
-              const pricePerPerson =
-                formData.participantCount > 0
-                  ? totalPrice / formData.participantCount
-                  : 0;
+              const pricePerPerson = calcPricePerPersonFromTotal(
+                totalPrice,
+                formData.participantCount
+              );
               onFormDataChange({
                 totalPrice,
-                pricePerPerson: Math.round(pricePerPerson * 100) / 100,
+                pricePerPerson,
               });
             }}
           />
@@ -344,7 +352,7 @@ export function DefaultFormFields({
         <MultiSelectFormField
           name="Ausgewählte Personen"
           options={usersOptions}
-          defaultValue={formData.assignedUsers}
+          value={formData.assignedUsers}
           placeholder="Personen auswählen"
           animation={1}
           errors={errors.fieldErrors["assignedUsers"] || []}

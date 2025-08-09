@@ -81,6 +81,9 @@ export interface MultiSelectProps
   /** The default selected values when the component mounts. */
   defaultValue?: string[];
 
+  /** Controlled selected values. If provided, the component becomes controlled. */
+  value?: string[];
+
   /**
    * Placeholder text to be displayed when no values are selected.
    * Optional, defaults to "Select options".
@@ -128,6 +131,7 @@ export const MultiSelect = React.forwardRef<
       options,
       onValueChange,
       variant,
+      value,
       defaultValue = [],
       placeholder = "Select options",
       animation = 0,
@@ -141,8 +145,20 @@ export const MultiSelect = React.forwardRef<
     },
     ref
   ) => {
-    const [selectedValues, setSelectedValues] =
+    const isControlled = value !== undefined;
+    const [uncontrolledSelectedValues, setUncontrolledSelectedValues] =
       React.useState<string[]>(defaultValue);
+    const selectedValues = isControlled
+      ? (value as string[])
+      : uncontrolledSelectedValues;
+
+    // Keep internal state in sync when defaultValue changes (uncontrolled mode)
+    React.useEffect(() => {
+      if (!isControlled) {
+        setUncontrolledSelectedValues(defaultValue ?? []);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [defaultValue, isControlled]);
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
     const [isAnimating, setIsAnimating] = React.useState(false);
 
@@ -166,7 +182,7 @@ export const MultiSelect = React.forwardRef<
       } else if (event.key === "Backspace" && !event.currentTarget.value) {
         const newSelectedValues = [...selectedValues];
         newSelectedValues.pop();
-        setSelectedValues(newSelectedValues);
+        if (!isControlled) setUncontrolledSelectedValues(newSelectedValues);
         onValueChange(newSelectedValues);
       }
     };
@@ -175,12 +191,12 @@ export const MultiSelect = React.forwardRef<
       const newSelectedValues = selectedValues.includes(option)
         ? selectedValues.filter((value) => value !== option)
         : [...selectedValues, option];
-      setSelectedValues(newSelectedValues);
+      if (!isControlled) setUncontrolledSelectedValues(newSelectedValues);
       onValueChange(newSelectedValues);
     };
 
     const handleClear = () => {
-      setSelectedValues([]);
+      if (!isControlled) setUncontrolledSelectedValues([]);
       onValueChange([]);
     };
 
@@ -194,7 +210,7 @@ export const MultiSelect = React.forwardRef<
 
     const clearExtraOptions = () => {
       const newSelectedValues = selectedValues.slice(0, maxCount);
-      setSelectedValues(newSelectedValues);
+      if (!isControlled) setUncontrolledSelectedValues(newSelectedValues);
       onValueChange(newSelectedValues);
     };
 
@@ -205,7 +221,7 @@ export const MultiSelect = React.forwardRef<
         const allValues = options
           .slice(0, allowedActiveItems ?? options.length)
           .map((option) => option.value);
-        setSelectedValues(allValues);
+        if (!isControlled) setUncontrolledSelectedValues(allValues);
         onValueChange(allValues);
       }
     };
