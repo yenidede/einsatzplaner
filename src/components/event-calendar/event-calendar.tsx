@@ -215,22 +215,12 @@ export function EventCalendar({
       });
     }
 
-    // Invalidate einsatz queries to refresh the cache
-    queryClient.invalidateQueries({
-      queryKey: ["einsatz"],
-    });
-
     setIsEventDialogOpen(false);
     setSelectedEvent(null);
   };
 
   const handleEventDelete = (eventId: string, eventTitle: string) => {
     onEventDelete?.(eventId, eventTitle);
-
-    // Invalidate einsatz queries to refresh the cache
-    queryClient.invalidateQueries({
-      queryKey: ["einsatz"],
-    });
 
     setIsEventDialogOpen(false);
     setSelectedEvent(null);
