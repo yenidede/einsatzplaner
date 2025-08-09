@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { InputHTMLAttributes } from "react";
 import { useSession } from "next-auth/react";
 import { RiDeleteBinLine } from "@remixicon/react";
 
@@ -44,6 +45,7 @@ import { useAlertDialog } from "@/contexts/AlertDialogContext";
 import { CustomFormField, SupportedDataTypes } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
+import { buildInputProps } from "../form/utils";
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -64,7 +66,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
 export const ZodEinsatzFormData = z
   .object({
     title: z.string().min(1, "Titel ist erforderlich"),
-    einsatzCategoriesIds: z.array(z.uuid()).optional(),
+    einsatzCategoriesIds: z.array(z.uuid()),
     startDate: z.date(),
     endDate: z.date(),
     startTime: z
@@ -196,15 +198,17 @@ export function EventDialog({
     formErrors: [],
   });
 
-  // Fetch detailed einsatz data when einsatz is a string (ID)
+  // Fetch detailed einsatz data when einsatz is a string (UUID)
   const {
     data: detailedEinsatz,
     isLoading,
     error: queryError,
   } = useQuery({
     queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
-    queryFn: () => {
-      return getEinsatzWithDetailsById(einsatz as string);
+    queryFn: async () => {
+      const returnEinsatz = await getEinsatzWithDetailsById(einsatz as string);
+      console.log("Fetching detailed einsatz data for ID:", returnEinsatz);
+      return returnEinsatz;
     },
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
   });
@@ -371,6 +375,7 @@ export function EventDialog({
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
+        setActiveTemplateId(createEinsatz.template_id || null);
         handleFormDataChange({ title: createEinsatz.title || "" });
         if (createEinsatz.start) {
           const start = createEinsatz.start;
@@ -428,7 +433,7 @@ export function EventDialog({
     }
   }, [currentEinsatz]);
 
-  // Generate the dynamic schema whenever templatesQuery.data is fetched
+  // Generate or refresh dynamic schema/data when template or detailed fields change
   useEffect(() => {
     if (templatesQuery.data) {
       const fields =
@@ -439,24 +444,24 @@ export function EventDialog({
         const schema = generateDynamicSchema(mappedFields);
         setDynamicSchema(schema);
         setDynamicFormFields(
-          fields.map((f) => {
-            return {
-              id: f.field.id,
-              displayName: f.field.name || f.field.id,
+          fields.map((f) => ({
+            id: f.field.id,
+            displayName: f.field.name || f.field.id,
+            placeholder: f.field.placeholder,
+            defaultValue: f.field.default_value,
+            required: f.field.is_required,
+            isMultiline: f.field.is_multiline,
+            min: f.field.min,
+            max: f.field.max,
+            allowedValues: f.field.allowed_values,
+            inputType: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+            dataType: (f.field.type?.datatype as SupportedDataTypes) || "text",
+            inputProps: buildInputProps(f.field.type?.datatype, {
               placeholder: f.field.placeholder,
-              defaultValue: f.field.default_value,
-              required: f.field.is_required,
-              isMultiline: f.field.is_multiline,
               min: f.field.min,
               max: f.field.max,
-              allowedValues: f.field.allowed_values,
-              inputType: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
-              dataType:
-                (f.field.type?.datatype as SupportedDataTypes) || "text",
-              inputProps:
-                f.field.type?.datatype === "number" ? { type: "number" } : {},
-            };
-          })
+            }) as InputHTMLAttributes<HTMLInputElement>,
+          }))
         );
         setDynamicFormData(
           fields.reduce((acc, f) => {
@@ -475,7 +480,7 @@ export function EventDialog({
         console.error("Error generating schema:", error);
       }
     }
-  }, [activeTemplateId, templatesQuery.data]);
+  }, [activeTemplateId, templatesQuery.data, detailedEinsatz?.einsatz_fields]);
 
   const resetForm = () => {
     handleFormDataChange(DEFAULTFORMDATA);
@@ -638,14 +643,15 @@ export function EventDialog({
         };
       }
     );
+    console.log(einsatzFields);
 
     console.log("categories", parsedDataStatic.data.einsatzCategoriesIds);
 
     onSave({
       id: currentEinsatz?.id,
       title: parsedDataStatic.data.title,
-      start: parsedDataStatic.data.startDate,
-      end: parsedDataStatic.data.endDate,
+      start: startDateFull,
+      end: endDateFull,
       all_day: parsedDataStatic.data.all_day,
       participant_count: parsedDataStatic.data.participantCount ?? null,
       price_per_person: parsedDataStatic.data.pricePerPerson ?? null,

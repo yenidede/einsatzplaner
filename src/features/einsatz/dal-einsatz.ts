@@ -11,18 +11,29 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
 
   if (!einsaetzeFromDb) return null;
 
+  // Destructure to avoid leaking raw relation arrays in the DTO
+  const {
+    einsatz_status,
+    einsatz_helper,
+    einsatz_to_category,
+    einsatz_comment,
+    change_log,
+    einsatz_field,
+    ...rest
+  } = einsaetzeFromDb;
+
   return {
-    ...einsaetzeFromDb,
-    einsatz_status: einsaetzeFromDb.einsatz_status,
-    assigned_users: einsaetzeFromDb.einsatz_helper.map(helper => helper.user_id),
-    einsatz_fields: einsaetzeFromDb.einsatz_field.map(field => ({
+    ...rest,
+    einsatz_status,
+    assigned_users: einsatz_helper.map((helper) => helper.user_id),
+    einsatz_fields: einsatz_field.map((field) => ({
       id: field.id,
       einsatz_id: field.einsatz_id,
       field_id: field.field_id,
       value: field.value,
     })),
-    categories: einsaetzeFromDb.einsatz_to_category.map(cat => cat.einsatz_category.id),
-    comments: einsaetzeFromDb.einsatz_comment.map(comment => ({
+    categories: einsatz_to_category.map((cat) => cat.einsatz_category.id),
+    comments: einsatz_comment.map((comment) => ({
       id: comment.id,
       einsatz_id: comment.einsatz_id,
       user_id: comment.user_id,
@@ -34,7 +45,7 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
         lastname: comment.user.lastname,
       },
     })),
-    change_log: einsaetzeFromDb.change_log.map(log => ({
+    change_log: change_log.map((log) => ({
       id: log.id,
       einsatz_id: log.einsatz_id,
       user_id: log.user_id,
@@ -130,7 +141,10 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
         },
         einsatz_helper: {
           ...(assignedUsers && {
-            set: assignedUsers.map((userId) => ({ id: userId })),
+            deleteMany: {},
+            create: (assignedUsers ?? []).map((userId) => ({
+              user: { connect: { id: userId } },
+            })),
           }),
         },
       },
