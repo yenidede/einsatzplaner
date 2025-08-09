@@ -11,7 +11,7 @@ export async function EinsatzCreateToCalendarEvent(einsatz: EinsatzCreate): Prom
         start: einsatz.start,
         end: einsatz.end,
         allDay: einsatz.all_day ?? false,
-        assignedUsers: einsatz.assignedUsers || [],
+        assignedUsers: einsatz.assignedUsers || [], // Fixed: use assignedUsers instead of assigned_users
         status: status ?? undefined,
     };
 }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { RiDeleteBinLine } from "@remixicon/react";
-import { isBefore } from "date-fns";
 
 import z from "zod";
 import {
@@ -31,10 +30,7 @@ import {
   StatusValuePairs,
 } from "@/components/event-calendar/constants";
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
-import type {
-  einsatz as Einsatz,
-  organization as Organization,
-} from "@/generated/prisma";
+import type { organization as Organization } from "@/generated/prisma";
 import { useQuery } from "@tanstack/react-query";
 import { EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
 import FormGroup from "../form/formGroup";
@@ -45,9 +41,8 @@ import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
-import { CustomFormField, FormFieldType, SupportedDataTypes } from "./types";
+import { CustomFormField, SupportedDataTypes } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
-import { randomUUID } from "crypto";
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -152,25 +147,6 @@ export const ZodEinsatzFormData = z
 
 export type EinsatzFormData = z.infer<typeof ZodEinsatzFormData>;
 
-// Helper function to get user-friendly field names
-function getFieldDisplayName(fieldName: string): string {
-  const fieldNames: Record<string, string> = {
-    title: "Titel",
-    einsatzCategoriesIds: "Kategorien",
-    startDate: "Startdatum",
-    endDate: "Enddatum",
-    startTime: "Startzeit",
-    endTime: "Endzeit",
-    all_day: "Ganztägig",
-    participantCount: "Teilnehmeranzahl",
-    pricePerPerson: "Preis pro Person",
-    helpersNeeded: "Helfer benötigt",
-    assignedUsers: "Zugewiesene Benutzer",
-  };
-
-  return fieldNames[fieldName] || fieldName;
-}
-
 interface EventDialogProps {
   einsatz: EinsatzCreate | string | null;
   isOpen: boolean;
@@ -225,7 +201,7 @@ export function EventDialog({
     isLoading,
     error: queryError,
   } = useQuery({
-    queryKey: ["einsatz", einsatz],
+    queryKey: ["einsatz", "detailed", einsatz],
     queryFn: () => {
       return getEinsatzWithDetailsById(einsatz as string);
     },
@@ -644,17 +620,6 @@ export function EventDialog({
     } else {
       startDateFull.setHours(0, 0, 0, 0);
       endDateFull.setHours(23, 59, 59, 999);
-    }
-
-    // Validate that end date is not before start date
-    if (isBefore(endDateFull, startDateFull)) {
-      setErrors({
-        fieldErrors: {
-          endDate: ["End date cannot be before start date"],
-        },
-        formErrors: [],
-      });
-      return;
     }
 
     // If einsatz was changed, always remove bestätigt status

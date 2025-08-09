@@ -43,7 +43,11 @@ export default function DynamicFormFields({
             key={field.id}
             name={field.displayName}
             options={field.allowedValues ?? []}
-            value={formData?.[field.id] ?? ""}
+            value={
+              Array.isArray(formData?.[field.id])
+                ? formData[field.id][0]
+                : formData?.[field.id] ?? ""
+            }
             placeholder={field.placeholder ?? "Feld auswählen..."}
             required={field.required}
             onValueChange={(value) => handleFieldChange(field.id, value)}
