@@ -43,6 +43,7 @@ import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
 import { CustomFormField, SupportedDataTypes } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
+import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -201,7 +202,7 @@ export function EventDialog({
     isLoading,
     error: queryError,
   } = useQuery({
-    queryKey: ["einsatz", "detailed", einsatz],
+    queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
     queryFn: () => {
       return getEinsatzWithDetailsById(einsatz as string);
     },
