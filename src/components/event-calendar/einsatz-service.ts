@@ -1,5 +1,5 @@
 import { EinsatzCreate, CalendarEvent, EinsatzDetailed } from '@/features/einsatz/types';
-import { GetStatusById } from '@/features/einsatz_status/status-service';
+import { GetStatusById } from '@/features/einsatz_status/status-dal';
 
 export async function EinsatzCreateToCalendarEvent(einsatz: EinsatzCreate): Promise<CalendarEvent> {
     if (!einsatz.id) throw new Error("Einsatz must have an id");

@@ -639,11 +639,13 @@ export function EventDialog({
       }
     );
 
+    console.log("categories", parsedDataStatic.data.einsatzCategoriesIds);
+
     onSave({
       id: currentEinsatz?.id,
       title: parsedDataStatic.data.title,
-      start: startDateFull,
-      end: endDateFull,
+      start: parsedDataStatic.data.startDate,
+      end: parsedDataStatic.data.endDate,
       all_day: parsedDataStatic.data.all_day,
       participant_count: parsedDataStatic.data.participantCount ?? null,
       price_per_person: parsedDataStatic.data.pricePerPerson ?? null,
@@ -653,7 +655,8 @@ export function EventDialog({
       created_by: currentUserId,
       template_id: activeTemplateId ?? undefined,
       helpers_needed: parsedDataStatic.data.helpersNeeded,
-      categories: [],
+      categories: parsedDataStatic.data.einsatzCategoriesIds ?? [],
+      assignedUsers: parsedDataStatic.data.assignedUsers,
       einsatz_fields: einsatzFields,
     });
   };

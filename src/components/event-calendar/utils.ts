@@ -130,7 +130,7 @@ export function mapTypeToStringValue(value: any): string | null {
   }
   if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
   if (Number.isNaN(value) || value === Infinity || value === -Infinity) {
-    return "0";
+    return null;
   }
   return value.toString();
 };
