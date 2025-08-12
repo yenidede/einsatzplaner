@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RiCalendarLine } from "@remixicon/react";
 import { format, isBefore } from "date-fns";
 import { de } from "date-fns/locale";
@@ -58,8 +58,22 @@ export function DefaultFormFields({
 }: DefaultFormFieldsProps) {
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
+  const isEndDateEdited = useRef(
+    formData.endDate &&
+      formData.startDate &&
+      format(formData.endDate, "yyyy-MM-dd") !==
+        format(formData.startDate, "yyyy-MM-dd")
+  );
 
-  // Currency helpers moved to shared form utils
+  // Keep ref in sync when form data changes from outside
+  useEffect(() => {
+    isEndDateEdited.current = !!(
+      formData.endDate &&
+      formData.startDate &&
+      format(formData.endDate, "yyyy-MM-dd") !==
+        format(formData.startDate, "yyyy-MM-dd")
+    );
+  }, [formData.startDate, formData.endDate]);
 
   // Memoize time options so they're only calculated once
   const timeOptions = useMemo(() => {
@@ -147,10 +161,15 @@ export function DefaultFormFields({
                   locale={de}
                   onSelect={(date) => {
                     if (date) {
-                      handleChange("startDate", date);
-                      // If end date is before the new start date, update it to match the start date
-                      if (isBefore(formData.endDate, date)) {
-                        handleChange("endDate", date);
+                      // Auto-adjust end date unless user already edited it
+                      if (!isEndDateEdited.current) {
+                        const updates: Partial<EinsatzFormData> = {
+                          startDate: date,
+                          endDate: date,
+                        };
+                        onFormDataChange(updates);
+                      } else {
+                        handleChange("startDate", date);
                       }
                       setStartDateOpen(false);
                     }
@@ -225,6 +244,8 @@ export function DefaultFormFields({
                   locale={de}
                   onSelect={(date) => {
                     if (date) {
+                      // Mark as edited when user picks an explicit end date
+                      isEndDateEdited.current = true;
                       handleChange("endDate", date);
                       setEndDateOpen(false);
                     }
