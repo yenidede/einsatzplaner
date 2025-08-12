@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import type { einsatz as Einsatz } from "@/generated/prisma";
 import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
+import { ValidateEinsatzCreate } from "./validation-service";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDetailed | null> {
@@ -10,18 +11,29 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
 
   if (!einsaetzeFromDb) return null;
 
+  // Destructure to avoid leaking raw relation arrays in the DTO
+  const {
+    einsatz_status,
+    einsatz_helper,
+    einsatz_to_category,
+    einsatz_comment,
+    change_log,
+    einsatz_field,
+    ...rest
+  } = einsaetzeFromDb;
+
   return {
-    ...einsaetzeFromDb,
-    einsatz_status: einsaetzeFromDb.einsatz_status,
-    assigned_users: einsaetzeFromDb.einsatz_helper.map(helper => helper.user_id),
-    einsatz_fields: einsaetzeFromDb.einsatz_field.map(field => ({
+    ...rest,
+    einsatz_status,
+    assigned_users: einsatz_helper.map((helper) => helper.user_id),
+    einsatz_fields: einsatz_field.map((field) => ({
       id: field.id,
       einsatz_id: field.einsatz_id,
       field_id: field.field_id,
       value: field.value,
     })),
-    categories: einsaetzeFromDb.einsatz_to_category.map(cat => cat.einsatz_category.id),
-    comments: einsaetzeFromDb.einsatz_comment.map(comment => ({
+    categories: einsatz_to_category.map((cat) => cat.einsatz_category.id),
+    comments: einsatz_comment.map((comment) => ({
       id: comment.id,
       einsatz_id: comment.einsatz_id,
       user_id: comment.user_id,
@@ -33,7 +45,7 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
         lastname: comment.user.lastname,
       },
     })),
-    change_log: einsaetzeFromDb.change_log.map(log => ({
+    change_log: change_log.map((log) => ({
       id: log.id,
       einsatz_id: log.einsatz_id,
       user_id: log.user_id,
@@ -85,38 +97,55 @@ export async function getAllTemplatesWithFields(org_id: string) {
   })
 }
 
-export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
-  return createEinsatzInDb({data})
+export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
+  return createEinsatzInDb({ data })
 }
 
-export async function updateEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
-  const { id, ...updateData } = data;
+export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }): Promise<Einsatz> {
+  if (data.template_id && false) {
+    const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
+  }
+
+  const { id, categories, einsatz_fields, assignedUsers, org_id, ...updateData } = data;
 
   if (!id) {
     throw new Error("Einsatz must have an id for update");
   }
 
+  console.log("Updating Einsatz with data:", updateData);
+  console.log("Dynamic fields:", einsatz_fields);
+
   try {
     return prisma.einsatz.update({
-      where: { id, org_id: updateData.org_id },
+      where: { id },
       data: {
         ...updateData,
+        updated_at: new Date(),
         einsatz_to_category: {
           // delete all existing categories and add the new ones
-          deleteMany: {},
-          create: updateData.categories.map((category) => ({
-            einsatz_category: { connect: { id: category } },
-          })),
+          ...(categories && {
+            deleteMany: {},
+            create: categories.map((category) => ({
+              einsatz_category: { connect: { id: category } },
+            })),
+          }),
         },
         einsatz_field: {
-          deleteMany: {},
-          create: updateData.einsatz_fields.map((field) => ({
-            field: { connect: { id: field.id } },
-            value: field.value,
-          })),
+          ...(einsatz_fields && {
+            deleteMany: {},
+            create: einsatz_fields.map((field) => ({
+              field: { connect: { id: field.field_id } },
+              value: field.value,
+            })),
+          })
         },
         einsatz_helper: {
-          set: updateData.assignedUsers?.map((userId) => ({ id: userId })) || [],
+          ...(assignedUsers && {
+            deleteMany: {},
+            create: (assignedUsers ?? []).map((userId) => ({
+              user: { connect: { id: userId } },
+            })),
+          }),
         },
       },
     });
@@ -127,7 +156,7 @@ export async function updateEinsatz({data}: {data: EinsatzCreate}): Promise<Eins
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   // TODO: check if logged in user has permission to delete this Einsatz
-  
+
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
   });
@@ -146,7 +175,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   }
 }
 
-async function createEinsatzInDb({data}: {data: EinsatzCreate}): Promise<Einsatz> {
+async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
   const {
     title,
     start,
@@ -178,15 +207,15 @@ async function createEinsatzInDb({data}: {data: EinsatzCreate}): Promise<Einsatz
       },
       einsatz_field: {
         create: einsatz_fields.map((field) => ({
-          field: { connect: { id: field.id } },
+          field: { connect: { id: field.field_id } },
           value: field.value,
         })),
       },
       einsatz_helper: {
         connect: assignedUsers.map((userId) => ({ id: userId })),
       },
-      status_id, // Set the status ID
-      template_id, // Set the template ID if provided
+      status_id,
+      template_id,
     },
   });
 }

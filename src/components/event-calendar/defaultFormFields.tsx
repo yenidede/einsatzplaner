@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RiCalendarLine } from "@remixicon/react";
 import { format, isBefore } from "date-fns";
 import { de } from "date-fns/locale";
@@ -34,7 +34,7 @@ import FormField from "../form/formInputField";
 import MultiSelectFormField from "../form/multiSelectFormField";
 import FormInputFieldCustom from "../form/formInputFieldCustom";
 import type { EinsatzFormData } from "@/components/event-calendar/event-dialog";
-import { sanitizeString } from "../form/utils";
+import { calcTotal, calcPricePerPersonFromTotal } from "../form/utils";
 
 interface DefaultFormFieldsProps {
   formData: EinsatzFormData;
@@ -58,6 +58,22 @@ export function DefaultFormFields({
 }: DefaultFormFieldsProps) {
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
+  const isEndDateEdited = useRef(
+    formData.endDate &&
+      formData.startDate &&
+      format(formData.endDate, "yyyy-MM-dd") !==
+        format(formData.startDate, "yyyy-MM-dd")
+  );
+
+  // Keep ref in sync when form data changes from outside
+  useEffect(() => {
+    isEndDateEdited.current = !!(
+      formData.endDate &&
+      formData.startDate &&
+      format(formData.endDate, "yyyy-MM-dd") !==
+        format(formData.startDate, "yyyy-MM-dd")
+    );
+  }, [formData.startDate, formData.endDate]);
 
   // Memoize time options so they're only calculated once
   const timeOptions = useMemo(() => {
@@ -92,7 +108,7 @@ export function DefaultFormFields({
         <MultiSelectFormField
           name="Kategorien"
           options={categoriesOptions}
-          defaultValue={formData.einsatzCategoriesIds}
+          value={formData.einsatzCategoriesIds ?? []}
           placeholder="Kategorien auswählen"
           animation={1}
           onValueChange={(selectedValues) => {
@@ -145,10 +161,15 @@ export function DefaultFormFields({
                   locale={de}
                   onSelect={(date) => {
                     if (date) {
-                      handleChange("startDate", date);
-                      // If end date is before the new start date, update it to match the start date
-                      if (isBefore(formData.endDate, date)) {
-                        handleChange("endDate", date);
+                      // Auto-adjust end date unless user already edited it
+                      if (!isEndDateEdited.current) {
+                        const updates: Partial<EinsatzFormData> = {
+                          startDate: date,
+                          endDate: date,
+                        };
+                        onFormDataChange(updates);
+                      } else {
+                        handleChange("startDate", date);
                       }
                       setStartDateOpen(false);
                     }
@@ -223,6 +244,8 @@ export function DefaultFormFields({
                   locale={de}
                   onSelect={(date) => {
                     if (date) {
+                      // Mark as edited when user picks an explicit end date
+                      isEndDateEdited.current = true;
                       handleChange("endDate", date);
                       setEndDateOpen(false);
                     }
@@ -281,14 +304,17 @@ export function DefaultFormFields({
               const participantCount = Number(e.target.value) || 0;
               onFormDataChange({
                 participantCount,
-                totalPrice: formData.pricePerPerson * participantCount,
+                totalPrice: calcTotal(
+                  formData.pricePerPerson ?? 0,
+                  participantCount
+                ),
               });
             }}
           />
         </div>
         <div className="grow">
           <FormField
-            step={0.1}
+            step={0.01}
             name="Preis p. Person (€)"
             type="number"
             min={0}
@@ -299,14 +325,17 @@ export function DefaultFormFields({
               const pricePerPerson = Number(e.target.value) || 0;
               onFormDataChange({
                 pricePerPerson,
-                totalPrice: pricePerPerson * formData.participantCount || 0,
+                totalPrice: calcTotal(
+                  pricePerPerson,
+                  formData.participantCount ?? 0
+                ),
               });
             }}
           />
         </div>
         <div className="sm:w-28 sm:min-w-28">
           <FormField
-            step={0.1}
+            step={0.01}
             name="Gesamtpreis (€)"
             type="number"
             min={0}
@@ -315,13 +344,13 @@ export function DefaultFormFields({
             className="shrink-[20]"
             onChange={(e) => {
               const totalPrice = Number(e.target.value) || 0;
-              const pricePerPerson =
-                formData.participantCount > 0
-                  ? totalPrice / formData.participantCount
-                  : 0;
+              const pricePerPerson = calcPricePerPersonFromTotal(
+                totalPrice,
+                formData.participantCount
+              );
               onFormDataChange({
                 totalPrice,
-                pricePerPerson: Math.round(pricePerPerson * 100) / 100,
+                pricePerPerson,
               });
             }}
           />
@@ -344,7 +373,7 @@ export function DefaultFormFields({
         <MultiSelectFormField
           name="Ausgewählte Personen"
           options={usersOptions}
-          defaultValue={formData.assignedUsers}
+          value={formData.assignedUsers}
           placeholder="Personen auswählen"
           animation={1}
           errors={errors.fieldErrors["assignedUsers"] || []}
