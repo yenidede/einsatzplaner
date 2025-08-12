@@ -45,7 +45,7 @@ export default function DynamicFormFields({
             options={field.allowedValues ?? []}
             value={
               Array.isArray(formData?.[field.id])
-                ? formData[field.id][0]
+                ? (formData[field.id].length > 0 ? formData[field.id][0] : "")
                 : formData?.[field.id] ?? ""
             }
             placeholder={field.placeholder ?? "Feld auswählen..."}
