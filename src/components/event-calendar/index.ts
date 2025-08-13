@@ -10,6 +10,7 @@ export { EventCalendar } from "./event-calendar"
 export { MonthView } from "./month-view"
 export { WeekView } from "./week-view"
 export { CalendarDndProvider, useCalendarDnd } from "./calendar-dnd-context"
+export { ListView } from "./list-view"
 
 // Constants and utility exports
 export * from "./constants"

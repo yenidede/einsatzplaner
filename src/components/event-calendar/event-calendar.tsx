@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { parseAsStringEnum, useQueryState } from "nuqs";
 import { RiCalendarCheckLine } from "@remixicon/react";
 import {
   addDays,
@@ -21,7 +22,6 @@ import {
   ChevronRightIcon,
   PlusIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +43,7 @@ import {
   MonthView,
   WeekCellsHeight,
   WeekView,
+  ListView,
 } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
 import {
@@ -50,10 +51,10 @@ import {
   organization as Organization,
 } from "@/generated/prisma";
 import { EinsatzCreate } from "@/features/einsatz/types";
-import { createEinsatz } from "@/features/einsatz/dal-einsatz";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/features/organization/queryKeys";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -78,12 +79,22 @@ export function EventCalendar({
 }: EventCalendarProps) {
   const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<CalendarView>(initialView);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<
     EinsatzCreate | string | null
   >(null);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+
+  const [view, setView] = useQueryState<CalendarView>(
+    "view",
+    parseAsStringEnum<CalendarView>([
+      "month",
+      "week",
+      "day",
+      "agenda",
+      "list",
+    ]).withDefault(initialView)
+  );
 
   // German view names mapping
   const viewLabels = {
@@ -91,16 +102,15 @@ export function EventCalendar({
     week: "Woche",
     day: "Tag",
     agenda: "Agenda",
+    list: "Liste",
   } as const;
 
   // TODO use logged in user data
   const { data: sessionData } = useSession();
+  const orgs = sessionData?.orgs || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"];
   const orgsQuery = useQuery({
-    queryKey: ["organizations"], // also map all orgs by id
-    queryFn: () =>
-      getOrganizationsByIds(
-        sessionData?.orgs || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]
-      ),
+    queryKey: queryKeys.organizations(orgs), // also map all orgs by id
+    queryFn: () => getOrganizationsByIds(orgs),
   });
 
   // Add keyboard shortcuts for view switching
@@ -130,6 +140,9 @@ export function EventCalendar({
         case "a":
           setView("agenda");
           break;
+        case "l":
+          setView("list");
+          break;
       }
     };
 
@@ -149,6 +162,8 @@ export function EventCalendar({
       setCurrentDate(addDays(currentDate, -1));
     } else if (view === "agenda") {
       // For agenda view, go back 30 days (a full month)
+      setCurrentDate(addDays(currentDate, -AgendaDaysToShow));
+    } else if (view === "list") {
       setCurrentDate(addDays(currentDate, -AgendaDaysToShow));
     }
   };
@@ -170,9 +185,8 @@ export function EventCalendar({
     setCurrentDate(new Date());
   };
 
-  const handleEventSelect = (event: CalendarEvent) => {
-    console.log("Event selected:", event); // Debug log
-    setSelectedEvent(event.id);
+  const handleEventSelect = (event: CalendarEvent | string) => {
+    setSelectedEvent(typeof event === "string" ? event : event.id);
     setIsEventDialogOpen(true);
   };
 
@@ -379,6 +393,9 @@ export function EventCalendar({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setView("agenda")}>
                   Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
+                </DropdownMenuItem>{" "}
+                <DropdownMenuItem onClick={() => setView("list")}>
+                  Liste <DropdownMenuShortcut>L</DropdownMenuShortcut>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -432,6 +449,13 @@ export function EventCalendar({
               currentDate={currentDate}
               events={events}
               onEventSelect={handleEventSelect}
+              mode={mode}
+            />
+          )}
+          {view === "list" && (
+            <ListView
+              onEventSelect={handleEventSelect}
+              onEventDelete={handleEventDelete}
               mode={mode}
             />
           )}

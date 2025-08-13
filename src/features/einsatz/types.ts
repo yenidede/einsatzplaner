@@ -1,12 +1,47 @@
-import type { einsatz as EinsatzRawDb, einsatz_comment as CommentRawDb, change_log as ChangeLogRawDb } from "@/generated/prisma";
+import type { einsatz as EinsatzRawDb, einsatz_comment as CommentRawDb, change_log as ChangeLogRawDb, organization, einsatz_category } from "@/generated/prisma";
 export type Einsatz = EinsatzRawDb;
 import type {
   einsatz_status as EinsatzStatus,
   einsatz_field as EinsatzField,
-  field as Field,
+  organization as Organization,
+  user as User,
+  einsatz_category as EinsatzCategory
 } from "@/generated/prisma";
 
 export type { CalendarEvent } from "@/components/event-calendar/types";
+
+export type EinsatzFieldCreate = {
+  field_id: string,
+  value: string | null,
+}
+
+export type EinsatzCreate = {
+  id?: string;
+  title: string;
+
+  start: Date;
+  end: Date;
+  all_day?: boolean;
+
+  org_id: string;
+  created_by: string;
+  assignedUsers?: string[];
+
+  helpers_needed: number;
+
+  participant_count?: number | null;
+  price_per_person?: number | null;
+  total_price?: number | null;
+
+  categories: string[];
+  einsatz_fields: EinsatzFieldCreate[];
+
+  status_id?: string; // newly created einsatz doesnt need status. Only when saving to db.
+  template_id?: string;
+
+  // TODO: 
+  // change_log aktualisieren
+}
 
 export type EinsatzDetailed = EinsatzRawDb & {
   einsatz_status: EinsatzStatus;
@@ -17,15 +52,80 @@ export type EinsatzDetailed = EinsatzRawDb & {
   change_log: (ChangeLogRawDb & { user: { id: string; firstname: string | null; lastname: string | null } })[];
 }
 
+export type EinsatzCustomizable = {
+  id: string;
+  title?: string;
+  template_name?: string;
+
+  created_at?: Date;
+  updated_at?: Date | null;
+
+  start?: Date;
+  end?: Date;
+  all_day?: boolean;
+
+  helpers_needed?: number;
+  still_needed_helpers?: number;
+  assigned_helpers_count?: number;
+  assigned_users_name?: string[];
+  created_by_name?: string;
+
+  participant_count?: number | null;
+  price_per_person?: number | null;
+  total_price?: number | null;
+
+  status?: EinsatzStatus;
+  organization_name?: string;
+
+  categories?: EinsatzCategory[];
+  einsatz_fields?: EinsatzField[];
+}
+
+type filterNumberOptions = "gte" | "lte" | "equals";
+
+export type EinsatzCustomizableFilter = {
+  id: string;
+  title?: string;
+  template_name?: string;
+
+  created_at?: { date: Date, options: filterNumberOptions };
+  updated_at?: { date: Date | null, options: filterNumberOptions };
+
+  start?: { date: Date, options: filterNumberOptions };
+  end?: { date: Date, options: filterNumberOptions };
+  all_day?: boolean;
+
+  helpers_needed?: { value: number, options: filterNumberOptions };
+  still_needed_helpers?: { value: number, options: filterNumberOptions };
+  assigned_helpers_count?: { value: number, options: filterNumberOptions };
+  assigned_users_name?: { value: string[], options: filterNumberOptions };
+  created_by_name?: { value: string, options: filterNumberOptions };
+
+  participant_count?: { value: number | null, options: filterNumberOptions };
+  price_per_person?: { value: number | null, options: filterNumberOptions };
+  total_price?: { value: number | null, options: filterNumberOptions };
+
+  status?: EinsatzStatus;
+  organization_name?: string;
+
+  categories?: EinsatzCategory[];
+  einsatz_fields?: EinsatzField[];
+}
+
 export type EinsatzForCalendar = {
   id: string;
   title: string;
+
   start: Date;
-  all_day: boolean;
   end: Date;
-  einsatz_to_category: {
-    einsatz_category: { value: string; abbreviation: string };
-  }[];
+  all_day: boolean;
+
+  helpers_needed: number;
+  einsatz_helper: { user_id: string }[]; // Array of user IDs assigned to the event
+  _count: {
+    einsatz_helper: number;
+  };
+
   einsatz_status: {
     id: string;
     verwalter_color: string;
@@ -33,36 +133,8 @@ export type EinsatzForCalendar = {
     helper_color: string;
     helper_text: string;
   };
-  einsatz_helper: { user_id: string }[]; // Array of user IDs assigned to the event
-  helpers_needed: number;
-  _count: {
-    einsatz_helper: number;
-  };
+
+  einsatz_to_category: {
+    einsatz_category: { value: string; abbreviation: string };
+  }[];
 };
-
-export type EinsatzFieldCreate = {
-  field_id: string,
-  value: string | null,
-}
-
-export type EinsatzCreate = {
-  id?: string;
-  title: string;
-  start: Date;
-  end: Date;
-  org_id: string;
-  created_by: string;
-  helpers_needed: number;
-  categories: string[];
-  einsatz_fields: EinsatzFieldCreate[];
-  assignedUsers?: string[];
-  status_id?: string; // newly created einsatz doesnt need status. Only when saving to db.
-  template_id?: string;
-  all_day?: boolean;
-  participant_count?: number | null;
-  price_per_person?: number | null;
-  total_price?: number | null;
-
-  // TODO: 
-  // change_log aktualisieren
-}
