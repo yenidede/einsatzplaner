@@ -69,6 +69,10 @@ export async function getAllEinsaetzeForCalendar(org_ids: string[]) {
   return getAllEinsatzeForCalendarFromDb(org_ids);
 }
 
+export async function getEinsatzForCalendar(id: string) {
+  return getEinsatzForCalendarFromDb(id);
+}
+
 export async function getAllTemplatesWithFields(org_id: string) {
   return prisma.einsatz_template.findMany({
     where: {
@@ -99,6 +103,21 @@ export async function getAllTemplatesWithFields(org_id: string) {
 
 export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
   return createEinsatzInDb({ data })
+}
+
+export async function updateEinsatzTime({ id, start, end }: { id: string; start: Date; end: Date }): Promise<Einsatz> {
+  if (!id) {
+    throw new Error("Einsatz must have an id for update");
+  }
+
+  return prisma.einsatz.update({
+    where: { id },
+    data: {
+      start,
+      end,
+      updated_at: new Date(),
+    },
+  });
 }
 
 export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }): Promise<Einsatz> {
@@ -241,6 +260,53 @@ async function getAllEinsaetzeFromDb(org_ids: string[]): Promise<Einsatz[]> {
       org_id: {
         in: org_ids,
       },
+    },
+  });
+}
+
+async function getEinsatzForCalendarFromDb(
+  id: string
+): Promise<EinsatzForCalendar | null> {
+  return prisma.einsatz.findUnique({
+    select: {
+      id: true,
+      title: true,
+      start: true,
+      end: true,
+      all_day: true,
+      einsatz_status: {
+        select: {
+          id: true,
+          verwalter_color: true,
+          verwalter_text: true,
+          helper_color: true,
+          helper_text: true,
+        },
+      },
+      einsatz_to_category: {
+        select: {
+          einsatz_category: {
+            select: {
+              value: true,
+              abbreviation: true,
+            },
+          },
+        },
+      },
+      einsatz_helper: {
+        select: {
+          user_id: true,
+        },
+      },
+      helpers_needed: true,
+      _count: {
+        select: {
+          einsatz_helper: true,
+        },
+      },
+    },
+    where: {
+      id,
     },
   });
 }

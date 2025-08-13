@@ -29,6 +29,7 @@ import {
   getAllEventsForDay,
   getEventsForDay,
   getSpanningEventsForDay,
+  isMultiDayEvent,
   sortEvents,
   useEventVisibility,
   type CalendarEvent,
@@ -39,7 +40,7 @@ import { CalendarMode } from "./types";
 interface MonthViewProps {
   currentDate: Date;
   events: CalendarEvent[];
-  onEventSelect: (eventId: string) => void;
+  onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
   mode: CalendarMode;
 }
@@ -84,7 +85,7 @@ export function MonthView({
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
-    onEventSelect(event.id);
+    onEventSelect(event);
   };
 
   const [isMounted, setIsMounted] = useState(false);
@@ -118,22 +119,64 @@ export function MonthView({
             {week.map((day, dayIndex) => {
               if (!day) return null; // Skip if day is undefined
 
-              const dayEvents = getEventsForDay(events, day);
-              const spanningEvents = getSpanningEventsForDay(events, day);
+              // Get events for this day, normalizing multi-day events to separate instances
+              const dayEventsRaw = getEventsForDay(events, day);
+              const allDayEventsForDay: CalendarEvent[] = [];
+
+              // Process all events to create normalized instances for multi-day events
+              events.forEach((event) => {
+                const eventStart = new Date(event.start);
+                const eventEnd = new Date(event.end);
+
+                // Check if this event occurs on this day
+                const isOnThisDay =
+                  isSameDay(day, eventStart) ||
+                  isSameDay(day, eventEnd) ||
+                  (day > eventStart && day < eventEnd);
+
+                if (isOnThisDay) {
+                  if (isMultiDayEvent(event) && !event.allDay) {
+                    // For multi-day events with specific times, create a normalized instance for this day
+                    const timeOnlyStart = new Date(eventStart);
+                    const timeOnlyEnd = new Date(eventEnd);
+
+                    // Normalize to current day with original times
+                    const normalizedStart = new Date(day);
+                    normalizedStart.setHours(timeOnlyStart.getHours());
+                    normalizedStart.setMinutes(timeOnlyStart.getMinutes());
+                    normalizedStart.setSeconds(timeOnlyStart.getSeconds());
+
+                    const normalizedEnd = new Date(day);
+                    normalizedEnd.setHours(timeOnlyEnd.getHours());
+                    normalizedEnd.setMinutes(timeOnlyEnd.getMinutes());
+                    normalizedEnd.setSeconds(timeOnlyEnd.getSeconds());
+
+                    // Create normalized event for this day
+                    allDayEventsForDay.push({
+                      ...event,
+                      start: normalizedStart,
+                      end: normalizedEnd,
+                    });
+                  } else if (isSameDay(day, eventStart) || event.allDay) {
+                    // For single-day events or all-day events, include only if it starts on this day
+                    allDayEventsForDay.push(event);
+                  }
+                }
+              });
+
               const isCurrentMonth = isSameMonth(day, currentDate);
               const cellId = `month-cell-${day.toISOString()}`;
-              const allDayEvents = [...spanningEvents, ...dayEvents];
               const allEvents = getAllEventsForDay(events, day);
 
               const isReferenceCell = weekIndex === 0 && dayIndex === 0;
               const visibleCount = isMounted
-                ? getVisibleEventCount(allDayEvents.length)
+                ? getVisibleEventCount(allDayEventsForDay.length)
                 : undefined;
               const hasMore =
                 visibleCount !== undefined &&
-                allDayEvents.length > visibleCount;
+                allDayEventsForDay.length > visibleCount;
               const remainingCount = hasMore
-                ? allDayEvents.length - visibleCount
+                ? allDayEventsForDay.length - visibleCount
                 : 0;
 
               return (
@@ -159,7 +202,7 @@ export function MonthView({
                       ref={isReferenceCell ? contentRef : null}
                       className="max-h-[calc((var(--event-height)+var(--event-gap))*3)] sm:max-h-[calc((var(--event-height)+var(--event-gap))*4)] lg:max-h-[calc((var(--event-height)+var(--event-gap))*5)]"
                     >
-                      {sortEvents(allDayEvents).map((event, index) => {
+                      {sortEvents(allDayEventsForDay).map((event, index) => {
                         const eventStart = new Date(event.start);
                         const eventEnd = new Date(event.end);
                         const isFirstDay = isSameDay(day, eventStart);

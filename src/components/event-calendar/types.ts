@@ -4,12 +4,10 @@ import type { einsatz_status as EinsatzStatus } from "@/generated/prisma";
 export interface CalendarEvent {
   id: string;
   title: string;
-  description?: string;
   start: Date;
   end: Date;
   allDay?: boolean;
   status?: EinsatzStatus;
-  location?: string;
   assignedUsers: string[]; // Array of user IDs assigned to the event
 }
 
