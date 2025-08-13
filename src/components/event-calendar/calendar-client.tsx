@@ -6,11 +6,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   EventCalendar,
   mapEinsaetzeToCalendarEvents,
+  mapEinsatzToCalendarEvent,
 } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
 import { EinsatzCreateToCalendarEvent } from "./einsatz-service";
 import { EinsatzCreate } from "@/features/einsatz/types";
-import { getAllEinsaetzeForCalendar } from "@/features/einsatz/dal-einsatz";
+import {
+  getAllEinsaetzeForCalendar,
+  getEinsatzForCalendar,
+  updateEinsatzTime,
+} from "@/features/einsatz/dal-einsatz";
 import {
   createEinsatz,
   deleteEinsatzById,
@@ -75,15 +80,30 @@ export default function Component({
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (event: EinsatzCreate) => {
-      return updateEinsatz({ data: event });
+    mutationFn: async (event: EinsatzCreate | CalendarEvent) => {
+      // Check if is EinsatzCreate
+      if ("org_id" in event) {
+        return updateEinsatz({ data: event });
+      } else {
+        return updateEinsatzTime({
+          id: event.id,
+          start: event.start,
+          end: event.end,
+        });
+      }
     },
     onMutate: async (updatedEvent) => {
       await queryClient.cancelQueries({ queryKey });
 
       const previous =
         queryClient.getQueryData<CalendarEvent[]>(queryKey) || [];
-      const calendarEvent = await EinsatzCreateToCalendarEvent(updatedEvent);
+
+      let calendarEvent: CalendarEvent | null = null;
+      if ("org_id" in updatedEvent) {
+        calendarEvent = await EinsatzCreateToCalendarEvent(updatedEvent);
+      } else {
+        calendarEvent = updatedEvent;
+      }
 
       queryClient.setQueryData<CalendarEvent[]>(queryKey, (old = []) =>
         old.map((e) => (e.id === calendarEvent.id ? calendarEvent : e))
@@ -162,8 +182,12 @@ export default function Component({
     createMutation.mutate(event);
   };
 
-  const handleEventUpdate = (updatedEvent: EinsatzCreate) => {
+  const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
     updateMutation.mutate(updatedEvent);
+  };
+
+  const handleEventTimeUpdate = (event: CalendarEvent) => {
+    updateMutation.mutate(event);
   };
 
   const handleEventDelete = (eventId: string, eventTitle: string) => {
@@ -175,6 +199,7 @@ export default function Component({
       events={events}
       onEventAdd={handleEventAdd}
       onEventUpdate={handleEventUpdate}
+      onEventTimeUpdate={handleEventTimeUpdate}
       onEventDelete={handleEventDelete}
       mode={mode}
     />

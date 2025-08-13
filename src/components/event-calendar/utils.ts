@@ -78,24 +78,29 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
 export const mapEinsaetzeToCalendarEvents = (
   einsaetze: EinsatzForCalendar[]
 ): CalendarEvent[] => {
-  return einsaetze.map((einsatz) => {
-    const categories = einsatz.einsatz_to_category;
-    const hasCategories = categories && categories.length > 0;
+  return einsaetze.map((einsatz) => mapEinsatzToCalendarEvent(einsatz));
+};
 
-    return {
-      id: einsatz.id,
-      title: hasCategories
-        ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(", ")})`
-        : einsatz.title,
-      start: einsatz.start,
-      end: einsatz.end,
-      allDay: einsatz.all_day,
-      status: einsatz.einsatz_status,
-      assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
-    };
-  });
+export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): CalendarEvent => {
+  if (!einsatz) {
+    throw new Error("Invalid einsatz data");
+  }
+  const categories = einsatz.einsatz_to_category;
+  const hasCategories = categories && categories.length > 0;
+
+  return {
+    id: einsatz.id,
+    title: hasCategories
+      ? `${einsatz.title} (${categories
+        .map((c) => c.einsatz_category.abbreviation)
+        .join(", ")})`
+      : einsatz.title,
+    start: einsatz.start,
+    end: einsatz.end,
+    allDay: einsatz.all_day,
+    status: einsatz.einsatz_status,
+    assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
+  };
 };
 
 export function mapStringValueToType(value: string | null | undefined, fieldType: string | undefined | null): any {

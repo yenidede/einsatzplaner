@@ -24,7 +24,10 @@ import {
   WeekCellsHeight,
   type CalendarEvent,
 } from "@/components/event-calendar";
-import { EndHour, StartHour } from "@/components/event-calendar/constants";
+import {
+  ViewStartHour,
+  ViewEndHour,
+} from "@/components/event-calendar/constants";
 import { CalendarMode } from "./types";
 
 interface DayViewProps {
@@ -51,43 +54,115 @@ export function DayView({
   onEventCreate,
   mode,
 }: DayViewProps) {
+  const dayEvents = useMemo(() => {
+    const eventsForDay: CalendarEvent[] = [];
+
+    events.forEach((event) => {
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+
+      // Check if this event occurs on the current date
+      if (
+        isSameDay(currentDate, eventStart) ||
+        isSameDay(currentDate, eventEnd) ||
+        (currentDate > eventStart && currentDate < eventEnd)
+      ) {
+        // For multi-day events, create a normalized instance for this day
+        if (isMultiDayEvent(event) && !event.allDay) {
+          // Create a new event instance with the same time but on the current date
+          const timeOnlyStart = new Date(eventStart);
+          const timeOnlyEnd = new Date(eventEnd);
+
+          // Normalize to current date with original times
+          const normalizedStart = new Date(currentDate);
+          normalizedStart.setHours(timeOnlyStart.getHours());
+          normalizedStart.setMinutes(timeOnlyStart.getMinutes());
+          normalizedStart.setSeconds(timeOnlyStart.getSeconds());
+
+          const normalizedEnd = new Date(currentDate);
+          normalizedEnd.setHours(timeOnlyEnd.getHours());
+          normalizedEnd.setMinutes(timeOnlyEnd.getMinutes());
+          normalizedEnd.setSeconds(timeOnlyEnd.getSeconds());
+
+          // Create normalized event for this day
+          eventsForDay.push({
+            ...event,
+            start: normalizedStart,
+            end: normalizedEnd,
+          });
+        } else {
+          // For single-day events or all-day events, use as-is
+          eventsForDay.push(event);
+        }
+      }
+    });
+
+    return eventsForDay.sort(
+      (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+    );
+  }, [currentDate, events]);
+
+  // Calculate dynamic start and end hours based on events
+  const { dynamicStartHour, dynamicEndHour } = useMemo(() => {
+    // Filter out only explicitly marked all-day events for hour calculation
+    const timeBasedEvents = dayEvents.filter((event) => !event.allDay);
+
+    if (timeBasedEvents.length === 0) {
+      return {
+        dynamicStartHour: ViewStartHour,
+        dynamicEndHour: ViewEndHour,
+      };
+    }
+
+    let earliestHour = 24;
+    let latestHour = 0;
+
+    timeBasedEvents.forEach((event) => {
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+
+      // Since we've already normalized multi-day events to have the correct times
+      // for this day, we can use the start/end times directly
+      const startHour = getHours(eventStart);
+      const endHour = getHours(eventEnd) + (getMinutes(eventEnd) > 0 ? 1 : 0);
+
+      earliestHour = Math.min(earliestHour, startHour);
+      latestHour = Math.max(latestHour, endHour);
+    });
+
+    // Add some padding and ensure reasonable bounds
+    const paddedStartHour = Math.max(0, earliestHour - 1);
+    const paddedEndHour = Math.min(24, latestHour + 1);
+
+    return {
+      dynamicStartHour:
+        paddedStartHour < ViewStartHour ? paddedStartHour : ViewStartHour,
+      dynamicEndHour: paddedEndHour > ViewEndHour ? paddedEndHour : ViewEndHour,
+    };
+  }, [dayEvents]);
+
   const hours = useMemo(() => {
     const dayStart = startOfDay(currentDate);
     return eachHourOfInterval({
-      start: addHours(dayStart, StartHour),
-      end: addHours(dayStart, EndHour - 1),
+      start: addHours(dayStart, dynamicStartHour),
+      end: addHours(dayStart, dynamicEndHour - 1),
     });
-  }, [currentDate]);
-
-  const dayEvents = useMemo(() => {
-    return events
-      .filter((event) => {
-        const eventStart = new Date(event.start);
-        const eventEnd = new Date(event.end);
-        return (
-          isSameDay(currentDate, eventStart) ||
-          isSameDay(currentDate, eventEnd) ||
-          (currentDate > eventStart && currentDate < eventEnd)
-        );
-      })
-      .sort(
-        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
-      );
-  }, [currentDate, events]);
+  }, [currentDate, dynamicStartHour, dynamicEndHour]);
 
   // Filter all-day events
   const allDayEvents = useMemo(() => {
     return dayEvents.filter((event) => {
-      // Include explicitly marked all-day events or multi-day events
-      return event.allDay || isMultiDayEvent(event);
+      // Include only explicitly marked all-day events
+      // Multi-day events with specific times should be shown in the time grid
+      return event.allDay === true;
     });
   }, [dayEvents]);
 
-  // Get only single-day time-based events
+  // Get only time-based events (including multi-day events with specific times)
   const timeEvents = useMemo(() => {
     return dayEvents.filter((event) => {
-      // Exclude all-day events and multi-day events
-      return !event.allDay && !isMultiDayEvent(event);
+      // Include all events that are not explicitly marked as all-day
+      return !event.allDay;
     });
   }, [dayEvents]);
 
@@ -132,7 +207,7 @@ export function DayView({
       const startHour =
         getHours(adjustedStart) + getMinutes(adjustedStart) / 60;
       const endHour = getHours(adjustedEnd) + getMinutes(adjustedEnd) / 60;
-      const top = (startHour - StartHour) * WeekCellsHeight;
+      const top = (startHour - dynamicStartHour) * WeekCellsHeight;
       const height = (endHour - startHour) * WeekCellsHeight;
 
       // Find a column for this event
@@ -179,7 +254,7 @@ export function DayView({
     });
 
     return result;
-  }, [currentDate, timeEvents]);
+  }, [currentDate, timeEvents, dynamicStartHour]);
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -189,7 +264,9 @@ export function DayView({
   const showAllDaySection = allDayEvents.length > 0;
   const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(
     currentDate,
-    "day"
+    "day",
+    dynamicStartHour,
+    dynamicEndHour
   );
 
   return (
@@ -238,7 +315,7 @@ export function DayView({
             >
               {index > 0 && (
                 <span className="bg-background text-muted-foreground/70 absolute -top-3 left-0 flex h-6 w-16 max-w-full items-center justify-end pe-2 text-[10px] sm:pe-4 sm:text-xs">
-                  {format(hour, "hh", { locale: de })}
+                  {format(hour, "H:mm", { locale: de })}
                 </span>
               )}
             </div>
@@ -266,6 +343,7 @@ export function DayView({
                   onClick={(e) => handleEventClick(positionedEvent.event, e)}
                   showTime
                   height={positionedEvent.height}
+                  mode={mode}
                 />
               </div>
             </div>

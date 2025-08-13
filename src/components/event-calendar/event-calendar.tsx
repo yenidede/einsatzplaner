@@ -1,7 +1,5 @@
 "use client";
 
-// TODO at getOrganizationsByIds,
-
 import { useEffect, useMemo, useState } from "react";
 import { RiCalendarCheckLine } from "@remixicon/react";
 import {
@@ -24,7 +22,6 @@ import {
   PlusIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,18 +57,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
-  onEventAdd?: (event: EinsatzCreate) => void;
-  onEventUpdate?: (event: EinsatzCreate) => void;
-  onEventDelete?: (eventId: string, eventTitle: string) => void;
+  onEventAdd: (event: EinsatzCreate) => void;
+  onEventUpdate: (event: EinsatzCreate) => void;
+  onEventTimeUpdate: (event: CalendarEvent) => void;
+  onEventDelete: (eventId: string, eventTitle: string) => void;
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;
 }
-
+// TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
   events = [],
   onEventAdd,
   onEventUpdate,
+  onEventTimeUpdate,
   onEventDelete,
   className,
   initialView = "month",
@@ -85,6 +84,15 @@ export function EventCalendar({
     EinsatzCreate | string | null
   >(null);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+
+  // German view names mapping
+  const viewLabels = {
+    month: "Monat",
+    week: "Woche",
+    day: "Tag",
+    agenda: "Agenda",
+  } as const;
+
   // TODO use logged in user data
   const { data: sessionData } = useSession();
   const orgsQuery = useQuery({
@@ -162,9 +170,9 @@ export function EventCalendar({
     setCurrentDate(new Date());
   };
 
-  const handleEventSelect = (event: EinsatzCreate | string) => {
+  const handleEventSelect = (event: CalendarEvent) => {
     console.log("Event selected:", event); // Debug log
-    setSelectedEvent(event);
+    setSelectedEvent(event.id);
     setIsEventDialogOpen(true);
   };
 
@@ -206,13 +214,18 @@ export function EventCalendar({
     setIsEventDialogOpen(true);
   };
 
-  const handleEventSave = (event: EinsatzCreate) => {
-    if (event.id) {
-      onEventUpdate?.(event);
+  const handleEventSave = (event: EinsatzCreate | CalendarEvent) => {
+    // Type guard to determine which type we're dealing with
+    if ("org_id" in event) {
+      // This is an EinsatzCreate
+      if (event.id) {
+        onEventUpdate?.(event);
+      } else {
+        onEventAdd?.(event);
+      }
     } else {
-      onEventAdd?.({
-        ...event,
-      });
+      // This is a CalendarEvent
+      onEventTimeUpdate?.(event);
     }
 
     setIsEventDialogOpen(false);
@@ -221,21 +234,17 @@ export function EventCalendar({
 
   const handleEventDelete = (eventId: string, eventTitle: string) => {
     onEventDelete?.(eventId, eventTitle);
-
     setIsEventDialogOpen(false);
     setSelectedEvent(null);
   };
 
-  const handleEventUpdate = (updatedEvent: EinsatzCreate) => {
-    onEventUpdate?.(updatedEvent);
-
-    // Show toast notification when an event is updated via drag and drop
-    toast(`Event "${updatedEvent.title}" moved`, {
-      description: format(new Date(updatedEvent.start), "MMM d, yyyy", {
-        locale: de,
-      }),
-      position: "bottom-left",
-    });
+  const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
+    // Type guard to handle both types
+    if ("org_id" in updatedEvent) {
+      onEventUpdate?.(updatedEvent);
+    } else {
+      onEventTimeUpdate?.(updatedEvent);
+    }
   };
 
   const viewTitle = useMemo(() => {
@@ -297,7 +306,7 @@ export function EventCalendar({
         } as React.CSSProperties
       }
     >
-      <CalendarDndProvider onEventUpdate={handleEventUpdate}>
+      <CalendarDndProvider onEventUpdate={handleEventUpdate} mode={mode}>
         <div
           className={cn(
             "flex items-center justify-between p-2 sm:p-4",
@@ -345,10 +354,10 @@ export function EventCalendar({
                 <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
                   <span>
                     <span className="min-[480px]:hidden" aria-hidden="true">
-                      {view.charAt(0).toUpperCase()}
+                      {viewLabels[view].charAt(0)}
                     </span>
                     <span className="max-[479px]:sr-only">
-                      {view.charAt(0).toUpperCase() + view.slice(1)}
+                      {viewLabels[view]}
                     </span>
                   </span>
                   <ChevronDownIcon
