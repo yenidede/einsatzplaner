@@ -1,4 +1,4 @@
-export type CalendarView = "month" | "week" | "day" | "agenda";
+export type CalendarView = "month" | "week" | "day" | "agenda" | "list";
 import type { einsatz_status as EinsatzStatus } from "@/generated/prisma";
 
 export interface CalendarEvent {
