@@ -31,20 +31,17 @@ export async function GET(req: Request) {
         where: { user_id: userId },
         select: {
             id: true,
-            hasGetMailNotification: true,
             organization: {
                 select: {
                     id: true,
                     name: true,
                 },
             },
-            role_assignments: {
+            role: {
                 select: {
-                    role: {
-                        select: {
-                            name: true,
-                        },
-                    },
+                    id: true,
+                    name: true,
+                    abbreviation: true,
                 },
             },
         },
@@ -55,17 +52,14 @@ export async function GET(req: Request) {
         JSON.stringify({
             ...user,
             organizations: organizations.map(entry => {
-                // Extrahiere alle Rollennamen als Array
-                const rollen = Array.isArray(entry.role_assignments)
-                  ? entry.role_assignments.map(r => r.role?.name).filter(Boolean)
-                  : [];
                 return {
                     id: entry.organization.id,
                     orgId: entry.organization.id,
                     userOrgRoleId: entry.id,
                     name: entry.organization.name,
-                    roles: rollen,
-                    hasGetMailNotification: entry.hasGetMailNotification,
+                    role: entry.role.name,
+                    roleId: entry.role.id,
+                    roleAbbreviation: entry.role.abbreviation,
                 };
             }),
         }),
@@ -76,6 +70,97 @@ export async function GET(req: Request) {
 // POST Handler (für Kompatibilität)
 export async function POST(req: Request) {
     return handleUserUpdate(req);
+}
+
+// DELETE Handler - User verlässt Organisation
+export async function DELETE(req: Request) {
+    try {
+        const { searchParams } = new URL(req.url);
+        const userId = searchParams.get("userId");
+        const orgId = searchParams.get("orgId");
+        const userOrgRoleId = searchParams.get("userOrgRoleId");
+
+        if (!userId || (!orgId && !userOrgRoleId)) {
+            return NextResponse.json({ 
+                error: "userId und (orgId oder userOrgRoleId) sind erforderlich" 
+            }, { status: 400 });
+        }
+
+        // UUID format validieren
+        const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+        if (!uuidRegex.test(userId)) {
+            return NextResponse.json(
+                { error: 'Ungültige userId Format' },
+                { status: 400 }
+            );
+        }
+
+        if (orgId && !uuidRegex.test(orgId)) {
+            return NextResponse.json(
+                { error: 'Ungültige orgId Format' },
+                { status: 400 }
+            );
+        }
+
+        if (userOrgRoleId && !uuidRegex.test(userOrgRoleId)) {
+            return NextResponse.json(
+                { error: 'Ungültige userOrgRoleId Format' },
+                { status: 400 }
+            );
+        }
+
+        // Prüfe ob User existiert
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                user_organization_role: true
+            }
+        });
+
+        if (!user) {
+            return NextResponse.json({ error: "User nicht gefunden" }, { status: 404 });
+        }
+
+        // Prüfe ob User nur eine Organisation hat (dann darf er nicht austreten)
+        if (user.user_organization_role.length <= 1) {
+            return NextResponse.json({ 
+                error: "Sie können die letzte Organisation nicht verlassen" 
+            }, { status: 400 });
+        }
+
+        // Lösche die user_organization_role Beziehung
+        let deleteCondition: any;
+        if (userOrgRoleId) {
+            deleteCondition = { id: userOrgRoleId };
+        } else {
+            deleteCondition = { 
+                user_id: userId, 
+                organization_id: orgId  // Korrigiert: organization_id statt org_id
+            };
+        }
+
+        const deletedRelation = await prisma.user_organization_role.deleteMany({
+            where: deleteCondition
+        });
+
+        if (deletedRelation.count === 0) {
+            return NextResponse.json({ 
+                error: "Organisation-Zuordnung nicht gefunden" 
+            }, { status: 404 });
+        }
+
+        return NextResponse.json({ 
+            success: true, 
+            message: "Organisation erfolgreich verlassen",
+            deletedCount: deletedRelation.count
+        });
+
+    } catch (error) {
+        console.error("DELETE Error:", error);
+        return NextResponse.json({ 
+            error: "Fehler beim Verlassen der Organisation" 
+        }, { status: 500 });
+    }
 }
 
 // PUT Handler (vom UserService verwendet)
@@ -103,17 +188,13 @@ export async function PUT(req: Request) {
 
         await prisma.user.update({
             where: { id: userId },
+            data: updateUserData,
         });
 
-
-        // User-Org-Settings updaten (optional)
+        // User-Org-Settings können im aktuellen Schema nicht aktualisiert werden
+        // (hasGetMailNotification existiert nicht in user_organization_role)
         if (userOrgId && hasGetMailNotification !== undefined) {
-            await prisma.user_organization_role.update({
-                where: { id: userOrgId },
-                data: {
-                    hasGetMailNotification: hasGetMailNotification,
-                },
-            });
+            console.log("Note: hasGetMailNotification is not supported in current schema");
         }
         console.log("User updated:", { userId, email, firstname, lastname, hasLogoinCalendar, hasGetMailNotification });
 
