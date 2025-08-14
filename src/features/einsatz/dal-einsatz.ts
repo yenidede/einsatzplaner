@@ -78,8 +78,10 @@ export async function getEinsatzForCalendar(id: string) {
 export async function getEinsaetzeFiltered(
   //select: Partial<EinsatzCustomizable>,
   filters: Partial<EinsatzCustomizableFilter>,
-  { limit, offset }: { limit: number; offset: number }
-): Promise<{ data: EinsatzCustomizable[]; total: number }> {
+  { sort_field, sort_order }: { sort_field: keyof Einsatz; sort_order: "asc" | "desc" },
+  { limit, offset }: { limit: number; offset: number },
+  org_ids: string[] = ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]
+): Promise<{ data: EinsatzCustomizable[]; showing: number; total: number }> {
   // Build the where clause from filters
   const where: Partial<Prisma.einsatzWhereInput> = {};
 
@@ -115,8 +117,8 @@ export async function getEinsaetzeFiltered(
   }
 
   // Status filter
-  if (filters.status?.id) {
-    where.status_id = filters.status.id;
+  if (filters.status_ids && filters.status_ids.length > 0) {
+    where.status_id = { in: filters.status_ids };
   }
 
   // Organization filter
@@ -210,13 +212,13 @@ export async function getEinsaetzeFiltered(
   const hasComputedFilters = Object.values(computedFilters).some(v => v !== undefined);
   const queryLimit = hasComputedFilters ? limit * 2 : limit; // Fetch more if we need to filter
 
-  const einsaetzeFromDb = await prisma.einsatz.findMany({
+  const [einsaetzeFromDb, total] = await Promise.all([prisma.einsatz.findMany({
     where,
     include,
-    orderBy: { created_at: 'desc' },
+    orderBy: { [sort_field]: sort_order },
     take: queryLimit,
     skip: offset,
-  });
+  }), prisma.einsatz.count({ where: { org_id: { in: org_ids } } })]);
 
   // Transform the data to match EinsatzCustomizable type
   let transformedData: EinsatzCustomizable[] = einsaetzeFromDb.map((einsatz) => {
@@ -255,7 +257,7 @@ export async function getEinsaetzeFiltered(
       price_per_person: einsatz.price_per_person,
       total_price: einsatz.total_price,
 
-      einsatz_status: einsatz.einsatz_status,
+      status: einsatz.einsatz_status,
       organization_name: einsatz.organization.name,
 
       categories: einsatz.einsatz_to_category.map(cat => cat.einsatz_category),
@@ -293,8 +295,8 @@ export async function getEinsaetzeFiltered(
     transformedData = transformedData.slice(0, limit);
   }
 
-  const total = transformedData.length;
-  return { data: transformedData, total };
+  const showing = transformedData.length;
+  return { data: transformedData, showing, total };
 }
 
 export async function getAllTemplatesWithFields(org_id: string) {

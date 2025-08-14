@@ -83,8 +83,6 @@ export type EinsatzCustomizable = {
   einsatz_fields?: EinsatzField[];
 }
 
-type filterNumberOptions = "gte" | "lte" | "equals";
-
 export type EinsatzCustomizableFilter = z.infer<typeof filterSchema>;
 
 export type EinsatzForCalendar = {

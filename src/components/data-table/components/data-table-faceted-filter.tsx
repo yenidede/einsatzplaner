@@ -39,6 +39,8 @@ export function DataTableFacetedFilter<TData, TValue>({
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const [open, setOpen] = React.useState(false);
 
+  // (debug log removed)
+
   const columnFilterValue = column?.getFilterValue();
   const selectedValues = new Set(
     Array.isArray(columnFilterValue) ? columnFilterValue : []
@@ -58,7 +60,8 @@ export function DataTableFacetedFilter<TData, TValue>({
         const filterValues = Array.from(newSelectedValues);
         column.setFilterValue(filterValues.length ? filterValues : undefined);
       } else {
-        column.setFilterValue(isSelected ? undefined : [option.value]);
+        // Single select: store plain string value (or undefined to clear)
+        column.setFilterValue(isSelected ? undefined : option.value);
         setOpen(false);
       }
     },

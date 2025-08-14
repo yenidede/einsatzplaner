@@ -25,12 +25,25 @@ export function DataTableToolbar<TData>({
   const isFiltered = table.getState().columnFilters.length > 0;
 
   const columns = React.useMemo(
-    () => table.getAllColumns().filter((column) => column.getCanFilter()),
+    () =>
+      table
+        .getAllColumns()
+        .filter((column) => column.getCanFilter() && column.getIsVisible()),
     [table]
   );
 
-  const onReset = React.useCallback(() => {
-    table.resetColumnFilters();
+  // Reset filters for columns that become hidden
+  const columnVisibility = table.getState().columnVisibility;
+  React.useEffect(() => {
+    table.getAllLeafColumns().forEach((col) => {
+      if (!col.getIsVisible() && col.getFilterValue() != null) {
+        col.setFilterValue(undefined);
+      }
+    });
+  }, [columnVisibility, table]);
+
+  const handleReset = React.useCallback(() => {
+    table.resetColumnFilters(true);
   }, [table]);
 
   return (
@@ -53,7 +66,7 @@ export function DataTableToolbar<TData>({
             variant="outline"
             size="sm"
             className="border-dashed"
-            onClick={onReset}
+            onClick={handleReset}
           >
             <X />
             Reset
