@@ -9,16 +9,23 @@ declare module 'next-auth' {
         lastname: string;
         role: UserRole;
         orgId: string | null;
+        roleId: string | null;
         phone: string | null;
-        initials: string; // Assuming you have a way to generate initials
-        picture_ur?: string | null;
+        initials: string;
         picture_url?: string | null;
-        last_login
+        // Multi-Role/Org Unterstützung
+        roles?: string[];
+        roleIds?: string[];
+        orgIds?: string[];
     }
 
     interface Session {     
         user: User;
         orgId?: string | null;
+        roleId?: string | null;
+        // Multi-Role/Org Unterstützung
+        orgIds?: string[];
+        roleIds?: string[];
     }
 }
 
@@ -28,6 +35,11 @@ declare module 'next-auth/jwt' {
         lastname: string;
         role: UserRole;
         orgId: string | null;
+        roleId: string | null;
         email: string;
+        // Multi-Role/Org Unterstützung
+        roles?: string[];
+        roleIds?: string[];
+        orgIds?: string[];
     }
 }
