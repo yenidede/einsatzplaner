@@ -161,7 +161,6 @@ export function EventCalendar({
     } else if (view === "day") {
       setCurrentDate(addDays(currentDate, -1));
     } else if (view === "agenda") {
-      // For agenda view, go back 30 days (a full month)
       setCurrentDate(addDays(currentDate, -AgendaDaysToShow));
     } else if (view === "list") {
       setCurrentDate(addDays(currentDate, -AgendaDaysToShow));
@@ -176,7 +175,6 @@ export function EventCalendar({
     } else if (view === "day") {
       setCurrentDate(addDays(currentDate, 1));
     } else if (view === "agenda") {
-      // For agenda view, go forward
       setCurrentDate(addDays(currentDate, AgendaDaysToShow));
     }
   };
@@ -456,6 +454,7 @@ export function EventCalendar({
             <ListView
               onEventSelect={handleEventSelect}
               onEventDelete={handleEventDelete}
+              mode={mode}
             />
           )}
         </div>

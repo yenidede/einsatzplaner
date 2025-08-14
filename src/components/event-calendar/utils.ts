@@ -3,7 +3,8 @@ import { isSameDay } from "date-fns";
 import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
 import { CalendarEvent, CalendarMode, FormFieldType } from "./types";
 import { z } from "zod";
-import { Einsatz, EinsatzForCalendar } from "@/features/einsatz/types";
+import { Einsatz, EinsatzCustomizable, EinsatzForCalendar } from "@/features/einsatz/types";
+import React from "react";
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -197,6 +198,42 @@ export function mapDbDataTypeToInputProps(datatype: string | null | undefined): 
   throw new Error("Can't map datatype: " + datatype + " to its FormField.");
 }
 
+export const roundDownTo10Minutes = (date: Date): Date => {
+  const rounded = new Date(date);
+  const minutes = rounded.getMinutes();
+  const remainder = minutes % 10;
+
+  if (remainder === 0) {
+    return rounded; // Already rounded
+  }
+
+  // Round to nearest 10-minute mark
+  const roundedMinutes = minutes - remainder;
+
+  rounded.setMinutes(roundedMinutes, 0, 0); // Also reset seconds and milliseconds
+  return rounded;
+};
+
+export const isEventPast = (event: EinsatzCustomizable): boolean => {
+  return event.end ? new Date(event.end) < new Date() : false;
+};
+
+export function mapStatusIdsToLabels(value: any[], statusData: EinsatzStatus[], mode: string) {
+  const labels = Array.from(
+    new Set(
+      value
+        .map((statusId) => {
+          const status = statusData.find((s) => s.id === statusId);
+          if (!status) return null;
+          return mode === "helper"
+            ? status.helper_text
+            : status.verwalter_text;
+        })
+        .filter((label): label is string => label !== null)
+    )
+  );
+  return labels;
+}
 
 /**
  * Get CSS classes for event colors

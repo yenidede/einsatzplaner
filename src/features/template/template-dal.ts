@@ -10,6 +10,13 @@ export async function getAllTemplatesByIds(ids: string[]) {
   return templates;
 }
 
+export async function getAllTemplatesByOrgIds(org_ids: string[]) {
+  const templates = await prisma.einsatz_template.findMany({
+    where: { org_id: { in: org_ids } },
+  });
+  return templates;
+}
+
 export async function getAllTemplatesWithIconByOrgId(org_id: string) {
   const templates = await prisma.einsatz_template.findMany({
     where: { org_id },

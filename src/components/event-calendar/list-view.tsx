@@ -15,85 +15,59 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useDataTable } from "@/components/data-table/hooks/use-data-table";
 
-import type { Column, ColumnDef } from "@tanstack/react-table";
+import type {
+  Column,
+  ColumnDef,
+  PaginationState,
+  SortingState,
+  ColumnFiltersState,
+} from "@tanstack/react-table";
 import { MoreHorizontal, Text } from "lucide-react";
-import { parseAsJson, parseAsString, useQueryState } from "nuqs";
+import {
+  parseAsJson,
+  parseAsString,
+  useQueryState,
+  parseAsInteger,
+} from "nuqs";
 import * as React from "react";
 import {
+  Einsatz,
   EinsatzCustomizable,
   EinsatzCustomizableFilter,
 } from "@/features/einsatz/types";
 import { CalendarEvent, CalendarMode, CalendarView } from "./types";
 import { cn } from "@/lib/utils";
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
-import { queryKeys } from "@/features/einsatz/queryKeys";
-import { useQuery } from "@tanstack/react-query";
+import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
+import { queryKeys as statusQueryKeys } from "@/features/einsatz_status/queryKeys";
+import { queryKeys as templatesQueryKeys } from "@/features/einsatztemplate/queryKeys";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getEinsaetzeFiltered } from "@/features/einsatz/dal-einsatz";
+import { getAllTemplatesByOrgIds } from "@/features/template/template-dal";
 import z from "zod";
+import { isEventPast, mapStatusIdsToLabels } from "./utils";
+import { parseAsStringEnum } from "nuqs";
+
+// Define sortable fields based on Einsatz keys
+const SORTABLE_FIELDS = [
+  "id",
+  "title",
+  "start",
+  "end",
+  "all_day",
+  "helpers_needed",
+  "participant_count",
+  "price_per_person",
+  "total_price",
+  "created_at",
+  "updated_at",
+  "template_id",
+  "created_by",
+  "org_id",
+  "status_id",
+] as const satisfies readonly (keyof Einsatz)[];
 
 type EC = EinsatzCustomizable;
-
-const InitialData: EC[] = [
-  {
-    id: "1",
-    title: "Einsatz Alpha",
-    start: new Date(),
-    end: new Date(),
-    all_day: true,
-    helpers_needed: 5,
-    participant_count: 10,
-    price_per_person: 100,
-    total_price: 1000,
-    status: {
-      id: "bb169357-920b-4b49-9e3d-1cf489409370",
-      helper_color: "lime",
-      verwalter_color: "red",
-      helper_text: "offen",
-      verwalter_text: "offen",
-    },
-  },
-  {
-    id: "2",
-    title: "Einsatz Beta",
-    start: new Date(),
-    end: new Date(),
-    all_day: true,
-    helpers_needed: 3,
-    participant_count: 8,
-    price_per_person: 120,
-    total_price: 960,
-    status: {
-      id: "bb169357-920b-4b49-9e3d-1cf489409370",
-      helper_color: "lime",
-      verwalter_color: "red",
-      helper_text: "offen",
-      verwalter_text: "offen",
-    },
-  },
-  {
-    id: "3",
-
-    title: "Einsatz Gamma",
-    start: new Date(),
-    end: new Date(),
-    all_day: true,
-    helpers_needed: 4,
-    participant_count: 12,
-    price_per_person: 90,
-    total_price: 1080,
-  },
-  {
-    id: "4",
-    title: "Einsatz Delta",
-    start: new Date(),
-    end: new Date(),
-    all_day: true,
-    helpers_needed: 6,
-    participant_count: 15,
-    price_per_person: 110,
-    total_price: 1650,
-  },
-];
 
 type ListViewProps = {
   mode: CalendarMode;
@@ -129,57 +103,66 @@ const einsatzFieldSchema = z.object({
   field_id: z.string(),
 });
 
-// Schema for filter parameters (matches EinsatzCustomizableFilter)
+// Reusable schemas for single value vs range
+const singleDateFilter = z.object({
+  date: z.coerce.date(),
+  options: filterNumberOptionsSchema,
+});
+const rangeDateFilter = z
+  .object({ from: z.coerce.date().optional(), to: z.coerce.date().optional() })
+  .refine((o) => o.from || o.to, {
+    message: "Mindestens ein Datum erforderlich",
+  });
+
+const singleNumberFilter = z.object({
+  value: z.number(),
+  options: filterNumberOptionsSchema,
+});
+const singleNullableNumberFilter = z.object({
+  value: z.number().nullable(),
+  options: filterNumberOptionsSchema,
+});
+const rangeNumberFilter = z
+  .object({ from: z.number().optional(), to: z.number().optional() })
+  .refine((o) => o.from !== undefined || o.to !== undefined, {
+    message: "Mindestens eine Grenze erforderlich",
+  });
+const rangeNullableNumberFilter = z
+  .object({
+    from: z.number().nullable().optional(),
+    to: z.number().nullable().optional(),
+  })
+  .refine((o) => o.from != null || o.to != null, {
+    message: "Mindestens eine Grenze erforderlich",
+  });
+
+// Schema for filter parameters (matches EinsatzCustomizableFilter), now allowing ranges
 export const filterSchema = z
   .object({
     id: z.string(),
     title: z.string().optional(),
     template_name: z.string().optional(),
 
-    created_at: z
-      .object({
-        date: z.date(),
-        options: filterNumberOptionsSchema,
-      })
-      .optional(),
+    created_at: z.union([singleDateFilter, rangeDateFilter]).optional(),
     updated_at: z
-      .object({
-        date: z.date().nullable(),
-        options: filterNumberOptionsSchema,
-      })
+      .union([
+        singleDateFilter.extend({
+          date: singleDateFilter.shape.date.nullable(),
+        }),
+        rangeDateFilter,
+      ])
       .optional(),
 
-    start: z
-      .object({
-        date: z.date(),
-        options: filterNumberOptionsSchema,
-      })
-      .optional(),
-    end: z
-      .object({
-        date: z.date(),
-        options: filterNumberOptionsSchema,
-      })
-      .optional(),
+    start: z.union([singleDateFilter, rangeDateFilter]).optional(),
+    end: z.union([singleDateFilter, rangeDateFilter]).optional(),
     all_day: z.boolean().optional(),
 
-    helpers_needed: z
-      .object({
-        value: z.number(),
-        options: filterNumberOptionsSchema,
-      })
-      .optional(),
+    helpers_needed: z.union([singleNumberFilter, rangeNumberFilter]).optional(),
     still_needed_helpers: z
-      .object({
-        value: z.number(),
-        options: filterNumberOptionsSchema,
-      })
+      .union([singleNumberFilter, rangeNumberFilter])
       .optional(),
     assigned_helpers_count: z
-      .object({
-        value: z.number(),
-        options: filterNumberOptionsSchema,
-      })
+      .union([singleNumberFilter, rangeNumberFilter])
       .optional(),
     assigned_users_name: z
       .object({
@@ -195,25 +178,16 @@ export const filterSchema = z
       .optional(),
 
     participant_count: z
-      .object({
-        value: z.number().nullable(),
-        options: filterNumberOptionsSchema,
-      })
+      .union([singleNullableNumberFilter, rangeNullableNumberFilter])
       .optional(),
     price_per_person: z
-      .object({
-        value: z.number().nullable(),
-        options: filterNumberOptionsSchema,
-      })
+      .union([singleNullableNumberFilter, rangeNullableNumberFilter])
       .optional(),
     total_price: z
-      .object({
-        value: z.number().nullable(),
-        options: filterNumberOptionsSchema,
-      })
+      .union([singleNullableNumberFilter, rangeNullableNumberFilter])
       .optional(),
 
-    status: einsatzStatusSchema.optional(),
+    status_ids: z.array(z.uuid()).optional(),
     organization_name: z.string().optional(),
 
     categories: z.array(einsatzCategorySchema).optional(),
@@ -226,46 +200,126 @@ export function ListView({
   onEventSelect,
   onEventDelete,
 }: ListViewProps) {
+  const currentUserId = "5ae139a7-476c-4d76-95cb-4dcb4e909da9";
+  const currentOrgs = ["0c39989e-07bc-4074-92bc-aa274e5f22d0"];
+
+  // Simple debounce hook (local to this component file)
+  function useDebouncedValue<T>(value: T, delay: number) {
+    const [debounced, setDebounced] = React.useState(value);
+    React.useEffect(() => {
+      const handle = setTimeout(() => setDebounced(value), delay);
+      return () => clearTimeout(handle);
+    }, [value, delay]);
+    return debounced;
+  }
+
+  // URL state management for filters
   const [filters, setFilters] = useQueryState<EinsatzCustomizableFilter>(
     "filters",
-    parseAsJson(filterSchema.parse).withDefault({
-      start: { date: new Date(), options: "gte" },
-    } as EinsatzCustomizableFilter)
+    parseAsJson(filterSchema.parse).withDefault({} as EinsatzCustomizableFilter)
+  );
+
+  // URL state management for pagination
+  const [page, setPage] = useQueryState("page", parseAsInteger.withDefault(1));
+  const [perPage, setPerPage] = useQueryState(
+    "perPage",
+    parseAsInteger.withDefault(10)
+  );
+
+  // URL state management for sorting
+  const [sortField, setSortField] = useQueryState(
+    "sortField",
+    parseAsStringEnum([...SORTABLE_FIELDS]).withDefault("start")
+  );
+  const [sortOrder, setSortOrder] = useQueryState(
+    "sortOrder",
+    parseAsStringEnum(["asc", "desc"] as const).withDefault("desc")
   );
 
   const [statusOptions, setStatusOptions] = React.useState<
     { label: string; value: string }[]
   >([]);
 
-  const limit = 10;
-  const offset = 0;
-  const { data } = useQuery({
-    queryKey: queryKeys.einsaetzeFiltered(filters),
-    queryFn: () => getEinsaetzeFiltered(filters, { limit, offset }),
+  // URL state for hidden columns (column visibility)
+  const hiddenColsSchema = z.array(z.string());
+  const [hiddenCols, setHiddenCols] = useQueryState(
+    "hiddenCols",
+    parseAsJson(hiddenColsSchema.parse).withDefault([] as string[])
+  );
+
+  // Debounced inputs for the data query (300ms)
+  const DEBOUNCE_MS = 300;
+  const debouncedFilters = useDebouncedValue(filters, DEBOUNCE_MS);
+  const debouncedSortField = useDebouncedValue(sortField, DEBOUNCE_MS);
+  const debouncedSortOrder = useDebouncedValue(sortOrder, DEBOUNCE_MS);
+  const debouncedPage = useDebouncedValue(page, DEBOUNCE_MS);
+  const debouncedPerPage = useDebouncedValue(perPage, DEBOUNCE_MS);
+
+  const { data: statusData, isLoading: isStatusLoading } = useQuery({
+    queryKey: statusQueryKeys.statuses(),
+    queryFn: GetStatuses,
+  });
+
+  const { data: templatesData, isLoading: areTemplatesLoading } = useQuery({
+    queryKey: templatesQueryKeys.templates(currentOrgs),
+    queryFn: () => getAllTemplatesByOrgIds(currentOrgs),
+  });
+
+  // Data fetching with pagination, sorting, and filtering
+  const { data, isLoading } = useQuery({
+    queryKey: [
+      ...einsatzQueryKeys.einsaetzeFiltered(
+        debouncedFilters,
+        { id: debouncedSortField, order: debouncedSortOrder },
+        debouncedPage,
+        debouncedPerPage
+      ),
+    ],
+    queryFn: () =>
+      getEinsaetzeFiltered(
+        debouncedFilters,
+        {
+          sort_field: debouncedSortField,
+          sort_order: debouncedSortOrder,
+        },
+        {
+          limit: debouncedPerPage,
+          offset: (debouncedPage - 1) * debouncedPerPage,
+        }
+      ),
+    placeholderData: (previousData) => previousData,
+    notifyOnChangeProps: "all",
   });
 
   React.useEffect(() => {
     const fetchData = async () => {
-      const data = await GetStatuses();
-      const statusOptionsWithDuplicates = data.map((status) => {
+      const data = statusData;
+      if (data === undefined) return;
+
+      // Group status IDs by their label
+      const labelToIds = new Map<string, string[]>();
+
+      data.forEach((status) => {
         const label =
           mode === "helper" ? status.helper_text : status.verwalter_text;
-        return {
-          label,
-          value: label, // Multiple entries might have same label (viewMode specific)
-        };
+        if (!labelToIds.has(label)) {
+          labelToIds.set(label, []);
+        }
+        labelToIds.get(label)!.push(status.id);
       });
 
-      // Remove duplicates based on label
-      const uniqueOptions = statusOptionsWithDuplicates.filter(
-        (option, index, self) =>
-          index === self.findIndex((t) => t.label === option.label)
+      // Create options with grouped IDs
+      const uniqueOptions = Array.from(labelToIds.entries()).map(
+        ([label, ids]) => ({
+          label,
+          value: ids.join(","), // Join multiple IDs with comma
+        })
       );
 
       setStatusOptions(uniqueOptions);
     };
     fetchData();
-  }, [mode]);
+  }, [mode, statusData]);
 
   const columns = React.useMemo<ColumnDef<EC>[]>(() => {
     return [
@@ -280,7 +334,7 @@ export function ListView({
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
-            aria-label="Select all"
+            aria-label="Alle auswählen"
             className="size-3.5 data-[state=checked]:bg-primary data-[state=checked]:text-white data-[state=checked]:border-primary"
           />
         ),
@@ -288,7 +342,7 @@ export function ListView({
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label="Datenreihe auswählen"
           />
         ),
         size: 32,
@@ -299,12 +353,12 @@ export function ListView({
         id: "title",
         accessorKey: "title",
         header: ({ column }: { column: Column<EC, unknown> }) => (
-          <DataTableColumnHeader column={column} title="Title" />
+          <DataTableColumnHeader column={column} title="Titel" />
         ),
         cell: ({ cell }) => <div>{cell.getValue<EC["title"]>()}</div>,
         meta: {
-          label: "Title",
-          placeholder: "Search titles...",
+          label: "Titel",
+          placeholder: "Titel suchen...",
           variant: "text" as "text",
           icon: Text,
         },
@@ -369,23 +423,227 @@ export function ListView({
         },
         enableColumnFilter: true,
       },
-      // {
-      //   id: "budget",
-      //   accessorKey: "budget",
-      //   header: ({ column }: { column: Column<EC, unknown> }) => (
-      //     <DataTableColumnHeader column={column} title="Budget" />
-      //   ),
-      //   cell: ({ cell }) => {
-      //     const budget = cell.getValue<EC["budget"]>();
-
-      //     return (
-      //       <div className="flex items-center gap-1">
-      //         <DollarSign className="size-4" />
-      //         {budget.toLocaleString()}
-      //       </div>
-      //     );
-      //   },
-      // },
+      {
+        id: "start",
+        accessorKey: "start",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Beginn" />
+        ),
+        cell: ({ cell }) => {
+          const v = cell.getValue<Date | string | undefined>();
+          if (!v) return "-";
+          const d = new Date(v);
+          return <div>{d.toLocaleString()}</div>;
+        },
+        meta: { label: "Beginn", variant: "dateRange" },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "end",
+        accessorKey: "end",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Ende" />
+        ),
+        cell: ({ cell }) => {
+          const v = cell.getValue<Date | string | undefined>();
+          if (!v) return "-";
+          const d = new Date(v);
+          return <div>{d.toLocaleString()}</div>;
+        },
+        meta: { label: "Ende", variant: "dateRange" },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "template_name",
+        accessorKey: "template_name",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Vorlage" />
+        ),
+        cell: ({ cell }) => <div>{cell.getValue<string>() || "-"}</div>,
+        meta: {
+          label: "Vorlage",
+          variant: "multiSelect",
+          options: templatesData?.map((t) => ({
+            label: t.name ?? "(Ohne Namen)",
+            value: t.id,
+          })),
+          placeholder: "Vorlage auswählen",
+        },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "all_day",
+        accessorKey: "all_day",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Ganztägig" />
+        ),
+        cell: ({ cell }) => {
+          const v = cell.getValue<boolean | undefined>();
+          return <span>{v ? "JA" : "NEIN"}</span>;
+        },
+        meta: {
+          label: "Ganztägig",
+          variant: "boolean",
+        },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "helpers_needed",
+        accessorKey: "helpers_needed",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Benötigte Helfer" />
+        ),
+        cell: ({ cell }) => cell.getValue<number | undefined>() ?? "-",
+        meta: { label: "Benötigte Helfer", variant: "number" },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "still_needed_helpers",
+        accessorKey: "still_needed_helpers",
+        header: () => <div>Noch benötigt</div>,
+        cell: ({ cell }) => cell.getValue<number | undefined>() ?? "-",
+        meta: { label: "Noch benötigt", variant: "number" },
+        enableSorting: false,
+        enableColumnFilter: true,
+      },
+      {
+        id: "assigned_helpers_count",
+        accessorKey: "assigned_helpers_count",
+        header: () => <div>Zugewiesene Helfer</div>,
+        cell: ({ cell }) => cell.getValue<number | undefined>() ?? "-",
+        meta: { label: "Zugewiesene Helfer", variant: "number" },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "assigned_users_name",
+        accessorKey: "assigned_users_name",
+        header: () => <div>Zugewiesene Benutzer</div>,
+        cell: ({ cell }) => {
+          const list = cell.getValue<string[] | undefined>() || [];
+          return list.length ? (
+            <div className="max-w-[200px] truncate" title={list.join(", ")}>
+              {list.join(", ")}
+            </div>
+          ) : (
+            "-"
+          );
+        },
+        meta: { label: "Zugewiesene Benutzer", variant: "text" },
+        enableSorting: false,
+        enableColumnFilter: true,
+      },
+      {
+        id: "created_by_name",
+        accessorKey: "created_by_name",
+        header: () => <div>Erstellt von</div>,
+        cell: ({ cell }) => cell.getValue<string | undefined>() || "-",
+        meta: { label: "Erstellt von", variant: "text" },
+        enableSorting: false,
+        enableColumnFilter: true,
+      },
+      {
+        id: "participant_count",
+        accessorKey: "participant_count",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Teilnehmer" />
+        ),
+        cell: ({ cell }) => cell.getValue<number | null | undefined>() ?? "-",
+        meta: { label: "Teilnehmer", variant: "number" },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "price_per_person",
+        accessorKey: "price_per_person",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Preis/Person" />
+        ),
+        cell: ({ cell }) => {
+          const v = cell.getValue<number | null | undefined>();
+          return v != null ? v.toFixed(2) : "-";
+        },
+        meta: { label: "Preis/Person", variant: "number" },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "total_price",
+        accessorKey: "total_price",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Gesamtpreis" />
+        ),
+        cell: ({ cell }) => {
+          const v = cell.getValue<number | null | undefined>();
+          return v != null ? v.toFixed(2) : "-";
+        },
+        meta: { label: "Gesamtpreis", variant: "number" },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "organization_name",
+        accessorKey: "organization_name",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Organisation" />
+        ),
+        cell: ({ cell }) => cell.getValue<string | undefined>() || "-",
+        meta: { label: "Organisation", variant: "text" },
+        enableSorting: false,
+        enableColumnFilter: true,
+      },
+      {
+        id: "categories",
+        accessorKey: "categories",
+        header: () => <div>Kategorien</div>,
+        cell: ({ cell }) => {
+          const cats = cell.getValue<any[] | undefined>() || [];
+          const labels = cats
+            .map((c) => c.abbreviation || c.value)
+            .filter(Boolean);
+          return labels.length ? (
+            <div className="max-w-[180px] truncate" title={labels.join(", ")}>
+              {labels.join(", ")}
+            </div>
+          ) : (
+            "-"
+          );
+        },
+        meta: { label: "Kategorien", variant: "text" },
+        enableSorting: false,
+        enableColumnFilter: true,
+      },
+      {
+        id: "einsatz_fields",
+        accessorKey: "einsatz_fields",
+        header: () => <div>Felder</div>,
+        cell: ({ cell }) => {
+          const fields = cell.getValue<any[] | undefined>() || [];
+          if (!fields.length) return "-";
+          const preview = fields
+            .slice(0, 3)
+            .map((f) => f.value)
+            .filter(Boolean)
+            .join(", ");
+          const title = fields
+            .map((f) => `${f.field_id}: ${f.value}`)
+            .join("\n");
+          return (
+            <div className="max-w-[180px] truncate" title={title}>
+              {preview}
+              {fields.length > 3 ? "…" : ""}
+            </div>
+          );
+        },
+        meta: { label: "Felder", variant: "text" },
+        enableSorting: false,
+        enableColumnFilter: true,
+      },
       {
         id: "actions",
         cell: function Cell({ cell }) {
@@ -401,7 +659,7 @@ export function ListView({
                 <DropdownMenuItem
                   onClick={() => onEventSelect(cell.getValue<EC["id"]>())}
                 >
-                  Edit
+                  Bearbeiten
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
@@ -412,7 +670,7 @@ export function ListView({
                     )
                   }
                 >
-                  Delete
+                  Löschen
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -423,88 +681,274 @@ export function ListView({
     ];
   }, [statusOptions, mode]); // Add the dependencies back!
 
-  const { table } = useDataTable({
-    data: (data?.data ?? InitialData) as EinsatzCustomizable[],
+  // Build initial column filter state from URL filters (JSON) for supported columns
+  const initialColumnFilters: ColumnFiltersState = [];
+  if (filters?.title)
+    initialColumnFilters.push({ id: "title", value: filters.title });
+  if (filters?.status_ids && filters.status_ids.length > 0) {
+    // placeholder; real option values hydrated later
+    initialColumnFilters.push({ id: "status", value: [] });
+  }
+  const numericLike = [
+    "helpers_needed",
+    "still_needed_helpers",
+    "assigned_helpers_count",
+    "participant_count",
+    "price_per_person",
+    "total_price",
+  ] as const;
+  numericLike.forEach((key) => {
+    const k = key as keyof EinsatzCustomizableFilter;
+    const val: any = (filters as any)?.[k];
+    if (val && typeof val === "object" && "value" in val) {
+      initialColumnFilters.push({ id: key, value: String(val.value) });
+    }
+  });
+  if (filters?.all_day !== undefined) {
+    initialColumnFilters.push({ id: "all_day", value: filters.all_day });
+  }
+  // Date fields: hydrate from either single or range shape
+  (["start", "end"] as const).forEach((k) => {
+    const f = (filters as any)[k];
+    if (!f) return;
+    if (f.date) {
+      initialColumnFilters.push({
+        id: k,
+        value: [new Date(f.date).getTime(), undefined],
+      });
+    } else if (f.from || f.to) {
+      initialColumnFilters.push({
+        id: k,
+        value: [
+          f.from ? new Date(f.from).getTime() : undefined,
+          f.to ? new Date(f.to).getTime() : undefined,
+        ],
+      });
+    }
+  });
+  if (filters?.created_by_name)
+    initialColumnFilters.push({
+      id: "created_by_name",
+      value: filters.created_by_name.value,
+    });
+  if (filters?.assigned_users_name)
+    initialColumnFilters.push({
+      id: "assigned_users_name",
+      value: (filters.assigned_users_name.value || []).join(","),
+    });
+  if (filters?.organization_name)
+    initialColumnFilters.push({
+      id: "organization_name",
+      value: filters.organization_name,
+    });
+
+  const { table } = useDataTable<EinsatzCustomizable>({
+    data: (data?.data ?? []) as EinsatzCustomizable[],
     columns,
-    pageCount: 1,
-    manualFiltering: true,
+    pageCount: Math.ceil((data?.total ?? 0) / perPage),
     initialState: {
-      sorting: [{ id: "title", desc: true }],
-      columnPinning: { right: ["actions"] },
-      // Set initial column filters from URL state
-      columnFilters: [
-        ...(filters?.title ? [{ id: "title", value: filters.title }] : []),
-        ...(filters?.status
-          ? [
-              {
-                id: "status",
-                value: [
-                  filters.status.helper_text || filters.status.verwalter_text,
-                ],
-              },
-            ]
-          : []),
+      pagination: { pageIndex: page - 1, pageSize: perPage },
+      sorting: [
+        {
+          id: sortField as keyof EinsatzCustomizable,
+          desc: sortOrder === "desc",
+        },
       ],
+      columnPinning: { left: ["select", "title"], right: ["actions"] },
+      // Only include known column filter IDs here. Status hydration happens after options load.
+      columnFilters: initialColumnFilters,
+      columnVisibility: hiddenCols.reduce((acc, id) => {
+        acc[id] = false;
+        return acc;
+      }, {} as Record<string, boolean>),
     },
-    getRowId: (row) => row.id,
-    // Handle filter changes and sync with URL state
-    onColumnFiltersChange: (updater) => {
-      const currentFilters = table.getState().columnFilters;
-      const newFilters =
-        typeof updater === "function" ? updater(currentFilters) : updater;
-
-      // Update URL state based on column filters
-      const titleFilter = newFilters.find((f) => f.id === "title");
-      const statusFilter = newFilters.find((f) => f.id === "status");
-
-      const newUrlFilters = { ...(filters || {}) };
-
-      if (titleFilter && typeof titleFilter.value === "string") {
-        newUrlFilters.title = titleFilter.value;
-      } else {
-        delete newUrlFilters.title;
-      }
-
-      if (
-        statusFilter &&
-        Array.isArray(statusFilter.value) &&
-        statusFilter.value.length > 0
-      ) {
-        // Find the status object by ID
-        const statusValue = statusFilter.value as string[];
-        const statusOption = statusOptions.find(
-          (opt) => opt.value === statusValue[0]
-        );
-        if (statusOption) {
-          newUrlFilters.status = {
-            id: statusOption.value,
-            helper_text: statusOption.label,
-            verwalter_text: statusOption.label,
-            helper_color: "",
-            verwalter_color: "",
-          } as any; // This should match your EinsatzStatus type
+    getRowId: (row: EinsatzCustomizable) => row.id,
+    // Handle pagination changes
+    onPaginationChange: (newPagination: PaginationState) => {
+      setPage(newPagination.pageIndex + 1);
+      setPerPage(newPagination.pageSize);
+    },
+    // Handle sorting changes
+    onSortingChange: (newSorting: SortingState) => {
+      if (newSorting.length > 0) {
+        const newSortField = newSorting[0].id;
+        // Validate that the sort field is one of our allowed fields
+        if (SORTABLE_FIELDS.includes(newSortField as keyof Einsatz)) {
+          setSortField(newSortField as keyof Einsatz);
+          setSortOrder(newSorting[0].desc ? "desc" : "asc");
         }
-      } else {
-        delete newUrlFilters.status;
       }
+    },
+    // Handle filter changes (serialize to JSON param)
+    onColumnFiltersChange: (newFilters: ColumnFiltersState) => {
+      const newUrlFilters: any = { ...(filters || {}) };
 
+      // Clear managed keys
+      [
+        "title",
+        "status_ids",
+        "start",
+        "end",
+        "template_name",
+        "all_day",
+        "helpers_needed",
+        "still_needed_helpers",
+        "assigned_helpers_count",
+        "assigned_users_name",
+        "created_by_name",
+        "participant_count",
+        "price_per_person",
+        "total_price",
+        "organization_name",
+      ].forEach((k) => {
+        delete newUrlFilters[k];
+      });
+
+      for (const f of newFilters) {
+        const { id, value } = f as any;
+        if (value == null || value === "") continue;
+        switch (id) {
+          case "title":
+            if (typeof value === "string") newUrlFilters.title = value.trim();
+            break;
+          case "status":
+            if (Array.isArray(value) && value.length) {
+              newUrlFilters.status_ids = value.flatMap((v: string) =>
+                v.split(",")
+              );
+            }
+            break;
+          case "start":
+          case "end": {
+            if (Array.isArray(value)) {
+              const [fromTs, toTs] = value as (number | undefined)[];
+              if (fromTs || toTs) {
+                // Store as range shape
+                newUrlFilters[id] = {
+                  ...(fromTs ? { from: new Date(fromTs).toISOString() } : {}),
+                  ...(toTs ? { to: new Date(toTs).toISOString() } : {}),
+                };
+              }
+            } else if (typeof value === "number") {
+              newUrlFilters[id] = { from: new Date(value).toISOString() };
+            }
+            break;
+          }
+          case "all_day":
+            if (typeof value === "boolean") newUrlFilters.all_day = value;
+            break;
+          case "helpers_needed":
+          case "still_needed_helpers":
+          case "assigned_helpers_count":
+          case "participant_count":
+          case "price_per_person":
+          case "total_price": {
+            const num = Number(value);
+            if (!Number.isNaN(num))
+              newUrlFilters[id] = { value: num, options: "equals" };
+            break;
+          }
+          case "assigned_users_name":
+            if (typeof value === "string") {
+              const arr = value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+              if (arr.length)
+                newUrlFilters.assigned_users_name = {
+                  value: arr,
+                  options: "equals",
+                };
+            }
+            break;
+          case "created_by_name":
+            if (typeof value === "string" && value.trim())
+              newUrlFilters.created_by_name = {
+                value: value.trim(),
+                options: "equals",
+              };
+            break;
+          case "organization_name":
+            if (typeof value === "string" && value.trim())
+              newUrlFilters.organization_name = value.trim();
+            break;
+          default:
+            break;
+        }
+      }
+      setPage(1);
       setFilters(newUrlFilters);
     },
   });
 
-  //Force table to re-render when statusOptions change
+  // Ref to prevent feedback loop when syncing hidden columns table -> URL -> table
+  const hiddenColsSyncingRef = React.useRef(false);
+
+  // Hydrate status column filter once we have statusOptions (grouped labels) and URL status_ids
   React.useEffect(() => {
-    if (statusOptions.length > 0) {
-      //console.log("StatusOptions loaded, table should update");
+    if (!filters?.status_ids || filters.status_ids.length === 0) return;
+    if (statusOptions.length === 0) return;
+    const statusCol = table.getColumn("status");
+    if (!statusCol) return;
+    const current = statusCol.getFilterValue();
+    // Build list of option.value strings whose comma-separated IDs intersect with status_ids
+    const optionValues = statusOptions
+      .filter((opt) =>
+        opt.value.split(",").some((id) => filters.status_ids!.includes(id))
+      )
+      .map((opt) => opt.value);
+    // Avoid unnecessary state updates
+    const asArray = Array.isArray(current) ? current : current ? [current] : [];
+    const same =
+      asArray.length === optionValues.length &&
+      optionValues.every((v) => asArray.includes(v));
+    if (!same) {
+      statusCol.setFilterValue(optionValues);
     }
-  }, [statusOptions]);
+  }, [filters?.status_ids, statusOptions, table]);
+
+  // Sync hidden columns from table state to URL
+  const columnVisibility = table.getState().columnVisibility;
+  React.useEffect(() => {
+    const currentHidden = Object.entries(columnVisibility)
+      .filter(([, visible]) => visible === false)
+      .map(([id]) => id)
+      .sort();
+    const urlHidden = [...hiddenCols].sort();
+    if (JSON.stringify(currentHidden) !== JSON.stringify(urlHidden)) {
+      hiddenColsSyncingRef.current = true;
+      setHiddenCols(currentHidden);
+    }
+  }, [columnVisibility, hiddenCols, setHiddenCols]);
+
+  // Apply hiddenCols from URL to table (e.g., when user edits URL manually)
+  React.useEffect(() => {
+    // Skip if this update originated from table -> URL sync to avoid loop
+    if (hiddenColsSyncingRef.current) {
+      hiddenColsSyncingRef.current = false;
+      return;
+    }
+    // Only hide columns listed in hiddenCols that are currently visible.
+    // (We intentionally do NOT auto-show columns removed from hiddenCols to avoid loops
+    //  and unexpected toggling; user actions in UI drive showing columns.)
+    hiddenCols.forEach((id) => {
+      const col = table.getColumn(id);
+      if (col && col.getIsVisible()) {
+        col.toggleVisibility(false);
+      }
+    });
+  }, [hiddenCols, table]);
 
   // Don't render the table until statusOptions are loaded
-  if (statusOptions.length === 0) {
+  if (statusOptions.length === 0 || isLoading || isStatusLoading) {
     return (
       <div className="data-table-container px-4">
         <div className="flex items-center justify-center h-32">
-          <div className="text-muted-foreground">Loading status options...</div>
+          <div className="text-muted-foreground">
+            {statusOptions.length === 0
+              ? "Statusoptionen laden..."
+              : "Daten werden geladen..."}
+          </div>
         </div>
       </div>
     );
@@ -515,6 +959,7 @@ export function ListView({
       <DataTable
         table={table}
         key={`datatable-${statusOptions.length}`} // Force re-render when options change
+        getRowIsPast={isEventPast}
       >
         <DataTableToolbar table={table} />
       </DataTable>
