@@ -7,6 +7,8 @@ import type {
   user as User,
   einsatz_category as EinsatzCategory
 } from "@/generated/prisma";
+import z from "zod";
+import { filterSchema } from "@/components/event-calendar/list-view"
 
 export type { CalendarEvent } from "@/components/event-calendar/types";
 
@@ -83,34 +85,7 @@ export type EinsatzCustomizable = {
 
 type filterNumberOptions = "gte" | "lte" | "equals";
 
-export type EinsatzCustomizableFilter = {
-  id: string;
-  title?: string;
-  template_name?: string;
-
-  created_at?: { date: Date, options: filterNumberOptions };
-  updated_at?: { date: Date | null, options: filterNumberOptions };
-
-  start?: { date: Date, options: filterNumberOptions };
-  end?: { date: Date, options: filterNumberOptions };
-  all_day?: boolean;
-
-  helpers_needed?: { value: number, options: filterNumberOptions };
-  still_needed_helpers?: { value: number, options: filterNumberOptions };
-  assigned_helpers_count?: { value: number, options: filterNumberOptions };
-  assigned_users_name?: { value: string[], options: filterNumberOptions };
-  created_by_name?: { value: string, options: filterNumberOptions };
-
-  participant_count?: { value: number | null, options: filterNumberOptions };
-  price_per_person?: { value: number | null, options: filterNumberOptions };
-  total_price?: { value: number | null, options: filterNumberOptions };
-
-  status?: EinsatzStatus;
-  organization_name?: string;
-
-  categories?: EinsatzCategory[];
-  einsatz_fields?: EinsatzField[];
-}
+export type EinsatzCustomizableFilter = z.infer<typeof filterSchema>;
 
 export type EinsatzForCalendar = {
   id: string;

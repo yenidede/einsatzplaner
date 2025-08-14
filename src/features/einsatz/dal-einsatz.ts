@@ -78,8 +78,7 @@ export async function getEinsatzForCalendar(id: string) {
 export async function getEinsaetzeFiltered(
   //select: Partial<EinsatzCustomizable>,
   filters: Partial<EinsatzCustomizableFilter>,
-  limit: number,
-  offset: number
+  { limit, offset }: { limit: number; offset: number }
 ): Promise<{ data: EinsatzCustomizable[]; total: number }> {
   // Build the where clause from filters
   const where: Partial<Prisma.einsatzWhereInput> = {};

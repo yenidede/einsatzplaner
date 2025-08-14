@@ -456,7 +456,6 @@ export function EventCalendar({
             <ListView
               onEventSelect={handleEventSelect}
               onEventDelete={handleEventDelete}
-              mode={mode}
             />
           )}
         </div>
