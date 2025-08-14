@@ -16,33 +16,24 @@ import {
 import { useDataTable } from "@/components/data-table/hooks/use-data-table";
 
 import type { Column, ColumnDef } from "@tanstack/react-table";
-import {
-  CheckCircle,
-  CheckCircle2,
-  DollarSign,
-  MoreHorizontal,
-  Text,
-  XCircle,
-} from "lucide-react";
-import {
-  parseAsArrayOf,
-  parseAsString,
-  parseAsStringEnum,
-  useQueryState,
-} from "nuqs";
+import { MoreHorizontal, Text } from "lucide-react";
+import { parseAsJson, parseAsString, useQueryState } from "nuqs";
 import * as React from "react";
 import {
   EinsatzCustomizable,
   EinsatzCustomizableFilter,
 } from "@/features/einsatz/types";
 import { CalendarEvent, CalendarMode, CalendarView } from "./types";
-import { stat } from "fs";
 import { cn } from "@/lib/utils";
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
+import { queryKeys } from "@/features/einsatz/queryKeys";
+import { useQuery } from "@tanstack/react-query";
+import { getEinsaetzeFiltered } from "@/features/einsatz/dal-einsatz";
+import z from "zod";
 
 type EC = EinsatzCustomizable;
 
-const data: EC[] = [
+const InitialData: EC[] = [
   {
     id: "1",
     title: "Einsatz Alpha",
@@ -105,57 +96,154 @@ const data: EC[] = [
 ];
 
 type ListViewProps = {
+  mode: CalendarMode;
   onEventSelect: (event: string) => void;
   onEventDelete: (eventId: string, eventTitle: string) => void;
 };
 
-export function ListView({ onEventSelect, onEventDelete }: ListViewProps) {
-  // Single filter state using EinsatzCustomizableFilter type
-  const [filtersString, setFiltersString] = useQueryState(
+// Define the filter number options enum
+const filterNumberOptionsSchema = z.enum(["gte", "lte", "equals"]);
+
+// Define the EinsatzStatus schema
+const einsatzStatusSchema = z.object({
+  id: z.string(),
+  verwalter_color: z.string(),
+  verwalter_text: z.string(),
+  helper_color: z.string(),
+  helper_text: z.string(),
+});
+
+// Define the EinsatzCategory schema (based on Prisma generated type)
+const einsatzCategorySchema = z.object({
+  id: z.string(),
+  value: z.string(),
+  abbreviation: z.string(),
+  org_id: z.string(),
+});
+
+// Define the EinsatzField schema (based on Prisma generated type)
+const einsatzFieldSchema = z.object({
+  id: z.string(),
+  value: z.string().nullable(),
+  einsatz_id: z.string(),
+  field_id: z.string(),
+});
+
+// Schema for filter parameters (matches EinsatzCustomizableFilter)
+export const filterSchema = z
+  .object({
+    id: z.string(),
+    title: z.string().optional(),
+    template_name: z.string().optional(),
+
+    created_at: z
+      .object({
+        date: z.date(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+    updated_at: z
+      .object({
+        date: z.date().nullable(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+
+    start: z
+      .object({
+        date: z.date(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+    end: z
+      .object({
+        date: z.date(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+    all_day: z.boolean().optional(),
+
+    helpers_needed: z
+      .object({
+        value: z.number(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+    still_needed_helpers: z
+      .object({
+        value: z.number(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+    assigned_helpers_count: z
+      .object({
+        value: z.number(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+    assigned_users_name: z
+      .object({
+        value: z.array(z.string()),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+    created_by_name: z
+      .object({
+        value: z.string(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+
+    participant_count: z
+      .object({
+        value: z.number().nullable(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+    price_per_person: z
+      .object({
+        value: z.number().nullable(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+    total_price: z
+      .object({
+        value: z.number().nullable(),
+        options: filterNumberOptionsSchema,
+      })
+      .optional(),
+
+    status: einsatzStatusSchema.optional(),
+    organization_name: z.string().optional(),
+
+    categories: z.array(einsatzCategorySchema).optional(),
+    einsatz_fields: z.array(einsatzFieldSchema).optional(),
+  })
+  .partial(); // Make all fields optional to enable partial filtering
+
+export function ListView({
+  mode,
+  onEventSelect,
+  onEventDelete,
+}: ListViewProps) {
+  const [filters, setFilters] = useQueryState<EinsatzCustomizableFilter>(
     "filters",
-    parseAsString.withDefault("{}")
-  );
-
-  // Parse filters from string
-  const filters = React.useMemo(() => {
-    try {
-      return JSON.parse(filtersString) as Partial<EinsatzCustomizableFilter>;
-    } catch {
-      return {} as Partial<EinsatzCustomizableFilter>;
-    }
-  }, [filtersString]);
-
-  const [mode] = useQueryState(
-    "mode",
-    parseAsStringEnum<CalendarMode>(["helper", "verwaltung"]).withDefault(
-      "helper"
-    )
-  );
-
-  // Helper functions to update specific filters
-  const updateFilter = React.useCallback(
-    (key: keyof EinsatzCustomizableFilter, value: any) => {
-      const newFilters = {
-        ...filters,
-        [key]: value,
-      };
-      setFiltersString(JSON.stringify(newFilters));
-    },
-    [filters, setFiltersString]
-  );
-
-  const clearFilter = React.useCallback(
-    (key: keyof EinsatzCustomizableFilter) => {
-      const newFilters = { ...filters };
-      delete newFilters[key];
-      setFiltersString(JSON.stringify(newFilters));
-    },
-    [filters, setFiltersString]
+    parseAsJson(filterSchema.parse).withDefault({
+      start: { date: new Date(), options: "gte" },
+    } as EinsatzCustomizableFilter)
   );
 
   const [statusOptions, setStatusOptions] = React.useState<
     { label: string; value: string }[]
   >([]);
+
+  const limit = 10;
+  const offset = 0;
+  const { data } = useQuery({
+    queryKey: queryKeys.einsaetzeFiltered(filters),
+    queryFn: () => getEinsaetzeFiltered(filters, { limit, offset }),
+  });
+
   React.useEffect(() => {
     const fetchData = async () => {
       const data = await GetStatuses();
@@ -179,21 +267,7 @@ export function ListView({ onEventSelect, onEventDelete }: ListViewProps) {
     fetchData();
   }, [mode]);
 
-  // Ideally we would filter the data server-side, but for the sake of this example, we'll filter the data client-side
-  const filteredData = React.useMemo(() => {
-    return data.filter((project) => {
-      const matchesTitle =
-        !filters.title ||
-        project.title?.toLowerCase().includes(filters.title.toLowerCase());
-      const matchesStatus =
-        !filters.status || project.status?.id === filters.status.id;
-
-      return matchesTitle && matchesStatus;
-    });
-  }, [filters.title, filters.status]);
-
   const columns = React.useMemo<ColumnDef<EC>[]>(() => {
-    console.log("Columns being created with statusOptions:", statusOptions);
     return [
       {
         id: "select",
@@ -350,17 +424,25 @@ export function ListView({ onEventSelect, onEventDelete }: ListViewProps) {
   }, [statusOptions, mode]); // Add the dependencies back!
 
   const { table } = useDataTable({
-    data: filteredData,
+    data: (data?.data ?? InitialData) as EinsatzCustomizable[],
     columns,
     pageCount: 1,
+    manualFiltering: true,
     initialState: {
       sorting: [{ id: "title", desc: true }],
       columnPinning: { right: ["actions"] },
       // Set initial column filters from URL state
       columnFilters: [
-        ...(filters.title ? [{ id: "title", value: filters.title }] : []),
-        ...(filters.status
-          ? [{ id: "status", value: [filters.status.id] }]
+        ...(filters?.title ? [{ id: "title", value: filters.title }] : []),
+        ...(filters?.status
+          ? [
+              {
+                id: "status",
+                value: [
+                  filters.status.helper_text || filters.status.verwalter_text,
+                ],
+              },
+            ]
           : []),
       ],
     },
@@ -375,7 +457,7 @@ export function ListView({ onEventSelect, onEventDelete }: ListViewProps) {
       const titleFilter = newFilters.find((f) => f.id === "title");
       const statusFilter = newFilters.find((f) => f.id === "status");
 
-      const newUrlFilters = { ...filters };
+      const newUrlFilters = { ...(filters || {}) };
 
       if (titleFilter && typeof titleFilter.value === "string") {
         newUrlFilters.title = titleFilter.value;
@@ -406,14 +488,14 @@ export function ListView({ onEventSelect, onEventDelete }: ListViewProps) {
         delete newUrlFilters.status;
       }
 
-      setFiltersString(JSON.stringify(newUrlFilters));
+      setFilters(newUrlFilters);
     },
   });
 
-  // Force table to re-render when statusOptions change
+  //Force table to re-render when statusOptions change
   React.useEffect(() => {
     if (statusOptions.length > 0) {
-      console.log("StatusOptions loaded, table should update");
+      //console.log("StatusOptions loaded, table should update");
     }
   }, [statusOptions]);
 

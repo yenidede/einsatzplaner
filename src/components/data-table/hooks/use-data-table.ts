@@ -46,7 +46,6 @@ interface UseDataTableProps<TData>
     | "state"
     | "pageCount"
     | "getCoreRowModel"
-    | "manualFiltering"
     | "manualPagination"
     | "manualSorting"
   >,
@@ -74,6 +73,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     throttleMs = THROTTLE_MS,
     clearOnDefault = false,
     enableAdvancedFilter = false,
+    enableColumnResizing = true,
+    manualFiltering,
     scroll = false,
     shallow = true,
     startTransition,
