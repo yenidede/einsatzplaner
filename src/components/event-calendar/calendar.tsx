@@ -34,10 +34,14 @@ const mapEinsaetzeToCalendarEvents = (
   });
 };
 
+import { mapEinsaetzeToCalendarEvents } from "./utils";
+
+
 export default async function Calendar({ mode }: { mode: CalendarMode }) {
   const { session, userIds } = await requireAuth();
   console.log(session.user.email);
   const getEinsaetzeData = async () => {
+    // hydrate client before rendering => faster initial load
     const einsaetze = await getAllEinsaetzeForCalendar([
       session.user.id, //JMH for testing
     ]);
@@ -46,7 +50,7 @@ export default async function Calendar({ mode }: { mode: CalendarMode }) {
 
   return (
     <Suspense fallback={<div>Lade Kalender...</div>}>
-      <CalendarClient einsaetze={getEinsaetzeData()} mode={mode} />
+      <CalendarClient einsaetzeProp={getEinsaetzeData()} mode={mode} />
     </Suspense>
   );
 }

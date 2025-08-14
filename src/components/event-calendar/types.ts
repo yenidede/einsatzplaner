@@ -8,7 +8,6 @@ export interface CalendarEvent {
   start: Date;
   end: Date;
   allDay?: boolean;
-  color?: EventColor;
   status?: EinsatzStatus;
   location?: string;
   assignedUsers: string[]; // Array of user IDs assigned to the event
@@ -25,7 +24,7 @@ export type EventColor =
   | "orange";
 
 export type FormFieldType = "default" | "textarea" | "select" | "multi-select" | "checkbox";
-export type FormFieldInputType = ("text" | "number" | "tel" | "email") | null;
+export type SupportedDataTypes = "text" | "number" | "boolean" | "select" | "currency" | "mail" | "phone";
 
 export type CustomFormField = {
   id: string,
@@ -34,7 +33,8 @@ export type CustomFormField = {
   defaultValue?: any,
   required?: boolean,
   groupName?: string | null,
-  type: FormFieldType,
+  inputType: FormFieldType,
+  dataType: SupportedDataTypes,
   inputProps: React.ComponentProps<"input"> | null,
   isMultiline?: boolean | null,
   min?: number | null,
