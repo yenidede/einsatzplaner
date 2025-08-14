@@ -7,7 +7,10 @@ import type {
   CalendarEvent,
 } from "@/features/einsatz/types";
 import { CalendarMode } from "./types";
+import { requireAuth } from "@/lib/auth/authGuard";
 
+
+  
 const mapEinsaetzeToCalendarEvents = (
   einsaetze: EinsatzForCalendar[]
 ): CalendarEvent[] => {
@@ -31,10 +34,12 @@ const mapEinsaetzeToCalendarEvents = (
   });
 };
 
-export default function Calendar({ mode }: { mode: CalendarMode }) {
+export default async function Calendar({ mode }: { mode: CalendarMode }) {
+  const { session, userIds } = await requireAuth();
+  console.log(session.user.email);
   const getEinsaetzeData = async () => {
     const einsaetze = await getAllEinsaetzeForCalendar([
-      "0c39989e-07bc-4074-92bc-aa274e5f22d0", //JMH for testing
+      session.user.id, //JMH for testing
     ]);
     return mapEinsaetzeToCalendarEvents(einsaetze);
   };
