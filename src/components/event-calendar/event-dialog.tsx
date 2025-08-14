@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { InputHTMLAttributes } from "react";
+import { useSession } from "next-auth/react";
 import { RiDeleteBinLine } from "@remixicon/react";
-import { isBefore } from "date-fns";
 
-import { cn } from "@/lib/utils";
 import z from "zod";
-import { generateDynamicSchema, mapDbDataTypeToFormFieldType } from "./utils";
+import {
+  generateDynamicSchema,
+  mapDbDataTypeToFormFieldType,
+  mapFieldsForSchema,
+  mapStringValueToType,
+  mapTypeToStringValue,
+} from "./utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,12 +28,10 @@ import {
   DefaultStartHour,
   EndHour,
   StartHour,
+  StatusValuePairs,
 } from "@/components/event-calendar/constants";
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
-import type {
-  einsatz as Einsatz,
-  organization as Organization,
-} from "@/generated/prisma";
+import type { organization as Organization } from "@/generated/prisma";
 import { useQuery } from "@tanstack/react-query";
 import { EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
 import FormGroup from "../form/formGroup";
@@ -38,8 +42,10 @@ import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
-import { CustomFormField, FormFieldType } from "./types";
+import { CustomFormField, SupportedDataTypes } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
+import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
+import { buildInputProps } from "../form/utils";
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -60,7 +66,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
 export const ZodEinsatzFormData = z
   .object({
     title: z.string().min(1, "Titel ist erforderlich"),
-    einsatzCategoriesIds: z.array(z.uuid()).optional(),
+    einsatzCategoriesIds: z.array(z.uuid()),
     startDate: z.date(),
     endDate: z.date(),
     startTime: z
@@ -144,31 +150,12 @@ export const ZodEinsatzFormData = z
 
 export type EinsatzFormData = z.infer<typeof ZodEinsatzFormData>;
 
-// Helper function to get user-friendly field names
-function getFieldDisplayName(fieldName: string): string {
-  const fieldNames: Record<string, string> = {
-    title: "Titel",
-    einsatzCategoriesIds: "Kategorien",
-    startDate: "Startdatum",
-    endDate: "Enddatum",
-    startTime: "Startzeit",
-    endTime: "Endzeit",
-    all_day: "Ganztägig",
-    participantCount: "Teilnehmeranzahl",
-    pricePerPerson: "Preis pro Person",
-    helpersNeeded: "Helfer benötigt",
-    assignedUsers: "Zugewiesene Benutzer",
-  };
-
-  return fieldNames[fieldName] || fieldName;
-}
-
 interface EventDialogProps {
   einsatz: EinsatzCreate | string | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (einsatz: Einsatz) => void;
-  onDelete: (eventId: string) => void;
+  onSave: (einsatz: EinsatzCreate) => void;
+  onDelete: (eventId: string, eventTitle: string) => void;
   activeOrg: Organization | null;
 }
 
@@ -184,6 +171,7 @@ export function EventDialog({
 
   // TODO
   const activeOrgId = "0c39989e-07bc-4074-92bc-aa274e5f22d0"; // remove this!!!
+  const currentUserId = "5ae139a7-476c-4d76-95cb-4dcb4e909da9";
   // TODO
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
 
@@ -195,24 +183,12 @@ export function EventDialog({
   );
   // used for rendering of dynamic form fields
   const [dynamicFormFields, setDynamicFormFields] = useState<CustomFormField[]>(
-    [
-      {
-        id: "kostenaufwand",
-        displayName: "Kostenaufwand",
-        placeholder: "Geben Sie den Kostenaufwand ein",
-        defaultValue: 12.2,
-        required: true,
-        groupName: "Finanzen",
-        min: 0,
-        type: "default",
-        inputProps: { type: "number", step: "0.10" },
-      },
-    ]
+    []
   );
   // stores the dynamic form data in key-value pairs
-  const [dynamicFormData, setDynamicFormData] = useState<Record<string, any>>({
-    kostenaufwand: 12.2,
-  });
+  const [dynamicFormData, setDynamicFormData] = useState<Record<string, any>>(
+    {}
+  );
 
   const [errors, setErrors] = useState<{
     fieldErrors: Record<string, string[]>;
@@ -222,15 +198,17 @@ export function EventDialog({
     formErrors: [],
   });
 
-  // Fetch detailed einsatz data when einsatz is a string (ID)
+  // Fetch detailed einsatz data when einsatz is a string (UUID)
   const {
     data: detailedEinsatz,
     isLoading,
     error: queryError,
   } = useQuery({
-    queryKey: ["einsatz", einsatz],
-    queryFn: () => {
-      return getEinsatzWithDetailsById(einsatz as string);
+    queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
+    queryFn: async () => {
+      const returnEinsatz = await getEinsatzWithDetailsById(einsatz as string);
+      console.log("Fetching detailed einsatz data for ID:", returnEinsatz);
+      return returnEinsatz;
     },
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
   });
@@ -252,13 +230,18 @@ export function EventDialog({
     },
   });
 
-  // type string means einsatz (enter exit mode)
+  // type string means edit einsatz (uuid)
   const currentEinsatz =
     typeof einsatz === "string" ? detailedEinsatz : einsatz;
 
-  const handleDynamicFormDataChange = (
-    updates: Partial<z.infer<typeof dynamicSchema>>
-  ) => {
+  const handleDynamicFormDataChange = (updates: Record<string, any>) => {
+    Object.entries(updates).forEach(([key, value]) => {
+      if (typeof value === "string") {
+        // Convert string values to appropriate types based on dynamic schema
+        const fieldType = dynamicFormFields.find((f) => f.id === key)?.dataType;
+        updates[key] = mapStringValueToType(value, fieldType);
+      }
+    });
     // Validate using dynamic schema if it exists
     if (dynamicSchema) {
       // Validate just the updated fields using partial schema
@@ -392,26 +375,24 @@ export function EventDialog({
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
+        setActiveTemplateId(createEinsatz.template_id || null);
         handleFormDataChange({ title: createEinsatz.title || "" });
-
-        // Safely handle start and end dates
         if (createEinsatz.start) {
-          const start = new Date(createEinsatz.start);
+          const start = createEinsatz.start;
           handleFormDataChange({
             startDate: start,
             startTime: formatTimeForInput(start),
           });
         }
-
         if (createEinsatz.end) {
-          const end = new Date(createEinsatz.end);
+          const end = createEinsatz.end;
           handleFormDataChange({
             endDate: end,
             endTime: formatTimeForInput(end),
           });
         }
-
         handleFormDataChange({
+          title: createEinsatz.title || "",
           all_day: createEinsatz.all_day || false,
         });
         // Reset errors when opening dialog
@@ -420,30 +401,27 @@ export function EventDialog({
           formErrors: [],
         });
       } else {
+        const einsatzDetailed = currentEinsatz as EinsatzDetailed;
         // Edit existing einsatz (loaded from query)
         setActiveTemplateId(currentEinsatz.template_id || null);
-        handleFormDataChange({ title: currentEinsatz.title || "" });
-
-        // Safely handle start and end dates
-        if (currentEinsatz.start) {
-          const start = new Date(currentEinsatz.start);
-          handleFormDataChange({
-            startDate: start,
-            startTime: formatTimeForInput(start),
-          });
-        }
-
-        if (currentEinsatz.end) {
-          const end = new Date(currentEinsatz.end);
-          handleFormDataChange({
-            endDate: end,
-            endTime: formatTimeForInput(end),
-          });
-        }
-
-        handleFormDataChange({
-          all_day: currentEinsatz.all_day || false,
+        setStaticFormData({
+          title: einsatzDetailed.title || "",
+          all_day: einsatzDetailed.all_day || false,
+          startDate: einsatzDetailed.start || new Date(),
+          startTime:
+            formatTimeForInput(einsatzDetailed.start) ||
+            DefaultStartHour + ":00",
+          endDate: einsatzDetailed.end || new Date(),
+          endTime:
+            formatTimeForInput(einsatzDetailed.end) || DefaultEndHour + ":00",
+          participantCount: einsatzDetailed.participant_count || 0,
+          pricePerPerson: einsatzDetailed.price_per_person || 0,
+          totalPrice: einsatzDetailed.total_price || 0,
+          helpersNeeded: einsatzDetailed.helpers_needed || 0,
+          assignedUsers: einsatzDetailed.assigned_users || [],
+          einsatzCategoriesIds: einsatzDetailed.categories || [],
         });
+
         // Reset errors when opening dialog
         setErrors({
           fieldErrors: {},
@@ -455,49 +433,46 @@ export function EventDialog({
     }
   }, [currentEinsatz]);
 
-  // Generate the dynamic schema whenever templatesQuery.data is fetched
+  // Generate or refresh dynamic schema/data when template or detailed fields change
   useEffect(() => {
     if (templatesQuery.data) {
       const fields =
         templatesQuery.data.find((t) => t.id === activeTemplateId)
           ?.template_field || [];
       try {
-        const mappedFields = fields.map((f) => {
-          return {
-            fieldId: f.field.id,
-            type: f.field.type?.datatype,
-            options: {
-              isMultiline: f.field.is_multiline,
-              isRequired: f.field.is_required,
-              min: f.field.min,
-              max: f.field.max,
-              allowedValues: f.field.allowed_values,
-            },
-          };
-        });
+        const mappedFields = mapFieldsForSchema(fields);
         const schema = generateDynamicSchema(mappedFields);
         setDynamicSchema(schema);
         setDynamicFormFields(
-          fields.map((f) => {
-            return {
-              id: f.field.id,
-              displayName: f.field.name || f.field.id,
+          fields.map((f) => ({
+            id: f.field.id,
+            displayName: f.field.name || f.field.id,
+            placeholder: f.field.placeholder,
+            defaultValue: f.field.default_value,
+            required: f.field.is_required,
+            isMultiline: f.field.is_multiline,
+            min: f.field.min,
+            max: f.field.max,
+            allowedValues: f.field.allowed_values,
+            inputType: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+            dataType: (f.field.type?.datatype as SupportedDataTypes) || "text",
+            inputProps: buildInputProps(f.field.type?.datatype, {
               placeholder: f.field.placeholder,
-              defaultValue: f.field.default_value,
-              required: f.field.is_required,
-              isMultiline: f.field.is_multiline,
               min: f.field.min,
               max: f.field.max,
-              allowedValues: f.field.allowed_values,
-              type: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
-              inputProps:
-                f.field.type?.datatype === "number" ? { type: "number" } : {},
-            };
-          })
+            }) as InputHTMLAttributes<HTMLInputElement>,
+          }))
         );
         setDynamicFormData(
           fields.reduce((acc, f) => {
-            acc[f.field.id] = f.field.default_value;
+            const value =
+              detailedEinsatz?.einsatz_fields?.find(
+                (ef) => ef.field_id === f.field.id // load data from einsatz_field if exists,
+              )?.value ?? f.field.default_value; //  else use default value
+            acc[f.field.id] = mapStringValueToType(
+              value,
+              f.field.type?.datatype || "string"
+            );
             return acc;
           }, {} as Record<string, any>)
         );
@@ -505,8 +480,7 @@ export function EventDialog({
         console.error("Error generating schema:", error);
       }
     }
-    console.log("custom fields schema changed to:", dynamicSchema);
-  }, [activeTemplateId, templatesQuery.data]);
+  }, [activeTemplateId, templatesQuery.data, detailedEinsatz?.einsatz_fields]);
 
   const resetForm = () => {
     handleFormDataChange(DEFAULTFORMDATA);
@@ -598,10 +572,11 @@ export function EventDialog({
 
   const handleSave = () => {
     // Full validation before saving
-    const result = ZodEinsatzFormData.safeParse(staticFormData);
+    const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
+    //const parsedDataDynamic = dynamicSchema?.safeParse(dynamicFormData);
 
-    if (!result.success) {
-      const flattenedErrors = z.flattenError(result.error);
+    if (!parsedDataStatic.success) {
+      const flattenedErrors = z.flattenError(parsedDataStatic.error);
       setErrors({
         fieldErrors: flattenedErrors.fieldErrors,
         formErrors: flattenedErrors.formErrors || [],
@@ -615,8 +590,8 @@ export function EventDialog({
       formErrors: [],
     });
 
-    const start = new Date(staticFormData.startDate);
-    const end = new Date(staticFormData.endDate);
+    const startDateFull = new Date(staticFormData.startDate);
+    const endDateFull = new Date(staticFormData.endDate);
 
     if (!staticFormData.all_day) {
       const [startHours = 0, startMinutes = 0] = staticFormData.startTime
@@ -646,54 +621,49 @@ export function EventDialog({
         return;
       }
 
-      start.setHours(startHours, startMinutes, 0);
-      end.setHours(endHours, endMinutes, 0);
+      startDateFull.setHours(startHours, startMinutes, 0);
+      endDateFull.setHours(endHours, endMinutes, 0);
     } else {
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
+      startDateFull.setHours(0, 0, 0, 0);
+      endDateFull.setHours(23, 59, 59, 999);
     }
 
-    // Validate that end date is not before start date
-    if (isBefore(end, start)) {
-      setErrors({
-        fieldErrors: {
-          endDate: ["End date cannot be before start date"],
-        },
-        formErrors: [],
-      });
-      return;
-    }
+    // If einsatz was changed, always remove bestätigt status
+    const status =
+      parsedDataStatic.data.assignedUsers.length >=
+      parsedDataStatic.data.helpersNeeded
+        ? StatusValuePairs.vergeben
+        : StatusValuePairs.offen;
 
-    // Use generic title if empty
-    const eventTitle = staticFormData.title.trim()
-      ? staticFormData.title
-      : "(no title)";
+    const einsatzFields = Object.entries(dynamicFormData).map(
+      ([field_id, value]: [string, any]) => {
+        return {
+          field_id,
+          value: mapTypeToStringValue(value),
+        };
+      }
+    );
+    console.log(einsatzFields);
 
-    const createdAt =
-      currentEinsatz && "created_at" in currentEinsatz
-        ? currentEinsatz.created_at
-        : new Date();
-    const updatedAt =
-      currentEinsatz && "updated_at" in currentEinsatz
-        ? currentEinsatz.updated_at
-        : null;
+    console.log("categories", parsedDataStatic.data.einsatzCategoriesIds);
 
     onSave({
-      id: currentEinsatz?.id || "",
-      title: eventTitle,
-      created_at: createdAt,
-      updated_at: updatedAt,
-      start: start,
-      end: end,
-      all_day: staticFormData.all_day,
-      participant_count: currentEinsatz?.participant_count ?? null,
-      price_per_person: currentEinsatz?.price_per_person ?? null,
-      total_price: currentEinsatz?.total_price ?? null,
-      org_id: currentEinsatz?.org_id ?? "",
-      status_id: currentEinsatz?.status_id ?? "",
-      created_by: currentEinsatz?.created_by ?? "",
-      template_id: currentEinsatz?.template_id ?? null,
-      helpers_needed: currentEinsatz?.helpers_needed ?? -1,
+      id: currentEinsatz?.id,
+      title: parsedDataStatic.data.title,
+      start: startDateFull,
+      end: endDateFull,
+      all_day: parsedDataStatic.data.all_day,
+      participant_count: parsedDataStatic.data.participantCount ?? null,
+      price_per_person: parsedDataStatic.data.pricePerPerson ?? null,
+      total_price: parsedDataStatic.data.totalPrice ?? null,
+      org_id: currentEinsatz?.org_id ?? activeOrg?.id ?? activeOrgId,
+      status_id: status,
+      created_by: currentUserId,
+      template_id: activeTemplateId ?? undefined,
+      helpers_needed: parsedDataStatic.data.helpersNeeded,
+      categories: parsedDataStatic.data.einsatzCategoriesIds ?? [],
+      assignedUsers: parsedDataStatic.data.assignedUsers,
+      einsatz_fields: einsatzFields,
     });
   };
 
@@ -705,7 +675,7 @@ export function EventDialog({
       });
 
       if (result === "success") {
-        onDelete(currentEinsatz.id);
+        onDelete(currentEinsatz.id, currentEinsatz.title);
       }
     }
   };

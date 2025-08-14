@@ -14,34 +14,34 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
   const templates = await prisma.einsatz_template.findMany({
     where: { org_id },
     include: {
-        template_icon: {
-            select: {
-                icon_url: true,
-            },
+      template_icon: {
+        select: {
+          icon_url: true,
         },
-        template_field: {
-          select: {
-            field: {
-              select: {
-                id: true,
-                name: true,
-                type: {
-                  select: {
-                    datatype: true,
-                  }
-                },
-                is_required: true,
-                placeholder: true,
-                default_value: true,
-                group_name: true,
-                is_multiline: true,
-                min: true,
-                max: true,
-                allowed_values: true,
-              }
+      },
+      template_field: {
+        select: {
+          field: {
+            select: {
+              id: true,
+              name: true,
+              type: {
+                select: {
+                  datatype: true,
+                }
+              },
+              is_required: true,
+              placeholder: true,
+              default_value: true,
+              group_name: true,
+              is_multiline: true,
+              min: true,
+              max: true,
+              allowed_values: true,
             }
           }
         }
+      }
     }
   });
   return templates;
@@ -50,6 +50,36 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
 export async function getTemplateById(id: string) {
   const template = await prisma.einsatz_template.findUnique({
     where: { id },
+    include: {
+      template_icon: {
+        select: {
+          icon_url: true,
+        },
+      },
+      template_field: {
+        select: {
+          field: {
+            select: {
+              id: true,
+              name: true,
+              type: {
+                select: {
+                  datatype: true,
+                }
+              },
+              is_required: true,
+              placeholder: true,
+              default_value: true,
+              group_name: true,
+              is_multiline: true,
+              min: true,
+              max: true,
+              allowed_values: true,
+            }
+          }
+        }
+      }
+    }
   });
   return template;
 }
