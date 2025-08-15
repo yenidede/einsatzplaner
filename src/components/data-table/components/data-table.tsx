@@ -71,8 +71,8 @@ export function DataTable<TData>({
                     data-past={isPast ? "true" : "false"}
                     className={
                       isPast
-                        ? "bg-red-50/70 hover:bg-red-50 data-[state=selected]:bg-red-100/70"
-                        : ""
+                        ? "[&>td]:bg-[#fdf9f9] hover:[&>td]:bg-red-50 data-[state=selected]:[&>td]:bg-[#ffe8e8]"
+                        : "[&>td]:bg-[#fcfdff] hover:[&>td]:bg-slate-50 data-[state=selected]:[&>td]:bg-[#f5f8fb]"
                     }
                   >
                     {row.getVisibleCells().map((cell) => (

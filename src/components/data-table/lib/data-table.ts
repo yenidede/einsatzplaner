@@ -27,13 +27,13 @@ export function getCommonPinningStyles<TData>({
           ? "4px 0 4px -4px hsl(var(--border)) inset"
           : undefined
       : undefined,
-    left: isPinned === "left" ? `${column.getStart("left")}px` : undefined,
-    right: isPinned === "right" ? `${column.getAfter("right")}px` : undefined,
+    left: isPinned === "left" ? `${(column.getStart("left") != 0 ? (column.getStart("left") - 8) : 0) / 16}rem` : undefined, // -8 to avoid gaps
+    right: isPinned === "right" ? `${(column.getAfter("right") / 16)}rem` : undefined,
     opacity: isPinned ? 0.97 : 1,
     position: isPinned ? "sticky" : "relative",
-    background: isPinned ? "hsl(var(--background))" : "hsl(var(--background))",
+    marginLeft: isPinned === "left" ? "-2px" : undefined,
     width: column.getSize(),
-    zIndex: isPinned ? 1 : 0,
+    zIndex: isPinned ? 40 : 0,
   };
 }
 
