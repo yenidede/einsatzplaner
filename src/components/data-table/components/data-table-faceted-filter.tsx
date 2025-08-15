@@ -39,11 +39,14 @@ export function DataTableFacetedFilter<TData, TValue>({
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const [open, setOpen] = React.useState(false);
 
-  // (debug log removed)
-
   const columnFilterValue = column?.getFilterValue();
+
   const selectedValues = new Set(
-    Array.isArray(columnFilterValue) ? columnFilterValue : []
+    Array.isArray(columnFilterValue)
+      ? columnFilterValue
+      : columnFilterValue
+      ? [columnFilterValue]
+      : []
   );
 
   const onItemSelect = React.useCallback(

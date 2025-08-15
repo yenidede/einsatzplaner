@@ -151,6 +151,18 @@ function DataTableToolbarFilter<TData>({
               multiple={columnMeta.variant === "multiSelect"}
             />
           );
+        case "boolean":
+          return (
+            <DataTableFacetedFilter
+              column={column}
+              title={columnMeta.label ?? column.id}
+              options={[
+                { label: "JA", value: "TRUE" },
+                { label: "NEIN", value: "FALSE" },
+              ]}
+              multiple={false}
+            />
+          );
 
         default:
           return null;
