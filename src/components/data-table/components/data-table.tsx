@@ -35,7 +35,7 @@ export function DataTable<TData>({
         data-slot="table-container"
       >
         <Table>
-          <TableHeader className="sticky top-0 z-90 backdrop-blur">
+          <TableHeader className="sticky top-0 z-50 backdrop-blur">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (

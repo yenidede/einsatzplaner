@@ -3,9 +3,11 @@
 import prisma from "@/lib/prisma";
 import { unstable_cache as cache } from "next/cache";
 import type { einsatz as Einsatz, Prisma } from "@/generated/prisma";
-import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, EinsatzCustomizable, EinsatzCustomizableFilter } from "@/features/einsatz/types";
+import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, EinsatzCustomizable } from "@/features/einsatz/types";
+import { extendedColumnFiltersToWhere } from "@/components/data-table/lib/parsers";
 import { ValidateEinsatzCreate } from "./validation-service";
 import { applyFilterOptions, filterByOption } from "./utils"
+import z from "zod";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDetailed | null> {
@@ -63,6 +65,7 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
   };
 }
 
+
 export async function getAllEinsaetze(org_ids: string[]) {
   return getAllEinsaetzeFromDb(org_ids);
 }
@@ -75,86 +78,15 @@ export async function getEinsatzForCalendar(id: string) {
   return getEinsatzForCalendarFromDb(id);
 }
 
+
 export async function getEinsaetzeFiltered(
-  //select: Partial<EinsatzCustomizable>,
-  filters: Partial<EinsatzCustomizableFilter>,
-  { sort_field, sort_order }: { sort_field: keyof Einsatz; sort_order: "asc" | "desc" },
-  { limit, offset }: { limit: number; offset: number },
+  filters: import("@/components/data-table/types/data-table").ExtendedColumnFilter<EinsatzCustomizable>[],
+  sort: { sort_field: keyof Einsatz; sort_order: "asc" | "desc" },
+  pagination: { limit: number; offset: number },
   org_ids: string[] = ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]
 ): Promise<{ data: EinsatzCustomizable[]; showing: number; total: number }> {
-  // Build the where clause from filters
-  const where: Partial<Prisma.einsatzWhereInput> = {};
-
-  if (filters.id) where.id = filters.id;
-  if (filters.title) where.title = { contains: filters.title, mode: 'insensitive' };
-
-  if (filters.start) {
-    where.start = applyFilterOptions(filters.start.date, filters.start.options) as any;
-  }
-  if (filters.end) {
-    where.end = applyFilterOptions(filters.end.date, filters.end.options) as any;
-  }
-
-  if (filters.all_day !== undefined) where.all_day = filters.all_day;
-
-  if (filters.helpers_needed) {
-    where.helpers_needed = applyFilterOptions(filters.helpers_needed.value, filters.helpers_needed.options) as any;
-  }
-  if (filters.participant_count && filters.participant_count.value !== null) {
-    where.participant_count = applyFilterOptions(filters.participant_count.value, filters.participant_count.options);
-  }
-  if (filters.price_per_person && filters.price_per_person.value !== null) {
-    where.price_per_person = applyFilterOptions(filters.price_per_person.value, filters.price_per_person.options);
-  }
-  if (filters.total_price && filters.total_price.value !== null) {
-    where.total_price = applyFilterOptions(filters.total_price.value, filters.total_price.options);
-  }
-  if (filters.created_at) {
-    where.created_at = applyFilterOptions(filters.created_at.date, filters.created_at.options);
-  }
-  if (filters.updated_at && filters.updated_at.date !== null) {
-    where.updated_at = applyFilterOptions(filters.updated_at.date, filters.updated_at.options);
-  }
-
-  // Status filter
-  if (filters.status_ids && filters.status_ids.length > 0) {
-    where.status_id = { in: filters.status_ids };
-  }
-
-  // Organization filter
-  if (filters.organization_name) {
-    where.organization = {
-      name: { contains: filters.organization_name, mode: 'insensitive' }
-    };
-  }
-
-  // Categories filter (array of category IDs)
-  if (filters.categories && filters.categories.length > 0) {
-    const categoryIds = filters.categories.map(cat => cat.id);
-    where.einsatz_to_category = {
-      some: {
-        einsatz_category: {
-          id: { in: categoryIds }
-        }
-      }
-    };
-  }
-
-  // Template filter
-  if (filters.template_name) {
-    where.einsatz_template = {
-      name: { contains: filters.template_name, mode: 'insensitive' }
-    };
-  }
-
-  // Computed field filters (need to be handled at application level)
-  // These will be filtered after the query
-  const computedFilters = {
-    still_needed_helpers: filters.still_needed_helpers,
-    assigned_helpers_count: filters.assigned_helpers_count,
-    assigned_users_name: filters.assigned_users_name,
-    created_by_name: filters.created_by_name,
-  };
+  // Build the where clause from ExtendedColumnFilter[]
+  const where: Partial<Prisma.einsatzWhereInput> = extendedColumnFiltersToWhere(filters);
 
   // Always include relations needed for computed fields and transformation
   const include = {
@@ -208,24 +140,23 @@ export async function getEinsaetzeFiltered(
     }
   };
 
-  // Get the data with a larger limit if we need to filter computed fields
-  const hasComputedFilters = Object.values(computedFilters).some(v => v !== undefined);
-  const queryLimit = hasComputedFilters ? limit * 2 : limit; // Fetch more if we need to filter
-
-  const [einsaetzeFromDb, total] = await Promise.all([prisma.einsatz.findMany({
-    where,
-    include,
-    orderBy: { [sort_field]: sort_order },
-    take: queryLimit,
-    skip: offset,
-  }), prisma.einsatz.count({ where: { org_id: { in: org_ids } } })]);
+  const [einsaetzeFromDb, total] = await Promise.all([
+    prisma.einsatz.findMany({
+      where,
+      include,
+      orderBy: { [sort.sort_field]: sort.sort_order },
+      take: pagination.limit,
+      skip: pagination.offset,
+    }),
+    prisma.einsatz.count({ where: { org_id: { in: org_ids } } })
+  ]);
 
   // Transform the data to match EinsatzCustomizable type
-  let transformedData: EinsatzCustomizable[] = einsaetzeFromDb.map((einsatz) => {
+  const transformedData: EinsatzCustomizable[] = einsaetzeFromDb.map((einsatz) => {
     const assigned_helpers_count = einsatz._count.einsatz_helper;
     const still_needed_helpers = Math.max(0, einsatz.helpers_needed - assigned_helpers_count);
 
-    const assigned_users_name = einsatz.einsatz_helper.map(helper =>
+    const assigned_users_name = einsatz.einsatz_helper.map((helper: any) =>
       `${helper.user.firstname || ''} ${helper.user.lastname || ''}`.trim()
     );
 
@@ -260,8 +191,8 @@ export async function getEinsaetzeFiltered(
       status: einsatz.einsatz_status,
       organization_name: einsatz.organization.name,
 
-      categories: einsatz.einsatz_to_category.map(cat => cat.einsatz_category),
-      einsatz_fields: einsatz.einsatz_field.map(field => ({
+      categories: einsatz.einsatz_to_category.map((cat: any) => cat.einsatz_category),
+      einsatz_fields: einsatz.einsatz_field.map((field: any) => ({
         id: field.id,
         einsatz_id: field.einsatz_id,
         field_id: field.field_id,
@@ -270,30 +201,7 @@ export async function getEinsaetzeFiltered(
     } as EinsatzCustomizable;
   });
 
-  // Apply computed field filters
-  if (hasComputedFilters) {
-    if (computedFilters.still_needed_helpers !== undefined) {
-      transformedData = transformedData.filter(e => filterByOption(e.still_needed_helpers, computedFilters.still_needed_helpers?.value, computedFilters.still_needed_helpers?.options));
-    }
-    if (computedFilters.assigned_helpers_count !== undefined) {
-      transformedData = transformedData.filter(e => filterByOption(e.assigned_helpers_count, computedFilters.assigned_helpers_count?.value, computedFilters.assigned_helpers_count?.options));
-    }
-    if (computedFilters.created_by_name) {
-      transformedData = transformedData.filter(e => (e.created_by_name ?? "").toLowerCase().includes(computedFilters.created_by_name?.value.toLowerCase() || "ajksdjfakjsdjgaöksdjfaksdfaskdgöajskdöajfk"));
-    }
-    if (computedFilters.assigned_users_name && computedFilters.assigned_users_name.value.length > 0) {
-      transformedData = transformedData.filter(e =>
-        (e.assigned_users_name ?? []).some(name =>
-          computedFilters.assigned_users_name!.value.some(filterName =>
-            name.toLowerCase().includes(filterName.toLowerCase())
-          )
-        )
-      );
-    }
-
-    // Limit results after filtering
-    transformedData = transformedData.slice(0, limit);
-  }
+  // TODO: filter after computed fields
 
   const showing = transformedData.length;
   return { data: transformedData, showing, total };
@@ -331,10 +239,14 @@ export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<
   return createEinsatzInDb({ data })
 }
 
-export async function updateEinsatzTime({ id, start, end }: { id: string; start: Date; end: Date }): Promise<Einsatz> {
-  if (!id) {
-    throw new Error("Einsatz must have an id for update");
-  }
+export async function updateEinsatzTime(data: { id: string; start: Date; end: Date }): Promise<Einsatz> {
+  const dataSchema = z.object({
+    id: z.string(),
+    start: z.date(),
+    end: z.date(),
+  });
+
+  const { id, start, end } = dataSchema.parse(data);
 
   return prisma.einsatz.update({
     where: { id },

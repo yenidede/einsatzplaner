@@ -8,7 +8,6 @@ import type {
   einsatz_category as EinsatzCategory
 } from "@/generated/prisma";
 import z from "zod";
-import { filterSchema } from "@/components/event-calendar/list-view"
 
 export type { CalendarEvent } from "@/components/event-calendar/types";
 
@@ -82,8 +81,6 @@ export type EinsatzCustomizable = {
   categories?: EinsatzCategory[];
   einsatz_fields?: EinsatzField[];
 }
-
-export type EinsatzCustomizableFilter = z.infer<typeof filterSchema>;
 
 export type EinsatzForCalendar = {
   id: string;

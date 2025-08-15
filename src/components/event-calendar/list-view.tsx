@@ -3,6 +3,7 @@
 import { DataTable } from "@/components/data-table/components/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/components/data-table-column-header";
 import { DataTableToolbar } from "@/components/data-table/components/data-table-toolbar";
+import { getFiltersStateParser } from "@/components/data-table/lib/parsers";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,17 +25,13 @@ import type {
 } from "@tanstack/react-table";
 import { MoreHorizontal, Text } from "lucide-react";
 import {
-  parseAsJson,
   parseAsString,
   useQueryState,
   parseAsInteger,
+  parseAsJson,
 } from "nuqs";
 import * as React from "react";
-import {
-  Einsatz,
-  EinsatzCustomizable,
-  EinsatzCustomizableFilter,
-} from "@/features/einsatz/types";
+import { Einsatz, EinsatzCustomizable } from "@/features/einsatz/types";
 import { CalendarEvent, CalendarMode, CalendarView } from "./types";
 import { cn } from "@/lib/utils";
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
@@ -47,6 +44,7 @@ import { getAllTemplatesByOrgIds } from "@/features/template/template-dal";
 import z from "zod";
 import { isEventPast, mapStatusIdsToLabels } from "./utils";
 import { parseAsStringEnum } from "nuqs";
+import { ExtendedColumnFilter } from "../data-table/types/data-table";
 
 // Define sortable fields based on Einsatz keys
 const SORTABLE_FIELDS = [
@@ -75,18 +73,6 @@ type ListViewProps = {
   onEventDelete: (eventId: string, eventTitle: string) => void;
 };
 
-// Define the filter number options enum
-const filterNumberOptionsSchema = z.enum(["gte", "lte", "equals"]);
-
-// Define the EinsatzStatus schema
-const einsatzStatusSchema = z.object({
-  id: z.string(),
-  verwalter_color: z.string(),
-  verwalter_text: z.string(),
-  helper_color: z.string(),
-  helper_text: z.string(),
-});
-
 // Define the EinsatzCategory schema (based on Prisma generated type)
 const einsatzCategorySchema = z.object({
   id: z.string(),
@@ -94,106 +80,6 @@ const einsatzCategorySchema = z.object({
   abbreviation: z.string(),
   org_id: z.string(),
 });
-
-// Define the EinsatzField schema (based on Prisma generated type)
-const einsatzFieldSchema = z.object({
-  id: z.string(),
-  value: z.string().nullable(),
-  einsatz_id: z.string(),
-  field_id: z.string(),
-});
-
-// Reusable schemas for single value vs range
-const singleDateFilter = z.object({
-  date: z.coerce.date(),
-  options: filterNumberOptionsSchema,
-});
-const rangeDateFilter = z
-  .object({ from: z.coerce.date().optional(), to: z.coerce.date().optional() })
-  .refine((o) => o.from || o.to, {
-    message: "Mindestens ein Datum erforderlich",
-  });
-
-const singleNumberFilter = z.object({
-  value: z.number(),
-  options: filterNumberOptionsSchema,
-});
-const singleNullableNumberFilter = z.object({
-  value: z.number().nullable(),
-  options: filterNumberOptionsSchema,
-});
-const rangeNumberFilter = z
-  .object({ from: z.number().optional(), to: z.number().optional() })
-  .refine((o) => o.from !== undefined || o.to !== undefined, {
-    message: "Mindestens eine Grenze erforderlich",
-  });
-const rangeNullableNumberFilter = z
-  .object({
-    from: z.number().nullable().optional(),
-    to: z.number().nullable().optional(),
-  })
-  .refine((o) => o.from != null || o.to != null, {
-    message: "Mindestens eine Grenze erforderlich",
-  });
-
-// Schema for filter parameters (matches EinsatzCustomizableFilter), now allowing ranges
-export const filterSchema = z
-  .object({
-    id: z.string(),
-    title: z.string().optional(),
-    template_name: z.string().optional(),
-
-    created_at: z.union([singleDateFilter, rangeDateFilter]).optional(),
-    updated_at: z
-      .union([
-        singleDateFilter.extend({
-          date: singleDateFilter.shape.date.nullable(),
-        }),
-        rangeDateFilter,
-      ])
-      .optional(),
-
-    start: z.union([singleDateFilter, rangeDateFilter]).optional(),
-    end: z.union([singleDateFilter, rangeDateFilter]).optional(),
-    all_day: z.boolean().optional(),
-
-    helpers_needed: z.union([singleNumberFilter, rangeNumberFilter]).optional(),
-    still_needed_helpers: z
-      .union([singleNumberFilter, rangeNumberFilter])
-      .optional(),
-    assigned_helpers_count: z
-      .union([singleNumberFilter, rangeNumberFilter])
-      .optional(),
-    assigned_users_name: z
-      .object({
-        value: z.array(z.string()),
-        options: filterNumberOptionsSchema,
-      })
-      .optional(),
-    created_by_name: z
-      .object({
-        value: z.string(),
-        options: filterNumberOptionsSchema,
-      })
-      .optional(),
-
-    participant_count: z
-      .union([singleNullableNumberFilter, rangeNullableNumberFilter])
-      .optional(),
-    price_per_person: z
-      .union([singleNullableNumberFilter, rangeNullableNumberFilter])
-      .optional(),
-    total_price: z
-      .union([singleNullableNumberFilter, rangeNullableNumberFilter])
-      .optional(),
-
-    status_ids: z.array(z.uuid()).optional(),
-    organization_name: z.string().optional(),
-
-    categories: z.array(einsatzCategorySchema).optional(),
-    einsatz_fields: z.array(einsatzFieldSchema).optional(),
-  })
-  .partial(); // Make all fields optional to enable partial filtering
 
 export function ListView({
   mode,
@@ -213,11 +99,10 @@ export function ListView({
     return debounced;
   }
 
-  // URL state management for filters
-  const [filters, setFilters] = useQueryState<EinsatzCustomizableFilter>(
-    "filters",
-    parseAsJson(filterSchema.parse).withDefault({} as EinsatzCustomizableFilter)
-  );
+  // URL state management for filters (ExtendedColumnFilter[] serialized)
+  const [filtersState, setFiltersState] = useQueryState<
+    ExtendedColumnFilter<EinsatzCustomizable>[]
+  >("filters", getFiltersStateParser<EinsatzCustomizable>());
 
   // URL state management for pagination
   const [page, setPage] = useQueryState("page", parseAsInteger.withDefault(1));
@@ -236,6 +121,7 @@ export function ListView({
     parseAsStringEnum(["asc", "desc"] as const).withDefault("desc")
   );
 
+  // handled differently, cause multiple fields could have same label depending on mode
   const [statusOptions, setStatusOptions] = React.useState<
     { label: string; value: string }[]
   >([]);
@@ -249,7 +135,7 @@ export function ListView({
 
   // Debounced inputs for the data query (300ms)
   const DEBOUNCE_MS = 300;
-  const debouncedFilters = useDebouncedValue(filters, DEBOUNCE_MS);
+  const debouncedFiltersState = useDebouncedValue(filtersState, DEBOUNCE_MS);
   const debouncedSortField = useDebouncedValue(sortField, DEBOUNCE_MS);
   const debouncedSortOrder = useDebouncedValue(sortOrder, DEBOUNCE_MS);
   const debouncedPage = useDebouncedValue(page, DEBOUNCE_MS);
@@ -269,7 +155,7 @@ export function ListView({
   const { data, isLoading } = useQuery({
     queryKey: [
       ...einsatzQueryKeys.einsaetzeFiltered(
-        debouncedFilters,
+        debouncedFiltersState || [],
         { id: debouncedSortField, order: debouncedSortOrder },
         debouncedPage,
         debouncedPerPage
@@ -277,15 +163,13 @@ export function ListView({
     ],
     queryFn: () =>
       getEinsaetzeFiltered(
-        debouncedFilters,
-        {
-          sort_field: debouncedSortField,
-          sort_order: debouncedSortOrder,
-        },
+        debouncedFiltersState || [],
+        { sort_field: debouncedSortField, sort_order: debouncedSortOrder },
         {
           limit: debouncedPerPage,
           offset: (debouncedPage - 1) * debouncedPerPage,
-        }
+        },
+        currentOrgs
       ),
     placeholderData: (previousData) => previousData,
     notifyOnChangeProps: "all",
@@ -637,66 +521,15 @@ export function ListView({
     ];
   }, [statusOptions, mode]); // Add the dependencies back!
 
-  // Build initial column filter state from URL filters (JSON) for supported columns
-  const initialColumnFilters: ColumnFiltersState = [];
-  if (filters?.title)
-    initialColumnFilters.push({ id: "title", value: filters.title });
-  if (filters?.status_ids && filters.status_ids.length > 0) {
-    // placeholder; real option values hydrated later
-    initialColumnFilters.push({ id: "status", value: [] });
-  }
-  const numericLike = [
-    "helpers_needed",
-    "still_needed_helpers",
-    "assigned_helpers_count",
-    "participant_count",
-    "price_per_person",
-    "total_price",
-  ] as const;
-  numericLike.forEach((key) => {
-    const k = key as keyof EinsatzCustomizableFilter;
-    const val: any = (filters as any)?.[k];
-    if (val && typeof val === "object" && "value" in val) {
-      initialColumnFilters.push({ id: key, value: String(val.value) });
-    }
-  });
-  if (filters?.all_day !== undefined) {
-    initialColumnFilters.push({ id: "all_day", value: filters.all_day });
-  }
-  // Date fields: hydrate from either single or range shape
-  (["start", "end"] as const).forEach((k) => {
-    const f = (filters as any)[k];
-    if (!f) return;
-    if (f.date) {
-      initialColumnFilters.push({
-        id: k,
-        value: [new Date(f.date).getTime(), undefined],
-      });
-    } else if (f.from || f.to) {
-      initialColumnFilters.push({
-        id: k,
-        value: [
-          f.from ? new Date(f.from).getTime() : undefined,
-          f.to ? new Date(f.to).getTime() : undefined,
-        ],
-      });
-    }
-  });
-  if (filters?.created_by_name)
-    initialColumnFilters.push({
-      id: "created_by_name",
-      value: filters.created_by_name.value,
-    });
-  if (filters?.assigned_users_name)
-    initialColumnFilters.push({
-      id: "assigned_users_name",
-      value: (filters.assigned_users_name.value || []).join(","),
-    });
-  if (filters?.organization_name)
-    initialColumnFilters.push({
-      id: "organization_name",
-      value: filters.organization_name,
-    });
+  // Build initial column filter state from URL (ExtendedColumnFilter[])
+  const initialColumnFilters: ColumnFiltersState = React.useMemo(
+    () =>
+      (filtersState || []).map((f: any) => ({
+        id: f.id,
+        value: f.value,
+      })),
+    [filtersState]
+  );
 
   const { table } = useDataTable<EinsatzCustomizable>({
     data: (data?.data ?? []) as EinsatzCustomizable[],
@@ -713,10 +546,13 @@ export function ListView({
       columnPinning: { left: ["select", "title"], right: ["actions"] },
       // Only include known column filter IDs here. Status hydration happens after options load.
       columnFilters: initialColumnFilters,
-      columnVisibility: hiddenCols.reduce((acc, id) => {
-        acc[id] = false;
-        return acc;
-      }, {} as Record<string, boolean>),
+      columnVisibility: (hiddenCols || []).reduce(
+        (acc: Record<string, boolean>, id: string) => {
+          acc[id] = false;
+          return acc;
+        },
+        {}
+      ),
     },
     getRowId: (row: EinsatzCustomizable) => row.id,
     // Handle pagination changes
@@ -737,131 +573,53 @@ export function ListView({
     },
     // Handle filter changes (serialize to JSON param)
     onColumnFiltersChange: (newFilters: ColumnFiltersState) => {
-      const newUrlFilters: any = { ...(filters || {}) };
-
-      // Clear managed keys
-      [
-        "title",
-        "status_ids",
-        "start",
-        "end",
-        "template_name",
-        "all_day",
-        "helpers_needed",
-        "still_needed_helpers",
-        "assigned_helpers_count",
-        "assigned_users_name",
-        "created_by_name",
-        "participant_count",
-        "price_per_person",
-        "total_price",
-        "organization_name",
-      ].forEach((k) => {
-        delete newUrlFilters[k];
-      });
-
-      for (const f of newFilters) {
-        const { id, value } = f as any;
-        if (value == null || value === "") continue;
-        switch (id) {
-          case "title":
-            if (typeof value === "string") newUrlFilters.title = value.trim();
-            break;
-          case "status":
-            if (Array.isArray(value) && value.length) {
-              newUrlFilters.status_ids = value.flatMap((v: string) =>
-                v.split(",")
-              );
-            }
-            break;
-          case "start":
-          case "end": {
-            if (Array.isArray(value)) {
-              const [fromTs, toTs] = value as (number | undefined)[];
-              if (fromTs || toTs) {
-                // Store as range shape
-                newUrlFilters[id] = {
-                  ...(fromTs ? { from: new Date(fromTs).toISOString() } : {}),
-                  ...(toTs ? { to: new Date(toTs).toISOString() } : {}),
-                };
-              }
-            } else if (typeof value === "number") {
-              newUrlFilters[id] = { from: new Date(value).toISOString() };
-            }
-            break;
-          }
-          case "all_day":
-            if (typeof value === "boolean") newUrlFilters.all_day = value;
-            break;
-          case "helpers_needed":
-          case "still_needed_helpers":
-          case "assigned_helpers_count":
-          case "participant_count":
-          case "price_per_person":
-          case "total_price": {
-            const num = Number(value);
-            if (!Number.isNaN(num))
-              newUrlFilters[id] = { value: num, options: "equals" };
-            break;
-          }
-          case "assigned_users_name":
-            if (typeof value === "string") {
-              const arr = value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean);
-              if (arr.length)
-                newUrlFilters.assigned_users_name = {
-                  value: arr,
-                  options: "equals",
-                };
-            }
-            break;
-          case "created_by_name":
-            if (typeof value === "string" && value.trim())
-              newUrlFilters.created_by_name = {
-                value: value.trim(),
-                options: "equals",
-              };
-            break;
-          case "organization_name":
-            if (typeof value === "string" && value.trim())
-              newUrlFilters.organization_name = value.trim();
-            break;
-          default:
-            break;
-        }
-      }
+      // Map table column filters -> ExtendedColumnFilter[] for URL
+      const extended = newFilters
+        .map((f: any) => {
+          const col = table.getColumn(f.id as string);
+          const variant = col?.columnDef?.meta?.variant;
+          if (
+            f.value == null ||
+            f.value === "" ||
+            (Array.isArray(f.value) && f.value.length === 0)
+          )
+            return null;
+          return {
+            id: f.id,
+            value: f.value,
+            variant: variant || "text",
+            operator: "equals", // basic default
+            filterId: `${f.id}-${variant || "text"}`,
+          };
+        })
+        .filter(Boolean);
       setPage(1);
-      setFilters(newUrlFilters);
+      setFiltersState(extended as any);
     },
   });
 
   // Ref to prevent feedback loop when syncing hidden columns table -> URL -> table
   const hiddenColsSyncingRef = React.useRef(false);
 
-  // Hydrate status column filter once we have statusOptions (grouped labels) and URL status_ids
+  // Apply URL filter values into table (one-way sync when URL changes externally)
   React.useEffect(() => {
-    if (!filters?.status_ids || filters.status_ids.length === 0) return;
-    if (statusOptions.length === 0) return;
-    const statusCol = table.getColumn("status");
-    if (!statusCol) return;
-    const current = statusCol.getFilterValue();
-    // Build list of option.value strings whose comma-separated IDs intersect with status_ids
-    const optionValues = statusOptions
-      .filter((opt) =>
-        opt.value.split(",").some((id) => filters.status_ids!.includes(id))
-      )
-      .map((opt) => opt.value);
-    // Avoid unnecessary state updates
-    const asArray = Array.isArray(current) ? current : current ? [current] : [];
+    const current = table.getState().columnFilters;
+    const simple = (filtersState || []).map((f: any) => ({
+      id: f.id,
+      value: f.value,
+    }));
     const same =
-      asArray.length === optionValues.length &&
-      optionValues.every((v) => asArray.includes(v));
+      current.length === simple.length &&
+      current.every((c) =>
+        simple.find(
+          (s) =>
+            s.id === c.id && JSON.stringify(s.value) === JSON.stringify(c.value)
+        )
+      );
     if (!same) {
-      statusCol.setFilterValue(optionValues);
+      table.setColumnFilters(simple as any);
     }
-  }, [filters?.status_ids, statusOptions, table]);
+  }, [filtersState, table]);
 
   // Sync hidden columns from table state to URL
   const columnVisibility = table.getState().columnVisibility;
@@ -870,7 +628,7 @@ export function ListView({
       .filter(([, visible]) => visible === false)
       .map(([id]) => id)
       .sort();
-    const urlHidden = [...hiddenCols].sort();
+    const urlHidden = [...(hiddenCols || [])].sort();
     if (JSON.stringify(currentHidden) !== JSON.stringify(urlHidden)) {
       hiddenColsSyncingRef.current = true;
       setHiddenCols(currentHidden);
@@ -887,7 +645,7 @@ export function ListView({
     // Only hide columns listed in hiddenCols that are currently visible.
     // (We intentionally do NOT auto-show columns removed from hiddenCols to avoid loops
     //  and unexpected toggling; user actions in UI drive showing columns.)
-    hiddenCols.forEach((id) => {
+    (hiddenCols || []).forEach((id: string) => {
       const col = table.getColumn(id);
       if (col && col.getIsVisible()) {
         col.toggleVisibility(false);
