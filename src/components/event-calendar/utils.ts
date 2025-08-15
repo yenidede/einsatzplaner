@@ -84,7 +84,9 @@ export const mapEinsaetzeToCalendarEvents = (
 
 export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): CalendarEvent => {
   if (!einsatz) {
-    throw new Error("Invalid einsatz data");
+export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): CalendarEvent | null => {
+  if (!einsatz) {
+    return null;
   }
   const categories = einsatz.einsatz_to_category;
   const hasCategories = categories && categories.length > 0;
