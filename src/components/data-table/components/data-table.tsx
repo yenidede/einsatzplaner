@@ -28,14 +28,14 @@ export function DataTable<TData>({
   ...props
 }: DataTableProps<TData>) {
   return (
-    <div
-      className={cn("flex w-full flex-col gap-2.5 overflow-auto", className)}
-      {...props}
-    >
+    <div className={cn("flex w-full flex-col gap-2.5", className)} {...props}>
       {children}
-      <div className="overflow-hidden rounded-md border">
+      <div
+        className="overflow-auto max-h-[calc(80vh-10rem)] rounded-md border"
+        data-slot="table-container"
+      >
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-90 backdrop-blur">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -45,6 +45,7 @@ export function DataTable<TData>({
                     style={{
                       ...getCommonPinningStyles({ column: header.column }),
                     }}
+                    className="bg-slate-50"
                   >
                     {header.isPlaceholder
                       ? null

@@ -601,32 +601,6 @@ export function ListView({
         enableColumnFilter: true,
       },
       {
-        id: "einsatz_fields",
-        accessorKey: "einsatz_fields",
-        header: () => <div>Felder</div>,
-        cell: ({ cell }) => {
-          const fields = cell.getValue<any[] | undefined>() || [];
-          if (!fields.length) return "-";
-          const preview = fields
-            .slice(0, 3)
-            .map((f) => f.value)
-            .filter(Boolean)
-            .join(", ");
-          const title = fields
-            .map((f) => `${f.field_id}: ${f.value}`)
-            .join("\n");
-          return (
-            <div className="max-w-[180px] truncate" title={title}>
-              {preview}
-              {fields.length > 3 ? "…" : ""}
-            </div>
-          );
-        },
-        meta: { label: "Felder", variant: "text" },
-        enableSorting: false,
-        enableColumnFilter: true,
-      },
-      {
         id: "actions",
         cell: function Cell({ cell }) {
           return (
