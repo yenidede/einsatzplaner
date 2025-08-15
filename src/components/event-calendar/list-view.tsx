@@ -498,7 +498,7 @@ export function ListView({
           <DataTableColumnHeader column={column} title="Benötigte Helfer" />
         ),
         cell: ({ cell }) => cell.getValue<number | undefined>() ?? "-",
-        meta: { label: "Benötigte Helfer", variant: "number" },
+        meta: { label: "Benötigte Helfer", variant: "range" },
         enableSorting: true,
         enableColumnFilter: true,
       },
@@ -507,7 +507,7 @@ export function ListView({
         accessorKey: "still_needed_helpers",
         header: () => <div>Noch benötigt</div>,
         cell: ({ cell }) => cell.getValue<number | undefined>() ?? "-",
-        meta: { label: "Noch benötigt", variant: "number" },
+        meta: { label: "Noch benötigt", variant: "range" },
         enableSorting: false,
         enableColumnFilter: true,
       },
@@ -516,26 +516,8 @@ export function ListView({
         accessorKey: "assigned_helpers_count",
         header: () => <div>Zugewiesene Helfer</div>,
         cell: ({ cell }) => cell.getValue<number | undefined>() ?? "-",
-        meta: { label: "Zugewiesene Helfer", variant: "number" },
+        meta: { label: "Zugewiesene Helfer", variant: "range" },
         enableSorting: true,
-        enableColumnFilter: true,
-      },
-      {
-        id: "assigned_users_name",
-        accessorKey: "assigned_users_name",
-        header: () => <div>Zugewiesene Benutzer</div>,
-        cell: ({ cell }) => {
-          const list = cell.getValue<string[] | undefined>() || [];
-          return list.length ? (
-            <div className="max-w-[200px] truncate" title={list.join(", ")}>
-              {list.join(", ")}
-            </div>
-          ) : (
-            "-"
-          );
-        },
-        meta: { label: "Zugewiesene Benutzer", variant: "text" },
-        enableSorting: false,
         enableColumnFilter: true,
       },
       {
@@ -568,7 +550,7 @@ export function ListView({
           const v = cell.getValue<number | null | undefined>();
           return v != null ? v.toFixed(2) : "-";
         },
-        meta: { label: "Preis/Person", variant: "number" },
+        meta: { label: "Preis/Person", variant: "range", placeholder: "0.00" },
         enableSorting: true,
         enableColumnFilter: true,
       },
