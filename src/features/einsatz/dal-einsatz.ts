@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { unstable_cache as cache } from "next/cache";
 import type { einsatz as Einsatz, Prisma } from "@/generated/prisma";
-import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, EinsatzCustomizable } from "@/features/einsatz/types";
+import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, EinsatzCustomizable, ETV } from "@/features/einsatz/types";
 import { extendedColumnFiltersToWhere } from "@/components/data-table-server/lib/parsers";
 import { ValidateEinsatzCreate } from "./validation-service";
 import { applyFilterOptions, filterByOption } from "./utils"
@@ -78,6 +78,67 @@ export async function getEinsatzForCalendar(id: string) {
   return getEinsatzForCalendarFromDb(id);
 }
 
+export async function getEinsaetzeForTableView(org_ids: string[]): Promise<ETV[]> {
+  const einsaetzeFromDb = await prisma.einsatz.findMany({
+    where: {
+      org_id: { in: org_ids }
+    },
+    include: {
+      einsatz_status: true,
+      organization: { select: { name: true } },
+      einsatz_helper: {
+        select: {
+          user: {
+            select: {
+              id: true,
+              firstname: true,
+              lastname: true,
+            }
+          }
+        }
+      },
+      einsatz_to_category: {
+        include: {
+          einsatz_category: true
+        }
+      },
+      einsatz_field: {
+        include: {
+          field: {
+            include: {
+              type: {
+                select: {
+                  name: true,
+                }
+              }
+            }
+          }
+        }
+      },
+      user: {
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+        }
+      },
+      einsatz_template: {
+        select: {
+          id: true,
+          name: true,
+        }
+      },
+      _count: {
+        select: {
+          einsatz_helper: true,
+        }
+      }
+    },
+    orderBy: { created_at: "asc" },
+  });
+
+  return einsaetzeFromDb;
+}
 
 export async function getEinsaetzeFiltered(
   filters: import("@/components/data-table-server/types/data-table").ExtendedColumnFilter<EinsatzCustomizable>[],
@@ -329,6 +390,27 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
     });
   } catch (error) {
     throw new Error(`Failed to delete Einsatz with ID ${einsatzId}: ${error}`);
+  }
+}
+
+export async function deleteEinsaetzeByIds(einsatzIds: string[]): Promise<void> {
+  // TODO: check if logged in user has permission to delete this Einsatz
+
+  const einsatz = await prisma.einsatz.findMany({
+    where: { id: { in: einsatzIds } },
+  });
+  if (!einsatz || einsatz.length === 0) {
+    throw new Error(`No Einsaetze found: ${einsatzIds.join(", ")}`);
+  }
+
+  try {
+    await prisma.einsatz.deleteMany({
+      where: {
+        id: { in: einsatzIds },
+      },
+    });
+  } catch (error) {
+    throw new Error(`Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`);
   }
 }
 

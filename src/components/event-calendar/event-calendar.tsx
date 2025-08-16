@@ -62,6 +62,7 @@ export interface EventCalendarProps {
   onEventUpdate: (event: EinsatzCreate) => void;
   onEventTimeUpdate: (event: CalendarEvent) => void;
   onEventDelete: (eventId: string, eventTitle: string) => void;
+  onMultiEventDelete: (eventIds: string[]) => void;
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;
@@ -73,6 +74,7 @@ export function EventCalendar({
   onEventUpdate,
   onEventTimeUpdate,
   onEventDelete,
+  onMultiEventDelete,
   className,
   initialView = "month",
   mode,
@@ -249,6 +251,8 @@ export function EventCalendar({
     setIsEventDialogOpen(false);
     setSelectedEvent(null);
   };
+
+  const handleMultiEventDelete = (eventIds: string[]) => {};
 
   const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
     // Type guard to handle both types
@@ -452,8 +456,9 @@ export function EventCalendar({
           )}
           {view === "list" && (
             <ListView
-              onEventSelect={handleEventSelect}
+              onEventEdit={handleEventSelect}
               onEventDelete={handleEventDelete}
+              onMultiEventDelete={handleMultiEventDelete}
               mode={mode}
             />
           )}
