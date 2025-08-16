@@ -1,6 +1,6 @@
 import { isSameDay } from "date-fns";
 
-import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
+import { einsatz_status, einsatz_status as EinsatzStatus } from "@/generated/prisma";
 import { CalendarEvent, CalendarMode, FormFieldType } from "./types";
 import { z } from "zod";
 import { Einsatz, EinsatzCustomizable, EinsatzForCalendar } from "@/features/einsatz/types";
@@ -282,6 +282,61 @@ export function getEventColorClasses(
   }
 }
 
+export function getStatusByMode(status: einsatz_status, mode: CalendarMode): { id: string; text: string; color: string; } {
+  if (mode === "helper") {
+    return {
+      id: status.id,
+      text: status.helper_text,
+      color: getEventColorClasses(status, mode),
+    };
+  } else if (mode === "verwaltung") {
+    return {
+      id: status.id,
+      text: status.verwalter_text,
+      color: getEventColorClasses(status, mode),
+    };
+  }
+  throw new Error(`Couldnt get Status by Mode: Unknown mode: '${mode}'`);
+}
+
+export function getBadgeColorClassByStatus(status: einsatz_status, mode: CalendarMode): string {
+  let badgeColor = "";
+  if (mode === "helper") {
+    switch (status?.helper_color) {
+      case "red":
+        badgeColor =
+          "bg-red-400 text-bg-red-900 dark:bg-red-800 dark:text-red-200";
+        break;
+      case "lime":
+        badgeColor =
+          "bg-lime-400 text-lime-900 dark:bg-lime-800 dark:text-lime-200";
+        break;
+      default:
+        badgeColor =
+          "bg-slate-400 text-bg-slate-900 dark:bg-slate-800 dark:text-slate-200";
+    }
+  } else {
+    switch (status?.verwalter_color) {
+      case "red":
+        badgeColor =
+          "bg-red-400 text-bg-red-900 dark:bg-red-800 dark:text-red-200";
+        break;
+      case "orange":
+        badgeColor =
+          "bg-orange-400 text-orange-900 dark:bg-orange-800 dark:text-orange-200";
+        break;
+      case "green":
+        badgeColor =
+          "bg-green-400 text-green-900 dark:bg-green-800 dark:text-green-200";
+        break;
+      default:
+        badgeColor =
+          "bg-slate-400 text-bg-slate-900 dark:bg-slate-800 dark:text-slate-200";
+    }
+  }
+  return badgeColor;
+}
+
 /**
  * Get CSS classes for border radius based on event position in multi-day events
  */
@@ -397,3 +452,4 @@ export function getAgendaEventsForDay(
     })
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 }
+

@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { unstable_cache as cache } from "next/cache";
-import type { einsatz as Einsatz, Prisma } from "@/generated/prisma";
+import type { einsatz as Einsatz, einsatz_field, Prisma } from "@/generated/prisma";
 import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, EinsatzCustomizable, ETV } from "@/features/einsatz/types";
 import { extendedColumnFiltersToWhere } from "@/components/data-table-server/lib/parsers";
 import { ValidateEinsatzCreate } from "./validation-service";
@@ -85,7 +85,7 @@ export async function getEinsaetzeForTableView(org_ids: string[]): Promise<ETV[]
     },
     include: {
       einsatz_status: true,
-      organization: { select: { name: true } },
+      organization: { select: { id: true, name: true } },
       einsatz_helper: {
         select: {
           user: {
@@ -105,10 +105,10 @@ export async function getEinsaetzeForTableView(org_ids: string[]): Promise<ETV[]
       einsatz_field: {
         include: {
           field: {
-            include: {
+            select: {
               type: {
                 select: {
-                  name: true,
+                  datatype: true,
                 }
               }
             }
@@ -137,7 +137,54 @@ export async function getEinsaetzeForTableView(org_ids: string[]): Promise<ETV[]
     orderBy: { created_at: "asc" },
   });
 
-  return einsaetzeFromDb;
+  // Map DB result to ETV type
+  const mapped: ETV[] = einsaetzeFromDb.map((einsatz) => ({
+    id: einsatz.id,
+    created_at: einsatz.created_at,
+    title: einsatz.title,
+    updated_at: einsatz.updated_at,
+    start: einsatz.start,
+    participant_count: einsatz.participant_count,
+    price_per_person: einsatz.price_per_person,
+    total_price: einsatz.total_price,
+    org_id: einsatz.org_id,
+    created_by: einsatz.created_by,
+    template_id: einsatz.template_id,
+    all_day: einsatz.all_day,
+    end: einsatz.end,
+    helpers_needed: einsatz.helpers_needed,
+    status_id: einsatz.status_id,
+    einsatz_status: einsatz.einsatz_status,
+    organization: {
+      id: einsatz.organization.id,
+      name: einsatz.organization.name,
+    },
+    einsatz_helper: einsatz.einsatz_helper.map((helper) => ({
+      id: helper.user.id,
+      firstname: helper.user.firstname ?? null,
+      lastname: helper.user.lastname ?? null,
+    })),
+    einsatz_categories: einsatz.einsatz_to_category.map((cat) => cat.einsatz_category),
+    einsatz_fields: einsatz.einsatz_field.map((f) => ({
+      id: f.id,
+      einsatz_id: f.einsatz_id,
+      value: f.value,
+      field_id: f.field_id,
+      datatype: f.field.type?.datatype ?? null,
+    }) as einsatz_field & { datatype: string | null }),
+    user: einsatz.user ? {
+      id: einsatz.user.id,
+      firstname: einsatz.user.firstname ?? null,
+      lastname: einsatz.user.lastname ?? null,
+    } : null,
+    einsatz_template: einsatz.einsatz_template ? {
+      id: einsatz.einsatz_template.id,
+      name: einsatz.einsatz_template.name ?? null,
+    } : null,
+    _count: einsatz._count,
+  }));
+
+  return mapped;
 }
 
 export async function getEinsaetzeFiltered(

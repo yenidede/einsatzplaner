@@ -24,6 +24,9 @@ import { useQuery } from "@tanstack/react-query";
 import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import { Checkbox } from "../ui/checkbox";
 import { CalendarMode } from "./types";
+import { getBadgeColorClassByStatus, getStatusByMode } from "./utils";
+import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -78,7 +81,8 @@ export function ListView({
 
   const columnHelper = createColumnHelper<ETV>();
 
-  const columns = React.useMemo<ColumnDef<ETV>[]>(
+  // Note: Don't constrain ColumnDef's value generic to unknown; let each accessor infer (string, boolean, etc.).
+  const columns = React.useMemo<ColumnDef<ETV, any>[]>(
     () => [
       columnHelper.display({
         id: "select",
@@ -102,14 +106,46 @@ export function ListView({
           />
         ),
       }),
-      columnHelper.accessor("title", {
+      columnHelper.accessor((row) => row.title, {
+        id: "title",
         header: "Titel",
         cell: (props) => props.getValue(),
       }),
       columnHelper.accessor(
-        (row) => `${row.user.firstname} ${row.user.lastname}`,
+        (row) => getStatusByMode(row.einsatz_status, mode).text,
         {
-          header: "Vollständiger Name",
+          id: "status",
+          header: "Status",
+          cell: (row) => (
+            <Badge
+              variant="default"
+              className={cn(
+                "capitalize",
+                getBadgeColorClassByStatus(row.getValue(), mode)
+              )}
+            >
+              {getStatusByMode(row.getValue(), mode).text}
+            </Badge>
+          ),
+          enableColumnFilter: true,
+          meta: {
+            label: "Status",
+            variant: "multiSelect",
+            options: statusData?.map((status) => ({
+              label: getStatusByMode(status, mode).text,
+              value: status.id,
+            })),
+          },
+        }
+      ),
+      columnHelper.accessor(
+        (row) =>
+          `${row.user?.firstname ?? ""} ${row.user?.lastname ?? ""}`.trim(),
+        {
+          id: "created_by",
+          header: "Erstellt von",
+          cell: (props) => props.getValue(),
+          enableColumnFilter: true,
         }
       ),
     ],
@@ -126,7 +162,7 @@ export function ListView({
   return (
     <DataTable table={table}>
       <DataTableAdvancedToolbar table={table}>
-        <DataTableFilterList table={table} />
+        <DataTableFilterMenu table={table} />
         <DataTableSortList table={table} />
       </DataTableAdvancedToolbar>
     </DataTable>
