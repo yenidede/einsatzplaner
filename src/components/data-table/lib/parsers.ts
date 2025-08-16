@@ -9,8 +9,9 @@ import type {
 } from "@/components/data-table/types/data-table";
 import { Prisma } from "@/generated/prisma";
 
-
 type EinsatzWhereKey = keyof Prisma.einsatzWhereInput;
+type EinsatzMultiRelational = ["categories"];
+export type EinsatzFilterableKey = EinsatzWhereKey | EinsatzMultiRelational;
 
 const validEinsatzWhereKeys: EinsatzWhereKey[] = [
   "id",
@@ -36,12 +37,7 @@ const validEinsatzWhereKeys: EinsatzWhereKey[] = [
   "einsatz_comment",
   "einsatz_field",
   "einsatz_helper",
-  "einsatz_to_category",
 ] as const;
-
-
-type validEinsatzRelationKey = "template_name" | "created_by_name";
-
 
 // Converts ExtendedColumnFilter[] to a Prisma where clause
 export function extendedColumnFiltersToWhere<TData>(filters: ExtendedColumnFilter<TData>[]): Partial<Prisma.einsatzWhereInput> {

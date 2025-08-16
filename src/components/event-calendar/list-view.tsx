@@ -38,6 +38,8 @@ import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { queryKeys as statusQueryKeys } from "@/features/einsatz_status/queryKeys";
 import { queryKeys as templatesQueryKeys } from "@/features/einsatztemplate/queryKeys";
+import { queryKeys as usersQueryKeys } from "@/features/user/queryKeys";
+import { queryKeys as organizationQueryKeys } from "@/features/organization/queryKeys";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getEinsaetzeFiltered } from "@/features/einsatz/dal-einsatz";
 import { getAllTemplatesByOrgIds } from "@/features/template/template-dal";
@@ -45,6 +47,13 @@ import z from "zod";
 import { isEventPast, mapStatusIdsToLabels } from "./utils";
 import { parseAsStringEnum } from "nuqs";
 import { ExtendedColumnFilter } from "../data-table/types/data-table";
+import {
+  getAllUsersWithRolesByOrgId,
+  getAllUsersWithRolesByOrgIds,
+} from "@/features/user/user-dal";
+import { einsatz_category } from "@/generated/prisma";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 
 // Define sortable fields based on Einsatz keys
 const SORTABLE_FIELDS = [
@@ -151,6 +160,22 @@ export function ListView({
     queryFn: () => getAllTemplatesByOrgIds(currentOrgs),
   });
 
+  const { data: usersData, isLoading: isUsersLoading } = useQuery({
+    queryKey: usersQueryKeys.users(currentOrgs),
+    queryFn: () => getAllUsersWithRolesByOrgIds(currentOrgs),
+  });
+
+  const { data: organizationsData, isLoading: isOrganizationsLoading } =
+    useQuery({
+      queryKey: organizationQueryKeys.organizations(currentOrgs),
+      queryFn: () => getOrganizationsByIds(currentOrgs),
+    });
+
+  const { data: categoriesData, isLoading: isCategoriesLoading } = useQuery({
+    queryKey: ["categories", currentOrgs],
+    queryFn: () => getCategoriesByOrgIds(currentOrgs),
+  });
+
   // Data fetching with pagination, sorting, and filtering
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -249,13 +274,13 @@ export function ListView({
         enableColumnFilter: true,
       },
       {
-        id: "status",
-        accessorKey: "status",
+        id: "einsatz_status",
+        accessorKey: "einsatz_status",
         header: ({ column }: { column: Column<EC, unknown> }) => (
           <DataTableColumnHeader column={column} title="Status" />
         ),
         cell: ({ cell }) => {
-          const status = cell.getValue<EC["status"]>();
+          const status = cell.getValue<EC["einsatz_status"]>();
 
           let badgeColor = "";
           if (mode === "helper") {
@@ -340,8 +365,8 @@ export function ListView({
         enableColumnFilter: true,
       },
       {
-        id: "template_name",
-        accessorKey: "template_name",
+        id: "template_id",
+        accessorKey: "template_id",
         header: ({ column }: { column: Column<EC, unknown> }) => (
           <DataTableColumnHeader column={column} title="Vorlage" />
         ),
@@ -379,37 +404,85 @@ export function ListView({
         id: "helpers_needed",
         accessorKey: "helpers_needed",
         header: ({ column }: { column: Column<EC, unknown> }) => (
-          <DataTableColumnHeader column={column} title="Benötigte Helfer" />
+          <DataTableColumnHeader column={column} title="Anzahl Benötigte P." />
         ),
         cell: ({ cell }) => cell.getValue<number | undefined>() ?? "-",
-        meta: { label: "Benötigte Helfer", variant: "range" },
+        meta: { label: "Anzahl Benötigte P.", variant: "range" },
         enableSorting: true,
         enableColumnFilter: true,
       },
       {
         id: "still_needed_helpers",
         accessorKey: "still_needed_helpers",
-        header: () => <div>Noch benötigt</div>,
+        header: () => <div>Anzahl noch benötigte P.</div>,
         cell: ({ cell }) => cell.getValue<number | undefined>() ?? "-",
-        meta: { label: "Noch benötigt", variant: "range" },
+        meta: { label: "Anzahl noch benötigte P.", variant: "range" },
         enableSorting: false,
         enableColumnFilter: true,
       },
       {
         id: "assigned_helpers_count",
         accessorKey: "assigned_helpers_count",
-        header: () => <div>Zugewiesene Helfer</div>,
+        header: () => <div>Anzahl zugewiesene P.</div>,
         cell: ({ cell }) => cell.getValue<number | undefined>() ?? "-",
-        meta: { label: "Zugewiesene Helfer", variant: "range" },
+        meta: { label: "Anzahl zugewiesene P.", variant: "range" },
         enableSorting: true,
         enableColumnFilter: true,
       },
       {
-        id: "created_by_name",
-        accessorKey: "created_by_name",
+        id: "einsatz_helper-id",
+        accessorKey: "einsatz_helper-id",
+        header: ({ column }: { column: Column<EC, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Zugewiesene Personen" />
+        ),
+        cell: ({ cell }) => (
+          <div>
+            {(() => {
+              const user = usersData?.find(
+                (u) => u.id === cell.getValue<string | undefined>()
+              );
+              return user
+                ? `${user.firstname} ${user.lastname ?? ""}`.trim()
+                : "-";
+            })()}
+          </div>
+        ),
+        meta: {
+          label: "Zugewiesene Personen",
+          variant: "multiSelect",
+          options: usersData?.map((u) => ({
+            label: `${u.firstname} ${u.lastname}`.trim(),
+            value: u.id,
+          })),
+          placeholder: "Vorlage auswählen",
+        },
+        enableSorting: true,
+        enableColumnFilter: true,
+      },
+      {
+        id: "created_by",
+        accessorKey: "created_by",
         header: () => <div>Erstellt von</div>,
-        cell: ({ cell }) => cell.getValue<string | undefined>() || "-",
-        meta: { label: "Erstellt von", variant: "text" },
+        cell: ({ cell }) => (
+          <div>
+            {(() => {
+              const user = usersData?.find(
+                (u) => u.id === cell.getValue<string | undefined>()
+              );
+              return user
+                ? `${user.firstname} ${user.lastname ?? ""}`.trim()
+                : "-";
+            })()}
+          </div>
+        ),
+        meta: {
+          label: "Erstellt von",
+          variant: "multiSelect",
+          options: usersData?.map((u) => ({
+            label: `${u.firstname} ${u.lastname}`.trim(),
+            value: u.id,
+          })),
+        },
         enableSorting: false,
         enableColumnFilter: true,
       },
@@ -459,7 +532,14 @@ export function ListView({
           <DataTableColumnHeader column={column} title="Organisation" />
         ),
         cell: ({ cell }) => cell.getValue<string | undefined>() || "-",
-        meta: { label: "Organisation", variant: "text" },
+        meta: {
+          label: "Organisation",
+          variant: "multiSelect",
+          options: organizationsData?.map((org) => ({
+            label: org.name,
+            value: org.id,
+          })),
+        },
         enableSorting: false,
         enableColumnFilter: true,
       },
@@ -468,7 +548,7 @@ export function ListView({
         accessorKey: "categories",
         header: () => <div>Kategorien</div>,
         cell: ({ cell }) => {
-          const cats = cell.getValue<any[] | undefined>() || [];
+          const cats = cell.getValue<einsatz_category[] | undefined>() || [];
           const labels = cats
             .map((c) => c.abbreviation || c.value)
             .filter(Boolean);
@@ -480,7 +560,14 @@ export function ListView({
             "-"
           );
         },
-        meta: { label: "Kategorien", variant: "text" },
+        meta: {
+          label: "Kategorien",
+          variant: "multiSelect",
+          options: categoriesData?.map((c) => ({
+            label: c.value,
+            value: c.id,
+          })),
+        },
         enableSorting: false,
         enableColumnFilter: true,
       },

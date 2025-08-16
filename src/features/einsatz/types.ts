@@ -75,7 +75,7 @@ export type EinsatzCustomizable = {
   price_per_person?: number | null;
   total_price?: number | null;
 
-  status?: EinsatzStatus;
+  einsatz_status?: EinsatzStatus;
   organization_name?: string;
 
   categories?: EinsatzCategory[];

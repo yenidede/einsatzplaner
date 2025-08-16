@@ -140,8 +140,8 @@ model type {
 model user {
   id                                        String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                                     String                   @unique
-  firstname                                 String?
-  lastname                                  String?
+  firstname                                 String
+  lastname                                  String
   password                                  String
   phone                                     String?
   created_at                                DateTime                 @default(now())
