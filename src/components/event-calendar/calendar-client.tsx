@@ -178,6 +178,47 @@ export default function Component({
     },
   });
 
+  // Delete Mutation with optimistic update
+  const deleteMultipleMutation = useMutation({
+    mutationFn: async ({ eventIds }: { eventIds: string[] }) => {
+      return deleteMultipleEinsaetze(eventIds);
+    },
+    onMutate: async ({ eventIds }) => {
+      await queryClient.cancelQueries({ queryKey });
+
+      const previous =
+        queryClient.getQueryData<CalendarEvent[]>(queryKey) || [];
+      const toDelete = previous.filter((e) => eventIds.includes(e.id));
+
+      queryClient.setQueryData<CalendarEvent[]>(queryKey, (old = []) =>
+        old.filter((e) => !eventIds.includes(e.id))
+      );
+
+      return { previous, toDelete };
+    },
+    onError: (error, _vars, ctx) => {
+      queryClient.setQueryData(queryKey, ctx?.previous);
+      toast.error("Fehler beim Löschen des Einsatzes: " + error);
+      console.error("Error deleting Einsatz:", error);
+    },
+    onSuccess: (_data, vars, ctx) => {
+      toast.success(vars.eventIds.length + " Einsätze wurden gelöscht.");
+    },
+    onSettled: (_data, _error, variables) => {
+      // Remove any cached detail for the deleted einsatz
+      if (variables?.eventIds) {
+        variables.eventIds.forEach((id) => {
+          queryClient.removeQueries({
+            queryKey: einsatzQueryKeys.detailedEinsatz(id),
+          });
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: einsatzQueryKeys.allEinsaetze(),
+      });
+    },
+  });
+
   const handleEventAdd = (event: EinsatzCreate) => {
     createMutation.mutate(event);
   };
@@ -194,6 +235,10 @@ export default function Component({
     deleteMutation.mutate({ eventId, eventTitle });
   };
 
+  const handleMultiEventDelete = (eventIds: string[]) => {
+    deleteMultipleMutation.mutate({ eventIds });
+  };
+
   return (
     <EventCalendar
       events={events}
@@ -201,7 +246,11 @@ export default function Component({
       onEventUpdate={handleEventUpdate}
       onEventTimeUpdate={handleEventTimeUpdate}
       onEventDelete={handleEventDelete}
+      onMultiEventDelete={handleMultiEventDelete}
       mode={mode}
     />
   );
+}
+function deleteMultipleEinsaetze(eventIds: string[]): any {
+  throw new Error("Function not implemented.");
 }

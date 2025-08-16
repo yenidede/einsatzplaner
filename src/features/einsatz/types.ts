@@ -1,4 +1,4 @@
-import type { einsatz as EinsatzRawDb, einsatz_comment as CommentRawDb, change_log as ChangeLogRawDb, organization, einsatz_category } from "@/generated/prisma";
+import type { einsatz as EinsatzRawDb, einsatz_comment as CommentRawDb, change_log as ChangeLogRawDb, organization, einsatz_category, einsatz_status, einsatz_field } from "@/generated/prisma";
 export type Einsatz = EinsatzRawDb;
 import type {
   einsatz_status as EinsatzStatus,
@@ -51,6 +51,37 @@ export type EinsatzDetailed = EinsatzRawDb & {
   categories: string[];
   comments: (CommentRawDb & { user: { id: string; firstname: string | null; lastname: string | null } })[];
   change_log: (ChangeLogRawDb & { user: { id: string; firstname: string | null; lastname: string | null } })[];
+}
+
+export type ETV = Einsatz & {
+  einsatz_status: EinsatzStatus;
+  organization: { id: string; name: string };
+  einsatz_helper: {
+    id: string;
+    firstname: string | null;
+    lastname: string | null;
+  }[];
+  einsatz_categories: einsatz_category[];
+  einsatz_field:
+  EinsatzField & {
+    field: {
+      type: {
+        name: string;
+      };
+    };
+  }[];
+  user: {
+    id: string;
+    firstname: string | null;
+    lastname: string | null;
+  };
+  einsatz_template: {
+    id: string;
+    name: string;
+  };
+  _count: {
+    einsatz_helper: number;
+  };
 }
 
 export type EinsatzCustomizable = {
