@@ -79,11 +79,15 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
 export const mapEinsaetzeToCalendarEvents = (
   einsaetze: EinsatzForCalendar[]
 ): CalendarEvent[] => {
-  return einsaetze.map((einsatz) => mapEinsatzToCalendarEvent(einsatz));
+  return einsaetze.reduce<CalendarEvent[]>((events, einsatz) => {
+    const event = mapEinsatzToCalendarEvent(einsatz);
+    if (event) {
+      events.push(event);
+    }
+    return events;
+  }, []);
 };
 
-export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): CalendarEvent => {
-  if (!einsatz) {
 export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): CalendarEvent | null => {
   if (!einsatz) {
     return null;

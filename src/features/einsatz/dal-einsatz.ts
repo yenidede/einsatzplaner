@@ -188,7 +188,7 @@ export async function getEinsaetzeFiltered(
       price_per_person: einsatz.price_per_person,
       total_price: einsatz.total_price,
 
-      status: einsatz.einsatz_status,
+      einsatz_status: einsatz.einsatz_status,
       organization_name: einsatz.organization.name,
 
       categories: einsatz.einsatz_to_category.map((cat: any) => cat.einsatz_category),
