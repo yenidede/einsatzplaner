@@ -244,7 +244,7 @@ export function DataTableFilterMenu<TData>({
       ))}
       {filters.length > 0 && (
         <Button
-          aria-label="Reset all filters"
+          aria-label="Alle Filter zurücksetzen"
           variant="outline"
           size="icon"
           className="size-8"
@@ -256,7 +256,7 @@ export function DataTableFilterMenu<TData>({
       <Popover open={open} onOpenChange={onOpenChange}>
         <PopoverTrigger asChild>
           <Button
-            aria-label="Open filter command menu"
+            aria-label="Filtermenü öffnen"
             variant="outline"
             size={filters.length > 0 ? "icon" : "sm"}
             className={cn(filters.length > 0 && "size-8", "h-8")}
@@ -278,7 +278,7 @@ export function DataTableFilterMenu<TData>({
               placeholder={
                 selectedColumn
                   ? selectedColumn.columnDef.meta?.label ?? selectedColumn.id
-                  : "Search fields..."
+                  : "Felder durchsuchen..."
               }
               value={inputValue}
               onValueChange={setInputValue}
@@ -288,7 +288,7 @@ export function DataTableFilterMenu<TData>({
               {selectedColumn ? (
                 <>
                   {selectedColumn.columnDef.meta?.options && (
-                    <CommandEmpty>No options found.</CommandEmpty>
+                    <CommandEmpty>Keine Optionen gefunden.</CommandEmpty>
                   )}
                   <FilterValueSelector
                     column={selectedColumn}
@@ -298,7 +298,7 @@ export function DataTableFilterMenu<TData>({
                 </>
               ) : (
                 <>
-                  <CommandEmpty>No fields found.</CommandEmpty>
+                  <CommandEmpty>Keine Felder gefunden.</CommandEmpty>
                   <CommandGroup>
                     {columns.map((column) => (
                       <CommandItem
