@@ -27,6 +27,7 @@ import { CalendarMode } from "./types";
 import { getBadgeColorClassByStatus, getStatusByMode } from "./utils";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
+import { DataTableFilterMenu } from "../data-table/components/data-table-filter-menu";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -79,6 +80,13 @@ export function ListView({
 
   // Ensure data is defined before accessing its elements
 
+  const isSomeQueryLoading =
+    isLoading ||
+    isStatusLoading ||
+    areTemplatesLoading ||
+    isUsersLoading ||
+    isOrganizationsLoading ||
+    isCategoriesLoading;
   const columnHelper = createColumnHelper<ETV>();
 
   // Note: Don't constrain ColumnDef's value generic to unknown; let each accessor infer (string, boolean, etc.).
@@ -112,7 +120,7 @@ export function ListView({
         cell: (props) => props.getValue(),
       }),
       columnHelper.accessor(
-        (row) => getStatusByMode(row.einsatz_status, mode).text,
+        (row) => getStatusByMode(row.einsatz_status, mode)?.text ?? "-",
         {
           id: "status",
           header: "Status",
@@ -124,17 +132,25 @@ export function ListView({
                 getBadgeColorClassByStatus(row.getValue(), mode)
               )}
             >
-              {getStatusByMode(row.getValue(), mode).text}
+              {getStatusByMode(row.getValue(), mode)?.text ?? "-"}
             </Badge>
           ),
           enableColumnFilter: true,
           meta: {
             label: "Status",
             variant: "multiSelect",
-            options: statusData?.map((status) => ({
-              label: getStatusByMode(status, mode).text,
-              value: status.id,
-            })),
+            options:
+              statusData?.reduce((acc, status) => {
+                const label = getStatusByMode(status, mode)?.text ?? "-";
+                // labels shouldnt be duplicate, if not already exists add to list
+                if (!acc.some((item) => item.label === label)) {
+                  acc.push({
+                    label,
+                    value: label, // label cause for some modes there isnt a difference between different values
+                  });
+                }
+                return acc;
+              }, [] as { label: string; value: string }[]) ?? [],
           },
         }
       ),
@@ -149,20 +165,20 @@ export function ListView({
         }
       ),
     ],
-    [columnHelper]
+    [columnHelper, statusData]
   );
 
   const { table } = useDataTable({
     data: data ?? [],
     columns: columns,
-    pageCount: 10,
+    rowCount: data?.length ?? 0,
   });
 
   // With advanced toolbar
   return (
     <DataTable table={table}>
       <DataTableAdvancedToolbar table={table}>
-        <DataTableFilterMenu table={table} />
+        <DataTableFilterMenu key={String(isSomeQueryLoading)} table={table} />
         <DataTableSortList table={table} />
       </DataTableAdvancedToolbar>
     </DataTable>
