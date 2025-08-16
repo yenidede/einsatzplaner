@@ -44,13 +44,13 @@ interface UseDataTableProps<TData>
   extends Omit<
     TableOptions<TData>,
     | "state"
-    | "pageCount"
+    | "rowCount"
     | "getCoreRowModel"
     | "manualFiltering"
     | "manualPagination"
     | "manualSorting"
   >,
-  Required<Pick<TableOptions<TData>, "pageCount">> {
+  Required<Pick<TableOptions<TData>, "rowCount">> {
   initialState?: Omit<Partial<TableState>, "sorting"> & {
     sorting?: ExtendedColumnSort<TData>[];
   };
@@ -67,7 +67,6 @@ interface UseDataTableProps<TData>
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   const {
     columns,
-    pageCount = -1,
     initialState,
     history = "replace",
     debounceMs = DEBOUNCE_MS,
@@ -262,7 +261,6 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     ...tableProps,
     columns,
     initialState,
-    pageCount,
     state: {
       pagination,
       sorting,
@@ -287,9 +285,9 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
-    manualPagination: true,
-    manualSorting: true,
-    manualFiltering: true,
+    manualPagination: false,
+    manualSorting: false,
+    manualFiltering: false,
   });
 
   return { table, shallow, debounceMs, throttleMs };

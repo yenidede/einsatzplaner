@@ -113,7 +113,6 @@ export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): C
 export function mapStringValueToType(value: string | null | undefined, fieldType: string | undefined | null): any {
   if (value === null || value === undefined) return null;
   if (!fieldType) return value; // return as is (text)
-  console.log("Mapping value:", value, "to type:", fieldType);
   switch (fieldType) {
     case "text":
     case "phone":
@@ -282,27 +281,69 @@ export function getEventColorClasses(
   }
 }
 
-export function getStatusByMode(status: einsatz_status, mode: CalendarMode): { id: string; text: string; color: string; } {
+type reducedStatus = { id: string; text: string; color: string; }
+
+export function getStatusByMode(status: einsatz_status | string, mode: CalendarMode): reducedStatus | undefined {
+  let statusObject: einsatz_status | undefined;
+
+  if (typeof status === "string") {
+    statusObject = staticStatusList.find((s) => mode === "helper" ? s.helper_text === status : s.verwalter_text === status);
+  } else {
+    statusObject = status;
+  }
+
+  if (!statusObject) {
+    console.warn("Unknown status:", status);
+    return undefined;
+  }
+
   if (mode === "helper") {
     return {
-      id: status.id,
-      text: status.helper_text,
-      color: getEventColorClasses(status, mode),
+      id: statusObject.id,
+      text: statusObject.helper_text,
+      color: statusObject.helper_color,
     };
   } else if (mode === "verwaltung") {
     return {
-      id: status.id,
-      text: status.verwalter_text,
-      color: getEventColorClasses(status, mode),
+      id: statusObject.id,
+      text: statusObject.verwalter_text,
+      color: statusObject.verwalter_color,
     };
   }
   throw new Error(`Couldnt get Status by Mode: Unknown mode: '${mode}'`);
 }
 
-export function getBadgeColorClassByStatus(status: einsatz_status, mode: CalendarMode): string {
+export const staticStatusList = [
+  {
+    id: "15512bc7-fc64-4966-961f-c506a084a274",
+    helper_color: "red",
+    verwalter_color: "orange",
+    helper_text: "vergeben",
+    verwalter_text: "vergeben",
+  },
+  {
+    id: "46cee187-d109-4dea-b886-240cf923b8e6",
+    helper_color: "red",
+    verwalter_color: "green",
+    helper_text: "vergeben",
+    verwalter_text: "bestätigt",
+  },
+  {
+    id: "bb169357-920b-4b49-9e3d-1cf489409370",
+    helper_color: "lime",
+    verwalter_color: "red",
+    helper_text: "offen",
+    verwalter_text: "offen",
+  },
+] as readonly einsatz_status[];
+
+export function getBadgeColorClassByStatus(status: einsatz_status | string, mode: CalendarMode): string {
   let badgeColor = "";
+
+  const statusObject = getStatusByMode(status, mode);
+
   if (mode === "helper") {
-    switch (status?.helper_color) {
+    switch (statusObject?.color) {
       case "red":
         badgeColor =
           "bg-red-400 text-bg-red-900 dark:bg-red-800 dark:text-red-200";
@@ -316,7 +357,7 @@ export function getBadgeColorClassByStatus(status: einsatz_status, mode: Calenda
           "bg-slate-400 text-bg-slate-900 dark:bg-slate-800 dark:text-slate-200";
     }
   } else {
-    switch (status?.verwalter_color) {
+    switch (statusObject?.color) {
       case "red":
         badgeColor =
           "bg-red-400 text-bg-red-900 dark:bg-red-800 dark:text-red-200";
