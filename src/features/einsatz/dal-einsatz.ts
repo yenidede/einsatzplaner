@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { unstable_cache as cache } from "next/cache";
 import type { einsatz as Einsatz, Prisma } from "@/generated/prisma";
 import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, EinsatzCustomizable } from "@/features/einsatz/types";
-import { extendedColumnFiltersToWhere } from "@/components/data-table/lib/parsers";
+import { extendedColumnFiltersToWhere } from "@/components/data-table-server/lib/parsers";
 import { ValidateEinsatzCreate } from "./validation-service";
 import { applyFilterOptions, filterByOption } from "./utils"
 import z from "zod";
@@ -80,7 +80,7 @@ export async function getEinsatzForCalendar(id: string) {
 
 
 export async function getEinsaetzeFiltered(
-  filters: import("@/components/data-table/types/data-table").ExtendedColumnFilter<EinsatzCustomizable>[],
+  filters: import("@/components/data-table-server/types/data-table").ExtendedColumnFilter<EinsatzCustomizable>[],
   sort: { sort_field: keyof Einsatz; sort_order: "asc" | "desc" },
   pagination: { limit: number; offset: number },
   org_ids: string[] = ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]

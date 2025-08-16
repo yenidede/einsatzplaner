@@ -14,7 +14,7 @@ import {
 } from "@tanstack/react-table";
 import * as React from "react";
 
-import type { ExtendedColumnSort } from "@/components/data-table/types/data-table";
+import type { ExtendedColumnSort } from "@/components/data-table-server/types/data-table";
 
 interface UseDataTableProps<TData>
   extends Omit<
