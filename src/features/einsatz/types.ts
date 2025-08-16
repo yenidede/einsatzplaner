@@ -62,23 +62,16 @@ export type ETV = Einsatz & {
     lastname: string | null;
   }[];
   einsatz_categories: einsatz_category[];
-  einsatz_field:
-  EinsatzField & {
-    field: {
-      type: {
-        name: string;
-      };
-    };
-  }[];
+  einsatz_fields: (EinsatzField & { datatype: string | null; })[];
   user: {
     id: string;
     firstname: string | null;
     lastname: string | null;
-  };
+  } | null;
   einsatz_template: {
     id: string;
-    name: string;
-  };
+    name: string | null;
+  } | null;
   _count: {
     einsatz_helper: number;
   };
