@@ -28,6 +28,7 @@ import { getBadgeColorClassByStatus, getStatusByMode } from "./utils";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import { DataTableFilterMenu } from "../data-table/components/data-table-filter-menu";
+import { byOperator } from "../data-table/lib/filter-fns";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -118,6 +119,13 @@ export function ListView({
         id: "title",
         header: "Titel",
         cell: (props) => props.getValue(),
+        enableColumnFilter: true,
+        filterFn: byOperator,
+        meta: {
+          label: "Titel",
+          variant: "text",
+          placeholder: "Einsatz suchen...",
+        },
       }),
       columnHelper.accessor(
         (row) => getStatusByMode(row.einsatz_status, mode)?.text ?? "-",
@@ -136,6 +144,7 @@ export function ListView({
             </Badge>
           ),
           enableColumnFilter: true,
+          filterFn: byOperator,
           meta: {
             label: "Status",
             variant: "multiSelect",
@@ -172,6 +181,9 @@ export function ListView({
     data: data ?? [],
     columns: columns,
     rowCount: data?.length ?? 0,
+    filterFns: {
+      byOperator: byOperator,
+    },
   });
 
   // With advanced toolbar

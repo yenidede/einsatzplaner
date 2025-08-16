@@ -2,8 +2,8 @@ export type DataTableConfig = typeof dataTableConfig;
 
 export const dataTableConfig = {
   textOperators: [
-    { label: "Contains", value: "iLike" as const },
-    { label: "Does not contain", value: "notILike" as const },
+    { label: "Beinhaltet", value: "iLike" as const },
+    { label: "Beinhaltet nicht", value: "notILike" as const },
     { label: "Ist", value: "eq" as const },
     { label: "Ist nicht", value: "ne" as const },
     { label: "Ist leer", value: "isEmpty" as const },
@@ -80,3 +80,5 @@ export const dataTableConfig = {
   ] as const,
   joinOperators: ["and", "or"] as const,
 };
+
+export type Operators = (typeof dataTableConfig)["operators"][number];
