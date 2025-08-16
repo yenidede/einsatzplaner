@@ -1,12 +1,12 @@
 import { createParser } from "nuqs/server";
 import { z } from "zod";
 
-import { dataTableConfig } from "@/components/data-table/config/data-table";
+import { dataTableConfig } from "@/components/data-table-server/config/data-table";
 
 import type {
   ExtendedColumnFilter,
   ExtendedColumnSort,
-} from "@/components/data-table/types/data-table";
+} from "@/components/data-table-server/types/data-table";
 import { Prisma } from "@/generated/prisma";
 
 type EinsatzWhereKey = keyof Prisma.einsatzWhereInput;

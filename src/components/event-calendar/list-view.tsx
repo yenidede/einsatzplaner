@@ -1,9 +1,9 @@
 "use client";
 
-import { DataTable } from "@/components/data-table/components/data-table";
-import { DataTableColumnHeader } from "@/components/data-table/components/data-table-column-header";
-import { DataTableToolbar } from "@/components/data-table/components/data-table-toolbar";
-import { getFiltersStateParser } from "@/components/data-table/lib/parsers";
+import { DataTable } from "@/components/data-table-server/components/data-table";
+import { DataTableColumnHeader } from "@/components/data-table-server/components/data-table-column-header";
+import { DataTableToolbar } from "@/components/data-table-server/components/data-table-toolbar";
+import { getFiltersStateParser } from "@/components/data-table-server/lib/parsers";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useDataTable } from "@/components/data-table/hooks/use-data-table";
+import { useDataTable } from "@/components/data-table-server/hooks/use-data-table";
 
 import type {
   Column,
@@ -46,7 +46,7 @@ import { getAllTemplatesByOrgIds } from "@/features/template/template-dal";
 import z from "zod";
 import { isEventPast, mapStatusIdsToLabels } from "./utils";
 import { parseAsStringEnum } from "nuqs";
-import { ExtendedColumnFilter } from "../data-table/types/data-table";
+import { ExtendedColumnFilter } from "../data-table-server/types/data-table";
 import {
   getAllUsersWithRolesByOrgId,
   getAllUsersWithRolesByOrgIds,
