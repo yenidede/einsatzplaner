@@ -97,3 +97,50 @@ export const getFiltersStateParser = <TData>(
       ),
   });
 };
+
+const columnFilterSchema = z.object({
+  id: z.string(), // eg. "status"
+  value: z.object({
+    value: z.any(),
+    operation: z.enum(dataTableConfig.operators),
+  })
+});
+
+export type ColumnFilterSchema = z.infer<typeof columnFilterSchema>;
+
+export const getColumnFiltersParser = <TData>(
+  columnIds?: string[] | Set<string>,
+) => {
+  const validKeys = columnIds
+    ? columnIds instanceof Set
+      ? columnIds
+      : new Set(columnIds)
+    : null;
+
+  return createParser({
+    parse: (value) => {
+      try {
+        const parsed = JSON.parse(value);
+        const result = z.array(columnFilterSchema).safeParse(parsed);
+
+        if (!result.success) throw new Error("Invalid filter state", { cause: result.error });
+
+        if (validKeys && result.data.some((item) => !validKeys.has(item.id))) {
+          return null;
+        }
+
+        return result.data as ColumnFilterSchema[];
+      } catch {
+        return null;
+      }
+    },
+    serialize: (value) => JSON.stringify(value),
+    eq: (a, b) =>
+      a.length === b.length &&
+      a.every(
+        (filter, index) =>
+          filter.id === b[index]?.id &&
+          filter.value.operation === b[index]?.value.operation &&
+          filter.value.value === b[index]?.value.value),
+  });
+};
