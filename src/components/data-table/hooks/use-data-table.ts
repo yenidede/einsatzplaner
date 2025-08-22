@@ -31,9 +31,10 @@ import {
 import * as React from "react";
 
 import { useDebouncedCallback } from "@/components/data-table/hooks/use-debounced-callback";
-import { getSortingStateParser } from "@/components/data-table/lib/parsers";
+import { getColumnFiltersParser, getSortingStateParser } from "@/components/data-table/lib/parsers";
 import type { ExtendedColumnSort } from "@/components/data-table/types/data-table";
 import { filterFns, byOperator } from "@/components/data-table/lib/filter-fns";
+import { FILTERS_KEY } from "../components/data-table-filter-menu";
 
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";
@@ -74,7 +75,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     debounceMs = DEBOUNCE_MS,
     throttleMs = THROTTLE_MS,
     clearOnDefault = false,
-    enableAdvancedFilter = false,
+    enableAdvancedFilter = true,
     scroll = false,
     shallow = true,
     startTransition,
@@ -173,97 +174,23 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     return columns.filter((column) => column.enableColumnFilter !== false);
   }, [columns, enableAdvancedFilter]);
 
-  const filterParsers = React.useMemo(() => {
-    if (enableAdvancedFilter) return {};
-
-    return filterableColumns.reduce<
-      Record<string, Parser<string> | Parser<string[]>>
-    >((acc, column) => {
-      if (column.meta?.options) {
-        acc[column.id ?? ""] = parseAsArrayOf(
-          parseAsString,
-          ARRAY_SEPARATOR,
-        ).withOptions(queryStateOptions);
-      } else {
-        acc[column.id ?? ""] = parseAsString.withOptions(queryStateOptions);
-      }
-      return acc;
-    }, {});
-  }, [filterableColumns, queryStateOptions, enableAdvancedFilter]);
-
-  const [filterValues, setFilterValues] = useQueryStates(filterParsers);
-
-  const debouncedSetFilterValues = useDebouncedCallback(
-    (values: typeof filterValues) => {
-      void setPage(1);
-      void setFilterValues(values);
-    },
-    debounceMs,
+  // Read the URL from FILTERS_KEY and parse using getColumnFiltersParser
+  const [columnFilters, setColumnFilters] = useQueryState(
+    FILTERS_KEY,
+    getColumnFiltersParser<TData>(columns.map((col) => col.id ?? ""))
+      .withDefault([])
+      .withOptions(queryStateOptions)
   );
 
-  const initialColumnFilters: ColumnFiltersState = React.useMemo(() => {
-    if (enableAdvancedFilter) return [];
-
-    return Object.entries(filterValues).reduce<ColumnFiltersState>(
-      (filters, [key, value]) => {
-        if (value !== null) {
-          const processedValue = Array.isArray(value)
-            ? value
-            : typeof value === "string" && /[^a-zA-Z0-9]/.test(value)
-              ? value.split(/[^a-zA-Z0-9]+/).filter(Boolean)
-              : [value];
-
-          filters.push({
-            id: key,
-            value: processedValue,
-          });
-        }
-        console.log("filtervalues: ", filterValues);
-        console.log("filters:", filters);
-        return filters;
-      },
-      [],
-    );
-  }, [filterValues, enableAdvancedFilter]);
-
-  const [columnFilters, setColumnFilters] =
-    React.useState<ColumnFiltersState>(initialColumnFilters);
-
   const onColumnFiltersChange = React.useCallback(
-    (updaterOrValue: Updater<ColumnFiltersState>) => {
-      if (enableAdvancedFilter) return;
-
-      setColumnFilters((prev) => {
-        const next =
-          typeof updaterOrValue === "function"
-            ? updaterOrValue(prev)
-            : updaterOrValue;
-
-        // Debug log to confirm trigger
-        console.debug('[useDataTable] onColumnFiltersChange', { prev, next });
-        console.log("Column filters changed");
-
-
-        const filterUpdates = next.reduce<
-          Record<string, string | string[] | null>
-        >((acc, filter) => {
-          if (filterableColumns.find((column) => column.id === filter.id)) {
-            acc[filter.id] = filter.value as string | string[];
-          }
-          return acc;
-        }, {});
-
-        for (const prevFilter of prev) {
-          if (!next.some((filter) => filter.id === prevFilter.id)) {
-            filterUpdates[prevFilter.id] = null;
-          }
-        }
-
-        debouncedSetFilterValues(filterUpdates);
-        return next;
-      });
+    (updaterOrValue: any) => {
+      if (typeof updaterOrValue === "function") {
+        setColumnFilters((prev) => updaterOrValue(prev));
+      } else {
+        setColumnFilters(updaterOrValue);
+      }
     },
-    [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter],
+    [setColumnFilters]
   );
 
   const table = useReactTable({
