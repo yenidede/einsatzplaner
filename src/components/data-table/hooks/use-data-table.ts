@@ -2,6 +2,7 @@
 
 import {
   type ColumnFiltersState,
+  FilterFn,
   getCoreRowModel,
   getFacetedMinMaxValues,
   getFacetedRowModel,
@@ -32,6 +33,7 @@ import * as React from "react";
 import { useDebouncedCallback } from "@/components/data-table/hooks/use-debounced-callback";
 import { getSortingStateParser } from "@/components/data-table/lib/parsers";
 import type { ExtendedColumnSort } from "@/components/data-table/types/data-table";
+import { filterFns, byOperator } from "@/components/data-table/lib/filter-fns";
 
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";
@@ -167,8 +169,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
   const filterableColumns = React.useMemo(() => {
     if (enableAdvancedFilter) return [];
-
-    return columns.filter((column) => column.enableColumnFilter);
+    // Treat columns as filterable unless they explicitly disable filtering
+    return columns.filter((column) => column.enableColumnFilter !== false);
   }, [columns, enableAdvancedFilter]);
 
   const filterParsers = React.useMemo(() => {
@@ -216,6 +218,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
             value: processedValue,
           });
         }
+        console.log("filtervalues: ", filterValues);
+        console.log("filters:", filters);
         return filters;
       },
       [],
@@ -234,6 +238,11 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
           typeof updaterOrValue === "function"
             ? updaterOrValue(prev)
             : updaterOrValue;
+
+        // Debug log to confirm trigger
+        console.debug('[useDataTable] onColumnFiltersChange', { prev, next });
+        console.log("Column filters changed");
+
 
         const filterUpdates = next.reduce<
           Record<string, string | string[] | null>
@@ -268,10 +277,6 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       rowSelection,
       columnFilters,
     },
-    defaultColumn: {
-      ...tableProps.defaultColumn,
-      enableColumnFilter: false,
-    },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onPaginationChange,
@@ -285,6 +290,15 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
+    // Register custom filter functions
+    filterFns: {
+      byOperator: filterFns.byOperator,
+    },
+    defaultColumn: {
+      enableColumnFilter: true,
+      // Cast to satisfy generic mismatch when TData differs
+      filterFn: byOperator as FilterFn<any>,
+    },
     manualPagination: false,
     manualSorting: false,
     manualFiltering: false,
@@ -292,3 +306,4 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
   return { table, shallow, debounceMs, throttleMs };
 }
+

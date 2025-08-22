@@ -1,6 +1,7 @@
 // filterFns.ts
-import { FilterFn, Row } from "@tanstack/react-table";
+import { FilterFn, Row, RowData } from "@tanstack/react-table";
 import type { Operators } from "../config/data-table";
+import { ETV } from "@/features/einsatz/types";
 
 // ----- Types for Advanced Toolbar filter value -----
 
@@ -136,13 +137,14 @@ function evalColumnValue(
 
 // ----- Single filterFn to handle advanced, joined operators per column -----
 
-export const byOperator: FilterFn<any> = (
-    row: Row<any>,
+export const byOperator: FilterFn<ETV> = (
+    row: Row<ETV>,
     columnId: string,
     filterValue: ColumnFilterValue
 ) => {
     console.log("filtering", row.getValue(columnId), filterValue);
     const cellValue = row.getValue(columnId);
+    console.log("cell value:", cellValue, filterValue, evalColumnValue(cellValue, filterValue));
     return evalColumnValue(cellValue, filterValue);
 };
 

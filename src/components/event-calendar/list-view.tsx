@@ -114,6 +114,7 @@ export function ListView({
             aria-label="Datenreihe auswählen"
           />
         ),
+        enableColumnFilter: false,
       }),
       columnHelper.accessor((row) => row.title, {
         id: "title",
@@ -171,6 +172,7 @@ export function ListView({
           header: "Erstellt von",
           cell: (props) => props.getValue(),
           enableColumnFilter: true,
+          filterFn: byOperator,
         }
       ),
     ],
@@ -181,16 +183,14 @@ export function ListView({
     data: data ?? [],
     columns: columns,
     rowCount: data?.length ?? 0,
-    filterFns: {
-      byOperator: byOperator,
-    },
   });
 
   // With advanced toolbar
   return (
     <DataTable table={table}>
       <DataTableAdvancedToolbar table={table}>
-        <DataTableFilterMenu key={String(isSomeQueryLoading)} table={table} />
+        {/* key change to make sure ui updates when everything is loaded */}
+        <DataTableFilterMenu key={String(!isSomeQueryLoading)} table={table} />
         <DataTableSortList table={table} />
       </DataTableAdvancedToolbar>
     </DataTable>
