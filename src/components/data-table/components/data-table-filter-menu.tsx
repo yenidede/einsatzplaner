@@ -40,11 +40,14 @@ import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { getDefaultFilterOperator, getFilterOperators } from "@/lib/data-table";
 import { formatDate } from "@/lib/format";
 import { generateId } from "@/lib/id";
-import { getFiltersStateParser } from "@/lib/parsers";
+import { getFiltersStateParser } from "@/components/data-table/lib/parsers";
 import { cn } from "@/lib/utils";
-import type { ExtendedColumnFilter, FilterOperator } from "@/types/data-table";
+import type {
+  ExtendedColumnFilter,
+  FilterOperator,
+} from "@/components/data-table/types/data-table";
 
-const FILTERS_KEY = "filters";
+export const FILTERS_KEY = "filters";
 const DEBOUNCE_MS = 300;
 const THROTTLE_MS = 50;
 const OPEN_MENU_SHORTCUT = "f";
