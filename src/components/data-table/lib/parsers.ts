@@ -101,8 +101,8 @@ export const getFiltersStateParser = <TData>(
 const columnFilterSchema = z.object({
   id: z.string(), // eg. "status"
   value: z.object({
-    value: z.any(),
-    operation: z.enum(dataTableConfig.operators),
+    value: z.union([z.string(), z.array(z.string())]).nullable(),
+    operator: z.enum(dataTableConfig.operators),
   })
 });
 
@@ -121,15 +121,30 @@ export const getColumnFiltersParser = <TData>(
     parse: (value) => {
       try {
         const parsed = JSON.parse(value);
-        const result = z.array(columnFilterSchema).safeParse(parsed);
 
-        if (!result.success) throw new Error("Invalid filter state", { cause: result.error });
+        const mapped = z.array(filterItemSchema).safeParse(parsed);
+        if (!mapped.success) {
+          throw new Error("Invalid filter state", { cause: mapped.error });
+        }
 
-        if (validKeys && result.data.some((item) => !validKeys.has(item.id))) {
+        const result = mapped.data.map(i => {
+          return {
+            id: i.id,
+            value: {
+              value: i.value,
+              operator: i.operator,
+            },
+          };
+        });
+        console.log("Parsed column filters:", value, parsed, result);
+
+        if (!result || result.length <= 0) throw new Error("couldnt map filters");
+
+        if (validKeys && result.some((item) => !validKeys.has(item.id))) {
           return null;
         }
 
-        return result.data as ColumnFilterSchema[];
+        return result as ColumnFilterSchema[];
       } catch {
         return null;
       }
@@ -140,7 +155,7 @@ export const getColumnFiltersParser = <TData>(
       a.every(
         (filter, index) =>
           filter.id === b[index]?.id &&
-          filter.value.operation === b[index]?.value.operation &&
+          filter.value.operator === b[index]?.value.operator &&
           filter.value.value === b[index]?.value.value),
   });
 };
