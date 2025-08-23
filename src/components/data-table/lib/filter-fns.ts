@@ -1,5 +1,5 @@
 // filterFns.ts
-import { FilterFn, Row, RowData } from "@tanstack/react-table";
+import { FilterFn, Row } from "@tanstack/react-table";
 import type { Operators } from "../config/data-table";
 import { ETV } from "@/features/einsatz/types";
 
@@ -9,17 +9,10 @@ import { ETV } from "@/features/einsatz/types";
 export type JoinOp = "and" | "or";
 
 export type Clause = {
-    operator: Operators;
-    // For isBetween: value: [min, max]
-    // For inArray/notInArray (multiSelect): value: any[]
-    // For isRelativeToToday: value: { days?: number } (extend as needed)
     value?: any;
+    operator?: Operators;
 };
 
-export type ColumnFilterValue = {
-    join: JoinOp;
-    clauses: Clause[];
-};
 
 // ----- Helpers -----
 
@@ -37,8 +30,8 @@ const asDate = (v: unknown) =>
 
 // Evaluate one clause against a single cell value
 function evalClause(cellValue: any, clause: Clause): boolean {
+    if (!clause?.operator) return true // No operator means filter not fully set. Show all.
     const { operator, value } = clause;
-    console.log("evaluate clause:", { cellValue, operator, value });
 
     switch (operator) {
         // Text (case-insensitive)
@@ -120,32 +113,17 @@ function evalClause(cellValue: any, clause: Clause): boolean {
     }
 }
 
-// Evaluate a whole column filter value (join: and/or over clauses)
-function evalColumnValue(
-    cellValue: any,
-    filterValue: ColumnFilterValue
-): boolean {
-    const { join, clauses } = filterValue ?? {};
-    if (!clauses || clauses.length === 0) return true;
-
-    if (join === "or") {
-        return clauses.some((clause) => evalClause(cellValue, clause));
-    }
-    // default AND
-    return clauses.every((clause) => evalClause(cellValue, clause));
-}
-
 // ----- Single filterFn to handle advanced, joined operators per column -----
 
 export const byOperator: FilterFn<ETV> = (
     row: Row<ETV>,
     columnId: string,
-    filterValue: ColumnFilterValue
+    filterValue: Clause[]
 ) => {
-    console.log("filtering", row.getValue(columnId), filterValue);
     const cellValue = row.getValue(columnId);
-    console.log("cell value:", cellValue, filterValue, evalColumnValue(cellValue, filterValue));
-    return evalColumnValue(cellValue, filterValue);
+    console.log(cellValue, " = ", filterValue);
+
+    return evalClause(cellValue, filterValue[0]);
 };
 
 // Export a map you can register in useReactTable

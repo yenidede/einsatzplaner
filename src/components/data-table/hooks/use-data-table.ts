@@ -31,10 +31,11 @@ import {
 import * as React from "react";
 
 import { useDebouncedCallback } from "@/components/data-table/hooks/use-debounced-callback";
-import { getColumnFiltersParser, getSortingStateParser } from "@/components/data-table/lib/parsers";
+import { ColumnFilterSchema, getColumnFiltersParser, getSortingStateParser } from "@/components/data-table/lib/parsers";
 import type { ExtendedColumnSort } from "@/components/data-table/types/data-table";
 import { filterFns, byOperator } from "@/components/data-table/lib/filter-fns";
 import { FILTERS_KEY } from "../components/data-table-filter-menu";
+import { id } from "date-fns/locale";
 
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";
@@ -175,19 +176,29 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   }, [columns, enableAdvancedFilter]);
 
   // Read the URL from FILTERS_KEY and parse using getColumnFiltersParser
-  const [columnFilters, setColumnFilters] = useQueryState(
+  // last instance before passing it to the table. Should be in format ColumnFilterSchema[] {"id" + Clause}
+  const [columnFilters, setColumnFilters] = useQueryState<ColumnFilterSchema[]>(
     FILTERS_KEY,
-    getColumnFiltersParser<TData>(columns.map((col) => col.id ?? ""))
+    getColumnFiltersParser<TData>(filterableColumns.map((col) => col.id ?? ""))
       .withDefault([])
       .withOptions(queryStateOptions)
   );
 
   const onColumnFiltersChange = React.useCallback(
     (updaterOrValue: any) => {
+      console.log("filters changed!")
+      console.log(updaterOrValue);
+      console.log("prevColumnFilters: ", columnFilters);
       if (typeof updaterOrValue === "function") {
         setColumnFilters((prev) => updaterOrValue(prev));
       } else {
-        setColumnFilters(updaterOrValue);
+        setColumnFilters([{
+          id: "status",
+          value: {
+            value: "offen",
+            operator: "inArray",
+          }
+        }]);
       }
     },
     [setColumnFilters]
