@@ -301,7 +301,7 @@ export function DataTableFilterMenu<TData>({
                 </>
               ) : (
                 <>
-                  <CommandEmpty>Keine Felder gefunden.</CommandEmpty>
+                  <CommandEmpty>Keine Optionen gefunden.</CommandEmpty>
                   <CommandGroup>
                     {columns.map((column) => (
                       <CommandItem
@@ -421,9 +421,9 @@ function DataTableFilterItem<TData>({
             className="w-48 origin-[var(--radix-popover-content-transform-origin)] p-0"
           >
             <Command loop>
-              <CommandInput placeholder="Search fields..." />
+              <CommandInput placeholder="Optionen durchsuchen..." />
               <CommandList>
-                <CommandEmpty>No fields found.</CommandEmpty>
+                <CommandEmpty>Keine Optionen gefunden.</CommandEmpty>
                 <CommandGroup>
                   {columns.map((column) => (
                     <CommandItem
@@ -590,12 +590,14 @@ function FilterValueSelector<TData>({
             {isEmpty ? (
               <>
                 <Text />
-                <span>Type to add filter...</span>
+                <span>Filter eingeben...</span>
               </>
             ) : (
               <>
                 <BadgeCheck />
-                <span className="truncate">Filter by &quot;{value}&quot;</span>
+                <span className="truncate">
+                  Filtern nach &quot;{value}&quot;
+                </span>
               </>
             )}
           </CommandItem>
@@ -628,7 +630,7 @@ function onFilterInputRender<TData>({
       <div
         id={inputId}
         role="status"
-        aria-label={`${column.columnDef.meta?.label} filter is ${
+        aria-label={`${column.columnDef.meta?.label} filter ist ${
           filter.operator === "isEmpty" ? "empty" : "not empty"
         }`}
         aria-live="polite"
@@ -664,7 +666,7 @@ function onFilterInputRender<TData>({
           id={inputId}
           type={isNumber ? "number" : "text"}
           inputMode={isNumber ? "numeric" : undefined}
-          placeholder={column.columnDef.meta?.placeholder ?? "Enter value..."}
+          placeholder={column.columnDef.meta?.placeholder ?? "Wert eingeben..."}
           className="h-full w-24 rounded-none px-1.5"
           defaultValue={typeof filter.value === "string" ? filter.value : ""}
           onChange={(event) =>
@@ -694,8 +696,8 @@ function onFilterInputRender<TData>({
             <SelectValue placeholder={filter.value ? "True" : "False"} />
           </SelectTrigger>
           <SelectContent id={inputListboxId}>
-            <SelectItem value="true">True</SelectItem>
-            <SelectItem value="false">False</SelectItem>
+            <SelectItem value="true">Ja</SelectItem>
+            <SelectItem value="false">Nein</SelectItem>
           </SelectContent>
         </Select>
       );
@@ -759,9 +761,9 @@ function onFilterInputRender<TData>({
             className="w-48 origin-[var(--radix-popover-content-transform-origin)] p-0"
           >
             <Command>
-              <CommandInput placeholder="Search options..." />
+              <CommandInput placeholder="Optionen durchsuchen..." />
               <CommandList>
-                <CommandEmpty>No options found.</CommandEmpty>
+                <CommandEmpty>Keine Optionen gefunden.</CommandEmpty>
                 <CommandGroup>
                   {options.map((option) => (
                     <CommandItem
