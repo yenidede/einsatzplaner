@@ -189,7 +189,7 @@ export function ListView({
   return (
     <DataTable table={table}>
       <DataTableAdvancedToolbar table={table}>
-        {/* key change to make sure ui updates when everything is loaded */}
+        {/* "key" changes to make sure ui updates when everything is loaded */}
         <DataTableFilterMenu key={String(!isSomeQueryLoading)} table={table} />
         <DataTableSortList table={table} />
       </DataTableAdvancedToolbar>

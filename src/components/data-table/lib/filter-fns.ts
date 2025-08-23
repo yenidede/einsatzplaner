@@ -2,6 +2,8 @@
 import { FilterFn, Row } from "@tanstack/react-table";
 import type { Operators } from "../config/data-table";
 import { ETV } from "@/features/einsatz/types";
+import { useUrlFilters } from "./use-url-filters";
+import { FilterItemSchema } from "./parsers";
 
 // ----- Types for Advanced Toolbar filter value -----
 
@@ -118,12 +120,22 @@ function evalClause(cellValue: any, clause: Clause): boolean {
 export const byOperator: FilterFn<ETV> = (
     row: Row<ETV>,
     columnId: string,
-    filterValue: Clause[]
+    _filterValue: any[]
 ) => {
-    const cellValue = row.getValue(columnId);
-    console.log(cellValue, " = ", filterValue);
+    // hard to understand state relations lead to now only using the url to filter
+    // problem was related to the filterValue not being passed correctly to our custom filterFn 
+    // only the value (eg. ["offen", "vergeben"]) was passed. Operator was missing. 
+    const filters = JSON.parse(new URL(window.location.href).searchParams.get('filters') ?? '[]');
+    const relevantFilter = filters.find((f: FilterItemSchema) => f.id === columnId);
 
-    return evalClause(cellValue, filterValue[0]);
+    if (!relevantFilter) throw new Error("No relevant filter found: " + columnId + ": " + JSON.stringify(filters));
+
+    const cellValue = row.getValue(columnId);
+
+    return evalClause(cellValue, {
+        operator: relevantFilter.operator,
+        value: relevantFilter.value,
+    });
 };
 
 // Export a map you can register in useReactTable
