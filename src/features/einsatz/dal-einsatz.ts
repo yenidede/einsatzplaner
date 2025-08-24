@@ -1,11 +1,9 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { unstable_cache as cache } from "next/cache";
-import type { einsatz as Einsatz, einsatz_field, Prisma } from "@/generated/prisma";
-import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, EinsatzCustomizable, ETV } from "@/features/einsatz/types";
+import type { einsatz as Einsatz, einsatz_field } from "@/generated/prisma";
+import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, ETV } from "@/features/einsatz/types";
 import { ValidateEinsatzCreate } from "./validation-service";
-import { applyFilterOptions, filterByOption } from "./utils"
 import z from "zod";
 
 // TODO: Add auth check
