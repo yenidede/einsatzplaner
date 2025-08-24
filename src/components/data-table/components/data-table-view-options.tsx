@@ -39,9 +39,9 @@ export function DataTableViewOptions<TData>({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
+      <PopoverTrigger tooltip="Spalten verwalten" asChild>
         <Button
-          aria-label="Toggle columns"
+          aria-label="Spalten ein/ausblenden"
           role="combobox"
           variant="outline"
           size="sm"
@@ -54,9 +54,9 @@ export function DataTableViewOptions<TData>({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-44 p-0">
         <Command>
-          <CommandInput placeholder="Search columns..." />
+          <CommandInput placeholder="Spalten suchen..." />
           <CommandList>
-            <CommandEmpty>No columns found.</CommandEmpty>
+            <CommandEmpty>Keine Spalten gefunden.</CommandEmpty>
             <CommandGroup>
               {columns.map((column) => (
                 <CommandItem

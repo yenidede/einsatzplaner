@@ -818,7 +818,7 @@ function onFilterInputRender<TData>({
             )}`
           : dateValue[0]
           ? formatDate(new Date(Number(dateValue[0])))
-          : "Pick date...";
+          : "Datum wählen...";
 
       return (
         <Popover open={showValueSelector} onOpenChange={setShowValueSelector}>
