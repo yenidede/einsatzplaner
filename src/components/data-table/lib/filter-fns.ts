@@ -138,7 +138,7 @@ export const byOperator: FilterFn<ETV> = (
     });
 };
 
-export const byOperatorUseId: FilterFn<ETV> = (
+export const byOperatorUseMetaField: FilterFn<ETV> = (
     row: Row<ETV>,
     columnId: string,
     _filterValue: any[]

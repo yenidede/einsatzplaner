@@ -33,7 +33,7 @@ import * as React from "react";
 import { useDebouncedCallback } from "@/components/data-table/hooks/use-debounced-callback";
 import { ColumnFilterSchema, getColumnFiltersParser, getSortingStateParser } from "@/components/data-table/lib/parsers";
 import type { ExtendedColumnSort } from "@/components/data-table/types/data-table";
-import { filterFns, byOperator, byOperatorUseId } from "@/components/data-table/lib/filter-fns";
+import { filterFns, byOperator, byOperatorUseMetaField } from "@/components/data-table/lib/filter-fns";
 import { FILTERS_KEY } from "../components/data-table-filter-menu";
 import { id } from "date-fns/locale";
 
@@ -222,7 +222,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     // Register custom filter functions
     filterFns: {
       byOperator: byOperator,
-      byOperatorUseId: byOperatorUseId
+      byOperatorUseId: byOperatorUseMetaField,
     },
     defaultColumn: {
       enableColumnFilter: true,
