@@ -288,26 +288,31 @@ export function DataTableFilterMenu<TData>({
                 <>
                   <CommandEmpty>Keine Optionen gefunden.</CommandEmpty>
                   <CommandGroup>
-                    {columns.map((column) => (
-                      <CommandItem
-                        key={column.id}
-                        value={column.id}
-                        onSelect={() => {
-                          setSelectedColumn(column);
-                          setInputValue("");
-                          requestAnimationFrame(() => {
-                            inputRef.current?.focus();
-                          });
-                        }}
-                      >
-                        {column.columnDef.meta?.icon && (
-                          <column.columnDef.meta.icon />
-                        )}
-                        <span className="truncate">
-                          {column.columnDef.meta?.label ?? column.id}
-                        </span>
-                      </CommandItem>
-                    ))}
+                    {columns
+                      .filter(
+                        (column) =>
+                          !filters.some((filter) => filter.id === column.id)
+                      )
+                      .map((column) => (
+                        <CommandItem
+                          key={column.id}
+                          value={column.id}
+                          onSelect={() => {
+                            setSelectedColumn(column);
+                            setInputValue("");
+                            requestAnimationFrame(() => {
+                              inputRef.current?.focus();
+                            });
+                          }}
+                        >
+                          {column.columnDef.meta?.icon && (
+                            <column.columnDef.meta.icon />
+                          )}
+                          <span className="truncate">
+                            {column.columnDef.meta?.label ?? column.id}
+                          </span>
+                        </CommandItem>
+                      ))}
                   </CommandGroup>
                 </>
               )}
@@ -585,15 +590,11 @@ function FilterValueSelector<TData>({
           >
             {isEmpty ? (
               <>
-                <Text />
-                <span>Filter eingeben...</span>
+                <span>Text eingeben...</span>
               </>
             ) : (
               <>
-                <BadgeCheck />
-                <span className="truncate">
-                  Filtern nach &quot;{value}&quot;
-                </span>
+                <span className="truncate">Beinhaltet &quot;{value}&quot;</span>
               </>
             )}
           </CommandItem>
