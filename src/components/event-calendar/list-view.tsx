@@ -28,7 +28,10 @@ import { getBadgeColorClassByStatus, getStatusByMode } from "./utils";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import { DataTableFilterMenu } from "../data-table/components/data-table-filter-menu";
-import { byOperator, byOperatorUseId } from "../data-table/lib/filter-fns";
+import {
+  byOperator,
+  byOperatorUseMetaField,
+} from "../data-table/lib/filter-fns";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -172,7 +175,7 @@ export function ListView({
           header: "Erstellt von",
           cell: (props) => props.getValue(),
           enableColumnFilter: true,
-          filterFn: byOperatorUseId,
+          filterFn: byOperatorUseMetaField,
           meta: {
             label: "Erstellt von",
             variant: "multiSelect",
@@ -204,7 +207,7 @@ export function ListView({
 
   // With advanced toolbar
   return (
-    <DataTable table={table}>
+    <DataTable table={table} isLoading={isSomeQueryLoading}>
       <DataTableAdvancedToolbar table={table}>
         {/* "key" changes to make sure ui updates when everything is loaded */}
         <DataTableFilterMenu key={String(!isSomeQueryLoading)} table={table} />
