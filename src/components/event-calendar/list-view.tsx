@@ -28,7 +28,7 @@ import { getBadgeColorClassByStatus, getStatusByMode } from "./utils";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import { DataTableFilterMenu } from "../data-table/components/data-table-filter-menu";
-import { byOperator } from "../data-table/lib/filter-fns";
+import { byOperator, byOperatorUseId } from "../data-table/lib/filter-fns";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -172,7 +172,20 @@ export function ListView({
           header: "Erstellt von",
           cell: (props) => props.getValue(),
           enableColumnFilter: true,
-          filterFn: byOperator,
+          filterFn: byOperatorUseId,
+          meta: {
+            label: "Erstellt von",
+            variant: "multiSelect",
+            filterField: "user.id",
+            options:
+              usersData
+                ?.map((user) => ({
+                  label: `${user.firstname} ${user.lastname}`.trim(),
+                  value: user.id,
+                }))
+                // sort by label
+                .sort((a, b) => a.label.localeCompare(b.label)) ?? [],
+          },
         }
       ),
     ],
@@ -184,6 +197,10 @@ export function ListView({
     columns: columns,
     rowCount: data?.length ?? 0,
   });
+
+  //  todo:
+  // - isLoading
+  // - total page count
 
   // With advanced toolbar
   return (

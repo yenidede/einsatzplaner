@@ -33,7 +33,7 @@ import * as React from "react";
 import { useDebouncedCallback } from "@/components/data-table/hooks/use-debounced-callback";
 import { ColumnFilterSchema, getColumnFiltersParser, getSortingStateParser } from "@/components/data-table/lib/parsers";
 import type { ExtendedColumnSort } from "@/components/data-table/types/data-table";
-import { filterFns, byOperator } from "@/components/data-table/lib/filter-fns";
+import { filterFns, byOperator, byOperatorUseId } from "@/components/data-table/lib/filter-fns";
 import { FILTERS_KEY } from "../components/data-table-filter-menu";
 import { id } from "date-fns/locale";
 
@@ -186,19 +186,10 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
   const onColumnFiltersChange = React.useCallback(
     (updaterOrValue: any) => {
-      console.log("filters changed!")
-      console.log(updaterOrValue);
-      console.log("prevColumnFilters: ", columnFilters);
       if (typeof updaterOrValue === "function") {
         setColumnFilters((prev) => updaterOrValue(prev));
       } else {
-        setColumnFilters([{
-          id: "status",
-          value: {
-            value: "offen",
-            operator: "inArray",
-          }
-        }]);
+        setColumnFilters(updaterOrValue);
       }
     },
     [setColumnFilters]
@@ -230,7 +221,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
     // Register custom filter functions
     filterFns: {
-      byOperator: filterFns.byOperator,
+      byOperator: byOperator,
+      byOperatorUseId: byOperatorUseId
     },
     defaultColumn: {
       enableColumnFilter: true,

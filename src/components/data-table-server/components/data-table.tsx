@@ -98,7 +98,7 @@ export function DataTable<TData>({
                   colSpan={table.getAllColumns().length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  Keine Suchergebnisse.
                 </TableCell>
               </TableRow>
             )}
