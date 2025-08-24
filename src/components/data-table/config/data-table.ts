@@ -49,8 +49,8 @@ export const dataTableConfig = {
     { label: "Ist nicht leer", value: "isNotEmpty" as const },
   ],
   multiSelectOperators: [
-    { label: "Beinhaltet", value: "inArray" as const },
-    { label: "Beinhaltet nicht", value: "notInArray" as const },
+    { label: "Ist", value: "inArray" as const },
+    { label: "Ist nicht", value: "notInArray" as const },
     { label: "Ist leer", value: "isEmpty" as const },
     { label: "Ist nicht leer", value: "isNotEmpty" as const },
   ],
