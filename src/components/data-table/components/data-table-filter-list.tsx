@@ -55,10 +55,13 @@ import {
   SortableItemHandle,
   SortableOverlay,
 } from "@/components/ui/sortable";
-import { dataTableConfig } from "@/config/data-table";
+import { dataTableConfig } from "@/components/data-table/config/data-table";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
-import { getDefaultFilterOperator, getFilterOperators } from "@/lib/data-table";
-import { formatDate } from "@/lib/format";
+import {
+  getDefaultFilterOperator,
+  getFilterOperators,
+} from "../lib/data-table";
+import { formatDate } from "../lib/format";
 import { generateId } from "@/components/data-table/lib/id";
 import { getFiltersStateParser } from "@/components/data-table/lib/parsers";
 import { cn } from "@/lib/utils";
