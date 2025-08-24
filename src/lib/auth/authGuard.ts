@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user-clean";
+import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   // Passe an eure Rollennamen an
+  SuperAdmin: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org"],
   Organisationsverwaltung: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org"],
   Einsatzverwaltung: ["read:einsaetze","create:einsaetze","update:einsaetze"],
   Helfer: ["read:einsaetze","join:einsaetze","leave:einsaetze"],
@@ -14,7 +15,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
 // Auth Guard für Server Components
 export async function requireAuth() {
   const session = await getServerSession(authOptions);
-  
+
   if (!session?.user?.id) {
     redirect('/signin');
   }

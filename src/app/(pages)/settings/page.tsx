@@ -5,21 +5,18 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import LogoutIcon from "@/components/icon/LogoutIcon";
-import SwitchIcon from "@/components/icon/SwitchIcon";
-import { useUserPreferences } from "@/features/settings/hooks/useUserPreference";
 import { Switch } from "@/features/settings/components/ui/switch";
 import { Label } from "@/features/settings/components/ui/label";
 
 import {LabelSettings} from "@/features/settings/components/ui/LabelSettings";
 import {InputSettings} from "@/features/settings/components/ui/InputSettings";
-import { Settings, Upload } from "lucide-react";
 import SettingsIcon from "@/components/icon/SettingsIcon";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import OrganisationIcon from "@/features/settings/components/ui/OrganisationIcon";
 import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadProfilePictureIcon";
 import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
 import OrganizationCard from "@/features/settings/components/OrganizationCard";
-import OrganizationNotification from '@/features/settings/components/OrganizationNotification'
+import { hasPermission } from "@/lib/auth/authGuard";
 
 
 
@@ -47,6 +44,14 @@ export default function SettingsPage() {
     },
   });
 
+  const hasManagePermission = (roles: any[] | undefined) => {
+    if (!Array.isArray(roles)) return false;
+    return roles.some((role:any) => {
+      const name = (role?.name ?? "");
+      return hasPermission(name, "manage:org");
+    });
+  };
+
   // Setze Userdaten, Email und Phone, wenn Query-Daten geladen sind
   useEffect(() => {
     if (data) {
@@ -71,8 +76,8 @@ export default function SettingsPage() {
     hasGetMailNotification: boolean;
   };
 
-  const mutation = useMutation<UserSettings, Error, UserSettings>({
-    mutationFn: async (newSettings) => {
+  const mutation = useMutation({
+    mutationFn: async (newSettings: UserSettings) => {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -102,31 +107,34 @@ const handleSave = async () => {
       pictureUrl = data.url;
     }
   }
-  mutation.mutate({
-          userId: user.id,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          email,
-          picture_url: pictureUrl,
-          phone,
-          hasLogoinCalendar: showLogos,
-          hasGetMailNotification: getMailFromOrganization,
+  // benutze mutateAsync, warte auf Abschluss
+  await mutation.mutateAsync({
+    userId: user.id,
+    firstname: user.firstname,
+    lastname: user.lastname,
+    email,
+    picture_url: pictureUrl,
+    phone,
+    hasLogoinCalendar: showLogos,
+    hasGetMailNotification: getMailFromOrganization,
   });
-  
-         // Organisationseinstellungen speichern
-         if (user.organizations && user.organizations.length > 0) {
-           for (const org of user.organizations) {
-             await fetch("/api/settings", {
-               method: "PUT",
-               headers: { "Content-Type": "application/json" },
-               body: JSON.stringify({
-                 userId: user.id,
-                 userOrgId: org.userOrgRoleId,
-                 hasGetMailNotification: org.hasGetMailNotification,
-               }),
-             });
-           }
-         }
+
+  // Organisationseinstellungen parallel speichern (falls Backend einzelne PUT erwartet)
+  if (user.organizations && user.organizations.length > 0) {
+    await Promise.all(
+      user.organizations.map((org: any) =>
+        fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            userOrgId: org.userOrgRoleId,
+            hasGetMailNotification: org.hasGetMailNotification,
+          }),
+        })
+      )
+    );
+  }
 };
 
 const handleProfilePictureUpload = (file: File) => {
@@ -162,8 +170,8 @@ const handleProfilePictureUpload = (file: File) => {
     }
 
   return (
-<div className="w-[842px] bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex flex-col justify-center items-center">
-    <div className="w-[842px] p-4 border-b border-slate-200 inline-flex justify-start items-start gap-8">
+      <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
+        <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
         <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
             <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">Einstellungen</div>
         </div>
@@ -181,25 +189,50 @@ const handleProfilePictureUpload = (file: File) => {
     <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
         <div className="self-stretch inline-flex flex-col justify-between items-start">
             <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
-                <div data-left-icon="true" data-right-icon="false" data-right-text="true" data-state="default" data-type="default" className="self-stretch px-2 py-1.5 bg-slate-100 rounded-md inline-flex justify-start items-center gap-2">
-                    <div className="w-4 h-4 relative overflow-hidden">
-                        <SettingsIcon className="w-4 h-4 relative overflow-hidden" />
-                    </div>
-                    <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">Allgemein</div>
-                    <div className="justify-start"></div>
-                </div>
-                <div className="self-stretch h-px bg-slate-200" />
-                <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">Organisationsverwaltung</div>
-                {user.organizations && user.organizations.filter((org: any) => org.roles && org.roles.includes('Organisationsverwaltung')).length > 0 ? (
-                  user.organizations.filter((org: any) => org.roles && org.roles.includes('Organisationsverwaltung')).map((org: any) => (
-                    <div key={org.id} data-left-icon="true" data-right-icon="false" data-right-text="true" data-state="default" data-type="default" className="self-stretch px-2 py-1.5 bg-white inline-flex justify-start items-center gap-2">
-                      <OrganisationIcon />
-                      <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">{org.name}</div>
-                      <div className="justify-start"></div>
-                    </div>
-                  ))
-                ) : null}
-            </div>
+                            <div data-left-icon="true" data-right-icon="false" data-right-text="true" data-state="default" data-type="default" className="self-stretch px-2 py-1.5 bg-slate-100 rounded-md inline-flex justify-start items-center gap-2">
+                                <div className="w-4 h-4 relative overflow-hidden">
+                                    <SettingsIcon className="w-4 h-4 relative overflow-hidden" />
+                                </div>
+                                <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">Allgemein</div>
+                                <div className="justify-start"></div>
+                            </div>
+                            <div className="self-stretch h-px bg-slate-200" />
+                            <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">Organisationsverwaltung</div>
+                            {user.organizations && user.organizations.filter((org: any) => {
+                              if (!Array.isArray(org.roles)) return false;
+                              return org.roles.some((role: any) => {
+                                const roleName = typeof role === 'string' ? role : role?.name || '';
+                                const roleAbbr = typeof role === 'string' ? '' : role?.abbreviation || '';
+                                return roleName.toLowerCase().includes('organisationsverwaltung') || 
+                                       roleName.toLowerCase().includes('superadmin') ||
+                                       roleAbbr.toLowerCase() === 'ov' ||
+                                       roleName.toLowerCase() === 'ov';
+                              });
+                            }).length > 0 ? (
+                              user.organizations.filter((org: any) => {
+                                if (!Array.isArray(org.roles)) return false;
+                                return org.roles.some((role: any) => {
+                                  const roleName = typeof role === 'string' ? role : role?.name || '';
+                                  const roleAbbr = typeof role === 'string' ? '' : role?.abbreviation || '';
+                                  return roleName.toLowerCase().includes('organisationsverwaltung') || 
+                                         roleName.toLowerCase().includes('superadmin') ||
+                                         roleAbbr.toLowerCase() === 'ov' ||
+                                         roleName.toLowerCase() === 'ov';
+                                });
+                              }).map((org: any) => (
+                                <button 
+                                  key={org.id} 
+                                  onClick={() => router.push(`/organization/${org.id}/manage`)}
+                                  className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
+                                >
+                                  <OrganisationIcon />
+                                  <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">{org.name}</div>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-2 py-1.5 text-xs text-gray-400">Keine Berechtigung</div>
+                            )}
+              </div>
             <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
                 <div data-state="Default" data-type="with icon" className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2"
                     onClick={()=>signOut()}>
@@ -406,13 +439,12 @@ const handleProfilePictureUpload = (file: File) => {
                 </div>
                 {user.organizations && user.organizations.length > 0 ? (
   user.organizations.map((org: any) => {
-    console.log('Organisation:', org.name, 'Rollen:', org.roles);
+    //console.log('Organisation:', org.name, 'Rollen:', org.roles);
     return (
-      <div key={org.id} style={{cursor: 'pointer'}} onClick={() => router.push(`/organization/${org.id}`)}>
+      <div key={org.id}>
         <OrganizationCard
           name={org.name}
           roles={org.roles}
-          // logo={<DeinLogo/>} // Optional
           onLeave={() => {handleOrganizationLeave(org.id)}}
         />
       </div>
@@ -427,3 +459,4 @@ const handleProfilePictureUpload = (file: File) => {
 </div>
     );
     }
+
