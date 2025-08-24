@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { getCommonPinningStyles } from "@/components/data-table/lib/data-table";
 import { cn } from "@/lib/utils";
+import { DataTableSkeleton } from "../components/data-table-skeleton";
 
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
@@ -35,9 +36,7 @@ export function DataTable<TData>({
       {children}
       <div className="overflow-hidden rounded-md border">
         {isLoading ? (
-          <div className="h-24 flex items-center justify-center text-center">
-            Lade Daten...
-          </div>
+          <DataTableSkeleton columnCount={8} />
         ) : (
           <Table>
             <TableHeader>

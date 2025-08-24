@@ -1,14 +1,7 @@
 "use client";
 
 import type { Column, Table } from "@tanstack/react-table";
-import {
-  BadgeCheck,
-  CalendarIcon,
-  Check,
-  ListFilter,
-  Text,
-  X,
-} from "lucide-react";
+import { BadgeCheck, CalendarIcon, Check, Plus, Text, X } from "lucide-react";
 import { useQueryState } from "nuqs";
 import * as React from "react";
 
@@ -37,8 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
-import { getDefaultFilterOperator, getFilterOperators } from "@/lib/data-table";
-import { formatDate } from "@/lib/format";
+import {
+  getDefaultFilterOperator,
+  getFilterOperators,
+} from "../lib/data-table";
+import { formatDate } from "../lib/format";
 import { generateId } from "@/components/data-table/lib/id";
 import { getFiltersStateParser } from "@/components/data-table/lib/parsers";
 import { cn } from "@/lib/utils";
@@ -245,17 +241,6 @@ export function DataTableFilterMenu<TData>({
           onFilterRemove={onFilterRemove}
         />
       ))}
-      {filters.length > 0 && (
-        <Button
-          aria-label="Alle Filter zurücksetzen"
-          variant="outline"
-          size="icon"
-          className="size-8"
-          onClick={onFiltersReset}
-        >
-          <X />
-        </Button>
-      )}
       <Popover open={open} onOpenChange={onOpenChange}>
         <PopoverTrigger asChild>
           <Button
@@ -266,7 +251,7 @@ export function DataTableFilterMenu<TData>({
             ref={triggerRef}
             onKeyDown={onTriggerKeyDown}
           >
-            <ListFilter />
+            <Plus />
             {filters.length > 0 ? null : "Filter"}
           </Button>
         </PopoverTrigger>
@@ -330,6 +315,17 @@ export function DataTableFilterMenu<TData>({
           </Command>
         </PopoverContent>
       </Popover>
+      {filters.length > 0 && (
+        <Button
+          aria-label="Alle Filter zurücksetzen"
+          variant="outline"
+          size="icon"
+          className="size-8"
+          onClick={onFiltersReset}
+        >
+          <X />
+        </Button>
+      )}
     </div>
   );
 }
