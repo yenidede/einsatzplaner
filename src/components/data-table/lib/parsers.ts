@@ -138,7 +138,6 @@ export const getColumnFiltersParser = <TData>(
             },
           };
         });
-        console.log("Parsed column filters:", value, parsed, result);
 
         if (!result || result.length <= 0) throw new Error("couldnt map filters");
 
