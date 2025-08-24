@@ -1,7 +1,7 @@
 "use client";
 
 import type { Column, Table } from "@tanstack/react-table";
-import { BadgeCheck, CalendarIcon, Check, Plus, Text, X } from "lucide-react";
+import { CalendarIcon, Check, Plus, X } from "lucide-react";
 import { useQueryState } from "nuqs";
 import * as React from "react";
 
@@ -42,6 +42,7 @@ import type {
   ExtendedColumnFilter,
   FilterOperator,
 } from "@/components/data-table/types/data-table";
+import TooltipCustom from "@/components/tooltip-custom";
 
 export const FILTERS_KEY = "filters";
 const DEBOUNCE_MS = 300;
@@ -242,7 +243,7 @@ export function DataTableFilterMenu<TData>({
         />
       ))}
       <Popover open={open} onOpenChange={onOpenChange}>
-        <PopoverTrigger asChild>
+        <PopoverTrigger tooltip="Filtermenü öffnen" asChild>
           <Button
             aria-label="Filtermenü öffnen"
             variant="outline"
@@ -321,15 +322,17 @@ export function DataTableFilterMenu<TData>({
         </PopoverContent>
       </Popover>
       {filters.length > 0 && (
-        <Button
-          aria-label="Alle Filter zurücksetzen"
-          variant="outline"
-          size="icon"
-          className="size-8"
-          onClick={onFiltersReset}
-        >
-          <X />
-        </Button>
+        <TooltipCustom text="Alle Filter zurücksetzen">
+          <Button
+            aria-label="Alle Filter zurücksetzen"
+            variant="outline"
+            size="icon"
+            className="size-8"
+            onClick={onFiltersReset}
+          >
+            <X />
+          </Button>
+        </TooltipCustom>
       )}
     </div>
   );
@@ -505,15 +508,17 @@ function DataTableFilterItem<TData>({
           showValueSelector,
           setShowValueSelector,
         })}
-        <Button
-          aria-controls={filterItemId}
-          variant="ghost"
-          size="sm"
-          className="h-full rounded-none rounded-r-md border border-l-0 px-1.5 font-normal dark:bg-input/30"
-          onClick={() => onFilterRemove(filter.filterId)}
-        >
-          <X className="size-3.5" />
-        </Button>
+        <TooltipCustom text="Filter entfernen">
+          <Button
+            aria-controls={filterItemId}
+            variant="ghost"
+            size="sm"
+            className="h-full rounded-none rounded-r-md border border-l-0 px-1.5 font-normal dark:bg-input/30"
+            onClick={() => onFilterRemove(filter.filterId)}
+          >
+            <X className="size-3.5" />
+          </Button>
+        </TooltipCustom>
       </div>
     );
   }
@@ -725,9 +730,9 @@ function onFilterInputRender<TData>({
             >
               {selectedOptions.length === 0 ? (
                 filter.variant === "multiSelect" ? (
-                  "Select options..."
+                  "auswählen..."
                 ) : (
-                  "Select option..."
+                  "auswählen..."
                 )
               ) : (
                 <>
@@ -745,7 +750,7 @@ function onFilterInputRender<TData>({
                   </div>
                   <span className="truncate">
                     {selectedOptions.length > 1
-                      ? `${selectedOptions.length} selected`
+                      ? `${selectedOptions.length} ausgewählt`
                       : selectedOptions[0]?.label}
                   </span>
                 </>
