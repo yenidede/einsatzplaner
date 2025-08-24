@@ -35,7 +35,7 @@ import { ColumnFilterSchema, getColumnFiltersParser, getSortingStateParser } fro
 import type { ExtendedColumnSort } from "@/components/data-table/types/data-table";
 import { filterFns, byOperator, byOperatorUseMetaField } from "@/components/data-table/lib/filter-fns";
 import { FILTERS_KEY } from "../components/data-table-filter-menu";
-import { id } from "date-fns/locale";
+import { FirstPageAlias } from "../components/data-table-pagination";
 
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";
@@ -114,8 +114,9 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
   const [page, setPage] = useQueryState(
     PAGE_KEY,
-    parseAsInteger.withOptions(queryStateOptions).withDefault(1),
+    parseAsInteger.withOptions(queryStateOptions).withDefault(4),
   );
+
   const [perPage, setPerPage] = useQueryState(
     PER_PAGE_KEY,
     parseAsInteger
@@ -124,8 +125,9 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   );
 
   const pagination: PaginationState = React.useMemo(() => {
+    console.log("pagination:", { page, perPage });
     return {
-      pageIndex: page - 1, // zero-based index -> one-based index
+      pageIndex: page - 1, // one-based index -> zero-based index
       pageSize: perPage,
     };
   }, [page, perPage]);
@@ -134,8 +136,11 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     (updaterOrValue: Updater<PaginationState>) => {
       if (typeof updaterOrValue === "function") {
         const newPagination = updaterOrValue(pagination);
-        void setPage(newPagination.pageIndex + 1);
         void setPerPage(newPagination.pageSize);
+        // bug: something always sets pageIndex to 0. First page is now aliased
+        if (newPagination.pageIndex === 0) return;
+        if (newPagination.pageIndex === FirstPageAlias) void setPage(1);
+        else void setPage(newPagination.pageIndex + 1);
       } else {
         void setPage(updaterOrValue.pageIndex + 1);
         void setPerPage(updaterOrValue.pageSize);

@@ -21,6 +21,8 @@ interface DataTablePaginationProps<TData> extends React.ComponentProps<"div"> {
   pageSizeOptions?: number[];
 }
 
+export const FirstPageAlias = 10000000;
+
 export function DataTablePagination<TData>({
   table,
   pageSizeOptions = [10, 20, 30, 40, 50],
@@ -72,7 +74,7 @@ export function DataTablePagination<TData>({
             variant="outline"
             size="icon"
             className="hidden size-8 lg:flex"
-            onClick={() => table.setPageIndex(0)}
+            onClick={() => table.setPageIndex(FirstPageAlias)}
             disabled={!table.getCanPreviousPage()}
           >
             <ChevronsLeft />
@@ -82,7 +84,14 @@ export function DataTablePagination<TData>({
             variant="outline"
             size="icon"
             className="size-8"
-            onClick={() => table.previousPage()}
+            onClick={() =>
+              // bug: pageIndex is always reset to 1, so 1 is now disabled. First page is aliased. If curr page is 2, set to FirstPageAlias
+              table.setPageIndex(
+                table.getState().pagination.pageIndex === 1
+                  ? FirstPageAlias
+                  : table.getState().pagination.pageIndex - 1
+              )
+            }
             disabled={!table.getCanPreviousPage()}
           >
             <ChevronLeft />
