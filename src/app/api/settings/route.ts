@@ -8,63 +8,61 @@ export async function GET(req: Request) {
     const userId = searchParams.get("userId");
 
     if (!userId) {
-        return new Response(JSON.stringify({ error: "Missing userId" }), { status: 400 });
+        return NextResponse.json({ error: "userId fehlt" }, { status: 400 });
     }
 
-    // Hole Userdaten
-    const user = await prisma.user.findUnique({
+    // Lade User mit allen Organisationen und Rollen
+    const userWithOrganizations = await prisma.user.findUnique({
         where: { id: userId },
-        select: {
-            id: true,
-            firstname: true,
-            lastname: true,
-            email: true,
-            phone: true,
-            picture_url: true,
-            hasLogoinCalendar: true,
-        },
+        include: {
+            user_organization_role: {
+                include: {
+                    organization: true,
+                    role: true
+                }
+            }
+        }
     });
 
-    
-    // Hole alle Organisationen inkl. aller Rollen für den User (korrektes Mapping)
-    const organizations = await prisma.user_organization_role.findMany({
-        where: { user_id: userId },
-        select: {
-            id: true,
-            organization: {
-                select: {
-                    id: true,
-                    name: true,
-                },
-            },
-            role: {
-                select: {
-                    id: true,
-                    name: true,
-                    abbreviation: true,
-                },
-            },
-        },
-    });
+    if (!userWithOrganizations) {
+        return NextResponse.json({ error: "User nicht gefunden" }, { status: 404 });
+    }
 
-    // Response zusammenbauen
-    return new Response(
-        JSON.stringify({
-            ...user,
-            organizations: organizations.map(entry => {
-                return {
-                    id: entry.organization.id,
-                    orgId: entry.organization.id,
-                    userOrgRoleId: entry.id,
-                    name: entry.organization.name,
-                    role: entry.role.name,
-                    roleId: entry.role.id,
-                    roleAbbreviation: entry.role.abbreviation,
-                };
-            }),
-        }),
-        { status: 200 }
-    );
+    // Gruppiere Rollen nach Organisation
+    const organizationsWithRoles = userWithOrganizations.user_organization_role.reduce((acc: any[], curr) => {
+        const existingOrg = acc.find(org => org.id === curr.organization.id);
+
+        const roleObj = {
+            id: curr.role.id,
+            name: curr.role.name,
+            abbreviation: (curr.role as any).abbreviation ?? null
+        };
+        if (existingOrg) {
+            // Organisation existiert bereits, füge Rolle hinzu
+            existingOrg.roles.push(roleObj);
+            existingOrg.userOrgRoleIds.push(curr.id);
+        } else {
+            // Neue Organisation hinzufügen
+            acc.push({
+                id: curr.organization.id,
+                name: curr.organization.name,
+                description: curr.organization.description,
+                roles: [roleObj],
+                userOrgRoleIds: [curr.id],
+                //hasGetMailNotification: curr.hasGetMailNotification || false
+                });
+            }
+        
+        return acc;
+    }, []);
+
+    // Füge die gruppierten Organisationen zum User hinzu
+    const userData = {
+        ...userWithOrganizations,
+        organizations: organizationsWithRoles
+    };
+
+    return NextResponse.json(userData);
 }
 
 // POST Handler (für Kompatibilität)
