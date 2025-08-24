@@ -83,7 +83,13 @@ export function DataTable<TData>({
                   colSpan={table.getAllColumns().length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  Keine Suchergebnisse.{" "}
+                  <a
+                    className="underline cursor-pointer"
+                    onClick={() => table.resetColumnFilters()}
+                  >
+                    Filter zurücksetzen.
+                  </a>
                 </TableCell>
               </TableRow>
             )}

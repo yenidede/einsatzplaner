@@ -4,6 +4,7 @@ import type { Operators } from "../config/data-table";
 import { ETV } from "@/features/einsatz/types";
 import { useUrlFilters } from "./use-url-filters";
 import { FilterItemSchema } from "./parsers";
+import { get } from "lodash";
 
 // ----- Types for Advanced Toolbar filter value -----
 
@@ -116,7 +117,6 @@ function evalClause(cellValue: any, clause: Clause): boolean {
 }
 
 // ----- Single filterFn to handle advanced, joined operators per column -----
-
 export const byOperator: FilterFn<ETV> = (
     row: Row<ETV>,
     columnId: string,
@@ -125,14 +125,40 @@ export const byOperator: FilterFn<ETV> = (
     // hard to understand state relations lead to now only using the url to filter
     // problem was related to the filterValue not being passed correctly to our custom filterFn 
     // only the value (eg. ["offen", "vergeben"]) was passed. Operator was missing. 
-    const filters = JSON.parse(new URL(window.location.href).searchParams.get('filters') ?? '[]');
+    const filters: FilterItemSchema[] = JSON.parse(new URL(window.location.href).searchParams.get('filters') ?? '[]');
     const relevantFilter = filters.find((f: FilterItemSchema) => f.id === columnId);
 
-    if (!relevantFilter) throw new Error("No relevant filter found: " + columnId + ": " + JSON.stringify(filters));
-
+    // filter not complete (eg. just changed) - show all
+    if (!relevantFilter || !relevantFilter.operator || !relevantFilter.value) return true;
     const cellValue = row.getValue(columnId);
 
     return evalClause(cellValue, {
+        operator: relevantFilter.operator,
+        value: relevantFilter.value,
+    });
+};
+
+export const byOperatorUseId: FilterFn<ETV> = (
+    row: Row<ETV>,
+    columnId: string,
+    _filterValue: any[]
+) => {
+    // hard to understand state relations lead to now only using the url to filter
+    // problem was related to the filterValue not being passed correctly to our custom filterFn 
+    // only the value (eg. ["offen", "vergeben"]) was passed. Operator was missing. 
+    const filters: FilterItemSchema[] = JSON.parse(new URL(window.location.href).searchParams.get('filters') ?? '[]');
+    const relevantFilter = filters.find((f: FilterItemSchema) => f.id === columnId);
+
+    if (!relevantFilter || !relevantFilter.operator || !relevantFilter.value) return true;
+
+    const column = row.getAllCells().find(cell => cell.column.id === columnId)?.column;
+    const filterField = column?.columnDef.meta?.filterField ?? columnId;
+    const cellValueId = get(row.original, filterField);
+
+    console.log("filterField: ", filterField);
+    console.log("cellValueId: ", cellValueId);
+
+    return evalClause(cellValueId, {
         operator: relevantFilter.operator,
         value: relevantFilter.value,
     });
