@@ -8,7 +8,7 @@ import {
 } from "@/DataAccessLayer/user";
 import { UserRole } from "@/types/user";
 
-const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "credentials",
