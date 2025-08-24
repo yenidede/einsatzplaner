@@ -137,7 +137,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       if (typeof updaterOrValue === "function") {
         const newPagination = updaterOrValue(pagination);
         void setPerPage(newPagination.pageSize);
-        // bug: something always sets pageIndex to 0. First page is now aliased
+        // bug: something always sets pageIndex to 0. First page is now aliased instead of 0
         if (newPagination.pageIndex === 0) return;
         if (newPagination.pageIndex === FirstPageAlias) void setPage(1);
         else void setPage(newPagination.pageIndex + 1);
