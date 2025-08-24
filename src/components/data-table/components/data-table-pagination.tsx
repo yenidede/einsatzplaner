@@ -31,17 +31,19 @@ export function DataTablePagination<TData>({
     <div
       className={cn(
         "flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8",
-        className,
+        className
       )}
       {...props}
     >
       <div className="flex-1 whitespace-nowrap text-muted-foreground text-sm">
-        {table.getFilteredSelectedRowModel().rows.length} of{" "}
-        {table.getFilteredRowModel().rows.length} row(s) selected.
+        {table.getFilteredSelectedRowModel().rows.length} von{" "}
+        {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.
       </div>
       <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
         <div className="flex items-center space-x-2">
-          <p className="whitespace-nowrap font-medium text-sm">Rows per page</p>
+          <p className="whitespace-nowrap font-medium text-sm">
+            Zeilen pro Seite
+          </p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
@@ -61,12 +63,12 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
         <div className="flex items-center justify-center font-medium text-sm">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
+          Seite {table.getState().pagination.pageIndex + 1} von{" "}
           {table.getPageCount()}
         </div>
         <div className="flex items-center space-x-2">
           <Button
-            aria-label="Go to first page"
+            aria-label="Springe zur ersten Seite"
             variant="outline"
             size="icon"
             className="hidden size-8 lg:flex"
@@ -76,7 +78,7 @@ export function DataTablePagination<TData>({
             <ChevronsLeft />
           </Button>
           <Button
-            aria-label="Go to previous page"
+            aria-label="Springe zur vorherigen Seite"
             variant="outline"
             size="icon"
             className="size-8"
@@ -86,7 +88,7 @@ export function DataTablePagination<TData>({
             <ChevronLeft />
           </Button>
           <Button
-            aria-label="Go to next page"
+            aria-label="Springe zur nächsten Seite"
             variant="outline"
             size="icon"
             className="size-8"
@@ -96,7 +98,7 @@ export function DataTablePagination<TData>({
             <ChevronRight />
           </Button>
           <Button
-            aria-label="Go to last page"
+            aria-label="Springe zur letzten Seite"
             variant="outline"
             size="icon"
             className="hidden size-8 lg:flex"
