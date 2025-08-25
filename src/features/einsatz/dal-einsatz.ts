@@ -3,14 +3,25 @@
 import prisma from "@/lib/prisma";
 import type { einsatz as Einsatz, einsatz_field } from "@/generated/prisma";
 import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, ETV } from "@/features/einsatz/types";
+import { hasPermission, requireAuth } from "@/lib/auth/authGuard";
+import { redirect } from "next/navigation";
+
 import { ValidateEinsatzCreate } from "./validation-service";
 import z from "zod";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDetailed | null> {
+  const { session, userIds } = await requireAuth();
+
   const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
 
   if (!einsaetzeFromDb) return null;
+
+  // Prüfe ob User Zugriff auf diese Organisation hat
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  if (!userOrgIds.includes(einsaetzeFromDb.org_id)) {
+    redirect('/unauthorized');
+  }
 
   // Destructure to avoid leaking raw relation arrays in the DTO
   const {
@@ -22,6 +33,7 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
     einsatz_field,
     ...rest
   } = einsaetzeFromDb;
+
 
   return {
     ...rest,
@@ -62,13 +74,32 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
   };
 }
 
+export async function getAllEinsaetze(org_ids?: string[]) {
+  const { session, userIds } = await requireAuth();
 
-export async function getAllEinsaetze(org_ids: string[]) {
-  return getAllEinsaetzeFromDb(org_ids);
+  if (!hasPermission(session, "read:einsaetze")) {
+    redirect("/unauthorized");
+  }
+
+  // Nutze User's orgIds als Default wenn keine org_ids übergeben
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  const filterOrgIds = org_ids && org_ids.length > 0 ? org_ids : userOrgIds;
+
+  return getAllEinsaetzeFromDb(filterOrgIds);
 }
 
-export async function getAllEinsaetzeForCalendar(org_ids: string[]) {
-  return getAllEinsatzeForCalendarFromDb(org_ids);
+export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
+  const { session, userIds } = await requireAuth();
+  
+  if (!hasPermission(session, 'read:einsaetze')) {
+    redirect('/unauthorized');
+  }
+
+  // Nutze User's orgIds als Default wenn keine org_ids übergeben
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  const filterOrgIds = org_ids && org_ids.length > 0 ? org_ids : userOrgIds;
+
+  return getAllEinsatzeForCalendarFromDb(filterOrgIds);
 }
 
 export async function getEinsatzForCalendar(id: string) {
@@ -184,10 +215,29 @@ export async function getEinsaetzeForTableView(org_ids: string[]): Promise<ETV[]
   return mapped;
 }
 
-export async function getAllTemplatesWithFields(org_id: string) {
+export async function getAllTemplatesWithFields(org_id?: string) {
+  const { session, userIds } = await requireAuth();
+
+  if (!hasPermission(session, 'read:templates')) {
+    redirect('/unauthorized');
+  }
+
+  // Verwende org_id oder erste Organisation des Users
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  const useOrgId = org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
+  
+  if (!useOrgId) {
+    throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
+  }
+
+  // Prüfe ob User Zugriff auf diese Organisation hat
+  if (!userOrgIds.includes(useOrgId)) {
+    redirect('/unauthorized');
+  }
+
   return prisma.einsatz_template.findMany({
     where: {
-      org_id,
+      org_id: useOrgId,
     },
     include: {
       template_icon: {
@@ -212,11 +262,43 @@ export async function getAllTemplatesWithFields(org_id: string) {
   })
 }
 
-export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
-  return createEinsatzInDb({ data })
+export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
+  const { session, userIds } = await requireAuth();
+
+  if (!hasPermission(session, 'create:einsaetze')) {
+    redirect('/unauthorized');
+  }
+
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  
+  // Verwende org_id aus data oder erste Organisation des Users
+  const useOrgId = data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
+  
+  if (!useOrgId) {
+    throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
+  }
+
+  // Prüfe ob User Zugriff auf diese Organisation hat
+  if (!userOrgIds.includes(useOrgId)) {
+    redirect('/unauthorized');
+  }
+
+  // Setze created_by und org_id
+  const einsatzWithAuth = {
+    ...data,
+    created_by: userIds.userId,
+    org_id: useOrgId,
+  };
+  console.log(data, einsatzWithAuth);
+  return createEinsatzInDb({data: einsatzWithAuth})
 }
 
 export async function updateEinsatzTime(data: { id: string; start: Date; end: Date }): Promise<Einsatz> {
+  const { session, userIds } = await requireAuth();
+  if (!hasPermission(session, 'update:einsaetze')) {
+    redirect('/unauthorized');
+  }
+  
   const dataSchema = z.object({
     id: z.string(),
     start: z.date(),
@@ -236,18 +318,41 @@ export async function updateEinsatzTime(data: { id: string; start: Date; end: Da
 }
 
 export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }): Promise<Einsatz> {
-  if (data.template_id && false) {
-    const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
-  }
+  const { session, userIds } = await requireAuth();
 
+  if (!hasPermission(session, 'update:einsaetze')) {
+    redirect('/unauthorized');
+  }
+  
+  if (data.template_id && false) {
+  const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
+
+  const { id, ...updateData } = data;
   const { id, categories, einsatz_fields, assignedUsers, org_id, ...updateData } = data;
+
 
   if (!id) {
     throw new Error("Einsatz must have an id for update");
   }
 
+  // Prüfe ob Einsatz existiert und User Zugriff hat
+  const existingEinsatz = await prisma.einsatz.findUnique({
+    where: { id },
+    select: { org_id: true }
+  });
+
+  if (!existingEinsatz) {
+    throw new Error(`Einsatz with ID ${id} not found`);
+  }
+
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  if (!userOrgIds.includes(existingEinsatz.org_id)) {
+    redirect('/unauthorized');
+  }
+
   console.log("Updating Einsatz with data:", updateData);
   console.log("Dynamic fields:", einsatz_fields);
+
 
   try {
     return prisma.einsatz.update({
@@ -257,6 +362,7 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
         updated_at: new Date(),
         einsatz_to_category: {
           // delete all existing categories and add the new ones
+
           ...(categories && {
             deleteMany: {},
             create: categories.map((category) => ({
@@ -289,13 +395,26 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
 }
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
+  const { session, userIds } = await requireAuth();
+
+  if (!hasPermission(session, 'delete:einsaetze')) {
+    redirect('/unauthorized');
+  }
   // TODO: check if logged in user has permission to delete this Einsatz
 
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
+    select: { id: true, org_id: true }
   });
+  
   if (!einsatz) {
     throw new Error(`Einsatz with ID ${einsatzId} not found`);
+  }
+
+  // Prüfe ob User Zugriff auf diese Organisation hat
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  if (!userOrgIds.includes(einsatz.org_id)) {
+    redirect('/unauthorized');
   }
 
   try {
@@ -356,15 +475,16 @@ async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Ein
       helpers_needed,
       all_day,
       einsatz_to_category: {
-        create: categories.map((category) => ({
+        create: categories?.map((category) => ({
           einsatz_category: { connect: { id: category } },
-        })),
+        })) || [],
       },
       einsatz_field: {
-        create: einsatz_fields.map((field) => ({
-          field: { connect: { id: field.field_id } },
+        create: einsatz_fields?.map((field) => ({
+          field: { connect: { id: field.id } },
+
           value: field.value,
-        })),
+        })) || [],
       },
       einsatz_helper: {
         connect: assignedUsers.map((userId) => ({ id: userId })),
@@ -374,11 +494,25 @@ async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Ein
     },
   });
 }
+function isValidUuid(id?: string): boolean {
+  if (!id || typeof id !== "string") return false;
+  return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(id);
+}
 
 async function getEinsatzByIdFromDb(
   id: string,
   org_id: string
 ): Promise<Einsatz | null> {
+
+/*   if (!isValidUuid(id)) {
+    console.error("ungültige IDs", { id});
+    return null;
+  }
+  if (!isValidUuid(org_id)) {
+    console.error("ungültige IDs", {org_id });
+    return null;
+  } */
+
   return prisma.einsatz.findUnique({
     where: { id, org_id },
     include: {
