@@ -101,7 +101,7 @@ export const getFiltersStateParser = <TData>(
 };
 
 const columnFilterSchema = z.object({
-  id: z.string(), // eg. "status"
+  id: z.string().nonempty(), // eg. "status"
   value: z.object({
     value: z.union([z.string(), z.array(z.string())]).nullable(),
     operator: z.enum(dataTableConfig.operators),
