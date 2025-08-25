@@ -119,13 +119,31 @@ export function DataTableFilterMenu<TData>({
   const debouncedSetFilters = useDebouncedCallback(setFilters, debounceMs);
 
   const onFilterAdd = React.useCallback(
-    (column: Column<TData>, value: string) => {
-      if (!value.trim() && column.columnDef.meta?.variant !== "boolean") {
-        return;
+    (column: Column<TData>, value: string | string[]) => {
+      // Support array of strings for dateRange and multiSelect
+      let filterValue: string | string[];
+      if (Array.isArray(value)) {
+        filterValue = value;
+        console.log("Array of strings:", filterValue);
+      } else if (column.columnDef.meta?.variant === "multiSelect") {
+        filterValue = [value];
+        console.log(
+          "Single value for multiSelect, converted to array:",
+          filterValue
+        );
+      } else {
+        console.log("Single value:", value);
+        filterValue = value;
       }
 
-      const filterValue =
-        column.columnDef.meta?.variant === "multiSelect" ? [value] : value;
+      // For string values, check for empty string
+      if (
+        typeof filterValue === "string" &&
+        !filterValue.trim() &&
+        column.columnDef.meta?.variant !== "boolean"
+      ) {
+        return;
+      }
 
       const newFilter: ExtendedColumnFilter<TData> = {
         id: column.id as Extract<keyof TData, string>,
@@ -527,7 +545,7 @@ function DataTableFilterItem<TData>({
 interface FilterValueSelectorProps<TData> {
   column: Column<TData>;
   value: string;
-  onSelect: (value: string) => void;
+  onSelect: (value: string | string[]) => void;
 }
 
 function FilterValueSelector<TData>({
@@ -573,15 +591,37 @@ function FilterValueSelector<TData>({
       );
 
     case "date":
-    case "dateRange":
+      // case "dateRange":
       return (
         <Calendar
-          initialFocus
+          autoFocus
           mode="single"
           selected={value ? new Date(value) : undefined}
           onSelect={(date) => onSelect(date?.getTime().toString() ?? "")}
         />
       );
+    case "dateRange": {
+      // Support picking both min and max before closing
+      const [range, setRange] = React.useState<
+        { from?: Date; to?: Date } | undefined
+      >(undefined);
+      return (
+        <Calendar
+          autoFocus
+          mode="range"
+          selected={{ from: range?.from, to: range?.to }}
+          onSelect={(date: { from?: Date; to?: Date } | undefined) => {
+            setRange(date);
+            if (date?.from && date?.to && date.from < date.to) {
+              onSelect([
+                date.from?.getTime().toString(),
+                date.to?.getTime().toString(),
+              ]);
+            }
+          }}
+        />
+      );
+    }
 
     default: {
       const isEmpty = !value.trim();

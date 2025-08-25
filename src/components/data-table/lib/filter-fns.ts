@@ -173,7 +173,6 @@ function evalClause(cellValue: any, clause: Clause): boolean {
             if (!min || !max || !cv) return false;
             const maxDayAdded = new Date(max);
             maxDayAdded.setDate(maxDayAdded.getDate() + 1);
-            console.log(min, cv, max)
             // cause dates are set to midnight we need to add a day to the max date
             return min <= cv && cv <= maxDayAdded;
         }
@@ -220,9 +219,6 @@ export const byOperatorUseMetaField: FilterFn<ETV> = (
     const column = row.getAllCells().find(cell => cell.column.id === columnId)?.column;
     const filterField = column?.columnDef.meta?.filterField ?? columnId;
     const cellValueId = get(row.original, filterField);
-
-    console.log("filterField: ", filterField);
-    console.log("cellValueId: ", cellValueId);
 
     return evalClause(cellValueId, {
         operator: relevantFilter.operator,
