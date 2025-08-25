@@ -125,7 +125,6 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   );
 
   const pagination: PaginationState = React.useMemo(() => {
-    console.log("pagination:", { page, perPage });
     return {
       pageIndex: page - 1, // one-based index -> zero-based index
       pageSize: perPage,
@@ -175,7 +174,6 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   );
 
   const filterableColumns = React.useMemo(() => {
-    if (enableAdvancedFilter) return [];
     // Treat columns as filterable unless they explicitly disable filtering
     return columns.filter((column) => column.enableColumnFilter !== false);
   }, [columns, enableAdvancedFilter]);
