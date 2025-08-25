@@ -597,7 +597,8 @@ function onFilterInputRender<TData>({
     case "range": {
       if (
         (filter.variant === "range" && filter.operator === "isBetween") ||
-        filter.operator === "isBetween"
+        filter.operator === "isBetween" ||
+        filter.operator === "dateIsBetween"
       ) {
         return (
           <DataTableRangeFilter
@@ -748,13 +749,13 @@ function onFilterInputRender<TData>({
         : [filter.value, filter.value].filter(Boolean);
 
       const displayValue =
-        filter.operator === "isBetween" && dateValue.length === 2
+        filter.operator === "dateIsBetween" && dateValue.length === 2
           ? `${formatDate(new Date(Number(dateValue[0])))} - ${formatDate(
               new Date(Number(dateValue[1]))
             )}`
           : dateValue[0]
           ? formatDate(new Date(Number(dateValue[0])))
-          : "Pick a date";
+          : "Datum auswählen...";
 
       return (
         <Popover open={showValueSelector} onOpenChange={setShowValueSelector}>
@@ -779,11 +780,11 @@ function onFilterInputRender<TData>({
             align="start"
             className="w-auto origin-[var(--radix-popover-content-transform-origin)] p-0"
           >
-            {filter.operator === "isBetween" ? (
+            {filter.operator === "dateIsBetween" ? (
               <Calendar
                 aria-label={`Select ${columnMeta?.label} date range`}
                 mode="range"
-                initialFocus
+                autoFocus
                 selected={
                   dateValue.length === 2
                     ? {
@@ -810,7 +811,7 @@ function onFilterInputRender<TData>({
               <Calendar
                 aria-label={`Select ${columnMeta?.label} date`}
                 mode="single"
-                initialFocus
+                autoFocus
                 selected={
                   dateValue[0] ? new Date(Number(dateValue[0])) : undefined
                 }

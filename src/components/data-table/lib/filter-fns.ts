@@ -22,13 +22,59 @@ export type Clause = {
 const toLower = (v: unknown) =>
     v == null ? "" : String(v).toLowerCase();
 
-const isBlank = (v: unknown) => v == null || v === "";
+const isBlank = (v: unknown) => v == null || v === "" || v === "-";
 
 const asNumber = (v: unknown) =>
     typeof v === "number" ? v : Number(v);
 
-const asDate = (v: unknown) =>
-    v instanceof Date ? v : new Date(v as any);
+type asDateOnlyFnProps = {
+    filterValue: (string | number | Date);
+    cellValue: any;
+};
+
+function timestampToDate(timestamp: number | string | Date): Date | null {
+    if (timestamp instanceof Date) return new Date(timestamp.getFullYear(), timestamp.getMonth(), timestamp.getDate());
+    else {
+        // Convert input to number if it's a string
+        const ts =
+            typeof timestamp === "number"
+                ? timestamp
+                : /^\d+$/.test(timestamp.trim())
+                    ? Number(timestamp)
+                    : NaN;
+
+
+        // Check if timestamp is a valid number
+        if (isNaN(ts)) return null;
+
+        const date = new Date(ts);
+
+        // Check if date is valid
+        if (isNaN(date.getTime())) return null;
+
+        return date;
+    }
+}
+
+function asDateOnlys({
+    filterValue,
+    cellValue,
+}: asDateOnlyFnProps): Date[] {
+    const result: Date[] = [];
+
+    const fvDate = timestampToDate(filterValue);
+    if (fvDate) result[0] = fvDate;
+
+    if (cellValue instanceof Date) result[1] = new Date(cellValue.getFullYear(), cellValue.getMonth(), cellValue.getDate());
+
+    return result;
+}
+
+function isDateSameDay(fv: Date, cv: Date): boolean {
+    return fv.getFullYear() === cv.getFullYear() &&
+        fv.getMonth() === cv.getMonth() &&
+        fv.getDate() === cv.getDate();
+}
 
 
 // Evaluate one clause against a single cell value
@@ -61,7 +107,7 @@ function evalClause(cellValue: any, clause: Clause): boolean {
             return Array.isArray(value) ? !value.includes(cellValue) : true;
         }
 
-        // Emptiness (treats null/"" as empty)
+        // Emptiness (treats null/""/"-" as empty)
         case "isEmpty": {
             return isBlank(cellValue);
         }
@@ -89,28 +135,48 @@ function evalClause(cellValue: any, clause: Clause): boolean {
             return v >= min && v <= max;
         }
 
-        // Dates
-        case "isRelativeToToday": {
-            // Example: value = { days: -7 }  -> last 7 days
-            const d = asDate(cellValue);
-            if (Number.isNaN(d.getTime())) return false;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            if (value?.days != null) {
-                const from = new Date(today);
-                from.setDate(today.getDate() + Number(value.days));
-                // If days is negative, range is [from, today]; if positive, [today, to]
-                if (value.days <= 0) {
-                    return d >= from && d <= today;
-                } else {
-                    const to = new Date(today);
-                    to.setDate(today.getDate() + Number(value.days));
-                    return d >= today && d <= to;
-                }
-            }
-            return true;
+        // Dates - cellValue is row data; value is filter value. fv = fv, cv = cv. Always apply filters to fv!
+        // asDateOnlys normalizes to midnight
+        case "dateEq": {
+            const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
+            if (!fv || !cv) return false;
+            return isDateSameDay(fv, cv);
         }
-
+        case "dateNe": {
+            const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
+            if (!fv || !cv) return false;
+            return !isDateSameDay(fv, cv);
+        }
+        case "dateLt": {
+            const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
+            if (!fv || !cv) return false;
+            return fv > cv;
+        }
+        case "dateGt": {
+            const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
+            if (!fv || !cv) return false;
+            return fv < cv;
+        }
+        case "dateLte": {
+            const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
+            if (!fv || !cv) return false;
+            return fv >= cv;
+        }
+        case "dateGte": {
+            const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
+            if (!fv || !cv) return false;
+            return fv <= cv;
+        }
+        case "dateIsBetween": {
+            const [min, max] = Array.isArray(value) && value.length === 2 ? value.map((d) => timestampToDate(d)) : [];
+            const cv = cellValue instanceof Date ? cellValue : null;
+            if (!min || !max || !cv) return false;
+            const maxDayAdded = new Date(max);
+            maxDayAdded.setDate(maxDayAdded.getDate() + 1);
+            console.log(min, cv, max)
+            // cause dates are set to midnight we need to add a day to the max date
+            return min <= cv && cv <= maxDayAdded;
+        }
         default:
             return true;
     }

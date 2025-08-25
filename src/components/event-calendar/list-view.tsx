@@ -32,6 +32,7 @@ import {
   byOperator,
   byOperatorUseMetaField,
 } from "../data-table/lib/filter-fns";
+import { formatDate } from "../data-table/lib/format";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -167,6 +168,23 @@ export function ListView({
           },
         }
       ),
+      columnHelper.accessor((row) => row.start, {
+        id: "start",
+        header: "Start Datum",
+        cell: (props) => {
+          const value = props.getValue();
+          return value instanceof Date
+            ? formatDate(value, { hour: "2-digit", minute: "2-digit" })
+            : value ?? "-";
+        },
+        enableColumnFilter: true,
+        filterFn: byOperatorUseMetaField,
+        meta: {
+          label: "Start Datum",
+          variant: "dateRange",
+          filterField: "start",
+        },
+      }),
       columnHelper.accessor(
         (row) =>
           `${row.user?.firstname ?? ""} ${row.user?.lastname ?? ""}`.trim(),
@@ -186,7 +204,7 @@ export function ListView({
                   label: `${user.firstname} ${user.lastname}`.trim(),
                   value: user.id,
                 }))
-                // sort by label
+                // sort by display name
                 .sort((a, b) => a.label.localeCompare(b.label)) ?? [],
           },
         }
@@ -201,11 +219,6 @@ export function ListView({
     rowCount: data?.length ?? 0,
   });
 
-  //  todo:
-  // - isLoading
-  // - total page count
-
-  // With advanced toolbar
   return (
     <DataTable table={table} isLoading={isSomeQueryLoading}>
       <DataTableAdvancedToolbar table={table}>

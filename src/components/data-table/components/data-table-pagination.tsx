@@ -67,6 +67,7 @@ export function DataTablePagination<TData>({
         <div className="flex items-center justify-center font-medium text-sm">
           Seite {table.getState().pagination.pageIndex + 1} von{" "}
           {table.getPageCount()}
+          {new Date().toString()}
         </div>
         <div className="flex items-center space-x-2">
           <Button
