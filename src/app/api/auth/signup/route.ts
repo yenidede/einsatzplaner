@@ -3,7 +3,6 @@ import { hash } from "bcryptjs";
 import {
   createUserWithOrgAndRoles,
   getOrCreateOrganizationByName,
-  getOrCreateRoleByName,
   getUserByEmail,
 } from "@/DataAccessLayer/user";
 import { CreateUserSchema } from "@/types/user";
@@ -39,13 +38,6 @@ export async function POST(req: NextRequest) {
     // Rolle anhand des Namens suchen
     const defaultRoleName = "Helfer"; // oder wie deine Standardrolle heißt
 
-    const roleRecord = await getOrCreateRoleByName(defaultRoleName);
-    if (!roleRecord) {
-      return NextResponse.json(
-        { error: "Rolle konnte nicht erstellt oder gefunden werden" },
-        { status: 500 }
-      );
-    }
     // Passwort hashen
     const passwordHash = await hash(userData.password, 12);
 
@@ -57,7 +49,7 @@ export async function POST(req: NextRequest) {
       password: passwordHash,
       phone: userData.phone,
       orgId: organization.id,
-      roleIds: [roleRecord.id],
+      roleNames: [defaultRoleName],
     });
 
     return NextResponse.json(
@@ -68,7 +60,7 @@ export async function POST(req: NextRequest) {
           email: user.email,
           firstname: user.firstname,
           lastname: user.lastname,
-          role: user.user_organization_role[0]?.roles?.name,
+          role: user.user_organization_role[0]?.role?.name,
           orgId: user.user_organization_role[0]?.organization?.id,
         },
       },
