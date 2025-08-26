@@ -90,7 +90,7 @@ export async function getAllEinsaetze(org_ids?: string[]) {
 
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
-  
+
   if (!hasPermission(session, 'read:einsaetze')) {
     redirect('/unauthorized');
   }
@@ -225,7 +225,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
   // Verwende org_id oder erste Organisation des Users
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   const useOrgId = org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
-  
+
   if (!useOrgId) {
     throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
   }
@@ -262,7 +262,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
   })
 }
 
-export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
+export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
   if (!hasPermission(session, 'create:einsaetze')) {
@@ -270,10 +270,10 @@ export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Eins
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  
+
   // Verwende org_id aus data oder erste Organisation des Users
   const useOrgId = data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
-  
+
   if (!useOrgId) {
     throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
   }
@@ -290,7 +290,7 @@ export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Eins
     org_id: useOrgId,
   };
   console.log(data, einsatzWithAuth);
-  return createEinsatzInDb({data: einsatzWithAuth})
+  return createEinsatzInDb({ data: einsatzWithAuth })
 }
 
 export async function updateEinsatzTime(data: { id: string; start: Date; end: Date }): Promise<Einsatz> {
@@ -298,7 +298,7 @@ export async function updateEinsatzTime(data: { id: string; start: Date; end: Da
   if (!hasPermission(session, 'update:einsaetze')) {
     redirect('/unauthorized');
   }
-  
+
   const dataSchema = z.object({
     id: z.string(),
     start: z.date(),
@@ -323,11 +323,10 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
   if (!hasPermission(session, 'update:einsaetze')) {
     redirect('/unauthorized');
   }
-  
-  if (data.template_id && false) {
-  const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
 
-  const { id, ...updateData } = data;
+  if (data.template_id && false) {
+    const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
+  }
   const { id, categories, einsatz_fields, assignedUsers, org_id, ...updateData } = data;
 
 
@@ -406,7 +405,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
     where: { id: einsatzId },
     select: { id: true, org_id: true }
   });
-  
+
   if (!einsatz) {
     throw new Error(`Einsatz with ID ${einsatzId} not found`);
   }
@@ -481,7 +480,7 @@ async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Ein
       },
       einsatz_field: {
         create: einsatz_fields?.map((field) => ({
-          field: { connect: { id: field.id } },
+          field: { connect: { id: field.field_id } },
 
           value: field.value,
         })) || [],
@@ -504,14 +503,14 @@ async function getEinsatzByIdFromDb(
   org_id: string
 ): Promise<Einsatz | null> {
 
-/*   if (!isValidUuid(id)) {
-    console.error("ungültige IDs", { id});
-    return null;
-  }
-  if (!isValidUuid(org_id)) {
-    console.error("ungültige IDs", {org_id });
-    return null;
-  } */
+  /*   if (!isValidUuid(id)) {
+      console.error("ungültige IDs", { id});
+      return null;
+    }
+    if (!isValidUuid(org_id)) {
+      console.error("ungültige IDs", {org_id });
+      return null;
+    } */
 
   return prisma.einsatz.findUnique({
     where: { id, org_id },
