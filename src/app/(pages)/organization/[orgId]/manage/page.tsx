@@ -90,6 +90,20 @@ export default function OrganizationManagePage() {
     },
   });
 
+    const handleSignOut = async () => {
+        try {
+            await signOut({
+                callbackUrl: '/signin',
+                redirect: true
+            });
+
+            queryClient.clear();
+        } catch (error) {
+            console.error("Fehler beim Abmelden:", error);
+            router.push('/signin');
+        }
+    };
+
     // Logo Upload Handler
     const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -268,7 +282,7 @@ export default function OrganizationManagePage() {
                   </div>
                 <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
                     <div data-state="Default" data-type="with icon" className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2"
-                        onClick={()=>signOut()}>
+                        onClick={handleSignOut}>
                             <LogoutIcon className="w-4 h-4 relative overflow-hidden">
                             </LogoutIcon>
                             <span className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">

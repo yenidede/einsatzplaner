@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { FormField, Alert, Button } from '@/components/SimpleFormComponents';
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function SignUpPage() {
     const [formData, setFormData] = useState({
@@ -16,6 +18,7 @@ export default function SignUpPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -51,6 +54,18 @@ export default function SignUpPage() {
                     phone: '',
                     organizationName: ''
                 });
+
+                // Nach erfolgreichem Signup automatisch einloggen
+                const signInResult = await signIn('credentials', {
+                    email: formData.email,
+                    password: formData.password,
+                    callbackUrl: '/dashboard',
+                    redirect: false
+                });
+
+                if (signInResult?.ok) {
+                    router.push('/dashboard');
+                }
             } else {
                 setError(data.error || 'Ein Fehler ist aufgetreten');
             }
