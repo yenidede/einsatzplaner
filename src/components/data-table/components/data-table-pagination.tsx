@@ -21,7 +21,7 @@ interface DataTablePaginationProps<TData> extends React.ComponentProps<"div"> {
   pageSizeOptions?: number[];
 }
 
-export const FirstPageAlias = 10000000;
+export const FirstPageAlias = 0.1;
 
 export function DataTablePagination<TData>({
   table,
@@ -67,7 +67,6 @@ export function DataTablePagination<TData>({
         <div className="flex items-center justify-center font-medium text-sm">
           Seite {table.getState().pagination.pageIndex + 1} von{" "}
           {table.getPageCount()}
-          {new Date().toString()}
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -85,14 +84,22 @@ export function DataTablePagination<TData>({
             variant="outline"
             size="icon"
             className="size-8"
-            onClick={() =>
+            onClick={() => {
+              console.log("pageIndex: ", table.getState().pagination.pageIndex);
+              console.log(
+                "setting to: ",
+                table.getState().pagination.pageIndex === 1
+                  ? FirstPageAlias
+                  : table.getState().pagination.pageIndex - 1
+              );
+
               // bug: pageIndex is always reset to 1, so 1 is now disabled. First page is aliased. If curr page is 2, set to FirstPageAlias
               table.setPageIndex(
                 table.getState().pagination.pageIndex === 1
                   ? FirstPageAlias
                   : table.getState().pagination.pageIndex - 1
-              )
-            }
+              );
+            }}
             disabled={!table.getCanPreviousPage()}
           >
             <ChevronLeft />
