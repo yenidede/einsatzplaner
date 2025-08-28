@@ -1,9 +1,10 @@
 import { isSameDay } from "date-fns";
 
-import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
+import { einsatz_status, einsatz_status as EinsatzStatus } from "@/generated/prisma";
 import { CalendarEvent, CalendarMode, FormFieldType } from "./types";
 import { z } from "zod";
-import { Einsatz, EinsatzForCalendar } from "@/features/einsatz/types";
+import { Einsatz, EinsatzCustomizable, EinsatzForCalendar } from "@/features/einsatz/types";
+import React from "react";
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -78,30 +79,40 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
 export const mapEinsaetzeToCalendarEvents = (
   einsaetze: EinsatzForCalendar[]
 ): CalendarEvent[] => {
-  return einsaetze.map((einsatz) => {
-    const categories = einsatz.einsatz_to_category;
-    const hasCategories = categories && categories.length > 0;
+  return einsaetze.reduce<CalendarEvent[]>((events, einsatz) => {
+    const event = mapEinsatzToCalendarEvent(einsatz);
+    if (event) {
+      events.push(event);
+    }
+    return events;
+  }, []);
+};
 
-    return {
-      id: einsatz.id,
-      title: hasCategories
-        ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(", ")})`
-        : einsatz.title,
-      start: einsatz.start,
-      end: einsatz.end,
-      allDay: einsatz.all_day,
-      status: einsatz.einsatz_status,
-      assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
-    };
-  });
+export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): CalendarEvent | null => {
+  if (!einsatz) {
+    return null;
+  }
+  const categories = einsatz.einsatz_to_category;
+  const hasCategories = categories && categories.length > 0;
+
+  return {
+    id: einsatz.id,
+    title: hasCategories
+      ? `${einsatz.title} (${categories
+        .map((c) => c.einsatz_category.abbreviation)
+        .join(", ")})`
+      : einsatz.title,
+    start: einsatz.start,
+    end: einsatz.end,
+    allDay: einsatz.all_day,
+    status: einsatz.einsatz_status,
+    assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
+  };
 };
 
 export function mapStringValueToType(value: string | null | undefined, fieldType: string | undefined | null): any {
   if (value === null || value === undefined) return null;
   if (!fieldType) return value; // return as is (text)
-  console.log("Mapping value:", value, "to type:", fieldType);
   switch (fieldType) {
     case "text":
     case "phone":
@@ -192,6 +203,42 @@ export function mapDbDataTypeToInputProps(datatype: string | null | undefined): 
   throw new Error("Can't map datatype: " + datatype + " to its FormField.");
 }
 
+export const roundDownTo10Minutes = (date: Date): Date => {
+  const rounded = new Date(date);
+  const minutes = rounded.getMinutes();
+  const remainder = minutes % 10;
+
+  if (remainder === 0) {
+    return rounded; // Already rounded
+  }
+
+  // Round to nearest 10-minute mark
+  const roundedMinutes = minutes - remainder;
+
+  rounded.setMinutes(roundedMinutes, 0, 0); // Also reset seconds and milliseconds
+  return rounded;
+};
+
+export const isEventPast = (event: EinsatzCustomizable): boolean => {
+  return event.end ? new Date(event.end) < new Date() : false;
+};
+
+export function mapStatusIdsToLabels(value: any[], statusData: EinsatzStatus[], mode: string) {
+  const labels = Array.from(
+    new Set(
+      value
+        .map((statusId) => {
+          const status = statusData.find((s) => s.id === statusId);
+          if (!status) return null;
+          return mode === "helper"
+            ? status.helper_text
+            : status.verwalter_text;
+        })
+        .filter((label): label is string => label !== null)
+    )
+  );
+  return labels;
+}
 
 /**
  * Get CSS classes for event colors
@@ -232,6 +279,103 @@ export function getEventColorClasses(
     console.warn("Unknown mode:", mode);
     return "bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8";
   }
+}
+
+type reducedStatus = { id: string; text: string; color: string; }
+
+export function getStatusByMode(status: einsatz_status | string, mode: CalendarMode): reducedStatus | undefined {
+  let statusObject: einsatz_status | undefined;
+
+  if (typeof status === "string") {
+    statusObject = staticStatusList.find((s) => mode === "helper" ? s.helper_text === status : s.verwalter_text === status);
+  } else {
+    statusObject = status;
+  }
+
+  if (!statusObject) {
+    console.warn("Unknown status:", status);
+    return undefined;
+  }
+
+  if (mode === "helper") {
+    return {
+      id: statusObject.id,
+      text: statusObject.helper_text,
+      color: statusObject.helper_color,
+    };
+  } else if (mode === "verwaltung") {
+    return {
+      id: statusObject.id,
+      text: statusObject.verwalter_text,
+      color: statusObject.verwalter_color,
+    };
+  }
+  throw new Error(`Couldnt get Status by Mode: Unknown mode: '${mode}'`);
+}
+
+export const staticStatusList = [
+  {
+    id: "15512bc7-fc64-4966-961f-c506a084a274",
+    helper_color: "red",
+    verwalter_color: "orange",
+    helper_text: "vergeben",
+    verwalter_text: "vergeben",
+  },
+  {
+    id: "46cee187-d109-4dea-b886-240cf923b8e6",
+    helper_color: "red",
+    verwalter_color: "green",
+    helper_text: "vergeben",
+    verwalter_text: "bestätigt",
+  },
+  {
+    id: "bb169357-920b-4b49-9e3d-1cf489409370",
+    helper_color: "lime",
+    verwalter_color: "red",
+    helper_text: "offen",
+    verwalter_text: "offen",
+  },
+] as readonly einsatz_status[];
+
+export function getBadgeColorClassByStatus(status: einsatz_status | string, mode: CalendarMode): string {
+  let badgeColor = "";
+
+  const statusObject = getStatusByMode(status, mode);
+
+  if (mode === "helper") {
+    switch (statusObject?.color) {
+      case "red":
+        badgeColor =
+          "bg-red-400 text-bg-red-900 dark:bg-red-800 dark:text-red-200";
+        break;
+      case "lime":
+        badgeColor =
+          "bg-lime-400 text-lime-900 dark:bg-lime-800 dark:text-lime-200";
+        break;
+      default:
+        badgeColor =
+          "bg-slate-400 text-bg-slate-900 dark:bg-slate-800 dark:text-slate-200";
+    }
+  } else {
+    switch (statusObject?.color) {
+      case "red":
+        badgeColor =
+          "bg-red-400 text-bg-red-900 dark:bg-red-800 dark:text-red-200";
+        break;
+      case "orange":
+        badgeColor =
+          "bg-orange-400 text-orange-900 dark:bg-orange-800 dark:text-orange-200";
+        break;
+      case "green":
+        badgeColor =
+          "bg-green-400 text-green-900 dark:bg-green-800 dark:text-green-200";
+        break;
+      default:
+        badgeColor =
+          "bg-slate-400 text-bg-slate-900 dark:bg-slate-800 dark:text-slate-200";
+    }
+  }
+  return badgeColor;
 }
 
 /**
@@ -349,3 +493,4 @@ export function getAgendaEventsForDay(
     })
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 }
+

@@ -40,7 +40,7 @@ export const authOptions: NextAuthOptions = {
 
           // Rolle aus erster user_organization_role holen (falls vorhanden)
           const userOrgRole = user.user_organization_role[0];
-          const role = userOrgRole?.roles?.name as UserRole | null;
+          const role = userOrgRole?.role?.name as UserRole | null;
           const orgId = userOrgRole?.organization?.id ?? null;
 
           // User-Objekt für Session zurückgeben (muss User-Typ entsprechen)
@@ -86,7 +86,7 @@ export const authOptions: NextAuthOptions = {
             token.firstname = currentUser.firstname ?? "";
             token.lastname = currentUser.lastname ?? "";
             const userOrgRole = currentUser.user_organization_role[0];
-            token.role = userOrgRole?.roles?.name as UserRole;
+            token.role = userOrgRole?.role?.name as UserRole;
             token.orgId = userOrgRole?.organization?.id ?? null;
             token.email = currentUser.email;
           }

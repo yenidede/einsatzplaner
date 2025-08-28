@@ -1,8 +1,7 @@
 "use client";
 
-// TODO at getOrganizationsByIds,
-
 import { useEffect, useMemo, useState } from "react";
+import { parseAsStringEnum, useQueryState } from "nuqs";
 import { RiCalendarCheckLine } from "@remixicon/react";
 import {
   addDays,
@@ -23,8 +22,6 @@ import {
   ChevronRightIcon,
   PlusIcon,
 } from "lucide-react";
-import { toast } from "sonner";
-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +43,7 @@ import {
   MonthView,
   WeekCellsHeight,
   WeekView,
+  ListView,
 } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
 import {
@@ -53,46 +51,68 @@ import {
   organization as Organization,
 } from "@/generated/prisma";
 import { EinsatzCreate } from "@/features/einsatz/types";
-import { createEinsatz } from "@/features/einsatz/dal-einsatz";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/features/organization/queryKeys";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
-  onEventAdd?: (event: EinsatzCreate) => void;
-  onEventUpdate?: (event: EinsatzCreate) => void;
-  onEventDelete?: (eventId: string, eventTitle: string) => void;
+  onEventAdd: (event: EinsatzCreate) => void;
+  onEventUpdate: (event: EinsatzCreate) => void;
+  onEventTimeUpdate: (event: CalendarEvent) => void;
+  onEventDelete: (eventId: string, eventTitle: string) => void;
+  onMultiEventDelete: (eventIds: string[]) => void;
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;
 }
-
+// TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
   events = [],
   onEventAdd,
   onEventUpdate,
+  onEventTimeUpdate,
   onEventDelete,
+  onMultiEventDelete,
   className,
   initialView = "month",
   mode,
 }: EventCalendarProps) {
   const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<CalendarView>(initialView);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<
     EinsatzCreate | string | null
   >(null);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+
+  const [view, setView] = useQueryState<CalendarView>(
+    "view",
+    parseAsStringEnum<CalendarView>([
+      "month",
+      "week",
+      "day",
+      "agenda",
+      "list",
+    ]).withDefault(initialView)
+  );
+
+  // German view names mapping
+  const viewLabels = {
+    month: "Monat",
+    week: "Woche",
+    day: "Tag",
+    agenda: "Agenda",
+    list: "Liste",
+  } as const;
+
   // TODO use logged in user data
   const { data: sessionData } = useSession();
+  const orgs = sessionData?.orgs || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"];
   const orgsQuery = useQuery({
-    queryKey: ["organizations"], // also map all orgs by id
-    queryFn: () =>
-      getOrganizationsByIds(
-        sessionData?.orgs || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]
-      ),
+    queryKey: queryKeys.organizations(orgs), // also map all orgs by id
+    queryFn: () => getOrganizationsByIds(orgs),
   });
 
   // Add keyboard shortcuts for view switching
@@ -122,6 +142,9 @@ export function EventCalendar({
         case "a":
           setView("agenda");
           break;
+        case "l":
+          setView("list");
+          break;
       }
     };
 
@@ -140,7 +163,8 @@ export function EventCalendar({
     } else if (view === "day") {
       setCurrentDate(addDays(currentDate, -1));
     } else if (view === "agenda") {
-      // For agenda view, go back 30 days (a full month)
+      setCurrentDate(addDays(currentDate, -AgendaDaysToShow));
+    } else if (view === "list") {
       setCurrentDate(addDays(currentDate, -AgendaDaysToShow));
     }
   };
@@ -153,7 +177,6 @@ export function EventCalendar({
     } else if (view === "day") {
       setCurrentDate(addDays(currentDate, 1));
     } else if (view === "agenda") {
-      // For agenda view, go forward
       setCurrentDate(addDays(currentDate, AgendaDaysToShow));
     }
   };
@@ -162,9 +185,8 @@ export function EventCalendar({
     setCurrentDate(new Date());
   };
 
-  const handleEventSelect = (event: EinsatzCreate | string) => {
-    console.log("Event selected:", event); // Debug log
-    setSelectedEvent(event);
+  const handleEventSelect = (event: CalendarEvent | string) => {
+    setSelectedEvent(typeof event === "string" ? event : event.id);
     setIsEventDialogOpen(true);
   };
 
@@ -206,13 +228,18 @@ export function EventCalendar({
     setIsEventDialogOpen(true);
   };
 
-  const handleEventSave = (event: EinsatzCreate) => {
-    if (event.id) {
-      onEventUpdate?.(event);
+  const handleEventSave = (event: EinsatzCreate | CalendarEvent) => {
+    // Type guard to determine which type we're dealing with
+    if ("org_id" in event) {
+      // This is an EinsatzCreate
+      if (event.id) {
+        onEventUpdate?.(event);
+      } else {
+        onEventAdd?.(event);
+      }
     } else {
-      onEventAdd?.({
-        ...event,
-      });
+      // This is a CalendarEvent
+      onEventTimeUpdate?.(event);
     }
 
     setIsEventDialogOpen(false);
@@ -221,21 +248,19 @@ export function EventCalendar({
 
   const handleEventDelete = (eventId: string, eventTitle: string) => {
     onEventDelete?.(eventId, eventTitle);
-
     setIsEventDialogOpen(false);
     setSelectedEvent(null);
   };
 
-  const handleEventUpdate = (updatedEvent: EinsatzCreate) => {
-    onEventUpdate?.(updatedEvent);
+  const handleMultiEventDelete = (eventIds: string[]) => {};
 
-    // Show toast notification when an event is updated via drag and drop
-    toast(`Event "${updatedEvent.title}" moved`, {
-      description: format(new Date(updatedEvent.start), "MMM d, yyyy", {
-        locale: de,
-      }),
-      position: "bottom-left",
-    });
+  const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
+    // Type guard to handle both types
+    if ("org_id" in updatedEvent) {
+      onEventUpdate?.(updatedEvent);
+    } else {
+      onEventTimeUpdate?.(updatedEvent);
+    }
   };
 
   const viewTitle = useMemo(() => {
@@ -297,7 +322,7 @@ export function EventCalendar({
         } as React.CSSProperties
       }
     >
-      <CalendarDndProvider onEventUpdate={handleEventUpdate}>
+      <CalendarDndProvider onEventUpdate={handleEventUpdate} mode={mode}>
         <div
           className={cn(
             "flex items-center justify-between p-2 sm:p-4",
@@ -345,10 +370,10 @@ export function EventCalendar({
                 <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
                   <span>
                     <span className="min-[480px]:hidden" aria-hidden="true">
-                      {view.charAt(0).toUpperCase()}
+                      {viewLabels[view].charAt(0)}
                     </span>
                     <span className="max-[479px]:sr-only">
-                      {view.charAt(0).toUpperCase() + view.slice(1)}
+                      {viewLabels[view]}
                     </span>
                   </span>
                   <ChevronDownIcon
@@ -370,6 +395,9 @@ export function EventCalendar({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setView("agenda")}>
                   Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
+                </DropdownMenuItem>{" "}
+                <DropdownMenuItem onClick={() => setView("list")}>
+                  Liste <DropdownMenuShortcut>L</DropdownMenuShortcut>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -423,6 +451,14 @@ export function EventCalendar({
               currentDate={currentDate}
               events={events}
               onEventSelect={handleEventSelect}
+              mode={mode}
+            />
+          )}
+          {view === "list" && (
+            <ListView
+              onEventEdit={handleEventSelect}
+              onEventDelete={handleEventDelete}
+              onMultiEventDelete={handleMultiEventDelete}
               mode={mode}
             />
           )}

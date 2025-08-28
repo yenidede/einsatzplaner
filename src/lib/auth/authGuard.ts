@@ -19,7 +19,7 @@ export async function requireAuth() {
   if (!session?.user?.id) {
     redirect('/signin');
   }
-  
+
   const userId = session.user.id as string;
 
   // hole alle Zuordnungen mit Role-Info
@@ -59,52 +59,52 @@ export async function requireAuth() {
 // Auth Guard mit Rollenprüfung
 export async function requireRole(requiredRoles: string | string[]) {
   const { session, userIds } = await requireAuth();
-  
+
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
   const userRoles = userIds.roles || [];
-  
+
   // Prüfe, ob User mindestens eine der benötigten Rollen hat
   const hasRequiredRole = roles.some(role => userRoles.includes(role));
-  
+
   if (!hasRequiredRole) {
     redirect('/unauthorized');
   }
-  
+
   return session;
 }
 
 // Auth Guard mit Organisationsprüfung
 export async function requireOrganization(orgId?: string) {
   const { session, userIds } = await requireAuth();
-  
+
   const userOrgIds = userIds.orgIds || [];
-  
+
   if (userOrgIds.length === 0) {
     redirect('/organization/select');
   }
-  
+
   if (orgId && !userOrgIds.includes(orgId)) {
     redirect('/unauthorized');
   }
-  
+
   return session;
 }
 
 // Vollständige User-Daten mit aktuellen Rollen laden
 export async function getAuthenticatedUser() {
   const session = await getServerSession(authOptions);
-  
+
   if (!session?.user?.id) {
     redirect('/signin');
   }
-  
+
   try {
     const user = await getUserByIdWithOrgAndRole(session.user.id);
-    
+
     if (!user) {
       redirect('/signin');
     }
-    
+
     return {
       session,
       user,
@@ -144,25 +144,25 @@ export function hasPermission(sessionOrRoleOrRoles: any, permission: string): bo
 // API Route Auth Helper
 export async function validateApiAuth(request: Request) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session?.user?.id) {
     return { error: 'Nicht authentifiziert', status: 401 };
   }
-  
+
   return { session, user: session.user };
 }
 
 // API Route Auth mit Berechtigung
 export async function validateApiAuthWithPermission(request: Request, permission: string) {
   const authResult = await validateApiAuth(request);
-  
+
   if ('error' in authResult) {
     return authResult;
   }
-  
+
   if (!hasPermission(authResult.session, permission)) {
     return { error: 'Keine Berechtigung', status: 403 };
   }
-  
+
   return authResult;
 }

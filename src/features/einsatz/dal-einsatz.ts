@@ -1,12 +1,13 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import type { einsatz as Einsatz } from "@/generated/prisma";
-import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
+import type { einsatz as Einsatz, einsatz_field } from "@/generated/prisma";
+import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, ETV } from "@/features/einsatz/types";
 import { hasPermission, requireAuth } from "@/lib/auth/authGuard";
 import { redirect } from "next/navigation";
 
 import { ValidateEinsatzCreate } from "./validation-service";
+import z from "zod";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDetailed | null> {
@@ -89,7 +90,7 @@ export async function getAllEinsaetze(org_ids?: string[]) {
 
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
-  
+
   if (!hasPermission(session, 'read:einsaetze')) {
     redirect('/unauthorized');
   }
@@ -99,6 +100,128 @@ export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const filterOrgIds = org_ids && org_ids.length > 0 ? org_ids : userOrgIds;
 
   return getAllEinsatzeForCalendarFromDb(filterOrgIds);
+}
+
+export async function getEinsatzForCalendar(id: string) {
+  return getEinsatzForCalendarFromDb(id);
+}
+
+export async function getEinsaetzeForTableView(active_org_id: string): Promise<ETV[]> {
+  const { session, userIds } = await requireAuth();
+
+  if (!hasPermission(session, 'read:einsaetze')) {
+    redirect('/unauthorized');
+  }
+
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  const filterOrgIds = active_org_id ? [active_org_id] : userOrgIds;
+
+  const einsaetzeFromDb = await prisma.einsatz.findMany({
+    where: {
+      org_id: { in: filterOrgIds }
+    },
+    include: {
+      einsatz_status: true,
+      organization: { select: { id: true, name: true } },
+      einsatz_helper: {
+        select: {
+          user: {
+            select: {
+              id: true,
+              firstname: true,
+              lastname: true,
+            }
+          }
+        }
+      },
+      einsatz_to_category: {
+        include: {
+          einsatz_category: true
+        }
+      },
+      einsatz_field: {
+        include: {
+          field: {
+            select: {
+              type: {
+                select: {
+                  datatype: true,
+                }
+              }
+            }
+          }
+        }
+      },
+      user: {
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+        }
+      },
+      einsatz_template: {
+        select: {
+          id: true,
+          name: true,
+        }
+      },
+      _count: {
+        select: {
+          einsatz_helper: true,
+        }
+      }
+    },
+    orderBy: { created_at: "asc" },
+  });
+
+  // Map DB result to ETV type
+  const mapped: ETV[] = einsaetzeFromDb.map((einsatz) => ({
+    id: einsatz.id,
+    created_at: einsatz.created_at,
+    title: einsatz.title,
+    updated_at: einsatz.updated_at,
+    start: einsatz.start,
+    participant_count: einsatz.participant_count,
+    price_per_person: einsatz.price_per_person,
+    total_price: einsatz.total_price,
+    org_id: einsatz.org_id,
+    created_by: einsatz.created_by,
+    template_id: einsatz.template_id,
+    all_day: einsatz.all_day,
+    end: einsatz.end,
+    helpers_needed: einsatz.helpers_needed,
+    status_id: einsatz.status_id,
+    einsatz_status: einsatz.einsatz_status,
+    organization: {
+      id: einsatz.organization.id,
+      name: einsatz.organization.name,
+    },
+    einsatz_helper: einsatz.einsatz_helper.map((helper) => ({
+      id: helper.user.id,
+      firstname: helper.user.firstname ?? null,
+      lastname: helper.user.lastname ?? null,
+    })),
+    einsatz_categories: einsatz.einsatz_to_category.map((cat) => cat.einsatz_category),
+    einsatz_fields: einsatz.einsatz_field.map((f) => ({
+      id: f.id,
+      einsatz_id: f.einsatz_id,
+      value: f.value,
+      field_id: f.field_id,
+      datatype: f.field.type?.datatype ?? null,
+    }) as einsatz_field & { datatype: string | null }),
+    user: einsatz.user ? {
+      id: einsatz.user.id,
+      firstname: einsatz.user.firstname ?? null,
+      lastname: einsatz.user.lastname ?? null,
+    } : null,
+    einsatz_template: einsatz.einsatz_template ? {
+      id: einsatz.einsatz_template.id,
+      name: einsatz.einsatz_template.name ?? null,
+    } : null,
+    _count: einsatz._count,
+  }));
+
+  return mapped;
 }
 
 export async function getAllTemplatesWithFields(org_id?: string) {
@@ -111,7 +234,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
   // Verwende org_id oder erste Organisation des Users
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   const useOrgId = org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
-  
+
   if (!useOrgId) {
     throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
   }
@@ -148,7 +271,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
   })
 }
 
-export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
+export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
   if (!hasPermission(session, 'create:einsaetze')) {
@@ -156,10 +279,10 @@ export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Eins
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  
+
   // Verwende org_id aus data oder erste Organisation des Users
   const useOrgId = data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
-  
+
   if (!useOrgId) {
     throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
   }
@@ -176,17 +299,43 @@ export async function createEinsatz({data}: {data: EinsatzCreate}): Promise<Eins
     org_id: useOrgId,
   };
   console.log(data, einsatzWithAuth);
-  return createEinsatzInDb({data: einsatzWithAuth})
+  return createEinsatzInDb({ data: einsatzWithAuth })
 }
 
-export async function updateEinsatz({data}: {data: EinsatzCreate}): Promise<Einsatz> {
+export async function updateEinsatzTime(data: { id: string; start: Date; end: Date }): Promise<Einsatz> {
+  const { session, userIds } = await requireAuth();
+  if (!hasPermission(session, 'update:einsaetze')) {
+    redirect('/unauthorized');
+  }
+
+  const dataSchema = z.object({
+    id: z.string(),
+    start: z.date(),
+    end: z.date(),
+  });
+
+  const { id, start, end } = dataSchema.parse(data);
+
+  return prisma.einsatz.update({
+    where: { id },
+    data: {
+      start,
+      end,
+      updated_at: new Date(),
+    },
+  });
+}
+
+export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
   if (!hasPermission(session, 'update:einsaetze')) {
     redirect('/unauthorized');
   }
 
-  const { id, ...updateData } = data;
+  if (data.template_id && false) {
+    const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
+  }
   const { id, categories, einsatz_fields, assignedUsers, org_id, ...updateData } = data;
 
 
@@ -265,7 +414,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
     where: { id: einsatzId },
     select: { id: true, org_id: true }
   });
-  
+
   if (!einsatz) {
     throw new Error(`Einsatz with ID ${einsatzId} not found`);
   }
@@ -284,6 +433,27 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
     });
   } catch (error) {
     throw new Error(`Failed to delete Einsatz with ID ${einsatzId}: ${error}`);
+  }
+}
+
+export async function deleteEinsaetzeByIds(einsatzIds: string[]): Promise<void> {
+  // TODO: check if logged in user has permission to delete this Einsatz
+
+  const einsatz = await prisma.einsatz.findMany({
+    where: { id: { in: einsatzIds } },
+  });
+  if (!einsatz || einsatz.length === 0) {
+    throw new Error(`No Einsaetze found: ${einsatzIds.join(", ")}`);
+  }
+
+  try {
+    await prisma.einsatz.deleteMany({
+      where: {
+        id: { in: einsatzIds },
+      },
+    });
+  } catch (error) {
+    throw new Error(`Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`);
   }
 }
 
@@ -319,7 +489,7 @@ async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Ein
       },
       einsatz_field: {
         create: einsatz_fields?.map((field) => ({
-          field: { connect: { id: field.id } },
+          field: { connect: { id: field.field_id } },
 
           value: field.value,
         })) || [],
@@ -342,14 +512,14 @@ async function getEinsatzByIdFromDb(
   org_id: string
 ): Promise<Einsatz | null> {
 
-/*   if (!isValidUuid(id)) {
-    console.error("ungültige IDs", { id});
-    return null;
-  }
-  if (!isValidUuid(org_id)) {
-    console.error("ungültige IDs", {org_id });
-    return null;
-  } */
+  /*   if (!isValidUuid(id)) {
+      console.error("ungültige IDs", { id});
+      return null;
+    }
+    if (!isValidUuid(org_id)) {
+      console.error("ungültige IDs", {org_id });
+      return null;
+    } */
 
   return prisma.einsatz.findUnique({
     where: { id, org_id },
@@ -368,6 +538,53 @@ async function getAllEinsaetzeFromDb(org_ids: string[]): Promise<Einsatz[]> {
       org_id: {
         in: org_ids,
       },
+    },
+  });
+}
+
+async function getEinsatzForCalendarFromDb(
+  id: string
+): Promise<EinsatzForCalendar | null> {
+  return prisma.einsatz.findUnique({
+    select: {
+      id: true,
+      title: true,
+      start: true,
+      end: true,
+      all_day: true,
+      einsatz_status: {
+        select: {
+          id: true,
+          verwalter_color: true,
+          verwalter_text: true,
+          helper_color: true,
+          helper_text: true,
+        },
+      },
+      einsatz_to_category: {
+        select: {
+          einsatz_category: {
+            select: {
+              value: true,
+              abbreviation: true,
+            },
+          },
+        },
+      },
+      einsatz_helper: {
+        select: {
+          user_id: true,
+        },
+      },
+      helpers_needed: true,
+      _count: {
+        select: {
+          einsatz_helper: true,
+        },
+      },
+    },
+    where: {
+      id,
     },
   });
 }
