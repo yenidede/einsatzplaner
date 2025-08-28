@@ -207,7 +207,6 @@ export function EventDialog({
     queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
     queryFn: async () => {
       const returnEinsatz = await getEinsatzWithDetailsById(einsatz as string);
-      console.log("Fetching detailed einsatz data for ID:", returnEinsatz);
       return returnEinsatz;
     },
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
@@ -643,9 +642,6 @@ export function EventDialog({
         };
       }
     );
-    console.log(einsatzFields);
-
-    console.log("categories", parsedDataStatic.data.einsatzCategoriesIds);
 
     onSave({
       id: currentEinsatz?.id,

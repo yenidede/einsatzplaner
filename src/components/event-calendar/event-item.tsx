@@ -158,12 +158,7 @@ export function EventItem({
   const getEventTime = () => {
     if (event.allDay) return "All day";
 
-    // For short events (less than 45 minutes), only show start time
-    if (durationMinutes < 45) {
-      return formatTimeWithOptionalMinutes(displayStart);
-    }
-
-    // For longer events, show both start and end time
+    // Always show both start and end time for consistency
     return `${formatTimeWithOptionalMinutes(
       displayStart
     )} - ${formatTimeWithOptionalMinutes(displayEnd)}`;
@@ -214,8 +209,7 @@ export function EventItem({
         isDragging={isDragging}
         onClick={onClick}
         className={cn(
-          "py-1",
-          durationMinutes < 45 ? "items-center" : "flex-col",
+          "py-1 flex-col",
           view === "week" ? "text-[10px] sm:text-xs" : "text-xs",
           className
         )}
@@ -226,26 +220,13 @@ export function EventItem({
         onTouchStart={onTouchStart}
         mode={mode}
       >
-        {durationMinutes < 45 ? (
-          <div className="leading-tight break-words">
-            {event.title}{" "}
-            {showTime && (
-              <span className="opacity-70">
-                {formatTimeWithOptionalMinutes(displayStart)}
-              </span>
-            )}
+        <div className="font-medium leading-tight break-words">
+          {event.title}
+        </div>
+        {showTime && (
+          <div className="font-normal opacity-70 text-[10px] sm:text-[11px] leading-tight break-words">
+            {getEventTime()}
           </div>
-        ) : (
-          <>
-            <div className="font-medium leading-tight break-words">
-              {event.title}
-            </div>
-            {showTime && (
-              <div className="font-normal opacity-70 sm:text-[11px] leading-tight break-words">
-                {getEventTime()}
-              </div>
-            )}
-          </>
         )}
       </EventWrapper>
     );
@@ -277,16 +258,7 @@ export function EventItem({
             {formatTimeWithOptionalMinutes(displayEnd)}
           </span>
         )}
-        {event.location && (
-          <>
-            <span className="px-1 opacity-35"> · </span>
-            <span>{event.location}</span>
-          </>
-        )}
       </div>
-      {event.description && (
-        <div className="my-1 text-xs opacity-90">{event.description}</div>
-      )}
     </button>
   );
 }

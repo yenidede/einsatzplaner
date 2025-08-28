@@ -1,4 +1,4 @@
-import {z}  from 'zod';
+import { z } from 'zod';
 
 
 // User roles enum
@@ -18,12 +18,12 @@ export const UserRoleSchema = z.enum([
 ]);
 
 export const CreateUserSchema = z.object({
-  email: z.string().email('Ungültige E-Mail-Adresse'),
+  email: z.email('Ungültige E-Mail-Adresse'),
   password: z.string().min(8, 'Passwort muss mindestens 8 Zeichen haben'),
   firstname: z.string().min(2, 'Vorname muss mindestens 2 Zeichen haben'),
   lastname: z.string().min(2, 'Nachname muss mindestens 2 Zeichen haben'),
   role: UserRoleSchema.optional(),
-  phone: z.string().optional(),
+  phone: z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number. Example: +1234567890").optional(),
   organizationName: z.string().min(2, 'Organisationsname muss mindestens 2 Zeichen haben'),
 
 });
@@ -49,7 +49,7 @@ export interface UserWithoutPassword {
 
 // Login data schema
 export const LoginSchema = z.object({
-  email: z.string().email('Ungültige E-Mail-Adresse'),
+  email: z.email('Ungültige E-Mail-Adresse'),
   password: z.string().min(1, 'Passwort ist erforderlich')
 });
 

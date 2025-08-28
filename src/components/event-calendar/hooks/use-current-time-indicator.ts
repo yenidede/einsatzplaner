@@ -7,7 +7,9 @@ import { EndHour, StartHour } from "@/components/event-calendar/constants"
 
 export function useCurrentTimeIndicator(
   currentDate: Date,
-  view: "day" | "week"
+  view: "day" | "week",
+  startHour: number = StartHour,
+  endHour: number = EndHour
 ) {
   const [currentTimePosition, setCurrentTimePosition] = useState<number>(0)
   const [currentTimeVisible, setCurrentTimeVisible] = useState<boolean>(false)
@@ -17,11 +19,15 @@ export function useCurrentTimeIndicator(
       const now = new Date()
       const hours = now.getHours()
       const minutes = now.getMinutes()
-      const totalMinutes = (hours - StartHour) * 60 + minutes
-      const dayStartMinutes = 0 // 12am
-      const dayEndMinutes = (EndHour - StartHour) * 60 // 12am next day
 
-      // Calculate position as percentage of day
+      // Check if current time is within the displayed range
+      const currentTimeInRange = hours >= startHour && hours < endHour;
+
+      const totalMinutes = (hours - startHour) * 60 + minutes
+      const dayStartMinutes = 0 // start of the range
+      const dayEndMinutes = (endHour - startHour) * 60 // end of the range
+
+      // Calculate position as percentage of displayed time range
       const position =
         ((totalMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes)) *
         100
@@ -30,17 +36,17 @@ export function useCurrentTimeIndicator(
       let isCurrentTimeVisible = false
 
       if (view === "day") {
-        isCurrentTimeVisible = isSameDay(now, currentDate)
+        isCurrentTimeVisible = isSameDay(now, currentDate) && currentTimeInRange
       } else if (view === "week") {
         const startOfWeekDate = startOfWeek(currentDate, { weekStartsOn: 0 })
         const endOfWeekDate = endOfWeek(currentDate, { weekStartsOn: 0 })
         isCurrentTimeVisible = isWithinInterval(now, {
           start: startOfWeekDate,
           end: endOfWeekDate,
-        })
+        }) && currentTimeInRange
       }
 
-      setCurrentTimePosition(position)
+      setCurrentTimePosition(Math.max(0, Math.min(100, position)))
       setCurrentTimeVisible(isCurrentTimeVisible)
     }
 
@@ -51,7 +57,7 @@ export function useCurrentTimeIndicator(
     const interval = setInterval(calculateTimePosition, 60000)
 
     return () => clearInterval(interval)
-  }, [currentDate, view])
+  }, [currentDate, view, startHour, endHour])
 
   return { currentTimePosition, currentTimeVisible }
 }

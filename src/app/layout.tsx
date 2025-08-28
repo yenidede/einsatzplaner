@@ -4,6 +4,7 @@ import NextAuthSessionProvider from "@/components/SessionProvider";
 import "@/styles/globals.css";
 import Navbar from "@/components/navbar/navbar-main";
 import QueryProvider from "@/components/QueryProvider";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { AlertDialogContextProvider } from "@/contexts/AlertDialogContext";
 
@@ -30,15 +31,17 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body className={`${inter.variable} ${geistMono.variable} antialiased`}>
-        <QueryProvider>
-          <NextAuthSessionProvider>
-            <AlertDialogContextProvider>
-              <Navbar />
-              <main className="px-4 md:px-6 py-8">{children}</main>
-              <Toaster position="bottom-left" />
-            </AlertDialogContextProvider>
-          </NextAuthSessionProvider>
-        </QueryProvider>
+        <NuqsAdapter>
+          <QueryProvider>
+            <NextAuthSessionProvider>
+              <AlertDialogContextProvider>
+                <Navbar />
+                <main className="px-4 md:px-6 py-8">{children}</main>
+                <Toaster position="bottom-left" />
+              </AlertDialogContextProvider>
+            </NextAuthSessionProvider>
+          </QueryProvider>
+        </NuqsAdapter>
       </body>
     </html>
   );

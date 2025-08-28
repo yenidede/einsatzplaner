@@ -25,6 +25,7 @@ import { addMinutes, differenceInMinutes } from "date-fns";
 
 import { EventItem, type CalendarEvent } from "@/components/event-calendar";
 import { CalendarMode } from "./types";
+import { EinsatzCreate } from "@/features/einsatz/types";
 
 // Define the context type
 type CalendarDndContextType = {
