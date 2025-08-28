@@ -114,7 +114,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
   const [page, setPage] = useQueryState(
     PAGE_KEY,
-    parseAsInteger.withOptions(queryStateOptions).withDefault(4),
+    parseAsInteger.withOptions(queryStateOptions).withDefault(1),
   );
 
   const [perPage, setPerPage] = useQueryState(
@@ -138,8 +138,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
         void setPerPage(newPagination.pageSize);
         // bug: something always sets pageIndex to 0. First page is now aliased instead of 0
         if (newPagination.pageIndex === 0) return;
-        if (newPagination.pageIndex === FirstPageAlias) void setPage(1);
-        else void setPage(newPagination.pageIndex + 1);
+        const setToPageIndex = Math.round(newPagination.pageIndex);
+        void setPage(setToPageIndex + 1);
       } else {
         void setPage(updaterOrValue.pageIndex + 1);
         void setPerPage(updaterOrValue.pageSize);
@@ -198,6 +198,11 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     [setColumnFilters]
   );
 
+  // Reset page to 1 when perPage changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [perPage, columnFilters]);
+
   const table = useReactTable({
     ...tableProps,
     columns,
@@ -236,6 +241,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     manualSorting: false,
     manualFiltering: false,
   });
+
+
 
   return { table, shallow, debounceMs, throttleMs };
 }

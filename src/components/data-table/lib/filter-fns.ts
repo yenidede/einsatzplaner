@@ -39,8 +39,9 @@ function timestampToDate(timestamp: number | string | Date): Date | null {
         const ts =
             typeof timestamp === "number"
                 ? timestamp
-                : /^\d+$/.test(timestamp.trim())
-                    ? Number(timestamp)
+                : typeof timestamp === "string"
+                    ? /^\d+$/.test(timestamp.trim())
+                        ? Number(timestamp) : NaN
                     : NaN;
 
 

@@ -56,6 +56,8 @@ interface DataTableFilterMenuProps<TData>
   debounceMs?: number;
   throttleMs?: number;
   shallow?: boolean;
+  isLoading: boolean;
+  setPageCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export function DataTableFilterMenu<TData>({
@@ -64,6 +66,8 @@ export function DataTableFilterMenu<TData>({
   throttleMs = THROTTLE_MS,
   shallow = true,
   align = "start",
+  setPageCount,
+  isLoading,
   ...props
 }: DataTableFilterMenuProps<TData>) {
   const id = React.useId();
@@ -80,6 +84,15 @@ export function DataTableFilterMenu<TData>({
   const [inputValue, setInputValue] = React.useState("");
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const recalculatePageCount = React.useCallback(() => {
+    const totalPages = Math.ceil(
+      table.getFilteredRowModel().rows.length /
+        table.getState().pagination.pageSize
+    );
+    setPageCount(totalPages);
+    table.setPageIndex(0);
+  }, [table]);
 
   const onOpenChange = React.useCallback((open: boolean) => {
     setOpen(open);
@@ -118,21 +131,20 @@ export function DataTableFilterMenu<TData>({
   );
   const debouncedSetFilters = useDebouncedCallback(setFilters, debounceMs);
 
+  // Recalculate when filters or data changed (e.g. reload)
+  React.useEffect(() => {
+    recalculatePageCount();
+  }, [filters, table, table.getRowModel()]);
+
   const onFilterAdd = React.useCallback(
     (column: Column<TData>, value: string | string[]) => {
       // Support array of strings for dateRange and multiSelect
       let filterValue: string | string[];
       if (Array.isArray(value)) {
         filterValue = value;
-        console.log("Array of strings:", filterValue);
       } else if (column.columnDef.meta?.variant === "multiSelect") {
         filterValue = [value];
-        console.log(
-          "Single value for multiSelect, converted to array:",
-          filterValue
-        );
       } else {
-        console.log("Single value:", value);
         filterValue = value;
       }
 

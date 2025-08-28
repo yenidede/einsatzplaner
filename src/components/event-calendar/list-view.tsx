@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 
 import { DataTable } from "@/components/data-table/components/data-table";
 import { DataTableAdvancedToolbar } from "@/components/data-table/components/data-table-advanced-toolbar";
@@ -47,6 +47,8 @@ export function ListView({
   onMultiEventDelete,
   mode,
 }: ListViewProps) {
+  const [pageCount, setPageCount] = useState(0);
+
   const { data: statusData, isLoading: isStatusLoading } = useQuery({
     queryKey: statusQueryKeys.statuses(),
     queryFn: GetStatuses,
@@ -78,7 +80,7 @@ export function ListView({
   // Data fetching with pagination, sorting, and filtering
   const { data, isLoading } = useQuery<ETV[]>({
     queryKey: [...einsatzQueryKeys.einsaetzeTableView(currentOrgs)],
-    queryFn: () => getEinsaetzeForTableView(currentOrgs),
+    queryFn: () => getEinsaetzeForTableView(currentOrgs[0]),
     placeholderData: (previousData) => previousData ?? [],
     notifyOnChangeProps: "all",
   });
@@ -217,13 +219,19 @@ export function ListView({
     data: data ?? [],
     columns: columns,
     rowCount: data?.length ?? 0,
+    pageCount,
   });
 
   return (
     <DataTable table={table} isLoading={isSomeQueryLoading}>
       <DataTableAdvancedToolbar table={table}>
         {/* "key" changes to make sure ui updates when everything is loaded */}
-        <DataTableFilterMenu key={String(!isSomeQueryLoading)} table={table} />
+        <DataTableFilterMenu
+          setPageCount={setPageCount}
+          key={String(!isSomeQueryLoading)}
+          table={table}
+          isLoading={isSomeQueryLoading}
+        />
         <DataTableSortList table={table} />
       </DataTableAdvancedToolbar>
     </DataTable>
