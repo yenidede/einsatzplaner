@@ -57,7 +57,6 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-
     // Passwort hashen
     const passwordHash = await hash(userData.password, 12);
 
@@ -69,7 +68,7 @@ export async function POST(req: NextRequest) {
       password: passwordHash,
       phone: userData.phone,
       orgId: organization.id,
-      roleIds: [roleRecord.id],
+      roleNames: [defaultRoleName],
     });
 
     // Sichere User-Daten für Response (ohne Passwort)
@@ -96,6 +95,7 @@ export async function POST(req: NextRequest) {
       {
         message: "Registrierung erfolgreich",
         user: {
+          //current
           ...safeUserData,
           role: userOrgRole?.role?.name || defaultRoleName,
           roleId: userOrgRole?.role?.id,

@@ -1,3 +1,4 @@
+import { unstable_cache as cache } from "next/cache";
 import prisma from "@/lib/prisma";
 
 type UserSettingsUpdate = {
@@ -82,21 +83,31 @@ export async function getUserByIdWithOrgAndRole(userId: string) {
 //#endregion
 
 //#region User Creation
+const cachedRoleRecords = cache(async () => {
+  const records = await prisma.role.findMany({
+    select: { id: true, name: true },
+  });
+  return records;
+}, ["role"]);
+
+
 export async function createUserWithOrgAndRoles(data: {
   email: string;
-  firstname?: string;
-  lastname?: string;
+  firstname: string;
+  lastname: string;
   password: string;
   phone?: string;
   orgId: string;
-  roleIds: string[];
+  roleNames: string[];
 }) {
   try {
     // Ein User kann mehrere Rollen pro Organisation haben
-    if (!data.roleIds || data.roleIds.length === 0) {
+    if (!data.roleNames || data.roleNames.length === 0) {
       throw new Error('Mindestens eine Rolle muss zugewiesen werden.');
     }
-    
+
+    const roleRecords = await cachedRoleRecords();
+
     return prisma.user.create({
       data: {
         email: data.email,
@@ -105,9 +116,15 @@ export async function createUserWithOrgAndRoles(data: {
         password: data.password,
         phone: data.phone,
         user_organization_role: {
-          create: data.roleIds.map(roleId => ({
-            org_id: data.orgId,
-            role_id: roleId,
+          create: data.roleNames.map(roleName => ({
+            organization: {
+              connect: { id: data.orgId },
+            },
+            role: {
+              connect: {
+                id: roleRecords.find(role => role.name === roleName)?.id,
+              },
+            },
           })),
         },
       },
@@ -175,8 +192,8 @@ export async function getUsersWithRolesByOrgId(orgId: string) {
           },
           include: {
             organization: {
-              select: { 
-                id: true, 
+              select: {
+                id: true,
                 name: true,
                 helper_name_singular: true,
                 helper_name_plural: true,
@@ -325,7 +342,7 @@ export async function updateUserOrgSettings(
     // Note: hasGetMailNotification field does not exist in current schema
     // This function is kept for future extensions
     console.warn('updateUserOrgSettings called but no updatable fields exist in current schema');
-    
+
     return currentUserOrg;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -466,17 +483,17 @@ export async function getUserOrganizationsWithRoles(userId: string) {
 
     // Gruppiere nach Organisation
     const organizationsMap = new Map();
-    
+
     userOrgRoles.forEach(userOrgRole => {
       const orgId = userOrgRole.organization.id;
-      
+
       if (!organizationsMap.has(orgId)) {
         organizationsMap.set(orgId, {
           organization: userOrgRole.organization,
           roles: [],
         });
       }
-      
+
       organizationsMap.get(orgId).roles.push(userOrgRole.role);
     });
 
@@ -562,17 +579,17 @@ export async function getUsersWithRolesByOrgIdOptimized(orgId: string) {
 
     // Gruppiere nach User
     const usersMap = new Map();
-    
+
     userOrgRoles.forEach(userOrgRole => {
       const userId = userOrgRole.user.id;
-      
+
       if (!usersMap.has(userId)) {
         usersMap.set(userId, {
           user: userOrgRole.user,
           roles: [],
         });
       }
-      
+
       usersMap.get(userId).roles.push(userOrgRole.role);
     });
 

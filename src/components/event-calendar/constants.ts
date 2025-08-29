@@ -9,9 +9,13 @@ export const WeekCellsHeight = 72;
 // Number of days to show in the agenda view
 export const AgendaDaysToShow = 120;
 
-// Start and end hours for the week and day views
+// Start and end hours for time picker
 export const StartHour = 0;
 export const EndHour = 24;
+
+// Default Time shown on Day/Week View (if Event is before or later, it will be adjusted)
+export const ViewStartHour = 9;
+export const ViewEndHour = 17;
 
 // Default start and end times
 export const DefaultStartHour = 9; // 9 AM

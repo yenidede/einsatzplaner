@@ -9,8 +9,6 @@ import type {
 import { CalendarMode } from "./types";
 import { requireAuth } from "@/lib/auth/authGuard";
 
-
-  
 const mapEinsaetzeToCalendarEvents = (
   einsaetze: EinsatzForCalendar[]
 ): CalendarEvent[] => {
@@ -33,9 +31,6 @@ const mapEinsaetzeToCalendarEvents = (
     };
   });
 };
-
-import { mapEinsaetzeToCalendarEvents } from "./utils";
-
 
 export default async function Calendar({ mode }: { mode: CalendarMode }) {
   const { session, userIds } = await requireAuth();
