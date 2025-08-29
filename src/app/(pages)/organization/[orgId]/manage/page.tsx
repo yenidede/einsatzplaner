@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
 
 import { useEffect, useId, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -19,7 +20,9 @@ import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadPr
 import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
 import OrganizationCard from "@/features/settings/components/OrganizationCard";
 import { hasPermission } from "@/lib/auth/authGuard";
-
+import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
+import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
+import { useInvitations } from '@/features/invitations/hooks/useInvitation';
 
 export default function OrganizationManagePage() {
     const params = useParams();
@@ -29,6 +32,8 @@ export default function OrganizationManagePage() {
     const { data: session, status } = useSession();
     const [user, setUser] = useState<any>(null);
 
+    // Invitation
+    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -40,55 +45,58 @@ export default function OrganizationManagePage() {
     const [logoUrl, setLogoUrl] = useState<string>("");
     const [logoFile, setLogoFile] = useState<File | null>(null);
 
-      const { data, isLoading, error } = useQuery({
-    queryKey: ["userSettings", session?.user?.id],
-    enabled: !!session?.user?.id,
-    queryFn: async () => {
-      const res = await fetch(`/api/settings?userId=${session?.user.id}`);
-      if (!res.ok) throw new Error("Fehler beim Laden");
-      return res.json();
-    },
-  });
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+    const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
-  // setze user sobald query daten da sind
-  useEffect(() => {
-    if (data) setUser(data);
-  }, [data]);
+    const { data, isLoading, error } = useQuery({
+        queryKey: ["userSettings", session?.user?.id],
+        enabled: !!session?.user?.id,
+        queryFn: async () => {
+            const res = await fetch(`/api/settings?userId=${session?.user.id}`);
+            if (!res.ok) throw new Error("Fehler beim Laden");
+            return res.json();
+        },
+    });
 
-  // lade die spezifische Organisation und setze Name/Beschreibung
-  const { data: orgData, isLoading: orgLoading, error: orgError } = useQuery({
-    queryKey: ["organization", orgId],
-    enabled: !!orgId,
-    queryFn: async () => {
-      const res = await fetch(`/api/auth/organization?id=${orgId}`);
-      if (!res.ok) throw new Error("Fehler beim Laden der Organisation");
-      return res.json();
-    },
-  });
+    // setze user sobald query daten da sind
+    useEffect(() => {
+        if (data) setUser(data);
+    }, [data]);
 
-  useEffect(() => {
-    if (orgData) {
-      setName(orgData.name ?? "");
-      setDescription(orgData.description ?? "");
-      setLogoUrl(orgData.logo_url ?? "");
-      // setze E-Mail / Telefon falls vorhanden (fallbacks prüfen je nach deiner API / Schema)
-      setEmail(orgData.email ?? orgData.mail ?? orgData.contact_email ?? "");
-      setPhone(orgData.phone ?? orgData.telefon ?? orgData.phone_number ?? "");
-      setHelperSingular(orgData.helper_singular ?? "Helfer:in");
-      setHelperPlural(orgData.helper_plural ?? "Helfer:innen");
-    }
-  }, [orgData]);
+    // lade die spezifische Organisation und setze Name/Beschreibung
+    const { data: orgData, isLoading: orgLoading, error: orgError } = useQuery({
+        queryKey: ["organization", orgId],
+        enabled: !!orgId,
+        queryFn: async () => {
+            const res = await fetch(`/api/auth/organization?id=${orgId}`);
+            if (!res.ok) throw new Error("Fehler beim Laden der Organisation");
+            return res.json();
+        },
+    });
 
-  // Lade User der Organisation (user_organization_role)
-  const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ["organizationUsers", orgId],
-    enabled: !!orgId,
-    queryFn: async () => {
-      const res = await fetch(`/api/auth/organization/${orgId}/users`);
-      if (!res.ok) throw new Error("Fehler beim Laden der User");
-      return res.json();
-    },
-  });
+    useEffect(() => {
+        if (orgData) {
+            setName(orgData.name ?? "");
+            setDescription(orgData.description ?? "");
+            setLogoUrl(orgData.logo_url ?? "");
+            // setze E-Mail / Telefon falls vorhanden (fallbacks prüfen je nach deiner API / Schema)
+            setEmail(orgData.email ?? orgData.mail ?? orgData.contact_email ?? "");
+            setPhone(orgData.phone ?? orgData.telefon ?? orgData.phone_number ?? "");
+            setHelperSingular(orgData.helper_singular ?? "Helfer:in");
+            setHelperPlural(orgData.helper_plural ?? "Helfer:innen");
+        }
+    }, [orgData]);
+
+    // Lade User der Organisation (user_organization_role)
+    const { data: usersData, isLoading: usersLoading } = useQuery({
+        queryKey: ["organizationUsers", orgId],
+        enabled: !!orgId,
+        queryFn: async () => {
+            const res = await fetch(`/api/auth/organization/${orgId}/users`);
+            if (!res.ok) throw new Error("Fehler beim Laden der User");
+            return res.json();
+        },
+    });
 
     const handleSignOut = async () => {
         try {
@@ -207,6 +215,16 @@ export default function OrganizationManagePage() {
             description, 
             removeLogo: true 
         });
+    };
+
+    const handleUserProfileClick = (userId: string) => {
+        setSelectedUserId(userId);
+        setIsProfileDialogOpen(true);
+    };
+
+    const handleCloseProfileDialog = () => {
+        setIsProfileDialogOpen(false);
+        setSelectedUserId(null);
     };
 
     if (isLoading || orgLoading) return <div className="p-6">Lädt Organisation...</div>;
@@ -610,9 +628,14 @@ export default function OrganizationManagePage() {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="px-4 py-2 bg-slate-100 rounded-md flex justify-center items-center gap-2.5">
+                                    
+                                    <button
+                                        onClick={() => handleUserProfileClick(groupedUser.user?.id)}
+                                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-md flex justify-center items-center gap-2.5 transition-colors"
+                                    >
                                         <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Profil Verwalten</div>
-                                    </div>
+                                        
+                                    </button>
                                 </div>
                             ));
                         })()
@@ -621,9 +644,62 @@ export default function OrganizationManagePage() {
                     )}
                 </div>
             </div>
+            
+            {(() => {
+    // Sammle ALLE Rollen des Users
+    const currentUserRoles = usersData?.filter((userOrgRole: any) => {
+        return userOrgRole.user?.email === session?.user?.email;
+    });
+    
+    const roleNames = currentUserRoles?.map(r => r.role?.name || r.role?.abbreviation) || [];
+    const canInviteUsers = roleNames.includes('Organisationsverwaltung') || 
+                          roleNames.includes('OV') || 
+                          roleNames.includes('Superadmin');
+    
+    return (
+        <div className="self-stretch px-4 py-4 border-t border-slate-200 flex flex-col gap-4">
+{            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+                <h4 className="font-semibold text-yellow-800">Debug Info:</h4>
+                <p className="text-sm text-yellow-700">User Roles: {roleNames.join(', ')}</p>
+                <p className="text-sm text-yellow-700">Can Invite: {canInviteUsers ? 'Ja' : 'Nein'}</p>
+            </div>}
+            
+            {canInviteUsers && (
+                <button
+                    onClick={() => setIsInviteModalOpen(true)}
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Helfer einladen
+                </button>
+            )}
+        </div>
+    );
+})()}
+            </div>
+
+            {selectedUserId && (
+                <UserProfileDialog
+                    isOpen={isProfileDialogOpen}
+                    onClose={handleCloseProfileDialog}
+                    userId={selectedUserId}
+                    organizationId={orgId}
+                />
+            )}
+
+            {/* Modal - IMMER rendern für Debug */}
+            <InviteUserForm
+                organizationId={orgId}
+                isOpen={isInviteModalOpen}
+                onClose={() => {
+                    console.log('Modal closing...');
+                    setIsInviteModalOpen(false);
+                }}
+            />
         </div>
     </div>
-</div>
-      </div>
+        </div>
     );
 }

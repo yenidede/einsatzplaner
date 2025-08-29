@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { InvitationServiceFactory } from '../services/InvitationService';
+import { useQuery } from '@tanstack/react-query';
+import { InvitationService } from '../services/InvitationService';
 import type { InviteUserData } from '@/features/invitations/types/invitation';
 
 export interface UseInvitationReturn {
@@ -125,4 +126,33 @@ export function useAcceptInvitation(): UseAcceptInvitationReturn {
         acceptInvitation,
         clearMessages
     };
+}
+
+export function useInvitations(organizationId: string) {
+  return useQuery({
+    queryKey: ['invitations', organizationId],
+    queryFn: async () => {
+      const response = await fetch(`/api/invitations?orgId=${organizationId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch invitations');
+      }
+      return response.json();
+    },
+    enabled: !!organizationId
+  });
+}
+
+export function useInvitationValidation(token: string) {
+  return useQuery({
+    queryKey: ['invitation', token],
+    queryFn: async () => {
+      const response = await fetch(`/api/invitations/${token}`);
+      if (!response.ok) {
+        throw new Error('Failed to validate invitation');
+      }
+      return response.json();
+    },
+    enabled: !!token,
+    retry: false
+  });
 }
