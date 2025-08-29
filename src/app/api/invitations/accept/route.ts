@@ -1,91 +1,100 @@
-import { NextResponse } from "next/server";
-import { InvitationServiceFactory } from "@/features/invitations/services/InvitationService";
-import { UserRepository, USERS_COLLECTION } from "@/lib/mongo/models/User";
-import clientPromise from "@/lib/mongo/client";
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+import { createUserWithOrgAndRoles } from "@/DataAccessLayer/user";
 
-export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-        
-        const client = await clientPromise;
-        if (!client) {
-            return NextResponse.json({ error: "Datenbankverbindung fehlgeschlagen" }, { status: 500 });
-        }
+const acceptInvitationSchema = z.object({
+  token: z.string().min(1, "Token ist erforderlich"),
+  password: z.string().min(8, "Passwort muss mindestens 8 Zeichen lang sein"),
+  firstname: z.string().min(1, "Vorname ist erforderlich"),
+  lastname: z.string().min(1, "Nachname ist erforderlich"),
+});
 
-        const db = client.db();
-        const userRepository = new UserRepository(db);
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const validatedData = acceptInvitationSchema.parse(body);
 
-        // Invitation Service verwenden
-        const invitationService = await InvitationServiceFactory.createDefault();
-        const { user, invitation } = await invitationService.acceptInvitation(body);
+    // Einladung finden und prüfen
+    const invitation = await prisma.invitation.findUnique({
+      where: { token: validatedData.token },
+      include: {
+        organization: true,
+        //role: true
+      }
+    });
 
-        return NextResponse.json({
-            success: true,
-            message: "Einladung erfolgreich angenommen",
-            user: {
-                id: user._id.toString(),
-                email: user.email,
-                firstname: user.firstname,
-                lastname: user.lastname,
-                role: user.role,
-                organizationName: user.organizationName
-            }
-        });
-
-    } catch (error) {
-        console.error("Error accepting invitation:", error);
-        return NextResponse.json({ 
-            error: error instanceof Error ? error.message : "Fehler beim Annehmen der Einladung" 
-        }, { status: 500 });
+    if (!invitation) {
+      return NextResponse.json({ error: "Einladung nicht gefunden" }, { status: 404 });
     }
-}
 
-export async function GET(req: Request) {
-    try {
-        const url = new URL(req.url);
-        const token = url.searchParams.get('token');
-        
-        if (!token) {
-            return NextResponse.json({ error: "Token fehlt" }, { status: 400 });
-        }
-
-        const client = await clientPromise;
-        if (!client) {
-            return NextResponse.json({ error: "Datenbankverbindung fehlgeschlagen" }, { status: 500 });
-        }
-
-        const db = client.db();
-        const userRepository = new UserRepository(db);
-
-        // Invitation Service verwenden
-        const invitationService = await InvitationServiceFactory.createDefault();
-        const invitation = await invitationService.getInvitationByToken(token);
-
-        if (!invitation) {
-            return NextResponse.json({ error: "Einladung nicht gefunden oder abgelaufen" }, { status: 404 });
-        }
-
-        // Einladender Benutzer laden für Namen
-        const inviter = await userRepository.findById(invitation.invitedBy);
-        
-        return NextResponse.json({
-            success: true,
-            invitation: {
-                email: invitation.email,
-                firstname: invitation.firstname,
-                lastname: invitation.lastname,
-                role: invitation.role,
-                organizationName: invitation.organizationName,
-                inviterName: inviter ? `${inviter.firstname} ${inviter.lastname}` : 'Unbekannt',
-                message: invitation.message,
-                expiresAt: invitation.expiresAt
-            }
-        });
-
-    } catch (error) {
-        console.error("Error getting invitation:", error);
-        return NextResponse.json({ 
-            error: error instanceof Error ? error.message : "Fehler beim Laden der Einladung" 
-        }, { status: 500 });
+    if (invitation.expires_at < new Date()) {
+      return NextResponse.json({ error: "Einladung ist abgelaufen" }, { status: 400 });
     }
+
+    if (invitation.accepted) {
+      return NextResponse.json({ error: "Einladung wurde bereits angenommen" }, { status: 400 });
+    }
+
+    // Prüfen ob User bereits existiert
+    const existingUser = await prisma.user.findUnique({
+      where: { email: invitation.email }
+    });
+
+    if (existingUser) {
+      return NextResponse.json({ error: "Benutzer mit dieser E-Mail existiert bereits" }, { status: 400 });
+    }
+
+    // Passwort hashen
+    const hashedPassword = await bcrypt.hash(validatedData.password, 12);
+
+    // User mit Organisation und Rolle erstellen (verwendet deine DAL-Funktion)
+    const newUser = await createUserWithOrgAndRoles({
+      email: invitation.email,
+      firstname: validatedData.firstname,
+      lastname: validatedData.lastname,
+      password: hashedPassword,
+      orgId: invitation.org_id,
+      roleNames: [invitation.role?.name || 'Helfer'],
+    });
+
+    // Einladung als angenommen markieren
+    await prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { accepted: true }
+    });
+
+    console.log('✅ Invitation accepted successfully:', {
+      userId: newUser.id,
+      email: newUser.email,
+      organization: invitation.organization?.name
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Einladung erfolgreich angenommen",
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        firstname: newUser.firstname,
+        lastname: newUser.lastname
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error accepting invitation:", error);
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ 
+        error: "Validierungsfehler", 
+        details: error.errors 
+      }, { status: 400 });
+    }
+    
+    return NextResponse.json({ 
+      error: "Fehler beim Annehmen der Einladung",
+      details: error instanceof Error ? error.message : "Unbekannter Fehler"
+    }, { status: 500 });
+  }
 }

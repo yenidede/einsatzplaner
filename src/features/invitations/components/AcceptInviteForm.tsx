@@ -42,9 +42,9 @@ export default function AcceptInviteForm({ token, invitationData }: AcceptInvite
         try {
             await acceptInvitation(token, formData.password, formData.confirmPassword);
             
-            // Nach erfolgreichem Annehmen zum Login weiterleiten
+            // Nach erfolgreichem Annehmen zum Dashboard weiterleiten
             setTimeout(() => {
-                router.push('/signin?message=invitation-accepted');
+                router.push('/dashboard?message=invitation-accepted');
             }, 2000);
         } catch (err) {
             // Fehler wird bereits vom Hook behandelt

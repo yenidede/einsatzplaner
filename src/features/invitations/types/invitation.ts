@@ -22,12 +22,21 @@ export const InviteUserSchema = z.object({
 
 export type InviteUserData = z.infer<typeof InviteUserSchema>;
 
+export const CreateInvitationSchema = z.object({
+  email: z.string().email('Ungültige E-Mail-Adresse'),
+  organizationId: z.string().uuid('Ungültige Organisations-ID'),
+});
+
 export const AcceptInvitationSchema = z.object({
   token: z.string().min(1, 'Token ist erforderlich'),
-  password: z.string().min(8, 'Passwort muss mindestens 8 Zeichen haben')
+  firstname: z.string().min(1, 'Vorname ist erforderlich'),
+  lastname: z.string().min(1, 'Nachname ist erforderlich'),
+  password: z.string().min(6, 'Passwort muss mindestens 6 Zeichen lang sein'),
+  phone: z.string().optional().nullable(),
 });
 
 export type AcceptInvitationData = z.infer<typeof AcceptInvitationSchema>;
+export type CreateInvitationInput = z.infer<typeof CreateInvitationSchema>;
 
 // Invitation interface for client-side use
 export interface Invitation {
@@ -44,4 +53,19 @@ export interface Invitation {
   expiresAt: Date;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface InvitationData {
+  id: string;
+  email: string;
+  token: string;
+  expires_at: string;
+  organization: {
+    id: string;
+    name: string;
+  };
+  inviter: {
+    firstname: string;
+    lastname: string;
+  };
 }
