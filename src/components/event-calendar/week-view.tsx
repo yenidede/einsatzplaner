@@ -29,7 +29,10 @@ import {
   WeekCellsHeight,
   type CalendarEvent,
 } from "@/components/event-calendar";
-import { EndHour, StartHour } from "@/components/event-calendar/constants";
+import {
+  ViewStartHour,
+  ViewEndHour,
+} from "@/components/event-calendar/constants";
 import { CalendarMode } from "./types";
 
 interface WeekViewProps {
@@ -67,20 +70,79 @@ export function WeekView({
     [currentDate]
   );
 
+  // Calculate dynamic start and end hours based on events for the week
+  const { dynamicStartHour, dynamicEndHour } = useMemo(() => {
+    // Get all time-based events for the week (normalized for multi-day events)
+    const weekTimeBasedEvents: CalendarEvent[] = [];
+
+    events.forEach((event) => {
+      // Skip only explicitly marked all-day events
+      if (event.allDay) return;
+
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+
+      // Check if event is in this week
+      const isInWeek = days.some(
+        (day) =>
+          isSameDay(day, eventStart) ||
+          isSameDay(day, eventEnd) ||
+          (eventStart < day && eventEnd > day)
+      );
+
+      if (isInWeek) {
+        // For multi-day events, we just need the original time for hour calculation
+        weekTimeBasedEvents.push(event);
+      }
+    });
+
+    if (weekTimeBasedEvents.length === 0) {
+      return {
+        dynamicStartHour: ViewStartHour,
+        dynamicEndHour: ViewEndHour,
+      };
+    }
+
+    let earliestHour = 24;
+    let latestHour = 0;
+
+    weekTimeBasedEvents.forEach((event) => {
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+
+      const startHour = getHours(eventStart);
+      const endHour = getHours(eventEnd) + (getMinutes(eventEnd) > 0 ? 1 : 0);
+
+      earliestHour = Math.min(earliestHour, startHour);
+      latestHour = Math.max(latestHour, endHour);
+    });
+
+    // Add some padding and ensure reasonable bounds
+    const paddedStartHour = Math.max(0, earliestHour - 1);
+    const paddedEndHour = Math.min(24, latestHour + 1);
+
+    return {
+      dynamicStartHour:
+        paddedStartHour < ViewStartHour ? paddedStartHour : ViewStartHour,
+      dynamicEndHour: paddedEndHour > ViewEndHour ? paddedEndHour : ViewEndHour,
+    };
+  }, [days, events]);
+
   const hours = useMemo(() => {
     const dayStart = startOfDay(currentDate);
     return eachHourOfInterval({
-      start: addHours(dayStart, StartHour),
-      end: addHours(dayStart, EndHour - 1),
+      start: addHours(dayStart, dynamicStartHour),
+      end: addHours(dayStart, dynamicEndHour - 1),
     });
-  }, [currentDate]);
+  }, [currentDate, dynamicStartHour, dynamicEndHour]);
 
-  // Get all-day events and multi-day events for the week
+  // Get all-day events for the week
   const allDayEvents = useMemo(() => {
     return events
       .filter((event) => {
-        // Include explicitly marked all-day events or multi-day events
-        return event.allDay || isMultiDayEvent(event);
+        // Include only explicitly marked all-day events
+        // Multi-day events with specific times should be shown in the time grid
+        return event.allDay === true;
       })
       .filter((event) => {
         const eventStart = new Date(event.start);
@@ -97,20 +159,51 @@ export function WeekView({
   // Process events for each day to calculate positions
   const processedDayEvents = useMemo(() => {
     const result = days.map((day) => {
-      // Get events for this day that are not all-day events or multi-day events
-      const dayEvents = events.filter((event) => {
-        // Skip all-day events and multi-day events
-        if (event.allDay || isMultiDayEvent(event)) return false;
+      // Get events for this day that are not explicitly marked as all-day
+      const dayEvents: CalendarEvent[] = [];
+
+      events.forEach((event) => {
+        // Skip only explicitly marked all-day events
+        if (event.allDay) return;
 
         const eventStart = new Date(event.start);
         const eventEnd = new Date(event.end);
 
         // Check if event is on this day
-        return (
+        const isOnThisDay =
           isSameDay(day, eventStart) ||
           isSameDay(day, eventEnd) ||
-          (eventStart < day && eventEnd > day)
-        );
+          (eventStart < day && eventEnd > day);
+
+        if (isOnThisDay) {
+          // For multi-day events, create a normalized instance for this day
+          if (isMultiDayEvent(event)) {
+            // Create a new event instance with the same time but on the current day
+            const timeOnlyStart = new Date(eventStart);
+            const timeOnlyEnd = new Date(eventEnd);
+
+            // Normalize to current day with original times
+            const normalizedStart = new Date(day);
+            normalizedStart.setHours(timeOnlyStart.getHours());
+            normalizedStart.setMinutes(timeOnlyStart.getMinutes());
+            normalizedStart.setSeconds(timeOnlyStart.getSeconds());
+
+            const normalizedEnd = new Date(day);
+            normalizedEnd.setHours(timeOnlyEnd.getHours());
+            normalizedEnd.setMinutes(timeOnlyEnd.getMinutes());
+            normalizedEnd.setSeconds(timeOnlyEnd.getSeconds());
+
+            // Create normalized event for this day
+            dayEvents.push({
+              ...event,
+              start: normalizedStart,
+              end: normalizedEnd,
+            });
+          } else {
+            // For single-day events, use as-is
+            dayEvents.push(event);
+          }
+        }
       });
 
       // Sort events by start time and duration
@@ -155,7 +248,7 @@ export function WeekView({
         const endHour = getHours(adjustedEnd) + getMinutes(adjustedEnd) / 60;
 
         // Adjust the top calculation to account for the new start time
-        const top = (startHour - StartHour) * WeekCellsHeight;
+        const top = (startHour - dynamicStartHour) * WeekCellsHeight;
         const height = (endHour - startHour) * WeekCellsHeight;
 
         // Find a column for this event
@@ -208,7 +301,7 @@ export function WeekView({
     });
 
     return result;
-  }, [days, events]);
+  }, [days, events, dynamicStartHour]);
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -218,7 +311,9 @@ export function WeekView({
   const showAllDaySection = allDayEvents.length > 0;
   const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(
     currentDate,
-    "week"
+    "week",
+    dynamicStartHour,
+    dynamicEndHour
   );
 
   return (
@@ -352,6 +447,7 @@ export function WeekView({
                     onClick={(e) => handleEventClick(positionedEvent.event, e)}
                     showTime
                     height={positionedEvent.height}
+                    mode={mode}
                   />
                 </div>
               </div>

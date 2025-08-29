@@ -6,11 +6,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   EventCalendar,
   mapEinsaetzeToCalendarEvents,
+  mapEinsatzToCalendarEvent,
 } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
 import { EinsatzCreateToCalendarEvent } from "./einsatz-service";
 import { EinsatzCreate } from "@/features/einsatz/types";
-import { getAllEinsaetzeForCalendar } from "@/features/einsatz/dal-einsatz";
+import {
+  getAllEinsaetzeForCalendar,
+  getEinsatzForCalendar,
+  updateEinsatzTime,
+} from "@/features/einsatz/dal-einsatz";
 import {
   createEinsatz,
   deleteEinsatzById,
@@ -75,15 +80,30 @@ export default function Component({
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (event: EinsatzCreate) => {
-      return updateEinsatz({ data: event });
+    mutationFn: async (event: EinsatzCreate | CalendarEvent) => {
+      // Check if is EinsatzCreate
+      if ("org_id" in event) {
+        return updateEinsatz({ data: event });
+      } else {
+        return updateEinsatzTime({
+          id: event.id,
+          start: event.start,
+          end: event.end,
+        });
+      }
     },
     onMutate: async (updatedEvent) => {
       await queryClient.cancelQueries({ queryKey });
 
       const previous =
         queryClient.getQueryData<CalendarEvent[]>(queryKey) || [];
-      const calendarEvent = await EinsatzCreateToCalendarEvent(updatedEvent);
+
+      let calendarEvent: CalendarEvent | null = null;
+      if ("org_id" in updatedEvent) {
+        calendarEvent = await EinsatzCreateToCalendarEvent(updatedEvent);
+      } else {
+        calendarEvent = updatedEvent;
+      }
 
       queryClient.setQueryData<CalendarEvent[]>(queryKey, (old = []) =>
         old.map((e) => (e.id === calendarEvent.id ? calendarEvent : e))
@@ -158,16 +178,65 @@ export default function Component({
     },
   });
 
+  // Delete Mutation with optimistic update
+  const deleteMultipleMutation = useMutation({
+    mutationFn: async ({ eventIds }: { eventIds: string[] }) => {
+      return deleteMultipleEinsaetze(eventIds);
+    },
+    onMutate: async ({ eventIds }) => {
+      await queryClient.cancelQueries({ queryKey });
+
+      const previous =
+        queryClient.getQueryData<CalendarEvent[]>(queryKey) || [];
+      const toDelete = previous.filter((e) => eventIds.includes(e.id));
+
+      queryClient.setQueryData<CalendarEvent[]>(queryKey, (old = []) =>
+        old.filter((e) => !eventIds.includes(e.id))
+      );
+
+      return { previous, toDelete };
+    },
+    onError: (error, _vars, ctx) => {
+      queryClient.setQueryData(queryKey, ctx?.previous);
+      toast.error("Fehler beim Löschen des Einsatzes: " + error);
+      console.error("Error deleting Einsatz:", error);
+    },
+    onSuccess: (_data, vars, ctx) => {
+      toast.success(vars.eventIds.length + " Einsätze wurden gelöscht.");
+    },
+    onSettled: (_data, _error, variables) => {
+      // Remove any cached detail for the deleted einsatz
+      if (variables?.eventIds) {
+        variables.eventIds.forEach((id) => {
+          queryClient.removeQueries({
+            queryKey: einsatzQueryKeys.detailedEinsatz(id),
+          });
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: einsatzQueryKeys.allEinsaetze(),
+      });
+    },
+  });
+
   const handleEventAdd = (event: EinsatzCreate) => {
     createMutation.mutate(event);
   };
 
-  const handleEventUpdate = (updatedEvent: EinsatzCreate) => {
+  const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
     updateMutation.mutate(updatedEvent);
+  };
+
+  const handleEventTimeUpdate = (event: CalendarEvent) => {
+    updateMutation.mutate(event);
   };
 
   const handleEventDelete = (eventId: string, eventTitle: string) => {
     deleteMutation.mutate({ eventId, eventTitle });
+  };
+
+  const handleMultiEventDelete = (eventIds: string[]) => {
+    deleteMultipleMutation.mutate({ eventIds });
   };
 
   return (
@@ -175,8 +244,13 @@ export default function Component({
       events={events}
       onEventAdd={handleEventAdd}
       onEventUpdate={handleEventUpdate}
+      onEventTimeUpdate={handleEventTimeUpdate}
       onEventDelete={handleEventDelete}
+      onMultiEventDelete={handleMultiEventDelete}
       mode={mode}
     />
   );
+}
+function deleteMultipleEinsaetze(eventIds: string[]): any {
+  throw new Error("Function not implemented.");
 }
