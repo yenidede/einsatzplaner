@@ -1,12 +1,19 @@
 "use client";
 
-import React, { useMemo, useCallback, useState } from "react";
+import React, { useState } from "react";
+import Image from "next/image";
 
 import { DataTable } from "@/components/data-table/components/data-table";
 import { DataTableAdvancedToolbar } from "@/components/data-table/components/data-table-advanced-toolbar";
-import { DataTableFilterList } from "@/components/data-table/components/data-table-filter-list";
 import { DataTableSortList } from "@/components/data-table/components/data-table-sort-list";
 import { useDataTable } from "@/components/data-table/hooks/use-data-table";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 import { getEinsaetzeForTableView } from "@/features/einsatz/dal-einsatz";
@@ -33,6 +40,9 @@ import {
   byOperatorUseMetaField,
 } from "../data-table/lib/filter-fns";
 import { formatDate } from "../data-table/lib/format";
+import { Button } from "../ui/button";
+import { MoreHorizontal } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -49,40 +59,41 @@ export function ListView({
 }: ListViewProps) {
   const [pageCount, setPageCount] = useState(0);
 
+  const { data: userSession } = useSession();
+  const userOrgIds = userSession?.user?.orgIds || [
+    userSession?.user.orgId || "",
+  ];
+
+  const { data, isLoading } = useQuery<ETV[]>({
+    queryKey: [...einsatzQueryKeys.einsaetzeTableView(userOrgIds)],
+    queryFn: () => getEinsaetzeForTableView(userOrgIds),
+    placeholderData: (previousData) => previousData ?? [],
+  });
+
   const { data: statusData, isLoading: isStatusLoading } = useQuery({
     queryKey: statusQueryKeys.statuses(),
     queryFn: GetStatuses,
   });
 
-  const currentOrgs = ["0c39989e-07bc-4074-92bc-aa274e5f22d0"];
+  const { data: organizationsData, isLoading: isOrganizationsLoading } =
+    useQuery({
+      queryKey: organizationQueryKeys.organizations(userOrgIds),
+      queryFn: () => getOrganizationsByIds(userOrgIds),
+    });
 
   const { data: templatesData, isLoading: areTemplatesLoading } = useQuery({
-    queryKey: templatesQueryKeys.templates(currentOrgs),
-    queryFn: () => getAllTemplatesByOrgIds(currentOrgs),
+    queryKey: templatesQueryKeys.templates(userOrgIds),
+    queryFn: () => getAllTemplatesByOrgIds(userOrgIds),
   });
 
   const { data: usersData, isLoading: isUsersLoading } = useQuery({
-    queryKey: usersQueryKeys.users(currentOrgs),
-    queryFn: () => getAllUsersWithRolesByOrgIds(currentOrgs),
+    queryKey: usersQueryKeys.users(userOrgIds),
+    queryFn: () => getAllUsersWithRolesByOrgIds(userOrgIds),
   });
-
-  const { data: organizationsData, isLoading: isOrganizationsLoading } =
-    useQuery({
-      queryKey: organizationQueryKeys.organizations(currentOrgs),
-      queryFn: () => getOrganizationsByIds(currentOrgs),
-    });
 
   const { data: categoriesData, isLoading: isCategoriesLoading } = useQuery({
-    queryKey: ["categories", currentOrgs],
-    queryFn: () => getCategoriesByOrgIds(currentOrgs),
-  });
-
-  // Data fetching with pagination, sorting, and filtering
-  const { data, isLoading } = useQuery<ETV[]>({
-    queryKey: [...einsatzQueryKeys.einsaetzeTableView(currentOrgs)],
-    queryFn: () => getEinsaetzeForTableView(currentOrgs[0]),
-    placeholderData: (previousData) => previousData ?? [],
-    notifyOnChangeProps: "all",
+    queryKey: ["categories", userOrgIds],
+    queryFn: () => getCategoriesByOrgIds(userOrgIds),
   });
 
   // Ensure data is defined before accessing its elements
@@ -211,6 +222,88 @@ export function ListView({
           },
         }
       ),
+      columnHelper.accessor(
+        (row) =>
+          `${row.einsatz_categories
+            .map((cat) => cat.abbreviation)
+            .join(", ")}`.trim(),
+        {
+          id: "categories",
+          header: "Kategorien",
+          cell: (props) => props.getValue(),
+          enableColumnFilter: false,
+          filterFn: byOperatorUseMetaField,
+          meta: {
+            label: "Kategorien",
+            variant: "multiSelect",
+            filterField: "einsatz_categories.id",
+            options:
+              categoriesData
+                ?.map((cat) => ({
+                  label: `${cat.value} (${cat.abbreviation})`,
+                  value: cat.id,
+                }))
+                // sort by display name
+                .sort((a, b) => a.label.localeCompare(b.label)) ?? [],
+          },
+        }
+      ),
+      columnHelper.accessor((row) => `${row.einsatz_helper.length}`, {
+        id: "helper_count",
+        header: "Anzahl Helfer",
+        cell: (props) => props.getValue(),
+        enableColumnFilter: true,
+        filterFn: byOperator,
+        meta: {
+          label: "Anzahl Helfer",
+          variant: "range",
+        },
+      }),
+      columnHelper.accessor((row) => `${row.einsatz_template?.name}`.trim(), {
+        id: "template",
+        header: "Vorlage",
+        cell: (props) => props.getValue(),
+        enableColumnFilter: true,
+        filterFn: byOperatorUseMetaField,
+        meta: {
+          label: "Vorlage",
+          variant: "multiSelect",
+          filterField: "einsatz_template.id",
+          options:
+            templatesData
+              ?.filter((t) => t.name)
+              .map((template) => ({
+                label: template.name?.trim() ?? "-",
+                value: template.id,
+              }))
+              // sort by display name
+              .sort((a, b) => a.label.localeCompare(b.label)) ?? [],
+        },
+      }),
+      columnHelper.display({
+        id: "actions",
+        cell: function Cell() {
+          return (
+            <div className="bg-slate-50">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>Edit</DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive">
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        },
+        enableColumnFilter: false,
+      }),
     ],
     [columnHelper, statusData]
   );
@@ -220,7 +313,37 @@ export function ListView({
     columns: columns,
     rowCount: data?.length ?? 0,
     pageCount,
+    initialState: {
+      sorting: [
+        {
+          id: "start",
+          desc: false,
+        },
+      ],
+      columnPinning: {
+        left: ["select", "title"],
+        right: ["actions"],
+      },
+    },
   });
+
+  if (!isSomeQueryLoading && (data?.length ?? 0) === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+        <Image
+          src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/undraw_instant-analysis_vm8x%201.svg"
+          alt=""
+          width={245}
+          height={210}
+          unoptimized
+        />
+        <div className="font-semibold">Keine Datensätze gefunden.</div>
+        <Button size="lg" variant="link">
+          + Neu anlegen.
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <DataTable table={table} isLoading={isSomeQueryLoading}>
