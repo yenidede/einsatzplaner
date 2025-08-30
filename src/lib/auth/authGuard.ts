@@ -6,9 +6,10 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   // Passe an eure Rollennamen an
-  Organisationsverwaltung: ["read:einsaetze", "create:einsaetze", "update:einsaetze", "delete:einsaetze", "manage:org"],
-  Einsatzverwaltung: ["read:einsaetze", "create:einsaetze", "update:einsaetze"],
-  Helfer: ["read:einsaetze", "join:einsaetze", "leave:einsaetze"],
+  SuperAdmin: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org"],
+  Organisationsverwaltung: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org"],
+  Einsatzverwaltung: ["read:einsaetze","create:einsaetze","update:einsaetze"],
+  Helfer: ["read:einsaetze","join:einsaetze","leave:einsaetze"],
 };
 
 // Auth Guard für Server Components
