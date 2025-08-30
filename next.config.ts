@@ -16,7 +16,10 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  serverExternalPackages: ['mongodb']
+  serverExternalPackages: ['mongodb'],
+  images: {
+    domains: ['fgxvzejucaxteqvnhojt.supabase.co'],
+  },
 };
 
 export default nextConfig;

@@ -106,7 +106,7 @@ export async function getEinsatzForCalendar(id: string) {
   return getEinsatzForCalendarFromDb(id);
 }
 
-export async function getEinsaetzeForTableView(active_org_id: string): Promise<ETV[]> {
+export async function getEinsaetzeForTableView(active_org_ids: string[]): Promise<ETV[]> {
   const { session, userIds } = await requireAuth();
 
   if (!hasPermission(session, 'read:einsaetze')) {
@@ -114,7 +114,7 @@ export async function getEinsaetzeForTableView(active_org_id: string): Promise<E
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  const filterOrgIds = active_org_id ? [active_org_id] : userOrgIds;
+  const filterOrgIds = active_org_ids ? active_org_ids : userOrgIds;
 
   const einsaetzeFromDb = await prisma.einsatz.findMany({
     where: {
