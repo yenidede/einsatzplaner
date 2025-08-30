@@ -319,7 +319,7 @@ export function ListView({
         enableColumnFilter: false,
       }),
     ],
-    [columnHelper, statusData]
+    [columnHelper, statusData, categoriesData, templatesData, usersData, onEventEdit, onEventDelete]
   );
 
   const { table } = useDataTable({
