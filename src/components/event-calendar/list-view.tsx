@@ -286,7 +286,7 @@ export function ListView({
         id: "actions",
         cell: function Cell(props) {
           return (
-            <div className="bg-slate-50">
+            <div className="bg-background">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
