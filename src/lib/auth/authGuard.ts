@@ -126,9 +126,6 @@ export function hasPermission(sessionOrRoleOrRoles: any, permission: string): bo
   // akzeptiert: session, role string, roles string[]
   let roles: string[] = [];
 
-  console.log(sessionOrRoleOrRoles, permission);
-
-
   if (!sessionOrRoleOrRoles) return false;
 
   // session übergeben?
