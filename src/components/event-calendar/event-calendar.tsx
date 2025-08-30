@@ -46,10 +46,7 @@ import {
   ListView,
 } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
-import {
-  einsatz as Einsatz,
-  organization as Organization,
-} from "@/generated/prisma";
+import { organization as Organization } from "@/generated/prisma";
 import { EinsatzCreate } from "@/features/einsatz/types";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
@@ -457,6 +454,7 @@ export function EventCalendar({
           {view === "list" && (
             <ListView
               onEventEdit={handleEventSelect}
+              onEventCreate={handleEventCreate}
               onEventDelete={handleEventDelete}
               onMultiEventDelete={handleMultiEventDelete}
               mode={mode}
