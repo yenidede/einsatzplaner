@@ -46,6 +46,7 @@ import { useSession } from "next-auth/react";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
+  onEventCreate: (startTime: Date) => void;
   onEventDelete: (eventId: string, title: string) => void;
   onMultiEventDelete: (eventIds: string[]) => void;
   mode: CalendarMode;
@@ -53,6 +54,7 @@ type ListViewProps = {
 
 export function ListView({
   onEventEdit,
+  onEventCreate,
   onEventDelete,
   onMultiEventDelete,
   mode,
@@ -282,7 +284,7 @@ export function ListView({
       }),
       columnHelper.display({
         id: "actions",
-        cell: function Cell() {
+        cell: function Cell(props) {
           return (
             <div className="bg-slate-50">
               <DropdownMenu>
@@ -293,8 +295,20 @@ export function ListView({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>Edit</DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive">
+                  <DropdownMenuItem
+                    onClick={() => onEventEdit(props.row.original.id)}
+                  >
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() =>
+                      onEventDelete(
+                        props.row.original.id,
+                        props.row.original.title
+                      )
+                    }
+                  >
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -338,7 +352,18 @@ export function ListView({
           unoptimized
         />
         <div className="font-semibold">Keine Datensätze gefunden.</div>
-        <Button size="lg" variant="link">
+        <Button
+          size="lg"
+          variant="link"
+          onClick={() => {
+            const now = new Date();
+            // round to 15 minutes
+            const roundedDate = new Date(
+              Math.ceil(now.getTime() / (15 * 60 * 1000)) * (15 * 60 * 1000)
+            );
+            onEventCreate(roundedDate);
+          }}
+        >
           + Neu anlegen.
         </Button>
       </div>
