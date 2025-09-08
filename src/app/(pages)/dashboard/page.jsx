@@ -80,15 +80,6 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        <Link 
-                            href="/einsaetze" 
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
-                            </svg>
-                            Einsätze verwalten
-                        </Link>
                         {/* Einladungs-Button nur für berechtigte Benutzer */}
                         {(session.user.role === 'Organisationsverwaltung' || session.user.role === 'Einsatzverwaltung') && (
                             <Link 
@@ -122,11 +113,6 @@ export default function DashboardPage() {
                             </svg>
                             Abmelden
                         </button>
-                    </div>
-                    <div className="flex space-x-4 mt-4">
-                        <Link href="/einsatztemplates">
-                            <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Zu den Einsatztemplates</button>
-                        </Link>
                     </div>
                 </div>
             </div>

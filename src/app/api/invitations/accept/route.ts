@@ -1,91 +1,98 @@
-import { NextResponse } from "next/server";
-import { InvitationServiceFactory } from "@/features/invitations/services/InvitationService";
-import { UserRepository, USERS_COLLECTION } from "@/lib/mongo/models/User";
-import clientPromise from "@/lib/mongo/client";
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import prisma from "@/lib/prisma";
+import { z } from "zod";
 
-export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-        
-        const client = await clientPromise;
-        if (!client) {
-            return NextResponse.json({ error: "Datenbankverbindung fehlgeschlagen" }, { status: 500 });
-        }
+const acceptSchema = z.object({
+  token: z.string()
+});
 
-        const db = client.db();
-        const userRepository = new UserRepository(db);
-
-        // Invitation Service verwenden
-        const invitationService = await InvitationServiceFactory.createDefault();
-        const { user, invitation } = await invitationService.acceptInvitation(body);
-
-        return NextResponse.json({
-            success: true,
-            message: "Einladung erfolgreich angenommen",
-            user: {
-                id: user._id.toString(),
-                email: user.email,
-                firstname: user.firstname,
-                lastname: user.lastname,
-                role: user.role,
-                organizationName: user.organizationName
-            }
-        });
-
-    } catch (error) {
-        console.error("Error accepting invitation:", error);
-        return NextResponse.json({ 
-            error: error instanceof Error ? error.message : "Fehler beim Annehmen der Einladung" 
-        }, { status: 500 });
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
     }
-}
 
-export async function GET(req: Request) {
-    try {
-        const url = new URL(req.url);
-        const token = url.searchParams.get('token');
-        
-        if (!token) {
-            return NextResponse.json({ error: "Token fehlt" }, { status: 400 });
-        }
+    const body = await request.json();
+    const { token } = acceptSchema.parse(body);
 
-        const client = await clientPromise;
-        if (!client) {
-            return NextResponse.json({ error: "Datenbankverbindung fehlgeschlagen" }, { status: 500 });
-        }
+    // Einladung finden und validieren
+    const invitation = await prisma.invitation.findFirst({
+      where: {
+        token: token,
+        email: session.user.email,
+        accepted: false,
+        expires_at: { gt: new Date() }
+      },
+      include: {
+        organization: true,
+        role: true
+      }
+    });
 
-        const db = client.db();
-        const userRepository = new UserRepository(db);
-
-        // Invitation Service verwenden
-        const invitationService = await InvitationServiceFactory.createDefault();
-        const invitation = await invitationService.getInvitationByToken(token);
-
-        if (!invitation) {
-            return NextResponse.json({ error: "Einladung nicht gefunden oder abgelaufen" }, { status: 404 });
-        }
-
-        // Einladender Benutzer laden für Namen
-        const inviter = await userRepository.findById(invitation.invitedBy);
-        
-        return NextResponse.json({
-            success: true,
-            invitation: {
-                email: invitation.email,
-                firstname: invitation.firstname,
-                lastname: invitation.lastname,
-                role: invitation.role,
-                organizationName: invitation.organizationName,
-                inviterName: inviter ? `${inviter.firstname} ${inviter.lastname}` : 'Unbekannt',
-                message: invitation.message,
-                expiresAt: invitation.expiresAt
-            }
-        });
-
-    } catch (error) {
-        console.error("Error getting invitation:", error);
-        return NextResponse.json({ 
-            error: error instanceof Error ? error.message : "Fehler beim Laden der Einladung" 
-        }, { status: 500 });
+    if (!invitation) {
+      return NextResponse.json({ 
+        error: "Einladung nicht gefunden oder bereits akzeptiert" 
+      }, { status: 404 });
     }
+
+    // User finden
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "Benutzer nicht gefunden" }, { status: 404 });
+    }
+
+    // Prüfen ob User bereits in Organisation
+    const existingRole = await prisma.user_organization_role.findFirst({
+      where: {
+        user_id: user.id,
+        org_id: invitation.org_id
+      }
+    });
+
+    if (existingRole) {
+      return NextResponse.json({ 
+        error: "Sie sind bereits Mitglied dieser Organisation" 
+      }, { status: 400 });
+    }
+
+    // Transaction für Einladungsannahme
+    await prisma.$transaction(async (tx) => {
+      // User zur Organisation hinzufügen
+      await tx.user_organization_role.create({
+        data: {
+          user_id: user.id,
+          org_id: invitation.org_id,
+          role_id: invitation.role_id
+        }
+      });
+
+      // Einladung als akzeptiert markieren
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: { accepted: true }
+      });
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Einladung erfolgreich angenommen",
+      organization: {
+        id: invitation.organization.id,
+        name: invitation.organization.name
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error accepting invitation:", error);
+    return NextResponse.json({ 
+      error: "Fehler beim Akzeptieren der Einladung" 
+    }, { status: 500 });
+  }
 }

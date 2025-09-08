@@ -1,165 +1,195 @@
 'use client';
 
 import { useState } from 'react';
-import { useInvitation } from '../hooks/useInvitation';
-import { FormField, Alert, Button, FormSection } from '@/components/SimpleFormComponents';
-import type { InviteUserData } from '@/features/invitations/types/invitation';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Mail, Send, X, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface InviteUserFormProps {
-    organizationName: string;
+  organizationId: string;
+  onClose: () => void;
+  isOpen: boolean;
 }
 
-export default function InviteUserForm({ organizationName }: InviteUserFormProps) {
-    const { loading, error, success, sendInvitation, clearMessages } = useInvitation();
+export function InviteUserForm({ organizationId, onClose, isOpen }: InviteUserFormProps) {
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const queryClient = useQueryClient();
+
+  const inviteMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const response = await fetch('/api/invitations/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, organizationId })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Fehler beim Senden der Einladung');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setSuccessMessage(`Einladung erfolgreich an ${email} gesendet!`);
+      setEmail('');
+      setErrorMessage('');
+      queryClient.invalidateQueries({ queryKey: ['invitations', organizationId] });
+      
+      // Auto-close nach 3 Sekunden
+      setTimeout(() => {
+        onClose();
+        setSuccessMessage('');
+      }, 3000);
+    },
+    onError: (error: Error) => {
+      setErrorMessage(error.message);
+      setSuccessMessage('');
+    }
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    const [formData, setFormData] = useState<InviteUserData>({
-        email: '',
-        firstname: '',
-        lastname: '',
-        role: 'Helfer',
-        message: '',
-        organizationName: organizationName
-    });
+    if (!email.trim()) {
+      setErrorMessage('Bitte geben Sie eine E-Mail-Adresse ein');
+      return;
+    }
 
-    const updateField = (field: keyof InviteUserData, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        clearMessages();
-    };
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setErrorMessage('Bitte geben Sie eine gültige E-Mail-Adresse ein');
+      return;
+    }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        try {
-            await sendInvitation(formData);
-            
-            // Form nur bei erfolgreichem Versand zurücksetzen
-            setFormData({
-                email: '',
-                firstname: '',
-                lastname: '',
-                role: 'Helfer',
-                message: '',
-                organizationName: organizationName
-            });
+    setIsSubmitting(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
-            console.log('Invitation sent successfully');
-        } catch (err) {
-            // Fehler wird bereits vom Hook behandelt und im error state gesetzt
-            // Form wird NICHT zurückgesetzt, damit Benutzer die Daten korrigieren kann
-            console.error('Failed to send invitation:', err);
-        }
-    };
+    try {
+      await inviteMutation.mutateAsync(email);
+    } catch (error) {
+      // Error is handled in onError
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-    const handleReset = () => {
-        setFormData({
-            email: '',
-            firstname: '',
-            lastname: '',
-            role: 'Helfer',
-            message: '',
-            organizationName: organizationName
-        });
-        clearMessages();
-    };
+  if (!isOpen) return null;
 
-    return (
-        <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
-            <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Helfer einladen</h2>
-                <p className="mt-1 text-sm text-gray-600">
-                    Laden Sie neue Helfer zu Ihrer Organisation &ldquo;{organizationName}&rdquo; ein
-                </p>
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center z-50"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <Mail className="w-5 h-5 text-blue-600" />
             </div>
-            
-            {error && (
-                <Alert type="error" message={error} onClose={clearMessages} />
-            )}
-            
-            {success && (
-                <Alert type="success" message={success} onClose={clearMessages} />
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <FormSection title="Persönliche Informationen">
-                    <FormField
-                        label="E-Mail-Adresse"
-                        type="email"
-                        value={formData.email}
-                        onChange={(value) => updateField('email', value)}
-                        required
-                        placeholder="helfer@example.com"
-                    />
-
-                    <FormField
-                        label="Vorname"
-                        type="text"
-                        value={formData.firstname}
-                        onChange={(value) => updateField('firstname', value)}
-                        required
-                        placeholder="Max"
-                    />
-
-                    <FormField
-                        label="Nachname"
-                        type="text"
-                        value={formData.lastname}
-                        onChange={(value) => updateField('lastname', value)}
-                        required
-                        placeholder="Mustermann"
-                    />
-
-                    <div className="mb-4">
-                        <label htmlFor="role-select" className="block text-sm font-medium text-gray-700 mb-2">
-                            Rolle <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            id="role-select"
-                            value={formData.role}
-                            onChange={(e) => updateField('role', e.target.value)}
-                            required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                            <option value="Helfer">Helfer</option>
-                            <option value="Einsatzverwaltung">Einsatzverwaltung</option>
-                            <option value="Organisationsverwaltung">Organisationsverwaltung</option>
-                        </select>
-                    </div>
-                </FormSection>
-
-                <FormSection title="Einladungsnachricht (optional)">
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Persönliche Nachricht
-                        </label>
-                        <textarea
-                            value={formData.message}
-                            onChange={(e) => updateField('message', e.target.value)}
-                            rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Hallo! Wir laden Sie ein, unserem Team beizutreten..."
-                        />
-                    </div>
-                </FormSection>
-
-                <div className="flex justify-between pt-6">
-                    <button
-                        type="button"
-                        onClick={handleReset}
-                        disabled={loading}
-                        className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-                    >
-                        Zurücksetzen
-                    </button>
-                    
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                    >
-                        {loading ? 'Einladung wird versendet...' : 'Einladung versenden'}
-                    </button>
-                </div>
-            </form>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Benutzer einladen
+              </h2>
+              <p className="text-sm text-slate-600">
+                Neue Mitglieder zur Organisation hinzufügen
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-md transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
         </div>
-    );
+
+        {/* Content */}
+        <div className="p-6">
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <span className="text-green-800 text-sm">{successMessage}</span>
+            </div>
+          )}
+
+          {errorMessage && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <span className="text-red-800 text-sm">{errorMessage}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                E-Mail-Adresse
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="beispiel@email.de"
+                disabled={isSubmitting}
+                className="w-full px-3 py-2 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                autoComplete="email"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Die Person erhält eine E-Mail mit einem Einladungslink
+              </p>
+            </div>
+
+            <div className="bg-blue-50 p-3 rounded-md">
+              <h4 className="text-sm font-medium text-blue-900 mb-1">
+                Was passiert als nächstes?
+              </h4>
+              <ul className="text-xs text-blue-700 space-y-1">
+                <li>• Eine Einladungs-E-Mail wird versendet</li>
+                <li>• Der Link ist 7 Tage gültig</li>
+                <li>• Neue Benutzer erhalten die Rolle "Helfer"</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-md hover:bg-slate-50 transition-colors"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !email.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Sende...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Einladung senden
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { FormField, Alert, Button } from '@/components/SimpleFormComponents';
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function SignUpPage() {
     const [formData, setFormData] = useState({
@@ -16,6 +18,7 @@ export default function SignUpPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -23,25 +26,47 @@ export default function SignUpPage() {
         setError('');
         setSuccess('');
 
+        // Validation
         if (formData.password !== formData.confirmPassword) {
             setError('Passwörter stimmen nicht überein');
             setLoading(false);
             return;
         }
 
+        if (formData.password.length < 6) {
+            setError('Passwort muss mindestens 6 Zeichen lang sein');
+            setLoading(false);
+            return;
+        }
+
         try {
+            // Nur Backend-erwartete Felder senden
+            const signupData = {
+                email: formData.email.trim(),
+                firstname: formData.firstname.trim(),
+                lastname: formData.lastname.trim(),
+                password: formData.password,
+                phone: formData.phone.trim() || null,
+                organizationName: formData.organizationName.trim()
+            };
+
+            console.log('Sending signup data:', signupData);
+
             const response = await fetch('/api/auth/signup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(signupData),
             });
 
             const data = await response.json();
+            console.log('Signup response:', data);
 
             if (response.ok) {
-                setSuccess('Registrierung erfolgreich! Sie können sich jetzt anmelden.');
+                setSuccess('Registrierung erfolgreich! Sie werden angemeldet...');
+                
+                // Reset form
                 setFormData({
                     email: '',
                     password: '',
@@ -51,11 +76,42 @@ export default function SignUpPage() {
                     phone: '',
                     organizationName: ''
                 });
+
+                // Auto-login nach kurzer Verzögerung
+                setTimeout(async () => {
+                    try {
+                        const signInResult = await signIn('credentials', {
+                            email: signupData.email,
+                            password: signupData.password,
+                            redirect: false
+                        });
+
+                        if (signInResult?.ok && !signInResult.error) {
+                            router.push('/dashboard');
+                        } else {
+                            console.log('Auto-signin failed, redirecting to signin');
+                            router.push('/signin?message=Registrierung erfolgreich! Bitte melden Sie sich an.');
+                        }
+                    } catch (loginError) {
+                        console.error('Auto-login error:', loginError);
+                        router.push('/signin?message=Registrierung erfolgreich! Bitte melden Sie sich an.');
+                    }
+                }, 1500);
+                
             } else {
-                setError(data.error || 'Ein Fehler ist aufgetreten');
+                setError(data.error || data.details || 'Ein Fehler ist aufgetreten');
+                console.error('Signup failed:', data);
             }
         } catch (err) {
-            setError('Netzwerkfehler. Bitte versuchen Sie es später erneut.');
+            console.error('Network/Parse error:', err);
+            
+            if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+                setError('Verbindungsfehler. Prüfen Sie Ihre Internetverbindung.');
+            } else if (err instanceof SyntaxError) {
+                setError('Server-Antwort konnte nicht verarbeitet werden.');
+            } else {
+                setError('Netzwerkfehler. Bitte versuchen Sie es später erneut.');
+            }
         } finally {
             setLoading(false);
         }
@@ -121,12 +177,12 @@ export default function SignUpPage() {
                     />
 
                     <FormField
-                        label="Telefonnummer"
-                        type="text"
+                        label="Telefonnummer (optional)"
+                        type="tel"
                         value={formData.phone}
                         onChange={(value) => updateField('phone', value)}
-                        required
-                        placeholder="Ihre Telefonnummer"
+                        required={false}
+                        placeholder="+49 123 456789"
                     />
 
                     <FormField
@@ -135,7 +191,7 @@ export default function SignUpPage() {
                         value={formData.password}
                         onChange={(value) => updateField('password', value)}
                         required
-                        placeholder="Mindestens 8 Zeichen"
+                        placeholder="Mindestens 6 Zeichen"
                     />
 
                     <FormField
