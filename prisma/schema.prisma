@@ -197,8 +197,10 @@ model invitation {
   invited_by   String       @db.Uuid
   accepted     Boolean      @default(false)
   org_id       String       @db.Uuid
+  role_id      String       @db.Uuid
   user         user         @relation(fields: [invited_by], references: [id], onDelete: Cascade)
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  role         role         @relation(fields: [role_id], references: [id], onDelete: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -271,6 +273,7 @@ model role {
   id                     String                   @id(map: "roles_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
   abbreviation           String?
+  invitation             invitation[]
   user_organization_role user_organization_role[]
 }
 
