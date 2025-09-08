@@ -1,100 +1,98 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { createUserWithOrgAndRoles } from "@/DataAccessLayer/user";
 
-const acceptInvitationSchema = z.object({
-  token: z.string().min(1, "Token ist erforderlich"),
-  password: z.string().min(8, "Passwort muss mindestens 8 Zeichen lang sein"),
-  firstname: z.string().min(1, "Vorname ist erforderlich"),
-  lastname: z.string().min(1, "Nachname ist erforderlich"),
+const acceptSchema = z.object({
+  token: z.string()
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const validatedData = acceptInvitationSchema.parse(body);
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
+    }
 
-    // Einladung finden und prüfen
-    const invitation = await prisma.invitation.findUnique({
-      where: { token: validatedData.token },
+    const body = await request.json();
+    const { token } = acceptSchema.parse(body);
+
+    // Einladung finden und validieren
+    const invitation = await prisma.invitation.findFirst({
+      where: {
+        token: token,
+        email: session.user.email,
+        accepted: false,
+        expires_at: { gt: new Date() }
+      },
       include: {
         organization: true,
-        //role: true
+        role: true
       }
     });
 
     if (!invitation) {
-      return NextResponse.json({ error: "Einladung nicht gefunden" }, { status: 404 });
+      return NextResponse.json({ 
+        error: "Einladung nicht gefunden oder bereits akzeptiert" 
+      }, { status: 404 });
     }
 
-    if (invitation.expires_at < new Date()) {
-      return NextResponse.json({ error: "Einladung ist abgelaufen" }, { status: 400 });
-    }
-
-    if (invitation.accepted) {
-      return NextResponse.json({ error: "Einladung wurde bereits angenommen" }, { status: 400 });
-    }
-
-    // Prüfen ob User bereits existiert
-    const existingUser = await prisma.user.findUnique({
-      where: { email: invitation.email }
+    // User finden
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
     });
 
-    if (existingUser) {
-      return NextResponse.json({ error: "Benutzer mit dieser E-Mail existiert bereits" }, { status: 400 });
+    if (!user) {
+      return NextResponse.json({ error: "Benutzer nicht gefunden" }, { status: 404 });
     }
 
-    // Passwort hashen
-    const hashedPassword = await bcrypt.hash(validatedData.password, 12);
-
-    // User mit Organisation und Rolle erstellen (verwendet deine DAL-Funktion)
-    const newUser = await createUserWithOrgAndRoles({
-      email: invitation.email,
-      firstname: validatedData.firstname,
-      lastname: validatedData.lastname,
-      password: hashedPassword,
-      orgId: invitation.org_id,
-      roleNames: [invitation.role?.name || 'Helfer'],
+    // Prüfen ob User bereits in Organisation
+    const existingRole = await prisma.user_organization_role.findFirst({
+      where: {
+        user_id: user.id,
+        org_id: invitation.org_id
+      }
     });
 
-    // Einladung als angenommen markieren
-    await prisma.invitation.update({
-      where: { id: invitation.id },
-      data: { accepted: true }
-    });
+    if (existingRole) {
+      return NextResponse.json({ 
+        error: "Sie sind bereits Mitglied dieser Organisation" 
+      }, { status: 400 });
+    }
 
-    console.log('✅ Invitation accepted successfully:', {
-      userId: newUser.id,
-      email: newUser.email,
-      organization: invitation.organization?.name
+    // Transaction für Einladungsannahme
+    await prisma.$transaction(async (tx) => {
+      // User zur Organisation hinzufügen
+      await tx.user_organization_role.create({
+        data: {
+          user_id: user.id,
+          org_id: invitation.org_id,
+          role_id: invitation.role_id
+        }
+      });
+
+      // Einladung als akzeptiert markieren
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: { accepted: true }
+      });
     });
 
     return NextResponse.json({
       success: true,
       message: "Einladung erfolgreich angenommen",
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        firstname: newUser.firstname,
-        lastname: newUser.lastname
+      organization: {
+        id: invitation.organization.id,
+        name: invitation.organization.name
       }
     });
 
   } catch (error) {
     console.error("❌ Error accepting invitation:", error);
-    
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ 
-        error: "Validierungsfehler", 
-        details: error.errors 
-      }, { status: 400 });
-    }
-    
     return NextResponse.json({ 
-      error: "Fehler beim Annehmen der Einladung",
-      details: error instanceof Error ? error.message : "Unbekannter Fehler"
+      error: "Fehler beim Akzeptieren der Einladung" 
     }, { status: 500 });
   }
 }

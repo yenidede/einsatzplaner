@@ -80,8 +80,9 @@ export class EmailService {
         organizationName: string, 
         token: string
     ) {
-        const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}`;
-        
+        //const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}`;
+        const inviteUrl = `${process.env.NEXTAUTH_URL}/api/invitations/${token}/accept`;
+
         if (!this.transporter) {
             console.log('📧 E-Mail-Service deaktiviert. Einladungs-Details:');
             console.log(`   → An: ${email}`);

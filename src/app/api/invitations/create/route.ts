@@ -6,13 +6,11 @@ import { z } from "zod";
 import crypto from "crypto";
 import { emailService } from '@/lib/email/EmailService';
 
-// Validation Schema
+// Validation Schema - role_id wieder hinzufügen
 const createInvitationSchema = z.object({
   email: z.string().email("Ungültige E-Mail-Adresse"),
   organizationId: z.string().min(1, "Organisation ID ist erforderlich"),
-  roleId: z.string().optional(),
-  firstname: z.string().optional(),
-  lastname: z.string().optional(),
+  roleId: z.string().optional(), // <-- Wieder einkommentieren
 });
 
 export async function POST(request: NextRequest) {
@@ -117,7 +115,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Standard-Rolle finden (Helfer)
+    // Invitation Token generieren
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Standard-Rolle finden (Helfer) - DIESEN BLOCK WIEDER EINKOMMENTIEREN
     let roleId = validatedData.roleId;
     if (!roleId) {
       const defaultRole = await prisma.role.findFirst({
@@ -130,26 +131,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Standard-Rolle nicht gefunden" }, { status: 500 });
     }
 
-    // Invitation Token generieren
-    const token = crypto.randomBytes(32).toString('hex');
-    
-    // Einladung erstellen
+    // Einladung erstellen - nur die unterstützten Felder verwenden
     const invitation = await prisma.invitation.create({
       data: {
         email: validatedData.email,
-        firstname: validatedData.firstname,
-        lastname: validatedData.lastname,
         org_id: validatedData.organizationId,
-        /* role_id: roleId, */
+        role_id: roleId, // <-- Wieder einkommentieren
         invited_by: inviter.id,
         token: token,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         accepted: false,
-        //status: 'pending'
       },
       include: {
         organization: true,
-        //role: true 
+        role: true, // <-- Auch wieder einkommentieren
+        user: true // <-- User Relation einschließen (invited_by)
       }
     });
 
