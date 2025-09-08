@@ -6,6 +6,7 @@ import {
   getUserByEmail,
 } from "@/DataAccessLayer/user";
 import { CreateUserSchema } from "@/types/user";
+import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,9 +36,27 @@ export async function POST(req: NextRequest) {
       userData.organizationName
     );
 
-    // Rolle anhand des Namens suchen
-    const defaultRoleName = "Helfer"; // oder wie deine Standardrolle heißt
+    // Standard-Rolle für neue User finden oder erstellen
+    const defaultRoleName = "Helfer";
+    let roleRecord = await prisma.role.findFirst({
+      where: { name: defaultRoleName },
+    });
 
+    // Falls Rolle nicht existiert, erstelle sie
+    if (!roleRecord) {
+      roleRecord = await prisma.role.create({
+        data: {
+          name: defaultRoleName,
+        },
+      });
+    }
+
+    if (!roleRecord) {
+      return NextResponse.json(
+        { error: "Rolle konnte nicht erstellt oder gefunden werden" },
+        { status: 500 }
+      );
+    }
     // Passwort hashen
     const passwordHash = await hash(userData.password, 12);
 
@@ -52,22 +71,54 @@ export async function POST(req: NextRequest) {
       roleNames: [defaultRoleName],
     });
 
+    // Sichere User-Daten für Response (ohne Passwort)
+    const safeUserData = {
+      id: user.id,
+      email: user.email,
+      firstname: user.firstname,
+      lastname: user.lastname,
+    };
+
+    // Hole die tatsächlich erstellte user_organization_role Beziehung
+    const userOrgRole = await prisma.user_organization_role.findFirst({
+      where: {
+        user_id: user.id,
+        org_id: organization.id,
+      },
+      include: {
+        role: true,
+        organization: true,
+      },
+    });
+
     return NextResponse.json(
       {
         message: "Registrierung erfolgreich",
         user: {
-          id: user.id,
-          email: user.email,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          role: user.user_organization_role[0]?.role?.name,
-          orgId: user.user_organization_role[0]?.organization?.id,
+          //current
+          ...safeUserData,
+          role: userOrgRole?.role?.name || defaultRoleName,
+          roleId: userOrgRole?.role?.id,
+          organizationId: organization.id,
+          organizationName: organization.name,
         },
+        redirect: '/dashboard',
       },
       { status: 201 }
     );
   } catch (error) {
     console.error("Fehler bei der Registrierung:", error);
+
+    // Spezifische Fehlerbehandlung
+    if (error instanceof Error) {
+      if (error.message.includes("Unique constraint")) {
+        return NextResponse.json(
+          { error: "E-Mail bereits registriert" },
+          { status: 400 }
+        );
+      }
+    }
+
     return NextResponse.json(
       { error: "Registrierung fehlgeschlagen" },
       { status: 500 }

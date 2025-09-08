@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FormField, Alert, Button } from '@/components/SimpleFormComponents';
 
 export default function SignInPage() {
@@ -11,6 +11,9 @@ export default function SignInPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,7 +30,7 @@ export default function SignInPage() {
             if (result?.error) {
                 setError('Ungültige Anmeldedaten');
             } else {
-                router.push('/dashboard');
+                router.push(callbackUrl);
             }
         } catch (err) {
             setError('Ein Fehler ist aufgetreten');

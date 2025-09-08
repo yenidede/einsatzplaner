@@ -35,7 +35,7 @@ export default function SignupForm() {
       });
       
       if (res.ok) {
-        router.push('/signin?message=Registrierung erfolgreich');
+        router.push('/dashboard?message=Registrierung erfolgreich');
       } else {
         const body = await res.json();
         setError(body.error || 'Registrierung fehlgeschlagen');

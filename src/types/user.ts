@@ -1,3 +1,4 @@
+import { uz } from 'date-fns/locale';
 import { z } from 'zod';
 
 
@@ -23,7 +24,7 @@ export const CreateUserSchema = z.object({
   firstname: z.string().min(2, 'Vorname muss mindestens 2 Zeichen haben'),
   lastname: z.string().min(2, 'Nachname muss mindestens 2 Zeichen haben'),
   role: UserRoleSchema.optional(),
-  phone: z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number. Example: +1234567890").optional(),
+  phone: z.string().optional().nullable().or(z.literal('')),
   organizationName: z.string().min(2, 'Organisationsname muss mindestens 2 Zeichen haben'),
 
 });
