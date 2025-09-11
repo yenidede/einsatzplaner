@@ -24,6 +24,7 @@ import { UserProfileDialog } from '@/features/settings/components/UserProfileDia
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
 import { useInvitations } from '@/features/invitations/hooks/useInvitation';
 
+
 export default function OrganizationManagePage() {
     const params = useParams();
     const router = useRouter();
@@ -47,6 +48,7 @@ export default function OrganizationManagePage() {
 
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+    const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["userSettings", session?.user?.id],
@@ -630,7 +632,7 @@ export default function OrganizationManagePage() {
                                     </div>
                                     
                                     <button
-                                        onClick={() => handleUserProfileClick(groupedUser.user?.id)}
+                                        onClick={() => handleUserProfileClick(groupedUser.user?.id)} // Hier war das Problem!
                                         className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-md flex justify-center items-center gap-2.5 transition-colors"
                                     >
                                         <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Profil Verwalten</div>
@@ -698,6 +700,15 @@ export default function OrganizationManagePage() {
                     setIsInviteModalOpen(false);
                 }}
             />
+
+            {/* User Settings Modal - ENTFERNEN */}
+            {/* 
+<UserProfileDialog
+    isOpen={isUserSettingsOpen}
+    onClose={() => setIsUserSettingsOpen(false)}
+    userId={user.id}
+/>
+*/}
         </div>
     </div>
         </div>
