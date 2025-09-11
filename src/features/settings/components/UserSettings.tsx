@@ -17,13 +17,15 @@ interface UserSettingsProps {
     };
     userService?: UserService;
     validator?: UserFormValidator;
+    isModal?: boolean; // Neue Prop hinzufügen
 }
 
 export default function UserSettings({
     userId,
     initialData,
     userService,
-    validator
+    validator,
+    isModal = false // Neue Prop hinzufügen
 }: UserSettingsProps) {
     console.log('UserSettings received userId:', userId);
     console.log('UserSettings received initialData:', initialData);
@@ -58,7 +60,7 @@ export default function UserSettings({
     };
 
     return (
-        <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
+        <div className={`${isModal ? 'p-6' : 'max-w-2xl mx-auto p-6'} bg-white ${isModal ? '' : 'rounded-lg shadow-md'}`}>
             <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Persönliche Accountverwaltung</h2>
                 <p className="mt-1 text-sm text-gray-600">
