@@ -17,7 +17,7 @@ import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadPr
 import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
 import OrganizationCard from "@/features/settings/components/OrganizationCard";
 import { hasPermission } from "@/lib/auth/authGuard";
-
+import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
 
 
 export default function SettingsPage() {
@@ -276,10 +276,6 @@ const handleProfilePictureUpload = (file: File) => {
                                 
                             </div>
                             <div className="inline-flex justify-start items-start gap-2">
-{/*                                 <ProfilePictureUpload
-                                    onUpload={handleProfilePictureUpload}
-                                />
-                            <UploadProfilePictureIcon />{/* */}
                                 <button
                                     type="button"
                                     className="px-4 py-2 bg-slate-900 text-white rounded-md inline-flex justify-center items-center gap-2"
@@ -441,19 +437,28 @@ const handleProfilePictureUpload = (file: File) => {
   user.organizations.map((org: any) => {
     //console.log('Organisation:', org.name, 'Rollen:', org.roles);
     return (
+      <>      
       <div key={org.id}>
         <OrganizationCard
           name={org.name}
           roles={org.roles}
           onLeave={() => {handleOrganizationLeave(org.id)}}
         />
+        <CalendarSubscription orgId={org.id} orgName={org.name} variant="card"></CalendarSubscription>
       </div>
+      </>
+
     );
   })
 ) : (
   <div className="text-slate-500">Du bist in keiner Organisation.</div>
+
+
+
 )}
+
             </div>
+            
         </div>
     </div>
 </div>
