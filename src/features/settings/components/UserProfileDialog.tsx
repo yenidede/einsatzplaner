@@ -1,10 +1,11 @@
 'use client';
-
+ 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import SwitchIcon from '@/components/icon/SwitchIcon';
 
+//#region TypeScript Interfaces
 interface UserProfileDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -12,6 +13,30 @@ interface UserProfileDialogProps {
   organizationId: string;
 }
 
+interface Role {
+  id: string;
+  name: string;
+  abbreviation: string;
+  color?: string;
+  description?: string;
+}
+
+interface UserRole {
+  user: {
+    id: string;
+    email: string;
+    firstname: string;
+    lastname: string;
+    phone: string | null;
+    picture_url: string | null;
+  };
+  role: {
+    id: string;
+    name: string;
+    abbreviation: string;
+  };
+}
+ 
 interface UserProfile {
   id: string;
   email: string;
@@ -34,33 +59,39 @@ interface UserProfile {
     helper_name_plural: string;
   };
 }
+//#endregion
 
-export function UserProfileDialog({ 
-  isOpen, 
-  onClose, 
-  userId, 
-  organizationId 
+export function UserProfileDialog({
+  isOpen,
+  onClose,
+  userId,
+  organizationId
 }: UserProfileDialogProps) {
+  //#region State Management
   const queryClient = useQueryClient();
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [originalRoles, setOriginalRoles] = useState<string[]>([]);
   const [hasKey, setHasKey] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  //#endregion
 
+  //#region Effects
   // Disable background scroll + ESC key handler
   useEffect(() => {
     if (!isOpen) return;
-    
+   
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const preventTouch = (e: Event) => e.preventDefault();
     document.addEventListener('touchmove', preventTouch, { passive: false });
-
+ 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) onClose();
     };
     document.addEventListener('keydown', onKey);
-
+ 
     return () => {
       document.body.style.overflow = prevOverflow || '';
       document.removeEventListener('touchmove', preventTouch);
@@ -68,60 +99,174 @@ export function UserProfileDialog({
     };
   }, [isOpen, onClose]);
 
+  // Check for changes
+  useEffect(() => {
+    const rolesChanged = JSON.stringify(userRoles.sort()) !== JSON.stringify(originalRoles.sort());
+    setHasChanges(rolesChanged);
+  }, [userRoles, originalRoles]);
+  //#endregion
+ 
+  //#region API Queries
   // Fetch user profile
-  const { data: userProfile, isLoading, error } = useQuery({
+  const { data: userProfile, isLoading: profileLoading, error } = useQuery({
     queryKey: ['userProfile', userId, organizationId],
     queryFn: async () => {
       const res = await fetch(`/api/users/${userId}/profile?orgId=${organizationId}`);
       if (!res.ok) throw new Error('Failed to fetch user profile');
       return res.json() as UserProfile;
     },
-    enabled: isOpen && !!userId && !!organizationId
+    enabled: isOpen && !!userId && !!organizationId,
+    staleTime: 30000,
+    gcTime: 5 * 60 * 1000
   });
 
-  // Initialize form data when user profile loads
-  useEffect(() => {
-    if (userProfile) {
-      // Parse user roles based on role name/abbreviation
-      const roles: string[] = [];
-      const roleName = userProfile.role?.name || userProfile.role?.abbreviation || '';
-      
-      if (roleName === 'Superadmin' || roleName === 'SuperAdmin') {
-        roles.push('OV', 'EV', 'Helfer');
-      } else if (roleName === 'Organisationsverwaltung' || roleName === 'OV') {
-        roles.push('OV');
-      } else if (roleName === 'Einsatzverwaltung' || roleName === 'EV') {
-        roles.push('EV');
-      } else if (roleName === 'Helfer:in' || roleName === 'Helfer') {
-        roles.push('Helfer');
-      }
-      
-      setUserRoles(roles);
-      setHasKey(false); // TODO: Load from user data when available
-    }
-  }, [userProfile]);
+  // Fetch all user roles for this user in this organization
+  const { data: userOrgRoles = [], isLoading: userRolesLoading } = useQuery({
+    queryKey: ['userOrgRoles', userId, organizationId],
+    queryFn: async () => {
+      const res = await fetch(`/api/auth/organization/${organizationId}/users`);
+      if (!res.ok) throw new Error('Failed to fetch user roles');
+      const allUsers = await res.json() as UserRole[];
+      // Filter for current user only
+      return allUsers.filter(userRole => userRole.user.id === userId);
+    },
+    enabled: isOpen && !!userId && !!organizationId,
+    staleTime: 30000,
+    gcTime: 5 * 60 * 1000
+  });
+  //#endregion
 
-  // Toggle role mutation
-  const toggleRoleMutation = useMutation({
-    mutationFn: async ({ role, isActive }: { role: string; isActive: boolean }) => {
-      const res = await fetch(`/api/users/${userId}/roles`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          organizationId, 
-          role, 
-          action: isActive ? 'add' : 'remove' 
-        })
+  //#region Initialize form data when user profile loads
+  useEffect(() => {
+    if (userOrgRoles && userOrgRoles.length > 0) {
+      // Extract role abbreviations from all user roles
+      const roles: string[] = [];
+      
+      userOrgRoles.forEach(userRole => {
+        const roleAbbr = userRole.role?.abbreviation || userRole.role?.name || '';
+        
+        // Map role names to abbreviations for the switches
+        if (roleAbbr === 'OV' || userRole.role?.name === 'Organisationsverwaltung') {
+          if (!roles.includes('OV')) roles.push('OV');
+        } else if (roleAbbr === 'EV' || userRole.role?.name === 'Einsatzverwaltung') {
+          if (!roles.includes('EV')) roles.push('EV');
+        } else if (roleAbbr === 'Helfer' || userRole.role?.name === 'Helfer:in' || userRole.role?.name === 'Helfer') {
+          if (!roles.includes('Helfer')) roles.push('Helfer');
+        }
+        
+        // Check for Superadmin - has all roles
+        if (userRole.role?.name === 'Superadmin' || userRole.role?.abbreviation === 'SA') {
+          if (!roles.includes('OV')) roles.push('OV');
+          if (!roles.includes('EV')) roles.push('EV');
+          if (!roles.includes('Helfer')) roles.push('Helfer');
+        }
       });
-      if (!res.ok) throw new Error('Failed to update role');
-      return res.json();
+     
+      setUserRoles(roles);
+      setOriginalRoles([...roles]);
+      setHasKey(false);
+      setHasChanges(false);
+    }
+  }, [userOrgRoles]);
+  //#endregion
+
+  //#region Helper Functions
+  const getRoleColor = (role: any) => {
+    const roleName = role.name || '';
+    const roleAbbr = role.abbreviation || '';
+    
+    if (roleName === 'Superadmin' || roleAbbr === 'SA') return 'bg-purple-300';
+    if (roleName === 'Organisationsverwaltung' || roleAbbr === 'OV') return 'bg-red-300';
+    if (roleName === 'Einsatzverwaltung' || roleAbbr === 'EV') return 'bg-orange-300';
+    if (roleName === 'Helfer:in' || roleName === 'Helfer' || roleAbbr === 'Helfer') return 'bg-blue-300';
+    
+    return 'bg-gray-300';
+  };
+
+  const getRoleDisplayName = (role: any) => {
+    return role.name || role.abbreviation || 'Unbekannt';
+  };
+  //#endregion
+
+  //#region Mutations
+  // Batch save mutation
+  const saveChangesMutation = useMutation({
+    mutationFn: async () => {
+      const rolesToAdd: string[] = [];
+      const rolesToRemove: string[] = [];
+ 
+      // Determine what changed
+      userRoles.forEach(role => {
+        if (!originalRoles.includes(role)) {
+          rolesToAdd.push(role);
+        }
+      });
+ 
+      originalRoles.forEach(role => {
+        if (!userRoles.includes(role)) {
+          rolesToRemove.push(role);
+        }
+      });
+ 
+      // Execute all role changes in parallel
+      const promises = [];
+ 
+      rolesToAdd.forEach(role => {
+        promises.push(
+          fetch(`/api/users/${userId}/role`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              organizationId,
+              role,
+              action: 'add'
+            })
+          })
+        );
+      });
+ 
+      rolesToRemove.forEach(role => {
+        promises.push(
+          fetch(`/api/users/${userId}/role`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              organizationId,
+              role,
+              action: 'remove'
+            })
+          })
+        );
+      });
+ 
+      const results = await Promise.all(promises);
+      const failedRequests = results.filter(res => !res.ok);
+      
+      if (failedRequests.length > 0) {
+        throw new Error(`${failedRequests.length} Rollenänderungen fehlgeschlagen`);
+      }
+ 
+      return { rolesToAdd, rolesToRemove };
     },
     onSuccess: () => {
+      // Update original state to current state
+      setOriginalRoles([...userRoles]);
+      setHasChanges(false);
+      
+      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['userProfile', userId] });
+      queryClient.invalidateQueries({ queryKey: ['userOrgRoles', userId, organizationId] });
       queryClient.invalidateQueries({ queryKey: ['organizationUsers'] });
+    },
+    onError: (error) => {
+      console.error('Error saving role changes:', error);
+      // Revert to original state on error
+      setUserRoles([...originalRoles]);
+      setHasChanges(false);
+      alert('Fehler beim Speichern der Rollenänderungen');
     }
   });
-
+ 
   // Remove user mutation
   const removeUserMutation = useMutation({
     mutationFn: async () => {
@@ -138,45 +283,49 @@ export function UserProfileDialog({
       onClose();
     }
   });
+  //#endregion
 
-  const toggleRole = async (roleAbbreviation: string) => {
+  //#region Event Handlers
+  // Toggle role locally (no API call)
+  const toggleRole = (roleAbbreviation: string) => {
+    const isCurrentlyActive = userRoles.includes(roleAbbreviation);
+     
+    if (isCurrentlyActive) {
+      setUserRoles(prev => prev.filter(role => role !== roleAbbreviation));
+    } else {
+      setUserRoles(prev => [...prev, roleAbbreviation]);
+    }
+  };
+
+  // Handle save and close
+  const handleSaveAndClose = async () => {
+    if (!hasChanges) {
+      onClose();
+      return;
+    }
+ 
     setSaving(true);
     try {
-      const isCurrentlyActive = userRoles.includes(roleAbbreviation);
-      
-      // Optimistic update
-      if (isCurrentlyActive) {
-        setUserRoles(prev => prev.filter(role => role !== roleAbbreviation));
-      } else {
-        setUserRoles(prev => [...prev, roleAbbreviation]);
-      }
-
-      await toggleRoleMutation.mutateAsync({
-        role: roleAbbreviation,
-        isActive: !isCurrentlyActive
-      });
-
+      await saveChangesMutation.mutateAsync();
+      onClose();
     } catch (error) {
-      console.error('Error toggling role:', error);
-      // Revert optimistic update on error
-      if (userProfile) {
-        const roles: string[] = [];
-        const roleName = userProfile.role?.name || userProfile.role?.abbreviation || '';
-        
-        if (roleName === 'Superadmin') {
-          roles.push('OV', 'EV', 'Helfer');
-        } else if (roleName === 'Organisationsverwaltung' || roleName === 'OV') {
-          roles.push('OV');
-        } else if (roleName === 'Einsatzverwaltung' || roleName === 'EV') {
-          roles.push('EV');
-        } else if (roleName === 'Helfer:in' || roleName === 'Helfer') {
-          roles.push('Helfer');
-        }
-        
-        setUserRoles(roles);
-      }
+      // Error is handled in mutation
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Handle close with changes check
+  const handleClose = () => {
+    if (hasChanges) {
+      if (confirm('Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?')) {
+        // Revert changes
+        setUserRoles([...originalRoles]);
+        setHasChanges(false);
+        onClose();
+      }
+    } else {
+      onClose();
     }
   };
 
@@ -185,16 +334,20 @@ export function UserProfileDialog({
       removeUserMutation.mutate();
     }
   };
-
+ 
   const handlePromoteToSuperadmin = async () => {
     if (confirm(`Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen?`)) {
       // TODO: Implement superadmin promotion
       console.log('Promote to superadmin not implemented yet');
     }
   };
+  //#endregion
 
+  //#region Early Returns & Loading States
   if (!isOpen) return null;
 
+  const isLoading = profileLoading || userRolesLoading;
+ 
   // Loading state
   if (isLoading) {
     return createPortal(
@@ -210,7 +363,7 @@ export function UserProfileDialog({
       document.body
     );
   }
-
+ 
   // Error state
   if (error) {
     return createPortal(
@@ -220,7 +373,7 @@ export function UserProfileDialog({
           <div className="text-red-600 font-medium">
             Fehler beim Laden der Benutzerdaten
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="mt-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md"
           >
@@ -231,12 +384,16 @@ export function UserProfileDialog({
       document.body
     );
   }
-
+ 
   if (!userProfile) return null;
+  //#endregion
 
+  //#region Helper Variables
   // Generate initials
   const initials = `${userProfile.firstname?.[0] || ''}${userProfile.lastname?.[0] || ''}`.toUpperCase() || 'U';
-
+  //#endregion
+ 
+  //#region Main Dialog Render
   const content = (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center"
@@ -248,7 +405,7 @@ export function UserProfileDialog({
         className="fixed inset-0 bg-white/20 backdrop-blur-md transition-opacity"
         onClick={onClose}
       />
-
+ 
       {/* Dialog */}
       <div
         ref={dialogRef}
@@ -257,12 +414,13 @@ export function UserProfileDialog({
       >
         <div className="flex-1 h-[740px] flex justify-start items-start gap-2 overflow-y-auto">
           <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
-            {/* User Header */}
+            
+            {/*//#region User Header Section - Updated with dynamic roles*/}
             <div className="px-4 flex flex-col justify-start items-start gap-2">
               <div className="w-16 h-16 px-3 py-2 rounded-[30px] flex flex-col justify-center items-center gap-3.5">
                 {userProfile.picture_url ? (
-                  <img 
-                    src={userProfile.picture_url} 
+                  <img
+                    src={userProfile.picture_url}
                     alt={`${userProfile.firstname} ${userProfile.lastname}`}
                     className="w-full h-full rounded-full object-cover"
                   />
@@ -276,27 +434,30 @@ export function UserProfileDialog({
                 <div className="justify-start text-slate-800 text-2xl font-semibold font-['Inter'] leading-loose">
                   {userProfile.firstname} {userProfile.lastname}
                 </div>
-                <div className="inline-flex justify-start items-start gap-1">
-                  {userRoles.includes('OV') && (
-                    <div className="p-1 bg-red-300 rounded-md flex justify-center items-center gap-2.5">
-                      <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">Organisationsverwaltung</div>
+                <div className="inline-flex justify-start items-start gap-1 flex-wrap">
+                  {/* Display all actual roles from API */}
+                  {userOrgRoles.map((userRole, index) => (
+                    <div key={index} className={`p-1 ${getRoleColor(userRole.role)} rounded-md flex justify-center items-center gap-2.5`}>
+                      <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">
+                        {getRoleDisplayName(userRole.role)}
+                      </div>
                     </div>
-                  )}
-                  {userRoles.includes('EV') && (
-                    <div className="p-1 bg-orange-300 rounded-md flex justify-center items-center gap-2.5">
-                      <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">Einsatzverwaltung</div>
-                    </div>
-                  )}
-                  {userRoles.includes('Helfer') && (
-                    <div className="p-1 bg-blue-300 rounded-md flex justify-center items-center gap-2.5">
-                      <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">Helfer:in</div>
+                  ))}
+                  
+                  {/* Show placeholder if no roles */}
+                  {userOrgRoles.length === 0 && (
+                    <div className="p-1 bg-gray-200 rounded-md flex justify-center items-center gap-2.5">
+                      <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">
+                        Keine Rollen zugewiesen
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
             </div>
+            {/*#endregion*/}
 
-            {/* Contact Information */}
+            {/* #region Contact Information Section*/}
             <div className="px-4 flex flex-col justify-center items-start gap-2.5">
               <div className="w-96 inline-flex justify-start items-center gap-2.5">
                 <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">Kontaktinformationen</div>
@@ -323,8 +484,9 @@ export function UserProfileDialog({
                 )}
               </div>
             </div>
+            {/* #endregion*/}
 
-            {/* Personal Properties */}
+            {/* #region Personal Properties Section*/}
             <div className="self-stretch flex flex-col justify-center items-start">
               <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-start items-center gap-2">
                 <div className="flex-1 flex justify-start items-center gap-2">
@@ -342,7 +504,7 @@ export function UserProfileDialog({
                       onClick={() => setHasKey(!hasKey)}
                       className="cursor-pointer"
                     >
-                      <SwitchIcon isOn={hasKey} />
+                      <SwitchIcon isOn={hasKey} disabled={false} />
                     </button>
                   </div>
                 </div>
@@ -361,8 +523,9 @@ export function UserProfileDialog({
                 </div>
               </div>
             </div>
-
-            {/* Rollen */}
+            {/*//#endregion*/}
+ 
+            {/*//#region Roles Management Section*/}
             <div className="self-stretch flex flex-col justify-center items-start">
               <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
                 <div className="flex-1 flex justify-start items-center gap-2">
@@ -372,7 +535,7 @@ export function UserProfileDialog({
                   </div>
                 </div>
               </div>
-              
+             
               {/* OV Rolle */}
               <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
@@ -381,14 +544,14 @@ export function UserProfileDialog({
                     <button
                       onClick={() => toggleRole('OV')}
                       disabled={saving}
-                      className="cursor-pointer disabled:opacity-50"
+                      className="cursor-pointer disabled:opacity-50 transition-opacity"
                     >
                       <SwitchIcon isOn={userRoles.includes('OV')} disabled={saving} />
                     </button>
                   </div>
                 </div>
               </div>
-
+ 
               {/* EV Rolle */}
               <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
@@ -397,14 +560,14 @@ export function UserProfileDialog({
                     <button
                       onClick={() => toggleRole('EV')}
                       disabled={saving}
-                      className="cursor-pointer disabled:opacity-50"
+                      className="cursor-pointer disabled:opacity-50 transition-opacity"
                     >
                       <SwitchIcon isOn={userRoles.includes('EV')} disabled={saving} />
                     </button>
                   </div>
                 </div>
               </div>
-
+ 
               {/* Helfer Rolle */}
               <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
@@ -413,7 +576,7 @@ export function UserProfileDialog({
                     <button
                       onClick={() => toggleRole('Helfer')}
                       disabled={saving}
-                      className="cursor-pointer disabled:opacity-50"
+                      className="cursor-pointer disabled:opacity-50 transition-opacity"
                     >
                       <SwitchIcon isOn={userRoles.includes('Helfer')} disabled={saving} />
                     </button>
@@ -421,8 +584,9 @@ export function UserProfileDialog({
                 </div>
               </div>
             </div>
-
-            {/* Gefahrenzone */}
+            {/*//#endregion*/}
+ 
+            {/*//#region Danger Zone Section*/}
             <div className="self-stretch flex flex-col justify-center items-start">
               <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
                 <div className="flex-1 flex justify-start items-center gap-2">
@@ -435,7 +599,7 @@ export function UserProfileDialog({
               <div className="self-stretch flex flex-col justify-center items-start">
                 <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
                   <div className="px-4 pt-2 flex justify-start items-start gap-2">
-                    <button 
+                    <button
                       onClick={handleRemoveUser}
                       disabled={removeUserMutation.isPending}
                       className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
@@ -449,7 +613,7 @@ export function UserProfileDialog({
                         {removeUserMutation.isPending ? 'Entfernt...' : 'Aus Organisation Entfernen'}
                       </div>
                     </button>
-                    <button 
+                    <button
                       onClick={handlePromoteToSuperadmin}
                       className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors"
                     >
@@ -462,32 +626,41 @@ export function UserProfileDialog({
                 </div>
               </div>
             </div>
+            {/*//#endregion*/}
           </div>
         </div>
-
-        {/* Header Buttons */}
+ 
+        {/*//#region Header Action Buttons*/}
         <div className="w-[592px] left-[32px] top-[28px] absolute flex justify-end items-center gap-10">
           <div className="flex justify-end items-center gap-2">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-gray-50 transition-colors"
             >
-              <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-normal">Schließen (ESC)</div>
+              <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-normal">
+                {hasChanges ? 'Abbrechen (ESC)' : 'Schließen (ESC)'}
+              </div>
             </button>
             <button
-              onClick={onClose}
+              onClick={handleSaveAndClose}
               disabled={saving}
-              className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5 disabled:opacity-50 hover:bg-slate-800 transition-colors"
+              className={`px-3 py-1 rounded-md flex justify-center items-center gap-2.5 disabled:opacity-50 transition-colors ${
+                hasChanges 
+                  ? 'bg-blue-600 hover:bg-blue-700' 
+                  : 'bg-slate-900 hover:bg-slate-800'
+              }`}
             >
               <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                {saving ? 'Speichert...' : 'Speichern & Schließen'}
+                {saving ? 'Speichert...' : hasChanges ? 'Änderungen Speichern' : 'Schließen'}
               </div>
             </button>
           </div>
         </div>
+        {/*//#endregion*/}
       </div>
     </div>
   );
-
+  //#endregion
+ 
   return createPortal(content, document.body);
 }

@@ -53,11 +53,12 @@ export default function UserSettings({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const success = await submitForm(userId.toString());
-        
-        if (success) {
+        try {
+            await submitForm(userId.toString());
             console.log('Updating session after profile changes...');
             await updateSession();
+        } catch (error) {
+            console.error("Submit failed:", error);
         }
     };
 
@@ -85,7 +86,7 @@ export default function UserSettings({
             {message && (
                 <Alert 
                     type="success" 
-                    message={message} 
+                message={message} 
                     onClose={() => updateField('message', '')}
                 />
             )}
