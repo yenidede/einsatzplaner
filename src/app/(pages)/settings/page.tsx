@@ -55,7 +55,12 @@ export default function SettingsPage() {
   // Setze Userdaten, Email und Phone, wenn Query-Daten geladen sind
   useEffect(() => {
     if (data) {
-      setUser(data);
+      setUser({
+        ...data,
+        organizations: Array.isArray(data.organizations)
+          ? data.organizations.map((o: any) => ({ ...o, hasGetMailNotification: !!o.hasGetMailNotification }))
+          : [],
+      });
       setEmail(data.email ?? "");
       setPhone(data.phone ?? "");
       setShowLogos(data.hasLogoinCalendar ?? true);
@@ -73,7 +78,7 @@ export default function SettingsPage() {
     picture_url: any;
     phone: string;
     hasLogoinCalendar: boolean;
-    hasGetMailNotification: boolean;
+    //hasGetMailNotification: boolean;
   };
 
   const mutation = useMutation({
@@ -90,53 +95,74 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["userSettings", session?.user.id] });
     },
   });
-
+//#region handleSave
 const handleSave = async () => {
   if (!user) return;
-  let pictureUrl = user.picture_url;
-  if (profilePictureFile) {
-    const formData = new FormData();
-    formData.append("file", profilePictureFile);
-    formData.append("userId", user.id);
-    const res = await fetch("/api/upload-profile-picture", {
-      method: "POST",
-      body: formData,
-    });
-    if (res.ok) {
-      const data = await res.json();
-      pictureUrl = data.url;
-    }
-  }
-  // benutze mutateAsync, warte auf Abschluss
-  await mutation.mutateAsync({
-    userId: user.id,
-    firstname: user.firstname,
-    lastname: user.lastname,
-    email,
-    picture_url: pictureUrl,
-    phone,
-    hasLogoinCalendar: showLogos,
-    hasGetMailNotification: getMailFromOrganization,
-  });
 
-  // Organisationseinstellungen parallel speichern (falls Backend einzelne PUT erwartet)
-  if (user.organizations && user.organizations.length > 0) {
-    await Promise.all(
-      user.organizations.map((org: any) =>
-        fetch("/api/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            userOrgId: org.userOrgRoleId,
-            hasGetMailNotification: org.hasGetMailNotification,
-          }),
-        })
-      )
-    );
-  }
-};
+  try{
+      //#region Profile Picture Upload
+      let pictureUrl = user.picture_url;
+      if (profilePictureFile) {
+        const formData = new FormData();
+        formData.append("file", profilePictureFile);
+        formData.append("userId", String(user.id));
 
+        const res = await fetch("/api/upload-profile-picture", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const message = await res.text().catch(() => "");
+          throw new Error(`Upload fehlgeschlagen: ${res.status} ${message}`);
+        }
+        const data = await res.json();
+        pictureUrl = data.url;
+      }
+      //#endregion
+      //#region Save User
+      await mutation.mutateAsync({
+        userId: user.id,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        email,
+        picture_url: pictureUrl,
+        phone,
+        hasLogoinCalendar: !!showLogos
+      });
+      if (Array.isArray(user.organizations) && user.organizations.length > 0){
+        await Promise.all(
+          user.organizations.map(async (org: any)=> {
+            const orgId = org?.id;
+            if(!orgId) return;
+
+            const res = await fetch("api/settings",{
+              method: "PUT",
+              headers: {"Content-Type": "application-json"},
+              body: JSON.stringify({
+                userId: String(user.id),
+                orgId: String(orgId),
+                hasGetMailNotification: org.hasGetMailNotification
+              })
+            })
+
+            if (!res.ok){
+              const message = await res.text().catch(() => "");
+              throw new Error(`Update für Organisation "...": ${res.status} ${message}`);
+            }
+          })
+        );
+      }
+      //#endregion
+
+      //#region Cache invalidate
+      await queryClient.invalidateQueries({queryKey: ["userSettings", session?.user.id]});
+      //#endregion
+  } catch(error){
+    console.error(error);
+    
+  }
+}
+//#endregion
 const handleProfilePictureUpload = (file: File) => {
   setProfilePictureFile(file);
 };
@@ -303,7 +329,7 @@ const handleProfilePictureUpload = (file: File) => {
                                             picture_url: null,
                                             phone,
                                             hasLogoinCalendar: showLogos,
-                                            hasGetMailNotification: getMailFromOrganization,
+                                            //hasGetMailNotification: getMailFromOrganization,
                                         });
                                     }}
                                 >
@@ -394,37 +420,44 @@ const handleProfilePictureUpload = (file: File) => {
                     </div>
                 </div>
                 <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-                    <div className="flex-1 px-4 flex flex-col gap-2">
-                      {user.organizations && user.organizations.length > 0 ? (
-                        user.organizations.map((org: any, idx: number) => (
-                          <div key={org.id} className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                            <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
-                              Emails von <span className="font-bold">{org.name}</span> erhalten
-                            </Label>
-                            <div className="inline-flex items-center gap-2">
-                              <Switch
-                                id={`org-switch-${org.id}`}
-                                checked={org.hasGetMailNotification}
-                                onCheckedChange={checked => {
-                                  // Nur lokalen State ändern, nicht speichern
-                                  setUser((prev: any) => {
-                                    const orgs = [...prev.organizations];
-                                    orgs[idx] = { ...orgs[idx], hasGetMailNotification: checked };
-                                    return { ...prev, organizations: orgs };
-                                  });
-                                }}
-                                aria-label={`Toggle switch for ${org.name}`}
-                              />
-                              <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
-                                {org.hasGetMailNotification ? "On" : "Off"}
-                              </Label>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-slate-500">Keine Organisationen für Benachrichtigungen.</div>
-                      )}
-                    </div>
+<div className="flex-1 px-4 flex flex-col gap-2">
+  {Array.isArray(user.organizations) && user.organizations.length > 0 ? (
+    user.organizations.map((org: any) => {
+      const on = !!org.hasGetMailNotification; // hartes boolean
+
+      return (
+        <div key={org.id} className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
+          <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
+            Emails von <span className="font-bold">{org.name}</span> erhalten
+          </Label>
+
+          <div className="inline-flex items-center gap-2">
+            <Switch
+              id={`org-switch-${org.id}`}
+              checked={on}                                // immer boolean
+              onCheckedChange={(checked) => {
+                setUser((prev: any) => {
+                  const prevOrgs = Array.isArray(prev?.organizations) ? prev.organizations : [];
+                  const nextOrgs = prevOrgs.map((o: any) =>
+                    o.id === org.id ? { ...o, hasGetMailNotification: !!checked } : o
+                  );
+                  return { ...prev, organizations: nextOrgs };
+                });
+              }}
+              aria-label={`Toggle switch for ${org.name}`}
+            />
+            <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
+              {on ? "On" : "Off"}                    
+            </Label>
+          </div>
+        </div>
+      );
+    })
+  ) : (
+    <div className="text-slate-500">Keine Organisationen für Benachrichtigungen.</div>
+  )}
+</div>
+
                 </div>
             </div>
             <div className="self-stretch flex flex-col justify-center items-start">

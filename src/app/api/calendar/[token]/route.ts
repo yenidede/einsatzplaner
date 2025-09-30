@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import ical, {ICalEventStatus, ICalCalendarMethod, ICalEventTransparency,
-    ICalEventBusyStatus, ICalCategoryData 
-} from "ical-generator";
+import ical, {ICalEventStatus, ICalCalendarMethod} from "ical-generator";
 
 export async function GET(request: NextRequest,{params}: {params : {token : string}}){
     const subscription = await prisma.calendar_subscription.findUnique({

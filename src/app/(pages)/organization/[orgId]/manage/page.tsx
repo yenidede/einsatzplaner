@@ -73,7 +73,7 @@ export default function OrganizationManagePage() {
             return res.json();
         },
     });
-
+    //console.log(orgData)
     useEffect(() => {
         if (orgData) {
             setName(orgData.name ?? "");
@@ -82,8 +82,8 @@ export default function OrganizationManagePage() {
             // setze E-Mail / Telefon falls vorhanden (fallbacks prüfen je nach deiner API / Schema)
             setEmail(orgData.email ?? orgData.mail ?? orgData.contact_email ?? "");
             setPhone(orgData.phone ?? orgData.telefon ?? orgData.phone_number ?? "");
-            setHelperSingular(orgData.helper_singular ?? "Helfer:in");
-            setHelperPlural(orgData.helper_plural ?? "Helfer:innen");
+            setHelperSingular(orgData.helper_name_singular ?? "Helfer:in");
+            setHelperPlural(orgData.helper_name_plural ?? "Helfer:innen");
         }
     }, [orgData]);
 
@@ -147,7 +147,7 @@ export default function OrganizationManagePage() {
     };
 
     const updateMutation = useMutation({
-        mutationFn: async (data: { name: string; description: string; email?: string; phone?: string; helperSingular?: string; helperPlural?: string; logoFile?: File | null; removeLogo?: boolean }) => {
+        mutationFn: async (data: { name: string; description: string; email?: string; phone?: string; helper_name_singular?: string; helper_name_plural?: string; logoFile?: File | null; removeLogo?: boolean }) => {
             // Erst Logo hochladen falls vorhanden
             let finalLogoUrl = logoUrl;
             
@@ -177,8 +177,8 @@ export default function OrganizationManagePage() {
                     description: data.description,
                     email: data.email ?? email,
                     phone: data.phone ?? phone,
-                    helper_singular: data.helperSingular ?? helperSingular,
-                    helper_plural: data.helperPlural ?? helperPlural,
+                    helper_name_singular: data.helper_name_singular ?? helperSingular,
+                    helper_name_plural: data.helper_name_plural?? helperPlural,
                     logo_url: finalLogoUrl
                 }),
             });
@@ -188,10 +188,10 @@ export default function OrganizationManagePage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["organization", orgId] });
             setLogoFile(null);
-            alert("Organisation erfolgreich aktualisiert!");
+            //alert("Organisation erfolgreich aktualisiert!");
         },
         onError: (error) => {
-            alert("Fehler beim Speichern der Organisation.");
+            //alert("Fehler beim Speichern der Organisation.");
             console.error(error);
         }
     });
@@ -439,7 +439,7 @@ export default function OrganizationManagePage() {
                         <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
                             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Abbrechen</div>
                         </div>
-                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5">
+                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5" onClick={handleSave}>
                             <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
                         </div>
                     </div>
@@ -484,7 +484,7 @@ export default function OrganizationManagePage() {
                         <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
                             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Abbrechen</div>
                         </div>
-                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5">
+                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5" onClick={handleSave}>
                             <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
                         </div>
                     </div>
@@ -563,7 +563,7 @@ export default function OrganizationManagePage() {
                         <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
                             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Abbrechen</div>
                         </div>
-                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5">
+                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5" onClick={handleSave}>
                             <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
                         </div>
                     </div>
