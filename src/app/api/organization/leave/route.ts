@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     await prisma.user_organization_role.deleteMany({
       where: {
         user_id: userId,
-        org_id: organizationId, // du hast bestätigt: org_id ist korrekt
+        org_id: organizationId,
       },
     });
 

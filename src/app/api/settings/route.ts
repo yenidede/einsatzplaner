@@ -49,7 +49,7 @@ export async function GET(req: Request) {
                 description: curr.organization.description,
                 roles: [roleObj],
                 userOrgRoleIds: [curr.id],
-                //hasGetMailNotification: curr.hasGetMailNotification || false
+                hasGetMailNotification: curr.hasGetMailNotification || false
                 });
             }
         
@@ -165,12 +165,12 @@ export async function DELETE(req: Request) {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const { userId, userOrgId, email, firstname, lastname, hasLogoinCalendar, hasGetMailNotification } = body;
-
+        const { userId, userOrgId, orgId, email, firstname, lastname, hasLogoinCalendar, hasGetMailNotification } = body;
+        
         if (!userId) {
             return NextResponse.json({ error: "Benutzer-ID fehlt" }, { status: 400 });
         }
-
+        console.log(orgId, userId, hasGetMailNotification)
         // User updaten
         const updateUserData: any = {
             email,
@@ -179,9 +179,16 @@ export async function PUT(req: Request) {
             picture_url: body.picture_url,
             phone: body.phone,
             updated_at: new Date(),
+            
         };
         if (hasLogoinCalendar !== undefined) {
             updateUserData.hasLogoinCalendar = hasLogoinCalendar;
+        }
+        if (hasGetMailNotification != undefined) {
+            await prisma.user_organization_role.updateMany({
+                where: { user_id: userId, org_id: orgId} ,
+                data: {hasGetMailNotification: hasGetMailNotification}
+            })
         }
 
         await prisma.user.update({
