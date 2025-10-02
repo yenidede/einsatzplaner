@@ -6,6 +6,7 @@ import { FormField, Alert, Button, FormSection } from '../../auth/components/ui/
 import { useUserSettings } from '../hooks/useUserSettings';
 import { UserService, UserServiceFactory, FetchHttpClient } from '../../auth/services/UserService';
 import { UserFormValidator } from '../../auth/validators/UserValidator';
+import { useSession } from "next-auth/react";
 
 interface UserSettingsProps {
     userId:  string;
@@ -25,6 +26,8 @@ export default function UserSettings({
     userService,
     validator
 }: UserSettingsProps) {
+    const { update: updateSession } = useSession();
+    
     console.log('UserSettings received userId:', userId);
     console.log('UserSettings received initialData:', initialData);
     
@@ -50,7 +53,13 @@ export default function UserSettings({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await submitForm(userId.toString());
+        try {
+            await submitForm(userId.toString());
+            console.log('Updating session after profile changes...');
+            await updateSession();
+        } catch (error) {
+            console.error("Submit failed:", error);
+        }
     };
 
     const handleReset = () => {
@@ -77,7 +86,7 @@ export default function UserSettings({
             {message && (
                 <Alert 
                     type="success" 
-                    message={message} 
+                message={message} 
                     onClose={() => updateField('message', '')}
                 />
             )}
