@@ -90,6 +90,29 @@ export default function OrganizationManagePage() {
       setHelperPlural(orgData.helper_plural ?? "Helfer:innen");
     }
   }, [orgData]);
+    // lade die spezifische Organisation und setze Name/Beschreibung
+    const { data: orgData, isLoading: orgLoading, error: orgError } = useQuery({
+        queryKey: ["organization", orgId],
+        enabled: !!orgId,
+        queryFn: async () => {
+            const res = await fetch(`/api/auth/organization?id=${orgId}`);
+            if (!res.ok) throw new Error("Fehler beim Laden der Organisation");
+            return res.json();
+        },
+    });
+    //console.log(orgData)
+    useEffect(() => {
+        if (orgData) {
+            setName(orgData.name ?? "");
+            setDescription(orgData.description ?? "");
+            setLogoUrl(orgData.logo_url ?? "");
+            // setze E-Mail / Telefon falls vorhanden (fallbacks prüfen je nach deiner API / Schema)
+            setEmail(orgData.email ?? orgData.mail ?? orgData.contact_email ?? "");
+            setPhone(orgData.phone ?? orgData.telefon ?? orgData.phone_number ?? "");
+            setHelperSingular(orgData.helper_name_singular ?? "Helfer:in");
+            setHelperPlural(orgData.helper_name_plural ?? "Helfer:innen");
+        }
+    }, [orgData]);
 
   // Lade User der Organisation (user_organization_role)
   const { data: usersData, isLoading: usersLoading } = useQuery({
@@ -155,6 +178,27 @@ export default function OrganizationManagePage() {
     if (fileInput) fileInput.value = "";
   };
 
+    const updateMutation = useMutation({
+        mutationFn: async (data: { name: string; description: string; email?: string; phone?: string; helper_name_singular?: string; helper_name_plural?: string; logoFile?: File | null; removeLogo?: boolean }) => {
+            // Erst Logo hochladen falls vorhanden
+            let finalLogoUrl = logoUrl;
+            
+            if (data.removeLogo) {
+                finalLogoUrl = "";
+            } else if (data.logoFile) {
+                const formData = new FormData();
+                formData.append('logo', data.logoFile);
+                formData.append('orgId', orgId);
+                
+                const uploadRes = await fetch('/api/upload/logo', {
+                    method: 'POST',
+                    body: formData,
+                });
+                
+                if (!uploadRes.ok) throw new Error('Logo Upload fehlgeschlagen');
+                const uploadData = await uploadRes.json();
+                finalLogoUrl = uploadData.url;
+            }
   const updateMutation = useMutation({
     mutationFn: async (data: {
       name: string;
@@ -186,6 +230,33 @@ export default function OrganizationManagePage() {
         finalLogoUrl = uploadData.url;
       }
 
+            const res = await fetch("/api/auth/organization", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: orgId,
+                    name: data.name,
+                    description: data.description,
+                    email: data.email ?? email,
+                    phone: data.phone ?? phone,
+                    helper_name_singular: data.helper_name_singular ?? helperSingular,
+                    helper_name_plural: data.helper_name_plural?? helperPlural,
+                    logo_url: finalLogoUrl
+                }),
+            });
+            if (!res.ok) throw new Error("Fehler beim Speichern");
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["organization", orgId] });
+            setLogoFile(null);
+            //alert("Organisation erfolgreich aktualisiert!");
+        },
+        onError: (error) => {
+            //alert("Fehler beim Speichern der Organisation.");
+            console.error(error);
+        }
+    });
       const res = await fetch("/api/auth/organization", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -450,6 +521,77 @@ export default function OrganizationManagePage() {
                         <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
                           Logo Entfernen
                         </div>
+
+                    </div>
+                    <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                        <div className="flex-1 min-w-60 inline-flex flex-col justify-start items-start gap-1.5">
+                            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-tight">Organisationsname</div>
+                            <div className="self-stretch inline-flex justify-start items-start gap-2">
+                                <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
+                                    <input
+                                        type="text"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        className="self-stretch pl-3 pr-14 py-2 bg-white rounded-md outline outline-1 outline-slate-300 text-slate-900 text-base font-normal font-['Inter'] leading-normal"
+                                        placeholder="Organisationsname"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+
+                        <div className="flex-1 min-w-60 inline-flex flex-col justify-start items-start gap-1.5">
+                            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-tight">E-Mail</div>
+                            <div className="self-stretch inline-flex justify-start items-start gap-2">
+                                                              <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
+                              <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="self-stretch pl-3 pr-14 py-2 bg-white rounded-md outline outline-1 outline-slate-300 text-slate-900 text-base font-normal font-['Inter'] leading-normal"
+                                placeholder="E-Mail"  
+                              />
+                              </div>
+                            </div>
+                        </div>
+                        <div className="flex-1 min-w-60 inline-flex flex-col justify-start items-start gap-1.5">
+                            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-tight">Telefon</div>
+                            <div className="self-stretch inline-flex justify-start items-start gap-2">
+                                                              <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
+                              <input
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                className="self-stretch pl-3 pr-14 py-2 bg-white rounded-md outline outline-1 outline-slate-300 text-slate-900 text-base font-normal font-['Inter'] leading-normal"
+                                placeholder="Telefon"  
+                              />
+                              </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                        <div data-helper-text="false" data-label="true" data-state="Default" data-type="default" className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
+                            <div className="self-stretch flex flex-col justify-start items-start gap-2">
+                                <div className="justify-start text-black text-sm font-medium font-['Inter'] leading-none">Beschreibung</div>
+                                <textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    className="w-full max-w-prose px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 text-slate-900 text-sm font-normal font-['Inter'] leading-tight resize-y min-h-[120px]"
+                                    placeholder="Beschreibung der Organisation..."
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="self-stretch px-4 pt-2 inline-flex justify-end items-start gap-2">
+                        <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
+                            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Abbrechen</div>
+                        </div>
+                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5" onClick={handleSave}>
+                            <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
+                        </div>
+                    </div>
+                </div>
                       </button>
                     )}
                   </div>
@@ -550,6 +692,49 @@ export default function OrganizationManagePage() {
               </div>
             </div>
             <div className="self-stretch flex flex-col justify-start items-start gap-2">
+                <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
+                    <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">Präferenzen</div>
+                </div>
+                <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
+                    <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                        <div className="flex-1 min-w-60 inline-flex flex-col justify-start items-start gap-1.5">
+                            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-tight">Helfer:in Bezeichnung (Singular)</div>
+                            <div className="self-stretch inline-flex justify-start items-start gap-2">
+                                <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
+                                    <input
+                                        type="text"
+                                        value={helperSingular}
+                                        onChange={(e) => setHelperSingular(e.target.value)}
+                                        className="self-stretch pl-3 pr-14 py-2 bg-white rounded-md outline outline-1 outline-slate-300 text-slate-900 text-base font-normal font-['Inter'] leading-normal"
+                                        placeholder="Helfer:in"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex-1 min-w-60 inline-flex flex-col justify-start items-start gap-1.5">
+                            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-tight">Helfer:innen Bezeichnung (Plural)</div>
+                            <div className="self-stretch inline-flex justify-start items-start gap-2">
+                                <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
+                                    <input
+                                        type="text"
+                                        value={helperPlural}
+                                        onChange={(e) => setHelperPlural(e.target.value)}
+                                        className="self-stretch pl-3 pr-14 py-2 bg-white rounded-md outline outline-1 outline-slate-300 text-slate-900 text-base font-normal font-['Inter'] leading-normal"
+                                        placeholder="Helfer:innen"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="self-stretch px-4 pt-2 inline-flex justify-end items-start gap-2">
+                        <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
+                            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Abbrechen</div>
+                        </div>
+                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5" onClick={handleSave}>
+                            <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
+                        </div>
+                    </div>
+                </div>
               <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
                 <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">
                   Präferenzen
@@ -613,6 +798,83 @@ export default function OrganizationManagePage() {
               </div>
             </div>
             <div className="self-stretch flex flex-col justify-start items-start gap-2">
+                <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
+                    <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">Personeneigenschaften</div>
+                </div>
+                <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
+                    <div className="self-stretch px-4 flex flex-col justify-start items-start gap-4">
+                        <div className="self-stretch inline-flex justify-center items-center gap-2.5">
+                            <div className="flex-1 justify-start text-slate-600 text-sm font-medium font-['Inter'] leading-tight">Erstelle ein neues Eigenschaftsfeld, um Personen deiner Organisation Eigenschaften zuzuweisen. Beispielsweise kannst du festlegen, dass jeder Einsatz mindestens eine Person mit Schlüssel erfordert. </div>
+                        </div>
+                        <div className="self-stretch px-4 flex flex-col justify-center items-center gap-2.5">
+                            <div className="w-60 h-52 relative">
+                                <div className="w-[3.40px] h-[3.39px] left-[188.66px] top-[51.57px] absolute bg-slate-300" />
+                                <div className="w-[3.40px] h-[3.39px] left-[23.13px] top-[51.57px] absolute bg-slate-300" />
+                                <div className="w-[3.40px] h-[3.39px] left-[165.59px] top-[36.27px] absolute bg-slate-300" />
+                                <div className="w-7 h-7 left-[124.74px] top-[4.65px] absolute bg-slate-300" />
+                                <div className="w-6 h-5 left-[126.38px] top-[6.27px] absolute bg-white" />
+                                <div className="w-2.5 h-2.5 left-[133.05px] top-[12.35px] absolute bg-slate-500" />
+                                <div className="w-14 h-3.5 left-[141.68px] top-[1.70px] absolute bg-gray-700" />
+                                <div className="w-2.5 h-2.5 left-[191.91px] top-[2.06px] absolute bg-gray-700" />
+                                <div className="w-6 h-0.5 left-[206.31px] top-[11.43px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[206.31px] top-[21.25px] absolute bg-slate-300" />
+                                <div className="w-12 h-0.5 left-[206.31px] top-[16.34px] absolute bg-slate-300" />
+                                <div className="w-7 h-7 left-[115.63px] top-[43.23px] absolute bg-slate-300" />
+                                <div className="w-6 h-5 left-[117.27px] top-[44.85px] absolute bg-white" />
+                                <div className="w-2.5 h-2.5 left-[125.13px] top-[50.59px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[157.78px] top-[75.05px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[157.78px] top-[84.88px] absolute bg-slate-300" />
+                                <div className="w-12 h-0.5 left-[157.78px] top-[79.97px] absolute bg-slate-300" />
+                                <div className="w-6 h-4 left-[128.96px] top-[54.61px] absolute bg-gray-700" />
+                                <div className="w-3 h-3 left-[143.17px] top-[64.08px] absolute bg-gray-700" />
+                                <div className="w-7 h-7 left-[23.28px] top-[1.69px] absolute bg-slate-300" />
+                                <div className="w-6 h-5 left-[24.92px] top-[3.31px] absolute bg-white" />
+                                <div className="w-2.5 h-2.5 left-[31.59px] top-[9.72px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[-11px] top-[41.38px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[-11px] top-[51.21px] absolute bg-slate-300" />
+                                <div className="w-12 h-0.5 left-[-11px] top-[46.29px] absolute bg-slate-300" />
+                                <div className="w-4 h-6 left-[20.33px] top-[14.15px] absolute bg-gray-700" />
+                                <div className="w-3 h-3 left-[16.89px] top-[28.96px] absolute bg-gray-700" />
+                                <div className="w-[1.20px] h-[2.84px] left-[81.32px] top-[191.60px] absolute bg-gradient-to-l from-zinc-500/25 via-zinc-500/10 to-zinc-500/10" />
+                                <div className="w-3.5 h-3 left-[76.18px] top-[58.70px] absolute bg-red-300" />
+                                <div className="w-2 h-3 left-[118.92px] top-[54.49px] absolute bg-red-300" />
+                                <div className="w-2 h-1.5 left-[71.95px] top-[192.33px] absolute bg-red-300" />
+                                <div className="w-4 h-2.5 left-[82.42px] top-[186.46px] absolute bg-slate-800" />
+                                <div className="w-7 h-16 left-[72.10px] top-[118.80px] absolute bg-slate-700" />
+                                <div className="w-7 h-20 left-[71.34px] top-[119.97px] absolute bg-slate-700" />
+                                <div className="w-5 h-5 left-[76.49px] top-[46.09px] absolute bg-red-300" />
+                                <div className="w-8 h-14 left-[66.71px] top-[67.72px] absolute bg-slate-500" />
+                                <div className="w-8 h-6 left-[91.77px] top-[63.09px] absolute bg-slate-500" />
+                                <div className="w-7 h-5 left-[63.08px] top-[66.21px] absolute bg-slate-500" />
+                                <div className="w-7 h-5 left-[63.08px] top-[66.21px] absolute opacity-5 bg-slate-900" />
+                                <div className="w-6 h-2.5 left-[69.80px] top-[194.18px] absolute bg-slate-800" />
+                                <div className="w-0.5 h-[0.34px] left-[75.25px] top-[56.56px] absolute opacity-10 bg-slate-900" />
+                                <div className="w-6 h-5 left-[72.19px] top-[42.45px] absolute origin-top-left rotate-[-6.99deg] bg-slate-800" />
+                                <div className="w-10 h-16 left-[94.93px] top-[-17.76px] absolute origin-top-left rotate-[15deg] overflow-hidden">
+                                    <div className="w-6 h-8 left-[13.97px] top-[15.92px] absolute origin-top-left rotate-3 bg-slate-300" />
+                                </div>
+                                <div className="w-2.5 h-5 left-[71px] top-[9.31px] absolute origin-top-left rotate-[-12.79deg] bg-slate-300" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                        <div data-state="Default" data-type="with icon" className="flex-1 px-4 py-5 bg-slate-50 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2">
+                            <div className="w-4 h-4 relative overflow-hidden">
+                                <div className="w-0 h-2.5 left-[8px] top-[3.33px] absolute outline outline-2 outline-offset-[-1px] outline-slate-900" />
+                                <div className="w-2.5 h-0 left-[3.33px] top-[8px] absolute outline outline-2 outline-offset-[-1px] outline-slate-900" />
+                            </div>
+                            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Neue Eigenschaft Anlegen</div>
+                        </div>
+                    </div>
+                    <div className="self-stretch px-4 pt-2 inline-flex justify-end items-start gap-2">
+                        <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
+                            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Abbrechen</div>
+                        </div>
+                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5" onClick={handleSave}>
+                            <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
+                        </div>
+                    </div>
+                </div>
               <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
                 <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">
                   Personeneigenschaften
