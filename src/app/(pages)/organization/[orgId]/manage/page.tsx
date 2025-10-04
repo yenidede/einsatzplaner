@@ -202,8 +202,8 @@ export default function OrganizationManagePage() {
             description,
             email,
             phone,
-            helperSingular,
-            helperPlural,
+            helper_name_singular: helperSingular,
+            helper_name_plural: helperPlural,
             logoFile,
             removeLogo: false 
         });
@@ -350,7 +350,6 @@ export default function OrganizationManagePage() {
                                className="hidden"
                                id="logo-upload"
                            />
-                           
                            {/* Logo Upload Button */}
                            <button
                                type="button"
@@ -651,18 +650,18 @@ export default function OrganizationManagePage() {
         return userOrgRole.user?.email === session?.user?.email;
     });
     
-    const roleNames = currentUserRoles?.map(r => r.role?.name || r.role?.abbreviation) || [];
+    const roleNames = currentUserRoles?.map((r: { role: { name: any; abbreviation: any; }; }) => r.role?.name || r.role?.abbreviation) || [];
     const canInviteUsers = roleNames.includes('Organisationsverwaltung') || 
                           roleNames.includes('OV') || 
                           roleNames.includes('Superadmin');
     
     return (
         <div className="self-stretch px-4 py-4 border-t border-slate-200 flex flex-col gap-4">
-{            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+{/* {            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
                 <h4 className="font-semibold text-yellow-800">Debug Info:</h4>
                 <p className="text-sm text-yellow-700">User Roles: {roleNames.join(', ')}</p>
                 <p className="text-sm text-yellow-700">Can Invite: {canInviteUsers ? 'Ja' : 'Nein'}</p>
-            </div>}
+            </div>} */}
             
             {canInviteUsers && (
                 <button
