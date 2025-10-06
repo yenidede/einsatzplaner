@@ -122,8 +122,8 @@ const handleSave = async () => {
       //#region Save User
       await mutation.mutateAsync({
         userId: user.id,
-        firstname: user.firstName,
-        lastname: user.lastName,
+        firstname: user.firstname,
+        lastname: user.lastname,
         email,
         picture_url: pictureUrl,
         phone,
@@ -137,7 +137,7 @@ const handleSave = async () => {
 
             const res = await fetch("api/settings",{
               method: "PUT",
-              headers: {"Content-Type": "application-json"},
+              headers: {"Content-Type": "application/json"},
               body: JSON.stringify({
                 userId: String(user.id),
                 orgId: String(orgId),
@@ -166,7 +166,10 @@ const handleSave = async () => {
 const handleProfilePictureUpload = (file: File) => {
   setProfilePictureFile(file);
 };
-
+  if (!session) {
+    router.push("/signin");
+    return <div>Leite weiter…</div>;
+  }
   if (isLoading || !user) {
     return <div>Lade Einstellungen…</div>;
   }
@@ -469,8 +472,7 @@ const handleProfilePictureUpload = (file: File) => {
                 {user.organizations && user.organizations.length > 0 ? (
   user.organizations.map((org: any) => {
     //console.log('Organisation:', org.name, 'Rollen:', org.roles);
-    return (
-      <>      
+    return (    
       <div key={org.id}>
         <OrganizationCard
           name={org.name}
@@ -479,7 +481,6 @@ const handleProfilePictureUpload = (file: File) => {
         />
         <CalendarSubscription orgId={org.id} orgName={org.name} variant="card"></CalendarSubscription>
       </div>
-      </>
 
     );
   })

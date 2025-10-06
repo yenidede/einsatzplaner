@@ -14,6 +14,7 @@ declare module 'next-auth' {
         initials: string;
         picture_url?: string | null;
         description?: string;
+        refresh_token: string;
         // Multi-Role/Org Unterstützung
         roles?: string[];
         roleIds?: string[];
@@ -46,6 +47,7 @@ declare module 'next-auth' {
                 }
             }>;
         }
+        error?: string;
         orgId?: string | null;
         roleId?: string | null;
         // Multi-Role/Org Unterstützung
@@ -64,5 +66,8 @@ declare module 'next-auth/jwt' {
         description?: string;
         hasLogoinCalendar?: boolean;
         organizations?: any[];
+        accessTokenExpires: number;
+        refreshToken?: string;
+        error?: string;
     }
 }
