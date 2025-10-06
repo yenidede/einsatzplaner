@@ -28,20 +28,20 @@ export default function CalendarSubscription(
         <div className="text-sm font-medium">
           Kalender-Integration {orgName ? `– ${orgName}` : ""}
         </div>
-        <span className={`text-[10px] px-2 py-0.5 rounded ${statusBadge}`}>
+{/*         <span className={`text-[10px] px-2 py-0.5 rounded ${statusBadge}`}>
           {subscription.is_active ? "Aktiv" : "Deaktiviert"}
-        </span>
+        </span> */}
       </div>
 
-      {subscription.last_accessed && (
+{/*       {subscription.last_accessed && (
         <div className="mt-1 text-[11px] text-muted-foreground">
           Zuletzt synchronisiert: {new Date(subscription.last_accessed).toLocaleString()}
         </div>
       )}
-
-      <div className="mt-2 text-[11px] break-all rounded bg-muted/40 p-2 select-all">
+ */}
+{/* {      <div className="mt-2 text-[11px] break-all rounded bg-muted/40 p-2 select-all">
         {subscription.webcalUrl}
-      </div>
+      </div>} */}
 
       <div className="mt-2 flex flex-wrap gap-2">
         <button className="px-3 py-1.5 rounded border text-xs" onClick={copy}>

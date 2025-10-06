@@ -87,7 +87,7 @@ export default function SignUpPage() {
                         });
 
                         if (signInResult?.ok && !signInResult.error) {
-                            router.push('/dashboard');
+                            router.push('/helferansicht');
                         } else {
                             console.log('Auto-signin failed, redirecting to signin');
                             router.push('/signin?message=Registrierung erfolgreich! Bitte melden Sie sich an.');
