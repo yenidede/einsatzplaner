@@ -39,9 +39,9 @@ export default function CalendarSubscription(
         </div>
       )}
  */}
-{/* {      <div className="mt-2 text-[11px] break-all rounded bg-muted/40 p-2 select-all">
-        {subscription.webcalUrl}
-      </div>} */}
+{/* <div className="mt-2 text-[11px] break-all rounded bg-muted/40 p-2 select-all">
+  {subscription.webcalUrl}
+</div> */}
 
       <div className="mt-2 flex flex-wrap gap-2">
         <button className="px-3 py-1.5 rounded border text-xs" onClick={copy}>

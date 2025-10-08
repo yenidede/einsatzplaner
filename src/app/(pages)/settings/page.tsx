@@ -33,6 +33,15 @@ export default function SettingsPage() {
 
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (session?.error === "RefreshAccessTokenError") {
+      console.log("Refresh token expired - signing out user...");
+      signOut({ 
+        callbackUrl: '/signin',
+        redirect: true 
+      });
+    }
+  }, [session?.error]);
   // Lade Userdaten mit TanStack Query
   const { data, isLoading, error } = useQuery({
     queryKey: ["userSettings", session?.user?.id],
@@ -43,6 +52,7 @@ export default function SettingsPage() {
       return res.json();
     },
   });
+
 
   const hasManagePermission = (roles: any[] | undefined) => {
     if (!Array.isArray(roles)) return false;
@@ -486,11 +496,7 @@ const handleProfilePictureUpload = (file: File) => {
   })
 ) : (
   <div className="text-slate-500">Du bist in keiner Organisation.</div>
-
-
-
 )}
-
             </div>
             
         </div>

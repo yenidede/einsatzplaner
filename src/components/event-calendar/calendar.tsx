@@ -34,8 +34,6 @@ const mapEinsaetzeToCalendarEvents = (
 
 export default async function Calendar({ mode }: { mode: CalendarMode }) {
   const { session, userIds } = await requireAuth();
-  console.log(session.user.email);
-  console.log(session);
   const getEinsaetzeData = async () => {
     // hydrate client before rendering => faster initial load
     const einsaetze = await getAllEinsaetzeForCalendar([
