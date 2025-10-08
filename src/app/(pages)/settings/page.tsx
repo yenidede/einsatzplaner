@@ -33,6 +33,16 @@ export default function SettingsPage() {
 
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (session?.error == "RefreshAccessTokenError"){
+      console.log("Refresh Token Expired - signin out user");
+      signOut({
+        callbackUrl: '/signin',
+        redirect: true,
+      })
+    }
+    
+  }, [session?.error])
   // Lade Userdaten mit TanStack Query
   const { data, isLoading, error } = useQuery({
     queryKey: ["userSettings", session?.user?.id],
