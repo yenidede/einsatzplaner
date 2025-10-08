@@ -10,6 +10,7 @@ import { signOut } from "next-auth/react";
 import LogoutIcon from "@/components/icon/LogoutIcon";
 import { Switch } from "@/features/settings/components/ui/switch";
 import { Label } from "@/features/settings/components/ui/label";
+import Image from "next/image";
 
 import {LabelSettings} from "@/features/settings/components/ui/LabelSettings";
 import {InputSettings} from "@/features/settings/components/ui/InputSettings";
@@ -93,7 +94,13 @@ export default function OrganizationManagePage() {
         enabled: !!orgId,
         queryFn: async () => {
             const res = await fetch(`/api/auth/organization/${orgId}/users`);
-            if (!res.ok) throw new Error("Fehler beim Laden der User");
+            if (!res.ok) {
+                if(res.status === 401){
+                    signOut({callbackUrl:'/signin'})
+                    throw new Error("Unauthorized")
+                }
+                    throw new Error("Fehler beim Laden der User");
+                }
             return res.json();
         },
     });
@@ -499,7 +506,7 @@ export default function OrganizationManagePage() {
                             <div className="flex-1 justify-start text-slate-600 text-sm font-medium font-['Inter'] leading-tight">Erstelle ein neues Eigenschaftsfeld, um Personen deiner Organisation Eigenschaften zuzuweisen. Beispielsweise kannst du festlegen, dass jeder Einsatz mindestens eine Person mit Schlüssel erfordert. </div>
                         </div>
                         <div className="self-stretch px-4 flex flex-col justify-center items-center gap-2.5">
-                            <div className="w-60 h-52 relative">
+{/*                             <div className="w-60 h-52 relative">
                                 <div className="w-[3.40px] h-[3.39px] left-[188.66px] top-[51.57px] absolute bg-slate-300" />
                                 <div className="w-[3.40px] h-[3.39px] left-[23.13px] top-[51.57px] absolute bg-slate-300" />
                                 <div className="w-[3.40px] h-[3.39px] left-[165.59px] top-[36.27px] absolute bg-slate-300" />
@@ -546,7 +553,14 @@ export default function OrganizationManagePage() {
                                     <div className="w-6 h-8 left-[13.97px] top-[15.92px] absolute origin-top-left rotate-3 bg-slate-300" />
                                 </div>
                                 <div className="w-2.5 h-5 left-[71px] top-[9.31px] absolute origin-top-left rotate-[-12.79deg] bg-slate-300" />
-                            </div>
+                            </div> */}
+                                                    <Image
+                            src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/undraw_instant-analysis_vm8x%201.svg"
+                            alt=""
+                            width={245}
+                            height={210}
+                            unoptimized
+                        />
                         </div>
                     </div>
                     <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
