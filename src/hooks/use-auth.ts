@@ -246,8 +246,7 @@ export function useAuth(): AuthState & AuthActions & AuthPermissions {
     isLoading,
     isAuthenticated,
     
-    // ✅ ADD: Session error state
-    sessionError: session?.error,
+    //sessionError: session?.error,
     
     // Actions
     logout,

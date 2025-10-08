@@ -5,11 +5,9 @@ import { compare } from "bcryptjs";
 import { getUserForAuth, updateLastLogin } from "@/DataAccessLayer/user";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
-
-// give the code for 15 Minutes and 7 Days
-const accessTokenTime = 60 * 60 * 1000; // 1 Stunde
+import { Router } from "lucide-react";
+const accessTokenTime =  60 * 15 * 1000; // 15 Minuten
 const refreshTokenTime = 7 * 24 * 60 * 60 * 1000; // 7 Days
-
 async function generateRefreshToken(userId: string): Promise<string> {
   const refreshToken = crypto.randomBytes(32).toString("hex");
   await prisma.user_session.create({
@@ -19,7 +17,6 @@ async function generateRefreshToken(userId: string): Promise<string> {
       expires_at: new Date(Date.now() + refreshTokenTime),
     },
   });
-  //console.log(refreshToken);
   return refreshToken;
 }
 
@@ -44,12 +41,12 @@ async function refreshAccessToken(token: any) {
     });
 
     console.log("Session found:", session);
-    
+
     if (!session || !session.user) {
       console.log("No valid session found - refresh token expired or invalid");
       throw new Error("No valid session found");
     }
-    if(session.user.id !== token.id) {
+    if (session.user.id !== token.id) {
       console.log("Token user ID does not match session user ID");
       throw new Error("Token user ID mismatch");
     }
@@ -95,7 +92,6 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
-
         try {
           const user = await getUserForAuth(credentials.email);
 
@@ -115,6 +111,7 @@ export const authOptions: NextAuthOptions = {
           await updateLastLogin(user.id);
 
           const refreshToken = await generateRefreshToken(user.id);
+          
           return {
             id: user.id,
             email: user.email,
