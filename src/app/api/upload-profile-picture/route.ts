@@ -7,7 +7,7 @@ import prisma from "@/lib/prisma";
 // ✅ Verwende Service Role Key (umgeht RLS komplett)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // ✅ Service Role statt ANON_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // ✅ Service Role statt ANON_KEY
 );
 
 export async function POST(request: Request) {
