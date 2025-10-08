@@ -33,13 +33,12 @@ const mapEinsaetzeToCalendarEvents = (
 };
 
 export default async function Calendar({ mode }: { mode: CalendarMode }) {
-  const { session, userIds } = await requireAuth();
-  console.log(session.user.email);
+  const { session } = await requireAuth();
+  const orgs = session.orgId ? [session.orgId] : session.orgIds;
+
   const getEinsaetzeData = async () => {
     // hydrate client before rendering => faster initial load
-    const einsaetze = await getAllEinsaetzeForCalendar([
-      session.user.id, //JMH for testing
-    ]);
+    const einsaetze = await getAllEinsaetzeForCalendar(orgs);
     return mapEinsaetzeToCalendarEvents(einsaetze);
   };
 
