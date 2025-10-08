@@ -1,242 +1,156 @@
-import { useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import prisma from "@/lib/prisma";
+
 
 interface UseSessionValidationOptions {
-  checkInterval?: number; // in Millisekunden, default: 30 Sekunden
+  checkInterval?: number;
+  debug?: boolean;
   onTokenExpired?: () => void;
-  debug?: boolean; // Debug-Ausgaben aktivieren
 }
 
-// Erweiterte Session-Typen für Token-Zugriff
-interface ExtendedSession {
+interface TokenInfo {
   accessToken?: string;
   refreshToken?: string;
-  error?: string;
-  user?: any;
-  expires?: string;
+  accessTokenExpires?: number;
+  refreshTokenExpires?: number;
 }
 
-export function useSessionValidation({
-  checkInterval = 30000, // 30 Sekunden
-  onTokenExpired,
-  debug = false
-}: UseSessionValidationOptions = {}) {
+export function useSessionValidation(options: UseSessionValidationOptions = {}) {
+  const { checkInterval = 15000, debug = true, onTokenExpired } = options;
   const { data: session, status } = useSession();
-  const router = useRouter();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Hilfsfunktion: JWT Token dekodieren und Ablaufzeit berechnen
-  const getTokenInfo = (token: string, tokenType: string) => {
-    try {
-      // Prüfe ob Token ein JWT ist (3 Teile getrennt durch Punkte)
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        if (debug) {
-          console.warn(`${tokenType} ist kein JWT-Token`);
-        }
-        return null;
-      }
+  // ✅ Extrahiere Token-Informationen aus der Session
+  const extractTokenInfo = (): TokenInfo => {
+    if (!session) return {};
 
-      let payload;
-      try {
-        payload = JSON.parse(atob(parts[1]));
-      } catch (e) {
-        if (debug) {
-          console.warn(`${tokenType} konnte nicht dekodiert werden:`, e);
-        }
-        return null;
-      }
-      const currentTime = Math.floor(Date.now() / 1000);
-      const expiresAt = payload.exp;
-      
-      if (!expiresAt) {
-        if (debug) {
-          console.warn(`${tokenType} hat kein 'exp' Feld`);
-        }
-        return null;
-      }
+    // try multiple locations where tokens might be stored
+    const sAny = session as any;
+    const tokenObj = sAny.token || sAny?.accessToken || sAny?.user?.token || sAny?.user || {};
 
-      const timeLeft = expiresAt - currentTime;
-      
-      return {
-        expiresAt: new Date(expiresAt * 1000),
-        timeLeftSeconds: timeLeft,
-        timeLeftMinutes: Math.floor(timeLeft / 60),
-        timeLeftHours: Math.floor(timeLeft / 3600),
-        isExpired: timeLeft <= 0,
-        tokenType
+    return {
+      accessToken: tokenObj.accessToken || tokenObj.access_token || sAny?.user?.accessToken,
+      refreshToken: tokenObj.refreshToken || tokenObj.refresh_token || sAny?.user?.refreshToken,
+      accessTokenExpires: tokenObj.accessTokenExpires || tokenObj.access_token_expires,
+      refreshTokenExpires: tokenObj.refreshTokenExpires || tokenObj.refresh_token_expires
+        || (tokenObj.accessTokenExpires ? tokenObj.accessTokenExpires + (7 * 24 * 60 * 60 * 1000) : undefined)
+    };
+  };
+
+  const tokenInfo = extractTokenInfo();
+
+  useEffect(() => {
+    // Cleanup previous interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Only start validation if we have a session
+    if (status === 'authenticated' && session) {
+      const validateSession = async () => {
+        try {
+          if (debug) {
+            console.log('🔍 Session validation check', {
+              timestamp: new Date().toLocaleString(),
+              sessionExists: !!session,
+              sessionError: session?.error,
+              userId: session?.user?.id,
+              accessToken: tokenInfo.accessToken ? tokenInfo.accessToken : 'Missing',
+              refreshToken: tokenInfo.refreshToken ? tokenInfo.refreshToken : 'Missing',
+              accessTokenExpires: tokenInfo.accessTokenExpires ?
+                new Date(tokenInfo.accessTokenExpires).toLocaleString() : 'Unknown',
+              refreshTokenExpires: tokenInfo.refreshTokenExpires ? 
+                new Date(tokenInfo.refreshTokenExpires).toLocaleString() : 'Unknown'
+            });
+          }
+
+          // ✅ 1. Check NextAuth session error (das wichtigste!)
+          if (session?.error === "RefreshAccessTokenError") {
+            if (debug) console.log('❌ NextAuth session error detected');
+            onTokenExpired?.();
+            await signOut({ callbackUrl: '/signin?message=session-expired' });
+            return;
+          }
+
+          // ✅ 2. Check token expiration times
+          const now = Date.now();
+          if (tokenInfo.accessTokenExpires && now > tokenInfo.accessTokenExpires) {
+            if (debug) console.log('❌ Access token expired');
+            onTokenExpired?.();
+            await signOut({ callbackUrl: '/signin?message=access-token-expired' });
+            return;
+          }
+
+          if (tokenInfo.refreshTokenExpires && now > tokenInfo.refreshTokenExpires) {
+            if (debug) console.log('❌ Refresh token expired');
+            onTokenExpired?.();
+            await signOut({ callbackUrl: '/signin?message=refresh-token-expired' });
+            return;
+          }
+
+          // ✅ 3. Optional: Test mit einem leichten API-Call (z.B. User-Daten)
+          // Das prüft indirekt ob die Tokens noch funktionieren
+          try {
+            const testResponse = await fetch('/api/auth/me', {
+              method: 'GET',
+              credentials: 'include'
+            });
+
+            if (!testResponse.ok) {
+              if (debug) console.log('❌ API test failed:', testResponse.status);
+              
+              if (testResponse.status === 401) {
+                onTokenExpired?.();
+                await signOut({ callbackUrl: '/signin?message=token-expired' });
+              }
+            } else {
+              if (debug) console.log('✅ API test successful - tokens valid');
+            }
+          } catch (networkError) {
+            // Bei Netzwerk-Fehlern nichts tun (Offline-Modus)
+            if (debug) console.log('⚠️ Network error during validation, skipping');
+          }
+
+
+        } catch (error) {
+          if (debug) console.error('🚨 Session validation error:', error);
+        }
       };
-    } catch (error) {
-      if (debug) {
-        console.error(`Fehler beim Dekodieren des ${tokenType}:`, error);
-      }
-      return null;
-    }
-  };
 
-  // Debug-Ausgabe formatieren
-  const logTokenInfo = (tokenInfo: ReturnType<typeof getTokenInfo>) => {
-    if (!tokenInfo) return;
-    
-    const { tokenType, timeLeftSeconds, timeLeftMinutes, timeLeftHours, expiresAt, isExpired } = tokenInfo;
-    
-    if (isExpired) {
-      console.log(`🔴 ${tokenType} ist abgelaufen!`);
-    } else {
-      const timeString = timeLeftHours > 0 
-        ? `${timeLeftHours}h ${timeLeftMinutes % 60}m`
-        : `${timeLeftMinutes}m ${timeLeftSeconds % 60}s`;
-      
-      console.log(`🟢 ${tokenType}: ${timeString} verbleibend (läuft ab: ${expiresAt.toLocaleString()})`);
-    }
-  };
+      // Initial check
+      validateSession();
 
-  useEffect(() => {
-    // Nur starten wenn Session vorhanden
-    if (status !== 'authenticated' || !session) {
-      return;
+      // Set up interval
+      intervalRef.current = setInterval(validateSession, checkInterval);
     }
 
-    const validateToken = async () => {
-      try {
-        if (debug) {
-          console.group('🔍 Session Validation Check');
-          console.log('Zeitpunkt:', new Date().toLocaleString());
-        }
-
-        // Cast session zu erweiterten Typ für Token-Zugriff
-        const extendedSession = session as ExtendedSession;
-
-        // Debug: Token-Informationen anzeigen
-        if (debug && extendedSession) {
-          // Access Token analysieren
-          if (extendedSession.accessToken) {
-            const accessTokenInfo = getTokenInfo(extendedSession.accessToken, 'Access Token');
-            if (accessTokenInfo) logTokenInfo(accessTokenInfo);
-          } else {
-            console.log('ℹ️ Kein Access Token in Session gefunden');
-          }
-
-          // Refresh Token analysieren  
-          if (extendedSession.refreshToken) {
-            const refreshTokenInfo = getTokenInfo(extendedSession.refreshToken, 'Refresh Token');
-            if (refreshTokenInfo) logTokenInfo(refreshTokenInfo);
-          } else {
-            console.log('ℹ️ Kein Refresh Token in Session gefunden');
-          }
-
-          // Session Error anzeigen
-          if (extendedSession.error) {
-            console.log('🚨 Session Error:', extendedSession.error);
-          }
-
-          // Session Expires anzeigen
-          if (extendedSession.expires) {
-            const expiresAt = new Date(extendedSession.expires);
-            const timeLeft = expiresAt.getTime() - Date.now();
-            const minutesLeft = Math.floor(timeLeft / (1000 * 60));
-            console.log(`⏰ Session läuft ab: ${expiresAt.toLocaleString()} (${minutesLeft} Minuten)`);
-          }
-        }
-
-        // Prüfe Session-Status über NextAuth
-        const response = await fetch('/api/auth/session');
-        
-        if (!response.ok) {
-          if (debug) {
-            console.log('❌ Session validation failed - signing out');
-          }
-          onTokenExpired?.();
-          await signOut({
-            callbackUrl: '/signin',
-            redirect: true,
-          });
-          return;
-        }
-
-        const sessionData = await response.json();
-        
-        // Prüfe auf Refresh Token Error
-        if (sessionData?.error === 'RefreshAccessTokenError') {
-          if (debug) {
-            console.log('🔴 Refresh Token expired - signing out');
-          }
-          onTokenExpired?.();
-          await signOut({
-            callbackUrl: '/signin',
-            redirect: true,
-          });
-        }
-
-        if (debug) {
-          console.log('✅ Session validation successful');
-          console.groupEnd();
-        }
-
-      } catch (error) {
-        console.error('Token validation error:', error);
-        if (debug) {
-          console.groupEnd();
-        }
-        // Bei Netzwerkfehlern nicht automatisch ausloggen
-      }
-    };
-
-    // Sofortige erste Prüfung
-    validateToken();
-
-    // Interval für regelmäßige Prüfung
-    intervalRef.current = setInterval(validateToken, checkInterval);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [session, status, checkInterval, onTokenExpired, debug]);
-
-  // Cleanup bei Component Unmount
-  useEffect(() => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, []);
+  }, [session, status, checkInterval, debug, onTokenExpired, tokenInfo.accessTokenExpires, tokenInfo.refreshTokenExpires]);
 
-  // Debug: Manuelle Token-Info Funktion (optional)
-  const getDebugInfo = () => {
-    if (!session) return null;
-
-    const extendedSession = session as ExtendedSession;
-
-    const info: {
-      sessionStatus: string;
-      sessionError: string | null;
-      sessionExpires?: string;
-      accessToken?: ReturnType<typeof getTokenInfo>;
-      refreshToken?: ReturnType<typeof getTokenInfo>;
-    } = {
-      sessionStatus: status,
-      sessionError: extendedSession.error || null,
-    };
-
-    if (extendedSession.expires) {
-      info.sessionExpires = extendedSession.expires;
+  return {
+    isValidating: status === 'loading',
+    hasValidSession: status === 'authenticated' && !session?.error,
+    sessionError: session?.error,
+    // ✅ Token-Informationen zurückgeben
+    tokenInfo: {
+      accessToken: tokenInfo.accessToken,
+      refreshToken: tokenInfo.refreshToken,
+      accessTokenExpires: tokenInfo.accessTokenExpires,
+      refreshTokenExpires: tokenInfo.refreshTokenExpires,
+      // Hilfreiche berechnete Werte
+      accessTokenExpiresIn: tokenInfo.accessTokenExpires ? 
+        Math.max(0, Math.floor((tokenInfo.accessTokenExpires - Date.now()) / 1000)) : 0,
+      refreshTokenExpiresIn: tokenInfo.refreshTokenExpires ? 
+        Math.max(0, Math.floor((tokenInfo.refreshTokenExpires - Date.now()) / 1000)) : 0,
+      isAccessTokenExpired: tokenInfo.accessTokenExpires ? Date.now() > tokenInfo.accessTokenExpires : false,
+      isRefreshTokenExpired: tokenInfo.refreshTokenExpires ? Date.now() > tokenInfo.refreshTokenExpires : false
     }
-
-    if (extendedSession.accessToken) {
-      info.accessToken = getTokenInfo(extendedSession.accessToken, 'Access Token');
-    }
-
-    if (extendedSession.refreshToken) {
-      info.refreshToken = getTokenInfo(extendedSession.refreshToken, 'Refresh Token');
-    }
-
-    return info;
   };
-
-  return debug ? { getDebugInfo } : undefined;
 }
