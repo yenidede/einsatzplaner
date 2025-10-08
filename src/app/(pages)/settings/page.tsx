@@ -18,6 +18,7 @@ import ProfilePictureUpload from "@/features/settings/components/ProfilePictureU
 import OrganizationCard from "@/features/settings/components/OrganizationCard";
 import { hasPermission } from "@/lib/auth/authGuard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
+import { useSessionValidation } from "@/hooks/useSessionValidation";
 
 
 export default function SettingsPage() {
@@ -33,7 +34,16 @@ export default function SettingsPage() {
 
   const queryClient = useQueryClient();
 
-  useEffect(() => {
+  useSessionValidation({
+    checkInterval: 60000, // 30 Sekunden
+    debug: true,
+    onTokenExpired: () => {
+      console.log("Token abgelaufen - leite zu Login weiter");
+      router.push('/signin');
+    }
+  })
+
+/*   useEffect(() => {
     if (session?.error == "RefreshAccessTokenError"){
       console.log("Refresh Token Expired - signin out user");
       signOut({
@@ -41,8 +51,8 @@ export default function SettingsPage() {
         redirect: true,
       })
     }
-    
-  }, [session?.error])
+
+  }, [session?.error]) */
   // Lade Userdaten mit TanStack Query
   const { data, isLoading, error } = useQuery({
     queryKey: ["userSettings", session?.user?.id],
