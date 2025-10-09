@@ -14,7 +14,8 @@ declare module 'next-auth' {
         initials: string;
         picture_url?: string | null;
         description?: string;
-        refresh_token: string;
+        refreshToken: string;
+        accessToken: string;
         // Multi-Role/Org Unterstützung
         roles?: string[];
         roleIds?: string[];
