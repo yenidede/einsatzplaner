@@ -54,7 +54,7 @@ async function refreshAccessToken(token: any) {
       refreshTokenExpires: token.refreshTokenExpires, 
     };
   } catch (error) {
-    console.error("❌ Error refreshing access token:", error);
+    console.error("Error refreshing access token:", error);
     
     if (token.id) {
       await prisma.user_session.deleteMany({
@@ -94,7 +94,6 @@ export const authOptions: NextAuthOptions = {
 
           await updateLastLogin(user.id);
 
-          // ✅ Generiere BEIDE Tokens beim Login
           const refreshToken = await generateRefreshToken(user.id);
           const accessToken = await generateAccessToken(user.id);
           
@@ -105,7 +104,7 @@ export const authOptions: NextAuthOptions = {
             lastname: user.lastname,
             picture_url: user.picture_url,
             refreshToken,
-            accessToken,  // ✅ Access Token hinzugefügt
+            accessToken, 
           };
         } catch (error) {
           console.error("Authentication error:", error);
@@ -144,12 +143,11 @@ export const authOptions: NextAuthOptions = {
       }
       
       // Access Token abgelaufen → Refresh
-      console.log("⏰ Access token expired, refreshing...");
+      console.log("Access token expired, refreshing...");
       return await refreshAccessToken(token);
     },
 
     async session({ session, token }) {
-      // ✅ Tokens in Session verfügbar machen
       (session as any).token = {
         accessToken: (token as any).accessToken,
         refreshToken: (token as any).refreshToken,
@@ -157,7 +155,6 @@ export const authOptions: NextAuthOptions = {
         refreshTokenExpires: (token as any).refreshTokenExpires,
       };
 
-      // Wenn Refresh Token Error, markiere Session als abgelaufen
       if (token.error === "RefreshAccessTokenError") {
         console.log("Session expired - redirecting to login");
         return {
