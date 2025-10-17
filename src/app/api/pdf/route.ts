@@ -1,57 +1,50 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PdfService } from '@/features/pdf/lib/services/pdfService';
-import { validatePdfBuffer } from '@/features/pdf/lib/utils/validation';
+import React from 'react';
+import { renderToBuffer } from '@react-pdf/renderer';
 import { validatePdfAccess } from '@/features/pdf/lib/utils/authorization';
-import { generateBookingConfirmationHtml } from '@/features/pdf/lib/template/bookingConfirmation';
+import { BookingConfirmationPDF } from '@/features/pdf/components/BookingConfirmationPDF';
 import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
 
+
 export async function POST(request: NextRequest) {
-  const pdfService = new PdfService();
+    try {
+        const { einsatzId, options } = await request.json();
 
-  try {
-    const { einsatzId, options } = await request.json();
+        if (!einsatzId) {
+            return NextResponse.json({ error: 'einsatzId is required' }, { status: 400 });
+        }
 
-    if (!einsatzId) {
-      return NextResponse.json({ error: 'einsatzId is required' }, { status: 400 });
-    }
-    const authResult = await validatePdfAccess(einsatzId);
-    if (!authResult.authorized) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+        // ✅ Authorization
+        const authResult = await validatePdfAccess(einsatzId);
+        if (!authResult.authorized) {
+            return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+        }
 
-    const einsatz = await getEinsatzWithDetailsById(einsatzId);
-    if (!einsatz) {
-      return NextResponse.json({ error: 'Einsatz not found' }, { status: 404 });
-    }
+        // ✅ Fetch Data
+        const einsatz = await getEinsatzWithDetailsById(einsatzId);
+        if (!einsatz) {
+            return NextResponse.json({ error: 'Einsatz not found' }, { status: 404 });
+        }
 
-    const html = generateBookingConfirmationHtml({ einsatz, options });
-    
-    await pdfService.initialize();
-    const pdfBuffer = await pdfService.generatePdfFromHtml(html);
+        const documentElement = React.createElement(BookingConfirmationPDF, { einsatz, options });
+        const pdfBuffer = await renderToBuffer(documentElement);
+        console.log('PDF Buffer generated:', pdfBuffer);
 
-    if (!validatePdfBuffer(pdfBuffer)) {
-      return NextResponse.json({ error: 'PDF Generation Failed' }, { status: 500 });
-    }
+        const filename = `Buchungsbestaetigung_${new Date(einsatz.start).toISOString().split('T')[0]}.pdf`;
 
-    // ✅ Return PDF
-    const filename = `Buchungsbestaetigung_${new Date(einsatz.start).toISOString().split('T')[0]}_${einsatz.id}.pdf`;
-    
-    return new NextResponse(new Uint8Array(pdfBuffer), {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-      },
-    });
-
-  } catch (error) {
-    console.error('PDF Error:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error', message: (error as Error).message },
-      { status: 500 }
-    );
-  } finally {
-    await pdfService.close();
-  }
+        return new NextResponse(new Uint8Array(pdfBuffer), {
+            headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            },
+        });
+    } catch (error) {
+        console.error('PDF Error:', error);
+        return NextResponse.json(
+        { error: 'Internal Server Error', message: (error as Error).message },
+        { status: 500 }
+        );
+    } 
 }

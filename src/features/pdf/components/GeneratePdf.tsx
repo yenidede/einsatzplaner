@@ -3,15 +3,23 @@
 import { useState } from "react";
 import { usePdfGenerator } from "../hooks/usePdfGenerator";
 import { PdfGenerationRequest } from "../types/pdf";
+import { Button } from "@/components/SimpleFormComponents";
+import { Badge } from "@/components/ui/badge";
 
 interface GeneratePdfProps {
   einsatzId: string;
   einsatzTitle?: string;
 }
 
-export const GeneratePdf = ({ einsatzId, einsatzTitle }: GeneratePdfProps) => {
+export function GeneratePdf({ einsatzId, einsatzTitle }: GeneratePdfProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { generatePdf, error } = usePdfGenerator();
+  const [options, setOptions] = useState({
+    showLogos: true,
+    showContactInfo: true,
+    includeTerms: true,
+  });
+
+  const { generatePdf, isGenerating, error } = usePdfGenerator();
 
   const handleExport = async () => {
     const request: PdfGenerationRequest = {
@@ -20,20 +28,14 @@ export const GeneratePdf = ({ einsatzId, einsatzTitle }: GeneratePdfProps) => {
     };
 
     const result = await generatePdf(request);
-    if (!result) {
-      console.error("Fehler beim Generieren der PDF:", error);
+    if (result?.success) {
+      setIsOpen(false);
     }
   };
 
   return (
     <>
-      <button
-        onClick={handleExport}
-        className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-800"
-      >
-        PDF exportieren
-      </button>
+      <Badge onClick={handleExport}>PDF generieren</Badge>
     </>
   );
-};
-
+}
