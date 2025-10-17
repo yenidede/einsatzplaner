@@ -47,6 +47,8 @@ import DynamicFormFields from "./dynamicFormfields";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { buildInputProps } from "../form/utils";
 
+import { GeneratePdf } from "@/features/pdf/components/GeneratePdf";
+
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -790,6 +792,12 @@ export function EventDialog({
             </Button>
             <Button onClick={handleSave}>Speichern</Button>
           </div>
+          {/* Testing PDF Generation  */}
+          <GeneratePdf
+            einsatzId={currentEinsatz?.id || ""}
+            einsatzTitle={currentEinsatz?.title}
+          />
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
