@@ -38,7 +38,6 @@ async function refreshAccessToken(token: any) {
       },
       include: { user: true },
     });
-
     if (!session || !session.user) {
       throw new Error("No valid session found");
     }
