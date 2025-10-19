@@ -23,12 +23,12 @@ export default function AuthDebugger() {
 
     const testRedirect = () => {
         addLog('Testing redirect to dashboard...');
-        router.push('/dashboard');
+        router.push('/helferansicht');
     };
 
     const testForceRedirect = () => {
         addLog('Testing force redirect to dashboard...');
-        window.location.href = '/dashboard';
+        window.location.href = '/helferansicht';
     };
 
     return (

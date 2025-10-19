@@ -74,10 +74,20 @@ export async function POST(request: NextRequest) {
       });
 
       // Einladung als akzeptiert markieren
-      await tx.invitation.update({
-        where: { id: invitation.id },
+      /* await tx.invitation.update({
+        where: { token: invitation.token },
         data: { accepted: true }
+      }); */
+      await tx.invitation.delete({
+        where: { token: invitation.token }
       });
+    });
+
+    console.log("✅ Invitation accepted:", {
+      invitationId: invitation.id,
+      userId: user.id,
+      orgId: invitation.org_id,
+      roleId: invitation.role_id
     });
 
     return NextResponse.json({
@@ -91,8 +101,43 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("❌ Error accepting invitation:", error);
+    
+    // ✅ Detaillierte Fehlerausgabe
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+    
+    // ✅ Prisma-spezifische Fehler
+    if (error && typeof error === 'object' && 'code' in error) {
+      console.error("Prisma error code:", (error as any).code);
+      console.error("Prisma error meta:", (error as any).meta);
+    }
+    
     return NextResponse.json({ 
-      error: "Fehler beim Akzeptieren der Einladung" 
+      error: "Fehler beim Akzeptieren der Einladung",
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { token } = acceptSchema.parse(body);
+    const deletedInvitation = await prisma.invitation.deleteMany({
+      where: { token: token }
+    }); 
+    return NextResponse.json({ 
+      success: true, 
+      message: "Einladung erfolgreich gelöscht",
+      deletedCount: deletedInvitation.count
+    });
+  } catch (error) {
+    console.error("❌ Error deleting invitation:", error);
+    return NextResponse.json({ 
+      error: "Fehler beim Löschen der Einladung",
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  } 
 }

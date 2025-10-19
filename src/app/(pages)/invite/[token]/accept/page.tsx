@@ -1,63 +1,105 @@
-import { notFound, redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import prisma from '@/lib/prisma';
+'use client';
+
+import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useInvitationValidation } from '@/features/invitations/hooks/useInvitation';
 
 interface AcceptPageProps {
-  params: Promise<{ token: string }> // <-- Promise hinzugefügt
+  params: Promise<{ token: string }>;
+
 }
 
-export default async function AcceptPage({ params }: AcceptPageProps) {
-  // Params awaiten
-  const { token } = await params; // <-- await hinzugefügt
+export default function AcceptPage({ params }: AcceptPageProps) {
+  // ✅ params unwrappen mit React.use()
+  const { token } = use(params);
+  const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   
-  const session = await getServerSession(authOptions);
+  // ✅ Nutze den bestehenden Hook
+  const { data: invitation, isLoading, error } = useInvitationValidation(token);
   
-  // Erst die Einladung suchen um zu sehen für welche E-Mail sie ist
-  const invitation = await prisma.invitation.findFirst({
-    where: {
-      token: token, // <-- params.token zu token geändert
-      accepted: false,
-      expires_at: { gt: new Date() }
-    },
-    include: {
-      organization: true,
-      role: true,
-      user: {
-        select: {
-          firstname: true,
-          lastname: true
-        }
-      }
-    }
-  });
+  const [accepting, setAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
 
-  if (!invitation) {
+  // 2. Session prüfen
+  useEffect(() => {
+    if (sessionStatus === 'unauthenticated') {
+      router.push(`/signin?callbackUrl=${encodeURIComponent(`/invite/${token}/accept`)}`);
+    }
+  }, [sessionStatus, router, token]);
+
+  // 3. E-Mail-Validierung und Auto-Accept
+  useEffect(() => {
+    if (!invitation || !session?.user?.email || accepting) return;
+
+    // E-Mail-Check
+    if (session.user.email !== invitation.email) {
+      return; // UI zeigt Fehler-Meldung
+    }
+
+    // Auto-Accept
+    const acceptInvitation = async () => {
+      setAccepting(true);
+      try {
+        const response = await fetch('/api/invitations/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Fehler beim Akzeptieren');
+        }
+
+        // Erfolg - nach 2 Sekunden weiterleiten
+        setTimeout(() => {
+          router.push('/helferansicht');
+        }, 2000);
+      } catch (err) {
+        setAcceptError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+        setAccepting(false);
+      }
+    };
+
+    acceptInvitation();
+  }, [invitation, session, accepting, token, router]);
+
+  // Loading States
+  if (isLoading || sessionStatus === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Einladung nicht gefunden</h1>
-          <p className="text-gray-600 mb-6">
-            Die Einladung ist ungültig, bereits akzeptiert oder abgelaufen.
-          </p>
-          <a
-            href="/dashboard"
-            className="inline-block bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
-          >
-            Zum Dashboard
-          </a>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Lädt...</h1>
         </div>
       </div>
     );
   }
 
-  if (!session?.user?.email) {
-    // Nicht angemeldet - zur Login-Seite mit Callback
-    redirect(`/signin?callbackUrl=${encodeURIComponent(`/api/invitations/${token}/accept`)}`);
+  // Error: Einladung nicht gefunden
+  if (error || !invitation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Einladung nicht gefunden</h1>
+          <p className="text-gray-600 mb-6">
+            {error?.message || 'Die Einladung ist ungültig, bereits akzeptiert oder abgelaufen.'}
+          </p>
+          <button
+            onClick={() => router.push('/helferansicht')}
+            className="inline-block bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+          >
+            Zur Helferansicht
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  // Prüfen ob angemeldete E-Mail mit Einladungs-E-Mail übereinstimmt
-  if (session.user.email !== invitation.email) {
+  // Error: Falsche E-Mail
+  if (session?.user?.email && session.user.email !== invitation.email) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
@@ -72,106 +114,78 @@ export default async function AcceptPage({ params }: AcceptPageProps) {
             Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.
           </p>
           <div className="space-y-3">
-            <a
-              href={`/signout?callbackUrl=${encodeURIComponent(`/api/invitations/${token}/accept`)}`}
+            <button
+              onClick={() => router.push(`/signout?callbackUrl=${encodeURIComponent(`/invite/${token}/accept`)}`)}
               className="block w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 font-medium"
             >
               Abmelden und richtige E-Mail verwenden
-            </a>
-            <a
-              href="/dashboard"
+            </button>
+            <button
+              onClick={() => router.push('/helferansicht')}
               className="block w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200"
             >
               Zur Startseite
-            </a>
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Ab hier: User ist angemeldet UND hat die richtige E-Mail
-  // Automatische Akzeptierung
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      throw new Error('Benutzer nicht gefunden');
-    }
-
-    // Prüfen ob bereits Mitglied
-    const existingRole = await prisma.user_organization_role.findFirst({
-      where: {
-        user_id: user.id,
-        org_id: invitation.org_id
-      }
-    });
-
-    if (!existingRole) {
-      // Einladung automatisch akzeptieren
-      await prisma.$transaction(async (tx) => {
-        await tx.user_organization_role.create({
-          data: {
-            user_id: user.id,
-            org_id: invitation.org_id,
-            role_id: invitation.role_id
-          }
-        });
-
-        await tx.invitation.update({
-          where: { id: invitation.id },
-          data: { accepted: true }
-        });
-      });
-    }
-
-    // Erfolgsmeldung anzeigen
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <div className="text-green-600 text-6xl mb-4">✓</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Einladung angenommen!
-          </h1>
-          <p className="text-gray-600 mb-2">
-            Sie sind jetzt Mitglied der Organisation
-          </p>
-          <p className="text-lg font-semibold text-blue-600 mb-6">
-            {invitation.organization.name}
-          </p>
-          <p className="text-sm text-gray-500 mb-6">
-            Ihre Rolle: {invitation.role.name}
-          </p>
-          <a
-            href="/dashboard"
-            className="inline-block bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 font-medium"
-          >
-            Zum Dashboard
-          </a>
-        </div>
-      </div>
-    );
-
-  } catch (error) {
-    console.error('Error accepting invitation:', error);
-    
+  // Error: Accept fehlgeschlagen
+  if (acceptError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Fehler</h1>
-          <p className="text-gray-600 mb-6">
-            Die Einladung konnte nicht angenommen werden.
-          </p>
-          <a
-            href="/dashboard"
+          <p className="text-gray-600 mb-6">{acceptError}</p>
+          <button
+            onClick={() => router.push('/helferansicht')}
             className="inline-block bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
           >
-            Zum Dashboard
-          </a>
+            Zur Helferansicht
+          </button>
         </div>
       </div>
     );
   }
+
+  // Accepting State
+  if (accepting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Einladung wird angenommen...
+          </h1>
+          <p className="text-gray-600">Bitte warten Sie einen Moment.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Success State
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
+        <div className="text-green-600 text-6xl mb-4">✓</div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          Einladung angenommen!
+        </h1>
+        <p className="text-gray-600 mb-2">
+          Sie sind jetzt Mitglied der Organisation
+        </p>
+        <p className="text-lg font-semibold text-blue-600 mb-6">
+          {invitation.organization.name}
+        </p>
+        <p className="text-sm text-gray-500 mb-6">
+          Ihre Rolle: {invitation.role?.name}
+        </p>
+        <p className="text-sm text-gray-400">
+          Sie werden automatisch weitergeleitet...
+        </p>
+      </div>
+    </div>
+  );
 }

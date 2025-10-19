@@ -174,7 +174,7 @@ export class EmailService {
             console.log(`   → Von: ${inviterName}`);
             
             const info = await this.transporter.sendMail(mailOptions);
-            console.log('✅ Einladungs-E-Mail erfolgreich gesendet:', info.messageId);
+           // console.log('✅ Einladungs-E-Mail erfolgreich gesendet:', info.messageId);
             
             return { success: true, messageId: info.messageId };
             
