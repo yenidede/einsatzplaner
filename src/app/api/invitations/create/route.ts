@@ -93,8 +93,9 @@ export async function POST(request: NextRequest) {
         }
       }
     });
+    
 
-    if (existingUser?.user_organization_role.length > 0) {
+    if (existingUser && existingUser?.user_organization_role.length > 0) {
       return NextResponse.json({ 
         error: "Benutzer ist bereits Mitglied dieser Organisation" 
       }, { status: 400 });
@@ -170,15 +171,17 @@ export async function POST(request: NextRequest) {
       console.log('✅ Invitation email sent successfully');
     } catch (emailError) {
       console.error('❌ Failed to send invitation email:', emailError);
-      // E-Mail Fehler nicht als kritisch behandeln - Einladung wurde trotzdem erstellt
+      return NextResponse.json({ 
+        error: "Einladung erstellt, aber E-Mail konnte nicht gesendet werden" 
+      }, { status: 500 });
     }
 
-    console.log('✅ Invitation created:', {
+/*     console.log('✅ Invitation created:', {
       id: invitation.id,
       email: invitation.email,
       organization: organization.name,
       inviteLink: inviteLink
-    });
+    }); */
 
     return NextResponse.json({
       success: true,
@@ -200,7 +203,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ 
         error: "Validierungsfehler", 
-        details: error.errors 
+        details: error
       }, { status: 400 });
     }
     
