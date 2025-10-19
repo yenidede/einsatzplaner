@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import { Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 11 },
@@ -43,7 +43,6 @@ export const BookingConfirmationPDF: React.FC<Props> = ({ einsatz, options }) =>
   }) + ' Uhr';
 
   return (
-    <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         {showLogos && einsatz.organization?.logo_url && (
@@ -147,6 +146,5 @@ export const BookingConfirmationPDF: React.FC<Props> = ({ einsatz, options }) =>
           Dornbirner Sparkasse IBAN AT71 2060 2004 0004 9911 | BIC DOSPAT2DXXX
         </Text>
       </Page>
-    </Document>
   );
 };
