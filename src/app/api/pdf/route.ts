@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import React from 'react';
-import { renderToBuffer } from '@react-pdf/renderer';
+import { Document, renderToBuffer } from '@react-pdf/renderer';
 import { validatePdfAccess } from '@/features/pdf/lib/utils/authorization';
 import { BookingConfirmationPDF } from '@/features/pdf/components/BookingConfirmationPDF';
 import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
@@ -28,7 +28,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Einsatz not found' }, { status: 404 });
         }
 
-        const documentElement = React.createElement(BookingConfirmationPDF, { einsatz, options });
+        const documentElement = React.createElement(
+            Document,
+            null,
+            React.createElement(BookingConfirmationPDF, { einsatz, options })
+        );
         const pdfBuffer = await renderToBuffer(documentElement);
         console.log('PDF Buffer generated:', pdfBuffer);
 
