@@ -5,7 +5,7 @@ import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { sub } from "date-fns";
 
 export async function GET(request: NextRequest,{params}: {params : {token : string}}){
-    const token = params.token;
+    const token = await params.token;
     
     const subscription = await prisma.calendar_subscription.findUnique({
         where: { token },
