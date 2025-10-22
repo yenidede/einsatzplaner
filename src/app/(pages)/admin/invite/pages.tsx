@@ -19,7 +19,7 @@ export default function InvitePage() {
 
         // Berechtigung prüfen
         if (session.user.role !== 'Organisationsverwaltung' && session.user.role !== 'Einsatzverwaltung') {
-            router.push('/dashboard');
+            router.push('/helferansicht');
             return;
         }
     }, [session, status, router]);

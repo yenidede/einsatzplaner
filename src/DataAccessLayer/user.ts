@@ -123,7 +123,9 @@ export async function getUserForAuth(email: string) {
         picture_url: true,
         password: true, 
       },
+      
     });
+    
   } catch (error: any) {
     throw new Error(`Failed to retrieve user for auth: ${error.message}`);
   }
