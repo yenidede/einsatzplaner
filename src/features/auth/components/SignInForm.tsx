@@ -40,7 +40,7 @@ export default function SignInForm() {
         email: data.email,
         password: data.password,
         redirect: false,
-        callbackUrl: '/dashboard'
+        callbackUrl: '/helferansicht'
       });
 
       console.log('Sign in result:', result);
@@ -55,12 +55,12 @@ export default function SignInForm() {
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Redirect mit Next.js Router
-        router.push('/dashboard');
+        router.push('/helferansicht');
         
         // Fallback für schwierige Fälle
         setTimeout(() => {
-          if (window.location.pathname !== '/dashboard') {
-            window.location.replace('/dashboard');
+          if (window.location.pathname !== '/helferansicht') {
+            window.location.replace('/helferansicht');
           }
         }, 1000);
       } else {
@@ -85,7 +85,7 @@ export default function SignInForm() {
       await signIn('credentials', {
         email: data.email,
         password: data.password,
-        callbackUrl: '/dashboard',
+        callbackUrl: '/helferansicht',
         redirect: true
       });
     } catch (err) {

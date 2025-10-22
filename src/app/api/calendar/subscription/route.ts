@@ -8,7 +8,7 @@ import {
   rotateCalendarSubscription,
   deactivateCalendarSubscription,
   buildCalendarSubscriptionUrl,
-} from "@/features/calendar/calendarSubscription"; // prüf den Export-Pfad
+} from "@/features/calendar/calendarSubscription"; 
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
