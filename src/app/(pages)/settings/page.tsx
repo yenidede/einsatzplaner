@@ -18,6 +18,7 @@ import ProfilePictureUpload from "@/features/settings/components/ProfilePictureU
 import OrganizationCard from "@/features/settings/components/OrganizationCard";
 import { hasPermission } from "@/lib/auth/authGuard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
+import { useSessionValidation } from "@/hooks/useSessionValidation";
 
 
 export default function SettingsPage() {
@@ -33,6 +34,25 @@ export default function SettingsPage() {
 
   const queryClient = useQueryClient();
 
+  useSessionValidation({
+    checkInterval: 60000, // 30 Sekunden
+    debug: true,
+    onTokenExpired: () => {
+      console.log("Token abgelaufen - leite zu Login weiter");
+      router.push('/signin');
+    }
+  })
+
+/*   useEffect(() => {
+    if (session?.error == "RefreshAccessTokenError"){
+      console.log("Refresh Token Expired - signin out user");
+      signOut({
+        callbackUrl: '/signin',
+        redirect: true,
+      })
+    }
+
+  }, [session?.error]) */
   // Lade Userdaten mit TanStack Query
   const { data, isLoading, error } = useQuery({
     queryKey: ["userSettings", session?.user?.id],
@@ -43,6 +63,7 @@ export default function SettingsPage() {
       return res.json();
     },
   });
+
 
   const hasManagePermission = (roles: any[] | undefined) => {
     if (!Array.isArray(roles)) return false;
@@ -122,8 +143,8 @@ const handleSave = async () => {
       //#region Save User
       await mutation.mutateAsync({
         userId: user.id,
-        firstname: user.firstName,
-        lastname: user.lastName,
+        firstname: user.firstname,
+        lastname: user.lastname,
         email,
         picture_url: pictureUrl,
         phone,
@@ -137,7 +158,7 @@ const handleSave = async () => {
 
             const res = await fetch("api/settings",{
               method: "PUT",
-              headers: {"Content-Type": "application-json"},
+              headers: {"Content-Type": "application/json"},
               body: JSON.stringify({
                 userId: String(user.id),
                 orgId: String(orgId),
@@ -166,7 +187,10 @@ const handleSave = async () => {
 const handleProfilePictureUpload = (file: File) => {
   setProfilePictureFile(file);
 };
-
+  if (!session) {
+    router.push("/signin");
+    return <div>Leite weiter…</div>;
+  }
   if (isLoading || !user) {
     return <div>Lade Einstellungen…</div>;
   }
@@ -469,8 +493,7 @@ const handleProfilePictureUpload = (file: File) => {
                 {user.organizations && user.organizations.length > 0 ? (
   user.organizations.map((org: any) => {
     //console.log('Organisation:', org.name, 'Rollen:', org.roles);
-    return (
-      <>      
+    return (    
       <div key={org.id}>
         <OrganizationCard
           name={org.name}
@@ -479,17 +502,12 @@ const handleProfilePictureUpload = (file: File) => {
         />
         <CalendarSubscription orgId={org.id} orgName={org.name} variant="card"></CalendarSubscription>
       </div>
-      </>
 
     );
   })
 ) : (
   <div className="text-slate-500">Du bist in keiner Organisation.</div>
-
-
-
 )}
-
             </div>
             
         </div>
