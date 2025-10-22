@@ -3,7 +3,7 @@ import { isSameDay } from "date-fns";
 import { einsatz_status, einsatz_status as EinsatzStatus } from "@/generated/prisma";
 import { CalendarEvent, CalendarMode, FormFieldType } from "./types";
 import { z } from "zod";
-import { Einsatz, EinsatzCustomizable, EinsatzForCalendar } from "@/features/einsatz/types";
+import { EinsatzCustomizable, EinsatzForCalendar } from "@/features/einsatz/types";
 import React from "react";
 
 /**
