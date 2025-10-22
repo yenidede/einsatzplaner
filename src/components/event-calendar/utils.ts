@@ -412,11 +412,11 @@ export function getEventsForDay(
   events: CalendarEvent[],
   day: Date
 ): CalendarEvent[] {
-  if (events.length > 0 && !events[0].start) {
-    console.error("Events not in correct format:", events);
-    return [];
+  const validEvents = events.filter(event => !!event.start);
+  if (validEvents.length < events.length) {
+    console.warn("Some events are missing the 'start' property and will be skipped:", events.filter(event => !event.start));
   }
-  return events
+  return validEvents
     .filter((event) => {
       const eventStart = new Date(event.start);
       return isSameDay(day, eventStart);
