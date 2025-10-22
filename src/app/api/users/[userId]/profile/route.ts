@@ -1,4 +1,3 @@
-// Neue Datei: src/app/api/users/[userId]/profile/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";

@@ -61,7 +61,7 @@ export default function InviteAcceptPage() {
       return res.json();
     },
     onSuccess: () => {
-      router.push("/dashboard");
+      router.push("/helferansicht");
     },
     onError: (error: Error) => {
       alert(`Fehler: ${error.message}`);

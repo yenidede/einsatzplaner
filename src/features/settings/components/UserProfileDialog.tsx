@@ -175,10 +175,10 @@ export function UserProfileDialog({
     const roleName = role.name || '';
     const roleAbbr = role.abbreviation || '';
     
-    if (roleName === 'Superadmin' || roleAbbr === 'SA') return 'bg-purple-300';
+    if (roleName === 'Superadmin' || roleAbbr === 'SA') return 'bg-rose-400';
     if (roleName === 'Organisationsverwaltung' || roleAbbr === 'OV') return 'bg-red-300';
     if (roleName === 'Einsatzverwaltung' || roleAbbr === 'EV') return 'bg-orange-300';
-    if (roleName === 'Helfer:in' || roleName === 'Helfer' || roleAbbr === 'Helfer') return 'bg-blue-300';
+    if (roleName === 'Helfer:in' || roleName === 'Helfer' || roleAbbr === 'Helfer') return 'bg-cyan-200';
     
     return 'bg-gray-300';
   };
