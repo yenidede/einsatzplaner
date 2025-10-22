@@ -200,11 +200,7 @@ export function EventDialog({
   });
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
-  const {
-    data: detailedEinsatz,
-    isLoading,
-    error: queryError,
-  } = useQuery({
+  const { data: detailedEinsatz, isLoading } = useQuery({
     queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
     queryFn: async () => {
       const returnEinsatz = await getEinsatzWithDetailsById(einsatz as string);
@@ -804,13 +800,13 @@ export function EventDialog({
               </Button>
             </TooltipCustom>
           )}
-          <TooltipCustom text="Bestellbestätigung (PDF) drucken">
+          <TooltipCustom text="PDF-Bestätigung drucken">
             {/* TODO Für Ömer */}
             <Button
               variant="outline"
               size="icon"
               onClick={handlePDFPrint}
-              aria-label="Bestellbestätigung (PDF) drucken"
+              aria-label="PDF-Bestätigung drucken"
             >
               <FileDown size={16} aria-hidden="true" />
             </Button>
