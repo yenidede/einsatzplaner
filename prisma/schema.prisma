@@ -151,11 +151,11 @@ model user {
   updated_at                                DateTime?
   picture_url                               String?
   description                               String?
-  resetToken                                String?
-  resetTokenExpires                         DateTime?
   last_login                                DateTime?                @db.Timestamp(6)
   hasLogoinCalendar                         Boolean                  @default(true)
   last_read_notifications                   DateTime?                @db.Timestamptz(6)
+  resetToken                                String?
+  resetTokenExpires                         DateTime?                @db.Timestamp(6)
   calendar_subscription                     calendar_subscription[]
   change_log_change_log_affected_userTouser change_log[]             @relation("change_log_affected_userTouser")
   change_log                                change_log[]
@@ -166,6 +166,7 @@ model user {
   invitation                                invitation[]
   user_organization_role                    user_organization_role[]
   user_property_value                       user_property_value[]
+  user_session                              user_session[]
 }
 
 model user_organization_role {
@@ -296,9 +297,20 @@ model calendar_subscription {
   org_id        String       @db.Uuid
   token         String       @unique
   name          String?
-  is_active     Boolean       @default(true)
+  is_active     Boolean      @default(true)
   created_at    DateTime     @default(now()) @db.Timestamptz(6)
   last_accessed DateTime?    @db.Timestamptz(6)
   organization  organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
   user          user         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user_session {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String?   @db.Uuid
+  refresh_token String?   @unique
+  expires_at    DateTime? @db.Timestamp(6)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @db.Timestamp(6)
+  user          user?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

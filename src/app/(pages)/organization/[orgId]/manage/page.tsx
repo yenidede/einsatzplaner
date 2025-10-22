@@ -116,7 +116,7 @@ export default function OrganizationManagePage() {
 
   // Lade User der Organisation (user_organization_role)
   const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ["organizationUsers", orgId],
+    queryKey: ["organization", orgId],
     enabled: !!orgId,
     queryFn: async () => {
       const res = await fetch(`/api/auth/organization/${orgId}/users`);

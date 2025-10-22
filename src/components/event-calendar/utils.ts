@@ -412,6 +412,10 @@ export function getEventsForDay(
   events: CalendarEvent[],
   day: Date
 ): CalendarEvent[] {
+  if (events.length > 0 && !events[0].start) {
+    console.error("Events not in correct format:", events);
+    return [];
+  }
   return events
     .filter((event) => {
       const eventStart = new Date(event.start);
