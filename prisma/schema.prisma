@@ -166,7 +166,7 @@ model user {
   invitation                                invitation[]
   user_organization_role                    user_organization_role[]
   user_property_value                       user_property_value[]
-  user_session                              user_session[]
+  user_session                      user_session[]
 }
 
 model user_organization_role {

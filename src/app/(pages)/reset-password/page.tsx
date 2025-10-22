@@ -23,8 +23,7 @@ export default function ResetPasswordPage({ token }: ResetPasswordPageProps) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, newPassword }),
         });
-        const data = await res.json();
-        // Zeige Erfolg oder Fehler im UI
+        await res.json();
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +43,7 @@ export default function ResetPasswordPage({ token }: ResetPasswordPageProps) {
 
             setSuccess('Passwort erfolgreich zurückgesetzt! Sie werden zur Anmeldung weitergeleitet...');
             setTimeout(() => {
-                router.push('/signin');
+                router.push('/helferansicht');
             }, 3000);
         } catch (err) {
             setError('Netzwerkfehler. Bitte versuchen Sie es später erneut.');

@@ -43,11 +43,22 @@ export function useAuth(): AuthState & AuthActions & AuthPermissions {
   // Current organization context
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
 
+  // ✅ ADD: Session error handling
+  useEffect(() => {
+    if (session?.error === "RefreshAccessTokenError") {
+      console.log("Refresh token expired - signing out user...");
+      signOut({ 
+        callbackUrl: '/signin?message=session-expired',
+        redirect: true 
+      });
+    }
+  }, [session?.error]);
+
   // User data query
   const userQuery = useQuery({
     queryKey: ['auth', 'user'],
     queryFn: fetchCurrentUser,
-    enabled: !!session?.user,
+    enabled: !!session?.user && !session?.error, // ✅ ADD: Don't fetch if session has error
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: (failureCount, error) => {
       // Don't retry on auth errors
@@ -61,7 +72,20 @@ export function useAuth(): AuthState & AuthActions & AuthPermissions {
 
   const user: AuthUser | null = userQuery.data ?? null;
   const isLoading = status === 'loading' || userQuery.isLoading;
-  const isAuthenticated = !!session && !!user;
+  const isAuthenticated = !!session && !!user && !session?.error; // ✅ ADD: Check for session errors
+
+  // ✅ ADD: Handle fetch errors that might indicate auth issues
+  useEffect(() => {
+    if (userQuery.error && userQuery.error instanceof Error) {
+      if (userQuery.error.message.includes('401')) {
+        console.log("User fetch failed with 401 - session might be expired");
+        signOut({ 
+          callbackUrl: '/signin?message=auth-error',
+          redirect: true 
+        });
+      }
+    }
+  }, [userQuery.error]);
 
   // Set default organization on first load
   useEffect(() => {
@@ -80,6 +104,12 @@ export function useAuth(): AuthState & AuthActions & AuthPermissions {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       try {
+        // ✅ ADD: Clear any user sessions from DB before logout
+        await fetch('/api/auth/logout', { 
+          method: 'POST',
+          credentials: 'include'
+        });
+        
         await signOut({ 
           callbackUrl: '/signin', 
           redirect: false 
@@ -87,7 +117,12 @@ export function useAuth(): AuthState & AuthActions & AuthPermissions {
         queryClient.clear();
       } catch (error) {
         console.error('Logout error:', error);
+        // Force clear even if API fails
         queryClient.clear();
+        await signOut({ 
+          callbackUrl: '/signin', 
+          redirect: false 
+        });
       }
     },
     onSuccess: () => {
@@ -99,10 +134,16 @@ export function useAuth(): AuthState & AuthActions & AuthPermissions {
     }
   });
 
-  // Actions
-  const logout = useCallback(() => {
-    return logoutMutation.mutateAsync();
-  }, [logoutMutation]);
+  // ✅ ADD: Enhanced logout with session cleanup
+  const logout = useCallback(async () => {
+    try {
+      return await logoutMutation.mutateAsync();
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Force redirect even if logout fails
+      router.push('/signin');
+    }
+  }, [logoutMutation, router]);
   
   const switchOrganization = useCallback((orgId: string) => {
     const organizationUser = user?.organizations.find(o => o.organizationId === orgId);
@@ -116,6 +157,13 @@ export function useAuth(): AuthState & AuthActions & AuthPermissions {
       await userQuery.refetch();
     } catch (error) {
       console.error('Error refetching user:', error);
+      // ✅ ADD: Check if refetch error is auth-related
+      if (error instanceof Error && error.message.includes('401')) {
+        signOut({ 
+          callbackUrl: '/signin?message=auth-error',
+          redirect: true 
+        });
+      }
     }
   }, [userQuery]);
 
@@ -197,6 +245,8 @@ export function useAuth(): AuthState & AuthActions & AuthPermissions {
     user,
     isLoading,
     isAuthenticated,
+    
+    //sessionError: session?.error,
     
     // Actions
     logout,

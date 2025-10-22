@@ -81,7 +81,7 @@ class RateLimitingService {
 
     static checkRateLimit(ip: string): { allowed: boolean; remainingAttempts: number } {
         const now = Date.now();
-        const windowMs = 15 * 60 * 1000; // 15 Minuten
+        const windowMs = 0.1 * 60 * 1000; // 15 Minuten
         const maxAttempts = 5;
 
         const userAttempts = this.attempts.get(ip) || { count: 0, resetTime: now + windowMs };
@@ -167,8 +167,8 @@ export async function POST(req: Request) {
         // Alle Rollen aus allen user_organization_role-Einträgen sammeln
         const allRoles = Array.isArray(user.user_organization_role)
             ? user.user_organization_role.flatMap(uor =>
-                Array.isArray(uor.role_assignments)
-                    ? uor.role_assignments.map(ra => ra.role?.name).filter(Boolean)
+                Array.isArray(uor.role)
+                    ? uor.role.map(ra => ra.role?.name).filter(Boolean)
                     : []
             )
             : [];
