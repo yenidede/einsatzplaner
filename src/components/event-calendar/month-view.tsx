@@ -23,18 +23,17 @@ import {
 import {
   DraggableEvent,
   DroppableCell,
-  EventGap,
   EventHeight,
   EventItem,
   getAllEventsForDay,
-  getEventsForDay,
-  getSpanningEventsForDay,
   isMultiDayEvent,
   sortEvents,
-  useEventVisibility,
   type CalendarEvent,
 } from "@/components/event-calendar";
-import { DefaultStartHour } from "@/components/event-calendar/constants";
+import {
+  DefaultStartHour,
+  MaxEventsPerCellInMonthView,
+} from "@/components/event-calendar/constants";
 import { CalendarMode } from "./types";
 
 interface MonthViewProps {
@@ -89,10 +88,6 @@ export function MonthView({
   };
 
   const [isMounted, setIsMounted] = useState(false);
-  const { contentRef, getVisibleEventCount } = useEventVisibility({
-    eventHeight: EventHeight,
-    eventGap: EventGap,
-  });
 
   useEffect(() => {
     setIsMounted(true);
@@ -116,11 +111,10 @@ export function MonthView({
             key={`week-${weekIndex}`}
             className="grid grid-cols-7 [&:last-child>*]:border-b-0"
           >
-            {week.map((day, dayIndex) => {
+            {week.map((day) => {
               if (!day) return null; // Skip if day is undefined
 
               // Get events for this day, normalizing multi-day events to separate instances
-              const dayEventsRaw = getEventsForDay(events, day);
               const allDayEventsForDay: CalendarEvent[] = [];
 
               // Process all events to create normalized instances for multi-day events
@@ -168,15 +162,10 @@ export function MonthView({
               const cellId = `month-cell-${day.toISOString()}`;
               const allEvents = getAllEventsForDay(events, day);
 
-              const isReferenceCell = weekIndex === 0 && dayIndex === 0;
-              const visibleCount = isMounted
-                ? getVisibleEventCount(allDayEventsForDay.length)
-                : undefined;
               const hasMore =
-                visibleCount !== undefined &&
-                allDayEventsForDay.length > visibleCount;
+                allDayEventsForDay.length > MaxEventsPerCellInMonthView;
               const remainingCount = hasMore
-                ? allDayEventsForDay.length - visibleCount
+                ? allDayEventsForDay.length - MaxEventsPerCellInMonthView
                 : 0;
 
               return (
@@ -198,10 +187,7 @@ export function MonthView({
                     <div className="group-data-today:bg-primary group-data-today:text-primary-foreground mt-1 inline-flex size-6 items-center justify-center rounded-full text-sm">
                       {format(day, "d")}
                     </div>
-                    <div
-                      ref={isReferenceCell ? contentRef : null}
-                      className="max-h-[calc((var(--event-height)+var(--event-gap))*3)] sm:max-h-[calc((var(--event-height)+var(--event-gap))*4)] lg:max-h-[calc((var(--event-height)+var(--event-gap))*5)]"
-                    >
+                    <div>
                       {sortEvents(allDayEventsForDay).map((event, index) => {
                         const eventStart = new Date(event.start);
                         const eventEnd = new Date(event.end);
@@ -209,9 +195,9 @@ export function MonthView({
                         const isLastDay = isSameDay(day, eventEnd);
 
                         const isHidden =
-                          isMounted && visibleCount && index >= visibleCount;
-
-                        if (!visibleCount) return null;
+                          isMounted &&
+                          MaxEventsPerCellInMonthView &&
+                          index >= MaxEventsPerCellInMonthView;
 
                         if (!isFirstDay) {
                           return (
@@ -253,7 +239,7 @@ export function MonthView({
                       })}
 
                       {hasMore && (
-                        <Popover modal>
+                        <Popover modal={false}>
                           <PopoverTrigger asChild>
                             <button
                               className="focus-visible:border-ring focus-visible:ring-ring/50 text-muted-foreground hover:text-foreground hover:bg-muted/50 mt-[var(--event-gap)] flex min-h-fit w-full items-center px-1 text-left text-[10px] backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] sm:px-2 sm:text-xs"
