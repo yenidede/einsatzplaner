@@ -106,7 +106,7 @@ export function EventCalendar({
 
   // TODO use logged in user data
   const { data: sessionData } = useSession();
-  const orgs = sessionData?.orgs || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"];
+  const orgs = sessionData?.orgIds || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"];
   const orgsQuery = useQuery({
     queryKey: queryKeys.organizations(orgs), // also map all orgs by id
     queryFn: () => getOrganizationsByIds(orgs),
