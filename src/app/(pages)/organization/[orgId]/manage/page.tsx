@@ -88,22 +88,37 @@ export default function OrganizationManagePage() {
         }
     }, [orgData]);
 
-    // Lade User der Organisation (user_organization_role)
-    const { data: usersData, isLoading: usersLoading } = useQuery({
-        queryKey: ["organizationUsers", orgId],
-        enabled: !!orgId,
-        queryFn: async () => {
-            const res = await fetch(`/api/auth/organization/${orgId}/users`);
-            if (!res.ok) {
-                if(res.status === 401){
-                    signOut({callbackUrl:'/signin'})
-                    throw new Error("Unauthorized")
-                }
-                    throw new Error("Fehler beim Laden der User");
-                }
-            return res.json();
-        },
-    });
+  // Lade User der Organisation (user_organization_role)
+  const { data: usersData, isLoading: usersLoading } = useQuery({
+    queryKey: ["organization", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const res = await fetch(`/api/auth/organization/${orgId}/users`);
+      if (!res.ok) throw new Error("Fehler beim Laden der User");
+      return res.json();
+    },
+  });
+
+  const handleSignOut = async () => {
+    try {
+      await signOut({
+        callbackUrl: "/signin",
+        redirect: true,
+      });
+
+      queryClient.clear();
+    } catch (error) {
+      console.error("Fehler beim Abmelden:", error);
+      router.push("/signin");
+    }
+  };
+
+  // Logo Upload Handler
+  const handleLogoUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
     const handleSignOut = async () => {
         try {
