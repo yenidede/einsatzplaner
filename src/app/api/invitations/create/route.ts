@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Debug: Schaue welche Rollen gefunden wurden
-    console.log('🔍 API Debug - Found User Roles:', {
+/*     console.log('🔍 API Debug - Found User Roles:', {
       inviterEmail: inviter.email,
       organizationId: validatedData.organizationId,
       userOrgRoles: inviter.user_organization_role,
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         roleId: uor.role?.id
       }))
     });
-
+ */
     // Permission Check - prüfe auf alle möglichen Namen/Abkürzungen
     const roleNames = inviter.user_organization_role.map(uor => uor.role?.name || '');
     const roleAbbrs = inviter.user_organization_role.map(uor => uor.role?.abbreviation || '');
@@ -62,11 +62,11 @@ export async function POST(request: NextRequest) {
                      roleNames.includes('Einsatzverwaltung') || // Falls EV auch einladen darf
                      roleAbbrs.includes('EV');
 
-    console.log('🔍 Permission Check Result:', {
+/*     console.log('🔍 Permission Check Result:', {
       roleNames,
       roleAbbrs,
       canInvite
-    });
+    }); */
 
     if (!canInvite) {
       return NextResponse.json({ 
