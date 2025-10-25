@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
+import { useSession } from "next-auth/react";
 
 const acceptSchema = z.object({
   token: z.string()
@@ -15,6 +16,9 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
     }
+
+    
+
 
     const body = await request.json();
     const { token } = acceptSchema.parse(body);

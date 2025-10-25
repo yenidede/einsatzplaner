@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     if (!userId) {
         return NextResponse.json({ error: "userId fehlt" }, { status: 400 });
     }
-
+    
     // Lade User mit allen Organisationen und Rollen
     const userWithOrganizations = await prisma.user.findUnique({
         where: { id: userId },
