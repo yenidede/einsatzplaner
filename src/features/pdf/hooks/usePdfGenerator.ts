@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PdfGenerationRequest } from '../types/pdf';
-import { pdfQueryKeys } from '../QueryKeys';
+import { pdfQueryKeys } from '../queryKeys';
 
 interface PdfGenerationResult {
   success: boolean;
@@ -99,26 +99,34 @@ export function usePdfGenerator() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const mutation = useMutation({
+    mutationKey: pdfQueryKeys.all,
     mutationFn: generatePdfApi,
     
-    onMutate: () => {
+    onMutate: (variables) => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
+      
+      console.log('Generating PDF with key:', pdfQueryKeys.generate(variables.einsatzId));
     },
     
     onSuccess: (data, variables) => {
-      console.log('PDF generated successfully:', data.filename); 
+      console.log('PDF generated successfully:', data.filename);
+      
+      queryClient.invalidateQueries({ 
+        queryKey: pdfQueryKeys.all 
+      });
+      
     },
     
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
       if (error.name === 'AbortError') {
-        console.log('PDF generation aborted');
+        console.log('PDF generation aborted for:', pdfQueryKeys.generate(variables.einsatzId));
         return;
       }
       
-      console.error(' PDF generation failed:', error.message);
+      console.error('PDF generation failed:', error.message);
     },
     
     onSettled: () => {
