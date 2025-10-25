@@ -7,7 +7,7 @@ import crypto from "crypto";
 import prisma from "@/lib/prisma";
 
 const accessTokenTime = 60 * 30 * 1000; // 30 Minuten
-const refreshTokenTime = 7 * 24 * 60 * 60 * 1000; // 7 Days
+const refreshTokenTime = 7* 24*  60* 60 * 1000; // 1 Stunde
 
 async function generateAccessToken(userId: string): Promise<string> {
   return `access_${userId}_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
