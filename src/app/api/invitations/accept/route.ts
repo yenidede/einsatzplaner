@@ -83,12 +83,12 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    console.log("✅ Invitation accepted:", {
+/*     console.log("✅ Invitation accepted:", {
       invitationId: invitation.id,
       userId: user.id,
       orgId: invitation.org_id,
       roleId: invitation.role_id
-    });
+    }); */
 
     return NextResponse.json({
       success: true,
@@ -100,18 +100,18 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("❌ Error accepting invitation:", error);
+/*     console.error("❌ Error accepting invitation:", error); */
     
     // ✅ Detaillierte Fehlerausgabe
     if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
+/*       console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack); */
     }
     
     // ✅ Prisma-spezifische Fehler
     if (error && typeof error === 'object' && 'code' in error) {
-      console.error("Prisma error code:", (error as any).code);
-      console.error("Prisma error meta:", (error as any).meta);
+/*       console.error("Prisma error code:", (error as any).code);
+      console.error("Prisma error meta:", (error as any).meta); */
     }
     
     return NextResponse.json({ 
@@ -134,7 +134,7 @@ export async function DELETE(request: NextRequest) {
       deletedCount: deletedInvitation.count
     });
   } catch (error) {
-    console.error("❌ Error deleting invitation:", error);
+/*     console.error("❌ Error deleting invitation:", error); */
     return NextResponse.json({ 
       error: "Fehler beim Löschen der Einladung",
       details: error instanceof Error ? error.message : 'Unknown error'
