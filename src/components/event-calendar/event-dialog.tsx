@@ -48,7 +48,8 @@ import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { buildInputProps } from "../form/utils";
 import TooltipCustom from "../tooltip-custom";
 
-import { GeneratePdf } from "@/features/pdf/components/GeneratePdf";
+import { PdfGenerationRequest } from "@/features/pdf/types/pdf";
+import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -177,7 +178,7 @@ export function EventDialog({
   const currentUserId = "5ae139a7-476c-4d76-95cb-4dcb4e909da9";
   // TODO
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-
+  const { generatePdf} = usePdfGenerator();
   const [staticFormData, setStaticFormData] =
     useState<EinsatzFormData>(DEFAULTFORMDATA);
   // state for validation on dynamic form data - generated once after template was selected
@@ -687,9 +688,19 @@ export function EventDialog({
     }
   };
 
-  const handlePDFPrint = () => {
+  const handlePDFPrint = async () => {
     // TODO: replace with real PDF generation workflow
-    console.warn("PDF confirmation export is not implemented yet.");
+    if(!currentEinsatz?.id) {
+      console.warn("No einsatz ID available for PDF generation.");
+      return;
+    }
+    const request: PdfGenerationRequest = {
+      type: "booking-confirmation",
+      einsatzId: currentEinsatz.id || "",
+    };
+    
+    await generatePdf(request);
+    //console.warn("PDF confirmation export is not implemented yet.");
   };
 
   return (
@@ -803,7 +814,6 @@ export function EventDialog({
             </TooltipCustom>
           )}
           <TooltipCustom text="PDF-Bestätigung drucken">
-            {/* TODO Für Ömer */}
             <Button
               variant="outline"
               size="icon"
@@ -819,11 +829,6 @@ export function EventDialog({
             </Button>
             <Button onClick={handleSave}>Speichern</Button>
           </div>
-          {/* Testing PDF Generation  */}
-          <GeneratePdf
-            einsatzId={currentEinsatz?.id || ""}
-            einsatzTitle={currentEinsatz?.title}
-          />
 
         </DialogFooter>
       </DialogContent>
