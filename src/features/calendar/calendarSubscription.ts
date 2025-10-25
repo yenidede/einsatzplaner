@@ -39,6 +39,7 @@ export async function deactivateCalendarSubscription(id: string){
 }
 
 export function buildCalendarSubscriptionUrl(token: string) {
-    return process.env.NEXTAUTH_URL?.replace(/^https/, "webcal") + `api/calendar/${token}`;
-
+    const base = process.env.NEXTAUTH_URL?.replace(/^https/, "webcal");
+    const slash = base?.endsWith("/") ? "" : "/";
+    return `${base}${slash}api/calendar/${token}`;
 }

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest,{params}: {params : {token : stri
         name: subscription.organization.name ?? "Einsatzplaner - Kalender",
         timezone: "Europe/Vienna",
         method: ICalCalendarMethod.PUBLISH,
-        ttl: 60*60*2, // 2 Cache Hinweis
+        ttl: 60*60*2,
         prodId: {
             company: "Einsatzplaner", 
             product: "Calendar", 
@@ -41,7 +41,9 @@ export async function GET(request: NextRequest,{params}: {params : {token : stri
         .filter(Boolean) ?? [];
 
         const ortField = einsatz.einsatz_field.find(field => (field.field.name ?? "")
-        .toLowerCase().match("/^(ort|location)$"));
+        .toLowerCase().match("/^(ort|location)$/"));
+
+        
 
         const urlToEinsatzPage = `${process.env.NEXTAUTH_URL}/einsaetze/${einsatz.id}`
 
@@ -60,6 +62,7 @@ export async function GET(request: NextRequest,{params}: {params : {token : stri
             url: urlToEinsatzPage,
             location: ortField?.value,
             status: ICalEventStatus.CONFIRMED,
+            phone: phoneField?.value,
         });
 
         event.uid(`${einsatz.id}@${host}`)

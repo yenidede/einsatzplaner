@@ -16,6 +16,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
     }
 
+    
+
+
     const body = await request.json();
     const { token } = acceptSchema.parse(body);
 
