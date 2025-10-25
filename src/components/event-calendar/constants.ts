@@ -1,7 +1,8 @@
 export const EventHeight = 48;
-
 // Vertical gap between events in pixels - controls spacing in month view
 export const EventGap = 4;
+
+export const MaxEventsPerCellInMonthView = 4;
 
 // Height of hour cells in week and day views - controls the scale of time display
 export const WeekCellsHeight = 72;
