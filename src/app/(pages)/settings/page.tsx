@@ -20,7 +20,6 @@ import { hasPermission } from "@/lib/auth/authGuard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 
-
 export default function SettingsPage() {
   const id = useId();
   const [showLogos, setShowLogos] = useState<boolean>(true);
@@ -42,7 +41,8 @@ export default function SettingsPage() {
       router.push('/signin');
     }
   })
-
+  if(session?.user)
+    console.log("Session", session.user.orgIds);
 /*   useEffect(() => {
     if (session?.error == "RefreshAccessTokenError"){
       console.log("Refresh Token Expired - signin out user");
