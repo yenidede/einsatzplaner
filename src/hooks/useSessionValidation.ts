@@ -67,7 +67,7 @@ export function useSessionValidation(options: UseSessionValidationOptions = {}) 
             });
           }
 
-          // ✅ 1. Check NextAuth session error (das wichtigste!)
+          // Check NextAuth session error
           if (session?.error === "RefreshAccessTokenError") {
             if (debug) console.log('❌ NextAuth session error detected');
             onTokenExpired?.();
@@ -75,7 +75,7 @@ export function useSessionValidation(options: UseSessionValidationOptions = {}) 
             return;
           }
 
-          // ✅ 2. Check token expiration times
+          // Check token expiration times
           const now = Date.now();
           if (tokenInfo.accessTokenExpires && now > tokenInfo.accessTokenExpires) {
             if (debug) console.log('❌ Access token expired');
@@ -91,32 +91,33 @@ export function useSessionValidation(options: UseSessionValidationOptions = {}) 
             return;
           }
 
-          // ✅ 3. Optional: Test mit einem leichten API-Call (z.B. User-Daten)
+          // Test mit einem leichten API-Call (z.B. User-Daten)
           // Das prüft indirekt ob die Tokens noch funktionieren
-          try {
+          if(debug){
+                      try {
             const testResponse = await fetch('/api/auth/me', {
               method: 'GET',
               credentials: 'include'
             });
 
             if (!testResponse.ok) {
-              if (debug) console.log('❌ API test failed:', testResponse.status);
+              console.log('❌ API test failed:', testResponse.status);
               
               if (testResponse.status === 401) {
                 onTokenExpired?.();
                 await signOut({ callbackUrl: '/signin?message=token-expired' });
               }
             } else {
-              if (debug) console.log('✅ API test successful - tokens valid');
+              console.log('✅ API test successful - tokens valid');
             }
           } catch (networkError) {
             // Bei Netzwerk-Fehlern nichts tun (Offline-Modus)
-            if (debug) console.log('⚠️ Network error during validation, skipping');
+            console.log('⚠️ Network error during validation, skipping');
+          }
           }
 
-
-        } catch (error) {
-          if (debug) console.error('🚨 Session validation error:', error);
+      } catch (error) {
+          console.error('🚨 Session validation error:', error);
         }
       };
 

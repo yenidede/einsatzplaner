@@ -19,6 +19,8 @@ import OrganizationCard from "@/features/settings/components/OrganizationCard";
 import { hasPermission } from "@/lib/auth/authGuard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
+import { settingsQueryKeys } from "@/features/settings/queryKey";
+import { stat } from "fs";
 
 
 export default function SettingsPage() {
@@ -35,8 +37,8 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   useSessionValidation({
-    checkInterval: 60000, // 30 Sekunden
-    debug: true,
+    checkInterval: 30000, // 30 Sekunden
+    debug: false,
     onTokenExpired: () => {
       console.log("Token abgelaufen - leite zu Login weiter");
       router.push('/signin');
@@ -55,7 +57,7 @@ export default function SettingsPage() {
   }, [session?.error]) */
   // Lade Userdaten mit TanStack Query
   const { data, isLoading, error } = useQuery({
-    queryKey: ["userSettings", session?.user?.id],
+    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     enabled: !!session?.user?.id,
     queryFn: async () => {
       const res = await fetch(`/api/settings?userId=${session?.user.id}`);
@@ -103,6 +105,7 @@ export default function SettingsPage() {
   };
 
   const mutation = useMutation({
+    mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     mutationFn: async (newSettings: UserSettings) => {
       const res = await fetch("/api/settings", {
         method: "PUT",
@@ -113,7 +116,7 @@ export default function SettingsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["userSettings", session?.user.id] });
+      queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(session?.user?.id || "")});
     },
   });
 //#region handleSave
@@ -176,7 +179,7 @@ const handleSave = async () => {
       //#endregion
 
       //#region Cache invalidate
-      await queryClient.invalidateQueries({queryKey: ["userSettings", session?.user.id]});
+      await queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(session?.user?.id || "") });
       //#endregion
   } catch(error){
     console.error(error);
@@ -187,7 +190,7 @@ const handleSave = async () => {
 const handleProfilePictureUpload = (file: File) => {
   setProfilePictureFile(file);
 };
-  if (!session) {
+  if (status === "unauthenticated") {
     router.push("/signin");
     return <div>Leite weiter…</div>;
   }
@@ -206,14 +209,27 @@ const handleProfilePictureUpload = (file: File) => {
         const confirmed = window.confirm("Möchtest du die Organisation wirklich verlassen?");
         if (!confirmed) return;
         try {
-            const res = await fetch("/api/organization/leave", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: user.id, organizationId: id }),
+            const leaveOrgMutation = useMutation({
+              mutationKey: settingsQueryKeys.userOrganizations(session?.user?.id || ""), 
+              mutationFn: async ({ userId, organizationId }: { userId: string; organizationId: string }) => {
+                const res = await fetch("/api/organization/leave", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ userId, organizationId }),
+                });
+                if (!res.ok) throw new Error("Failed to leave organization");
+                return res.json();
+              },
+              onSuccess: () => {
+                queryClient.invalidateQueries({ 
+                  queryKey: settingsQueryKeys.userSettings(session?.user?.id || "") 
+                });
+              }
             });
-            if (!res.ok) throw new Error("Fehler beim Verlassen der Organisation");
+
+            await leaveOrgMutation.mutateAsync({ userId: user.id, organizationId: id });
             // Aktualisiere die Userdaten nach dem Verlassen
-            queryClient.invalidateQueries({ queryKey: ["userSettings", user.id] });
+            queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(user.id) });
         } catch (err) {
             alert("Fehler beim Verlassen der Organisation.");
         }
