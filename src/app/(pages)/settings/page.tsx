@@ -20,7 +20,6 @@ import { hasPermission } from "@/lib/auth/authGuard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 import { settingsQueryKeys } from "@/features/settings/queryKey";
-import { stat } from "fs";
 
 
 export default function SettingsPage() {
@@ -37,25 +36,11 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   useSessionValidation({
-    checkInterval: 30000, // 30 Sekunden
-    debug: false,
     onTokenExpired: () => {
       console.log("Token abgelaufen - leite zu Login weiter");
       router.push('/signin');
     }
   })
-
-/*   useEffect(() => {
-    if (session?.error == "RefreshAccessTokenError"){
-      console.log("Refresh Token Expired - signin out user");
-      signOut({
-        callbackUrl: '/signin',
-        redirect: true,
-      })
-    }
-
-  }, [session?.error]) */
-  // Lade Userdaten mit TanStack Query
   const { data, isLoading, error } = useQuery({
     queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     enabled: !!session?.user?.id,
@@ -165,7 +150,7 @@ const handleSave = async () => {
               body: JSON.stringify({
                 userId: String(user.id),
                 orgId: String(orgId),
-                hasGetMailNotification: org.hasGetMailNotification
+                hasGetMailNotification: org.hasGetMailNotification,
               })
             })
 
@@ -179,6 +164,7 @@ const handleSave = async () => {
       //#endregion
 
       //#region Cache invalidate
+      window.dispatchEvent(new Event('session-update'));
       await queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(session?.user?.id || "") });
       //#endregion
   } catch(error){

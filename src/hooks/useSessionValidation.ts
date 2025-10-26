@@ -4,7 +4,6 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
 
-
 interface UseSessionValidationOptions {
   checkInterval?: number;
   debug?: boolean;
@@ -19,21 +18,23 @@ interface TokenInfo {
 }
 
 export function useSessionValidation(options: UseSessionValidationOptions = {}) {
-  const { checkInterval = 15000, debug = true, onTokenExpired } = options;
+  const { checkInterval = 60000, debug = false, onTokenExpired } = options;
   const { data: session, status } = useSession();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ Extrahiere Token-Informationen aus der Session
+  // Extrahiere Token-Informationen aus der Session
   const extractTokenInfo = (): TokenInfo => {
     if (!session) return {};
 
     // try multiple locations where tokens might be stored
-    const sAny = session as any;
-    const tokenObj = sAny.token || sAny?.accessToken || sAny?.user?.token || sAny?.user || {};
+    // good variable name
+    const sessionData = session as any;
+
+    const tokenObj = sessionData.token || sessionData?.accessToken || sessionData?.user?.token || sessionData?.user || {};
 
     return {
-      accessToken: tokenObj.accessToken || tokenObj.access_token || sAny?.user?.accessToken,
-      refreshToken: tokenObj.refreshToken || tokenObj.refresh_token || sAny?.user?.refreshToken,
+      accessToken: tokenObj.access_token || tokenObj.access_token || sessionData?.user?.accessToken,
+      refreshToken: tokenObj.refreshToken || tokenObj.refresh_token || sessionData?.user?.refreshToken,
       accessTokenExpires: tokenObj.accessTokenExpires || tokenObj.access_token_expires,
       refreshTokenExpires: tokenObj.refreshTokenExpires || tokenObj.refresh_token_expires
         || (tokenObj.accessTokenExpires ? tokenObj.accessTokenExpires + (7 * 24 * 60 * 60 * 1000) : undefined)

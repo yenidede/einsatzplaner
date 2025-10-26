@@ -15,4 +15,7 @@ export const settingsQueryKeys = {
   
   profilePicture: (userId: string) =>
     [...settingsQueryKeys.all, 'profilePicture', userId] as const,
+
+  organization: (orgId: string) =>
+    [...settingsQueryKeys.all, 'organization', orgId] as const,
 } as const;

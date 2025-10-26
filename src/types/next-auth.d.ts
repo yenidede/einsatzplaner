@@ -16,6 +16,9 @@ declare module 'next-auth' {
         description?: string;
         refreshToken: string;
         accessToken: string;
+        hasLogoinCalendar?: boolean;
+        updated_at?: Date;
+        created_at?: Date;
         // Multi-Role/Org Unterstützung
         roles?: string[];
         roleIds?: string[];
