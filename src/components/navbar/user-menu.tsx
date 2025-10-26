@@ -28,11 +28,13 @@ import {
 import { useSession } from "next-auth/react"
 import { signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { useSessionSync } from "@/hooks/useSessionSync"
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  useSessionSync();
 
   if (status === "loading") {
     return (
