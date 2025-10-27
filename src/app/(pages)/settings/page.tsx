@@ -20,13 +20,13 @@ import { hasPermission } from "@/lib/auth/authGuard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 import { settingsQueryKeys } from "@/features/settings/queryKey";
-
+import { first } from "lodash";
 
 export default function SettingsPage() {
   const id = useId();
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const [getMailFromOrganization, setGetMailFromOrganization] = useState<boolean>(true);
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState<string>("");
@@ -36,6 +36,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   useSessionValidation({
+    debug: true,
     onTokenExpired: () => {
       console.log("Token abgelaufen - leite zu Login weiter");
       router.push('/signin');
@@ -154,6 +155,8 @@ const handleSave = async () => {
               })
             })
 
+
+
             if (!res.ok){
               const message = await res.text().catch(() => "");
               throw new Error(`Update für Organisation "...": ${res.status} ${message}`);
@@ -162,10 +165,30 @@ const handleSave = async () => {
         );
       }
       //#endregion
+      if(!session) return;
+
+      const updatedSession = await update({
+        ...session,
+        user: {
+          ...session.user,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email,
+          phone,
+          picture_url: user.picture_url,
+          hasLogoinCalendar: !!showLogos
+        }
+      })
+      console.log("Session aktualisiert:", updatedSession);
+
 
       //#region Cache invalidate
-      window.dispatchEvent(new Event('session-update'));
-      await queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(session?.user?.id || "") });
+      await queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.userSettings(session?.user.id || '')
+      });
+      await queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.userOrganizations(session?.user.id || '')
+      });
       //#endregion
   } catch(error){
     console.error(error);

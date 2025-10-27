@@ -29,6 +29,7 @@ import { useSession } from "next-auth/react"
 import { signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useSessionSync } from "@/hooks/useSessionSync"
+import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user"
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
@@ -57,14 +58,15 @@ export default function UserMenu() {
   }
 
   const user = session?.user;
-  const pictureUrl = user?.picture_url || undefined;
-  if (!user) return null;
-  const initials = `${user.firstname?.[0] || ""}${user.lastname?.[0] || ""}`.toUpperCase() || user.email?.[0]?.toUpperCase() || "U";
-
+  
+  if(!user) {
+    return null;
+  }
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/signin' });
   }
-
+  
+  const initials = `${user?.firstname?.charAt(0) ?? ''}${user?.lastname?.charAt(0) ?? ''}`.toUpperCase();
   const handleSettings = () => {
     router.push("/settings");
   }
@@ -76,7 +78,7 @@ export default function UserMenu() {
         <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
           <Avatar>
             {
-              pictureUrl && <AvatarImage src={pictureUrl} alt={`Profile image for ${user.firstname} ${user.lastname}`} />
+              user?.picture_url && <AvatarImage src={user.picture_url} alt={`Profile image for ${user.firstname} ${user.lastname}`} />
             }
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>

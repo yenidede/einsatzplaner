@@ -6,10 +6,11 @@ import { getUserForAuth, updateLastLogin } from "@/DataAccessLayer/user";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 
-const accessTokenTime = 60 * 30 * 1000; // 30 Minuten
-const refreshTokenTime = 7* 24*  60* 60 * 1000; // 1 Stunde
+const accessTokenTime = 5 * 1000; // 5 Sekunden
+const refreshTokenTime = 7 * 24 * 60 * 60 * 1000; // 10 Minuten
 
 async function generateAccessToken(userId: string): Promise<string> {
+  
   return `access_${userId}_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
 }
 
@@ -43,7 +44,6 @@ async function refreshAccessToken(token: any) {
     }
 
     const newAccessToken = await generateAccessToken(session.user.id);
-    
 
     return {
       ...token,
@@ -146,7 +146,7 @@ export const authOptions: NextAuthOptions = {
       return await refreshAccessToken(token);
     },
 
-    async session({ session, token }) {
+    async session({ session, token, trigger}) {
       (session as any).token = {
         accessToken: (token as any).accessToken,
         refreshToken: (token as any).refreshToken,
@@ -160,6 +160,9 @@ export const authOptions: NextAuthOptions = {
           ...session,
           error: "RefreshAccessTokenError"
         };
+      }
+      if(trigger === "update" || trigger === "signIn") {
+        return {...token, ...session}
       }
 
       if (token && session.user) {
