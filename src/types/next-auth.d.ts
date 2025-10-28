@@ -13,6 +13,9 @@ declare module 'next-auth' {
         phone?: string;
         initials: string;
         picture_url?: string | null;
+        orgIds?: string[];
+        organizations?: any[];
+        roles?: any[];
         description?: string;
         refreshToken: string;
         accessToken: string;
@@ -33,6 +36,9 @@ declare module 'next-auth' {
             picture_url?: string;
             phone?: string;
             description?: string;
+            orgIds: string[];
+            roles?: any[];
+
             hasLogoinCalendar?: boolean;
             organizations?: Array<{
                 organization: {
@@ -66,6 +72,9 @@ declare module 'next-auth/jwt' {
         phone?: string;
         description?: string;
         hasLogoinCalendar?: boolean;
+        orgIds?: string[];
+        organizations?: any[];
+        roles?: any[];
         organizations?: any[];
         accessTokenExpires: number;
         refreshToken?: string;
