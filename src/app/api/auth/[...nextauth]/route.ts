@@ -4,11 +4,10 @@ import { compare } from "bcryptjs";
 import { getUserForAuth, updateLastLogin } from "@/DataAccessLayer/user";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
-import { SignJWT } from "jose"; 
+import { SignJWT } from "jose";
 
-
-const ACCESS_TOKEN_LIFETIME = 15 * 60 ; // 5 Minuten (in Millisekunden)
-const REFRESH_TOKEN_LIFETIME = 7 * 24 * 60 * 60 * 1000; // 7 Tage (in Millisekunden)
+const ACCESS_TOKEN_LIFETIME = 15 * 60; // 15 minutes in seconds
+const REFRESH_TOKEN_LIFETIME = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.NEXTAUTH_SECRET || "fallback-secret-as-backup"
@@ -18,17 +17,19 @@ async function generateAccessToken(userId: string, userData: any): Promise<strin
   const now = Math.floor(Date.now() / 1000);
   
   const jwt = await new SignJWT({
-    sub: userId, 
+    sub: userId,
     email: userData.email,
     firstname: userData.firstname,
     lastname: userData.lastname,
     picture_url: userData.picture_url,
     type: "access",
   })
-    .setProtectedHeader({ alg: "HS256", typ: "JWT" }) 
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuedAt(now)
     .setExpirationTime(now + ACCESS_TOKEN_LIFETIME)
-    .setJti(crypto.randomUUID()) 
+    .setJti(crypto.randomUUID())
     .sign(JWT_SECRET);
+  
   return jwt;
 }
 
@@ -52,8 +53,6 @@ async function generateRefreshToken(userId: string): Promise<string> {
 
 async function refreshAccessToken(token: any) {
   try {
-    //console.log("Refreshing access token...");
-
     if (!token.refreshToken) {
       throw new Error("No refresh token available");
     }
@@ -61,7 +60,7 @@ async function refreshAccessToken(token: any) {
     const session = await prisma.user_session.findFirst({
       where: { 
         refresh_token: token.refreshToken,
-        expires_at: { gt: new Date() } 
+        expires_at: { gt: new Date() }
       },
       include: { 
         user: {
@@ -72,37 +71,41 @@ async function refreshAccessToken(token: any) {
             lastname: true,
             picture_url: true,
             phone: true,
+            description: true,
+            hasLogoinCalendar: true,
           }
         }
       },
     });
 
-    if (!session || !session.user) {
+    if (!session?.user || !session.expires_at) {
       throw new Error("Invalid or expired refresh token");
     }
 
     const newAccessToken = await generateAccessToken(session.user.id, session.user);
 
-    //console.log("Access token refreshed successfully");
-    if (!session.expires_at) {
-      throw new Error("Session expiration date is missing");
-    }
     return {
       ...token,
-      id: session.user.id,
       email: session.user.email,
       firstname: session.user.firstname,
       lastname: session.user.lastname,
       picture_url: session.user.picture_url,
       phone: session.user.phone,
+      description: session.user.description,
+      hasLogoinCalendar: session.user.hasLogoinCalendar,
       accessToken: newAccessToken,
-      refreshToken: token.refreshToken, 
       accessTokenExpires: Date.now() + (ACCESS_TOKEN_LIFETIME * 1000),
+      refreshToken: token.refreshToken,
       refreshTokenExpires: session.expires_at.getTime(),
       error: undefined,
+      organizations: token.organizations,
+      roles: token.roles,
+      orgIds: token.orgIds,
+      roleIds: token.roleIds,
+      activeOrganizationId: token.activeOrganizationId,
     };
   } catch (error) {
-    console.error("❌ Error refreshing access token:", error);
+    console.error("Error refreshing access token:", error);
     
     if (token.id) {
       await prisma.user_session.deleteMany({
@@ -112,7 +115,7 @@ async function refreshAccessToken(token: any) {
     
     return { 
       ...token,
-      error: "RefreshAccessTokenError" 
+      error: "RefreshAccessTokenError"
     };
   }
 }
@@ -131,16 +134,64 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const user = await getUserForAuth(credentials.email);
-          if (!user) return null;
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+            include: {
+              user_organization_role: {
+                include: {
+                  organization: {
+                    select: {
+                      id: true,
+                      name: true,
+                      helper_name_singular: true,
+                      helper_name_plural: true,
+                    }
+                  },
+                  role: {
+                    select: {
+                      id: true,
+                      name: true,
+                      abbreviation: true,
+                    }
+                  }
+                }
+              }
+            }
+          });
 
-          const isPasswordValid = await compare(
-            credentials.password,
-            user.password || ''
-          );
-          if (!isPasswordValid) return null;
+          if (!user || !user.password) {
+            return null;
+          }
+
+          const isPasswordValid = await compare(credentials.password, user.password);
+          if (!isPasswordValid) {
+            return null;
+          }
 
           await updateLastLogin(user.id);
+
+          const organizationsMap = new Map();
+          user.user_organization_role.forEach(uor => {
+            if (!organizationsMap.has(uor.organization.id)) {
+              organizationsMap.set(uor.organization.id, {
+                id: uor.organization.id,
+                name: uor.organization.name,
+                helper_name_singular: uor.organization.helper_name_singular ?? "Helfer",
+                helper_name_plural: uor.organization.helper_name_plural ?? "Helfer",
+              });
+            }
+          });
+
+          const roles = user.user_organization_role.map(uor => ({
+            orgId: uor.organization.id,
+            roleId: uor.role.id,
+            roleName: uor.role.name,
+            roleAbbreviation: uor.role.abbreviation,
+          }));
+
+          const organizations = Array.from(organizationsMap.values());
+          const orgIds = organizations.map(org => org.id);
+          const roleIds = [...new Set(roles.map(r => r.roleId))];
 
           const refreshToken = await generateRefreshToken(user.id);
           const accessToken = await generateAccessToken(user.id, {
@@ -157,11 +208,18 @@ export const authOptions: NextAuthOptions = {
             lastname: user.lastname,
             picture_url: user.picture_url,
             phone: user.phone,
+            description: user.description,
+            hasLogoinCalendar: user.hasLogoinCalendar ?? false,
+            organizations,
+            roles,
+            orgIds,
+            roleIds,
+            accessToken,
             refreshToken,
-            accessToken, 
+            activeOrganizationId: orgIds[0] || null,
           };
         } catch (error) {
-          console.error("❌ Authentication error:", error);
+          console.error("Authentication error:", error);
           return null;
         }
       },
@@ -171,8 +229,6 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, account, trigger, session }) {
       if (user && account) {
-        //console.log("Creating initial JWT token for user:", user.id);
-        
         return {  
           ...token,
           id: user.id,
@@ -181,25 +237,30 @@ export const authOptions: NextAuthOptions = {
           lastname: user.lastname,
           picture_url: user.picture_url,
           phone: user.phone,
+          description: user.description,
+          hasLogoinCalendar: user.hasLogoinCalendar,
+          organizations: user.organizations,
+          orgIds: user.organizations.map((org: any) => org.id),
+          roleIds: user.roles.map((role: any) => role.id),
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           accessTokenExpires: Date.now() + (ACCESS_TOKEN_LIFETIME * 1000),
           refreshTokenExpires: Date.now() + REFRESH_TOKEN_LIFETIME,
+          activeOrganizationId: user.activeOrganizationId,
         };
       }
 
       if (trigger === "update" && session) {
-        //console.log("Manual session update (UI data only)");
-
         return {
           ...token,
-
-          firstname: session.user?.firstname || token.firstname,
-          lastname: session.user?.lastname || token.lastname,
+          firstname: session.user?.firstname ?? token.firstname,
+          lastname: session.user?.lastname ?? token.lastname,
           picture_url: session.user?.picture_url ?? token.picture_url,
-          email: session.user?.email || token.email,
-          phone: session.user?.phone || token.phone,
-
+          email: session.user?.email ?? token.email,
+          phone: session.user?.phone ?? token.phone,
+          description: session.user?.description ?? token.description,
+          hasLogoinCalendar: session.user?.hasLogoinCalendar ?? token.hasLogoinCalendar,
+          activeOrganizationId: session.user?.activeOrganizationId ?? token.activeOrganizationId,
           accessToken: token.accessToken,
           refreshToken: token.refreshToken,
           accessTokenExpires: token.accessTokenExpires,
@@ -207,25 +268,17 @@ export const authOptions: NextAuthOptions = {
         };
       }
 
-      // Refresh Token Error
       if (token.error === "RefreshAccessTokenError") {
-        //console.log("Refresh token expired - user needs to re-login");
         return token;
       }
 
-      // Access Token Expiration Check
       const now = Date.now();
       const expiresAt = token.accessTokenExpires as number;
       
       if (now < expiresAt) {
-        // Token noch gültig für > 3 Minute?
         if (expiresAt - now > 3 * 60 * 1000) {
           return token;
         }
-        
-        //console.log("Access token expires soon, refreshing...");
-      } else {
-        //console.log("Access token expired, refreshing...");
       }
       
       return await refreshAccessToken(token);
@@ -233,7 +286,6 @@ export const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       if (token.error === "RefreshAccessTokenError") {
-        //console.log("Session expired - redirecting to login");
         return {
           ...session,
           error: "RefreshAccessTokenError",
@@ -253,8 +305,15 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string;
         session.user.firstname = token.firstname as string;
         session.user.lastname = token.lastname as string;
-        session.user.picture_url = (token.picture_url as string) ?? null;
-        session.user.phone = token.phone as string;
+        session.user.picture_url = (token.picture_url as string | null) ?? null;
+        session.user.phone = (token.phone as string | null) ?? null;
+        session.user.description = (token.description as string | null) ?? null;
+        session.user.hasLogoinCalendar = (token.hasLogoinCalendar as boolean) ?? false;
+        (session.user as any).organizations = (token.organizations as any[]) ?? [];
+        (session.user as any).roles = (token.roles as any[]) ?? [];
+        (session.user as any).orgIds = (token.orgIds as string[]) ?? [];
+        (session.user as any).roleIds = (token.roleIds as string[]) ?? [];
+        (session.user as any).activeOrganizationId = (token.activeOrganizationId as string | null) ?? null;
       }
       
       return session;
@@ -263,8 +322,8 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: "jwt",
-    maxAge: REFRESH_TOKEN_LIFETIME / 1000, 
-    updateAge: 15 * 60, 
+    maxAge: REFRESH_TOKEN_LIFETIME / 1000,
+    updateAge: 15 * 60,
   },
   
   jwt: {

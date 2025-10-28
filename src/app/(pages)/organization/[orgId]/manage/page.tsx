@@ -256,6 +256,7 @@ export default function OrganizationManagePage() {
             </button>
             <div data-state="Default" data-type="default" className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5"
                  onClick={handleSave}>
+                    
                 <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
             </div>
         </div>
