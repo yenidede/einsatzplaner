@@ -109,92 +109,108 @@ export default function SettingsPage() {
 const handleSave = async () => {
   if (!user) return;
 
-  try{
-      //#region Profile Picture Upload
-      let pictureUrl = user.picture_url;
-      if (profilePictureFile) {
-        const formData = new FormData();
-        formData.append("file", profilePictureFile);
-        formData.append("userId", String(user.id));
+  try {
+    //#region Profile Picture Upload
+    let pictureUrl = user.picture_url;
+    if (profilePictureFile) {
+      const formData = new FormData();
+      formData.append("file", profilePictureFile);
+      formData.append("userId", String(user.id));
 
-        const res = await fetch("/api/upload-profile-picture", {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const message = await res.text().catch(() => "");
-          throw new Error(`Upload fehlgeschlagen: ${res.status} ${message}`);
-        }
-        const data = await res.json();
-        pictureUrl = data.url;
+      const res = await fetch("/api/upload-profile-picture", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const message = await res.text().catch(() => "");
+        throw new Error(`Upload fehlgeschlagen: ${res.status} ${message}`);
       }
-      //#endregion
-      //#region Save User
-      await mutation.mutateAsync({
-        userId: user.id,
+      const data = await res.json();
+      pictureUrl = data.url; // ✅ Neue URL
+    }
+    //#endregion
+
+    //#region Save User
+    await mutation.mutateAsync({
+      userId: user.id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email,
+      picture_url: pictureUrl, // ✅ Nutze pictureUrl (nicht user.picture_url!)
+      phone,
+      hasLogoinCalendar: !!showLogos
+    });
+
+    if (session) {
+      console.log('🔄 Updating session with:', {
         firstname: user.firstname,
         lastname: user.lastname,
         email,
-        picture_url: pictureUrl,
         phone,
-        hasLogoinCalendar: !!showLogos
+        picture_url: pictureUrl, // ✅ Neue URL!
       });
-      if (Array.isArray(user.organizations) && user.organizations.length > 0){
-        await Promise.all(
-          user.organizations.map(async (org: any)=> {
-            const orgId = org?.id;
-            if(!orgId) return;
-
-            const res = await fetch("api/settings",{
-              method: "PUT",
-              headers: {"Content-Type": "application/json"},
-              body: JSON.stringify({
-                userId: String(user.id),
-                orgId: String(orgId),
-                hasGetMailNotification: org.hasGetMailNotification,
-              })
-            })
-
-
-
-            if (!res.ok){
-              const message = await res.text().catch(() => "");
-              throw new Error(`Update für Organisation "...": ${res.status} ${message}`);
-            }
-          })
-        );
-      }
-      //#endregion
-      if(!session) return;
 
       const updatedSession = await update({
-        ...session,
         user: {
-          ...session.user,
+          ...session.user, // ✅ Behalte alle bestehenden Felder (id, orgIds, etc.)
           firstname: user.firstname,
           lastname: user.lastname,
           email,
           phone,
-          picture_url: user.picture_url,
+          picture_url: pictureUrl, // ✅ HIER: pictureUrl statt user.picture_url!
           hasLogoinCalendar: !!showLogos
         }
-      })
-      console.log("Session aktualisiert:", updatedSession);
-
-
-      //#region Cache invalidate
-      await queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user.id || '')
       });
-      await queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userOrganizations(session?.user.id || '')
+
+      console.log('✅ Session updated:', updatedSession);
+
+      // ✅ Update auch lokalen State
+      setUser({
+        ...user,
+        picture_url: pictureUrl // ✅ Update State mit neuer URL
       });
-      //#endregion
-  } catch(error){
-    console.error(error);
-    
+    }
+    //#endregion
+
+    //#region Organization Mail Notifications
+    if (Array.isArray(user.organizations) && user.organizations.length > 0) {
+      await Promise.all(
+        user.organizations.map(async (org: any) => {
+          const orgId = org?.id;
+          if (!orgId) return;
+
+          const res = await fetch("api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: String(user.id),
+              orgId: String(orgId),
+              hasGetMailNotification: org.hasGetMailNotification,
+            })
+          });
+
+          if (!res.ok) {
+            const message = await res.text().catch(() => "");
+            throw new Error(`Update für Organisation "...": ${res.status} ${message}`);
+          }
+        })
+      );
+    }
+    //#endregion
+
+    //#region Cache invalidate
+    await queryClient.invalidateQueries({
+      queryKey: settingsQueryKeys.userSettings(session?.user.id || '')
+    });
+    await queryClient.invalidateQueries({
+      queryKey: settingsQueryKeys.userOrganizations(session?.user.id || '')
+    });
+    //#endregion
+
+  } catch (error) {
+    console.error('❌ Save failed:', error);
   }
-}
+};
 //#endregion
 const handleProfilePictureUpload = (file: File) => {
   setProfilePictureFile(file);
