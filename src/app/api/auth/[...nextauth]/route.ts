@@ -196,7 +196,6 @@ export const authOptions: NextAuthOptions = {
           });
 
           const roles = user_organization_role.map(uor => ({
-            id: uor.role.id,
             orgId: uor.organization.id,
             roleId: uor.role.id,
             roleName: uor.role.name,
