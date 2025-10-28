@@ -1,37 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../[...nextauth]/route";
 
 // Alle Organisationen des Users
 export async function GET(req: Request) {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-    const id = searchParams.get("id");
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json(
+                { error: "Unauthorized" },
+                { status: 401 }
+            );
+        }
+        const { searchParams } = new URL(req.url);
+        const userId = searchParams.get("userId");
+        const orgId = searchParams.get("id");
 
-    // Wenn eine spezifische Organisation angefragt wird
-    if (id) {
-        const org = await prisma.organization.findUnique({
-            where: { id },
-            include: {
-                user_organization_role: {
-                    include: {
-                        user: true,
-                        role: true
+        if( session.user.id != userId ) {
+            return NextResponse.json(
+                { error: "Unauthorized" },
+                { status: 403 }
+            );
+        }
+
+        // Wenn eine spezifische Organisation angefragt wird
+        if (orgId) {
+            const org = await prisma.organization.findUnique({
+                where: { id: orgId },
+                include: {
+                    user_organization_role: {
+                        include: {
+                            user: true,
+                            role: true
+                        }
                     }
                 }
+            });
+            //console.log(org);
+            return NextResponse.json(org);
+        }
+
+        // Alle Organisationen des Users
+        if (!userId) return NextResponse.json({ error: "userId fehlt" }, { status: 400 });
+        const orgs = await prisma.organization.findMany({
+            where: {
+                user_organization_role: { some: { user_id: userId } }
             }
         });
-        //console.log(org);
-        return NextResponse.json(org);
+        return NextResponse.json(orgs);
+    } catch (error) {
+        console.error("Fehler beim Abrufen der Organisationen:", error);
+        return NextResponse.json(
+            { error: "Fehler beim Abrufen der Organisationen" },
+            { status: 500 }
+        );
     }
-    
-    // Alle Organisationen des Users
-    if (!userId) return NextResponse.json({ error: "userId fehlt" }, { status: 400 });
-    const orgs = await prisma.organization.findMany({
-        where: {
-            user_organization_role: { some: { user_id: userId } }
-        }
-    });
-    return NextResponse.json(orgs);
+
+
 }
 
 // Organisation bearbeiten

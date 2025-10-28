@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import SwitchIcon from '@/components/icon/SwitchIcon';
+import { Button } from '@/features/auth/components/ui/FormComponents';
 
 //#region TypeScript Interfaces
 interface UserProfileDialogProps {
@@ -500,12 +501,12 @@ export function UserProfileDialog({
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
                     <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Person hat Schlüssel?</div>
-                    <button
+                    <Button
                       onClick={() => setHasKey(!hasKey)}
                       className="cursor-pointer"
                     >
                       <SwitchIcon isOn={hasKey} disabled={false} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
@@ -541,13 +542,13 @@ export function UserProfileDialog({
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
                     <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Organisationsverwaltung (OV)</div>
-                    <button
+                    <Button
                       onClick={() => toggleRole('OV')}
                       disabled={saving}
                       className="cursor-pointer disabled:opacity-50 transition-opacity"
                     >
                       <SwitchIcon isOn={userRoles.includes('OV')} disabled={saving} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -557,13 +558,13 @@ export function UserProfileDialog({
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
                     <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Einsatzverwaltung (EV)</div>
-                    <button
+                    <Button
                       onClick={() => toggleRole('EV')}
                       disabled={saving}
                       className="cursor-pointer disabled:opacity-50 transition-opacity"
                     >
                       <SwitchIcon isOn={userRoles.includes('EV')} disabled={saving} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -573,13 +574,13 @@ export function UserProfileDialog({
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
                     <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Helfer:in (Helfer:in)</div>
-                    <button
+                    <Button
                       onClick={() => toggleRole('Helfer')}
                       disabled={saving}
                       className="cursor-pointer disabled:opacity-50 transition-opacity"
                     >
                       <SwitchIcon isOn={userRoles.includes('Helfer')} disabled={saving} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

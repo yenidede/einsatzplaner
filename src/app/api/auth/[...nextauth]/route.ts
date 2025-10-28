@@ -38,14 +38,12 @@ async function refreshAccessToken(token: any) {
       },
       include: { user: true },
     });
-
     if (!session || !session.user) {
       throw new Error("No valid session found");
     }
 
     const newAccessToken = await generateAccessToken(session.user.id);
     
-
     return {
       ...token,
       accessToken: newAccessToken,           
@@ -94,6 +92,40 @@ export const authOptions: NextAuthOptions = {
 
           await updateLastLogin(user.id);
 
+          // ✅ Lade Organisationen beim Login
+          const userOrgs = await prisma.user_organization_role.findMany({
+            where: { user_id: user.id },
+            select: {
+              org_id: true,
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                  abbreviation: true
+                }
+              },
+              organization: {
+                select: {
+                  id: true,
+                  name: true,
+                  helper_name_singular: true,
+                  helper_name_plural: true,
+                }
+              }
+            }
+          });
+
+          
+          const orgIds = [...new Set(userOrgs.map(uo => uo.org_id))];
+          
+          
+          const roles = userOrgs.map(uo => ({
+            orgId: uo.org_id,
+            roleId: uo.role.id,
+            roleName: uo.role.name,
+            roleAbbreviation: uo.role.abbreviation
+          }));
+
           const refreshToken = await generateRefreshToken(user.id);
           const accessToken = await generateAccessToken(user.id);
           
@@ -103,6 +135,9 @@ export const authOptions: NextAuthOptions = {
             firstname: user.firstname,
             lastname: user.lastname,
             picture_url: user.picture_url,
+            orgIds, 
+            organizations: userOrgs.map(uo => uo.organization), 
+            roles,
             refreshToken,
             accessToken, 
           };
@@ -124,6 +159,9 @@ export const authOptions: NextAuthOptions = {
           firstname: user.firstname,
           lastname: user.lastname,
           picture_url: user.picture_url || undefined,
+          orgIds: user.orgIds, 
+          organizations: user.organizations, 
+          roles: user.roles, 
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           accessTokenExpires: Date.now() + accessTokenTime,
@@ -168,6 +206,9 @@ export const authOptions: NextAuthOptions = {
         session.user.firstname = token.firstname as string;
         session.user.lastname = token.lastname as string;
         session.user.picture_url = token.picture_url as string;
+        session.user.orgIds = token.orgIds as string[]; // ✅
+        session.user.organizations = token.organizations as any[]; // ✅
+        session.user.roles = token.roles as any[]; // ✅
       }
       
       return session;

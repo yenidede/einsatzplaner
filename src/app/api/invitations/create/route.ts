@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    if (existingUser?.user_organization_role.length > 0) {
+
+    if (existingUser && existingUser?.user_organization_role.length > 0) {
       return NextResponse.json({ 
         error: "Benutzer ist bereits Mitglied dieser Organisation" 
       }, { status: 400 });
@@ -200,7 +201,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ 
         error: "Validierungsfehler", 
-        details: error.errors 
+        details: error 
       }, { status: 400 });
     }
     
