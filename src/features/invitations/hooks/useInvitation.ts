@@ -102,21 +102,7 @@ export function useAcceptInvitation(): UseAcceptInvitationReturn {
             }
 
             const result = await response.json();
-
-            const deleteResponse = await fetch(`/api/invitations/accept`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ token }),
-            });
-
-            if (!deleteResponse.ok) {
-                const errorData = await deleteResponse.json();
-                throw new Error(errorData.error || `HTTP ${deleteResponse.status}`);
-            }
-            const deleteResult = await deleteResponse.json();
-            setSuccess('Einladung erfolgreich angenommen! Sie werden weitergeleitet...');
+            setSuccess('Einladung erfolgreich akzeptiert!');
 
             return result;
         } catch (err) {

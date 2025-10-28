@@ -196,6 +196,7 @@ export const authOptions: NextAuthOptions = {
           });
 
           const roles = user_organization_role.map(uor => ({
+            id: uor.role.id,
             orgId: uor.organization.id,
             roleId: uor.role.id,
             roleName: uor.role.name,
@@ -252,8 +253,8 @@ export const authOptions: NextAuthOptions = {
           hasLogoinCalendar: user.hasLogoinCalendar,
           organizations: user.organizations,
           roles: user.roles,
-          orgIds: user.organizations.map((org: any) => org.id),
-          roleIds: user.roles.map((role: any) => role.id),
+          orgIds: user.organizations.map((org) => org.id),
+          roleIds: user.roles.map((role) => role.roleId),
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           accessTokenExpires: Date.now() + (ACCESS_TOKEN_LIFETIME * 1000),
