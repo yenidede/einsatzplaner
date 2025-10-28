@@ -61,11 +61,33 @@ export function ListView({
 }: ListViewProps) {
   const [pageCount, setPageCount] = useState(0);
 
-  const { data: userSession } = useSession();
-  const userOrgIds = userSession?.user?.orgIds || [
+  const { data: userSession, status} = useSession();
+/*   const userOrgIds = userSession?.user?.organizations || [
     userSession?.user.orgId || "",
-  ];
+  ]; */
+  const { 
+    data: organizations = [], 
+    isLoading: isLoadingOrgs 
+  } = useQuery({
+    queryKey: ['user-organizations', userSession?.user?.id],
+    queryFn: async () => {
+      if (!userSession?.user?.id) return [];
 
+      const res = await fetch(`/api/auth/organization?userId=${userSession.user.id}`);
+      if (!res.ok) {
+        throw new Error('Failed to load organizations');
+      }
+      const orgs = await res.json();
+
+      // Extrahiere nur die IDs
+      return orgs.map((org: any) => org.id) as string[];
+    },
+    enabled: status === 'authenticated' && !!userSession?.user?.id,
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+  });
+
+  const userOrgIds = organizations;
   const { data, isLoading } = useQuery<ETV[]>({
     queryKey: [...einsatzQueryKeys.einsaetzeTableView(userOrgIds)],
     queryFn: () => getEinsaetzeForTableView(userOrgIds),
@@ -319,7 +341,15 @@ export function ListView({
         enableColumnFilter: false,
       }),
     ],
-    [columnHelper, statusData, categoriesData, templatesData, usersData, onEventEdit, onEventDelete]
+    [
+      columnHelper,
+      statusData,
+      categoriesData,
+      templatesData,
+      usersData,
+      onEventEdit,
+      onEventDelete,
+    ]
   );
 
   const { table } = useDataTable({

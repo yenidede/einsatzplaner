@@ -524,6 +524,10 @@ async function getEinsatzByIdFromDb(
   return prisma.einsatz.findUnique({
     where: { id, org_id },
     include: {
+      organization: true,
+      einsatz_to_category: { include: { einsatz_category: true } },
+      einsatz_helper: { include: { user: true } },
+      einsatz_status: true,
       user: true,
     },
   });

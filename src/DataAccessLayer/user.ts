@@ -19,7 +19,18 @@ export async function getUserByEmail(email: string) {
   try {
     return await prisma.user.findUnique({
       where: { email },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        firstname: true,
+        lastname: true,
+        phone: true,
+        picture_url: true,
+        description: true,
+        hasLogoinCalendar: true,
+        created_at: true,
+        last_login: true,
+        updated_at: true,
         user_organization_role: {
           include: {
             organization: {
@@ -30,6 +41,10 @@ export async function getUserByEmail(email: string) {
                 helper_name_plural: true,
                 einsatz_name_singular: true,
                 einsatz_name_plural: true,
+                email: true,
+                phone: true,
+                description: true,
+                logo_url: true,
               },
             },
             role: {
@@ -52,7 +67,18 @@ export async function getUserByIdWithOrgAndRole(userId: string) {
   try {
     return await prisma.user.findUnique({
       where: { id: userId },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        firstname: true,
+        lastname: true,
+        phone: true,
+        picture_url: true,
+        description: true,
+        hasLogoinCalendar: true,
+        created_at: true,
+        last_login: true,
+        updated_at: true,
         user_organization_role: {
           include: {
             organization: {
@@ -63,6 +89,10 @@ export async function getUserByIdWithOrgAndRole(userId: string) {
                 helper_name_plural: true,
                 einsatz_name_singular: true,
                 einsatz_name_plural: true,
+                email: true,
+                phone: true,
+                description: true,
+                logo_url: true,
               },
             },
             role: {
@@ -78,6 +108,58 @@ export async function getUserByIdWithOrgAndRole(userId: string) {
     });
   } catch (error: any) {
     throw new Error(`Failed to retrieve user by ID: ${error.message}`);
+  }
+}
+
+export async function getUserForAuth(email: string) {
+  try {
+    return await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        firstname: true,
+        lastname: true,
+        picture_url: true,
+        password: true, 
+        phone: true,
+      },
+      
+    });
+    
+  } catch (error: any) {
+    throw new Error(`Failed to retrieve user for auth: ${error.message}`);
+  }
+}
+
+export async function getUserForSession(userId: string) {
+  try {
+    console.log('getUserForSession called with userId:', userId);
+    
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstname: true,
+        lastname: true,
+        phone: true,
+        picture_url: true,
+        description: true,
+        hasLogoinCalendar: true,
+      },
+    });
+    
+    console.log('getUserForSession result:', {
+      found: !!user,
+      picture_url: user?.picture_url,
+      email: user?.email
+    });
+    
+    return user;
+  } catch (error: any) {
+    console.error('getUserForSession error:', error);
+    throw new Error(`Failed to retrieve user for session: ${error.message}`);
   }
 }
 //#endregion

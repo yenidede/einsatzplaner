@@ -23,8 +23,7 @@ export default function ResetPasswordPage({ token }: ResetPasswordPageProps) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, newPassword }),
         });
-        const data = await res.json();
-        // Zeige Erfolg oder Fehler im UI
+        await res.json();
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

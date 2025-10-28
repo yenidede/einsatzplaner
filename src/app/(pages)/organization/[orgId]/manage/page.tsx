@@ -10,6 +10,7 @@ import { signOut } from "next-auth/react";
 import LogoutIcon from "@/components/icon/LogoutIcon";
 import { Switch } from "@/features/settings/components/ui/switch";
 import { Label } from "@/features/settings/components/ui/label";
+import Image from "next/image";
 
 import {LabelSettings} from "@/features/settings/components/ui/LabelSettings";
 import {InputSettings} from "@/features/settings/components/ui/InputSettings";
@@ -23,6 +24,8 @@ import { hasPermission } from "@/lib/auth/authGuard";
 import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
 import { useInvitations } from '@/features/invitations/hooks/useInvitation';
+import { useSessionValidation } from "@/hooks/useSessionValidation";
+import { settingsQueryKeys } from "@/features/settings/queryKey";
 
 
 export default function OrganizationManagePage() {
@@ -50,8 +53,20 @@ export default function OrganizationManagePage() {
     const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
     const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 
+    useSessionValidation({
+        debug: false,
+        onTokenExpired: () => {
+            console.log("Token abgelaufen - leite zu Login weiter");
+            router.push('/signin');
+        },
+    });
+    if(session == null){
+        router.push('/signin');
+    }
+
+
     const { data, isLoading, error } = useQuery({
-        queryKey: ["userSettings", session?.user?.id],
+        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
         enabled: !!session?.user?.id,
         queryFn: async () => {
             const res = await fetch(`/api/settings?userId=${session?.user.id}`);
@@ -67,7 +82,7 @@ export default function OrganizationManagePage() {
 
     // lade die spezifische Organisation und setze Name/Beschreibung
     const { data: orgData, isLoading: orgLoading, error: orgError } = useQuery({
-        queryKey: ["organization", orgId],
+        queryKey: settingsQueryKeys.organization(orgId),
         enabled: !!orgId,
         queryFn: async () => {
             const res = await fetch(`/api/auth/organization?id=${orgId}`);
@@ -75,7 +90,7 @@ export default function OrganizationManagePage() {
             return res.json();
         },
     });
-
+    //console.log(orgData)
     useEffect(() => {
         if (orgData) {
             setName(orgData.name ?? "");
@@ -84,18 +99,24 @@ export default function OrganizationManagePage() {
             // setze E-Mail / Telefon falls vorhanden (fallbacks prüfen je nach deiner API / Schema)
             setEmail(orgData.email ?? orgData.mail ?? orgData.contact_email ?? "");
             setPhone(orgData.phone ?? orgData.telefon ?? orgData.phone_number ?? "");
-            setHelperSingular(orgData.helper_singular ?? "Helfer:in");
-            setHelperPlural(orgData.helper_plural ?? "Helfer:innen");
+            setHelperSingular(orgData.helper_name_singular ?? "Helfer:in");
+            setHelperPlural(orgData.helper_name_plural ?? "Helfer:innen");
         }
     }, [orgData]);
 
     // Lade User der Organisation (user_organization_role)
     const { data: usersData, isLoading: usersLoading } = useQuery({
-        queryKey: ["organizationUsers", orgId],
+        queryKey: settingsQueryKeys.userOrganizations(orgId),
         enabled: !!orgId,
         queryFn: async () => {
             const res = await fetch(`/api/auth/organization/${orgId}/users`);
-            if (!res.ok) throw new Error("Fehler beim Laden der User");
+            if (!res.ok) {
+                if(res.status === 401){
+                    signOut({callbackUrl:'/signin'})
+                    throw new Error("Unauthorized")
+                }
+                    throw new Error("Fehler beim Laden der User");
+                }
             return res.json();
         },
     });
@@ -149,7 +170,7 @@ export default function OrganizationManagePage() {
     };
 
     const updateMutation = useMutation({
-        mutationFn: async (data: { name: string; description: string; email?: string; phone?: string; helperSingular?: string; helperPlural?: string; logoFile?: File | null; removeLogo?: boolean }) => {
+        mutationFn: async (data: { name: string; description: string; email?: string; phone?: string; helper_name_singular?: string; helper_name_plural?: string; logoFile?: File | null; removeLogo?: boolean }) => {
             // Erst Logo hochladen falls vorhanden
             let finalLogoUrl = logoUrl;
             
@@ -179,8 +200,8 @@ export default function OrganizationManagePage() {
                     description: data.description,
                     email: data.email ?? email,
                     phone: data.phone ?? phone,
-                    helper_singular: data.helperSingular ?? helperSingular,
-                    helper_plural: data.helperPlural ?? helperPlural,
+                    helper_name_singular: helperSingular,
+                    helper_name_plural: helperPlural,
                     logo_url: finalLogoUrl
                 }),
             });
@@ -188,12 +209,12 @@ export default function OrganizationManagePage() {
             return res.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["organization", orgId] });
+            queryClient.invalidateQueries({ queryKey: settingsQueryKeys.organization(orgId) });
             setLogoFile(null);
-            alert("Organisation erfolgreich aktualisiert!");
+            //alert("Organisation erfolgreich aktualisiert!");
         },
         onError: (error) => {
-            alert("Fehler beim Speichern der Organisation.");
+            //alert("Fehler beim Speichern der Organisation.");
             console.error(error);
         }
     });
@@ -204,18 +225,10 @@ export default function OrganizationManagePage() {
             description,
             email,
             phone,
-            helperSingular,
-            helperPlural,
+            helper_name_singular: helperSingular,
+            helper_name_plural: helperPlural,
             logoFile,
             removeLogo: false 
-        });
-    };
-
-    const handleSaveWithLogoRemove = () => {
-        updateMutation.mutate({ 
-            name, 
-            description, 
-            removeLogo: true 
         });
     };
 
@@ -245,6 +258,7 @@ export default function OrganizationManagePage() {
             </button>
             <div data-state="Default" data-type="default" className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5"
                  onClick={handleSave}>
+                    
                 <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
             </div>
         </div>
@@ -352,7 +366,6 @@ export default function OrganizationManagePage() {
                                className="hidden"
                                id="logo-upload"
                            />
-                           
                            {/* Logo Upload Button */}
                            <button
                                type="button"
@@ -441,7 +454,7 @@ export default function OrganizationManagePage() {
                         <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
                             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Abbrechen</div>
                         </div>
-                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5">
+                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5" onClick={handleSave}>
                             <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
                         </div>
                     </div>
@@ -486,7 +499,7 @@ export default function OrganizationManagePage() {
                         <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
                             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Abbrechen</div>
                         </div>
-                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5">
+                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5" onClick={handleSave}>
                             <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
                         </div>
                     </div>
@@ -502,7 +515,7 @@ export default function OrganizationManagePage() {
                             <div className="flex-1 justify-start text-slate-600 text-sm font-medium font-['Inter'] leading-tight">Erstelle ein neues Eigenschaftsfeld, um Personen deiner Organisation Eigenschaften zuzuweisen. Beispielsweise kannst du festlegen, dass jeder Einsatz mindestens eine Person mit Schlüssel erfordert. </div>
                         </div>
                         <div className="self-stretch px-4 flex flex-col justify-center items-center gap-2.5">
-                            <div className="w-60 h-52 relative">
+{/*                             <div className="w-60 h-52 relative">
                                 <div className="w-[3.40px] h-[3.39px] left-[188.66px] top-[51.57px] absolute bg-slate-300" />
                                 <div className="w-[3.40px] h-[3.39px] left-[23.13px] top-[51.57px] absolute bg-slate-300" />
                                 <div className="w-[3.40px] h-[3.39px] left-[165.59px] top-[36.27px] absolute bg-slate-300" />
@@ -549,7 +562,14 @@ export default function OrganizationManagePage() {
                                     <div className="w-6 h-8 left-[13.97px] top-[15.92px] absolute origin-top-left rotate-3 bg-slate-300" />
                                 </div>
                                 <div className="w-2.5 h-5 left-[71px] top-[9.31px] absolute origin-top-left rotate-[-12.79deg] bg-slate-300" />
-                            </div>
+                            </div> */}
+                                                    <Image
+                            src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/undraw_instant-analysis_vm8x%201.svg"
+                            alt=""
+                            width={245}
+                            height={210}
+                            unoptimized
+                        />
                         </div>
                     </div>
                     <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
@@ -565,7 +585,7 @@ export default function OrganizationManagePage() {
                         <div data-state="Default" data-type="outline" className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5">
                             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Abbrechen</div>
                         </div>
-                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5">
+                        <div data-state="Default" data-type="default" className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5" onClick={handleSave}>
                             <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
                         </div>
                     </div>
@@ -653,18 +673,18 @@ export default function OrganizationManagePage() {
         return userOrgRole.user?.email === session?.user?.email;
     });
     
-    const roleNames = currentUserRoles?.map(r => r.role?.name || r.role?.abbreviation) || [];
+    const roleNames = currentUserRoles?.map((r: { role: { name: any; abbreviation: any; }; }) => r.role?.name || r.role?.abbreviation) || [];
     const canInviteUsers = roleNames.includes('Organisationsverwaltung') || 
                           roleNames.includes('OV') || 
                           roleNames.includes('Superadmin');
     
     return (
         <div className="self-stretch px-4 py-4 border-t border-slate-200 flex flex-col gap-4">
-{            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+{/* {            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
                 <h4 className="font-semibold text-yellow-800">Debug Info:</h4>
                 <p className="text-sm text-yellow-700">User Roles: {roleNames.join(', ')}</p>
                 <p className="text-sm text-yellow-700">Can Invite: {canInviteUsers ? 'Ja' : 'Nein'}</p>
-            </div>}
+            </div>} */}
             
             {canInviteUsers && (
                 <button

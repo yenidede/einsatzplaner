@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 
 export async function GET(request: NextRequest, { params }: { params: { orgId: string } }) {
     try {
-        const { orgId } = params;
+        const { orgId } = await params;
 
         const userOrgRoles = await prisma.user_organization_role.findMany({
             where: { org_id: orgId },
