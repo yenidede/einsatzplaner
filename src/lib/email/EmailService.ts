@@ -26,7 +26,7 @@ export class EmailService {
 
     async sendPasswordResetEmail(email: string, resetToken: string) {
         const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
-        
+
         if (!this.transporter) {
             console.log('📧 E-Mail-Service deaktiviert. Reset-Link:');
             console.log(`   → ${resetUrl}`);
@@ -75,9 +75,9 @@ export class EmailService {
     }
 
     async sendInvitationEmail(
-        email: string, 
-        inviterName: string, 
-        organizationName: string, 
+        email: string,
+        inviterName: string,
+        organizationName: string,
         token: string
     ) {
         //const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}`;
@@ -167,17 +167,17 @@ export class EmailService {
                 subject: `Einladung zur Organisation "${organizationName}"`,
                 html: htmlContent,
             };
-            
+
             console.log('📧 Sende Einladungs-E-Mail:');
             console.log(`   → An: ${email}`);
             console.log(`   → Organisation: ${organizationName}`);
             console.log(`   → Von: ${inviterName}`);
-            
+
             const info = await this.transporter.sendMail(mailOptions);
            // console.log('✅ Einladungs-E-Mail erfolgreich gesendet:', info.messageId);
             
             return { success: true, messageId: info.messageId };
-            
+
         } catch (error) {
             console.error('❌ Fehler beim Senden der Einladungs-E-Mail:', error);
             throw new Error(`E-Mail-Versand fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);

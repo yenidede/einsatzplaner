@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { InputHTMLAttributes } from "react";
-import { useSession } from "next-auth/react";
 import { RiDeleteBinLine } from "@remixicon/react";
+import { FileDown } from "lucide-react";
 
 import z from "zod";
 import {
@@ -46,8 +46,10 @@ import { CustomFormField, SupportedDataTypes } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { buildInputProps } from "../form/utils";
+import TooltipCustom from "../tooltip-custom";
 
-import { GeneratePdf } from "@/features/pdf/components/GeneratePdf";
+import { PdfGenerationRequest } from "@/features/pdf/types/pdf";
+import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -176,7 +178,7 @@ export function EventDialog({
   const currentUserId = "5ae139a7-476c-4d76-95cb-4dcb4e909da9";
   // TODO
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-
+  const { generatePdf} = usePdfGenerator();
   const [staticFormData, setStaticFormData] =
     useState<EinsatzFormData>(DEFAULTFORMDATA);
   // state for validation on dynamic form data - generated once after template was selected
@@ -201,11 +203,7 @@ export function EventDialog({
   });
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
-  const {
-    data: detailedEinsatz,
-    isLoading,
-    error: queryError,
-  } = useQuery({
+  const { data: detailedEinsatz, isLoading } = useQuery({
     queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
     queryFn: async () => {
       const returnEinsatz = await getEinsatzWithDetailsById(einsatz as string);
@@ -290,86 +288,107 @@ export function EventDialog({
     setDynamicFormData((prev) => ({ ...prev, ...updates }));
   };
 
-  const handleFormDataChange = (updates: Partial<EinsatzFormData>) => {
-    const updatedFormData = { ...staticFormData, ...updates };
+  const handleFormDataChange = useCallback(
+    (updates: Partial<EinsatzFormData>) => {
+      let nextFormData: EinsatzFormData | undefined;
 
-    // Validate just the updated fields using partial schema
-    const partialResult = ZodEinsatzFormData.partial().safeParse(updates);
+      setStaticFormData((prev) => {
+        nextFormData = { ...prev, ...updates };
+        return nextFormData;
+      });
 
-    // Update errors based on partial validation
-    setErrors((prevErrors) => {
-      const newErrors = { ...prevErrors };
+      // Validate just the updated fields using partial schema
+      const partialResult = ZodEinsatzFormData.partial().safeParse(updates);
 
-      if (!partialResult.success) {
-        // Add errors for the fields being updated
-        const flattenedErrors = z.flattenError(partialResult.error);
-
-        // Merge new field errors with existing ones
-        Object.entries(flattenedErrors.fieldErrors).forEach(
-          ([field, fieldErrors]) => {
-            newErrors.fieldErrors[field] = fieldErrors;
-          }
-        );
-
-        // Add any form-level errors
-        if (flattenedErrors.formErrors.length > 0) {
-          newErrors.formErrors = [
-            ...new Set([
-              ...newErrors.formErrors,
-              ...flattenedErrors.formErrors,
-            ]),
-          ];
-        }
-      } else {
-        // Clear errors for the fields that are now valid
-        Object.keys(updates).forEach((field) => {
-          delete newErrors.fieldErrors[field];
-        });
-      }
-
-      return newErrors;
-    });
-
-    // Also run full validation for relationship checks (like date/time dependencies)
-    const fullResult = ZodEinsatzFormData.safeParse(updatedFormData);
-
-    if (!fullResult.success) {
-      // Only update relationship errors (like endDate validation)
-      const relationshipErrors = fullResult.error.issues.filter(
-        (issue) => issue.code === "custom" || issue.path.includes("endDate")
-      );
-
-      if (relationshipErrors.length > 0) {
-        setErrors((prevErrors) => ({
-          ...prevErrors,
-          fieldErrors: {
-            ...prevErrors.fieldErrors,
-            ...relationshipErrors.reduce((acc, error) => {
-              const field = error.path[0] as string;
-              acc[field] = [error.message];
-              return acc;
-            }, {} as Record<string, string[]>),
-          },
-        }));
-      }
-    } else {
-      // Clear relationship errors if full validation passes
+      // Update errors based on partial validation
       setErrors((prevErrors) => {
         const newErrors = { ...prevErrors };
-        // Only clear endDate errors that are relationship-based
-        if (
-          newErrors.fieldErrors.endDate?.some(
-            (error) => error.includes("nach") || error.includes("Enddatum")
-          )
-        ) {
-          delete newErrors.fieldErrors.endDate;
+
+        if (!partialResult.success) {
+          // Add errors for the fields being updated
+          const flattenedErrors = z.flattenError(partialResult.error);
+
+          // Merge new field errors with existing ones
+          Object.entries(flattenedErrors.fieldErrors).forEach(
+            ([field, fieldErrors]) => {
+              if (fieldErrors) {
+                newErrors.fieldErrors[field] = fieldErrors;
+              }
+            }
+          );
+
+          // Add any form-level errors
+          if (flattenedErrors.formErrors.length > 0) {
+            newErrors.formErrors = [
+              ...new Set([
+                ...newErrors.formErrors,
+                ...flattenedErrors.formErrors,
+              ]),
+            ];
+          }
+        } else {
+          // Clear errors for the fields that are now valid
+          Object.keys(updates).forEach((field) => {
+            delete newErrors.fieldErrors[field];
+          });
         }
+
         return newErrors;
       });
-    }
 
-    setStaticFormData((prev) => ({ ...prev, ...updates }));
-  };
+      if (!nextFormData) {
+        return;
+      }
+
+      // Also run full validation for relationship checks (like date/time dependencies)
+      const fullResult = ZodEinsatzFormData.safeParse(nextFormData);
+
+      if (!fullResult.success) {
+        // Only update relationship errors (like endDate validation)
+        const relationshipErrors = fullResult.error.issues.filter(
+          (issue) => issue.code === "custom" || issue.path.includes("endDate")
+        );
+
+        if (relationshipErrors.length > 0) {
+          setErrors((prevErrors) => ({
+            ...prevErrors,
+            fieldErrors: {
+              ...prevErrors.fieldErrors,
+              ...relationshipErrors.reduce((acc, error) => {
+                const field = error.path[0] as string;
+                acc[field] = [error.message];
+                return acc;
+              }, {} as Record<string, string[]>),
+            },
+          }));
+        }
+      } else {
+        // Clear relationship errors if full validation passes
+        setErrors((prevErrors) => {
+          const newErrors = { ...prevErrors };
+          // Only clear endDate errors that are relationship-based
+          if (
+            newErrors.fieldErrors.endDate?.some(
+              (error) => error.includes("nach") || error.includes("Enddatum")
+            )
+          ) {
+            delete newErrors.fieldErrors.endDate;
+          }
+          return newErrors;
+        });
+      }
+    },
+    []
+  );
+
+  const resetForm = useCallback(() => {
+    handleFormDataChange(DEFAULTFORMDATA);
+    setActiveTemplateId(null);
+    setErrors({
+      fieldErrors: {},
+      formErrors: [],
+    });
+  }, [handleFormDataChange]);
 
   useEffect(() => {
     if (currentEinsatz && typeof currentEinsatz === "object") {
@@ -432,7 +451,7 @@ export function EventDialog({
     } else {
       resetForm();
     }
-  }, [currentEinsatz]);
+  }, [currentEinsatz, handleFormDataChange, resetForm]);
 
   // Generate or refresh dynamic schema/data when template or detailed fields change
   useEffect(() => {
@@ -482,15 +501,6 @@ export function EventDialog({
       }
     }
   }, [activeTemplateId, templatesQuery.data, detailedEinsatz?.einsatz_fields]);
-
-  const resetForm = () => {
-    handleFormDataChange(DEFAULTFORMDATA);
-    setActiveTemplateId(null);
-    setErrors({
-      fieldErrors: {},
-      formErrors: [],
-    });
-  };
 
   const formatTimeForInput = (date: Date) => {
     const hours = date.getHours().toString().padStart(2, "0");
@@ -678,6 +688,21 @@ export function EventDialog({
     }
   };
 
+  const handlePDFPrint = async () => {
+    // TODO: replace with real PDF generation workflow
+    if(!currentEinsatz?.id) {
+      console.warn("No einsatz ID available for PDF generation.");
+      return;
+    }
+    const request: PdfGenerationRequest = {
+      type: "booking-confirmation",
+      einsatzId: currentEinsatz.id || "",
+    };
+    
+    await generatePdf(request);
+    //console.warn("PDF confirmation export is not implemented yet.");
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="!max-w-[55rem] flex flex-col max-h-[90vh]">
@@ -777,26 +802,33 @@ export function EventDialog({
         </div>
         <DialogFooter className="flex-row sm:justify-between flex-shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
           {currentEinsatz?.id && (
+            <TooltipCustom text="Einsatz löschen">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleDelete}
+                aria-label="Einsatz löschen"
+              >
+                <RiDeleteBinLine size={16} aria-hidden="true" />
+              </Button>
+            </TooltipCustom>
+          )}
+          <TooltipCustom text="PDF-Bestätigung drucken">
             <Button
               variant="outline"
               size="icon"
-              onClick={handleDelete}
-              aria-label="Einsatz löschen"
+              onClick={handlePDFPrint}
+              aria-label="PDF-Bestätigung drucken"
             >
-              <RiDeleteBinLine size={16} aria-hidden="true" />
+              <FileDown size={16} aria-hidden="true" />
             </Button>
-          )}
+          </TooltipCustom>
           <div className="flex flex-1 justify-end gap-2">
             <Button variant="outline" onClick={onClose}>
               Abbrechen
             </Button>
             <Button onClick={handleSave}>Speichern</Button>
           </div>
-          {/* Testing PDF Generation  */}
-          <GeneratePdf
-            einsatzId={currentEinsatz?.id || ""}
-            einsatzTitle={currentEinsatz?.title}
-          />
 
         </DialogFooter>
       </DialogContent>
