@@ -81,7 +81,7 @@ export class EmailService {
         token: string
     ) {
         //const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}`;
-        const inviteUrl = `${process.env.NEXTAUTH_URL}/api/invitations/${token}/accept`;
+        const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}/accept`;
 
         if (!this.transporter) {
             console.log('📧 E-Mail-Service deaktiviert. Einladungs-Details:');
@@ -174,8 +174,8 @@ export class EmailService {
             console.log(`   → Von: ${inviterName}`);
 
             const info = await this.transporter.sendMail(mailOptions);
-            console.log('✅ Einladungs-E-Mail erfolgreich gesendet:', info.messageId);
-
+           // console.log('✅ Einladungs-E-Mail erfolgreich gesendet:', info.messageId);
+            
             return { success: true, messageId: info.messageId };
 
         } catch (error) {

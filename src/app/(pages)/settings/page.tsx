@@ -19,12 +19,14 @@ import OrganizationCard from "@/features/settings/components/OrganizationCard";
 import { hasPermission } from "@/lib/auth/authGuard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
+import { settingsQueryKeys } from "@/features/settings/queryKey";
+import { first } from "lodash";
 
 export default function SettingsPage() {
   const id = useId();
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const [getMailFromOrganization, setGetMailFromOrganization] = useState<boolean>(true);
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState<string>("");
@@ -34,28 +36,14 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   useSessionValidation({
-    checkInterval: 60000, // 30 Sekunden
     debug: true,
     onTokenExpired: () => {
       console.log("Token abgelaufen - leite zu Login weiter");
       router.push('/signin');
     }
   })
-  if(session?.user)
-    console.log("Session", session.user.orgIds);
-/*   useEffect(() => {
-    if (session?.error == "RefreshAccessTokenError"){
-      console.log("Refresh Token Expired - signin out user");
-      signOut({
-        callbackUrl: '/signin',
-        redirect: true,
-      })
-    }
-
-  }, [session?.error]) */
-  // Lade Userdaten mit TanStack Query
   const { data, isLoading, error } = useQuery({
-    queryKey: ["userSettings", session?.user?.id],
+    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     enabled: !!session?.user?.id,
     queryFn: async () => {
       const res = await fetch(`/api/settings?userId=${session?.user.id}`);
@@ -103,6 +91,7 @@ export default function SettingsPage() {
   };
 
   const mutation = useMutation({
+    mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     mutationFn: async (newSettings: UserSettings) => {
       const res = await fetch("/api/settings", {
         method: "PUT",
@@ -113,81 +102,120 @@ export default function SettingsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["userSettings", session?.user.id] });
+      queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(session?.user?.id || "")});
     },
   });
 //#region handleSave
 const handleSave = async () => {
   if (!user) return;
 
-  try{
-      //#region Profile Picture Upload
-      let pictureUrl = user.picture_url;
-      if (profilePictureFile) {
-        const formData = new FormData();
-        formData.append("file", profilePictureFile);
-        formData.append("userId", String(user.id));
+  try {
+    //#region Profile Picture Upload
+    let pictureUrl = user.picture_url;
+    if (profilePictureFile) {
+      const formData = new FormData();
+      formData.append("file", profilePictureFile);
+      formData.append("userId", String(user.id));
 
-        const res = await fetch("/api/upload-profile-picture", {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const message = await res.text().catch(() => "");
-          throw new Error(`Upload fehlgeschlagen: ${res.status} ${message}`);
-        }
-        const data = await res.json();
-        pictureUrl = data.url;
+      const res = await fetch("/api/upload-profile-picture", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const message = await res.text().catch(() => "");
+        throw new Error(`Upload fehlgeschlagen: ${res.status} ${message}`);
       }
-      //#endregion
-      //#region Save User
-      await mutation.mutateAsync({
-        userId: user.id,
+      const data = await res.json();
+      pictureUrl = data.url; // ✅ Neue URL
+    }
+    //#endregion
+
+    //#region Save User
+    await mutation.mutateAsync({
+      userId: user.id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email,
+      picture_url: pictureUrl, // ✅ Nutze pictureUrl (nicht user.picture_url!)
+      phone,
+      hasLogoinCalendar: !!showLogos
+    });
+
+    if (session) {
+      console.log('🔄 Updating session with:', {
         firstname: user.firstname,
         lastname: user.lastname,
         email,
-        picture_url: pictureUrl,
         phone,
-        hasLogoinCalendar: !!showLogos
+        picture_url: pictureUrl, // ✅ Neue URL!
       });
-      if (Array.isArray(user.organizations) && user.organizations.length > 0){
-        await Promise.all(
-          user.organizations.map(async (org: any)=> {
-            const orgId = org?.id;
-            if(!orgId) return;
 
-            const res = await fetch("api/settings",{
-              method: "PUT",
-              headers: {"Content-Type": "application/json"},
-              body: JSON.stringify({
-                userId: String(user.id),
-                orgId: String(orgId),
-                hasGetMailNotification: org.hasGetMailNotification
-              })
+      const updatedSession = await update({
+        user: {
+          ...session.user, // ✅ Behalte alle bestehenden Felder (id, orgIds, etc.)
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email,
+          phone,
+          picture_url: pictureUrl, // ✅ HIER: pictureUrl statt user.picture_url!
+          hasLogoinCalendar: !!showLogos
+        }
+      });
+
+      console.log('✅ Session updated:', updatedSession);
+
+      // ✅ Update auch lokalen State
+      setUser({
+        ...user,
+        picture_url: pictureUrl // ✅ Update State mit neuer URL
+      });
+    }
+    //#endregion
+
+    //#region Organization Mail Notifications
+    if (Array.isArray(user.organizations) && user.organizations.length > 0) {
+      await Promise.all(
+        user.organizations.map(async (org: any) => {
+          const orgId = org?.id;
+          if (!orgId) return;
+
+          const res = await fetch("api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: String(user.id),
+              orgId: String(orgId),
+              hasGetMailNotification: org.hasGetMailNotification,
             })
+          });
 
-            if (!res.ok){
-              const message = await res.text().catch(() => "");
-              throw new Error(`Update für Organisation "...": ${res.status} ${message}`);
-            }
-          })
-        );
-      }
-      //#endregion
+          if (!res.ok) {
+            const message = await res.text().catch(() => "");
+            throw new Error(`Update für Organisation "...": ${res.status} ${message}`);
+          }
+        })
+      );
+    }
+    //#endregion
 
-      //#region Cache invalidate
-      await queryClient.invalidateQueries({queryKey: ["userSettings", session?.user.id]});
-      //#endregion
-  } catch(error){
-    console.error(error);
-    
+    //#region Cache invalidate
+    await queryClient.invalidateQueries({
+      queryKey: settingsQueryKeys.userSettings(session?.user.id || '')
+    });
+    await queryClient.invalidateQueries({
+      queryKey: settingsQueryKeys.userOrganizations(session?.user.id || '')
+    });
+    //#endregion
+
+  } catch (error) {
+    console.error('❌ Save failed:', error);
   }
-}
+};
 //#endregion
 const handleProfilePictureUpload = (file: File) => {
   setProfilePictureFile(file);
 };
-  if (!session) {
+  if (status === "unauthenticated") {
     router.push("/signin");
     return <div>Leite weiter…</div>;
   }
@@ -206,14 +234,27 @@ const handleProfilePictureUpload = (file: File) => {
         const confirmed = window.confirm("Möchtest du die Organisation wirklich verlassen?");
         if (!confirmed) return;
         try {
-            const res = await fetch("/api/organization/leave", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: user.id, organizationId: id }),
+            const leaveOrgMutation = useMutation({
+              mutationKey: settingsQueryKeys.userOrganizations(session?.user?.id || ""), 
+              mutationFn: async ({ userId, organizationId }: { userId: string; organizationId: string }) => {
+                const res = await fetch("/api/organization/leave", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ userId, organizationId }),
+                });
+                if (!res.ok) throw new Error("Failed to leave organization");
+                return res.json();
+              },
+              onSuccess: () => {
+                queryClient.invalidateQueries({ 
+                  queryKey: settingsQueryKeys.userSettings(session?.user?.id || "") 
+                });
+              }
             });
-            if (!res.ok) throw new Error("Fehler beim Verlassen der Organisation");
+
+            await leaveOrgMutation.mutateAsync({ userId: user.id, organizationId: id });
             // Aktualisiere die Userdaten nach dem Verlassen
-            queryClient.invalidateQueries({ queryKey: ["userSettings", user.id] });
+            queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(user.id) });
         } catch (err) {
             alert("Fehler beim Verlassen der Organisation.");
         }

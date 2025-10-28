@@ -122,6 +122,7 @@ export async function getUserForAuth(email: string) {
         lastname: true,
         picture_url: true,
         password: true, 
+        phone: true,
       },
       
     });

@@ -24,6 +24,8 @@ import { hasPermission } from "@/lib/auth/authGuard";
 import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
 import { useInvitations } from '@/features/invitations/hooks/useInvitation';
+import { useSessionValidation } from "@/hooks/useSessionValidation";
+import { settingsQueryKeys } from "@/features/settings/queryKey";
 
 export default function OrganizationManagePage() {
     const params = useParams();
@@ -49,8 +51,20 @@ export default function OrganizationManagePage() {
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
+    useSessionValidation({
+        debug: false,
+        onTokenExpired: () => {
+            console.log("Token abgelaufen - leite zu Login weiter");
+            router.push('/signin');
+        },
+    });
+    if(session == null){
+        router.push('/signin');
+    }
+
+
     const { data, isLoading, error } = useQuery({
-        queryKey: ["userSettings", session?.user?.id],
+        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
         enabled: !!session?.user?.id,
         queryFn: async () => {
             const res = await fetch(`/api/settings?userId=${session?.user.id}`);
@@ -66,7 +80,7 @@ export default function OrganizationManagePage() {
 
     // lade die spezifische Organisation und setze Name/Beschreibung
     const { data: orgData, isLoading: orgLoading, error: orgError } = useQuery({
-        queryKey: ["organization", orgId],
+        queryKey: settingsQueryKeys.organization(orgId),
         enabled: !!orgId,
         queryFn: async () => {
             const res = await fetch(`/api/auth/organization?id=${orgId}`);
@@ -88,37 +102,22 @@ export default function OrganizationManagePage() {
         }
     }, [orgData]);
 
-  // Lade User der Organisation (user_organization_role)
-  const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ["organization", orgId],
-    enabled: !!orgId,
-    queryFn: async () => {
-      const res = await fetch(`/api/auth/organization/${orgId}/users`);
-      if (!res.ok) throw new Error("Fehler beim Laden der User");
-      return res.json();
-    },
-  });
-
-  const handleSignOut = async () => {
-    try {
-      await signOut({
-        callbackUrl: "/signin",
-        redirect: true,
-      });
-
-      queryClient.clear();
-    } catch (error) {
-      console.error("Fehler beim Abmelden:", error);
-      router.push("/signin");
-    }
-  };
-
-  // Logo Upload Handler
-  const handleLogoUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    // Lade User der Organisation (user_organization_role)
+    const { data: usersData, isLoading: usersLoading } = useQuery({
+        queryKey: settingsQueryKeys.userOrganizations(orgId),
+        enabled: !!orgId,
+        queryFn: async () => {
+            const res = await fetch(`/api/auth/organization/${orgId}/users`);
+            if (!res.ok) {
+                if(res.status === 401){
+                    signOut({callbackUrl:'/signin'})
+                    throw new Error("Unauthorized")
+                }
+                    throw new Error("Fehler beim Laden der User");
+                }
+            return res.json();
+        },
+    });
 
     const handleSignOut = async () => {
         try {
@@ -208,7 +207,7 @@ export default function OrganizationManagePage() {
             return res.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["organization", orgId] });
+            queryClient.invalidateQueries({ queryKey: settingsQueryKeys.organization(orgId) });
             setLogoFile(null);
             //alert("Organisation erfolgreich aktualisiert!");
         },
@@ -228,14 +227,6 @@ export default function OrganizationManagePage() {
             helper_name_plural: helperPlural,
             logoFile,
             removeLogo: false 
-        });
-    };
-
-    const handleSaveWithLogoRemove = () => {
-        updateMutation.mutate({ 
-            name, 
-            description, 
-            removeLogo: true 
         });
     };
 
@@ -265,6 +256,7 @@ export default function OrganizationManagePage() {
             </button>
             <div data-state="Default" data-type="default" className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5"
                  onClick={handleSave}>
+                    
                 <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
             </div>
         </div>
