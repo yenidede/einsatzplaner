@@ -1,9 +1,8 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { renderToBuffer } from '@react-pdf/renderer';
 import React from 'react';
-import { z } from 'zod';
+import { Document, renderToBuffer } from '@react-pdf/renderer';
 import { validatePdfAccess } from '@/features/pdf/lib/utils/authorization';
 import { validatePdfBuffer } from '@/features/pdf/lib/utils/validation';
 import { BookingConfirmationPDF } from '@/features/pdf/components/BookingConfirmationPDF';
@@ -36,92 +35,46 @@ function generateFilename(einsatz: Einsatz): string {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json().catch(() => null);
-    
-    if (!body) {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      );
-    }
+    try {
+        const { einsatzId, options } = await request.json();
 
-    const validation = requestSchema.safeParse(body);
-    
-    if (!validation.success) {
-      return NextResponse.json(
-        { 
-          error: 'Validation failed',
-          details: validation.error.issues.map(e => ({
-            field: e.path.join('.'),
-            message: e.message
-          }))
-        },
-        { status: 400 }
-      );
-    }
+        if (!einsatzId) {
+            return NextResponse.json({ error: 'einsatzId is required' }, { status: 400 });
+        }
 
-    const { einsatzId, options } = validation.data;
+        // ✅ Authorization
+        const authResult = await validatePdfAccess(einsatzId);
+        if (!authResult.authorized) {
+            return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+        }
 
-    const authResult = await validatePdfAccess(einsatzId);
-    
-    if (!authResult.authorized) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
+        // ✅ Fetch Data
+        const einsatz = await getEinsatzWithDetailsById(einsatzId);
+        if (!einsatz) {
+            return NextResponse.json({ error: 'Einsatz not found' }, { status: 404 });
+        }
 
-    const einsatz = await getEinsatzWithDetailsById(einsatzId);
-    
-    if (!einsatz) {
-      return NextResponse.json(
-        { error: 'Einsatz not found' },
-        { status: 404 }
-      );
-    }
+        const documentElement = React.createElement(
+            Document,
+            null,
+            React.createElement(BookingConfirmationPDF, { einsatz, options })
+        );
+        const pdfBuffer = await renderToBuffer(documentElement);
+        console.log('PDF Buffer generated:', pdfBuffer);
 
-    console.log(`Generating PDF for einsatz ${einsatzId}...`);
-    const document = React.createElement(
-      Document,
-      null,
-      React.createElement(BookingConfirmationPDF, { einsatz, options })
-    );
+        const filename = `Buchungsbestaetigung_${new Date(einsatz.start).toISOString().split('T')[0]}.pdf`;
 
-    const pdfBuffer = await renderToBuffer(document);
-
-    if (!validatePdfBuffer(pdfBuffer)) {
-      throw new Error('Generated PDF is invalid or empty');
-    }
-
-    console.log(`PDF generated successfully (${pdfBuffer.length} bytes)`);
-
-    const filename = generateFilename(einsatz);
-
-    return new NextResponse(Uint8Array.from(pdfBuffer), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
-        'Content-Length': String(pdfBuffer.length),
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-      },
-    });
-
-  } catch (error) {
-    console.error('PDF Generation Error:', error);
-
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : 'Unknown error occurred';
-
-    return NextResponse.json(
-      { 
-        error: 'Failed to generate PDF',
-        message: errorMessage,
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
-  }
+        return new NextResponse(new Uint8Array(pdfBuffer), {
+            headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            },
+        });
+    } catch (error) {
+        console.error('PDF Error:', error);
+        return NextResponse.json(
+        { error: 'Internal Server Error', message: (error as Error).message },
+        { status: 500 }
+        );
+    } 
 }

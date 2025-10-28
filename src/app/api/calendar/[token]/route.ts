@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import ical, {ICalEventStatus, ICalCalendarMethod} from "ical-generator";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { sub } from "date-fns";
 
 export async function GET(request: NextRequest,{params}: {params : {token : string}}){
+    // good variable name for params extraction
+    const prms = await params;
+    const token = await prms.token;
+    
     const subscription = await prisma.calendar_subscription.findUnique({
-        where: { token: params.token},
-        include: {organization: {select: {name: true, email: true}}}
+        where: { token },
+        include: {organization: {select: {name: true, email: true, phone: true}}}
     });
+    const phone = subscription?.organization.phone;
 
     if(!subscription || !subscription.is_active) return new NextResponse("Not found", {status: 404});
 
@@ -43,9 +50,8 @@ export async function GET(request: NextRequest,{params}: {params : {token : stri
         const ortField = einsatz.einsatz_field.find(field => (field.field.name ?? "")
         .toLowerCase().match("/^(ort|location)$/"));
 
-        
-
-        const urlToEinsatzPage = `${process.env.NEXTAUTH_URL}/einsaetze/${einsatz.id}`
+    
+        const urlToHelferansichtPage = `${process.env.NEXTAUTH_URL}/helferansicht`
 
         let start = einsatz.start;
         let end = einsatz.end;
@@ -58,27 +64,30 @@ export async function GET(request: NextRequest,{params}: {params : {token : stri
             start,end,
             allDay: isAllDay,
             summary: einsatz.title,
-            description: `Organisation: ${einsatz.organization?.name ?? ""}\nMehr Infos: ${urlToEinsatzPage}`,
-            url: urlToEinsatzPage,
+            description: `Details und weitere Informationen unter: ${urlToHelferansichtPage}`,
+            /* url: urlToEinsatzPage, */
+            categories: categories.map(name => ({name})),
             location: ortField?.value,
             status: ICalEventStatus.CONFIRMED,
-            phone: phoneField?.value,
         });
-
+        //console.log(subscription.organization.phone);
         event.uid(`${einsatz.id}@${host}`)
         if(categories.length){
             event.categories(categories.map(name => ({name})));
         }
+        if(phone || subscription.organization.email){
+            event.organizer({name: einsatz.organization?.name,
+                email: subscription.organization.email || undefined,
+                phone: phone || undefined
+            });
+        }
 
-
-        event.organizer({name: einsatz.organization?.name, email: subscription.organization.email || undefined })
         
     }
 
-    
 
     await prisma.calendar_subscription.update({
-        where: {token: params.token},
+        where: {token},
         data: {last_accessed: new Date()}
     })
 

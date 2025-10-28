@@ -43,7 +43,7 @@ export default function AcceptInvitationClient({ invitation, token }: AcceptInvi
       }
 
       // Erfolg - zur Organisation weiterleiten
-      router.push('/dashboard');
+      router.push('/helferansicht');
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
@@ -102,7 +102,7 @@ export default function AcceptInvitationClient({ invitation, token }: AcceptInvi
         </button>
         
         <button
-          onClick={() => router.push('/dashboard')}
+          onClick={() => router.push('/helferansicht')}
           className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200"
         >
           Ablehnen
