@@ -13,11 +13,11 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.NEXTAUTH_SECRET || "fallback-secret-as-backup"
 );
 
-async function generateAccessToken(userId: string, userData: any): Promise<string> {
+async function generateAccessToken( userData: any): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   
   const jwt = await new SignJWT({
-    sub: userId,
+    sub: userData.id,
     email: userData.email,
     firstname: userData.firstname,
     lastname: userData.lastname,
@@ -82,7 +82,7 @@ async function refreshAccessToken(token: any) {
       throw new Error("Invalid or expired refresh token");
     }
 
-    const newAccessToken = await generateAccessToken(session.user.id, session.user);
+    const newAccessToken = await generateAccessToken(session.user);
 
     return {
       ...token,
@@ -194,7 +194,8 @@ export const authOptions: NextAuthOptions = {
           const roleIds = [...new Set(roles.map(r => r.roleId))];
 
           const refreshToken = await generateRefreshToken(user.id);
-          const accessToken = await generateAccessToken(user.id, {
+          const accessToken = await generateAccessToken({
+            id: user.id,
             email: user.email,
             firstname: user.firstname,
             lastname: user.lastname,
