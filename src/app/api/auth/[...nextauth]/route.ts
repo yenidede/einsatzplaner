@@ -221,13 +221,11 @@ export const authOptions: NextAuthOptions = {
             phone: user.phone,
             description: user.description,
             hasLogoinCalendar: user.hasLogoinCalendar ?? false,
-            organizations,
-            roles,
-            orgIds,
-            roleIds,
+            orgIds,           // ✅ Nur IDs
+            roleIds,          // ✅ Nur IDs
+            activeOrganizationId: orgIds[0] ?? null,
             accessToken,
             refreshToken,
-            activeOrganizationId: orgIds[0] || null,
           };
         } catch (error) {
           console.error("Authentication error:", error);
@@ -250,15 +248,13 @@ export const authOptions: NextAuthOptions = {
           phone: user.phone,
           description: user.description,
           hasLogoinCalendar: user.hasLogoinCalendar,
-          organizations: user.organizations,
-          roles: user.roles,
-          orgIds: user.organizations.map((org) => org.id),
-          roleIds: user.roles.map((role) => role.roleId),
+          orgIds: user.orgIds,                    // ✅ Nur IDs
+          roleIds: user.roleIds,                  // ✅ Nur IDs
+          activeOrganizationId: user.activeOrganizationId,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           accessTokenExpires: Date.now() + (ACCESS_TOKEN_LIFETIME * 1000),
           refreshTokenExpires: Date.now() + REFRESH_TOKEN_LIFETIME,
-          activeOrganizationId: user.activeOrganizationId,
         };
       }
 
@@ -321,10 +317,8 @@ export const authOptions: NextAuthOptions = {
         session.user.phone = (token.phone as string | null) ?? null;
         session.user.description = (token.description as string | null) ?? null;
         session.user.hasLogoinCalendar = (token.hasLogoinCalendar as boolean) ?? false;
-        session.user.organizations = (token.organizations as any[]) ?? [];
-        session.user.roles = (token.roles as any[]) ?? [];
-        session.user.orgIds = (token.orgIds as string[]) ?? [];
-        session.user.roleIds = (token.roleIds as string[]) ?? [];
+        session.user.orgIds = (token.orgIds as string[]) ?? [];        // ✅ Nur IDs
+        session.user.roleIds = (token.roleIds as string[]) ?? [];      // ✅ Nur IDs
         session.user.activeOrganizationId = (token.activeOrganizationId as string | null) ?? null;
       }
       
