@@ -8,10 +8,10 @@ import { Button } from '@/features/auth/components/ui/FormComponents';
 
 //#region TypeScript Interfaces
 interface UserProfileDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  userId: string;
-  organizationId: string;
+    isOpen: boolean;
+    onClose: () => void;
+    userId: string;
+    organizationId: string;
 }
 
 interface Role {
