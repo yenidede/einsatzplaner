@@ -6,14 +6,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   EventCalendar,
   mapEinsaetzeToCalendarEvents,
-  mapEinsatzToCalendarEvent,
 } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
 import { EinsatzCreateToCalendarEvent } from "./einsatz-service";
 import { EinsatzCreate } from "@/features/einsatz/types";
 import {
   getAllEinsaetzeForCalendar,
-  getEinsatzForCalendar,
   updateEinsatzTime,
 } from "@/features/einsatz/dal-einsatz";
 import {
@@ -74,7 +72,7 @@ export default function Component({
     onSuccess: (_data, vars) => {
       toast.success("Einsatz '" + vars.title + "' wurde erstellt.");
     },
-    onSettled: (_data, _error) => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -116,10 +114,10 @@ export default function Component({
       toast.error("Fehler beim Aktualisieren des Einsatzes: " + error);
       console.error("Error updating Einsatz:", error);
     },
-    onSuccess: (_data, vars) => {
+    onSuccess: (_data) => {
       toast.success("Einsatz '" + _data.title + "' wurde aktualisiert.");
     },
-    onSettled: (data, _error, _variables) => {
+    onSettled: (data) => {
       // Invalidate the specific einsatz detail (only if we have a valid id)
       if (data?.id) {
         queryClient.invalidateQueries({
@@ -201,7 +199,7 @@ export default function Component({
       toast.error("Fehler beim Löschen des Einsatzes: " + error);
       console.error("Error deleting Einsatz:", error);
     },
-    onSuccess: (_data, vars, ctx) => {
+    onSuccess: (_data, vars) => {
       toast.success(vars.eventIds.length + " Einsätze wurden gelöscht.");
     },
     onSettled: (_data, _error, variables) => {
