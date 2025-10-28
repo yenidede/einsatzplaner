@@ -1,44 +1,34 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useInvitationValidation } from '@/features/invitations/hooks/useInvitation';
 
-interface AcceptPageProps {
-  params: Promise<{ token: string }>;
-
-}
-
-export default function AcceptPage({ params }: AcceptPageProps) {
-  // ✅ params unwrappen mit React.use()
-  const { token } = use(params);
+export default function AcceptPage() {
   const router = useRouter();
-  const { data: session, status: sessionStatus } = useSession();
+  const params = useParams();
+  const token = params?.token as string;
   
-  // ✅ Nutze den bestehenden Hook
+  const { data: session, status: sessionStatus } = useSession();
   const { data: invitation, isLoading, error } = useInvitationValidation(token);
   
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
 
-  // 2. Session prüfen
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') {
       router.push(`/signin?callbackUrl=${encodeURIComponent(`/invite/${token}/accept`)}`);
     }
   }, [sessionStatus, router, token]);
 
-  // 3. E-Mail-Validierung und Auto-Accept
   useEffect(() => {
     if (!invitation || !session?.user?.email || accepting) return;
 
-    // E-Mail-Check
     if (session.user.email !== invitation.email) {
-      return; // UI zeigt Fehler-Meldung
+      return;
     }
 
-    // Auto-Accept
     const acceptInvitation = async () => {
       setAccepting(true);
       try {
@@ -53,7 +43,6 @@ export default function AcceptPage({ params }: AcceptPageProps) {
           throw new Error(errorData.error || 'Fehler beim Akzeptieren');
         }
 
-        // Erfolg - nach 2 Sekunden weiterleiten
         setTimeout(() => {
           router.push('/helferansicht');
         }, 2000);
@@ -66,7 +55,6 @@ export default function AcceptPage({ params }: AcceptPageProps) {
     acceptInvitation();
   }, [invitation, session, accepting, token, router]);
 
-  // Loading States
   if (isLoading || sessionStatus === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -78,7 +66,6 @@ export default function AcceptPage({ params }: AcceptPageProps) {
     );
   }
 
-  // Error: Einladung nicht gefunden
   if (error || !invitation) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -98,7 +85,6 @@ export default function AcceptPage({ params }: AcceptPageProps) {
     );
   }
 
-  // Error: Falsche E-Mail
   if (session?.user?.email && session.user.email !== invitation.email) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -132,7 +118,6 @@ export default function AcceptPage({ params }: AcceptPageProps) {
     );
   }
 
-  // Error: Accept fehlgeschlagen
   if (acceptError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -150,7 +135,6 @@ export default function AcceptPage({ params }: AcceptPageProps) {
     );
   }
 
-  // Accepting State
   if (accepting) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -165,7 +149,6 @@ export default function AcceptPage({ params }: AcceptPageProps) {
     );
   }
 
-  // Success State
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
