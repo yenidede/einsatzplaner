@@ -35,8 +35,8 @@ type UserBase = {
 type TokenInfo = {
     accessToken: string;
     accessTokenExpires: number;
-    refreshToken?: string;
-    refreshTokenExpires?: number;
+    refreshToken: string;
+    refreshTokenExpires: number;
 
 }
 
@@ -51,7 +51,7 @@ declare module 'next-auth' {
         token: TokenInfo;
         error?: 'RefreshAccessTokenError';
         expires: string;
-    }
+    } 
 }
 
 declare module 'next-auth/jwt' {
