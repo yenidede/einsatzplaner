@@ -61,6 +61,8 @@ export function useEventVisibility({
 
   // Function to calculate visible events for a cell
   const getVisibleEventCount = useMemo(() => {
+    console.log("content:", contentRef.current, contentRef.current?.clientHeight, Math.floor(contentHeight / (eventHeight + eventGap)))
+
     return (totalEvents: number): number => {
       if (!contentHeight) return totalEvents
 

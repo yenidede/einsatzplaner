@@ -17,14 +17,16 @@ import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadPr
 import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
 import OrganizationCard from "@/features/settings/components/OrganizationCard";
 import { hasPermission } from "@/lib/auth/authGuard";
-
-
+import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
+import { useSessionValidation } from "@/hooks/useSessionValidation";
+import { settingsQueryKeys } from "@/features/settings/queryKey";
+import { first } from "lodash";
 
 export default function SettingsPage() {
   const id = useId();
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const [getMailFromOrganization, setGetMailFromOrganization] = useState<boolean>(true);
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState<string>("");
@@ -33,9 +35,15 @@ export default function SettingsPage() {
 
   const queryClient = useQueryClient();
 
-  // Lade Userdaten mit TanStack Query
+  useSessionValidation({
+    debug: true,
+    onTokenExpired: () => {
+      console.log("Token abgelaufen - leite zu Login weiter");
+      router.push('/signin');
+    }
+  })
   const { data, isLoading, error } = useQuery({
-    queryKey: ["userSettings", session?.user?.id],
+    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     enabled: !!session?.user?.id,
     queryFn: async () => {
       const res = await fetch(`/api/settings?userId=${session?.user.id}`);
@@ -43,6 +51,7 @@ export default function SettingsPage() {
       return res.json();
     },
   });
+
 
   const hasManagePermission = (roles: any[] | undefined) => {
     if (!Array.isArray(roles)) return false;
@@ -55,7 +64,12 @@ export default function SettingsPage() {
   // Setze Userdaten, Email und Phone, wenn Query-Daten geladen sind
   useEffect(() => {
     if (data) {
-      setUser(data);
+      setUser({
+        ...data,
+        organizations: Array.isArray(data.organizations)
+          ? data.organizations.map((o: any) => ({ ...o, hasGetMailNotification: !!o.hasGetMailNotification }))
+          : [],
+      });
       setEmail(data.email ?? "");
       setPhone(data.phone ?? "");
       setShowLogos(data.hasLogoinCalendar ?? true);
@@ -73,10 +87,11 @@ export default function SettingsPage() {
     picture_url: any;
     phone: string;
     hasLogoinCalendar: boolean;
-    hasGetMailNotification: boolean;
+    //hasGetMailNotification: boolean;
   };
 
   const mutation = useMutation({
+    mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     mutationFn: async (newSettings: UserSettings) => {
       const res = await fetch("/api/settings", {
         method: "PUT",
@@ -87,60 +102,123 @@ export default function SettingsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["userSettings", session?.user.id] });
+      queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(session?.user?.id || "")});
     },
   });
-
+//#region handleSave
 const handleSave = async () => {
   if (!user) return;
-  let pictureUrl = user.picture_url;
-  if (profilePictureFile) {
-    const formData = new FormData();
-    formData.append("file", profilePictureFile);
-    formData.append("userId", user.id);
-    const res = await fetch("/api/upload-profile-picture", {
-      method: "POST",
-      body: formData,
-    });
-    if (res.ok) {
-      const data = await res.json();
-      pictureUrl = data.url;
-    }
-  }
-  // benutze mutateAsync, warte auf Abschluss
-  await mutation.mutateAsync({
-    userId: user.id,
-    firstname: user.firstname,
-    lastname: user.lastname,
-    email,
-    picture_url: pictureUrl,
-    phone,
-    hasLogoinCalendar: showLogos,
-    hasGetMailNotification: getMailFromOrganization,
-  });
 
-  // Organisationseinstellungen parallel speichern (falls Backend einzelne PUT erwartet)
-  if (user.organizations && user.organizations.length > 0) {
-    await Promise.all(
-      user.organizations.map((org: any) =>
-        fetch("/api/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            userOrgId: org.userOrgRoleId,
-            hasGetMailNotification: org.hasGetMailNotification,
-          }),
+  try {
+    //#region Profile Picture Upload
+    let pictureUrl = user.picture_url;
+    if (profilePictureFile) {
+      const formData = new FormData();
+      formData.append("file", profilePictureFile);
+      formData.append("userId", String(user.id));
+
+      const res = await fetch("/api/upload-profile-picture", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const message = await res.text().catch(() => "");
+        throw new Error(`Upload fehlgeschlagen: ${res.status} ${message}`);
+      }
+      const data = await res.json();
+      pictureUrl = data.url; // ✅ Neue URL
+    }
+    //#endregion
+
+    //#region Save User
+    await mutation.mutateAsync({
+      userId: user.id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email,
+      picture_url: pictureUrl, // ✅ Nutze pictureUrl (nicht user.picture_url!)
+      phone,
+      hasLogoinCalendar: !!showLogos
+    });
+
+    if (session) {
+      console.log('🔄 Updating session with:', {
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email,
+        phone,
+        picture_url: pictureUrl, // ✅ Neue URL!
+      });
+
+      const updatedSession = await update({
+        user: {
+          ...session.user, // ✅ Behalte alle bestehenden Felder (id, orgIds, etc.)
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email,
+          phone,
+          picture_url: pictureUrl, // ✅ HIER: pictureUrl statt user.picture_url!
+          hasLogoinCalendar: !!showLogos
+        }
+      });
+
+      console.log('✅ Session updated:', updatedSession);
+
+      // ✅ Update auch lokalen State
+      setUser({
+        ...user,
+        picture_url: pictureUrl // ✅ Update State mit neuer URL
+      });
+    }
+    //#endregion
+
+    //#region Organization Mail Notifications
+    if (Array.isArray(user.organizations) && user.organizations.length > 0) {
+      await Promise.all(
+        user.organizations.map(async (org: any) => {
+          const orgId = org?.id;
+          if (!orgId) return;
+
+          const res = await fetch("api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: String(user.id),
+              orgId: String(orgId),
+              hasGetMailNotification: org.hasGetMailNotification,
+            })
+          });
+
+          if (!res.ok) {
+            const message = await res.text().catch(() => "");
+            throw new Error(`Update für Organisation "...": ${res.status} ${message}`);
+          }
         })
-      )
-    );
+      );
+    }
+    //#endregion
+
+    //#region Cache invalidate
+    await queryClient.invalidateQueries({
+      queryKey: settingsQueryKeys.userSettings(session?.user.id || '')
+    });
+    await queryClient.invalidateQueries({
+      queryKey: settingsQueryKeys.userOrganizations(session?.user.id || '')
+    });
+    //#endregion
+
+  } catch (error) {
+    console.error('❌ Save failed:', error);
   }
 };
-
+//#endregion
 const handleProfilePictureUpload = (file: File) => {
   setProfilePictureFile(file);
 };
-
+  if (status === "unauthenticated") {
+    router.push("/signin");
+    return <div>Leite weiter…</div>;
+  }
   if (isLoading || !user) {
     return <div>Lade Einstellungen…</div>;
   }
@@ -156,14 +234,27 @@ const handleProfilePictureUpload = (file: File) => {
         const confirmed = window.confirm("Möchtest du die Organisation wirklich verlassen?");
         if (!confirmed) return;
         try {
-            const res = await fetch("/api/organization/leave", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: user.id, organizationId: id }),
+            const leaveOrgMutation = useMutation({
+              mutationKey: settingsQueryKeys.userOrganizations(session?.user?.id || ""), 
+              mutationFn: async ({ userId, organizationId }: { userId: string; organizationId: string }) => {
+                const res = await fetch("/api/organization/leave", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ userId, organizationId }),
+                });
+                if (!res.ok) throw new Error("Failed to leave organization");
+                return res.json();
+              },
+              onSuccess: () => {
+                queryClient.invalidateQueries({ 
+                  queryKey: settingsQueryKeys.userSettings(session?.user?.id || "") 
+                });
+              }
             });
-            if (!res.ok) throw new Error("Fehler beim Verlassen der Organisation");
+
+            await leaveOrgMutation.mutateAsync({ userId: user.id, organizationId: id });
             // Aktualisiere die Userdaten nach dem Verlassen
-            queryClient.invalidateQueries({ queryKey: ["userSettings", user.id] });
+            queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(user.id) });
         } catch (err) {
             alert("Fehler beim Verlassen der Organisation.");
         }
@@ -276,10 +367,6 @@ const handleProfilePictureUpload = (file: File) => {
                                 
                             </div>
                             <div className="inline-flex justify-start items-start gap-2">
-{/*                                 <ProfilePictureUpload
-                                    onUpload={handleProfilePictureUpload}
-                                />
-                            <UploadProfilePictureIcon />{/* */}
                                 <button
                                     type="button"
                                     className="px-4 py-2 bg-slate-900 text-white rounded-md inline-flex justify-center items-center gap-2"
@@ -307,7 +394,7 @@ const handleProfilePictureUpload = (file: File) => {
                                             picture_url: null,
                                             phone,
                                             hasLogoinCalendar: showLogos,
-                                            hasGetMailNotification: getMailFromOrganization,
+                                            //hasGetMailNotification: getMailFromOrganization,
                                         });
                                     }}
                                 >
@@ -398,37 +485,44 @@ const handleProfilePictureUpload = (file: File) => {
                     </div>
                 </div>
                 <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-                    <div className="flex-1 px-4 flex flex-col gap-2">
-                      {user.organizations && user.organizations.length > 0 ? (
-                        user.organizations.map((org: any, idx: number) => (
-                          <div key={org.id} className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                            <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
-                              Emails von <span className="font-bold">{org.name}</span> erhalten
-                            </Label>
-                            <div className="inline-flex items-center gap-2">
-                              <Switch
-                                id={`org-switch-${org.id}`}
-                                checked={org.hasGetMailNotification}
-                                onCheckedChange={checked => {
-                                  // Nur lokalen State ändern, nicht speichern
-                                  setUser((prev: any) => {
-                                    const orgs = [...prev.organizations];
-                                    orgs[idx] = { ...orgs[idx], hasGetMailNotification: checked };
-                                    return { ...prev, organizations: orgs };
-                                  });
-                                }}
-                                aria-label={`Toggle switch for ${org.name}`}
-                              />
-                              <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
-                                {org.hasGetMailNotification ? "On" : "Off"}
-                              </Label>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-slate-500">Keine Organisationen für Benachrichtigungen.</div>
-                      )}
-                    </div>
+<div className="flex-1 px-4 flex flex-col gap-2">
+  {Array.isArray(user.organizations) && user.organizations.length > 0 ? (
+    user.organizations.map((org: any) => {
+      const on = !!org.hasGetMailNotification; // hartes boolean
+
+      return (
+        <div key={org.id} className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
+          <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
+            Emails von <span className="font-bold">{org.name}</span> erhalten
+          </Label>
+
+          <div className="inline-flex items-center gap-2">
+            <Switch
+              id={`org-switch-${org.id}`}
+              checked={on}                                // immer boolean
+              onCheckedChange={(checked) => {
+                setUser((prev: any) => {
+                  const prevOrgs = Array.isArray(prev?.organizations) ? prev.organizations : [];
+                  const nextOrgs = prevOrgs.map((o: any) =>
+                    o.id === org.id ? { ...o, hasGetMailNotification: !!checked } : o
+                  );
+                  return { ...prev, organizations: nextOrgs };
+                });
+              }}
+              aria-label={`Toggle switch for ${org.name}`}
+            />
+            <Label htmlFor={`org-switch-${org.id}`} className="text-sm font-medium">
+              {on ? "On" : "Off"}                    
+            </Label>
+          </div>
+        </div>
+      );
+    })
+  ) : (
+    <div className="text-slate-500">Keine Organisationen für Benachrichtigungen.</div>
+  )}
+</div>
+
                 </div>
             </div>
             <div className="self-stretch flex flex-col justify-center items-start">
@@ -440,20 +534,23 @@ const handleProfilePictureUpload = (file: File) => {
                 {user.organizations && user.organizations.length > 0 ? (
   user.organizations.map((org: any) => {
     //console.log('Organisation:', org.name, 'Rollen:', org.roles);
-    return (
+    return (    
       <div key={org.id}>
         <OrganizationCard
           name={org.name}
           roles={org.roles}
           onLeave={() => {handleOrganizationLeave(org.id)}}
         />
+        <CalendarSubscription orgId={org.id} orgName={org.name} variant="card"></CalendarSubscription>
       </div>
+
     );
   })
 ) : (
   <div className="text-slate-500">Du bist in keiner Organisation.</div>
 )}
             </div>
+            
         </div>
     </div>
 </div>

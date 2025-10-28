@@ -5,8 +5,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { token: string } }
 ) {
+  const token = await params.token
   try {
-    const invitation = await InvitationService.validateInvitation(params.token);
+    const invitation = await InvitationService.validateInvitation(token);
     return NextResponse.json(invitation);
   } catch (error) {
     console.error("Error validating invitation:", error);
