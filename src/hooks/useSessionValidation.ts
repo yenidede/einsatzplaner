@@ -7,6 +7,22 @@ interface UseSessionValidationOptions {
   onTokenExpired?: () => void;
 }
 
+function formatTimeRemaining(milliseconds: number): string {
+  const seconds = Math.floor(milliseconds / 1000);
+  
+  if (seconds < 60) {
+    return `${seconds}s`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const remainingMinutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${remainingMinutes}m`;
+  }
+}
+
 export function useSessionValidation(options: UseSessionValidationOptions = {}) {
   const { checkInterval = 60000, debug = false, onTokenExpired } = options;
   const { data: session, status } = useSession();
@@ -24,6 +40,11 @@ export function useSessionValidation(options: UseSessionValidationOptions = {}) 
           const now = Date.now();
 
           if (debug) {
+            const accessExpiresIn = tokenInfo?.accessTokenExpires ? 
+              tokenInfo.accessTokenExpires - now : 0;
+            const refreshExpiresIn = tokenInfo?.refreshTokenExpires ? 
+              tokenInfo.refreshTokenExpires - now : 0;
+
             console.log('🔍 Session validation check', {
               timestamp: new Date().toLocaleString(),
               sessionError: session?.error,
@@ -32,8 +53,10 @@ export function useSessionValidation(options: UseSessionValidationOptions = {}) 
                 new Date(tokenInfo.accessTokenExpires).toLocaleString() : 'Unknown',
               refreshTokenExpires: tokenInfo?.refreshTokenExpires ? 
                 new Date(tokenInfo.refreshTokenExpires).toLocaleString() : 'Unknown',
-              accessTokenExpiresIn: tokenInfo?.accessTokenExpires ? 
-                Math.floor((tokenInfo.accessTokenExpires - now) / 1000) : 'Unknown'
+              accessTokenExpiresIn: accessExpiresIn > 0 ? 
+                formatTimeRemaining(accessExpiresIn) : 'Expired',
+              refreshTokenExpiresIn: refreshExpiresIn > 0 ? 
+                formatTimeRemaining(refreshExpiresIn) : 'Expired'
             });
           }
 
@@ -69,7 +92,8 @@ export function useSessionValidation(options: UseSessionValidationOptions = {}) 
     };
   }, [session, status, checkInterval, debug, onTokenExpired]);
 
-  const tokenInfo = (session as any)?.token;
+  const tokenInfo = session?.token;
+  const now = Date.now();
 
   return {
     isValidating: status === 'loading',
@@ -80,12 +104,16 @@ export function useSessionValidation(options: UseSessionValidationOptions = {}) 
       refreshToken: tokenInfo?.refreshToken,
       accessTokenExpires: tokenInfo?.accessTokenExpires,
       refreshTokenExpires: tokenInfo?.refreshTokenExpires,
-      accessTokenExpiresIn: tokenInfo?.accessTokenExpires ? 
-        Math.max(0, Math.floor((tokenInfo.accessTokenExpires - Date.now()) / 1000)) : 0,
-      refreshTokenExpiresIn: tokenInfo?.refreshTokenExpires ? 
-        Math.max(0, Math.floor((tokenInfo.refreshTokenExpires - Date.now()) / 1000)) : 0,
-      isAccessTokenExpired: tokenInfo?.accessTokenExpires ? Date.now() > tokenInfo.accessTokenExpires : false,
-      isRefreshTokenExpired: tokenInfo?.refreshTokenExpires ? Date.now() > tokenInfo.refreshTokenExpires : false
+      accessTokenExpiresInSeconds: tokenInfo?.accessTokenExpires ? 
+        Math.max(0, Math.floor((tokenInfo.accessTokenExpires - now) / 1000)) : 0,
+      refreshTokenExpiresInSeconds: tokenInfo?.refreshTokenExpires ? 
+        Math.max(0, Math.floor((tokenInfo.refreshTokenExpires - now) / 1000)) : 0,
+      accessTokenExpiresInFormatted: tokenInfo?.accessTokenExpires ? 
+        formatTimeRemaining(Math.max(0, tokenInfo.accessTokenExpires - now)) : '0s',
+      refreshTokenExpiresInFormatted: tokenInfo?.refreshTokenExpires ? 
+        formatTimeRemaining(Math.max(0, tokenInfo.refreshTokenExpires - now)) : '0s',
+      isAccessTokenExpired: tokenInfo?.accessTokenExpires ? now > tokenInfo.accessTokenExpires : false,
+      isRefreshTokenExpired: tokenInfo?.refreshTokenExpires ? now > tokenInfo.refreshTokenExpires : false
     }
   };
 }
