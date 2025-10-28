@@ -37,8 +37,8 @@ async function generateRefreshToken(userId: string): Promise<string> {
   const refreshToken = crypto.randomBytes(32).toString("hex");
   
   await prisma.user_session.deleteMany({
-    where: { user_id: userId }
-  });
+    where: { user_id: userId, expires_at: { lt: new Date() } }
+  }).catch(err => console.error("Cleanup error:", err));
 
   await prisma.user_session.create({
     data: {
@@ -136,30 +136,21 @@ export const authOptions: NextAuthOptions = {
         try {
           const user = await prisma.user.findUnique({
             where: { email: credentials.email },
-            include: {
-              user_organization_role: {
-                include: {
-                  organization: {
-                    select: {
-                      id: true,
-                      name: true,
-                      helper_name_singular: true,
-                      helper_name_plural: true,
-                    }
-                  },
-                  role: {
-                    select: {
-                      id: true,
-                      name: true,
-                      abbreviation: true,
-                    }
-                  }
-                }
-              }
+            select: {
+              id: true,
+              email: true,
+              password: true,
+              firstname: true,
+              lastname: true,
+              picture_url: true,
+              phone: true,
+              description: true,
+              hasLogoinCalendar: true,
             }
           });
 
           if (!user || !user.password) {
+            console.error("User not found or password missing");
             return null;
           }
 
@@ -168,10 +159,32 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          await updateLastLogin(user.id);
+          const [user_organization_role] = await Promise.all([
+            prisma.user_organization_role.findMany({
+              where: { user_id: user.id },
+              select: {
+                organization: {
+                  select: {
+                    id: true,
+                    name: true,
+                    helper_name_singular: true,
+                    helper_name_plural: true,
+                  }
+                },
+                role: {
+                  select: {
+                    id: true,
+                    name: true,
+                    abbreviation: true,
+                  }
+                }
+              }
+            }),
+            updateLastLogin(user.id)
+          ]);
 
           const organizationsMap = new Map();
-          user.user_organization_role.forEach(uor => {
+          user_organization_role.forEach(uor => {
             if (!organizationsMap.has(uor.organization.id)) {
               organizationsMap.set(uor.organization.id, {
                 id: uor.organization.id,
@@ -182,7 +195,7 @@ export const authOptions: NextAuthOptions = {
             }
           });
 
-          const roles = user.user_organization_role.map(uor => ({
+          const roles = user_organization_role.map(uor => ({
             orgId: uor.organization.id,
             roleId: uor.role.id,
             roleName: uor.role.name,
@@ -193,14 +206,11 @@ export const authOptions: NextAuthOptions = {
           const orgIds = organizations.map(org => org.id);
           const roleIds = [...new Set(roles.map(r => r.roleId))];
 
-          const refreshToken = await generateRefreshToken(user.id);
-          const accessToken = await generateAccessToken({
-            id: user.id,
-            email: user.email,
-            firstname: user.firstname,
-            lastname: user.lastname,
-            picture_url: user.picture_url,
-          });
+          const [accessToken, refreshToken] = await Promise.all([
+            generateAccessToken(user),
+            generateRefreshToken(user.id)
+          ]);
+
           
           return {
             id: user.id,
@@ -241,6 +251,7 @@ export const authOptions: NextAuthOptions = {
           description: user.description,
           hasLogoinCalendar: user.hasLogoinCalendar,
           organizations: user.organizations,
+          roles: user.roles,
           orgIds: user.organizations.map((org: any) => org.id),
           roleIds: user.roles.map((role: any) => role.id),
           accessToken: user.accessToken,
@@ -294,7 +305,7 @@ export const authOptions: NextAuthOptions = {
         };
       }
 
-      (session as any).token = {
+      session.token = {
         accessToken: token.accessToken,
         refreshToken: token.refreshToken,
         accessTokenExpires: token.accessTokenExpires,
@@ -310,11 +321,11 @@ export const authOptions: NextAuthOptions = {
         session.user.phone = (token.phone as string | null) ?? null;
         session.user.description = (token.description as string | null) ?? null;
         session.user.hasLogoinCalendar = (token.hasLogoinCalendar as boolean) ?? false;
-        (session.user as any).organizations = (token.organizations as any[]) ?? [];
-        (session.user as any).roles = (token.roles as any[]) ?? [];
-        (session.user as any).orgIds = (token.orgIds as string[]) ?? [];
-        (session.user as any).roleIds = (token.roleIds as string[]) ?? [];
-        (session.user as any).activeOrganizationId = (token.activeOrganizationId as string | null) ?? null;
+        session.user.organizations = (token.organizations as any[]) ?? [];
+        session.user.roles = (token.roles as any[]) ?? [];
+        session.user.orgIds = (token.orgIds as string[]) ?? [];
+        session.user.roleIds = (token.roleIds as string[]) ?? [];
+        session.user.activeOrganizationId = (token.activeOrganizationId as string | null) ?? null;
       }
       
       return session;
