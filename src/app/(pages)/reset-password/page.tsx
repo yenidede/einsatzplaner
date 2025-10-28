@@ -43,7 +43,7 @@ export default function ResetPasswordPage({ token }: ResetPasswordPageProps) {
 
             setSuccess('Passwort erfolgreich zurückgesetzt! Sie werden zur Anmeldung weitergeleitet...');
             setTimeout(() => {
-                router.push('/helferansicht');
+                router.push('/signin');
             }, 3000);
         } catch (err) {
             setError('Netzwerkfehler. Bitte versuchen Sie es später erneut.');

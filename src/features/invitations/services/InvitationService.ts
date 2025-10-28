@@ -69,6 +69,14 @@ export class InvitationService {
       throw new Error('Organisation oder Einlader nicht gefunden');
     }
 
+    // Finde Standard-Rolle für Einladungen
+    const invitationRole = await prisma.role.findFirst({
+      where: { name: 'Helfer' }
+    });
+    if (!invitationRole) {
+      throw new Error('Standard-Rolle für Einladungen nicht gefunden');
+    }
+
     // Erstelle Einladung in DB
     const invitation = await prisma.invitation.create({
       data: {
@@ -77,6 +85,7 @@ export class InvitationService {
         expires_at: expiresAt,
         invited_by: invitedBy,
         org_id: organizationId,
+        role_id: invitationRole.id
       },
       include: {
         organization: {
