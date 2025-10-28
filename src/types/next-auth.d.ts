@@ -10,10 +10,10 @@ type Organization = {
     helper_name_plural: string;
 };
 type OrganizationRole = {
-    organization: Organization;
-    id: string;
-    name: string;
-    abbreviation: string;
+    orgId: string;
+    roleId: string;
+    roleName: string;
+    abbreviation: string | null;
 };
 
 type UserBase = {
@@ -21,14 +21,15 @@ type UserBase = {
     email: string;
     firstname: string;
     lastname: string;
-    picture_url?: string | null;
+    picture_url: string | null;
     phone: string | null;
     description: string | null;
     hasLogoinCalendar: boolean;
-    roles: UserRole[];
     organizations: Organization[];
+    roles: OrganizationRole[];
+    orgIds: string[];
+    roleIds: string[];
     activeOrganizationId: string | null;
-
 };
 
 type TokenInfo = {
@@ -46,10 +47,7 @@ declare module 'next-auth' {
     }
 
     interface Session {
-        user: UserBase & {
-            organizations?: Organization[];
-            roles: OrganizationRole[];
-        };
+        user: UserBase;
         token: TokenInfo;
         error?: 'RefreshAccessTokenError';
         expires: string;
@@ -58,7 +56,6 @@ declare module 'next-auth' {
 
 declare module 'next-auth/jwt' {
     interface JWT extends UserBase, TokenInfo {
-        lastRefresh: number;
         error?: 'RefreshAccessTokenError';
     }
 }
