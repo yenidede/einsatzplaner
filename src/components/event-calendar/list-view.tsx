@@ -327,6 +327,7 @@ export function ListView({
       usersData,
       onEventEdit,
       onEventDelete,
+      mode,
     ]
   );
 
