@@ -221,8 +221,8 @@ export const authOptions: NextAuthOptions = {
             phone: user.phone,
             description: user.description,
             hasLogoinCalendar: user.hasLogoinCalendar ?? false,
-            orgIds,           // ✅ Nur IDs
-            roleIds,          // ✅ Nur IDs
+            orgIds,
+            roleIds,
             activeOrganizationId: orgIds[0] ?? null,
             accessToken,
             refreshToken,
@@ -248,8 +248,8 @@ export const authOptions: NextAuthOptions = {
           phone: user.phone,
           description: user.description,
           hasLogoinCalendar: user.hasLogoinCalendar,
-          orgIds: user.orgIds,                    // ✅ Nur IDs
-          roleIds: user.roleIds,                  // ✅ Nur IDs
+          orgIds: user.orgIds, 
+          roleIds: user.roleIds, 
           activeOrganizationId: user.activeOrganizationId,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
@@ -317,8 +317,8 @@ export const authOptions: NextAuthOptions = {
         session.user.phone = (token.phone as string | null) ?? null;
         session.user.description = (token.description as string | null) ?? null;
         session.user.hasLogoinCalendar = (token.hasLogoinCalendar as boolean) ?? false;
-        session.user.orgIds = (token.orgIds as string[]) ?? [];        // ✅ Nur IDs
-        session.user.roleIds = (token.roleIds as string[]) ?? [];      // ✅ Nur IDs
+        session.user.orgIds = (token.orgIds as string[]) ?? [];
+        session.user.roleIds = (token.roleIds as string[]) ?? []; 
         session.user.activeOrganizationId = (token.activeOrganizationId as string | null) ?? null;
       }
       
