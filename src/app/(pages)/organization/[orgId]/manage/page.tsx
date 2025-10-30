@@ -90,6 +90,10 @@ export default function OrganizationManagePage() {
             return res.json();
         },
     });
+    // genaue Error handling 
+    if(orgError){
+        console.error(orgError);
+    }
     //console.log(orgData)
     useEffect(() => {
         if (orgData) {

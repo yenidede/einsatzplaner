@@ -16,13 +16,14 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const userId = searchParams.get("userId");
         const orgId = searchParams.get("id");
-
-        if( session.user.id != userId ) {
+        const sessionUserId = session.user.id;
+        console.log("Abgerufene Parameter:", { sessionUserId, userId, orgId });
+/*         if (orgId && sessionUserId != userId) {
             return NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 403 }
             );
-        }
+        } */
 
         // Wenn eine spezifische Organisation angefragt wird
         if (orgId) {
