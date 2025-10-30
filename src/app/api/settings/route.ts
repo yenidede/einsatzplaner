@@ -280,7 +280,7 @@ async function handleUserUpdate(req: Request) {
       where: { id: userId },
       select: {
         id: true,
-        email: true,
+        email: true,  
         firstname: true,
         lastname: true,
         password: true,
