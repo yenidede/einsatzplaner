@@ -10,10 +10,10 @@ import {
 } from "../organization-action";
 import { settingsQueryKeys } from "../queryKey";
 
-export function useOrganizations(orgId: string) {
+export function useOrganizations(orgs: string[]) {
   const query = useQuery({
-    queryKey: settingsQueryKeys.organization(orgId),
-    queryFn: () => getOrganizationAction(orgId),
+    queryKey: settingsQueryKeys.organizations(orgs),
+    queryFn: () => getUserOrganizationsAction(),
     staleTime: 60000,
   });
 
@@ -37,7 +37,9 @@ export function useOrganization(orgId: string) {
   const updateMutation = useMutation({
     mutationFn: (data: OrganizationUpdateData) => updateOrganizationAction(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: settingsQueryKeys.organization(orgId) });
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.organization(orgId),
+      });
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
     },
   });
