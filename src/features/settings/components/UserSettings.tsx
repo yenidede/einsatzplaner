@@ -9,7 +9,7 @@ interface UserSettingsProps {
     isModal?: boolean;
 }
 
-export default async function UserSettings({ isModal = false }: UserSettingsProps) {
+export default function UserSettings({ isModal = false }: UserSettingsProps) {
     const { update: updateSession } = useSession();
     const {
         profile,
@@ -20,7 +20,7 @@ export default async function UserSettings({ isModal = false }: UserSettingsProp
         error,
         message,
         resetForm
-    } = await useUserSettings();
+    } = useUserSettings();
 
     const [formData, setFormData] = useState({
         email: "",

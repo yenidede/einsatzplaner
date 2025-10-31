@@ -87,8 +87,8 @@ export async function getUserProfileAction(userId: string, orgId: string) {
 }
 
 export async function getUserOrgRolesAction(orgId: string, userId: string) {
-  const session = await checkUserSession();
-  // get all roles for this user in this organization
+  await checkUserSession();
+
   const userRoles = await prisma.user_organization_role.findMany({
     where: {
       org_id: orgId,
@@ -116,10 +116,8 @@ export async function getUserOrgRolesAction(orgId: string, userId: string) {
 }
 
 export async function getAllUserOrgRolesAction(orgId: string) {
-  const session = await checkUserSession();
+  await checkUserSession();
 
-
-  // Get all roles for this user in this organization
   const userRoles = await prisma.user_organization_role.findMany({
     where: {
       org_id: orgId,
@@ -181,8 +179,8 @@ export async function updateUserRoleAction(
 
   if (!requestingUserRole) throw new Error("Forbidden");
   const isPermitted = requestingUserRole.some(role => role.role?.name === "Organisationsverwaltung") ||
-               requestingUserRole.some(role => role.role?.abbreviation === "OV") ||
-               requestingUserRole.some(role => role.role?.name === "Superadmin");
+                      requestingUserRole.some(role => role.role?.abbreviation === "OV") ||
+                      requestingUserRole.some(role => role.role?.name === "Superadmin");
 
   if (!isPermitted) throw new Error("Insufficient permissions");
 
