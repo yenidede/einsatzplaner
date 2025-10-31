@@ -7,16 +7,14 @@ import {
   uploadOrganizationLogoAction,
   type OrganizationUpdateData,
 } from "../organization-action";
-import {
-  getUserOrgRolesAction,
-} from "@/features/settings/users-action";
+import { settingsQueryKeys } from "../queryKey";
 
 export function useOrganizationManage(orgId: string) {
   const queryClient = useQueryClient();
 
   // Organization data
   const organizationQuery = useQuery({
-    queryKey: ["organization", orgId],
+    queryKey: settingsQueryKeys.organization(orgId),
     queryFn: () => getOrganizationAction(orgId),
     enabled: !!orgId,
     staleTime: 60000,
@@ -35,7 +33,7 @@ export function useOrganizationManage(orgId: string) {
   const updateMutation = useMutation({
     mutationFn: (data: OrganizationUpdateData) => updateOrganizationAction(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organization", orgId] });
+      queryClient.invalidateQueries({ queryKey: settingsQueryKeys.organization(orgId) });
       queryClient.invalidateQueries({ queryKey: ["organization-members", orgId] });
     },
   });
@@ -44,7 +42,7 @@ export function useOrganizationManage(orgId: string) {
   const uploadLogoMutation = useMutation({
     mutationFn: (formData: FormData) => uploadOrganizationLogoAction(formData),
     onSuccess: (data) => {
-      queryClient.setQueryData(["organization", orgId], (prev: any) => ({
+      queryClient.setQueryData(settingsQueryKeys.organization(orgId), (prev: any) => ({
         ...prev,
         logo_url: data.url,
       }));

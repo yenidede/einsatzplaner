@@ -8,12 +8,10 @@ import {
   type UserUpdateData,
 } from "../settings-action";
 import { useState } from "react";
-import { settingsQueryKeys } from "../queryKey";
-import { getServerSession } from "next-auth";
 
 const userProfileKey = ["userProfile"];
 
-export async function useUserSettings() {
+export function useUserSettings() {
   const queryClient = useQueryClient();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string>("");

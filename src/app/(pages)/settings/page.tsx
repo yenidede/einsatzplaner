@@ -21,7 +21,7 @@ import CalendarSubscription from "@/features/calendar/components/CalendarSubscri
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 import { settingsQueryKeys } from "@/features/settings/queryKey";
 import { getUserProfileAction, updateUserProfileAction, uploadProfilePictureAction } from "@/features/settings/settings-action";
-import { removeUserFromOrganization, updateUserOrgSettings, updateUserSettings } from "@/DataAccessLayer/user";
+import { removeUserFromOrganization } from "@/DataAccessLayer/user";
 import { updateOrgMailNotificationAction } from "@/features/settings/settings-action";
 
 
