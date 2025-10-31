@@ -1,72 +1,98 @@
-/* import { ObjectId } from 'mongodb'; */
+"use client";
 
-'use client';
-
-import { FormField, Alert, Button, FormSection } from '../../auth/components/ui/FormComponents';
+import { useState, useEffect } from "react";
 import { useUserSettings } from '../hooks/useUserSettings';
-import { UserService, UserServiceFactory, FetchHttpClient } from '../../auth/services/UserService';
-import { UserFormValidator } from '../../auth/validators/UserValidator';
 import { useSession } from "next-auth/react";
+import { FormField, Alert, Button, FormSection } from '../../auth/components/ui/FormComponents';
 
 interface UserSettingsProps {
-    userId:  string;
-    initialData: {
-
-        email: string;
-        firstname: string;
-        lastname: string;
-    };
-    userService?: UserService;
-    validator?: UserFormValidator;
-    isModal?: boolean; // Neue Prop hinzufügen
+    isModal?: boolean;
 }
 
-export default function UserSettings({
-    userId,
-    initialData,
-    userService,
-    validator,
-    isModal = false // Neue Prop hinzufügen
-}: UserSettingsProps) {
+export default async function UserSettings({ isModal = false }: UserSettingsProps) {
     const { update: updateSession } = useSession();
-    
-    console.log('UserSettings received userId:', userId);
-    console.log('UserSettings received initialData:', initialData);
-    
-    // Use dependency injection with fallback to factory
-    const service = userService || UserServiceFactory.create();
-    const formValidator = validator || new UserFormValidator();
-
     const {
-        formData,
-        loading,
+        profile,
+        isLoading,
+        updateProfile,
+        isUpdating,
+        fieldErrors,
         error,
         message,
-        fieldErrors,
-        updateField,
-        submitForm,
-        validateField,
         resetForm
-    } = useUserSettings({
-        initialData,
-        userService: service,
-        validator: formValidator
+    } = await useUserSettings();
+
+    const [formData, setFormData] = useState({
+        email: "",
+        firstname: "",
+        lastname: "",
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
     });
+
+    // Update form when profile loads
+    useEffect(() => {
+        if (profile) {
+            setFormData(prev => ({
+                ...prev,
+                email: profile.email,
+                firstname: profile.firstname,
+                lastname: profile.lastname,
+            }));
+        }
+    }, [profile]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate passwords match
+        if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
+            alert("Passwörter stimmen nicht überein");
+            return;
+        }
+
         try {
-            await submitForm(userId.toString());
-            console.log('Updating session after profile changes...');
+            await updateProfile({
+                email: formData.email,
+                firstname: formData.firstname,
+                lastname: formData.lastname,
+                currentPassword: formData.currentPassword || undefined,
+                newPassword: formData.newPassword || undefined,
+            });
+
+            // Clear password fields on success
+            setFormData((prev) => ({
+                ...prev,
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+            }));
+            
+            // Update NextAuth session
             await updateSession();
         } catch (error) {
-            console.error("Submit failed:", error);
+            console.error("Update failed:", error);
         }
     };
 
     const handleReset = () => {
         resetForm();
+        if (profile) {
+            setFormData({
+                email: profile.email,
+                firstname: profile.firstname,
+                lastname: profile.lastname,
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+            });
+        }
     };
+
+    if (isLoading) {
+        return <div className="p-6">Lädt...</div>;
+    }
 
     return (
         <div className={`${isModal ? 'p-6' : 'max-w-2xl mx-auto p-6'} bg-white ${isModal ? '' : 'rounded-lg shadow-md'}`}>
@@ -80,16 +106,16 @@ export default function UserSettings({
             {error && (
                 <Alert 
                     type="error" 
-                    message={error} 
-                    onClose={() => updateField('error', '')}
+                    message={error.message} 
+                    onClose={() => {}}
                 />
             )}
             
             {message && (
                 <Alert 
                     type="success" 
-                message={message} 
-                    onClose={() => updateField('message', '')}
+                    message={message} 
+                    onClose={() => {}}
                 />
             )}
 
@@ -99,8 +125,7 @@ export default function UserSettings({
                         label="E-Mail-Adresse"
                         type="email"
                         value={formData.email}
-                        onChange={(value) => updateField('email', value)}
-                        onBlur={() => validateField('email')}
+                        onChange={(value) => setFormData(prev => ({ ...prev, email: value }))}
                         error={fieldErrors.email}
                         required
                         autoComplete="email"
@@ -110,8 +135,7 @@ export default function UserSettings({
                         label="Vorname"
                         type="text"
                         value={formData.firstname}
-                        onChange={(value) => updateField('firstname', value)}
-                        onBlur={() => validateField('firstname')}
+                        onChange={(value) => setFormData(prev => ({ ...prev, firstname: value }))}
                         error={fieldErrors.firstname}
                         required
                         autoComplete="given-name"
@@ -121,8 +145,7 @@ export default function UserSettings({
                         label="Nachname"
                         type="text"
                         value={formData.lastname}
-                        onChange={(value) => updateField('lastname', value)}
-                        onBlur={() => validateField('lastname')}
+                        onChange={(value) => setFormData(prev => ({ ...prev, lastname: value }))}
                         error={fieldErrors.lastname}
                         required
                         autoComplete="family-name"
@@ -133,8 +156,8 @@ export default function UserSettings({
                     <FormField
                         label="Aktuelles Passwort"
                         type="password"
-                        value={formData.currentPassword || ''}
-                        onChange={(value) => updateField('currentPassword', value)}
+                        value={formData.currentPassword}
+                        onChange={(value) => setFormData(prev => ({ ...prev, currentPassword: value }))}
                         error={fieldErrors.currentPassword}
                         autoComplete="current-password"
                         placeholder="Nur ausfüllen wenn Sie das Passwort ändern möchten"
@@ -143,20 +166,18 @@ export default function UserSettings({
                     <FormField
                         label="Neues Passwort"
                         type="password"
-                        value={formData.newPassword || ''}
-                        onChange={(value) => updateField('newPassword', value)}
-                        onBlur={() => validateField('newPassword')}
+                        value={formData.newPassword}
+                        onChange={(value) => setFormData(prev => ({ ...prev, newPassword: value }))}
                         error={fieldErrors.newPassword}
                         autoComplete="new-password"
-                        placeholder="Mindestens 8 Zeichen mit Groß-, Kleinbuchstaben und Zahlen"
+                        placeholder="Mindestens 8 Zeichen"
                     />
 
                     <FormField
                         label="Neues Passwort bestätigen"
                         type="password"
-                        value={formData.confirmPassword || ''}
-                        onChange={(value) => updateField('confirmPassword', value)}
-                        onBlur={() => validateField('confirmPassword')}
+                        value={formData.confirmPassword}
+                        onChange={(value) => setFormData(prev => ({ ...prev, confirmPassword: value }))}
                         error={fieldErrors.confirmPassword}
                         autoComplete="new-password"
                         placeholder="Passwort wiederholen"
@@ -168,7 +189,7 @@ export default function UserSettings({
                         type="button"
                         variant="outline"
                         onClick={handleReset}
-                        disabled={loading}
+                        disabled={isUpdating}
                     >
                         Zurücksetzen
                     </Button>
@@ -176,8 +197,8 @@ export default function UserSettings({
                     <Button
                         type="submit"
                         variant="primary"
-                        loading={loading}
-                        disabled={loading}
+                        loading={isUpdating}
+                        disabled={isUpdating}
                     >
                         Änderungen speichern
                     </Button>
