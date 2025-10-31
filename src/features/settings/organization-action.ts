@@ -74,7 +74,7 @@ export async function getOrganizationAction(orgId: string) {
               email: true,
               firstname: true,
               lastname: true,
-              picture_url: true,
+             picture_url: true,
             },
           },
           role: {
@@ -102,7 +102,10 @@ export async function getOrganizationAction(orgId: string) {
     helper_name_plural: org.helper_name_plural ?? "Helfer:innen",
     created_at: org.created_at.toISOString(),
     members: org.user_organization_role.map(uor => ({
-      user: uor.user,
+      user: {
+        ...uor.user,
+        picture_url: uor.user.picture_url, // Map für Kompatibilität
+      },
       role: uor.role,
     })),
   };
@@ -124,7 +127,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
   const session = await checkUserSession();
 
   // Check if user has permission
-  const membership = await prisma.user_organization_role.findFirst({
+  const userOrgRole = await prisma.user_organization_role.findFirst({
     where: {
       org_id: data.id,
       user_id: session.user.id,
@@ -134,11 +137,11 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     },
   });
 
-  if (!membership) throw new Error("Forbidden");
+  if (!userOrgRole) throw new Error("Forbidden");
 
-  const isOV = membership.role?.name === "Organisationsverwaltung" ||
-               membership.role?.abbreviation === "OV" ||
-               membership.role?.name === "Superadmin";
+  const isOV = userOrgRole.role?.name === "Organisationsverwaltung" ||
+               userOrgRole.role?.abbreviation === "OV" ||
+               userOrgRole.role?.name === "Superadmin";
 
   if (!isOV) throw new Error("Insufficient permissions");
 
@@ -186,7 +189,7 @@ export async function deleteOrganizationAction(orgId: string) {
   const session = await checkUserSession();
 
   // Check if user has permission (must be Superadmin or OV)
-  const membership = await prisma.user_organization_role.findFirst({
+  const userOrgRole = await prisma.user_organization_role.findFirst({
     where: {
       org_id: orgId,
       user_id: session.user.id,
@@ -196,11 +199,11 @@ export async function deleteOrganizationAction(orgId: string) {
     },
   });
 
-  if (!membership) throw new Error("Forbidden");
+  if (!userOrgRole) throw new Error("Forbidden");
 
-  const isOV = membership.role?.name === "Organisationsverwaltung" ||
-               membership.role?.abbreviation === "OV" ||
-               membership.role?.name === "Superadmin";
+  const isOV = userOrgRole.role?.name === "Organisationsverwaltung" ||
+               userOrgRole.role?.abbreviation === "OV" ||
+               userOrgRole.role?.name === "Superadmin";
 
   if (!isOV) throw new Error("Insufficient permissions");
 
@@ -220,4 +223,60 @@ export async function deleteOrganizationAction(orgId: string) {
     message: "Organisation erfolgreich gelöscht",
     organization: deletedOrg
   };
+}
+
+// POST - Logo der Organisation hochladen
+export async function uploadOrganizationLogoAction(formData: FormData) {
+  try {
+    const session = await checkUserSession();
+
+    const orgId = formData.get("orgId") as string;
+    const file = formData.get("logo") as File;
+
+    if (!file || !orgId) throw new Error("Missing file or orgId");
+
+    // Check permission
+    const userOrgRole = await prisma.user_organization_role.findFirst({
+      where: {
+        org_id: orgId,
+        user_id: session.user.id,
+      },
+      include: { role: true },
+    });
+
+    if (!userOrgRole) throw new Error("Forbidden");
+
+    const isOV = userOrgRole.role?.name === "Organisationsverwaltung" ||
+                 userOrgRole.role?.abbreviation === "OV" ||
+                 userOrgRole.role?.name === "Superadmin";
+
+    if (!isOV) throw new Error("Insufficient permissions");
+
+    // Validate file
+    if (!file.type.startsWith("image/")) {
+      throw new Error("File must be an image");
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error("File size must be less than 5MB");
+    }
+
+    // Convert to base64
+    const buffer = await file.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
+
+    // Update organization
+    await prisma.organization.update({
+      where: { id: orgId },
+      data: { logo_url: dataUrl },
+    });
+
+    revalidatePath(`/organization/${orgId}/manage`);
+
+    return { url: dataUrl };
+  } catch (error) {
+    console.error("uploadOrganizationLogoAction error:", error);
+    throw error;
+  }
 }

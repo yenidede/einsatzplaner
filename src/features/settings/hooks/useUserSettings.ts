@@ -6,24 +6,27 @@ import {
   updateUserProfileAction,
   uploadProfilePictureAction,
   type UserUpdateData,
-} from "../settings.server";
+} from "../settings-action";
 import { useState } from "react";
+import { settingsQueryKeys } from "../queryKey";
+import { getServerSession } from "next-auth";
 
-const userProfileKey = ["user-profile"];
+const userProfileKey = ["userProfile"];
 
-export function useUserSettings() {
+export async function useUserSettings() {
   const queryClient = useQueryClient();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string>("");
 
-  // Fetch user profile
+
+
+
   const query = useQuery({
     queryKey: userProfileKey,
     queryFn: () => getUserProfileAction(),
     staleTime: 60000,
   });
 
-  // Update profile
   const updateProfile = useMutation({
     mutationFn: (data: UserUpdateData) => updateUserProfileAction(data),
     onSuccess: (data) => {
@@ -42,13 +45,12 @@ export function useUserSettings() {
     },
   });
 
-  // Upload profile picture
   const uploadPicture = useMutation({
     mutationFn: (formData: FormData) => uploadProfilePictureAction(formData),
     onSuccess: (data) => {
       queryClient.setQueryData(userProfileKey, (prev: any) => ({
         ...prev,
-        profile_picture: data.profile_picture,
+        picture_url: data.picture_url,
       }));
       setMessage("Profilbild erfolgreich hochgeladen");
       setTimeout(() => setMessage(""), 3000);
@@ -59,7 +61,6 @@ export function useUserSettings() {
     },
   });
 
-  // Reset form
   const resetForm = () => {
     setFieldErrors({});
     setMessage("");

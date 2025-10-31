@@ -7,7 +7,7 @@ import {
   updateOrganizationAction,
   deleteOrganizationAction,
   type OrganizationUpdateData,
-} from "../organization.server";
+} from "../organization-action";
 
 export function useOrganizations() {
   const queryClient = useQueryClient();

@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
-import { getOrganizationAction } from "@/features/organization/organization.server";
+import { getOrganizationAction } from "@/features/settings/organization-action";
 import { notFound } from "next/navigation";
 
 type Props = {
