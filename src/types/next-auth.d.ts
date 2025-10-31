@@ -34,8 +34,8 @@ type UserBase = {
 
 type TokenInfo = {
     accessToken: string;
-    accessTokenExpires: number;
     refreshToken: string;
+    accessTokenExpires: number;
     refreshTokenExpires: number;
 
 }

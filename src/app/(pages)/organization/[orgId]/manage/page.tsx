@@ -26,6 +26,10 @@ import { InviteUserForm } from '@/features/invitations/components/InviteUserForm
 import { useInvitations } from '@/features/invitations/hooks/useInvitation';
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 import { settingsQueryKeys } from "@/features/settings/queryKey";
+import { getOrganizationAction, updateOrganizationAction, uploadOrganizationLogoAction } from "@/features/settings/organization-action";
+import { getUserProfileAction } from "@/features/settings/settings-action";
+import { getAllUserOrgRolesAction } from "@/features/settings/users-action";
+import { NextResponse } from "next/server";
 
 
 export default function OrganizationManagePage() {
@@ -60,21 +64,14 @@ export default function OrganizationManagePage() {
             router.push('/signin');
         },
     });
-    if(session == null){
-        router.push('/signin');
-    }
 
 
     const { data, isLoading, error } = useQuery({
         queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
         enabled: !!session?.user?.id,
-        queryFn: async () => {
-            const res = await fetch(`/api/settings?userId=${session?.user.id}`);
-            if (!res.ok) throw new Error("Fehler beim Laden");
-            return res.json();
-        },
+        queryFn: () => getUserProfileAction(),
     });
-
+    /* console.log("Data", data); */
     // setze user sobald query daten da sind
     useEffect(() => {
         if (data) setUser(data);
@@ -84,42 +81,30 @@ export default function OrganizationManagePage() {
     const { data: orgData, isLoading: orgLoading, error: orgError } = useQuery({
         queryKey: settingsQueryKeys.organization(orgId),
         enabled: !!orgId,
-        queryFn: async () => {
-            const res = await fetch(`/api/auth/organization?id=${orgId}`);
-            if (!res.ok) throw new Error("Fehler beim Laden der Organisation");
-            return res.json();
-        },
+        queryFn: () => getOrganizationAction( orgId || ""),
     });
-    //console.log(orgData)
+    /* console.log("Org Data", orgData); */
     useEffect(() => {
         if (orgData) {
-            setName(orgData.name ?? "");
+            setName( orgData.name?? "");
             setDescription(orgData.description ?? "");
             setLogoUrl(orgData.logo_url ?? "");
-            // setze E-Mail / Telefon falls vorhanden (fallbacks prüfen je nach deiner API / Schema)
-            setEmail(orgData.email ?? orgData.mail ?? orgData.contact_email ?? "");
-            setPhone(orgData.phone ?? orgData.telefon ?? orgData.phone_number ?? "");
+            setEmail(orgData.email ?? "");
+            setPhone(orgData.phone ??  "");
             setHelperSingular(orgData.helper_name_singular ?? "Helfer:in");
             setHelperPlural(orgData.helper_name_plural ?? "Helfer:innen");
         }
     }, [orgData]);
-
-    // Lade User der Organisation (user_organization_role)
+    /* console.log(session?.user.id, orgId) */
+    
     const { data: usersData, isLoading: usersLoading } = useQuery({
         queryKey: settingsQueryKeys.userOrganizations(orgId),
         enabled: !!orgId,
-        queryFn: async () => {
-            const res = await fetch(`/api/auth/organization/${orgId}/users`);
-            if (!res.ok) {
-                if(res.status === 401){
-                    signOut({callbackUrl:'/signin'})
-                    throw new Error("Unauthorized")
-                }
-                    throw new Error("Fehler beim Laden der User");
-                }
-            return res.json();
-        },
+        queryFn: () => getAllUserOrgRolesAction(orgId),
     });
+
+
+    /* console.log("Users Data", usersData); */
 
     const handleSignOut = async () => {
         try {
@@ -181,32 +166,19 @@ export default function OrganizationManagePage() {
                 formData.append('logo', data.logoFile);
                 formData.append('orgId', orgId);
                 
-                const uploadRes = await fetch('/api/upload/logo', {
-                    method: 'POST',
-                    body: formData,
-                });
+                const uploadRes = await uploadOrganizationLogoAction(formData);
                 
-                if (!uploadRes.ok) throw new Error('Logo Upload fehlgeschlagen');
-                const uploadData = await uploadRes.json();
-                finalLogoUrl = uploadData.url;
+                if (!uploadRes) throw new Error('Logo Upload fehlgeschlagen');
+                finalLogoUrl = uploadRes.url;
             }
 
-            const res = await fetch("/api/auth/organization", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    id: orgId,
-                    name: data.name,
-                    description: data.description,
-                    email: data.email ?? email,
-                    phone: data.phone ?? phone,
-                    helper_name_singular: helperSingular,
-                    helper_name_plural: helperPlural,
-                    logo_url: finalLogoUrl
-                }),
+            const res = await updateOrganizationAction({
+                id: orgId,
+                name: data.name,
+                description: data.description,
             });
-            if (!res.ok) throw new Error("Fehler beim Speichern");
-            return res.json();
+            if (!res) throw new Error("Fehler beim Speichern");
+            return res;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: settingsQueryKeys.organization(orgId) });
@@ -243,7 +215,7 @@ export default function OrganizationManagePage() {
     };
 
     if (isLoading || orgLoading) return <div className="p-6">Lädt Organisation...</div>;
-    if (error || orgError) return <div className="p-6">Fehler beim Laden der Organisation</div>;
+    if (error || orgError) return <div className="p-6">Fehler beim Laden der Organisation: {error?.message || orgError?.message}</div>;
 
     return (
       <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">

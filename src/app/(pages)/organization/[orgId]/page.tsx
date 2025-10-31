@@ -1,41 +1,29 @@
-"use client";
+/* "use client"; */
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
-export default function OrganizationPage() {
-    const params = useParams();
-    const router = useRouter();
-    const organizationId = params.id as string;
+import { getOrganizationAction } from "@/features/settings/organization-action";
+import { notFound } from "next/navigation";
 
-    const { data: organization, isLoading, error } = useQuery({
-        queryKey: ["organization", organizationId],
-        enabled: !!organizationId,
-        queryFn: async () => {
-            const res = await fetch(`/api/auth/organization?id=${organizationId}`);
-            if (!res.ok) throw new Error("Fehler beim Laden der Organisation");
-            return res.json();
-        },
-    });
+type Props = {
+  params: {
+    orgId: string;
+  };
+};
 
-    if (isLoading) return <div>Lade Organisation...</div>;
-    if (error) return <div>Fehler beim Laden der Organisation</div>;
+export default async function OrganizationPage({ params }: Props) {
+  try {
+    const organization = await getOrganizationAction(params.orgId);
 
+    // Direkt in der Server Component rendern
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">{organization?.name}</h1>
-                <button 
-                    onClick={() => router.back()}
-                    className="px-4 py-2 bg-gray-200 rounded-md"
-                >
-                    Zurück
-                </button>
-            </div>
-            
-            <div className="bg-white rounded-lg p-6 shadow">
-                <p>{organization?.description || "Keine Beschreibung verfügbar"}</p>
-            </div>
-        </div>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold">{organization.name}</h1>
+        <p className="text-gray-700 mt-4">{organization.description}</p>
+      </div>
     );
+  } catch (error) {
+    notFound();
+  }
 }
