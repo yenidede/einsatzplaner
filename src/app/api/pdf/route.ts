@@ -2,12 +2,12 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import React from 'react';
+import { z } from 'zod';
 import { Document, renderToBuffer } from '@react-pdf/renderer';
 import { validatePdfAccess } from '@/features/pdf/lib/utils/authorization';
 import { validatePdfBuffer } from '@/features/pdf/lib/utils/validation';
 import { BookingConfirmationPDF } from '@/features/pdf/components/BookingConfirmationPDF';
 import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
-import { Document } from '@react-pdf/renderer';
 import { Einsatz } from '@/features/einsatz/types';
 
 

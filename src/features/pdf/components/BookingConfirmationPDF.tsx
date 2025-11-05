@@ -1,5 +1,6 @@
 import React from 'react';
 import { Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import { BookingFooter } from './BookingFooter';
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 11 },
@@ -26,6 +27,7 @@ const styles = StyleSheet.create({
 
 interface Props {
   einsatz: any;
+  
   options?: { showLogos?: boolean };
 }
 
@@ -140,11 +142,7 @@ export const BookingConfirmationPDF: React.FC<Props> = ({ einsatz, options }) =>
           <Text>UID: ATU 3792 6303</Text>
         </View>
 
-        <Text style={styles.contact}>
-          {einsatz.organization?.name || 'Jüdisches Museum Hohenems'} | Villa Heimann-Rosenthal | Schweizer Straße 5 | Aron-Tänzer-Platz 1 | 6845 Hohenems | Österreich{'\n'}
-          T +43 (0)5576 73 989-0 | office@jm-hohenems.at | www.jm-hohenems.at | UID ATU 37926303{'\n'}
-          Dornbirner Sparkasse IBAN AT71 2060 2004 0004 9911 | BIC DOSPAT2DXXX
-        </Text>
+        <BookingFooter />
       </Page>
   );
 };
