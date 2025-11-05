@@ -19,12 +19,17 @@ import OrganizationCard from "@/features/settings/components/OrganizationCard";
 import { hasPermission } from "@/lib/auth/authGuard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
+import { settingsQueryKeys } from "@/features/settings/queryKey";
+import { getUserProfileAction, updateUserProfileAction, uploadProfilePictureAction } from "@/features/settings/settings-action";
+import { removeUserFromOrganization } from "@/DataAccessLayer/user";
+import { updateOrgMailNotificationAction } from "@/features/settings/settings-action";
+
 
 export default function SettingsPage() {
   const id = useId();
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const [getMailFromOrganization, setGetMailFromOrganization] = useState<boolean>(true);
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState<string>("");
@@ -34,33 +39,19 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   useSessionValidation({
-    checkInterval: 60000, // 30 Sekunden
     debug: true,
     onTokenExpired: () => {
       console.log("Token abgelaufen - leite zu Login weiter");
       router.push('/signin');
     }
   })
-  if(session?.user)
-    console.log("Session", session.user.orgIds);
-/*   useEffect(() => {
-    if (session?.error == "RefreshAccessTokenError"){
-      console.log("Refresh Token Expired - signin out user");
-      signOut({
-        callbackUrl: '/signin',
-        redirect: true,
-      })
-    }
-
-  }, [session?.error]) */
-  // Lade Userdaten mit TanStack Query
   const { data, isLoading, error } = useQuery({
-    queryKey: ["userSettings", session?.user?.id],
+    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     enabled: !!session?.user?.id,
     queryFn: async () => {
-      const res = await fetch(`/api/settings?userId=${session?.user.id}`);
-      if (!res.ok) throw new Error("Fehler beim Laden");
-      return res.json();
+      const res = await getUserProfileAction();
+      if (!res) throw new Error("Fehler beim Laden");
+      return res;
     },
   });
 
@@ -73,7 +64,6 @@ export default function SettingsPage() {
     });
   };
 
-  // Setze Userdaten, Email und Phone, wenn Query-Daten geladen sind
   useEffect(() => {
     if (data) {
       setUser({
@@ -99,100 +89,115 @@ export default function SettingsPage() {
     picture_url: any;
     phone: string;
     hasLogoinCalendar: boolean;
-    //hasGetMailNotification: boolean;
+    hasGetMailNotification: boolean;
   };
 
   const mutation = useMutation({
+    mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     mutationFn: async (newSettings: UserSettings) => {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newSettings),
-      });
-      if (!res.ok) throw new Error("Fehler beim Speichern");
-      return res.json();
+      const res = await updateUserProfileAction(newSettings);
+      if (!res) throw new Error("Fehler beim Speichern");
+      return res;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["userSettings", session?.user.id] });
+      queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(session?.user?.id || "")});
     },
   });
 //#region handleSave
 const handleSave = async () => {
   if (!user) return;
 
-  try{
-      //#region Profile Picture Upload
-      let pictureUrl = user.picture_url;
-      if (profilePictureFile) {
-        const formData = new FormData();
-        formData.append("file", profilePictureFile);
-        formData.append("userId", String(user.id));
+  try {
+    //#region Profile Picture Upload
+    let pictureUrl = user.picture_url;
+    if (profilePictureFile) {
+      const formData = new FormData();
+      formData.append("file", profilePictureFile);
+      // TODO (Ömer): Correctly implement uploadProfilePictureAction to return the expected result so removing works
+      // as now it shows that Session Cookie exceeds allowed size
+      const res = await uploadProfilePictureAction(formData);
+      if (!res) {
+        throw new Error(`Upload fehlgeschlagen`);
+      }
+      pictureUrl = res.picture_url;
+    }
+    console.log('✅ Profile picture upload successful:', pictureUrl);
+    //#endregion
 
-        const res = await fetch("/api/upload-profile-picture", {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const message = await res.text().catch(() => "");
-          throw new Error(`Upload fehlgeschlagen: ${res.status} ${message}`);
+    //#region Save User
+    await mutation.mutateAsync({
+      userId: user.id,
+      email,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      phone,
+      picture_url: pictureUrl,
+      hasLogoinCalendar: !!showLogos,
+      hasGetMailNotification: !!getMailFromOrganization
+    });
+    //#endregion
+
+      //#region hasGetMailOrganization für die Orgs updaten
+    if (Array.isArray(user.organizations) && user.organizations.length > 0) {
+      await Promise.all(
+        user.organizations.map(async (org: any) => {
+          const orgId = org?.id;
+          if (!orgId) return;
+
+          await updateOrgMailNotificationAction(
+            orgId,
+            !!org.hasGetMailNotification 
+          );
+        })
+      );
+    }
+    //#endregion
+
+    //#region Update Session
+    if (session) {
+      const updatedSession = await update({
+        user: {
+          ...session.user,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email,
+          phone,
+          picture_url: pictureUrl,
+          hasLogoinCalendar: !!showLogos
         }
-        const data = await res.json();
-        pictureUrl = data.url;
-      }
-      //#endregion
-      //#region Save User
-      await mutation.mutateAsync({
-        userId: user.id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        email,
-        picture_url: pictureUrl,
-        phone,
-        hasLogoinCalendar: !!showLogos
       });
-      if (Array.isArray(user.organizations) && user.organizations.length > 0){
-        await Promise.all(
-          user.organizations.map(async (org: any)=> {
-            const orgId = org?.id;
-            if(!orgId) return;
 
-            const res = await fetch("api/settings",{
-              method: "PUT",
-              headers: {"Content-Type": "application/json"},
-              body: JSON.stringify({
-                userId: String(user.id),
-                orgId: String(orgId),
-                hasGetMailNotification: org.hasGetMailNotification
-              })
-            })
+      setUser({
+        ...user,
+        picture_url: pictureUrl
+      });
+    }
+    //#endregion
 
-            if (!res.ok){
-              const message = await res.text().catch(() => "");
-              throw new Error(`Update für Organisation "...": ${res.status} ${message}`);
-            }
-          })
-        );
-      }
-      //#endregion
+    //#region Cache invalidate
+    await queryClient.invalidateQueries({
+      queryKey: settingsQueryKeys.userSettings(session?.user.id || '')
+    });
+    //#endregion
 
-      //#region Cache invalidate
-      await queryClient.invalidateQueries({queryKey: ["userSettings", session?.user.id]});
-      //#endregion
-  } catch(error){
-    console.error(error);
-    
+  } catch (error) {
+    console.error('❌ Save failed:', error);
+    alert('Fehler beim Speichern der Einstellungen');
   }
-}
+};
 //#endregion
 const handleProfilePictureUpload = (file: File) => {
   setProfilePictureFile(file);
 };
-  if (!session) {
+  if (status === "unauthenticated") {
     router.push("/signin");
     return <div>Leite weiter…</div>;
   }
-  if (isLoading || !user) {
+  if (isLoading) {
     return <div>Lade Einstellungen…</div>;
+  }
+  if(!user) {
+    return <div>Keine Benutzerdaten gefunden.</div>;
   }
   if (error) {
     return <div>Fehler beim Laden der Einstellungen.</div>;
@@ -206,14 +211,23 @@ const handleProfilePictureUpload = (file: File) => {
         const confirmed = window.confirm("Möchtest du die Organisation wirklich verlassen?");
         if (!confirmed) return;
         try {
-            const res = await fetch("/api/organization/leave", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: user.id, organizationId: id }),
+            const leaveOrgMutation = useMutation({
+              mutationKey: settingsQueryKeys.userOrganizations(session?.user?.id || ""), 
+              mutationFn: async ({ userId, organizationId }: { userId: string; organizationId: string }) => {
+                const res = await removeUserFromOrganization(userId, organizationId);
+                if (!res) throw new Error("Failed to leave organization");
+                return res;
+              },
+              onSuccess: () => {
+                queryClient.invalidateQueries({ 
+                  queryKey: settingsQueryKeys.userSettings(session?.user?.id || "") 
+                });
+              }
             });
-            if (!res.ok) throw new Error("Fehler beim Verlassen der Organisation");
+
+            await leaveOrgMutation.mutateAsync({ userId: user.id, organizationId: id });
             // Aktualisiere die Userdaten nach dem Verlassen
-            queryClient.invalidateQueries({ queryKey: ["userSettings", user.id] });
+            queryClient.invalidateQueries({ queryKey: settingsQueryKeys.userSettings(user.id) });
         } catch (err) {
             alert("Fehler beim Verlassen der Organisation.");
         }
@@ -353,7 +367,7 @@ const handleProfilePictureUpload = (file: File) => {
                                             picture_url: null,
                                             phone,
                                             hasLogoinCalendar: showLogos,
-                                            //hasGetMailNotification: getMailFromOrganization,
+                                            hasGetMailNotification: getMailFromOrganization,
                                         });
                                     }}
                                 >
@@ -447,7 +461,7 @@ const handleProfilePictureUpload = (file: File) => {
 <div className="flex-1 px-4 flex flex-col gap-2">
   {Array.isArray(user.organizations) && user.organizations.length > 0 ? (
     user.organizations.map((org: any) => {
-      const on = !!org.hasGetMailNotification; // hartes boolean
+      const on = !!org.hasGetMailNotification; 
 
       return (
         <div key={org.id} className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
@@ -458,7 +472,7 @@ const handleProfilePictureUpload = (file: File) => {
           <div className="inline-flex items-center gap-2">
             <Switch
               id={`org-switch-${org.id}`}
-              checked={on}                                // immer boolean
+              checked={on}                           
               onCheckedChange={(checked) => {
                 setUser((prev: any) => {
                   const prevOrgs = Array.isArray(prev?.organizations) ? prev.organizations : [];

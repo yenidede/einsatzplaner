@@ -5,6 +5,9 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 import crypto from "crypto";
 import { emailService } from '@/lib/email/EmailService';
+import { roleHasPermission } from '@/config/permissions';
+import { RoleName } from "@/types/auth";
+
 
 // Validation Schema - role_id wieder hinzufügen
 const createInvitationSchema = z.object({
@@ -39,34 +42,18 @@ export async function POST(request: NextRequest) {
     if (!inviter) {
       return NextResponse.json({ error: "Benutzer nicht gefunden" }, { status: 404 });
     }
-
-    // Debug: Schaue welche Rollen gefunden wurden
-    console.log('🔍 API Debug - Found User Roles:', {
-      inviterEmail: inviter.email,
-      organizationId: validatedData.organizationId,
-      userOrgRoles: inviter.user_organization_role,
-      roleDetails: inviter.user_organization_role.map(uor => ({
-        roleName: uor.role?.name,
-        roleAbbr: uor.role?.abbreviation,
-        roleId: uor.role?.id
-      }))
-    });
-
-    // Permission Check - prüfe auf alle möglichen Namen/Abkürzungen
     const roleNames = inviter.user_organization_role.map(uor => uor.role?.name || '');
     const roleAbbrs = inviter.user_organization_role.map(uor => uor.role?.abbreviation || '');
 
-    const canInvite = roleNames.includes('Organisationsverwaltung') || 
-                     roleAbbrs.includes('OV') || 
-                     roleNames.includes('Superadmin') ||
-                     roleNames.includes('Einsatzverwaltung') || // Falls EV auch einladen darf
-                     roleAbbrs.includes('EV');
-
-    console.log('🔍 Permission Check Result:', {
+    // Berechtigung prüfen
+    const canInvite = inviter.user_organization_role.some(uor => 
+      roleHasPermission((uor.role?.name ?? '') as RoleName, 'users:invite')
+    );
+    /*     console.log('🔍 Permission Check Result:', {
       roleNames,
       roleAbbrs,
       canInvite
-    });
+    }); */
 
     if (!canInvite) {
       return NextResponse.json({ 
@@ -93,7 +80,7 @@ export async function POST(request: NextRequest) {
         }
       }
     });
-
+    
 
     if (existingUser && existingUser?.user_organization_role.length > 0) {
       return NextResponse.json({ 
@@ -116,10 +103,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Invitation Token generieren
     const token = crypto.randomBytes(32).toString('hex');
     
-    // Standard-Rolle finden (Helfer) - DIESEN BLOCK WIEDER EINKOMMENTIEREN
+
     let roleId = validatedData.roleId;
     if (!roleId) {
       const defaultRole = await prisma.role.findFirst({
@@ -132,12 +118,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Standard-Rolle nicht gefunden" }, { status: 500 });
     }
 
-    // Einladung erstellen - nur die unterstützten Felder verwenden
+    // Einladung erstellen 
     const invitation = await prisma.invitation.create({
       data: {
         email: validatedData.email,
         org_id: validatedData.organizationId,
-        role_id: roleId, // <-- Wieder einkommentieren
+        role_id: roleId, 
         invited_by: inviter.id,
         token: token,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -145,8 +131,8 @@ export async function POST(request: NextRequest) {
       },
       include: {
         organization: true,
-        role: true, // <-- Auch wieder einkommentieren
-        user: true // <-- User Relation einschließen (invited_by)
+        role: true, 
+        user: true 
       }
     });
 
@@ -171,15 +157,20 @@ export async function POST(request: NextRequest) {
       console.log('✅ Invitation email sent successfully');
     } catch (emailError) {
       console.error('❌ Failed to send invitation email:', emailError);
-      // E-Mail Fehler nicht als kritisch behandeln - Einladung wurde trotzdem erstellt
+      await prisma.invitation.delete({
+        where: { id: invitation.id }
+      });
+      return NextResponse.json({
+        error: "Einladung erstellt, aber E-Mail konnte nicht gesendet werden. Einladung wurde zurückgezogen."
+      }, { status: 500 });
     }
 
-    console.log('✅ Invitation created:', {
+/*     console.log('Invitation created:', {
       id: invitation.id,
       email: invitation.email,
       organization: organization.name,
       inviteLink: inviteLink
-    });
+    }); */
 
     return NextResponse.json({
       success: true,
@@ -195,13 +186,13 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("❌ Error creating invitation:", error);
+    console.error("Error creating invitation:", error);
     
     // Zod Validation Errors
     if (error instanceof z.ZodError) {
       return NextResponse.json({ 
         error: "Validierungsfehler", 
-        details: error 
+        details: error.message
       }, { status: 400 });
     }
     

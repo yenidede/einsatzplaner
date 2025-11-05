@@ -1,83 +1,61 @@
 import { UserRole } from '@/types/user';
+import { extend } from 'lodash';
+import { RefreshCcw, RefreshCcwDot } from 'lucide-react';
 import NextAuth from 'next-auth';
 
+type Organization = {
+    id: string;
+    name: string;
+    helper_name_singular: string;
+    helper_name_plural: string;
+};
+type OrganizationRole = {
+    orgId: string;
+    roleId: string;
+    roleName: string;
+    abbreviation: string | null;
+};
+
+type UserBase = {
+    id: string;
+    email: string;
+    firstname: string;
+    lastname: string;
+    picture_url: string | null;
+    phone: string | null;
+    description: string | null;
+    hasLogoinCalendar: boolean;
+    organizations: Organization[];
+    roles: OrganizationRole[];
+    orgIds: string[];
+    roleIds: string[];
+    activeOrganizationId: string | null;
+};
+
+type TokenInfo = {
+    accessToken: string;
+    refreshToken: string;
+    accessTokenExpires: number;
+    refreshTokenExpires: number;
+
+}
+
 declare module 'next-auth' {
-    interface User {
-        id: string;
-        email: string;
-        firstname?: string;
-        lastname?: string;
-        role: UserRole;
-        orgId: string | null;
-        roleId: string | null;
-        phone?: string;
-        initials: string;
-        picture_url?: string | null;
-        orgIds?: string[];
-        organizations?: any[];
-        roles?: any[];
-        description?: string;
-        refreshToken: string;
-        accessToken: string;
-        // Multi-Role/Org Unterstützung
-        roles?: string[];
-        roleIds?: string[];
-        orgIds?: string[];
+    interface User extends UserBase {
+        accessToken?: string;
+        refreshToken?: string;
     }
 
-    interface Session {     
-        user: {
-            id: string;
-            email: string;
-            name?: string;
-            image?: string;
-            firstname?: string;
-            lastname?: string;
-            picture_url?: string;
-            phone?: string;
-            description?: string;
-            orgIds: string[];
-            roles?: any[];
-
-            hasLogoinCalendar?: boolean;
-            organizations?: Array<{
-                organization: {
-                    id: string;
-                    name: string;
-                    helper_name_singular: string;
-                    helper_name_plural: string;
-                }
-                role: {
-                    id: string;
-                    name: string;
-                    abbreviation: string;
-                }
-            }>;
-        }
-        error?: string;
-        orgId?: string | null;
-        roleId?: string | null;
-        // Multi-Role/Org Unterstützung
-        orgIds?: string[];
-        roleIds?: string[];
-    }
+    interface Session {
+        user: UserBase;
+        token: TokenInfo;
+        error?: 'RefreshAccessTokenError';
+        expires: string;
+    } 
 }
 
 declare module 'next-auth/jwt' {
-    interface JWT {
-        id: string;
-        firstname?: string;
-        lastname?: string;
-        picture_url?: string;
-        phone?: string;
-        description?: string;
-        hasLogoinCalendar?: boolean;
-        orgIds?: string[];
-        organizations?: any[];
-        roles?: any[];
-        organizations?: any[];
-        accessTokenExpires: number;
-        refreshToken?: string;
-        error?: string;
+    interface JWT extends UserBase, TokenInfo {
+        error?: 'RefreshAccessTokenError';
     }
 }
