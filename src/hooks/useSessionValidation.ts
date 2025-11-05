@@ -1,9 +1,5 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useRef } from 'react';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import prisma from "@/lib/prisma";
-
 
 interface UseSessionValidationOptions {
   checkInterval?: number;
@@ -11,119 +7,81 @@ interface UseSessionValidationOptions {
   onTokenExpired?: () => void;
 }
 
-interface TokenInfo {
-  accessToken?: string;
-  refreshToken?: string;
-  accessTokenExpires?: number;
-  refreshTokenExpires?: number;
+function formatTimeRemaining(milliseconds: number): string {
+  const seconds = Math.floor(milliseconds / 1000);
+  
+  if (seconds < 60) {
+    return `${seconds}s`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const remainingMinutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${remainingMinutes}m`;
+  }
 }
 
 export function useSessionValidation(options: UseSessionValidationOptions = {}) {
-  const { checkInterval = 15000, debug = true, onTokenExpired } = options;
+  const { checkInterval = 60000, debug = false, onTokenExpired } = options;
   const { data: session, status } = useSession();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ Extrahiere Token-Informationen aus der Session
-  const extractTokenInfo = (): TokenInfo => {
-    if (!session) return {};
-
-    // try multiple locations where tokens might be stored
-    const sAny = session as any;
-    const tokenObj = sAny.token || sAny?.accessToken || sAny?.user?.token || sAny?.user || {};
-
-    return {
-      accessToken: tokenObj.accessToken || tokenObj.access_token || sAny?.user?.accessToken,
-      refreshToken: tokenObj.refreshToken || tokenObj.refresh_token || sAny?.user?.refreshToken,
-      accessTokenExpires: tokenObj.accessTokenExpires || tokenObj.access_token_expires,
-      refreshTokenExpires: tokenObj.refreshTokenExpires || tokenObj.refresh_token_expires
-        || (tokenObj.accessTokenExpires ? tokenObj.accessTokenExpires + (7 * 24 * 60 * 60 * 1000) : undefined)
-    };
-  };
-
-  const tokenInfo = extractTokenInfo();
-
   useEffect(() => {
-    // Cleanup previous interval
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
 
-    // Only start validation if we have a session
     if (status === 'authenticated' && session) {
-      const validateSession = async () => {
+      const validateSession = () => {
         try {
+          const tokenInfo = (session as any).token;
+          const now = Date.now();
+
           if (debug) {
+            const accessExpiresIn = tokenInfo?.accessTokenExpires ? 
+              tokenInfo.accessTokenExpires - now : 0;
+            const refreshExpiresIn = tokenInfo?.refreshTokenExpires ? 
+              tokenInfo.refreshTokenExpires - now : 0;
+
             console.log('🔍 Session validation check', {
               timestamp: new Date().toLocaleString(),
-              sessionExists: !!session,
               sessionError: session?.error,
               userId: session?.user?.id,
-              accessToken: tokenInfo.accessToken ? tokenInfo.accessToken : 'Missing',
-              refreshToken: tokenInfo.refreshToken ? tokenInfo.refreshToken : 'Missing',
-              accessTokenExpires: tokenInfo.accessTokenExpires ?
+              accessTokenExpires: tokenInfo?.accessTokenExpires ?
                 new Date(tokenInfo.accessTokenExpires).toLocaleString() : 'Unknown',
-              refreshTokenExpires: tokenInfo.refreshTokenExpires ? 
-                new Date(tokenInfo.refreshTokenExpires).toLocaleString() : 'Unknown'
+              refreshTokenExpires: tokenInfo?.refreshTokenExpires ? 
+                new Date(tokenInfo.refreshTokenExpires).toLocaleString() : 'Unknown',
+              accessTokenExpiresIn: accessExpiresIn > 0 ? 
+                formatTimeRemaining(accessExpiresIn) : 'Expired',
+              refreshTokenExpiresIn: refreshExpiresIn > 0 ? 
+                formatTimeRemaining(refreshExpiresIn) : 'Expired'
             });
           }
 
-          // ✅ 1. Check NextAuth session error (das wichtigste!)
           if (session?.error === "RefreshAccessTokenError") {
-            if (debug) console.log('❌ NextAuth session error detected');
+            if (debug) console.log('❌ Session error detected - logging out');
             onTokenExpired?.();
-            await signOut({ callbackUrl: '/signin?message=session-expired' });
+            signOut({ callbackUrl: '/signin?message=session-expired' });
             return;
           }
 
-          // ✅ 2. Check token expiration times
-          const now = Date.now();
-          if (tokenInfo.accessTokenExpires && now > tokenInfo.accessTokenExpires) {
-            if (debug) console.log('❌ Access token expired');
+          if (tokenInfo?.refreshTokenExpires && now > tokenInfo.refreshTokenExpires) {
+            if (debug) console.log('❌ Refresh token expired - logging out');
             onTokenExpired?.();
-            await signOut({ callbackUrl: '/signin?message=access-token-expired' });
+            signOut({ callbackUrl: '/signin?message=token-expired' });
             return;
           }
 
-          if (tokenInfo.refreshTokenExpires && now > tokenInfo.refreshTokenExpires) {
-            if (debug) console.log('❌ Refresh token expired');
-            onTokenExpired?.();
-            await signOut({ callbackUrl: '/signin?message=refresh-token-expired' });
-            return;
-          }
-
-          // ✅ 3. Optional: Test mit einem leichten API-Call (z.B. User-Daten)
-          // Das prüft indirekt ob die Tokens noch funktionieren
-          try {
-            const testResponse = await fetch('/api/auth/me', {
-              method: 'GET',
-              credentials: 'include'
-            });
-
-            if (!testResponse.ok) {
-              if (debug) console.log('❌ API test failed:', testResponse.status);
-              
-              if (testResponse.status === 401) {
-                onTokenExpired?.();
-                await signOut({ callbackUrl: '/signin?message=token-expired' });
-              }
-            } else {
-              if (debug) console.log('✅ API test successful - tokens valid');
-            }
-          } catch (networkError) {
-            // Bei Netzwerk-Fehlern nichts tun (Offline-Modus)
-            if (debug) console.log('⚠️ Network error during validation, skipping');
-          }
-
+          if (debug) console.log('✅ Session valid');
 
         } catch (error) {
-          if (debug) console.error('🚨 Session validation error:', error);
+          console.error('🚨 Session validation error:', error);
         }
       };
 
-      // Initial check
       validateSession();
-
-      // Set up interval
       intervalRef.current = setInterval(validateSession, checkInterval);
     }
 
@@ -132,25 +90,30 @@ export function useSessionValidation(options: UseSessionValidationOptions = {}) 
         clearInterval(intervalRef.current);
       }
     };
-  }, [session, status, checkInterval, debug, onTokenExpired, tokenInfo.accessTokenExpires, tokenInfo.refreshTokenExpires]);
+  }, [session, status, checkInterval, debug, onTokenExpired]);
+
+  const tokenInfo = session?.token;
+  const now = Date.now();
 
   return {
     isValidating: status === 'loading',
     hasValidSession: status === 'authenticated' && !session?.error,
     sessionError: session?.error,
-    // ✅ Token-Informationen zurückgeben
     tokenInfo: {
-      accessToken: tokenInfo.accessToken,
-      refreshToken: tokenInfo.refreshToken,
-      accessTokenExpires: tokenInfo.accessTokenExpires,
-      refreshTokenExpires: tokenInfo.refreshTokenExpires,
-      // Hilfreiche berechnete Werte
-      accessTokenExpiresIn: tokenInfo.accessTokenExpires ? 
-        Math.max(0, Math.floor((tokenInfo.accessTokenExpires - Date.now()) / 1000)) : 0,
-      refreshTokenExpiresIn: tokenInfo.refreshTokenExpires ? 
-        Math.max(0, Math.floor((tokenInfo.refreshTokenExpires - Date.now()) / 1000)) : 0,
-      isAccessTokenExpired: tokenInfo.accessTokenExpires ? Date.now() > tokenInfo.accessTokenExpires : false,
-      isRefreshTokenExpired: tokenInfo.refreshTokenExpires ? Date.now() > tokenInfo.refreshTokenExpires : false
+      accessToken: tokenInfo?.accessToken,
+      refreshToken: tokenInfo?.refreshToken,
+      accessTokenExpires: tokenInfo?.accessTokenExpires,
+      refreshTokenExpires: tokenInfo?.refreshTokenExpires,
+      accessTokenExpiresInSeconds: tokenInfo?.accessTokenExpires ? 
+        Math.max(0, Math.floor((tokenInfo.accessTokenExpires - now) / 1000)) : 0,
+      refreshTokenExpiresInSeconds: tokenInfo?.refreshTokenExpires ? 
+        Math.max(0, Math.floor((tokenInfo.refreshTokenExpires - now) / 1000)) : 0,
+      accessTokenExpiresInFormatted: tokenInfo?.accessTokenExpires ? 
+        formatTimeRemaining(Math.max(0, tokenInfo.accessTokenExpires - now)) : '0s',
+      refreshTokenExpiresInFormatted: tokenInfo?.refreshTokenExpires ? 
+        formatTimeRemaining(Math.max(0, tokenInfo.refreshTokenExpires - now)) : '0s',
+      isAccessTokenExpired: tokenInfo?.accessTokenExpires ? now > tokenInfo.accessTokenExpires : false,
+      isRefreshTokenExpired: tokenInfo?.refreshTokenExpires ? now > tokenInfo.refreshTokenExpires : false
     }
   };
 }

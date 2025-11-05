@@ -24,6 +24,13 @@ import { hasPermission } from "@/lib/auth/authGuard";
 import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
 import { useInvitations } from '@/features/invitations/hooks/useInvitation';
+import { useSessionValidation } from "@/hooks/useSessionValidation";
+import { settingsQueryKeys } from "@/features/settings/queryKey";
+import { getOrganizationAction, updateOrganizationAction, uploadOrganizationLogoAction } from "@/features/settings/organization-action";
+import { getUserProfileAction } from "@/features/settings/settings-action";
+import { getAllUserOrgRolesAction } from "@/features/settings/users-action";
+import { NextResponse } from "next/server";
+
 
 export default function OrganizationManagePage() {
     const params = useParams();
@@ -48,17 +55,23 @@ export default function OrganizationManagePage() {
 
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+    const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 
-    const { data, isLoading, error } = useQuery({
-        queryKey: ["userSettings", session?.user?.id],
-        enabled: !!session?.user?.id,
-        queryFn: async () => {
-            const res = await fetch(`/api/settings?userId=${session?.user.id}`);
-            if (!res.ok) throw new Error("Fehler beim Laden");
-            return res.json();
+    useSessionValidation({
+        debug: false,
+        onTokenExpired: () => {
+            console.log("Token abgelaufen - leite zu Login weiter");
+            router.push('/signin');
         },
     });
 
+
+    const { data, isLoading, error } = useQuery({
+        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
+        enabled: !!session?.user?.id,
+        queryFn: () => getUserProfileAction(),
+    });
+    /* console.log("Data", data); */
     // setze user sobald query daten da sind
     useEffect(() => {
         if (data) setUser(data);
@@ -66,59 +79,32 @@ export default function OrganizationManagePage() {
 
     // lade die spezifische Organisation und setze Name/Beschreibung
     const { data: orgData, isLoading: orgLoading, error: orgError } = useQuery({
-        queryKey: ["organization", orgId],
+        queryKey: settingsQueryKeys.organization(orgId),
         enabled: !!orgId,
-        queryFn: async () => {
-            const res = await fetch(`/api/auth/organization?id=${orgId}`);
-            if (!res.ok) throw new Error("Fehler beim Laden der Organisation");
-            return res.json();
-        },
+        queryFn: () => getOrganizationAction( orgId || ""),
     });
-    //console.log(orgData)
+    /* console.log("Org Data", orgData); */
     useEffect(() => {
         if (orgData) {
-            setName(orgData.name ?? "");
+            setName( orgData.name?? "");
             setDescription(orgData.description ?? "");
             setLogoUrl(orgData.logo_url ?? "");
-            // setze E-Mail / Telefon falls vorhanden (fallbacks prüfen je nach deiner API / Schema)
-            setEmail(orgData.email ?? orgData.mail ?? orgData.contact_email ?? "");
-            setPhone(orgData.phone ?? orgData.telefon ?? orgData.phone_number ?? "");
+            setEmail(orgData.email ?? "");
+            setPhone(orgData.phone ??  "");
             setHelperSingular(orgData.helper_name_singular ?? "Helfer:in");
             setHelperPlural(orgData.helper_name_plural ?? "Helfer:innen");
         }
     }, [orgData]);
+    /* console.log(session?.user.id, orgId) */
+    
+    const { data: usersData, isLoading: usersLoading } = useQuery({
+        queryKey: settingsQueryKeys.userOrganizations(orgId),
+        enabled: !!orgId,
+        queryFn: () => getAllUserOrgRolesAction(orgId),
+    });
 
-  // Lade User der Organisation (user_organization_role)
-  const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ["organization", orgId],
-    enabled: !!orgId,
-    queryFn: async () => {
-      const res = await fetch(`/api/auth/organization/${orgId}/users`);
-      if (!res.ok) throw new Error("Fehler beim Laden der User");
-      return res.json();
-    },
-  });
 
-  const handleSignOut = async () => {
-    try {
-      await signOut({
-        callbackUrl: "/signin",
-        redirect: true,
-      });
-
-      queryClient.clear();
-    } catch (error) {
-      console.error("Fehler beim Abmelden:", error);
-      router.push("/signin");
-    }
-  };
-
-  // Logo Upload Handler
-  const handleLogoUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    /* console.log("Users Data", usersData); */
 
     const handleSignOut = async () => {
         try {
@@ -180,35 +166,22 @@ export default function OrganizationManagePage() {
                 formData.append('logo', data.logoFile);
                 formData.append('orgId', orgId);
                 
-                const uploadRes = await fetch('/api/upload/logo', {
-                    method: 'POST',
-                    body: formData,
-                });
+                const uploadRes = await uploadOrganizationLogoAction(formData);
                 
-                if (!uploadRes.ok) throw new Error('Logo Upload fehlgeschlagen');
-                const uploadData = await uploadRes.json();
-                finalLogoUrl = uploadData.url;
+                if (!uploadRes) throw new Error('Logo Upload fehlgeschlagen');
+                finalLogoUrl = uploadRes.url;
             }
 
-            const res = await fetch("/api/auth/organization", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    id: orgId,
-                    name: data.name,
-                    description: data.description,
-                    email: data.email ?? email,
-                    phone: data.phone ?? phone,
-                    helper_name_singular: helperSingular,
-                    helper_name_plural: helperPlural,
-                    logo_url: finalLogoUrl
-                }),
+            const res = await updateOrganizationAction({
+                id: orgId,
+                name: data.name,
+                description: data.description,
             });
-            if (!res.ok) throw new Error("Fehler beim Speichern");
-            return res.json();
+            if (!res) throw new Error("Fehler beim Speichern");
+            return res;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["organization", orgId] });
+            queryClient.invalidateQueries({ queryKey: settingsQueryKeys.organization(orgId) });
             setLogoFile(null);
             //alert("Organisation erfolgreich aktualisiert!");
         },
@@ -231,14 +204,6 @@ export default function OrganizationManagePage() {
         });
     };
 
-    const handleSaveWithLogoRemove = () => {
-        updateMutation.mutate({ 
-            name, 
-            description, 
-            removeLogo: true 
-        });
-    };
-
     const handleUserProfileClick = (userId: string) => {
         setSelectedUserId(userId);
         setIsProfileDialogOpen(true);
@@ -250,7 +215,7 @@ export default function OrganizationManagePage() {
     };
 
     if (isLoading || orgLoading) return <div className="p-6">Lädt Organisation...</div>;
-    if (error || orgError) return <div className="p-6">Fehler beim Laden der Organisation</div>;
+    if (error || orgError) return <div className="p-6">Fehler beim Laden der Organisation: {error?.message || orgError?.message}</div>;
 
     return (
       <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
@@ -265,6 +230,7 @@ export default function OrganizationManagePage() {
             </button>
             <div data-state="Default" data-type="default" className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5"
                  onClick={handleSave}>
+                    
                 <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">Speichern</div>
             </div>
         </div>
@@ -658,7 +624,7 @@ export default function OrganizationManagePage() {
                                     </div>
                                     
                                     <button
-                                        onClick={() => handleUserProfileClick(groupedUser.user?.id)}
+                                        onClick={() => handleUserProfileClick(groupedUser.user?.id)} // Hier war das Problem!
                                         className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-md flex justify-center items-center gap-2.5 transition-colors"
                                     >
                                         <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">Profil Verwalten</div>
@@ -726,6 +692,15 @@ export default function OrganizationManagePage() {
                     setIsInviteModalOpen(false);
                 }}
             />
+
+            {/* User Settings Modal - ENTFERNEN */}
+            {/* 
+<UserProfileDialog
+    isOpen={isUserSettingsOpen}
+    onClose={() => setIsUserSettingsOpen(false)}
+    userId={user.id}
+/>
+*/}
         </div>
     </div>
         </div>
