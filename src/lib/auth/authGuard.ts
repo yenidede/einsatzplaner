@@ -5,7 +5,6 @@ import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
-  // Passe an eure Rollennamen an
   SuperAdmin: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org"],
   Organisationsverwaltung: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org"],
   Einsatzverwaltung: ["read:einsaetze","create:einsaetze","update:einsaetze"],
@@ -78,10 +77,6 @@ export async function requireOrganization(orgId?: string) {
   const { session, userIds } = await requireAuth();
 
   const userOrgIds = userIds.orgIds || [];
-
-  if (userOrgIds.length === 0) {
-    redirect('/organization/select');
-  }
 
   if (orgId && !userOrgIds.includes(orgId)) {
     redirect('/unauthorized');
