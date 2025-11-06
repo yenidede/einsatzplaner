@@ -5,13 +5,22 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import SwitchIcon from '@/components/icon/SwitchIcon';
 import { Button } from '@/features/auth/components/ui/FormComponents';
+import {
+  getUserProfileAction,
+  getAllUserOrgRolesAction,
+  updateUserRoleAction,
+  removeUserFromOrganizationAction,
+  getUserOrgRolesAction,
+} from '@/features/settings/users-action';
+import { DayButton } from 'react-day-picker';
+import { settingsQueryKeys } from '../queryKey';
 
 //#region TypeScript Interfaces
 interface UserProfileDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  userId: string;
-  organizationId: string;
+    isOpen: boolean;
+    onClose: () => void;
+    userId: string;
+    organizationId: string;
 }
 
 interface Role {
@@ -52,13 +61,13 @@ interface UserProfile {
     id: string;
     name: string;
     abbreviation: string;
-  };
+  } | null;
   organization: {
     id: string;
     name: string;
     helper_name_singular: string;
     helper_name_plural: string;
-  };
+  } | null;
 }
 //#endregion
 
@@ -107,46 +116,35 @@ export function UserProfileDialog({
   }, [userRoles, originalRoles]);
   //#endregion
  
-  //#region API Queries
+  //#region Queries
   // Fetch user profile
   const { data: userProfile, isLoading: profileLoading, error } = useQuery({
-    queryKey: ['userProfile', userId, organizationId],
-    queryFn: async () => {
-      const res = await fetch(`/api/users/${userId}/profile?orgId=${organizationId}`);
-      if (!res.ok) throw new Error('Failed to fetch user profile');
-      return res.json() as UserProfile;
-    },
+    queryKey: settingsQueryKeys.userProfile(userId, organizationId),
+    queryFn: async () => await getUserProfileAction(userId, organizationId),
     enabled: isOpen && !!userId && !!organizationId,
     staleTime: 30000,
     gcTime: 5 * 60 * 1000
   });
 
-  // Fetch all user roles for this user in this organization
-  const { data: userOrgRoles = [], isLoading: userRolesLoading } = useQuery({
-    queryKey: ['userOrgRoles', userId, organizationId],
-    queryFn: async () => {
-      const res = await fetch(`/api/auth/organization/${organizationId}/users`);
-      if (!res.ok) throw new Error('Failed to fetch user roles');
-      const allUsers = await res.json() as UserRole[];
-      // Filter for current user only
-      return allUsers.filter(userRole => userRole.user.id === userId);
-    },
+
+  const { data: userOrgRoles = [] } = useQuery({
+    queryKey: settingsQueryKeys.userOrgRoles(userId, organizationId),
+    queryFn: async () => await getUserOrgRolesAction(organizationId, userId),
     enabled: isOpen && !!userId && !!organizationId,
     staleTime: 30000,
     gcTime: 5 * 60 * 1000
   });
+
   //#endregion
 
   //#region Initialize form data when user profile loads
   useEffect(() => {
     if (userOrgRoles && userOrgRoles.length > 0) {
-      // Extract role abbreviations from all user roles
       const roles: string[] = [];
-      
+
       userOrgRoles.forEach(userRole => {
         const roleAbbr = userRole.role?.abbreviation || userRole.role?.name || '';
         
-        // Map role names to abbreviations for the switches
         if (roleAbbr === 'OV' || userRole.role?.name === 'Organisationsverwaltung') {
           if (!roles.includes('OV')) roles.push('OV');
         } else if (roleAbbr === 'EV' || userRole.role?.name === 'Einsatzverwaltung') {
@@ -155,7 +153,6 @@ export function UserProfileDialog({
           if (!roles.includes('Helfer')) roles.push('Helfer');
         }
         
-        // Check for Superadmin - has all roles
         if (userRole.role?.name === 'Superadmin' || userRole.role?.abbreviation === 'SA') {
           if (!roles.includes('OV')) roles.push('OV');
           if (!roles.includes('EV')) roles.push('EV');
@@ -196,7 +193,6 @@ export function UserProfileDialog({
       const rolesToAdd: string[] = [];
       const rolesToRemove: string[] = [];
  
-      // Determine what changed
       userRoles.forEach(role => {
         if (!originalRoles.includes(role)) {
           rolesToAdd.push(role);
@@ -209,59 +205,41 @@ export function UserProfileDialog({
         }
       });
  
-      // Execute all role changes in parallel
-      const promises = [];
+      interface RoleChangePromises {
+        rolesToAdd: string[];
+        rolesToRemove: string[];
+        promises: Promise<any>[];
+      }
+
+      const promises: Promise<any>[] = [];
  
       rolesToAdd.forEach(role => {
         promises.push(
-          fetch(`/api/users/${userId}/role`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              organizationId,
-              role,
-              action: 'add'
-            })
-          })
+          updateUserRoleAction(userId, organizationId, role, 'add')
         );
       });
  
       rolesToRemove.forEach(role => {
         promises.push(
-          fetch(`/api/users/${userId}/role`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              organizationId,
-              role,
-              action: 'remove'
-            })
-          })
+          updateUserRoleAction(userId, organizationId, role, 'remove')
         );
       });
  
-      const results = await Promise.all(promises);
-      const failedRequests = results.filter(res => !res.ok);
-      
-      if (failedRequests.length > 0) {
-        throw new Error(`${failedRequests.length} Rollenänderungen fehlgeschlagen`);
-      }
+      await Promise.all(promises);
  
       return { rolesToAdd, rolesToRemove };
     },
     onSuccess: () => {
-      // Update original state to current state
       setOriginalRoles([...userRoles]);
       setHasChanges(false);
       
-      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['userProfile', userId] });
+      queryClient.invalidateQueries({ queryKey: ['userAllOrgRoles', organizationId] });
       queryClient.invalidateQueries({ queryKey: ['userOrgRoles', userId, organizationId] });
       queryClient.invalidateQueries({ queryKey: ['organizationUsers'] });
     },
     onError: (error) => {
       console.error('Error saving role changes:', error);
-      // Revert to original state on error
       setUserRoles([...originalRoles]);
       setHasChanges(false);
       alert('Fehler beim Speichern der Rollenänderungen');
@@ -270,15 +248,7 @@ export function UserProfileDialog({
  
   // Remove user mutation
   const removeUserMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/organization/leave`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, organizationId })
-      });
-      if (!res.ok) throw new Error('Failed to remove user');
-      return res.json();
-    },
+    mutationFn: () => removeUserFromOrganizationAction(userId, organizationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organizationUsers'] });
       onClose();
@@ -287,7 +257,6 @@ export function UserProfileDialog({
   //#endregion
 
   //#region Event Handlers
-  // Toggle role locally (no API call)
   const toggleRole = (roleAbbreviation: string) => {
     const isCurrentlyActive = userRoles.includes(roleAbbreviation);
      
@@ -298,7 +267,6 @@ export function UserProfileDialog({
     }
   };
 
-  // Handle save and close
   const handleSaveAndClose = async () => {
     if (!hasChanges) {
       onClose();
@@ -316,11 +284,9 @@ export function UserProfileDialog({
     }
   };
 
-  // Handle close with changes check
   const handleClose = () => {
     if (hasChanges) {
       if (confirm('Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?')) {
-        // Revert changes
         setUserRoles([...originalRoles]);
         setHasChanges(false);
         onClose();
@@ -338,7 +304,7 @@ export function UserProfileDialog({
  
   const handlePromoteToSuperadmin = async () => {
     if (confirm(`Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen?`)) {
-      // TODO: Implement superadmin promotion
+      // TODO (Ömer): Implement superadmin promotion
       console.log('Promote to superadmin not implemented yet');
     }
   };
@@ -347,9 +313,8 @@ export function UserProfileDialog({
   //#region Early Returns & Loading States
   if (!isOpen) return null;
 
-  const isLoading = profileLoading || userRolesLoading;
+  const isLoading = profileLoading ;
  
-  // Loading state
   if (isLoading) {
     return createPortal(
       <div className="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -365,7 +330,6 @@ export function UserProfileDialog({
     );
   }
  
-  // Error state
   if (error) {
     return createPortal(
       <div className="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -501,12 +465,12 @@ export function UserProfileDialog({
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
                     <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Person hat Schlüssel?</div>
-                    <Button
+                    <button
                       onClick={() => setHasKey(!hasKey)}
-                      className="cursor-pointer"
-                    >
+                      className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
+                      border-0 p-0 outline-none focus:outline-none hover:bg-transparent click:bg-transparent">
                       <SwitchIcon isOn={hasKey} disabled={false} />
-                    </Button>
+                    </button>
                   </div>
                 </div>
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
@@ -542,13 +506,14 @@ export function UserProfileDialog({
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
                     <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Organisationsverwaltung (OV)</div>
-                    <Button
+                    <button
                       onClick={() => toggleRole('OV')}
                       disabled={saving}
-                      className="cursor-pointer disabled:opacity-50 transition-opacity"
+                      className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
+                      border-0 p-0 outline-none focus:outline-none"
                     >
                       <SwitchIcon isOn={userRoles.includes('OV')} disabled={saving} />
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -558,13 +523,14 @@ export function UserProfileDialog({
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
                     <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Einsatzverwaltung (EV)</div>
-                    <Button
+                    <button
                       onClick={() => toggleRole('EV')}
                       disabled={saving}
-                      className="cursor-pointer disabled:opacity-50 transition-opacity"
+                      className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
+                      border-0 p-0 outline-none focus:outline-none"
                     >
                       <SwitchIcon isOn={userRoles.includes('EV')} disabled={saving} />
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -574,13 +540,15 @@ export function UserProfileDialog({
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
                     <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">Helfer:in (Helfer:in)</div>
-                    <Button
+                    <button
                       onClick={() => toggleRole('Helfer')}
                       disabled={saving}
-                      className="cursor-pointer disabled:opacity-50 transition-opacity"
+                      className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
+                      border-0 p-0 outline-none focus:outline-none"
                     >
+                      {/* TODO (Ömer): Update SwitchIcon for AAll roles after db update already works, performance*/}
                       <SwitchIcon isOn={userRoles.includes('Helfer')} disabled={saving} />
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
