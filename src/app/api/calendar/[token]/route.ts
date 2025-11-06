@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import ical, {ICalEventStatus, ICalCalendarMethod} from "ical-generator";
-import { getOrganizationsByIds } from "@/features/settings/org-dal";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { sub } from "date-fns";
 
 export async function GET(request: NextRequest,{params}: {params : {token : string}}){
