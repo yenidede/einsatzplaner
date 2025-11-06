@@ -5,6 +5,12 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
 import { hash, compare } from "bcrypt";
 import { revalidatePath } from "next/cache";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -94,7 +100,6 @@ export async function getUserProfileAction() {
 export async function updateUserProfileAction(data: UserUpdateData) {
   const session = await checkUserSession();
 
-  // Validate password if changing
   if (data.newPassword && data.currentPassword) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -111,7 +116,6 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     }
   }
 
-  // Prepare update data
   const updateData: any = {};
   if (data.email !== undefined) updateData.email = data.email;
   if (data.firstname !== undefined) updateData.firstname = data.firstname;
@@ -120,7 +124,6 @@ export async function updateUserProfileAction(data: UserUpdateData) {
   if (data.hasLogoinCalendar !== undefined)
     updateData.hasLogoinCalendar = data.hasLogoinCalendar;
 
-  // Hash new password if provided
   if (data.newPassword) {
     updateData.password = await hash(data.newPassword, 10);
   }
@@ -151,15 +154,12 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     hasLogoinCalendar: updatedUser.hasLogoinCalendar ?? true,
   };
 }
-
-// ✅ Update Mail Notification für Organisation
 export async function updateOrgMailNotificationAction(
   organizationId: string,
   hasGetMailNotification: boolean 
 ) {
   const session = await checkUserSession();
 
-  // Update alle user_organization_role Einträge für diesen User + Org
   await prisma.user_organization_role.updateMany({
     where: {
       user_id: session.user.id,
@@ -174,32 +174,57 @@ export async function updateOrgMailNotificationAction(
 
   return { success: true };
 }
-
+// TODO (Ömer): Correct Implementation of Uploading Profile Picture to Supabase Storage
 export async function uploadProfilePictureAction(formData: FormData) {
   const session = await checkUserSession();
 
-  const file = formData.get("file") as File;
+  const file = formData.get("file") as File | null;
   if (!file) throw new Error("No file provided");
 
   if (!file.type.startsWith("image/")) {
     throw new Error("File must be an image");
   }
-
   if (file.size > 5 * 1024 * 1024) {
     throw new Error("File size must be less than 5MB");
   }
 
-  const buffer = await file.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString("base64");
-  const dataUrl = `data:${file.type};base64,${base64}`;
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const filename = `${session.user.id}.${ext}`;
+  const filePath = `users/${session.user.id}/${filename}`;
+
+  const { error: uploadError } = await supabaseAdmin.storage
+    .from("logos")
+    .upload(filePath, buffer, {
+      contentType: file.type,
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("Supabase upload error:", uploadError);
+    throw new Error(`Upload failed: ${uploadError.message}`);
+  }
+
+  const { data: urlData } = await supabaseAdmin.storage
+    .from("logos")
+    .getPublicUrl(filePath);
+
+  let publicUrl = (urlData as any)?.publicUrl as string | undefined;
+  if (!publicUrl) {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+    if (!base) throw new Error("NEXT_PUBLIC_SUPABASE_URL not set");
+    publicUrl = `${base}/storage/v1/object/public/logos/${encodeURIComponent(filePath)}`;
+  }
 
   const updatedUser = await prisma.user.update({
     where: { id: session.user.id },
-    data: { picture_url: dataUrl },
+    data: { picture_url: publicUrl },
     select: { picture_url: true },
   });
 
   revalidatePath("/settings");
-
   return { picture_url: updatedUser.picture_url };
 }
