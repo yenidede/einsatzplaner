@@ -1,8 +1,3 @@
-import { UserRole } from '@/types/user';
-import { extend } from 'lodash';
-import { RefreshCcw, RefreshCcwDot } from 'lucide-react';
-import NextAuth from 'next-auth';
-
 type Organization = {
     id: string;
     name: string;
@@ -51,7 +46,7 @@ declare module 'next-auth' {
         token: TokenInfo;
         error?: 'RefreshAccessTokenError';
         expires: string;
-    } 
+    }
 }
 
 declare module 'next-auth/jwt' {
