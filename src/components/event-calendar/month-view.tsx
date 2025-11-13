@@ -35,12 +35,15 @@ import {
   MaxEventsPerCellInMonthView,
 } from "@/components/event-calendar/constants";
 import { CalendarMode } from "./types";
+import { EventContextMenu } from "./event-context-menu";
 
 interface MonthViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
+  onEventDelete: (eventId: string, eventTitle: string) => void;
+  onEventExportPdf: (event: CalendarEvent) => void;
   mode: CalendarMode;
 }
 
@@ -49,6 +52,8 @@ export function MonthView({
   events,
   onEventSelect,
   onEventCreate,
+  onEventDelete,
+  onEventExportPdf,
   mode,
 }: MonthViewProps) {
   const days = useMemo(() => {
@@ -85,6 +90,20 @@ export function MonthView({
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
     onEventSelect(event);
+  };
+
+  const handleEventEdit = (event: CalendarEvent) => {
+    onEventSelect(event);
+  };
+
+  const handleEventDelete = (event: CalendarEvent) => {
+    if (event.id) {
+      onEventDelete(event.id, event.title);
+    }
+  };
+
+  const handleEventExportPdf = (event: CalendarEvent) => {
+    onEventExportPdf(event);
   };
 
   const [isMounted, setIsMounted] = useState(false);
@@ -208,14 +227,21 @@ export function MonthView({
                               className="aria-hidden:hidden"
                               aria-hidden={isHidden ? "true" : undefined}
                             >
-                              <EventItem
-                                onClick={(e) => handleEventClick(event, e)}
+                              <EventContextMenu
                                 event={event}
-                                view="month"
-                                isFirstDay={isFirstDay}
-                                isLastDay={isLastDay}
-                                mode={mode}
-                              />
+                                onEdit={handleEventEdit}
+                                onExportPdf={handleEventExportPdf}
+                                onDelete={handleEventDelete}
+                              >
+                                <EventItem
+                                  onClick={(e) => handleEventClick(event, e)}
+                                  event={event}
+                                  view="month"
+                                  isFirstDay={isFirstDay}
+                                  isLastDay={isLastDay}
+                                  mode={mode}
+                                />
+                              </EventContextMenu>
                             </div>
                           );
                         }
@@ -226,14 +252,21 @@ export function MonthView({
                             className="aria-hidden:hidden"
                             aria-hidden={isHidden ? "true" : undefined}
                           >
-                            <DraggableEvent
+                            <EventContextMenu
                               event={event}
-                              view="month"
-                              onClick={(e) => handleEventClick(event, e)}
-                              isFirstDay={isFirstDay}
-                              isLastDay={isLastDay}
-                              mode={mode}
-                            />
+                              onEdit={handleEventEdit}
+                              onExportPdf={handleEventExportPdf}
+                              onDelete={handleEventDelete}
+                            >
+                              <DraggableEvent
+                                event={event}
+                                view="month"
+                                onClick={(e) => handleEventClick(event, e)}
+                                isFirstDay={isFirstDay}
+                                isLastDay={isLastDay}
+                                mode={mode}
+                              />
+                            </EventContextMenu>
                           </div>
                         );
                       })}
@@ -272,17 +305,24 @@ export function MonthView({
                                   const isLastDay = isSameDay(day, eventEnd);
 
                                   return (
-                                    <EventItem
+                                    <EventContextMenu
                                       key={event.id}
-                                      onClick={(e) =>
-                                        handleEventClick(event, e)
-                                      }
                                       event={event}
-                                      view="month"
-                                      isFirstDay={isFirstDay}
-                                      isLastDay={isLastDay}
-                                      mode={mode}
-                                    />
+                                      onEdit={handleEventEdit}
+                                      onExportPdf={handleEventExportPdf}
+                                      onDelete={handleEventDelete}
+                                    >
+                                      <EventItem
+                                        onClick={(e) =>
+                                          handleEventClick(event, e)
+                                        }
+                                        event={event}
+                                        view="month"
+                                        isFirstDay={isFirstDay}
+                                        isLastDay={isLastDay}
+                                        mode={mode}
+                                      />
+                                    </EventContextMenu>
                                   );
                                 })}
                               </div>

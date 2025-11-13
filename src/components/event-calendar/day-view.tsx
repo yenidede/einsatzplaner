@@ -29,12 +29,15 @@ import {
   ViewEndHour,
 } from "@/components/event-calendar/constants";
 import { CalendarMode } from "./types";
+import { EventContextMenu } from "./event-context-menu";
 
 interface DayViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
+  onEventDelete: (eventId: string, eventTitle: string) => void;
+  onEventExportPdf: (event: CalendarEvent) => void;
   mode: CalendarMode;
 }
 
@@ -52,6 +55,8 @@ export function DayView({
   events,
   onEventSelect,
   onEventCreate,
+  onEventDelete,
+  onEventExportPdf,
   mode,
 }: DayViewProps) {
   const dayEvents = useMemo(() => {
@@ -261,6 +266,20 @@ export function DayView({
     onEventSelect(event);
   };
 
+  const handleEventEdit = (event: CalendarEvent) => {
+    onEventSelect(event);
+  };
+
+  const handleEventDelete = (event: CalendarEvent) => {
+    if (event.id) {
+      onEventDelete(event.id, event.title);
+    }
+  };
+
+  const handleEventExportPdf = (event: CalendarEvent) => {
+    onEventExportPdf(event);
+  };
+
   const showAllDaySection = allDayEvents.length > 0;
   const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(
     currentDate,
@@ -287,18 +306,25 @@ export function DayView({
                 const isLastDay = isSameDay(currentDate, eventEnd);
 
                 return (
-                  <EventItem
+                  <EventContextMenu
                     key={`spanning-${event.id}`}
-                    onClick={(e) => handleEventClick(event, e)}
                     event={event}
-                    view="month"
-                    isFirstDay={isFirstDay}
-                    isLastDay={isLastDay}
-                    mode={mode}
+                    onEdit={handleEventEdit}
+                    onExportPdf={handleEventExportPdf}
+                    onDelete={handleEventDelete}
                   >
-                    {/* Always show the title in day view for better usability */}
-                    <div>{event.title}</div>
-                  </EventItem>
+                    <EventItem
+                      onClick={(e) => handleEventClick(event, e)}
+                      event={event}
+                      view="month"
+                      isFirstDay={isFirstDay}
+                      isLastDay={isLastDay}
+                      mode={mode}
+                    >
+                      {/* Always show the title in day view for better usability */}
+                      <div>{event.title}</div>
+                    </EventItem>
+                  </EventContextMenu>
                 );
               })}
             </div>
@@ -337,14 +363,21 @@ export function DayView({
               }}
             >
               <div className="h-full w-full">
-                <DraggableEvent
+                <EventContextMenu
                   event={positionedEvent.event}
-                  view="day"
-                  onClick={(e) => handleEventClick(positionedEvent.event, e)}
-                  showTime
-                  height={positionedEvent.height}
-                  mode={mode}
-                />
+                  onEdit={handleEventEdit}
+                  onExportPdf={handleEventExportPdf}
+                  onDelete={handleEventDelete}
+                >
+                  <DraggableEvent
+                    event={positionedEvent.event}
+                    view="day"
+                    onClick={(e) => handleEventClick(positionedEvent.event, e)}
+                    showTime
+                    height={positionedEvent.height}
+                    mode={mode}
+                  />
+                </EventContextMenu>
               </div>
             </div>
           ))}

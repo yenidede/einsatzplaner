@@ -34,12 +34,15 @@ import {
   ViewEndHour,
 } from "@/components/event-calendar/constants";
 import { CalendarMode } from "./types";
+import { EventContextMenu } from "./event-context-menu";
 
 interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
+  onEventDelete: (eventId: string, eventTitle: string) => void;
+  onEventExportPdf: (event: CalendarEvent) => void;
   mode: CalendarMode;
 }
 
@@ -57,6 +60,8 @@ export function WeekView({
   events,
   onEventSelect,
   onEventCreate,
+  onEventDelete,
+  onEventExportPdf,
   mode,
 }: WeekViewProps) {
   const days = useMemo(() => {
@@ -308,6 +313,20 @@ export function WeekView({
     onEventSelect(event);
   };
 
+  const handleEventEdit = (event: CalendarEvent) => {
+    onEventSelect(event);
+  };
+
+  const handleEventDelete = (event: CalendarEvent) => {
+    if (event.id) {
+      onEventDelete(event.id, event.title);
+    }
+  };
+
+  const handleEventExportPdf = (event: CalendarEvent) => {
+    onEventExportPdf(event);
+  };
+
   const showAllDaySection = allDayEvents.length > 0;
   const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(
     currentDate,
@@ -375,26 +394,33 @@ export function WeekView({
                     const shouldShowTitle = isFirstDay || isFirstVisibleDay;
 
                     return (
-                      <EventItem
+                      <EventContextMenu
                         key={`spanning-${event.id}`}
-                        onClick={(e) => handleEventClick(event, e)}
                         event={event}
-                        view="month"
-                        isFirstDay={isFirstDay}
-                        isLastDay={isLastDay}
-                        mode={mode}
+                        onEdit={handleEventEdit}
+                        onExportPdf={handleEventExportPdf}
+                        onDelete={handleEventDelete}
                       >
-                        {/* Show title if it's the first day of the event or the first visible day in the week */}
-                        <div
-                          className={cn(
-                            "truncate",
-                            !shouldShowTitle && "invisible"
-                          )}
-                          aria-hidden={!shouldShowTitle}
+                        <EventItem
+                          onClick={(e) => handleEventClick(event, e)}
+                          event={event}
+                          view="month"
+                          isFirstDay={isFirstDay}
+                          isLastDay={isLastDay}
+                          mode={mode}
                         >
-                          {event.title}
-                        </div>
-                      </EventItem>
+                          {/* Show title if it's the first day of the event or the first visible day in the week */}
+                          <div
+                            className={cn(
+                              "truncate",
+                              !shouldShowTitle && "invisible"
+                            )}
+                            aria-hidden={!shouldShowTitle}
+                          >
+                            {event.title}
+                          </div>
+                        </EventItem>
+                      </EventContextMenu>
                     );
                   })}
                 </div>
@@ -441,14 +467,21 @@ export function WeekView({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="h-full w-full">
-                  <DraggableEvent
+                  <EventContextMenu
                     event={positionedEvent.event}
-                    view="week"
-                    onClick={(e) => handleEventClick(positionedEvent.event, e)}
-                    showTime
-                    height={positionedEvent.height}
-                    mode={mode}
-                  />
+                    onEdit={handleEventEdit}
+                    onExportPdf={handleEventExportPdf}
+                    onDelete={handleEventDelete}
+                  >
+                    <DraggableEvent
+                      event={positionedEvent.event}
+                      view="week"
+                      onClick={(e) => handleEventClick(positionedEvent.event, e)}
+                      showTime
+                      height={positionedEvent.height}
+                      mode={mode}
+                    />
+                  </EventContextMenu>
                 </div>
               </div>
             ))}

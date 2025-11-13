@@ -12,11 +12,14 @@ import {
   getAgendaEventsForDay,
 } from "@/components/event-calendar";
 import { CalendarMode } from "./types";
+import { EventContextMenu } from "./event-context-menu";
 
 interface AgendaViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
+  onEventDelete: (eventId: string, eventTitle: string) => void;
+  onEventExportPdf: (event: CalendarEvent) => void;
   mode: CalendarMode;
 }
 
@@ -24,6 +27,8 @@ export function AgendaView({
   currentDate,
   events,
   onEventSelect,
+  onEventDelete,
+  onEventExportPdf,
   mode,
 }: AgendaViewProps) {
   // Show events for the next days based on constant
@@ -38,6 +43,20 @@ export function AgendaView({
     e.stopPropagation();
     console.log("Agenda view event clicked:", event);
     onEventSelect(event);
+  };
+
+  const handleEventEdit = (event: CalendarEvent) => {
+    onEventSelect(event);
+  };
+
+  const handleEventDelete = (event: CalendarEvent) => {
+    if (event.id) {
+      onEventDelete(event.id, event.title);
+    }
+  };
+
+  const handleEventExportPdf = (event: CalendarEvent) => {
+    onEventExportPdf(event);
   };
 
   // Check if there are any days with events
@@ -77,13 +96,20 @@ export function AgendaView({
               </span>
               <div className="mt-6 space-y-2">
                 {dayEvents.map((event) => (
-                  <EventItem
+                  <EventContextMenu
                     key={event.id}
                     event={event}
-                    view="agenda"
-                    onClick={(e) => handleEventClick(event, e)}
-                    mode={mode}
-                  />
+                    onEdit={handleEventEdit}
+                    onExportPdf={handleEventExportPdf}
+                    onDelete={handleEventDelete}
+                  >
+                    <EventItem
+                      event={event}
+                      view="agenda"
+                      onClick={(e) => handleEventClick(event, e)}
+                      mode={mode}
+                    />
+                  </EventContextMenu>
                 ))}
               </div>
             </div>
