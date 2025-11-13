@@ -34,6 +34,7 @@ export async function getUserProfileAction(userId: string, orgId: string) {
       lastname: true,
       phone: true,
       picture_url: true,
+      salutation: true,
       description: true,
       user_organization_role: {
         where: { org_id: orgId },
@@ -72,6 +73,7 @@ export async function getUserProfileAction(userId: string, orgId: string) {
     description: user.description,
     hasLogoinCalendar: false, 
     hasGetMailNotification: false,
+    salutation: user?.salutation ?? "",
     role: userOrgRole?.role ? {
       id: userOrgRole.role.id,
       name: userOrgRole.role.name,

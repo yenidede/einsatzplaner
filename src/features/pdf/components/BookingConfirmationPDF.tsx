@@ -1,5 +1,7 @@
 import React from 'react';
 import { Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import { BookingFooter } from './BookingFooter';
+import { getUserByIdWithOrgAndRole } from '@/DataAccessLayer/user';
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 11 },
@@ -26,14 +28,33 @@ const styles = StyleSheet.create({
 
 interface Props {
   einsatz: any;
+  assignedUsers?: Array<{ firstname: string; lastname: string }>;
   options?: { showLogos?: boolean };
 }
 
-export const BookingConfirmationPDF: React.FC<Props> = ({ einsatz, options }) => {
+export const BookingConfirmationPDF: React.FC<Props> = ({ einsatz, assignedUsers = [], options }) => {
   const { showLogos = true } = options || {};
+  
   const isSchule = einsatz?.einsatz_to_category?.some((etc: any) => 
     etc.einsatz_category?.value?.toLowerCase().includes('schule')
   );
+
+  const user = getUserByIdWithOrgAndRole(einsatz.assigned_users[0]).then(user => {
+    console.log('User Daten:', user);
+  });
+
+
+  const participantCount = einsatz?.participant_count 
+    || einsatz?.participants 
+    || einsatz?.number_of_participants
+    || 'xx';
+
+  // Vermittlung: Namen aus übergebenen User-Daten
+  const assignedUserNames = assignedUsers.length > 0
+    ? assignedUsers.map(u => `${u.firstname} ${u.lastname}`).join(', ')
+    : einsatz?.assigned_users?.length > 0
+      ? `${user.firstname} ${user.lastname}`
+      : 'Wird noch bekannt gegeben';
 
   const formatDate = (date: Date) => new Date(date).toLocaleDateString('de-DE', { 
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
@@ -65,8 +86,8 @@ export const BookingConfirmationPDF: React.FC<Props> = ({ einsatz, options }) =>
               <Text style={styles.bold}>{isSchule ? 'Schule' : 'Gruppe'}</Text>
               <Text>
                 {isSchule 
-                  ? `${einsatz.helpers_needed || einsatz.participant_count || 'xx'} Schüler*innen, x. Schulstufe`
-                  : `${einsatz.participant_count || 'xx'} Erwachsene / Senioren`
+                  ? `${participantCount} Schüler*innen, x. Schulstufe`
+                  : `${participantCount} Erwachsene / Senioren`
                 }
               </Text>
             </View>
@@ -87,9 +108,13 @@ export const BookingConfirmationPDF: React.FC<Props> = ({ einsatz, options }) =>
 
           <View style={styles.infoRow}>
             <Text style={styles.label}>Vermittlung:</Text>
-            <Text style={styles.value}>
-              Frau {einsatz.user?.firstname || 'N/A'} {einsatz.user?.lastname || 'N/A'}
-            </Text>
+            {/* TODO (Ömer): Anrede abklären, da keine definiert in der DB3 */}
+            <Text style={styles.value}>{assignedUserNames}</Text>
+            {/*             {getUserByIdWithOrgAndRole(einsatz.assigned_users[0]).then(user => (
+              <Text style={styles.value}>
+                {user ? `${user.firstname} ${user.lastname}` : 'Wird noch bekannt gegeben'}
+              </Text>
+            ))} */}
           </View>
 
           <View style={styles.infoRow}>
@@ -140,11 +165,7 @@ export const BookingConfirmationPDF: React.FC<Props> = ({ einsatz, options }) =>
           <Text>UID: ATU 3792 6303</Text>
         </View>
 
-        <Text style={styles.contact}>
-          {einsatz.organization?.name || 'Jüdisches Museum Hohenems'} | Villa Heimann-Rosenthal | Schweizer Straße 5 | Aron-Tänzer-Platz 1 | 6845 Hohenems | Österreich{'\n'}
-          T +43 (0)5576 73 989-0 | office@jm-hohenems.at | www.jm-hohenems.at | UID ATU 37926303{'\n'}
-          Dornbirner Sparkasse IBAN AT71 2060 2004 0004 9911 | BIC DOSPAT2DXXX
-        </Text>
+        <BookingFooter />
       </Page>
   );
 };
