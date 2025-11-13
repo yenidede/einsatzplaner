@@ -81,7 +81,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
             picture_url: true,
             phone: true,
             salutationId: true,
-            description: true,
+            /* description: true, */
             hasLogoinCalendar: true,
           },
         },
@@ -126,7 +126,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       picture_url: session.user.picture_url,
       phone: session.user.phone,
       salutationId: session.user.salutationId,
-      description: session.user.description,
+      /* description: session.user.description, */
       hasLogoinCalendar: session.user.hasLogoinCalendar ?? false,
       orgIds,
       roleIds,
@@ -180,7 +180,7 @@ export const authOptions: NextAuthOptions = {
               picture_url: true,
               salutationId: true,
               phone: true,
-              description: true,
+              /* description: true, */
               hasLogoinCalendar: true,
             },
           });
@@ -235,7 +235,7 @@ export const authOptions: NextAuthOptions = {
             picture_url: user.picture_url,
             phone: user.phone,
             salutationId: user.salutationId,
-            description: user.description,
+            /* description: user.description, */
             hasLogoinCalendar: user.hasLogoinCalendar ?? false,
             orgIds,
             roleIds,
@@ -286,7 +286,7 @@ export const authOptions: NextAuthOptions = {
           email: session.user?.email ?? token.email,
           phone: session.user?.phone ?? token.phone,
           salutationId: session.user?.salutationId ?? token.salutationId,
-          description: session.user?.description ?? token.description,
+          /* description: session.user?.description ?? token.description, */
           hasLogoinCalendar:
             session.user?.hasLogoinCalendar ?? token.hasLogoinCalendar,
           activeOrganizationId:

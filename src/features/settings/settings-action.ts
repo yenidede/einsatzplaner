@@ -6,6 +6,12 @@ import prisma from "@/lib/prisma";
 import { hash, compare } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { OrganizationRole } from "@/types/next-auth";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+);
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -219,17 +225,38 @@ export async function uploadProfilePictureAction(formData: FormData) {
     throw new Error("File size must be less than 5MB");
   }
 
-  const buffer = await file.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString("base64");
-  const dataUrl = `data:${file.type};base64,${base64}`;
+  const bytes = await file.arrayBuffer();
+  const buffer = new Uint8Array(bytes);
+  const extension = file.name.split(".").pop() || "jpg";
+  const filePath = `users/${session.user.id}/${session.user.id}.${extension}`;
 
-  const updatedUser = await prisma.user.update({
+  // ✅ Mit Service Role Key funktioniert das Upload
+  const { error } = await supabase.storage
+    .from("logos")
+    .upload(filePath, buffer, {
+      contentType: file.type,
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+  if (error) {
+    console.error("Supabase upload error:", error);
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  const { data: urlData } = supabase.storage
+    .from("logos")
+    .getPublicUrl(filePath);
+
+  const publicUrl = urlData.publicUrl;
+
+  // Update user in database
+  await prisma.user.update({
     where: { id: session.user.id },
-    data: { picture_url: dataUrl },
-    select: { picture_url: true },
+    data: { picture_url: publicUrl },
   });
 
   revalidatePath("/settings");
 
-  return { picture_url: updatedUser.picture_url };
+  return { picture_url: publicUrl };
 }
