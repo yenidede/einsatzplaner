@@ -1,20 +1,15 @@
-'use client'
+"use client";
 
 import {
-  BoltIcon,
-  BookOpenIcon,
-  Layers2Icon,
+  SettingsIcon,
   LogOutIcon,
   PinIcon,
   UserPenIcon,
-} from "lucide-react"
+  BuildingIcon,
+} from "lucide-react";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,13 +18,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+} from "@/components/ui/dropdown-menu";
 
-import { useSession } from "next-auth/react"
-import { signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { useSessionSync } from "@/hooks/useSessionSync"
-import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user"
+import { useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useSessionSync } from "@/hooks/useSessionSync";
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
@@ -46,40 +44,43 @@ export default function UserMenu() {
       </Button>
     );
   }
-  if (status === "unauthenticated" ) {
+  if (status === "unauthenticated") {
     return (
       <Button
         variant="ghost"
         className="h-auto p-0 hover:bg-transparent"
         onClick={() => router.push("/signin")}
-      >
-      </Button>
+      ></Button>
     );
   }
 
-  const user = session?.user;
-  
-  if(!user) {
+  const user = session.user;
+
+  if (!user) {
     return null;
   }
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/signin' });
-  }
-  
-  const initials = `${user?.firstname?.charAt(0) ?? ''}${user?.lastname?.charAt(0) ?? ''}`.toUpperCase();
+    await signOut({ callbackUrl: "/signin" });
+  };
+
+  const initials = `${user?.firstname?.charAt(0) ?? ""}${
+    user?.lastname?.charAt(0) ?? ""
+  }`.toUpperCase();
   const handleSettings = () => {
     router.push("/settings");
-  }
+  };
 
-  return ( 
-
+  return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
           <Avatar>
-            {
-              user?.picture_url && <AvatarImage src={user.picture_url} alt={`Profile image for ${user.firstname} ${user.lastname}`} />
-            }
+            {user?.picture_url && (
+              <AvatarImage
+                src={user.picture_url}
+                alt={`Profile image for ${user.firstname} ${user.lastname}`}
+              />
+            )}
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>
@@ -98,20 +99,13 @@ export default function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={handleSettings}>
-            <BoltIcon size={16} className="opacity-60" aria-hidden="true" />
+            <SettingsIcon size={16} className="opacity-60" aria-hidden="true" />
             <span>Einstellungen</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Layers2Icon size={16} className="opacity-60" aria-hidden="true" />
-            <span>Option 2</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <BookOpenIcon size={16} className="opacity-60" aria-hidden="true" />
-            <span>Option 3</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuLabel>Organisationen</DropdownMenuLabel>
           <DropdownMenuItem>
             <PinIcon size={16} className="opacity-60" aria-hidden="true" />
             <span>Option 4</span>
@@ -122,11 +116,24 @@ export default function UserMenu() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Switch Organisation</DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem>Email</DropdownMenuItem>
+              <DropdownMenuItem>Message</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+        <DropdownMenuItem onClick={handleLogout}>
+          <BuildingIcon size={16} className="opacity-60" aria-hidden="true" />
+          <span>Aktive Orga</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleLogout}>
           <LogOutIcon size={16} className="opacity-60" aria-hidden="true" />
-          <span>Logout</span>
+          <span>Ausloggen</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
