@@ -31,14 +31,12 @@ export async function getSalutationsAction() {
         id: true,
         salutation: true,
       },
-      orderBy: { salutation: 'asc' },
+      orderBy: { salutation: "asc" },
     });
-  return salutations;
+    return salutations;
   } catch (error) {
-    console.log('Error fetching salutations:', error);
-    throw new Error("Fehler beim Laden der Anreden");
+    throw new Error("Fehler beim Laden der Anreden", { cause: error });
   }
-
 }
 
 export async function getUserProfileAction() {
@@ -86,7 +84,7 @@ export async function getUserProfileAction() {
         id: orgId,
         name: uor.organization.name,
         roles: [],
-        hasGetMailNotification: uor.hasGetMailNotification ?? true, 
+        hasGetMailNotification: uor.hasGetMailNotification ?? true,
       });
     }
 
@@ -103,17 +101,25 @@ export async function getUserProfileAction() {
     firstname: user.firstname ?? "",
     lastname: user.lastname ?? "",
     picture_url: user.picture_url,
+    salutationId: user.salutationId ?? "",
+    orgIds: Array.from(organizationsMap.keys()),
+    roleIds: user.user_organization_role.map((uor) => uor.role.id),
+    activeOrganizationId:
+      session.user.activeOrganizationId ??
+      (Array.from(organizationsMap.keys())[0] || null),
     phone: user.phone ?? "",
     hasLogoinCalendar: user.hasLogoinCalendar ?? true,
     created_at: user.created_at.toISOString(),
     organizations: Array.from(organizationsMap.values()),
-    hasGetMailNotification: Array.from(organizationsMap.values()).some((org) => org.hasGetMailNotification), 
+    hasGetMailNotification: Array.from(organizationsMap.values()).some(
+      (org) => org.hasGetMailNotification
+    ),
   };
 }
 
 export async function updateUserProfileAction(data: UserUpdateData) {
   const session = await checkUserSession();
-  console.log('Update Data:', data);
+  console.log("Update Data:", data);
   // Validate password if changing
   if (data.newPassword && data.currentPassword) {
     const user = await prisma.user.findUnique({
@@ -137,7 +143,8 @@ export async function updateUserProfileAction(data: UserUpdateData) {
   if (data.firstname !== undefined) updateData.firstname = data.firstname;
   if (data.lastname !== undefined) updateData.lastname = data.lastname;
   if (data.phone !== undefined) updateData.phone = data.phone;
-  if (data.salutationId !== undefined) updateData.salutationId = data.salutationId;
+  if (data.salutationId !== undefined)
+    updateData.salutationId = data.salutationId;
   if (data.hasLogoinCalendar !== undefined)
     updateData.hasLogoinCalendar = data.hasLogoinCalendar;
 
@@ -178,7 +185,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
 // ✅ Update Mail Notification für Organisation
 export async function updateOrgMailNotificationAction(
   organizationId: string,
-  hasGetMailNotification: boolean 
+  hasGetMailNotification: boolean
 ) {
   const session = await checkUserSession();
 
