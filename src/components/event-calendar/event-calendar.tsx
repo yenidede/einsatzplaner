@@ -52,6 +52,8 @@ import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/organization/queryKeys";
+import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
+import { PdfGenerationRequest } from "@/features/pdf/types/pdf";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -248,6 +250,20 @@ export function EventCalendar({
     setSelectedEvent(null);
   };
 
+  const { generatePdf } = usePdfGenerator();
+
+  const handleEventExportPdf = async (event: CalendarEvent) => {
+    if (!event.id) {
+      console.warn("No event ID available for PDF generation.");
+      return;
+    }
+    const request: PdfGenerationRequest = {
+      type: "booking-confirmation",
+      einsatzId: event.id,
+    };
+    await generatePdf(request);
+  };
+
   const handleMultiEventDelete = (eventIds: string[]) => {
     onMultiEventDelete?.(eventIds);
     setIsEventDialogOpen(false);
@@ -425,6 +441,8 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              onEventDelete={handleEventDelete}
+              onEventExportPdf={handleEventExportPdf}
               mode={mode}
             />
           )}
@@ -434,6 +452,8 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              onEventDelete={handleEventDelete}
+              onEventExportPdf={handleEventExportPdf}
               mode={mode}
             />
           )}
@@ -443,6 +463,8 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              onEventDelete={handleEventDelete}
+              onEventExportPdf={handleEventExportPdf}
               mode={mode}
             />
           )}
@@ -451,6 +473,8 @@ export function EventCalendar({
               currentDate={currentDate}
               events={events}
               onEventSelect={handleEventSelect}
+              onEventDelete={handleEventDelete}
+              onEventExportPdf={handleEventExportPdf}
               mode={mode}
             />
           )}
