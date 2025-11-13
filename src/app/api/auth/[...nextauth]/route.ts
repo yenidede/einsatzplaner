@@ -1,10 +1,12 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, { NextAuthOptions, Session, User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
-import { getUserForAuth, updateLastLogin } from "@/DataAccessLayer/user";
+import { updateLastLogin } from "@/DataAccessLayer/user";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { SignJWT } from "jose";
+import { TokenInfo } from "@/types/next-auth";
+import { JWT } from "next-auth/jwt";
 
 const ACCESS_TOKEN_LIFETIME = 15 * 60; // 15 minutes in seconds
 const REFRESH_TOKEN_LIFETIME = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
@@ -13,7 +15,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.NEXTAUTH_SECRET || "fallback-secret-as-backup"
 );
 
-async function generateAccessToken( userData: any): Promise<string> {
+async function generateAccessToken(userData: User): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   
   const jwt = await new SignJWT({
@@ -51,11 +53,13 @@ async function generateRefreshToken(userId: string): Promise<string> {
   return refreshToken;
 }
 
-async function refreshAccessToken(token: any) {
+async function refreshAccessToken(token: TokenInfo, sessionToken : Session): Promise<TokenInfo> {
   try {
+    
     if (!token.refreshToken) {
       throw new Error("No refresh token available");
     }
+    
 
     const session = await prisma.user_session.findFirst({
       where: { 
@@ -71,6 +75,7 @@ async function refreshAccessToken(token: any) {
             lastname: true,
             picture_url: true,
             phone: true,
+            salutationId: true,
             description: true,
             hasLogoinCalendar: true,
           }
@@ -82,7 +87,7 @@ async function refreshAccessToken(token: any) {
       throw new Error("Invalid or expired refresh token");
     }
 
-    const newAccessToken = await generateAccessToken(session.user);
+    const newAccessToken = await generateAccessToken(sessionToken.user);
 
     return {
       ...token,
@@ -98,18 +103,18 @@ async function refreshAccessToken(token: any) {
       refreshToken: token.refreshToken,
       refreshTokenExpires: session.expires_at.getTime(),
       error: undefined,
-      organizations: token.organizations,
-      roles: token.roles,
-      orgIds: token.orgIds,
-      roleIds: token.roleIds,
-      activeOrganizationId: token.activeOrganizationId,
-    };
+      organizations: sessionToken.user.organizations,
+      roles: sessionToken.user.roles,
+      orgIds: sessionToken.user.orgIds,
+      roleIds: sessionToken.user.roleIds,
+      activeOrganizationId: sessionToken.user.activeOrganizationId,
+    } as TokenInfo;
   } catch (error) {
     console.error("Error refreshing access token:", error);
     
-    if (token.id) {
+    if (sessionToken.user.id) {
       await prisma.user_session.deleteMany({
-        where: { user_id: token.id }
+        where: { user_id: sessionToken.user.id }
       }).catch(err => console.error("Cleanup error:", err));
     }
     
@@ -128,7 +133,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Passwort", type: "password" },
       },
-      async authorize(credentials): Promise<any> {
+      async authorize(credentials): Promise<User | null> {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -143,6 +148,7 @@ export const authOptions: NextAuthOptions = {
               firstname: true,
               lastname: true,
               picture_url: true,
+              salutationId: true,
               phone: true,
               description: true,
               hasLogoinCalendar: true,
@@ -207,7 +213,7 @@ export const authOptions: NextAuthOptions = {
           const roleIds = [...new Set(roles.map(r => r.roleId))];
 
           const [accessToken, refreshToken] = await Promise.all([
-            generateAccessToken(user),
+            generateAccessToken(SessionToken.user),
             generateRefreshToken(user.id)
           ]);
 
@@ -223,6 +229,9 @@ export const authOptions: NextAuthOptions = {
             hasLogoinCalendar: user.hasLogoinCalendar ?? false,
             orgIds,
             roleIds,
+            salutationId: null,
+            organizations,
+            roles,
             activeOrganizationId: orgIds[0] ?? null,
             accessToken,
             refreshToken,
@@ -236,7 +245,7 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async jwt({ token, user, account, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }) : Promise<JWT> {
       if (user && account) {
         return {  
           ...token,
@@ -256,7 +265,7 @@ export const authOptions: NextAuthOptions = {
           accessTokenExpires: Date.now() + (ACCESS_TOKEN_LIFETIME * 1000),
           refreshTokenExpires: Date.now() + REFRESH_TOKEN_LIFETIME,
         };
-      }
+      } 
 
       if (trigger === "update" && session) {
         return {
@@ -273,7 +282,7 @@ export const authOptions: NextAuthOptions = {
           refreshToken: token.refreshToken,
           accessTokenExpires: token.accessTokenExpires,
           refreshTokenExpires: token.refreshTokenExpires,
-        };
+        } as TokenInfo;
       }
 
       if (token.error === "RefreshAccessTokenError") {
@@ -289,7 +298,7 @@ export const authOptions: NextAuthOptions = {
         }
       }
       
-      return await refreshAccessToken(token);
+      return await refreshAccessToken(token, session);
     },
 
     async session({ session, token }) {
