@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import {
   BoltIcon,
@@ -7,14 +7,10 @@ import {
   LogOutIcon,
   PinIcon,
   UserPenIcon,
-} from "lucide-react"
+} from "lucide-react";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,13 +19,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
-import { useSession } from "next-auth/react"
-import { signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { useSessionSync } from "@/hooks/useSessionSync"
-import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user"
+import { useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useSessionSync } from "@/hooks/useSessionSync";
+import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
@@ -46,40 +42,46 @@ export default function UserMenu() {
       </Button>
     );
   }
-  if (status === "unauthenticated" ) {
+  if (status === "unauthenticated") {
     return (
       <Button
         variant="ghost"
         className="h-auto p-0 hover:bg-transparent"
         onClick={() => router.push("/signin")}
-      >
-      </Button>
+      ></Button>
     );
   }
 
-  const user = session?.user;
-  
-  if(!user) {
+  if (session == null) {
+    return router.push("/signin");
+  }
+  const user = session.user;
+
+  if (!user) {
     return null;
   }
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/signin' });
-  }
-  
-  const initials = `${user?.firstname?.charAt(0) ?? ''}${user?.lastname?.charAt(0) ?? ''}`.toUpperCase();
+    await signOut({ callbackUrl: "/signin" });
+  };
+
+  const initials = `${user.firstname.charAt(0) ?? ""}${
+    user.lastname?.charAt(0) ?? ""
+  }`.toUpperCase();
   const handleSettings = () => {
     router.push("/settings");
-  }
+  };
 
-  return ( 
-
+  return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
           <Avatar>
-            {
-              user?.picture_url && <AvatarImage src={user.picture_url} alt={`Profile image for ${user.firstname} ${user.lastname}`} />
-            }
+            {user?.picture_url && (
+              <AvatarImage
+                src={user.picture_url}
+                alt={`Profile image for ${user.firstname} ${user.lastname}`}
+              />
+            )}
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>
@@ -128,5 +130,5 @@ export default function UserMenu() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
