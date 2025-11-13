@@ -25,7 +25,6 @@ import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSessionSync } from "@/hooks/useSessionSync";
-import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
@@ -52,7 +51,7 @@ export default function UserMenu() {
     );
   }
 
-  if (session == null) {
+  if (session == null || !session.user) {
     return router.push("/signin");
   }
   const user = session.user;

@@ -15,7 +15,6 @@ import OrganisationIcon from "@/features/settings/components/ui/OrganisationIcon
 import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadProfilePictureIcon";
 import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
 import OrganizationCard from "@/features/settings/components/OrganizationCard";
-import { hasPermission } from "@/lib/auth/authGuard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 import { settingsQueryKeys } from "@/features/settings/queryKey";
@@ -23,26 +22,56 @@ import {
   getUserProfileAction,
   updateUserProfileAction,
   uploadProfilePictureAction,
-  getSalutationsAction, // ✅ Neu
+  getSalutationsAction,
+  updateOrgMailNotificationAction,
 } from "@/features/settings/settings-action";
 import { removeUserFromOrganization } from "@/DataAccessLayer/user";
-import { updateOrgMailNotificationAction } from "@/features/settings/settings-action";
-import { OrganizationRole } from "@/types/next-auth";
-import { User } from "next-auth";
+
+type Organization = {
+  id: string;
+  name: string;
+  helper_name_singular?: string;
+  helper_name_plural?: string;
+  hasGetMailNotification: boolean;
+  roles: Array<{
+    id: string;
+    name: string;
+    abbreviation: string | null;
+  }>;
+};
+
+type Salutation = {
+  id: string;
+  salutation: string;
+};
+
+type UserSettings = {
+  userId: string;
+  firstname: string | null;
+  lastname: string | null;
+  email: string;
+  picture_url: string | null;
+  phone: string;
+  salutationId: string | null;
+  hasLogoinCalendar: boolean;
+  hasGetMailNotification: boolean;
+};
 
 export default function SettingsPage() {
   const id = useId();
   const [showLogos, setShowLogos] = useState<boolean>(true);
-  const [getMailFromOrganization, setGetMailFromOrganization] =
-    useState<boolean>(true);
   const { data: session, status, update } = useSession();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
+  const [firstname, setFirstname] = useState<string>("");
+  const [lastname, setLastname] = useState<string>("");
+  const [pictureUrl, setPictureUrl] = useState<string | null>(null);
+  const [salutationId, setSalutationId] = useState<string | null>(null);
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(
     null
   );
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
 
   const queryClient = useQueryClient();
 
@@ -54,8 +83,7 @@ export default function SettingsPage() {
     },
   });
 
-  // ✅ User-Daten laden
-  const { data, isLoading, error } = useQuery({
+  const { data: userData, isLoading: isLoadingUser } = useQuery({
     queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     enabled: !!session?.user?.id,
     queryFn: async () => {
@@ -66,55 +94,33 @@ export default function SettingsPage() {
   });
 
   const { data: salutations = [] } = useQuery({
-    queryKey: ["salutations"],
+    queryKey: settingsQueryKeys.salutation(),
     queryFn: async () => {
       const res = await getSalutationsAction();
       return res;
     },
   });
 
-  /*   const hasManagePermission = (roles: any[] | undefined) => {
-    if (!Array.isArray(roles)) return false;
-    return roles.some((role:any) => {
-      const name = (role?.name ?? "");
-      return hasPermission(name, "manage:org");
-    });
-  }; */
-
   useEffect(() => {
-    if (data) {
-      setUser({
-        ...data,
-        organizations: Array.isArray(data.organizations)
-          ? data.organizations.map((o: OrganizationRole) => ({
-              ...o,
-              hasGetMailNotification: !!o.hasGetMailNotification,
-            }))
-          : [],
-      });
-      setEmail(data.email ?? "");
-      setPhone(data.phone ?? "");
-      setShowLogos(data.hasLogoinCalendar ?? true);
-      setGetMailFromOrganization(data.hasGetMailNotification ?? true);
-    }
-  }, [data]);
+    if (userData) {
+      setEmail(userData.email ?? "");
+      setPhone(userData.phone ?? "");
+      setFirstname(userData.firstname ?? "");
+      setLastname(userData.lastname ?? "");
+      setPictureUrl(userData.picture_url);
+      setSalutationId(userData.salutationId);
+      setShowLogos(userData.hasLogoinCalendar ?? true);
 
-  // Mutation zum Speichern
-  type UserSettings = {
-    userId: string;
-    firstname: string;
-    lastname: string;
-    email: string;
-    picture_url: string | null;
-    phone: string;
-    salutationId: string;
-    hasLogoinCalendar: boolean;
-    hasGetMailNotification: boolean;
-  };
+      if (userData.organizations && Array.isArray(userData.organizations)) {
+        setOrganizations(userData.organizations);
+      }
+    }
+  }, [userData]);
 
   const mutation = useMutation({
     mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     mutationFn: async (newSettings: UserSettings) => {
+      // TODO (Ömer): Clear this error
       const res = await updateUserProfileAction(newSettings);
       if (!res) throw new Error("Fehler beim Speichern");
       return res;
@@ -126,11 +132,32 @@ export default function SettingsPage() {
     },
   });
 
+  const leaveOrgMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      organizationId,
+    }: {
+      userId: string;
+      organizationId: string;
+    }) => {
+      const res = await removeUserFromOrganization(userId, organizationId);
+      if (!res) throw new Error("Failed to leave organization");
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
+      });
+    },
+  });
+
   const handleSave = async () => {
-    if (!user) return;
+    if (!session?.user?.id) return;
 
     try {
-      let pictureUrl = user.picture_url;
+      let finalPictureUrl = pictureUrl;
+
+      // Upload profile picture if changed
       if (profilePictureFile) {
         const formData = new FormData();
         formData.append("file", profilePictureFile);
@@ -138,57 +165,56 @@ export default function SettingsPage() {
         if (!res) {
           throw new Error(`Upload fehlgeschlagen`);
         }
-        pictureUrl = res.picture_url;
+        finalPictureUrl = res.picture_url;
       }
-      console.log("✅ Profile picture upload successful:", pictureUrl);
 
+      // Update user profile
       await mutation.mutateAsync({
-        userId: user.id,
+        userId: session.user.id,
         email,
-        firstname: user.firstname,
-        lastname: user.lastname,
+        firstname,
+        lastname,
         phone,
-        picture_url: pictureUrl,
-        salutationId: user.salutation,
-        hasLogoinCalendar: !!showLogos,
-        hasGetMailNotification: !!getMailFromOrganization,
+        picture_url: finalPictureUrl,
+        salutationId,
+        hasLogoinCalendar: showLogos,
+        hasGetMailNotification: true,
       });
 
-      if (Array.isArray(user.organizations) && user.organizations.length > 0) {
+      // Update organization mail notifications
+      if (organizations.length > 0) {
         await Promise.all(
-          user.organizations.map(async (org: any) => {
-            const orgId = org?.id;
-            if (!orgId) return;
+          organizations.map(async (org) => {
             await updateOrgMailNotificationAction(
-              orgId,
-              !!org.hasGetMailNotification
+              org.id,
+              org.hasGetMailNotification ?? true
             );
           })
         );
       }
 
+      // Update session
       if (session) {
         await update({
           user: {
             ...session.user,
-            firstname: user.firstname,
-            lastname: user.lastname,
+            firstname,
+            lastname,
             email,
             phone,
-            picture_url: pictureUrl,
-            hasLogoinCalendar: !!showLogos,
+            picture_url: finalPictureUrl,
+            hasLogoinCalendar: showLogos,
           },
         });
 
-        setUser({
-          ...user,
-          picture_url: pictureUrl,
-        });
+        setPictureUrl(finalPictureUrl);
       }
 
       await queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.userSettings(session?.user.id || ""),
       });
+
+      alert("Einstellungen erfolgreich gespeichert!");
     } catch (error) {
       console.error("❌ Save failed:", error);
       alert("Fehler beim Speichern der Einstellungen");
@@ -199,67 +225,88 @@ export default function SettingsPage() {
     setProfilePictureFile(file);
   };
 
-  if (status === "unauthenticated") {
-    router.push("/signin");
-    return <div>Leite weiter…</div>;
-  }
-  if (isLoading) {
-    return <div>Lade Einstellungen…</div>;
-  }
-  if (!user) {
-    return <div>Keine Benutzerdaten gefunden.</div>;
-  }
-  if (error) {
-    return <div>Fehler beim Laden der Einstellungen.</div>;
-  }
+  const handleRemoveProfilePicture = async () => {
+    if (!session?.user?.id) return;
 
-  const initials = `${user.firstname?.[0] || ""}${
-    user.lastname?.[0] || ""
-  }`.toUpperCase();
+    setProfilePictureFile(null);
 
-  async function handleOrganizationLeave(id: any) {
-    if (!user) return;
+    try {
+      await mutation.mutateAsync({
+        userId: session.user.id,
+        firstname,
+        lastname,
+        email,
+        picture_url: null,
+        phone,
+        salutationId,
+        hasLogoinCalendar: showLogos,
+        hasGetMailNotification: true,
+      });
+
+      setPictureUrl(null);
+    } catch (error) {
+      console.error("Failed to remove profile picture:", error);
+      alert("Fehler beim Entfernen des Profilbilds");
+    }
+  };
+
+  async function handleOrganizationLeave(organizationId: string) {
+    if (!session?.user?.id) return;
+
     const confirmed = window.confirm(
       "Möchtest du die Organisation wirklich verlassen?"
     );
     if (!confirmed) return;
-    try {
-      const leaveOrgMutation = useMutation({
-        mutationKey: settingsQueryKeys.userOrganizations(
-          session?.user?.id || ""
-        ),
-        mutationFn: async ({
-          userId,
-          organizationId,
-        }: {
-          userId: string;
-          organizationId: string;
-        }) => {
-          const res = await removeUserFromOrganization(userId, organizationId);
-          if (!res) throw new Error("Failed to leave organization");
-          return res;
-        },
-        onSuccess: () => {
-          queryClient.invalidateQueries({
-            queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
-          });
-        },
-      });
 
+    try {
       await leaveOrgMutation.mutateAsync({
-        userId: user.id,
-        organizationId: id,
-      });
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(user.id),
+        userId: session.user.id,
+        organizationId,
       });
     } catch (err) {
+      console.error("Failed to leave organization:", err);
       alert("Fehler beim Verlassen der Organisation.");
     }
   }
 
+  const hasManagePermission = (org: Organization): boolean => {
+    if (!org.roles || !Array.isArray(org.roles)) return false;
+
+    return org.roles.some((role) => {
+      const roleName = role?.name?.toLowerCase() || "";
+      const roleAbbr = role?.abbreviation?.toLowerCase() || "";
+
+      return (
+        roleName.includes("organisationsverwaltung") ||
+        roleName.includes("superadmin") ||
+        roleAbbr === "ov" ||
+        roleName === "ov"
+      );
+    });
+  };
+
+  if (status === "unauthenticated") {
+    router.push("/signin");
+    return <div>Leite weiter…</div>;
+  }
+
+  if (isLoadingUser) {
+    return <div>Lade Einstellungen…</div>;
+  }
+
+  if (!userData) {
+    return <div>Keine Benutzerdaten gefunden.</div>;
+  }
+
+  const initials = `${firstname?.[0] || ""}${
+    lastname?.[0] || ""
+  }`.toUpperCase();
+
+  const manageableOrganizations = organizations.filter(hasManagePermission);
+
   return (
     <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
+      {/* Header */}
       <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
         <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
           <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
@@ -268,8 +315,6 @@ export default function SettingsPage() {
         </div>
         <div className="flex justify-end items-center gap-2">
           <button
-            data-state="Default"
-            data-type="outline"
             className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
             onClick={() => router.back()}
           >
@@ -277,110 +322,76 @@ export default function SettingsPage() {
               Abbrechen (ESC)
             </div>
           </button>
-          <div
-            data-state="Default"
-            data-type="default"
+          <button
             className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5"
             onClick={handleSave}
           >
             <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
               Speichern
             </div>
-          </div>
+          </button>
         </div>
       </div>
+
+      {/* Main Content */}
       <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
+        {/* Sidebar */}
         <div className="self-stretch inline-flex flex-col justify-between items-start">
           <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
-            <div
-              data-left-icon="true"
-              data-right-icon="false"
-              data-right-text="true"
-              data-state="default"
-              data-type="default"
-              className="self-stretch px-2 py-1.5 bg-slate-100 rounded-md inline-flex justify-start items-center gap-2"
-            >
+            {/* Allgemein */}
+            <div className="self-stretch px-2 py-1.5 bg-slate-100 rounded-md inline-flex justify-start items-center gap-2">
               <div className="w-4 h-4 relative overflow-hidden">
                 <SettingsIcon className="w-4 h-4 relative overflow-hidden" />
               </div>
               <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
                 Allgemein
               </div>
-              <div className="justify-start"></div>
             </div>
+
             <div className="self-stretch h-px bg-slate-200" />
+
+            {/* Organisationsverwaltung */}
             <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">
               Organisationsverwaltung
             </div>
-            {user.organizations &&
-            user.organizations.filter((org: any) => {
-              if (!Array.isArray(org.roles)) return false;
-              return org.roles.some((role: any) => {
-                const roleName =
-                  typeof role === "string" ? role : role?.name || "";
-                const roleAbbr =
-                  typeof role === "string" ? "" : role?.abbreviation || "";
-                return (
-                  roleName.toLowerCase().includes("organisationsverwaltung") ||
-                  roleName.toLowerCase().includes("superadmin") ||
-                  roleAbbr.toLowerCase() === "ov" ||
-                  roleName.toLowerCase() === "ov"
-                );
-              });
-            }).length > 0 ? (
-              user.organizations
-                .filter((org: any) => {
-                  if (!Array.isArray(org.roles)) return false;
-                  return org.roles.some((role: any) => {
-                    const roleName =
-                      typeof role === "string" ? role : role?.name || "";
-                    const roleAbbr =
-                      typeof role === "string" ? "" : role?.abbreviation || "";
-                    return (
-                      roleName
-                        .toLowerCase()
-                        .includes("organisationsverwaltung") ||
-                      roleName.toLowerCase().includes("superadmin") ||
-                      roleAbbr.toLowerCase() === "ov" ||
-                      roleName.toLowerCase() === "ov"
-                    );
-                  });
-                })
-                .map((org: any) => (
-                  <button
-                    key={org.id}
-                    onClick={() =>
-                      router.push(`/organization/${org.id}/manage`)
-                    }
-                    className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
-                  >
-                    <OrganisationIcon />
-                    <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
-                      {org.name}
-                    </div>
-                  </button>
-                ))
+
+            {manageableOrganizations.length > 0 ? (
+              manageableOrganizations.map((org) => (
+                <button
+                  key={org.id}
+                  onClick={() => router.push(`/organization/${org.id}/manage`)}
+                  className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
+                >
+                  <OrganisationIcon />
+                  <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
+                    {org.name}
+                  </div>
+                </button>
+              ))
             ) : (
               <div className="px-2 py-1.5 text-xs text-gray-400">
                 Keine Berechtigung
               </div>
             )}
           </div>
+
+          {/* Logout Button */}
           <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
-            <div
-              data-state="Default"
-              data-type="with icon"
+            <button
               className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2"
               onClick={() => signOut()}
             >
-              <LogoutIcon className="w-4 h-4 relative overflow-hidden"></LogoutIcon>
+              <LogoutIcon className="w-4 h-4 relative overflow-hidden" />
               <span className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
                 Ausloggen
               </span>
-            </div>
+            </button>
           </div>
         </div>
+
+        {/* Content Area */}
         <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
+          {/* Mein Account */}
           <div className="self-stretch flex flex-col justify-center items-start gap-4">
             <div className="self-stretch flex flex-col justify-start items-start gap-2">
               <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
@@ -388,7 +399,10 @@ export default function SettingsPage() {
                   Mein Account
                 </div>
               </div>
+
               <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
+                {/* Profile Picture */}{" "}
+                {/* TODO (Ömer): picture_url wirft langen url ab, funkt also nicht optimal -> verbessern */}
                 <div className="self-stretch px-4 flex flex-col justify-start items-start gap-2">
                   <div className="inline-flex justify-start items-center gap-2">
                     {profilePictureFile ? (
@@ -397,17 +411,14 @@ export default function SettingsPage() {
                         alt="Profilbild Vorschau"
                         className="w-10 h-10 rounded-full object-cover border"
                       />
-                    ) : user.picture_url ? (
+                    ) : pictureUrl ? (
                       <img
-                        src={user.picture_url}
+                        src={pictureUrl}
                         alt="Profilbild"
                         className="w-10 h-10 rounded-full object-cover border"
                       />
                     ) : (
-                      <div
-                        data-type="avatar initials"
-                        className="w-10 h-10 px-2 py-1.5 bg-slate-200 rounded-[20px] inline-flex flex-col justify-center items-center gap-2.5"
-                      >
+                      <div className="w-10 h-10 px-2 py-1.5 bg-slate-200 rounded-[20px] inline-flex flex-col justify-center items-center gap-2.5">
                         <div className="justify-start text-slate-900 text-base font-normal font-['Inter'] leading-7">
                           {initials}
                         </div>
@@ -415,10 +426,11 @@ export default function SettingsPage() {
                     )}
                     <div className="inline-flex flex-col justify-center items-start">
                       <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-normal">
-                        {user.firstname} {user.lastname}
+                        {firstname} {lastname}
                       </div>
                     </div>
                   </div>
+
                   <div className="inline-flex justify-start items-start gap-2">
                     <button
                       type="button"
@@ -437,25 +449,11 @@ export default function SettingsPage() {
                     <ProfilePictureUpload
                       onUpload={handleProfilePictureUpload}
                     />
-                    <div className="inline-flex justify-end items-start gap-2"></div>
+
                     <button
                       type="button"
                       className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
-                      onClick={() => {
-                        if (!user) return;
-                        setProfilePictureFile(null);
-                        mutation.mutate({
-                          userId: user.id,
-                          firstname: user.firstname,
-                          lastname: user.lastname,
-                          email,
-                          picture_url: null,
-                          phone,
-                          salutationId: user.salutationId,
-                          hasLogoinCalendar: showLogos,
-                          hasGetMailNotification: getMailFromOrganization,
-                        });
-                      }}
+                      onClick={handleRemoveProfilePicture}
                     >
                       <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
                         Profilbild entfernen
@@ -463,6 +461,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
+                {/* Name Fields */}
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="grid w-full max-w-sm items-center gap-3">
                     <LabelSettings
@@ -473,11 +472,9 @@ export default function SettingsPage() {
                     </LabelSettings>
                     <InputSettings
                       id="firstname"
-                      value={user.firstname ?? ""}
+                      value={firstname}
                       className="w-full"
-                      onChange={(e) =>
-                        setUser({ ...user, firstname: e.target.value })
-                      }
+                      onChange={(e) => setFirstname(e.target.value)}
                     />
                   </div>
                   <div className="grid w-full max-w-sm items-center gap-3">
@@ -489,14 +486,13 @@ export default function SettingsPage() {
                     </LabelSettings>
                     <InputSettings
                       id="lastname"
-                      value={user.lastname ?? ""}
+                      value={lastname}
                       className="w-full"
-                      onChange={(e) =>
-                        setUser({ ...user, lastname: e.target.value })
-                      }
+                      onChange={(e) => setLastname(e.target.value)}
                     />
                   </div>
                 </div>
+                {/* Contact Fields */}
                 <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                   <div className="grid w-full max-w-sm items-center gap-3">
                     <LabelSettings htmlFor={id} className="text-sm font-medium">
@@ -527,6 +523,8 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Persönliche Präferenzen */}
           <div className="self-stretch flex flex-col justify-center items-start">
             <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
               <div className="flex-1 flex justify-start items-center gap-2">
@@ -535,6 +533,8 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Logo Switch */}
             <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
               <div className="flex-1 px-4 flex justify-start items-start gap-4">
                 <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
@@ -543,19 +543,23 @@ export default function SettingsPage() {
                   </div>
                   <div className="inline-flex items-center gap-2">
                     <Switch
-                      id={id}
+                      id="logo-switch"
                       checked={showLogos}
                       onCheckedChange={setShowLogos}
                       aria-label="Toggle switch"
                     />
-                    <Label htmlFor={id} className="text-sm font-medium">
+                    <Label
+                      htmlFor="logo-switch"
+                      className="text-sm font-medium"
+                    >
                       {showLogos ? "On" : "Off"}
                     </Label>
                   </div>
                 </div>
               </div>
             </div>
-            {/* Anrede select from db */}
+
+            {/* Salutation Select */}
             <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
               <div className="flex-1 px-4 flex justify-start items-start gap-4">
                 <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
@@ -567,14 +571,12 @@ export default function SettingsPage() {
                   </LabelSettings>
                   <select
                     id="salutation"
-                    value={user?.salutationId || ""}
-                    onChange={(e) =>
-                      setUser({ ...user, salutationId: e.target.value })
-                    }
+                    value={salutationId || ""}
+                    onChange={(e) => setSalutationId(e.target.value)}
                     className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-400 w-full"
                   >
                     <option value="">Bitte wählen</option>
-                    {salutations.map((sal: any) => (
+                    {salutations.map((sal: Salutation) => (
                       <option key={sal.id} value={sal.id}>
                         {sal.salutation}
                       </option>
@@ -584,6 +586,8 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Benachrichtigungen */}
           <div className="self-stretch flex flex-col justify-center items-start">
             <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
               <div className="flex-1 flex justify-start items-center gap-2">
@@ -592,12 +596,12 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
             <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
               <div className="flex-1 px-4 flex flex-col gap-2">
-                {Array.isArray(user.organizations) &&
-                user.organizations.length > 0 ? (
-                  user.organizations.map((org: any) => {
-                    const on = !!org.hasGetMailNotification;
+                {organizations.length > 0 ? (
+                  organizations.map((org) => {
+                    const isOn = org.hasGetMailNotification ?? true;
 
                     return (
                       <div
@@ -615,24 +619,15 @@ export default function SettingsPage() {
                         <div className="inline-flex items-center gap-2">
                           <Switch
                             id={`org-switch-${org.id}`}
-                            checked={on}
+                            checked={isOn}
                             onCheckedChange={(checked) => {
-                              setUser((prev: any) => {
-                                const prevOrgs = Array.isArray(
-                                  prev?.organizations
-                                )
-                                  ? prev.organizations
-                                  : [];
-                                const nextOrgs = prevOrgs.map((o: any) =>
+                              setOrganizations((prev) =>
+                                prev.map((o) =>
                                   o.id === org.id
-                                    ? {
-                                        ...o,
-                                        hasGetMailNotification: !!checked,
-                                      }
+                                    ? { ...o, hasGetMailNotification: checked }
                                     : o
-                                );
-                                return { ...prev, organizations: nextOrgs };
-                              });
+                                )
+                              );
                             }}
                             aria-label={`Toggle switch for ${org.name}`}
                           />
@@ -640,7 +635,7 @@ export default function SettingsPage() {
                             htmlFor={`org-switch-${org.id}`}
                             className="text-sm font-medium"
                           >
-                            {on ? "On" : "Off"}
+                            {isOn ? "On" : "Off"}
                           </Label>
                         </div>
                       </div>
@@ -654,6 +649,8 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Meine Organisationen */}
           <div className="self-stretch flex flex-col justify-center items-start">
             <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
               <div className="flex-1 flex justify-start items-center gap-2">
@@ -662,26 +659,22 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-            {user.organizations && user.organizations.length > 0 ? (
-              user.organizations.map((org: any) => {
-                //console.log('Organisation:', org.name, 'Rollen:', org.roles);
-                return (
-                  <div key={org.id}>
-                    <OrganizationCard
-                      name={org.name}
-                      roles={org.roles}
-                      onLeave={() => {
-                        handleOrganizationLeave(org.id);
-                      }}
-                    />
-                    <CalendarSubscription
-                      orgId={org.id}
-                      orgName={org.name}
-                      variant="card"
-                    ></CalendarSubscription>
-                  </div>
-                );
-              })
+
+            {organizations.length > 0 ? (
+              organizations.map((org) => (
+                <div key={org.id}>
+                  <OrganizationCard
+                    name={org.name}
+                    roles={org.roles || []}
+                    onLeave={() => handleOrganizationLeave(org.id)}
+                  />
+                  <CalendarSubscription
+                    orgId={org.id}
+                    orgName={org.name}
+                    variant="card"
+                  />
+                </div>
+              ))
             ) : (
               <div className="text-slate-500">
                 Du bist in keiner Organisation.
