@@ -6,6 +6,12 @@ import prisma from "@/lib/prisma";
 import { hash, compare } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { OrganizationRole } from "@/types/next-auth";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+);
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -31,14 +37,12 @@ export async function getSalutationsAction() {
         id: true,
         salutation: true,
       },
-      orderBy: { salutation: 'asc' },
+      orderBy: { salutation: "asc" },
     });
-  return salutations;
+    return salutations;
   } catch (error) {
-    console.log('Error fetching salutations:', error);
-    throw new Error("Fehler beim Laden der Anreden");
+    throw new Error("Fehler beim Laden der Anreden", { cause: error });
   }
-
 }
 
 export async function getUserProfileAction() {
@@ -86,7 +90,7 @@ export async function getUserProfileAction() {
         id: orgId,
         name: uor.organization.name,
         roles: [],
-        hasGetMailNotification: uor.hasGetMailNotification ?? true, 
+        hasGetMailNotification: uor.hasGetMailNotification ?? true,
       });
     }
 
@@ -103,17 +107,25 @@ export async function getUserProfileAction() {
     firstname: user.firstname ?? "",
     lastname: user.lastname ?? "",
     picture_url: user.picture_url,
+    salutationId: user.salutationId ?? "",
+    orgIds: Array.from(organizationsMap.keys()),
+    roleIds: user.user_organization_role.map((uor) => uor.role.id),
+    activeOrganizationId:
+      session.user.activeOrganizationId ??
+      (Array.from(organizationsMap.keys())[0] || null),
     phone: user.phone ?? "",
     hasLogoinCalendar: user.hasLogoinCalendar ?? true,
     created_at: user.created_at.toISOString(),
     organizations: Array.from(organizationsMap.values()),
-    hasGetMailNotification: Array.from(organizationsMap.values()).some((org) => org.hasGetMailNotification), 
+    hasGetMailNotification: Array.from(organizationsMap.values()).some(
+      (org) => org.hasGetMailNotification
+    ),
   };
 }
 
 export async function updateUserProfileAction(data: UserUpdateData) {
   const session = await checkUserSession();
-  console.log('Update Data:', data);
+  console.log("Update Data:", data);
   // Validate password if changing
   if (data.newPassword && data.currentPassword) {
     const user = await prisma.user.findUnique({
@@ -137,7 +149,8 @@ export async function updateUserProfileAction(data: UserUpdateData) {
   if (data.firstname !== undefined) updateData.firstname = data.firstname;
   if (data.lastname !== undefined) updateData.lastname = data.lastname;
   if (data.phone !== undefined) updateData.phone = data.phone;
-  if (data.salutationId !== undefined) updateData.salutationId = data.salutationId;
+  if (data.salutationId !== undefined)
+    updateData.salutationId = data.salutationId;
   if (data.hasLogoinCalendar !== undefined)
     updateData.hasLogoinCalendar = data.hasLogoinCalendar;
 
@@ -178,7 +191,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
 // ✅ Update Mail Notification für Organisation
 export async function updateOrgMailNotificationAction(
   organizationId: string,
-  hasGetMailNotification: boolean 
+  hasGetMailNotification: boolean
 ) {
   const session = await checkUserSession();
 
@@ -212,17 +225,38 @@ export async function uploadProfilePictureAction(formData: FormData) {
     throw new Error("File size must be less than 5MB");
   }
 
-  const buffer = await file.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString("base64");
-  const dataUrl = `data:${file.type};base64,${base64}`;
+  const bytes = await file.arrayBuffer();
+  const buffer = new Uint8Array(bytes);
+  const extension = file.name.split(".").pop() || "jpg";
+  const filePath = `users/${session.user.id}/${session.user.id}.${extension}`;
 
-  const updatedUser = await prisma.user.update({
+  // ✅ Mit Service Role Key funktioniert das Upload
+  const { error } = await supabase.storage
+    .from("logos")
+    .upload(filePath, buffer, {
+      contentType: file.type,
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+  if (error) {
+    console.error("Supabase upload error:", error);
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  const { data: urlData } = supabase.storage
+    .from("logos")
+    .getPublicUrl(filePath);
+
+  const publicUrl = urlData.publicUrl;
+
+  // Update user in database
+  await prisma.user.update({
     where: { id: session.user.id },
-    data: { picture_url: dataUrl },
-    select: { picture_url: true },
+    data: { picture_url: publicUrl },
   });
 
   revalidatePath("/settings");
 
-  return { picture_url: updatedUser.picture_url };
+  return { picture_url: publicUrl };
 }
