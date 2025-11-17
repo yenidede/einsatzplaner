@@ -156,6 +156,7 @@ model user {
   last_read_notifications                   DateTime?                @db.Timestamptz(6)
   resetToken                                String?
   resetTokenExpires                         DateTime?                @db.Timestamp(6)
+  salutationId                              String?                  @db.Uuid
   calendar_subscription                     calendar_subscription[]
   change_log_change_log_affected_userTouser change_log[]             @relation("change_log_affected_userTouser")
   change_log                                change_log[]
@@ -164,9 +165,10 @@ model user {
   einsatz_helper                            einsatz_helper[]
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
+  salutation                                salutation?              @relation(fields: [salutationId], references: [id], onDelete: Cascade)
   user_organization_role                    user_organization_role[]
   user_property_value                       user_property_value[]
-  user_session                      user_session[]
+  user_session                              user_session[]
 }
 
 model user_organization_role {
@@ -313,4 +315,11 @@ model user_session {
   created_at    DateTime  @default(now()) @db.Timestamptz(6)
   updated_at    DateTime? @db.Timestamp(6)
   user          user?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model salutation {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salutation String
+  user       user[]
 }
