@@ -18,6 +18,9 @@ import {
 import Link from "next/link";
 import NavSwitchOrgSelect from "./switch-org";
 import { useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
 
 // Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
@@ -28,7 +31,11 @@ const navigationLinks = [
 
 export default function Component() {
   const { data: session } = useSession();
-  const { organizations: data } = 
+  
+    const { data: organizations } = useQuery({
+    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
+    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
+  });
 
   return (
     <header className="border-b px-4 md:px-6 position-fixed top-0">
@@ -111,7 +118,7 @@ export default function Component() {
           <div className="flex items-center gap-2">
             {/* Switch organization */}
             <NavSwitchOrgSelect
-              organizations={session? || []}
+              organizations={organizations || []}
               activeOrgId={session?.user?.activeOrganizationId ?? undefined}
             />
             {/* Notification */}
