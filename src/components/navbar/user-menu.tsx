@@ -54,7 +54,10 @@ export default function UserMenu() {
     );
   }
 
-  const user = session?.user;
+  if (session == null || !session.user) {
+    return router.push("/signin");
+  }
+  const user = session.user;
 
   if (!user) {
     return null;
@@ -63,8 +66,8 @@ export default function UserMenu() {
     await signOut({ callbackUrl: "/signin" });
   };
 
-  const initials = `${user?.firstname?.charAt(0) ?? ""}${
-    user?.lastname?.charAt(0) ?? ""
+  const initials = `${user.firstname.charAt(0) ?? ""}${
+    user.lastname?.charAt(0) ?? ""
   }`.toUpperCase();
   const handleSettings = () => {
     router.push("/settings");

@@ -1,10 +1,11 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, { NextAuthOptions, Session, User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
-import { getUserForAuth, updateLastLogin } from "@/DataAccessLayer/user";
+import { updateLastLogin } from "@/DataAccessLayer/user";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { SignJWT } from "jose";
+import { JWT } from "next-auth/jwt";
 
 const ACCESS_TOKEN_LIFETIME = 15 * 60; // 15 minutes in seconds
 const REFRESH_TOKEN_LIFETIME = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
@@ -13,9 +14,15 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.NEXTAUTH_SECRET || "fallback-secret-as-backup"
 );
 
-async function generateAccessToken( userData: any): Promise<string> {
+async function generateAccessToken(userData: {
+  id: string;
+  email: string;
+  firstname: string | null;
+  lastname: string | null;
+  picture_url: string | null;
+}): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  
+
   const jwt = await new SignJWT({
     sub: userData.id,
     email: userData.email,
@@ -29,16 +36,18 @@ async function generateAccessToken( userData: any): Promise<string> {
     .setExpirationTime(now + ACCESS_TOKEN_LIFETIME)
     .setJti(crypto.randomUUID())
     .sign(JWT_SECRET);
-  
+
   return jwt;
 }
 
 async function generateRefreshToken(userId: string): Promise<string> {
   const refreshToken = crypto.randomBytes(32).toString("hex");
-  
-  await prisma.user_session.deleteMany({
-    where: { user_id: userId, expires_at: { lt: new Date() } }
-  }).catch(err => console.error("Cleanup error:", err));
+
+  await prisma.user_session
+    .deleteMany({
+      where: { user_id: userId, expires_at: { lt: new Date() } },
+    })
+    .catch((err) => console.error("Cleanup error:", err));
 
   await prisma.user_session.create({
     data: {
@@ -51,18 +60,18 @@ async function generateRefreshToken(userId: string): Promise<string> {
   return refreshToken;
 }
 
-async function refreshAccessToken(token: any) {
+async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
     if (!token.refreshToken) {
       throw new Error("No refresh token available");
     }
 
     const session = await prisma.user_session.findFirst({
-      where: { 
+      where: {
         refresh_token: token.refreshToken,
-        expires_at: { gt: new Date() }
+        expires_at: { gt: new Date() },
       },
-      include: { 
+      include: {
         user: {
           select: {
             id: true,
@@ -71,10 +80,11 @@ async function refreshAccessToken(token: any) {
             lastname: true,
             picture_url: true,
             phone: true,
+            salutationId: true,
             description: true,
             hasLogoinCalendar: true,
-          }
-        }
+          },
+        },
       },
     });
 
@@ -82,40 +92,65 @@ async function refreshAccessToken(token: any) {
       throw new Error("Invalid or expired refresh token");
     }
 
-    const newAccessToken = await generateAccessToken(session.user);
+    const user_organization_role = await prisma.user_organization_role.findMany(
+      {
+        where: { user_id: session.user.id },
+        select: {
+          org_id: true,
+          role_id: true,
+        },
+      }
+    );
 
-    return {
-      ...token,
+    const orgIds = [
+      ...new Set(user_organization_role.map((uor) => uor.org_id)),
+    ];
+    const roleIds = [
+      ...new Set(user_organization_role.map((uor) => uor.role_id)),
+    ];
+
+    const newAccessToken = await generateAccessToken({
+      id: session.user.id,
       email: session.user.email,
       firstname: session.user.firstname,
       lastname: session.user.lastname,
       picture_url: session.user.picture_url,
+    });
+
+    return {
+      ...token,
+      id: session.user.id,
+      email: session.user.email,
+      firstname: session.user.firstname ?? null,
+      lastname: session.user.lastname ?? null,
+      picture_url: session.user.picture_url,
       phone: session.user.phone,
+      salutationId: session.user.salutationId,
       description: session.user.description,
-      hasLogoinCalendar: session.user.hasLogoinCalendar,
+      hasLogoinCalendar: session.user.hasLogoinCalendar ?? false,
+      orgIds,
+      roleIds,
+      activeOrganizationId: token.activeOrganizationId ?? orgIds[0] ?? null,
       accessToken: newAccessToken,
-      accessTokenExpires: Date.now() + (ACCESS_TOKEN_LIFETIME * 1000),
+      accessTokenExpires: Date.now() + ACCESS_TOKEN_LIFETIME * 1000,
       refreshToken: token.refreshToken,
       refreshTokenExpires: session.expires_at.getTime(),
       error: undefined,
-      organizations: token.organizations,
-      roles: token.roles,
-      orgIds: token.orgIds,
-      roleIds: token.roleIds,
-      activeOrganizationId: token.activeOrganizationId,
     };
   } catch (error) {
     console.error("Error refreshing access token:", error);
-    
+
     if (token.id) {
-      await prisma.user_session.deleteMany({
-        where: { user_id: token.id }
-      }).catch(err => console.error("Cleanup error:", err));
+      await prisma.user_session
+        .deleteMany({
+          where: { user_id: token.id as string },
+        })
+        .catch((err) => console.error("Cleanup error:", err));
     }
-    
-    return { 
+
+    return {
       ...token,
-      error: "RefreshAccessTokenError"
+      error: "RefreshAccessTokenError",
     };
   }
 }
@@ -128,7 +163,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Passwort", type: "password" },
       },
-      async authorize(credentials): Promise<any> {
+      async authorize(credentials): Promise<User | null> {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -143,10 +178,11 @@ export const authOptions: NextAuthOptions = {
               firstname: true,
               lastname: true,
               picture_url: true,
+              salutationId: true,
               phone: true,
               description: true,
               hasLogoinCalendar: true,
-            }
+            },
           });
 
           if (!user || !user.password) {
@@ -154,7 +190,10 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          const isPasswordValid = await compare(credentials.password, user.password);
+          const isPasswordValid = await compare(
+            credentials.password,
+            user.password
+          );
           if (!isPasswordValid) {
             return null;
           }
@@ -163,70 +202,49 @@ export const authOptions: NextAuthOptions = {
             prisma.user_organization_role.findMany({
               where: { user_id: user.id },
               select: {
-                organization: {
-                  select: {
-                    id: true,
-                    name: true,
-                    helper_name_singular: true,
-                    helper_name_plural: true,
-                  }
-                },
-                role: {
-                  select: {
-                    id: true,
-                    name: true,
-                    abbreviation: true,
-                  }
-                }
-              }
+                org_id: true,
+                role_id: true,
+              },
             }),
-            updateLastLogin(user.id)
+            updateLastLogin(user.id),
           ]);
 
-          const organizationsMap = new Map();
-          user_organization_role.forEach(uor => {
-            if (!organizationsMap.has(uor.organization.id)) {
-              organizationsMap.set(uor.organization.id, {
-                id: uor.organization.id,
-                name: uor.organization.name,
-                helper_name_singular: uor.organization.helper_name_singular ?? "Helfer",
-                helper_name_plural: uor.organization.helper_name_plural ?? "Helfer",
-              });
-            }
-          });
-
-          const roles = user_organization_role.map(uor => ({
-            orgId: uor.organization.id,
-            roleId: uor.role.id,
-            roleName: uor.role.name,
-            roleAbbreviation: uor.role.abbreviation,
-          }));
-
-          const organizations = Array.from(organizationsMap.values());
-          const orgIds = organizations.map(org => org.id);
-          const roleIds = [...new Set(roles.map(r => r.roleId))];
+          const orgIds = [
+            ...new Set(user_organization_role.map((uor) => uor.org_id)),
+          ];
+          const roleIds = [
+            ...new Set(user_organization_role.map((uor) => uor.role_id)),
+          ];
 
           const [accessToken, refreshToken] = await Promise.all([
-            generateAccessToken(user),
-            generateRefreshToken(user.id)
+            generateAccessToken({
+              id: user.id,
+              email: user.email,
+              firstname: user.firstname,
+              lastname: user.lastname,
+              picture_url: user.picture_url,
+            }),
+            generateRefreshToken(user.id),
           ]);
 
-          
           return {
             id: user.id,
             email: user.email,
-            firstname: user.firstname,
-            lastname: user.lastname,
+            firstname: user.firstname ?? "",
+            lastname: user.lastname ?? "",
             picture_url: user.picture_url,
             phone: user.phone,
+            salutationId: user.salutationId,
             description: user.description,
             hasLogoinCalendar: user.hasLogoinCalendar ?? false,
             orgIds,
             roleIds,
+            organizations: [],
+            roles: [],
             activeOrganizationId: orgIds[0] ?? null,
             accessToken,
             refreshToken,
-          };
+          } as User;
         } catch (error) {
           console.error("Authentication error:", error);
           return null;
@@ -236,9 +254,10 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async jwt({ token, user, account, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }): Promise<JWT> {
+      // Initial sign in
       if (user && account) {
-        return {  
+        return {
           ...token,
           id: user.id,
           email: user.email,
@@ -246,18 +265,18 @@ export const authOptions: NextAuthOptions = {
           lastname: user.lastname,
           picture_url: user.picture_url,
           phone: user.phone,
-          description: user.description,
           hasLogoinCalendar: user.hasLogoinCalendar,
-          orgIds: user.orgIds, 
-          roleIds: user.roleIds, 
+          orgIds: user.orgIds,
+          roleIds: user.roleIds,
           activeOrganizationId: user.activeOrganizationId,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
-          accessTokenExpires: Date.now() + (ACCESS_TOKEN_LIFETIME * 1000),
+          accessTokenExpires: Date.now() + ACCESS_TOKEN_LIFETIME * 1000,
           refreshTokenExpires: Date.now() + REFRESH_TOKEN_LIFETIME,
         };
       }
 
+      // Session update triggered
       if (trigger === "update" && session) {
         return {
           ...token,
@@ -266,64 +285,71 @@ export const authOptions: NextAuthOptions = {
           picture_url: session.user?.picture_url ?? token.picture_url,
           email: session.user?.email ?? token.email,
           phone: session.user?.phone ?? token.phone,
+          salutationId: session.user?.salutationId ?? token.salutationId,
           description: session.user?.description ?? token.description,
-          hasLogoinCalendar: session.user?.hasLogoinCalendar ?? token.hasLogoinCalendar,
-          activeOrganizationId: session.user?.activeOrganizationId ?? token.activeOrganizationId,
-          accessToken: token.accessToken,
-          refreshToken: token.refreshToken,
-          accessTokenExpires: token.accessTokenExpires,
-          refreshTokenExpires: token.refreshTokenExpires,
+          hasLogoinCalendar:
+            session.user?.hasLogoinCalendar ?? token.hasLogoinCalendar,
+          activeOrganizationId:
+            session.user?.activeOrganizationId ?? token.activeOrganizationId,
         };
       }
 
+      // Check for refresh error
       if (token.error === "RefreshAccessTokenError") {
         return token;
       }
 
+      // Check if token needs refresh
       const now = Date.now();
       const expiresAt = token.accessTokenExpires as number;
-      
+
       if (now < expiresAt) {
+        // If token expires in more than 3 minutes, no refresh needed
         if (expiresAt - now > 3 * 60 * 1000) {
           return token;
         }
       }
-      
+
+      // Refresh token
       return await refreshAccessToken(token);
     },
 
-    async session({ session, token }) {
+    async session({ session, token }): Promise<Session> {
       if (token.error === "RefreshAccessTokenError") {
         return {
           ...session,
           error: "RefreshAccessTokenError",
           expires: new Date(0).toISOString(),
-        };
+        } as Session;
       }
 
       session.token = {
-        accessToken: token.accessToken,
-        refreshToken: token.refreshToken,
-        accessTokenExpires: token.accessTokenExpires,
-        refreshTokenExpires: token.refreshTokenExpires,
+        accessToken: token.accessToken as string,
+        refreshToken: token.refreshToken as string,
+        accessTokenExpires: token.accessTokenExpires as number,
+        refreshTokenExpires: token.refreshTokenExpires as number,
       };
 
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
-        session.user.firstname = token.firstname as string;
-        session.user.lastname = token.lastname as string;
+        session.user.firstname = (token.firstname as string | null) ?? "";
+        session.user.lastname = (token.lastname as string | null) ?? "";
         session.user.picture_url = (token.picture_url as string | null) ?? null;
         session.user.phone = (token.phone as string | null) ?? null;
-        session.user.description = (token.description as string | null) ?? null;
-        session.user.hasLogoinCalendar = (token.hasLogoinCalendar as boolean) ?? false;
+        session.user.salutationId =
+          (token.salutationId as string | null) ?? null;
+        session.user.hasLogoinCalendar =
+          (token.hasLogoinCalendar as boolean) ?? false;
+
         session.user.orgIds = (token.orgIds as string[]) ?? [];
-        session.user.roleIds = (token.roleIds as string[]) ?? []; 
-        session.user.activeOrganizationId = (token.activeOrganizationId as string | null) ?? null;
+        session.user.roleIds = (token.roleIds as string[]) ?? [];
+        session.user.activeOrganizationId =
+          (token.activeOrganizationId as string | null) ?? null;
       }
-      
+
       return session;
-    }
+    },
   },
 
   session: {
@@ -331,16 +357,16 @@ export const authOptions: NextAuthOptions = {
     maxAge: REFRESH_TOKEN_LIFETIME / 1000,
     updateAge: 15 * 60,
   },
-  
+
   jwt: {
     maxAge: REFRESH_TOKEN_LIFETIME / 1000,
   },
-  
+
   pages: {
     signIn: "/signin",
     error: "/signin",
   },
-  
+
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
 };
