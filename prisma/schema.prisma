@@ -126,6 +126,7 @@ model organization {
   einsatz_category       einsatz_category[]
   einsatz_template       einsatz_template[]
   invitation             invitation[]
+  user                   user[]
   user_organization_role user_organization_role[]
   user_property          user_property[]
 }
@@ -157,6 +158,7 @@ model user {
   resetToken                                String?
   resetTokenExpires                         DateTime?                @db.Timestamp(6)
   salutationId                              String?                  @db.Uuid
+  active_org                                String?                  @map("active-org") @db.Uuid
   calendar_subscription                     calendar_subscription[]
   change_log_change_log_affected_userTouser change_log[]             @relation("change_log_affected_userTouser")
   change_log                                change_log[]
@@ -165,6 +167,7 @@ model user {
   einsatz_helper                            einsatz_helper[]
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
+  organization                              organization?            @relation(fields: [active_org], references: [id])
   salutation                                salutation?              @relation(fields: [salutationId], references: [id], onDelete: Cascade)
   user_organization_role                    user_organization_role[]
   user_property_value                       user_property_value[]
