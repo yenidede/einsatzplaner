@@ -76,7 +76,6 @@ export function EventCalendar({
   initialView = "month",
   mode,
 }: EventCalendarProps) {
-  const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<
@@ -249,7 +248,11 @@ export function EventCalendar({
     setSelectedEvent(null);
   };
 
-  const handleMultiEventDelete = (eventIds: string[]) => {};
+  const handleMultiEventDelete = (eventIds: string[]) => {
+    onMultiEventDelete?.(eventIds);
+    setIsEventDialogOpen(false);
+    setSelectedEvent(null);
+  };
 
   const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
     // Type guard to handle both types
