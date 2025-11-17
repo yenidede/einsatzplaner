@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
 import { hash, compare } from "bcrypt";
 import { revalidatePath } from "next/cache";
+import { OrganizationRole } from "@/types/next-auth";
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -18,9 +19,25 @@ export type UserUpdateData = {
   lastname?: string;
   phone?: string;
   currentPassword?: string;
+  salutationId?: string;
   newPassword?: string;
   hasLogoinCalendar?: boolean;
 };
+
+export async function getSalutationsAction() {
+  try {
+    const salutations = await prisma.salutation.findMany({
+      select: {
+        id: true,
+        salutation: true,
+      },
+      orderBy: { salutation: "asc" },
+    });
+    return salutations;
+  } catch (error) {
+    throw new Error("Fehler beim Laden der Anreden", { cause: error });
+  }
+}
 
 export async function getUserProfileAction() {
   const session = await checkUserSession();
@@ -36,6 +53,7 @@ export async function getUserProfileAction() {
       phone: true,
       hasLogoinCalendar: true,
       created_at: true,
+      salutationId: true,
       user_organization_role: {
         include: {
           organization: {
@@ -66,13 +84,13 @@ export async function getUserProfileAction() {
         id: orgId,
         name: uor.organization.name,
         roles: [],
-        hasGetMailNotification: uor.hasGetMailNotification ?? true, 
+        hasGetMailNotification: uor.hasGetMailNotification ?? true,
       });
     }
 
     // Add role if not yet added
     const org = organizationsMap.get(orgId);
-    if (!org.roles.find((r: any) => r.id === uor.role.id)) {
+    if (!org.roles.find((r: OrganizationRole) => r.roleId === uor.role.id)) {
       org.roles.push(uor.role);
     }
   });
@@ -83,17 +101,25 @@ export async function getUserProfileAction() {
     firstname: user.firstname ?? "",
     lastname: user.lastname ?? "",
     picture_url: user.picture_url,
+    salutationId: user.salutationId ?? "",
+    orgIds: Array.from(organizationsMap.keys()),
+    roleIds: user.user_organization_role.map((uor) => uor.role.id),
+    activeOrganizationId:
+      session.user.activeOrganizationId ??
+      (Array.from(organizationsMap.keys())[0] || null),
     phone: user.phone ?? "",
     hasLogoinCalendar: user.hasLogoinCalendar ?? true,
     created_at: user.created_at.toISOString(),
     organizations: Array.from(organizationsMap.values()),
-    hasGetMailNotification: Array.from(organizationsMap.values()).some((org) => org.hasGetMailNotification), 
+    hasGetMailNotification: Array.from(organizationsMap.values()).some(
+      (org) => org.hasGetMailNotification
+    ),
   };
 }
 
 export async function updateUserProfileAction(data: UserUpdateData) {
   const session = await checkUserSession();
-
+  console.log("Update Data:", data);
   // Validate password if changing
   if (data.newPassword && data.currentPassword) {
     const user = await prisma.user.findUnique({
@@ -112,17 +138,19 @@ export async function updateUserProfileAction(data: UserUpdateData) {
   }
 
   // Prepare update data
-  const updateData: any = {};
+  const updateData: UserUpdateData = {};
   if (data.email !== undefined) updateData.email = data.email;
   if (data.firstname !== undefined) updateData.firstname = data.firstname;
   if (data.lastname !== undefined) updateData.lastname = data.lastname;
   if (data.phone !== undefined) updateData.phone = data.phone;
+  if (data.salutationId !== undefined)
+    updateData.salutationId = data.salutationId;
   if (data.hasLogoinCalendar !== undefined)
     updateData.hasLogoinCalendar = data.hasLogoinCalendar;
 
   // Hash new password if provided
   if (data.newPassword) {
-    updateData.password = await hash(data.newPassword, 10);
+    updateData.newPassword = await hash(data.newPassword, 10);
   }
 
   const updatedUser = await prisma.user.update({
@@ -134,6 +162,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
       firstname: true,
       lastname: true,
       picture_url: true,
+      salutationId: true,
       phone: true,
       hasLogoinCalendar: true,
     },
@@ -148,6 +177,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     lastname: updatedUser.lastname ?? "",
     picture_url: updatedUser.picture_url,
     phone: updatedUser.phone ?? "",
+    salutationId: updatedUser.salutationId ?? "",
     hasLogoinCalendar: updatedUser.hasLogoinCalendar ?? true,
   };
 }
@@ -155,7 +185,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
 // ✅ Update Mail Notification für Organisation
 export async function updateOrgMailNotificationAction(
   organizationId: string,
-  hasGetMailNotification: boolean 
+  hasGetMailNotification: boolean
 ) {
   const session = await checkUserSession();
 

@@ -2,13 +2,14 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import React from 'react';
+import { z } from 'zod';
 import { Document, renderToBuffer } from '@react-pdf/renderer';
 import { validatePdfAccess } from '@/features/pdf/lib/utils/authorization';
 import { validatePdfBuffer } from '@/features/pdf/lib/utils/validation';
 import { BookingConfirmationPDF } from '@/features/pdf/components/BookingConfirmationPDF';
 import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
-import { Document } from '@react-pdf/renderer';
 import { Einsatz } from '@/features/einsatz/types';
+import { getUserByIdWithOrgAndRole } from '@/DataAccessLayer/user';
 
 
 const requestSchema = z.object({
@@ -54,10 +55,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Einsatz not found' }, { status: 404 });
         }
 
+          const assignedUsers = await Promise.all(
+    einsatz.assigned_users?.map((userId: string) => 
+      getUserByIdWithOrgAndRole(userId)
+    ) || []
+  );
         const documentElement = React.createElement(
             Document,
             null,
-            React.createElement(BookingConfirmationPDF, { einsatz, options })
+            React.createElement(BookingConfirmationPDF, { einsatz, assignedUsers, options })
         );
         const pdfBuffer = await renderToBuffer(documentElement);
         console.log('PDF Buffer generated:', pdfBuffer);
