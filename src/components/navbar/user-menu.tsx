@@ -54,7 +54,7 @@ export default function UserMenu() {
     );
   }
 
-  const user = session.user;
+  const user = session?.user;
 
   if (!user) {
     return null;
