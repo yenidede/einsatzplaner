@@ -28,8 +28,9 @@ import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSessionSync } from "@/hooks/useSessionSync";
+import { JSX } from "react";
 
-export default function UserMenu() {
+export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -55,19 +56,15 @@ export default function UserMenu() {
   }
 
   if (session == null || !session.user) {
-    return router.push("/signin");
+    router.push("/signin");
   }
-  const user = session.user;
 
-  if (!user) {
-    return null;
-  }
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/signin" });
   };
 
-  const initials = `${user.firstname.charAt(0) ?? ""}${
-    user.lastname?.charAt(0) ?? ""
+  const initials = `${session?.user?.firstname?.charAt(0) ?? ""}${
+    session?.user?.lastname?.charAt(0) ?? ""
   }`.toUpperCase();
   const handleSettings = () => {
     router.push("/settings");
@@ -78,10 +75,10 @@ export default function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
           <Avatar>
-            {user?.picture_url && (
+            {session?.user?.picture_url && (
               <AvatarImage
-                src={user.picture_url}
-                alt={`Profile image for ${user.firstname} ${user.lastname}`}
+                src={session.user.picture_url}
+                alt={`Profile image for ${session.user.firstname} ${session.user.lastname}`}
               />
             )}
             <AvatarFallback>{initials}</AvatarFallback>
@@ -91,12 +88,12 @@ export default function UserMenu() {
       <DropdownMenuContent className="max-w-64" align="end">
         <DropdownMenuLabel className="flex min-w-0 flex-col">
           <span className="text-foreground truncate text-sm font-medium">
-            {user.firstname && user.lastname
-              ? `${user.firstname} ${user.lastname}`
-              : user?.email}
+            {session?.user.firstname && session.user.lastname
+              ? `${session.user.firstname} ${session.user.lastname}`
+              : session?.user?.email}
           </span>
           <span className="text-muted-foreground truncate text-xs font-normal">
-            {user?.email}
+            {session?.user?.email}
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

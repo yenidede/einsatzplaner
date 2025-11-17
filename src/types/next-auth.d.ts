@@ -27,7 +27,11 @@ type UserBase = {
 
     orgIds: string[];
     roleIds: string[];
-    activeOrganizationId: string | null;
+    activeOrganization: {
+        id: string;
+        name: string;
+        logo_url: string | null;
+    }
 };
 
 type TokenInfo = {

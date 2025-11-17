@@ -51,7 +51,6 @@ import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/features/organization/queryKeys";
-import { useRouter } from "next/navigation";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -104,13 +103,8 @@ export function EventCalendar({
     list: "Liste",
   } as const;
 
-  const router = useRouter();
   const { data: sessionData } = useSession();
   const orgIds = sessionData?.user.orgIds;
-  if (!orgIds || orgIds.length === 0) {
-    // Todo: Handle no organizations edge-case
-    router.push("/no-organization");
-  }
   const { data: organizations } = useQuery({
     queryKey: queryKeys.organizations(orgIds ?? []),
     queryFn: () => getOrganizationsByIds(orgIds ?? []),

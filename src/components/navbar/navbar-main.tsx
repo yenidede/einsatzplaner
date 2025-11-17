@@ -21,6 +21,7 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { cn } from "@/lib/utils";
 
 // Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
@@ -31,14 +32,22 @@ const navigationLinks = [
 
 export default function Component() {
   const { data: session } = useSession();
-  
-    const { data: organizations } = useQuery({
+
+  const { data: organizations } = useQuery({
     queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
     queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
   });
 
+  const isHidden = !session?.user;
+
+  console.log("isHidden:", isHidden, session?.user.lastname);
   return (
-    <header className="border-b px-4 md:px-6 position-fixed top-0">
+    <header
+      className={cn(
+        "border-b px-4 md:px-6 position-fixed top-0",
+        isHidden ? "hidden" : ""
+      )}
+    >
       <div className="flex h-16 items-center justify-between gap-4">
         {/* Left side */}
         <div className="flex items-center gap-2">
@@ -119,7 +128,7 @@ export default function Component() {
             {/* Switch organization */}
             <NavSwitchOrgSelect
               organizations={organizations || []}
-              activeOrgId={session?.user?.activeOrganizationId ?? undefined}
+              activeOrgId={session?.user?.activeOrganization?.id ?? undefined}
             />
             {/* Notification */}
             <NotificationMenu />

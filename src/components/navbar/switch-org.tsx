@@ -6,7 +6,6 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -18,18 +17,17 @@ type Props = {
 
 export function NavSwitchOrgSelect({ organizations, activeOrgId }: Props) {
   return (
-    <Select>
+    <Select defaultValue={activeOrgId}>
       <SelectTrigger className="w-[180px]">
         <SelectValue
           placeholder={
             organizations.find((org) => org.id === activeOrgId)?.name ||
-            "Aktive Organisation wählen"
+            "Organisation wählen"
           }
         />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectLabel>Aktive Organisation</SelectLabel>
           {organizations.map((org) => (
             <SelectItem key={org.id} value={org.id}>
               {org.name}
