@@ -1,4 +1,5 @@
 import * as React from "react";
+import type { OrganizationBasicVisualize } from "@/features/organization/types";
 
 import {
   Select,
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/select";
 
 type Props = {
-  organizations: Organization[];
+  organizations: OrganizationBasicVisualize[];
   activeOrgId?: string;
 };
 
