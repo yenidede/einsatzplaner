@@ -1,4 +1,3 @@
-import InfoMenu from "@/components/navbar/info-menu";
 import Logo from "@/components/logo";
 import NotificationMenu from "@/components/navbar/notification-menu";
 import UserMenu from "@/components/navbar/user-menu";
@@ -15,6 +14,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import Link from "next/link";
+import NavSwitchOrgSelect from "./switch-org";
+import { useSession } from "next-auth/react";
+import { getServerSession } from "next-auth";
 
 // Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
@@ -24,6 +26,8 @@ const navigationLinks = [
 ];
 
 export default function Component() {
+  const { data: session } = getServerSession();
+
   return (
     <header className="border-b px-4 md:px-6 position-fixed top-0">
       <div className="flex h-16 items-center justify-between gap-4">
@@ -103,8 +107,11 @@ export default function Component() {
         {/* Right side */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            {/* Info menu */}
-            <InfoMenu />
+            {/* Switch organization */}
+            <NavSwitchOrgSelect
+              organizations={session?.user?.organizations || []}
+              activeOrgId={session?.user?.activeOrgId}
+            />
             {/* Notification */}
             <NotificationMenu />
           </div>
