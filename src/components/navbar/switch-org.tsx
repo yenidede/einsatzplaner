@@ -1,3 +1,4 @@
+"use client";
 import * as React from "react";
 import type { OrganizationBasicVisualize } from "@/features/organization/types";
 import { useSession } from "next-auth/react";
