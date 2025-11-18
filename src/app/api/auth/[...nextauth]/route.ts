@@ -295,8 +295,8 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user.id,
             email: user.email,
-            firstname: user.firstname ?? null,
-            lastname: user.lastname ?? null,
+            firstname: user.firstname ?? "",
+            lastname: user.lastname ?? "",
             picture_url: user.picture_url,
             phone: user.phone,
             salutationId: user.salutationId,
@@ -391,7 +391,7 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
-        session.user.firstname = token.firstname as string;
+        session.user.firstname = (token.firstname as string) ?? null;
         session.user.lastname = (token.lastname as string) ?? null;
         session.user.picture_url = (token.picture_url as string | null) ?? null;
         session.user.phone = (token.phone as string | null) ?? null;
