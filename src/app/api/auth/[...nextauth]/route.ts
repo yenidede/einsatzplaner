@@ -131,7 +131,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       hasLogoinCalendar: session.user.hasLogoinCalendar ?? false,
       orgIds,
       roleIds,
-      activeOrganizationId: token.activeOrganizationId ?? orgIds[0] ?? null,
+      activeOrganizationId: token.activeOrganization.id ?? orgIds[0] ?? null,
       accessToken: newAccessToken,
       accessTokenExpires: Date.now() + ACCESS_TOKEN_LIFETIME * 1000,
       refreshToken: token.refreshToken,
@@ -183,6 +183,7 @@ export const authOptions: NextAuthOptions = {
               phone: true,
               /* description: true, */
               hasLogoinCalendar: true,
+              active_org: true,
             },
           });
 
@@ -204,6 +205,13 @@ export const authOptions: NextAuthOptions = {
               where: { user_id: user.id },
               select: {
                 org_id: true,
+                organization: {
+                  select: {
+                    id: true,
+                    name: true,
+                    logo_url: true,
+                  }
+                },
                 role_id: true,
               },
             }),
@@ -242,7 +250,9 @@ export const authOptions: NextAuthOptions = {
             roleIds,
             organizations: [],
             roles: [],
-            activeOrganizationId: orgIds[0] ?? null,
+            activeOrganization:
+              user_organization_role.find(uor => uor.org_id === user.active_org)?.organization
+              || user_organization_role[0]?.organization,
             accessToken,
             refreshToken,
           } as User;
@@ -269,7 +279,6 @@ export const authOptions: NextAuthOptions = {
           hasLogoinCalendar: user.hasLogoinCalendar,
           orgIds: user.orgIds,
           roleIds: user.roleIds,
-          activeOrganizationId: user.activeOrganizationId,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           accessTokenExpires: Date.now() + ACCESS_TOKEN_LIFETIME * 1000,
