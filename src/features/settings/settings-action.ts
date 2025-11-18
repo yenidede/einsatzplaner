@@ -9,11 +9,15 @@ import { revalidatePath } from "next/cache";
 import { OrganizationRole } from "@/types/next-auth";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-);
-
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!supabaseUrl) {
+  throw new Error("Environment variable NEXT_PUBLIC_SUPABASE_URL is not set.");
+}
+if (!supabaseServiceRoleKey) {
+  throw new Error("Environment variable SUPABASE_SERVICE_ROLE_KEY is not set.");
+}
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Unauthorized");
@@ -171,7 +175,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     }
   }
 
-  const updateData: any = {};
+  const updateData: UserUpdateData = {};
   if (data.email !== undefined) updateData.email = data.email;
   if (data.firstname !== undefined) updateData.firstname = data.firstname;
   if (data.lastname !== undefined) updateData.lastname = data.lastname;
@@ -182,7 +186,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     updateData.hasLogoinCalendar = data.hasLogoinCalendar;
 
   if (data.newPassword) {
-    updateData.password = await hash(data.newPassword, 10);
+    updateData.newPassword = await hash(data.newPassword, 10);
   }
 
   const updatedUser = await prisma.user.update({
