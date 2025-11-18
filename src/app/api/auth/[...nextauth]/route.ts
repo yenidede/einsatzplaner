@@ -127,6 +127,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       phone: session.user.phone,
       salutationId: session.user.salutationId,
       /* description: session.user.description, */
+
       hasLogoinCalendar: session.user.hasLogoinCalendar ?? false,
       orgIds,
       roleIds,
