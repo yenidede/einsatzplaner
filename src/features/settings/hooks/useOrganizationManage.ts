@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getOrganizationAction,
+  getUserOrganizationByIdAction,
   updateOrganizationAction,
   uploadOrganizationLogoAction,
   type OrganizationUpdateData,
@@ -15,7 +15,7 @@ export function useOrganizationManage(orgId: string) {
   // Organization data
   const organizationQuery = useQuery({
     queryKey: settingsQueryKeys.organization(orgId),
-    queryFn: () => getOrganizationAction(orgId),
+    queryFn: () => getUserOrganizationByIdAction(orgId),
     enabled: !!orgId,
     staleTime: 60000,
   });
@@ -23,7 +23,7 @@ export function useOrganizationManage(orgId: string) {
   // Organization members (from organization data)
   const membersQuery = useQuery({
     queryKey: ["organization-members", orgId],
-    queryFn: () => getOrganizationAction(orgId),
+    queryFn: () => getUserOrganizationByIdAction(orgId),
     enabled: !!orgId,
     select: (data) => data.members || [],
     staleTime: 60000,
@@ -31,10 +31,15 @@ export function useOrganizationManage(orgId: string) {
 
   // Update organization
   const updateMutation = useMutation({
-    mutationFn: (data: OrganizationUpdateData) => updateOrganizationAction(data),
+    mutationFn: (data: OrganizationUpdateData) =>
+      updateOrganizationAction(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: settingsQueryKeys.organization(orgId) });
-      queryClient.invalidateQueries({ queryKey: ["organization-members", orgId] });
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.organization(orgId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["organization-members", orgId],
+      });
     },
   });
 
@@ -42,10 +47,13 @@ export function useOrganizationManage(orgId: string) {
   const uploadLogoMutation = useMutation({
     mutationFn: (formData: FormData) => uploadOrganizationLogoAction(formData),
     onSuccess: (data) => {
-      queryClient.setQueryData(settingsQueryKeys.organization(orgId), (prev: any) => ({
-        ...prev,
-        logo_url: data.url,
-      }));
+      queryClient.setQueryData(
+        settingsQueryKeys.organization(orgId),
+        (prev: any) => ({
+          ...prev,
+          logo_url: data.url,
+        })
+      );
     },
   });
 
