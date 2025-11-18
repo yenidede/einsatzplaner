@@ -2,6 +2,7 @@
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import prisma from "@/lib/prisma";
 import { hash, compare } from "bcrypt";
 import { revalidatePath } from "next/cache";
@@ -76,12 +77,14 @@ export async function getUserProfileAction() {
       hasLogoinCalendar: true,
       created_at: true,
       salutationId: true,
+      active_org: true, // ✅ Load active_org
       user_organization_role: {
         include: {
           organization: {
             select: {
               id: true,
               name: true,
+              logo_url: true, // ✅ Load logo
             },
           },
           role: {
@@ -105,17 +108,22 @@ export async function getUserProfileAction() {
       organizationsMap.set(orgId, {
         id: orgId,
         name: uor.organization.name,
+        logo_url: uor.organization.logo_url, // ✅ Include logo
         roles: [],
         hasGetMailNotification: uor.hasGetMailNotification ?? true,
       });
     }
 
-    // Add role if not yet added
     const org = organizationsMap.get(orgId);
     if (!org.roles.find((r: OrganizationRole) => r.roleId === uor.role.id)) {
       org.roles.push(uor.role);
     }
   });
+
+  // ✅ Find activeOrganization OBJECT
+  const activeOrgId =
+    user.active_org || Array.from(organizationsMap.keys())[0] || null;
+  const activeOrgData = activeOrgId ? organizationsMap.get(activeOrgId) : null;
 
   return {
     id: user.id,
@@ -126,9 +134,14 @@ export async function getUserProfileAction() {
     salutationId: user.salutationId ?? "",
     orgIds: Array.from(organizationsMap.keys()),
     roleIds: user.user_organization_role.map((uor) => uor.role.id),
-    activeOrganizationId:
-      session.user.activeOrganizationId ??
-      (Array.from(organizationsMap.keys())[0] || null),
+    // ✅ activeOrganization als OBJECT
+    activeOrganization: activeOrgData
+      ? {
+          id: activeOrgData.id,
+          name: activeOrgData.name,
+          logo_url: activeOrgData.logo_url,
+        }
+      : null,
     phone: user.phone ?? "",
     hasLogoinCalendar: user.hasLogoinCalendar ?? true,
     created_at: user.created_at.toISOString(),
@@ -141,8 +154,7 @@ export async function getUserProfileAction() {
 
 export async function updateUserProfileAction(data: UserUpdateData) {
   const session = await checkUserSession();
-  console.log("Update Data:", data);
-  // Validate password if changing
+
   if (data.newPassword && data.currentPassword) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -159,8 +171,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     }
   }
 
-  // Prepare update data
-  const updateData: UserUpdateData = {};
+  const updateData: any = {};
   if (data.email !== undefined) updateData.email = data.email;
   if (data.firstname !== undefined) updateData.firstname = data.firstname;
   if (data.lastname !== undefined) updateData.lastname = data.lastname;
@@ -170,9 +181,8 @@ export async function updateUserProfileAction(data: UserUpdateData) {
   if (data.hasLogoinCalendar !== undefined)
     updateData.hasLogoinCalendar = data.hasLogoinCalendar;
 
-  // Hash new password if provided
   if (data.newPassword) {
-    updateData.newPassword = await hash(data.newPassword, 10);
+    updateData.password = await hash(data.newPassword, 10);
   }
 
   const updatedUser = await prisma.user.update({
@@ -204,14 +214,12 @@ export async function updateUserProfileAction(data: UserUpdateData) {
   };
 }
 
-// ✅ Update Mail Notification für Organisation
 export async function updateOrgMailNotificationAction(
   organizationId: string,
   hasGetMailNotification: boolean
 ) {
   const session = await checkUserSession();
 
-  // Update alle user_organization_role Einträge für diesen User + Org
   await prisma.user_organization_role.updateMany({
     where: {
       user_id: session.user.id,
@@ -246,7 +254,6 @@ export async function uploadProfilePictureAction(formData: FormData) {
   const extension = file.name.split(".").pop() || "jpg";
   const filePath = `users/${session.user.id}/${session.user.id}.${extension}`;
 
-  // ✅ Mit Service Role Key funktioniert das Upload
   const { error } = await supabase.storage
     .from("logos")
     .upload(filePath, buffer, {
@@ -266,7 +273,6 @@ export async function uploadProfilePictureAction(formData: FormData) {
 
   const publicUrl = urlData.publicUrl;
 
-  // Update user in database
   await prisma.user.update({
     where: { id: session.user.id },
     data: { picture_url: publicUrl },
@@ -275,4 +281,59 @@ export async function uploadProfilePictureAction(formData: FormData) {
   revalidatePath("/settings");
 
   return { picture_url: publicUrl };
+}
+
+export async function updateActiveOrganizationAction(
+  organizationId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  organization?: {
+    id: string;
+    name: string;
+    logo_url: string | null;
+  };
+}> {
+  try {
+    const session = await checkUserSession();
+
+    const hasAccess = await prisma.user_organization_role.findFirst({
+      where: {
+        user_id: session.user.id,
+        org_id: organizationId,
+      },
+      select: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            logo_url: true,
+          },
+        },
+      },
+    });
+
+    if (!hasAccess) {
+      return { success: false, error: "Kein Zugriff auf diese Organisation" };
+    }
+
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { active_org: organizationId },
+    });
+
+    revalidatePath("/");
+
+    return {
+      success: true,
+      organization: {
+        id: hasAccess.organization.id,
+        name: hasAccess.organization.name,
+        logo_url: hasAccess.organization.logo_url,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to update active organization:", error);
+    return { success: false, error: "Fehler beim Aktualisieren" };
+  }
 }
