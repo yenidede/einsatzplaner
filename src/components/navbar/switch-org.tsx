@@ -17,7 +17,7 @@ type Props = {
 
 export function NavSwitchOrgSelect({ organizations, activeOrgId }: Props) {
   return (
-    <Select defaultValue={activeOrgId}>
+    <Select value={activeOrgId}>
       <SelectTrigger className="w-[180px]">
         <SelectValue
           placeholder={
