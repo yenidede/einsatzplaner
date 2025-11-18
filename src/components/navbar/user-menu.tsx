@@ -28,6 +28,7 @@ import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSessionSync } from "@/hooks/useSessionSync";
+import { JSX } from "react";
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
@@ -115,19 +116,6 @@ export default function UserMenu(): JSX.Element | null {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Switch Organisation</DropdownMenuSubTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent>
-              <DropdownMenuItem>Email</DropdownMenuItem>
-              <DropdownMenuItem>Message</DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub>
-        <DropdownMenuItem onClick={handleLogout}>
-          <BuildingIcon size={16} className="opacity-60" aria-hidden="true" />
-          <span>Aktive Orga</span>
-        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleLogout}>
           <LogOutIcon size={16} className="opacity-60" aria-hidden="true" />
           <span>Ausloggen</span>
