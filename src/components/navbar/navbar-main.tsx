@@ -1,4 +1,5 @@
-import InfoMenu from "@/components/navbar/info-menu";
+"use client";
+
 import Logo from "@/components/logo";
 import NotificationMenu from "@/components/navbar/notification-menu";
 import UserMenu from "@/components/navbar/user-menu";
@@ -15,6 +16,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import Link from "next/link";
+import NavSwitchOrgSelect from "./switch-org";
+import { useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { cn } from "@/lib/utils";
 
 // Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
@@ -24,8 +31,23 @@ const navigationLinks = [
 ];
 
 export default function Component() {
+  const { data: session } = useSession();
+
+  const { data: organizations } = useQuery({
+    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
+    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
+    enabled: !!session?.user?.orgIds?.length,
+  });
+
+  const isHidden = !session?.user;
+
   return (
-    <header className="border-b px-4 md:px-6 position-fixed top-0">
+    <header
+      className={cn(
+        "border-b px-4 md:px-6 position-fixed top-0",
+        isHidden ? "hidden" : ""
+      )}
+    >
       <div className="flex h-16 items-center justify-between gap-4">
         {/* Left side */}
         <div className="flex items-center gap-2">
@@ -103,8 +125,11 @@ export default function Component() {
         {/* Right side */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            {/* Info menu */}
-            <InfoMenu />
+            {/* Switch organization */}
+            <NavSwitchOrgSelect
+              organizations={organizations || []}
+              activeOrgId={session?.user?.activeOrganization?.id ?? undefined}
+            />
             {/* Notification */}
             <NotificationMenu />
           </div>
