@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
-import { getOrganizationAction } from "@/features/settings/organization-action";
+import { getUserOrganizationByIdAction } from "@/features/settings/organization-action";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -14,7 +14,7 @@ type Props = {
 
 export default async function OrganizationPage({ params }: Props) {
   try {
-    const organization = await getOrganizationAction(params.orgId);
+    const organization = await getUserOrganizationByIdAction(params.orgId);
 
     // Direkt in der Server Component rendern
     return (

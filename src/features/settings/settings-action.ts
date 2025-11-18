@@ -45,6 +45,22 @@ export async function getSalutationsAction() {
   }
 }
 
+export async function getOneSalutationAction(salutationId: string) {
+  try {
+    const salutation = await prisma.salutation.findUnique({
+      where: { id: salutationId },
+      select: {
+        id: true,
+        salutation: true,
+      },
+    });
+    if (!salutation) throw new Error("Anrede nicht gefunden");
+    return salutation;
+  } catch (error) {
+    throw new Error("Fehler beim Laden der Anrede", { cause: error });
+  }
+}
+
 export async function getUserProfileAction() {
   const session = await checkUserSession();
 
