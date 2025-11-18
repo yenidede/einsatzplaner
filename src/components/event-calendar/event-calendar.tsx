@@ -108,6 +108,7 @@ export function EventCalendar({
   const { data: organizations } = useQuery({
     queryKey: queryKeys.organizations(orgIds ?? []),
     queryFn: () => getOrganizationsByIds(orgIds ?? []),
+    enabled: !!orgIds?.length,
   });
 
   // Add keyboard shortcuts for view switching
