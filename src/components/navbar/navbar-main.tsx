@@ -126,10 +126,7 @@ export default function Component() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             {/* Switch organization */}
-            <NavSwitchOrgSelect
-              organizations={organizations || []}
-              activeOrgId={session?.user?.activeOrganization?.id ?? undefined}
-            />
+            <NavSwitchOrgSelect organizations={organizations || []} />
             {/* Notification */}
             <NotificationMenu />
           </div>
