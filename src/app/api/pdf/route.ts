@@ -92,24 +92,25 @@ export async function POST(request: NextRequest) {
     );
     //console.log("🔍 Assigned Users Raw:", assignedUsersRaw);
 
-    const assignedUsers: AssignedUser[] = await Promise.all(
-      assignedUsersRaw
-        .filter((user): user is NonNullable<typeof user> => user !== null)
-        .map(async (user) => ({
-          id: user.id,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          salutation: user.salutationId
-            ? await getOneSalutationAction(user.salutationId)
-            : null,
-        }))
-    );
+    const assignedUsers: AssignedUser[] = assignedUsersRaw
+      .filter((user): user is NonNullable<typeof user> => user !== null)
+      .map((user) => ({
+        id: user.id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        salutation: user.salutation
+          ? {
+              id: user.salutation.id,
+              salutation: user.salutation.salutation,
+            }
+          : null,
+      }));
     //console.log("✅ Assigned Users Loaded:", assignedUsers);
 
     const organizationData = await getOrganizationById(einsatz.org_id);
 
     if (!organizationData) {
-      console.error("❌ Organization not found for org_id:", einsatz.org_id);
+      console.error("Organization not found for org_id:", einsatz.org_id);
       return NextResponse.json(
         { error: "Organization not found" },
         { status: 404 }
@@ -126,12 +127,12 @@ export async function POST(request: NextRequest) {
       phone: organizationData.phone ?? null,
     };
 
-    console.log("📊 PDF Generation Data:", {
+    /*     console.log("📊 PDF Generation Data:", {
       einsatzId: einsatz.id,
       orgName: organization.name,
       assignedUsersCount: assignedUsers.length,
       categoriesCount: einsatzCategories.length,
-    });
+    }); */
 
     const documentElement = React.createElement(
       Document,
