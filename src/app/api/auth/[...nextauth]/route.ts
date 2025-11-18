@@ -14,7 +14,6 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.NEXTAUTH_SECRET || "fallback-secret-as-backup"
 );
 
-// ✅ Extended generateAccessToken
 async function generateAccessToken(userData: {
   id: string;
   email: string;
