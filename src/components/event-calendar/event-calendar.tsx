@@ -46,11 +46,10 @@ import {
   ListView,
 } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
-import { organization as Organization } from "@/generated/prisma";
 import { EinsatzCreate } from "@/features/einsatz/types";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/features/organization/queryKeys";
 
 export interface EventCalendarProps {
@@ -63,6 +62,7 @@ export interface EventCalendarProps {
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;
+  activeOrgId?: string | null;
 }
 // TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
@@ -75,13 +75,13 @@ export function EventCalendar({
   className,
   initialView = "month",
   mode,
+  activeOrgId,
 }: EventCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<
     EinsatzCreate | string | null
   >(null);
-  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
 
   const [view, setView] = useQueryState<CalendarView>(
     "view",
@@ -103,12 +103,12 @@ export function EventCalendar({
     list: "Liste",
   } as const;
 
-  // TODO use logged in user data
   const { data: sessionData } = useSession();
-  const orgs = sessionData?.orgIds || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"];
-  const orgsQuery = useQuery({
-    queryKey: queryKeys.organizations(orgs), // also map all orgs by id
-    queryFn: () => getOrganizationsByIds(orgs),
+  const orgIds = sessionData?.user.orgIds;
+  const { data: organizations } = useQuery({
+    queryKey: queryKeys.organizations(orgIds ?? []),
+    queryFn: () => getOrganizationsByIds(orgIds ?? []),
+    enabled: !!orgIds?.length,
   });
 
   // Add keyboard shortcuts for view switching
@@ -149,7 +149,7 @@ export function EventCalendar({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isEventDialogOpen]);
+  }, [isEventDialogOpen, setView]);
 
   const handlePrevious = () => {
     if (view === "month") {
@@ -204,8 +204,7 @@ export function EventCalendar({
       startTime.setMilliseconds(0);
     }
 
-    const currentOrg = selectedOrg || orgsQuery.data?.[0];
-    if (!currentOrg) {
+    if (!activeOrgId) {
       console.error("No organization selected or available");
       return;
     }
@@ -214,7 +213,7 @@ export function EventCalendar({
       title: "",
       start: startTime,
       end: addHours(startTime, 1),
-      org_id: currentOrg?.id,
+      org_id: activeOrgId,
       created_by: "5ae139a7-476c-4d76-95cb-4dcb4e909da9", // TODO: Set this to the current user ID
       helpers_needed: 0,
       categories: [],
@@ -466,7 +465,9 @@ export function EventCalendar({
         </div>
 
         <EventDialog
-          activeOrg={selectedOrg}
+          activeOrg={
+            organizations?.find((org) => org.id === activeOrgId) || null
+          }
           einsatz={selectedEvent as EinsatzCreate}
           isOpen={isEventDialogOpen}
           onClose={() => {
