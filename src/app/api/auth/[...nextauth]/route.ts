@@ -353,8 +353,12 @@ export const authOptions: NextAuthOptions = {
 
         session.user.orgIds = (token.orgIds as string[]) ?? [];
         session.user.roleIds = (token.roleIds as string[]) ?? [];
-        session.user.activeOrganizationId =
-          (token.activeOrganizationId as string | null) ?? null;
+        session.user.activeOrganization =
+          (token.activeOrganization as {
+            id: string;
+            name: string;
+            logo_url: string | null;
+          }) ?? null;
       }
 
       return session;
