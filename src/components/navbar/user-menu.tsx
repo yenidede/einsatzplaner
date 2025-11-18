@@ -28,7 +28,6 @@ import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSessionSync } from "@/hooks/useSessionSync";
-import { JSX } from "react";
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
