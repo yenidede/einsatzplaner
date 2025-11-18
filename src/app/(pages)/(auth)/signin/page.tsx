@@ -32,8 +32,11 @@ export default function SignInPage() {
       } else {
         router.push(callbackUrl);
       }
-    } catch (err: Error | unknown) {
-      setError("Ein Fehler ist aufgetreten: " + (err as Error)?.message);
+    } catch (err) {
+      setError(
+        "Ein Fehler ist aufgetreten" +
+          (err instanceof Error && err.message ? ": " + err.message : "")
+      );
     } finally {
       setLoading(false);
     }
