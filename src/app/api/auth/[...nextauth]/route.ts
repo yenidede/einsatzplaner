@@ -7,8 +7,8 @@ import prisma from "@/lib/prisma";
 import { SignJWT } from "jose";
 import { JWT } from "next-auth/jwt";
 
-const ACCESS_TOKEN_LIFETIME = 15 * 60; // 15 minutes in seconds
-const REFRESH_TOKEN_LIFETIME = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+const ACCESS_TOKEN_LIFETIME = 15 * 60; // 15 minutes
+const REFRESH_TOKEN_LIFETIME = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.NEXTAUTH_SECRET || "fallback-secret-as-backup"
@@ -20,6 +20,7 @@ async function generateAccessToken(userData: {
   firstname: string | null;
   lastname: string | null;
   picture_url: string | null;
+  activeOrgId?: string | null;
 }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
 
@@ -29,7 +30,10 @@ async function generateAccessToken(userData: {
     firstname: userData.firstname,
     lastname: userData.lastname,
     picture_url: userData.picture_url,
+    activeOrgId: userData.activeOrgId || null,
     type: "access",
+    aud: "einsatzplaner-api",
+    iss: "einsatzplaner-auth",
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuedAt(now)
@@ -83,6 +87,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
             salutationId: true,
             description: true,
             hasLogoinCalendar: true,
+            active_org: true,
           },
         },
       },
@@ -98,6 +103,13 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         select: {
           org_id: true,
           role_id: true,
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              logo_url: true,
+            },
+          },
         },
       }
     );
@@ -109,12 +121,36 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       ...new Set(user_organization_role.map((uor) => uor.role_id)),
     ];
 
+    let activeOrganization: {
+      id: string;
+      name: string;
+      logo_url: string | null;
+    } | null =
+      user_organization_role.length > 0
+        ? user_organization_role[0].organization
+        : null;
+
+    if (session.user.active_org) {
+      const activeOrgData = user_organization_role.find(
+        (uor) => uor.org_id === session.user?.active_org
+      );
+
+      if (activeOrgData?.organization) {
+        activeOrganization = activeOrgData.organization;
+      }
+    }
+
+    if (!activeOrganization && user_organization_role.length > 0) {
+      activeOrganization = user_organization_role[0].organization;
+    }
+
     const newAccessToken = await generateAccessToken({
       id: session.user.id,
       email: session.user.email,
       firstname: session.user.firstname,
       lastname: session.user.lastname,
       picture_url: session.user.picture_url,
+      activeOrgId: activeOrganization?.id,
     });
 
     return {
@@ -130,7 +166,11 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       hasLogoinCalendar: session.user.hasLogoinCalendar ?? false,
       orgIds,
       roleIds,
-      activeOrganizationId: token.activeOrganization.id ?? orgIds[0] ?? null,
+      activeOrganization: activeOrganization ?? {
+        id: "",
+        name: "",
+        logo_url: null,
+      },
       accessToken: newAccessToken,
       accessTokenExpires: Date.now() + ACCESS_TOKEN_LIFETIME * 1000,
       refreshToken: token.refreshToken,
@@ -187,7 +227,6 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (!user || !user.password) {
-            console.error("User not found or password missing");
             return null;
           }
 
@@ -209,7 +248,7 @@ export const authOptions: NextAuthOptions = {
                     id: true,
                     name: true,
                     logo_url: true,
-                  }
+                  },
                 },
                 role_id: true,
               },
@@ -224,6 +263,23 @@ export const authOptions: NextAuthOptions = {
             ...new Set(user_organization_role.map((uor) => uor.role_id)),
           ];
 
+          let activeOrganization: {
+            id: string;
+            name: string;
+            logo_url: string | null;
+          } | null = null;
+
+          if (user.active_org) {
+            const activeOrgData = user_organization_role.find(
+              (uor) => uor.org_id === user.active_org
+            );
+            if (activeOrgData?.organization) {
+              activeOrganization = activeOrgData.organization;
+            }
+          }
+          if (!activeOrganization && user_organization_role.length > 0) {
+            activeOrganization = user_organization_role[0].organization;
+          }
           const [accessToken, refreshToken] = await Promise.all([
             generateAccessToken({
               id: user.id,
@@ -231,6 +287,7 @@ export const authOptions: NextAuthOptions = {
               firstname: user.firstname,
               lastname: user.lastname,
               picture_url: user.picture_url,
+              activeOrgId: activeOrganization?.id || null,
             }),
             generateRefreshToken(user.id),
           ]);
@@ -249,9 +306,7 @@ export const authOptions: NextAuthOptions = {
             roleIds,
             organizations: [],
             roles: [],
-            activeOrganization:
-              user_organization_role.find(uor => uor.org_id === user.active_org)?.organization
-              || user_organization_role[0]?.organization,
+            activeOrganization,
             accessToken,
             refreshToken,
           } as User;
@@ -265,7 +320,6 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user, account, trigger, session }): Promise<JWT> {
-      // Initial sign in
       if (user && account) {
         return {
           ...token,
@@ -275,9 +329,11 @@ export const authOptions: NextAuthOptions = {
           lastname: user.lastname,
           picture_url: user.picture_url,
           phone: user.phone,
+          salutationId: user.salutationId,
           hasLogoinCalendar: user.hasLogoinCalendar,
           orgIds: user.orgIds,
           roleIds: user.roleIds,
+          activeOrganization: user.activeOrganization ?? null,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           accessTokenExpires: Date.now() + ACCESS_TOKEN_LIFETIME * 1000,
@@ -285,41 +341,34 @@ export const authOptions: NextAuthOptions = {
         };
       }
 
-      // Session update triggered
-      if (trigger === "update" && session) {
+      if (trigger === "update" && session?.user) {
         return {
           ...token,
-          firstname: session.user?.firstname ?? token.firstname,
-          lastname: session.user?.lastname ?? token.lastname,
-          picture_url: session.user?.picture_url ?? token.picture_url,
-          email: session.user?.email ?? token.email,
-          phone: session.user?.phone ?? token.phone,
-          salutationId: session.user?.salutationId ?? token.salutationId,
-          description: session.user?.description ?? token.description,
+          firstname: session.user.firstname ?? token.firstname,
+          lastname: session.user.lastname ?? token.lastname,
+          picture_url: session.user.picture_url ?? token.picture_url,
+          email: session.user.email ?? token.email,
+          phone: session.user.phone ?? token.phone,
+          salutationId: session.user.salutationId ?? token.salutationId,
+          description: session.user.description ?? token.description,
           hasLogoinCalendar:
-            session.user?.hasLogoinCalendar ?? token.hasLogoinCalendar,
-          activeOrganizationId:
-            session.user?.activeOrganizationId ?? token.activeOrganizationId,
+            session.user.hasLogoinCalendar ?? token.hasLogoinCalendar,
+          activeOrganization:
+            session.user.activeOrganization ?? token.activeOrganization ?? null,
         };
       }
 
-      // Check for refresh error
       if (token.error === "RefreshAccessTokenError") {
         return token;
       }
 
-      // Check if token needs refresh
       const now = Date.now();
       const expiresAt = token.accessTokenExpires as number;
 
-      if (now < expiresAt) {
-        // If token expires in more than 3 minutes, no refresh needed
-        if (expiresAt - now > 3 * 60 * 1000) {
-          return token;
-        }
+      if (now < expiresAt && expiresAt - now > 3 * 60 * 1000) {
+        return token;
       }
 
-      // Refresh token
       return await refreshAccessToken(token);
     },
 
@@ -342,19 +391,21 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
-        session.user.firstname = (token.firstname as string | null) ?? "";
-        session.user.lastname = (token.lastname as string | null) ?? "";
+        session.user.firstname = (token.firstname as string) ?? null;
+        session.user.lastname = (token.lastname as string) ?? null;
         session.user.picture_url = (token.picture_url as string | null) ?? null;
         session.user.phone = (token.phone as string | null) ?? null;
         session.user.salutationId =
           (token.salutationId as string | null) ?? null;
         session.user.hasLogoinCalendar =
           (token.hasLogoinCalendar as boolean) ?? false;
-
         session.user.orgIds = (token.orgIds as string[]) ?? [];
         session.user.roleIds = (token.roleIds as string[]) ?? [];
-        session.user.activeOrganizationId =
-          (token.activeOrganizationId as string | null) ?? null;
+        session.user.activeOrganization = token.activeOrganization as {
+          id: string;
+          name: string;
+          logo_url: string | null;
+        };
       }
 
       return session;

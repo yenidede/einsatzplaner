@@ -1,20 +1,28 @@
-import type { einsatz as EinsatzRawDb, einsatz_comment as CommentRawDb, change_log as ChangeLogRawDb, organization, einsatz_category, einsatz_status, einsatz_field } from "@/generated/prisma";
+import type {
+  einsatz as EinsatzRawDb,
+  einsatz_comment as CommentRawDb,
+  change_log as ChangeLogRawDb,
+  organization,
+  einsatz_category,
+  einsatz_status,
+  einsatz_field,
+} from "@/generated/prisma";
 export type Einsatz = EinsatzRawDb;
 import type {
   einsatz_status as EinsatzStatus,
   einsatz_field as EinsatzField,
   organization as Organization,
   user as User,
-  einsatz_category as EinsatzCategory
+  einsatz_category as EinsatzCategory,
 } from "@/generated/prisma";
 import z from "zod";
 
 export type { CalendarEvent } from "@/components/event-calendar/types";
 
 export type EinsatzFieldCreate = {
-  field_id: string,
-  value: string | null,
-}
+  field_id: string;
+  value: string | null;
+};
 
 export type EinsatzCreate = {
   id?: string;
@@ -40,18 +48,22 @@ export type EinsatzCreate = {
   status_id?: string; // newly created einsatz doesnt need status. Only when saving to db.
   template_id?: string;
 
-  // TODO: 
+  // TODO:
   // change_log aktualisieren
-}
+};
 
 export type EinsatzDetailed = EinsatzRawDb & {
   einsatz_status: EinsatzStatus;
   assigned_users?: string[];
   einsatz_fields: EinsatzField[];
   categories: string[];
-  comments: (CommentRawDb & { user: { id: string; firstname: string | null; lastname: string | null } })[];
-  change_log: (ChangeLogRawDb & { user: { id: string; firstname: string | null; lastname: string | null } })[];
-}
+  comments: (CommentRawDb & {
+    user: { id: string; firstname: string | null; lastname: string | null };
+  })[];
+  change_log: (ChangeLogRawDb & {
+    user: { id: string; firstname: string | null; lastname: string | null };
+  })[];
+};
 
 export type ETV = Einsatz & {
   einsatz_status: EinsatzStatus;
@@ -62,7 +74,7 @@ export type ETV = Einsatz & {
     lastname: string | null;
   }[];
   einsatz_categories: einsatz_category[];
-  einsatz_fields: (EinsatzField & { datatype: string | null; })[];
+  einsatz_fields: (EinsatzField & { datatype: string | null })[];
   user: {
     id: string;
     firstname: string | null;
@@ -75,7 +87,7 @@ export type ETV = Einsatz & {
   _count: {
     einsatz_helper: number;
   };
-}
+};
 
 export type EinsatzCustomizable = {
   id: string;
@@ -104,7 +116,7 @@ export type EinsatzCustomizable = {
 
   categories?: EinsatzCategory[];
   einsatz_fields?: EinsatzField[];
-}
+};
 
 export type EinsatzForCalendar = {
   id: string;
