@@ -40,7 +40,6 @@ export default function Component() {
 
   const isHidden = !session?.user;
 
-  console.log("isHidden:", isHidden, session?.user.lastname);
   return (
     <header
       className={cn(
