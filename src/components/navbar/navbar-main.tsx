@@ -36,6 +36,7 @@ export default function Component() {
   const { data: organizations } = useQuery({
     queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
     queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
+    enabled: !!session?.user?.orgIds?.length,
   });
 
   const isHidden = !session?.user;
