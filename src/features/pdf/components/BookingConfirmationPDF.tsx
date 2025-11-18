@@ -1,7 +1,7 @@
 import React from "react";
 import { Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { BookingFooter } from "./BookingFooter";
-import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
+import type { Einsatz } from "@/features/einsatz/types";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: "Helvetica", fontSize: 11 },
@@ -33,74 +33,122 @@ const styles = StyleSheet.create({
     borderTopColor: "#ddd",
     fontSize: 10,
   },
-  contact: { fontSize: 8, color: "#666", marginTop: 10, lineHeight: 1.6 },
   link: { color: "#0066cc", textDecoration: "underline" },
 });
 
-interface Props {
-  einsatz: any;
-  assignedUsers?: Array<{ firstname: string; lastname: string }>;
-  options?: { showLogos?: boolean };
+// ✅ Types
+interface AssignedUser {
+  id: string;
+  firstname: string | null;
+  lastname: string | null;
+  salutation?: {
+    id: string;
+    salutation: string;
+  } | null;
 }
 
-export const BookingConfirmationPDF: React.FC<Props> = ({
+interface EinsatzCategory {
+  id: string;
+  value: string | null;
+  label: string | null;
+}
+
+interface Organization {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  email: string | null;
+  website?: string | null;
+  phone?: string | null;
+}
+
+interface PDFOptions {
+  showLogos?: boolean;
+}
+
+interface BookingConfirmationPDFProps {
+  einsatz: Einsatz;
+  einsatzCategories: EinsatzCategory[];
+  organization: Organization;
+  assignedUsers: AssignedUser[];
+  options?: PDFOptions;
+}
+
+export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
   einsatz,
+  einsatzCategories,
+  organization,
   assignedUsers = [],
   options,
 }) => {
   const { showLogos = true } = options || {};
 
-  const isSchule = einsatz?.einsatz_to_category?.some((etc: any) =>
-    etc.einsatz_category?.value?.toLowerCase().includes("schule")
+  const isSchule = einsatzCategories.some((category) =>
+    category.value?.toLowerCase().includes("schule")
   );
 
-  const user = getUserByIdWithOrgAndRole(einsatz.assigned_users[0]).then(
-    (user) => {
-      console.log("User Daten:", user);
-    }
-  );
+  const participantCount = einsatz.participant_count ?? "xx";
+  console.log("Participant Count:", participantCount);
+  console.log("Einsatz Categories:", einsatzCategories);
+  console.log("OrganizationData:", organization);
 
-  const participantCount =
-    einsatz?.participant_count ||
-    einsatz?.participants ||
-    einsatz?.number_of_participants ||
-    "xx";
-
-  // Vermittlung: Namen aus übergebenen User-Daten
   const assignedUserNames =
     assignedUsers.length > 0
-      ? assignedUsers.map((u) => `${u.firstname} ${u.lastname}`).join(", ")
-      : einsatz?.assigned_users?.length > 0
-      ? `${user.firstname} ${user.lastname}`
+      ? assignedUsers
+          .map((user) => {
+            const firstname = user.firstname ?? "";
+            const lastname = user.lastname ?? "";
+            const salutation = user.salutation?.salutation.trim() ?? "";
+            return salutation
+              ? `${salutation} ${firstname} ${lastname}`.trim()
+              : `${firstname} ${lastname}`.trim();
+          })
+          .filter((name) => name.length > 0)
+          .join(", ") || "Wird noch bekannt gegeben"
       : "Wird noch bekannt gegeben";
 
-  const formatDate = (date: Date) =>
-    new Date(date).toLocaleDateString("de-DE", {
+  const formatDate = (date: Date | string): string => {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    return dateObj.toLocaleDateString("de-DE", {
       weekday: "long",
       day: "numeric",
       month: "long",
       year: "numeric",
     });
-  const formatTime = (date: Date) =>
-    new Date(date).toLocaleTimeString("de-DE", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }) + " Uhr";
+  };
+
+  const formatTime = (date: Date | string): string => {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    return (
+      dateObj.toLocaleTimeString("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }) + " Uhr"
+    );
+  };
+
+  const pricePerPerson =
+    einsatz.price_per_person?.toFixed(2) ?? (isSchule ? "3,50" : "9,00");
+  const totalPrice = einsatz.total_price?.toFixed(2) ?? "90,00";
+
+  const orgName = organization?.name ?? "Jüdisches Museum Hohenems";
+  const orgEmail = organization?.email ?? "office@jm-hohenems.at";
+  const orgWebsite = organization?.website ?? "www.jm-hohenems.at";
+  const logoUrl = organization?.logo_url ?? null;
 
   return (
     <Page size="A4" style={styles.page}>
       {/* Header */}
-      {showLogos && einsatz.organization?.logo_url && (
+      {showLogos && logoUrl && (
         <View style={styles.header}>
-          <Image src={einsatz.organization.logo_url} style={styles.logo} />
+          <Image src={logoUrl} style={styles.logo} />
         </View>
       )}
 
       {/* Content */}
-      <Text style={styles.greeting}>Sehr geehrte,</Text>
+      <Text style={styles.greeting}>Sehr geehrte Damen und Herren,</Text>
       <Text style={styles.text}>
-        gerne bestätigen wir Ihnen die Buchung einer Führung im{" "}
-        {einsatz.organization?.name || "Jüdischen Museum"}:
+        gerne bestätigen wir Ihnen die Buchung einer Führung im {orgName}:
       </Text>
 
       {/* Info Box */}
@@ -134,27 +182,15 @@ export const BookingConfirmationPDF: React.FC<Props> = ({
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Vermittlung:</Text>
-          {/* TODO (Ömer): Anrede abklären, da keine definiert in der DB3 */}
           <Text style={styles.value}>{assignedUserNames}</Text>
-          {/*             {getUserByIdWithOrgAndRole(einsatz.assigned_users[0]).then(user => (
-              <Text style={styles.value}>
-                {user ? `${user.firstname} ${user.lastname}` : 'Wird noch bekannt gegeben'}
-              </Text>
-            ))} */}
         </View>
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Kosten:</Text>
           <Text style={styles.value}>
-            €{" "}
-            {einsatz.price_per_person?.toFixed(2) ||
-              (isSchule ? "3,50" : "9,00")}
-            /Person
+            € {pricePerPerson}/Person
             {isSchule && ", unter 10 Personen € 35,00 Pauschale"}
-            {!isSchule &&
-              `, unter 10 Personen € ${
-                einsatz.total_price?.toFixed(2) || "90,00"
-              } Pauschale`}
+            {!isSchule && `, unter 10 Personen € ${totalPrice} Pauschale`}
           </Text>
         </View>
       </View>
@@ -203,18 +239,12 @@ export const BookingConfirmationPDF: React.FC<Props> = ({
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={styles.bold}>
-          {einsatz.organization?.name || "Jüdisches Museum Hohenems"}
-        </Text>
+        <Text style={styles.bold}>{orgName}</Text>
         <Text>Schweizer Straße 5</Text>
         <Text>6845 Hohenems</Text>
         <Text>+43 (0)5576 73989</Text>
-        <Text style={styles.link}>
-          {einsatz.organization?.email || "office@jm-hohenems.at"}
-        </Text>
-        <Text style={styles.link}>
-          {einsatz.organization?.website || "www.jm-hohenems.at"}
-        </Text>
+        <Text style={styles.link}>{orgEmail}</Text>
+        <Text style={styles.link}>{orgWebsite}</Text>
         <Text>UID: ATU 3792 6303</Text>
       </View>
 
