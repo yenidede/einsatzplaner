@@ -1,19 +1,13 @@
 "use client";
 
-import { use } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import {
-  EventCalendar,
-  mapEinsaetzeToCalendarEvents,
-} from "@/components/event-calendar";
+import { EventCalendar } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
 import { EinsatzCreateToCalendarEvent } from "./einsatz-service";
 import { EinsatzCreate } from "@/features/einsatz/types";
-import {
-  getAllEinsaetzeForCalendar,
-  updateEinsatzTime,
-} from "@/features/einsatz/dal-einsatz";
+import { updateEinsatzTime } from "@/features/einsatz/dal-einsatz";
+import { getEinsaetzeData } from "./utils";
 import {
   createEinsatz,
   deleteEinsatzById,
@@ -21,27 +15,19 @@ import {
 } from "@/features/einsatz/dal-einsatz";
 import { toast } from "sonner";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
+import { useSession } from "next-auth/react";
 
-export default function Component({
-  einsaetzeProp,
-  mode,
-}: {
-  einsaetzeProp: Promise<CalendarEvent[]>;
-  mode: CalendarMode;
-}) {
-  const orgs = ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]; // TODO: remove - JMH for testing
+export default function Component({ mode }: { mode: CalendarMode }) {
+  const { data: session } = useSession();
+  const activeOrgId = session?.user?.activeOrganization?.id;
+
   const queryClient = useQueryClient();
-
-  const queryKey = einsatzQueryKeys.einsaetze(orgs);
-
-  async function getEinsaetzeData() {
-    return mapEinsaetzeToCalendarEvents(await getAllEinsaetzeForCalendar(orgs));
-  }
+  const queryKey = einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []);
 
   const { data: events } = useQuery({
     queryKey: queryKey,
-    queryFn: getEinsaetzeData,
-    initialData: use(einsaetzeProp),
+    queryFn: () => getEinsaetzeData(activeOrgId),
+    enabled: !!activeOrgId,
   });
 
   // Mutations with optimistic update
@@ -237,6 +223,10 @@ export default function Component({
     deleteMultipleMutation.mutate({ eventIds });
   };
 
+  if (!events) {
+    return <div>Lade Daten...</div>;
+  }
+
   return (
     <EventCalendar
       events={events}
@@ -249,6 +239,6 @@ export default function Component({
     />
   );
 }
-function deleteMultipleEinsaetze(eventIds: string[]): any {
+function deleteMultipleEinsaetze(eventIds: string[]): Promise<boolean> {
   throw new Error("Function not implemented.");
 }
