@@ -167,7 +167,7 @@ export default function SettingsPage() {
         }
         finalPictureUrl = res.picture_url;
       }
-
+      console.log("pictureUrl:", finalPictureUrl);
       // Update user profile
       await mutation.mutateAsync({
         userId: session.user.id,
@@ -214,10 +214,10 @@ export default function SettingsPage() {
         queryKey: settingsQueryKeys.userSettings(session?.user.id || ""),
       });
 
-      alert("Einstellungen erfolgreich gespeichert!");
+      console.log("Einstellungen erfolgreich gespeichert!");
     } catch (error) {
       console.error("❌ Save failed:", error);
-      alert("Fehler beim Speichern der Einstellungen");
+      console.log("Fehler beim Speichern der Einstellungen");
     }
   };
 
@@ -242,7 +242,12 @@ export default function SettingsPage() {
         hasLogoinCalendar: showLogos,
         hasGetMailNotification: true,
       });
-
+      await update({
+        user: {
+          ...session.user,
+          picture_url: "",
+        },
+      });
       setPictureUrl(null);
     } catch (error) {
       console.error("Failed to remove profile picture:", error);
