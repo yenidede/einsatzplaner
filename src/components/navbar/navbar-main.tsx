@@ -38,7 +38,6 @@ export default function Component() {
     queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
     enabled: !!session?.user?.orgIds?.length,
   });
-
   const isHidden = !session?.user;
 
   return (
