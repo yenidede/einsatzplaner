@@ -43,11 +43,10 @@ export default function Helferansicht() {
     <>
       <h1>{activeOrg?.einsatz_name_plural ?? "Einsätze"}</h1>
       <p className="text-slate-600 leading-7">
-        {activeOrg?.description ??
+        {activeOrg?.helferansicht_description ??
           `Hier kannst du dich für ${
             activeOrg?.einsatz_name_plural ?? "Einsätze"
-          }
-        eintragen. Organisationen werden anschließend automatisch informiert.`}
+          } eintragen. Organisationen werden anschließend automatisch informiert.`}
       </p>
       <div className="mt-6">
         <Calendar mode="helper" />
