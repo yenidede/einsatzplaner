@@ -292,7 +292,7 @@ export const authOptions: NextAuthOptions = {
             generateRefreshToken(user.id),
           ]);
 
-          return {
+          const returnUser: User = {
             id: user.id,
             email: user.email,
             firstname: user.firstname ?? "",
@@ -300,16 +300,15 @@ export const authOptions: NextAuthOptions = {
             picture_url: user.picture_url,
             phone: user.phone,
             salutationId: user.salutationId,
-            description: user.description,
             hasLogoinCalendar: user.hasLogoinCalendar ?? false,
             orgIds,
             roleIds,
-            organizations: [],
-            roles: [],
             activeOrganization,
             accessToken,
             refreshToken,
-          } as User;
+          }
+
+          return returnUser;
         } catch (error) {
           console.error("Authentication error:", error);
           return null;
@@ -342,6 +341,18 @@ export const authOptions: NextAuthOptions = {
       }
 
       if (trigger === "update" && session?.user) {
+        // Fetch the latest active organization from DB
+        const userData = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { active_org: true },
+        });
+        const activeOrgData = userData?.active_org ? await prisma.organization.findUnique({
+          where: { id: userData.active_org },
+          select: { id: true, name: true, logo_url: true },
+        }) : null;
+        if (!activeOrgData) {
+          throw new Error("Selected Organization not found or user isn't assigned to it");
+        }
         return {
           ...token,
           firstname: session.user.firstname ?? token.firstname,
