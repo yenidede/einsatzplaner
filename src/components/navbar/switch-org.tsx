@@ -17,26 +17,45 @@ type Props = {
 };
 
 export function NavSwitchOrgSelect({ organizations }: Props) {
-  const { update, data: session } = useSession();
+  const { update: updateSession, data: session } = useSession();
+  const [activeOrgId, setActiveOrgId] = React.useState<string | undefined>(
+    session?.user?.activeOrganization?.id || undefined
+  );
 
   const handleSetOrg = async (orgId: string) => {
-    console.log("Organization now switching to:", orgId);
-
+    // UI-State
+    setActiveOrgId(orgId);
+    const newOrg = organizations.find((o) => o.id === orgId);
+    if (!newOrg || !session) {
+      console.error("Organization not found or session is null");
+      return;
+    }
     await Promise.all([
+      // database
       setUserActiveOrganization(session?.user.id || "", orgId),
-      update({ activeOrgId: orgId }),
+      // session updateSession
+      updateSession({
+        user: {
+          ...session.user,
+          activeOrganization: {
+            id: newOrg.id,
+            name: newOrg.name,
+            logo_url: newOrg.logo_url,
+          },
+        },
+      }),
     ]);
 
-    console.log("Organization switched to:", orgId);
-    console.log("Updated session:", session);
+    console.log(
+      "Organization switched to:",
+      orgId,
+      organizations.find((o) => o.id === orgId)?.name
+    );
+    console.log("from session: ", session?.user?.activeOrganization?.id);
   };
   return (
-    <Select
-      defaultValue={session?.user?.activeOrganization?.id}
-      onValueChange={handleSetOrg}
-      
-    >
-      <SelectTrigger className="w-[180px]">
+    <Select value={activeOrgId} onValueChange={handleSetOrg}>
+      <SelectTrigger className="w-[11.5rem]">
         <SelectValue
           placeholder={
             session?.user?.activeOrganization?.name || "Organisation wählen"
