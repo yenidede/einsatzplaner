@@ -5,6 +5,7 @@ import { CalendarEvent, CalendarMode, FormFieldType } from "./types";
 import { z } from "zod";
 import { EinsatzCustomizable, EinsatzForCalendar } from "@/features/einsatz/types";
 import React from "react";
+import { getAllEinsaetzeForCalendar } from "@/features/einsatz/dal-einsatz";
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -74,6 +75,12 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
   });
 
   return z.object(schemaShape);
+}
+
+export async function getEinsaetzeData(activeOrgId: string | null | undefined) {
+  return mapEinsaetzeToCalendarEvents(
+    await getAllEinsaetzeForCalendar(activeOrgId ? [activeOrgId] : [])
+  );
 }
 
 export const mapEinsaetzeToCalendarEvents = (
