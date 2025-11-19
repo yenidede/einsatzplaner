@@ -320,7 +320,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, account, trigger, session }): Promise<JWT> {
       if (user && account) {
-        return {
+        const newToken: JWT = {
           ...token,
           id: user.id,
           email: user.email,
@@ -338,6 +338,7 @@ export const authOptions: NextAuthOptions = {
           accessTokenExpires: Date.now() + ACCESS_TOKEN_LIFETIME * 1000,
           refreshTokenExpires: Date.now() + REFRESH_TOKEN_LIFETIME,
         };
+        return newToken;
       }
 
       if (trigger === "update" && session?.user) {
@@ -351,9 +352,9 @@ export const authOptions: NextAuthOptions = {
           select: { id: true, name: true, logo_url: true },
         }) : null;
         if (!activeOrgData) {
-          throw new Error("Selected Organization not found or user isn't assigned to it");
+          throw new Response("Selected Organization not found or user isn't assigned to it", { status: 404 });
         }
-        return {
+        const newToken: JWT = {
           ...token,
           firstname: session.user.firstname ?? token.firstname,
           lastname: session.user.lastname ?? token.lastname,
@@ -367,6 +368,7 @@ export const authOptions: NextAuthOptions = {
           activeOrganization:
             session.user.activeOrganization ?? token.activeOrganization ?? null,
         };
+        return newToken;
       }
 
       if (token.error === "RefreshAccessTokenError") {

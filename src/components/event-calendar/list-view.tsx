@@ -63,7 +63,7 @@ export function ListView({
   const userOrgIds = userSession?.user?.orgIds ?? [];
 
   const { data, isLoading } = useQuery<ETV[]>({
-    queryKey: [einsatzQueryKeys.einsaetzeTableView(userOrgIds)],
+    queryKey: [...einsatzQueryKeys.einsaetzeTableView(userOrgIds)],
     queryFn: () => getEinsaetzeForTableView(userOrgIds),
     placeholderData: (previousData) => previousData ?? [],
     enabled: userOrgIds.length > 0,

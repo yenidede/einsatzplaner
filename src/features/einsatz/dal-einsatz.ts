@@ -403,12 +403,11 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
 }
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
-  const { session, userIds } = await requireAuth();
+  const { session } = await requireAuth();
 
   if (!hasPermission(session, 'delete:einsaetze')) {
-    redirect('/unauthorized');
+    throw new Response('Unauthorized', { status: 403 });
   }
-  // TODO: check if logged in user has permission to delete this Einsatz
 
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
@@ -416,13 +415,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   });
 
   if (!einsatz) {
-    throw new Error(`Einsatz with ID ${einsatzId} not found`);
-  }
-
-  // Prüfe ob User Zugriff auf diese Organisation hat
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  if (!userOrgIds.includes(einsatz.org_id)) {
-    redirect('/unauthorized');
+    throw new Response(`Einsatz with ID ${einsatzId} not found`, { status: 404 });
   }
 
   try {
@@ -432,7 +425,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
       },
     });
   } catch (error) {
-    throw new Error(`Failed to delete Einsatz with ID ${einsatzId}: ${error}`);
+    throw new Response(`Failed to delete Einsatz with ID ${einsatzId}: ${error}`, { status: 500 });
   }
 }
 
