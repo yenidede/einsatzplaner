@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import Image from "next/image";
+import React, { useEffect, useState } from "react";
 
 import { DataTable } from "@/components/data-table/components/data-table";
 import { DataTableAdvancedToolbar } from "@/components/data-table/components/data-table-advanced-toolbar";
@@ -22,8 +21,6 @@ import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { queryKeys as statusQueryKeys } from "@/features/einsatz_status/queryKeys";
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { queryKeys as templatesQueryKeys } from "@/features/einsatztemplate/queryKeys";
-import { getOrganizationsByIds } from "@/features/organization/org-dal";
-import { queryKeys as organizationQueryKeys } from "@/features/organization/queryKeys";
 import { getAllTemplatesByOrgIds } from "@/features/template/template-dal";
 import { queryKeys as usersQueryKeys } from "@/features/user/queryKeys";
 import { getAllUsersWithRolesByOrgIds } from "@/features/user/user-dal";
@@ -60,38 +57,16 @@ export function ListView({
   mode,
 }: ListViewProps) {
   const [pageCount, setPageCount] = useState(0);
+  const [isTableReady, setIsTableReady] = useState(false);
 
-  const { data: userSession, status} = useSession();
-/*   const userOrgIds = userSession?.user?.organizations || [
-    userSession?.user.orgId || "",
-  ]; */
-  const { 
-    data: organizations = [], 
-    isLoading: isLoadingOrgs 
-  } = useQuery({
-    queryKey: ['user-organizations', userSession?.user?.id],
-    queryFn: async () => {
-      if (!userSession?.user?.id) return [];
+  const { data: userSession } = useSession();
+  const userOrgIds = userSession?.user?.orgIds ?? [];
 
-      const res = await fetch(`/api/auth/organization?userId=${userSession.user.id}`);
-      if (!res.ok) {
-        throw new Error('Failed to load organizations');
-      }
-      const orgs = await res.json();
-
-      // Extrahiere nur die IDs
-      return orgs.map((org: any) => org.id) as string[];
-    },
-    enabled: status === 'authenticated' && !!userSession?.user?.id,
-    staleTime: 5 * 60 * 1000,
-    retry: 2,
-  });
-
-  const userOrgIds = organizations;
   const { data, isLoading } = useQuery<ETV[]>({
     queryKey: [...einsatzQueryKeys.einsaetzeTableView(userOrgIds)],
     queryFn: () => getEinsaetzeForTableView(userOrgIds),
     placeholderData: (previousData) => previousData ?? [],
+    enabled: userOrgIds.length > 0,
   });
 
   const { data: statusData, isLoading: isStatusLoading } = useQuery({
@@ -99,25 +74,29 @@ export function ListView({
     queryFn: GetStatuses,
   });
 
-  const { data: organizationsData, isLoading: isOrganizationsLoading } =
-    useQuery({
-      queryKey: organizationQueryKeys.organizations(userOrgIds),
-      queryFn: () => getOrganizationsByIds(userOrgIds),
-    });
+  // const { data: organizationsData, isLoading: isOrganizationsLoading } =
+  //   useQuery({
+  //     queryKey: organizationQueryKeys.organizations(userOrgIds),
+  //     queryFn: () => getOrganizationsByIds(userOrgIds),
+  //     enabled: userOrgIds.length > 0,
+  //   });
 
   const { data: templatesData, isLoading: areTemplatesLoading } = useQuery({
     queryKey: templatesQueryKeys.templates(userOrgIds),
     queryFn: () => getAllTemplatesByOrgIds(userOrgIds),
+    enabled: userOrgIds.length > 0,
   });
 
   const { data: usersData, isLoading: isUsersLoading } = useQuery({
     queryKey: usersQueryKeys.users(userOrgIds),
     queryFn: () => getAllUsersWithRolesByOrgIds(userOrgIds),
+    enabled: userOrgIds.length > 0,
   });
 
   const { data: categoriesData, isLoading: isCategoriesLoading } = useQuery({
     queryKey: ["categories", userOrgIds],
     queryFn: () => getCategoriesByOrgIds(userOrgIds),
+    enabled: userOrgIds.length > 0,
   });
 
   // Ensure data is defined before accessing its elements
@@ -127,7 +106,7 @@ export function ListView({
     isStatusLoading ||
     areTemplatesLoading ||
     isUsersLoading ||
-    isOrganizationsLoading ||
+    // isOrganizationsLoading ||
     isCategoriesLoading;
   const columnHelper = createColumnHelper<ETV>();
 
@@ -372,20 +351,40 @@ export function ListView({
     },
   });
 
-  if (!isSomeQueryLoading && (data?.length ?? 0) === 0) {
+  const rowModelRows = table.getRowModel().rows;
+  useEffect(() => {
+    // run after table rows are computed
+    setIsTableReady(true);
+  }, [rowModelRows]);
+
+  if (!userOrgIds || userOrgIds.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-        <Image
-          src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/undraw_instant-analysis_vm8x%201.svg"
-          alt=""
-          width={245}
-          height={210}
-          unoptimized
-        />
-        <div className="font-semibold">Keine Datensätze gefunden.</div>
+      <div className="flex flex-col gap-4 justify-start items-baseline px-4 py-6">
+        <div>
+          <h2 className="font-bold">Keiner Organisation beigetreten.</h2>
+          <p>
+            Bitten Sie Ihre Organisation um eine Einladung oder um eine Änderung
+            der Zugriffsrechte.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isTableReady) {
+    return (
+      <div className="flex flex-col gap-4 justify-start items-baseline px-4 py-6">
+        <div>
+          <h2 className="font-bold">
+            Es wurden noch keine Datensätze angelegt.{" "}
+          </h2>
+          <p>
+            Falls Sie glauben, dass ein Fehler vorliegt, wenden Sie sich bitte
+            an Ihre Administration.
+          </p>
+        </div>
         <Button
-          size="lg"
-          variant="link"
+          variant="default"
           onClick={() => {
             const now = new Date();
             // round to 15 minutes
@@ -395,7 +394,7 @@ export function ListView({
             onEventCreate(roundedDate);
           }}
         >
-          + Neu anlegen.
+          Datensatz anlegen
         </Button>
       </div>
     );
