@@ -8,23 +8,13 @@ import { BookingConfirmationPDF } from "@/features/pdf/components/BookingConfirm
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import { Einsatz } from "@/features/einsatz/types";
 import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
-import { getOrganizationById } from "@/features/settings/organization-action";
-import { getOneSalutationAction } from "@/features/settings/settings-action";
+import { getOrganizationForPDF } from "@/features/settings/organization-action";
 
 // ✅ Types
 interface EinsatzCategory {
   id: string;
   value: string | null;
   label: string | null;
-}
-
-interface Organization {
-  id: string;
-  name: string;
-  logo_url: string | null;
-  email: string | null;
-  website?: string | null;
-  phone?: string | null;
 }
 
 interface AssignedUser {
@@ -37,7 +27,6 @@ interface AssignedUser {
   } | null;
 }
 
-// ✅ Filename Generator
 function generateFilename(einsatz: Einsatz): string {
   const date = new Date(einsatz.start).toLocaleDateString("de-DE", {
     day: "2-digit",
@@ -90,7 +79,6 @@ export async function POST(request: NextRequest) {
         getUserByIdWithOrgAndRole(userId)
       ) || []
     );
-    //console.log("🔍 Assigned Users Raw:", assignedUsersRaw);
 
     const assignedUsers: AssignedUser[] = assignedUsersRaw
       .filter((user): user is NonNullable<typeof user> => user !== null)
@@ -105,34 +93,18 @@ export async function POST(request: NextRequest) {
             }
           : null,
       }));
-    //console.log("✅ Assigned Users Loaded:", assignedUsers);
 
-    const organizationData = await getOrganizationById(einsatz.org_id);
+    const organization = await getOrganizationForPDF(einsatz.org_id);
 
-    if (!organizationData) {
-      console.error("Organization not found for org_id:", einsatz.org_id);
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 }
-      );
-    }
-
-    const organization: Organization = {
-      id: organizationData.id,
-      name: organizationData.name,
-      logo_url: organizationData.logo_url,
-      email: organizationData.email,
-      // TODO (Ömer): Website für Organisation in der DB erstellen
-      website: organizationData.website ?? null,
-      phone: organizationData.phone ?? null,
-    };
-
-    /*     console.log("📊 PDF Generation Data:", {
+    console.log("📊 PDF Generation Data:", {
       einsatzId: einsatz.id,
       orgName: organization.name,
+      addressesCount: organization.addresses.length,
+      bankAccountsCount: organization.bankAccounts.length,
+      hasDetails: !!organization.details,
       assignedUsersCount: assignedUsers.length,
       categoriesCount: einsatzCategories.length,
-    }); */
+    });
 
     const documentElement = React.createElement(
       Document,
@@ -147,7 +119,6 @@ export async function POST(request: NextRequest) {
     );
 
     const pdfBuffer = await renderToBuffer(documentElement);
-    //console.log("✅ PDF Buffer generated:", pdfBuffer.byteLength, "bytes");
 
     const filename = generateFilename(einsatz);
 

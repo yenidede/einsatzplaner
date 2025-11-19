@@ -2,6 +2,7 @@ import React from "react";
 import { Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { BookingFooter } from "./BookingFooter";
 import type { Einsatz } from "@/features/einsatz/types";
+import { OrganizationForPDF } from "@/features/organization/types";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: "Helvetica", fontSize: 11 },
@@ -34,6 +35,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   link: { color: "#0066cc", textDecoration: "underline" },
+  footerRow: { flexDirection: "row", justifyContent: "space-between" },
+  footerColumn: { flex: 1, marginRight: 20 },
+  footerTitle: { fontWeight: "bold", marginBottom: 4 },
+  footerText: { marginBottom: 2 },
 });
 
 // ✅ Types
@@ -53,14 +58,14 @@ interface EinsatzCategory {
   label: string | null;
 }
 
-interface Organization {
+/* interface Organization {
   id: string;
   name: string;
   logo_url: string | null;
   email: string | null;
   website?: string | null;
   phone?: string | null;
-}
+} */
 
 interface PDFOptions {
   showLogos?: boolean;
@@ -69,7 +74,7 @@ interface PDFOptions {
 interface BookingConfirmationPDFProps {
   einsatz: Einsatz;
   einsatzCategories: EinsatzCategory[];
-  organization: Organization;
+  organization: OrganizationForPDF;
   assignedUsers: AssignedUser[];
   options?: PDFOptions;
 }
@@ -132,8 +137,6 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
   const totalPrice = einsatz.total_price?.toFixed(2) ?? "90,00";
 
   const orgName = organization?.name ?? "Jüdisches Museum Hohenems";
-  const orgEmail = organization?.email ?? "office@jm-hohenems.at";
-  const orgWebsite = organization?.website ?? "www.jm-hohenems.at";
   const logoUrl = organization?.logo_url ?? null;
 
   return (
@@ -151,7 +154,6 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
         gerne bestätigen wir Ihnen die Buchung einer Führung im {orgName}:
       </Text>
 
-      {/* Info Box */}
       <View style={styles.infoBox}>
         <View style={styles.infoRow}>
           <Text style={styles.label}>Gruppe:</Text>
@@ -195,7 +197,6 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
         </View>
       </View>
 
-      {/* Highlight */}
       <View style={styles.highlight}>
         <Text style={styles.bold}>
           Wir bitten Sie, den gesamten Betrag vorher einzusammeln.{"\n"}
@@ -206,7 +207,6 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
         </Text>
       </View>
 
-      {/* Anreise (nur für Schule) */}
       {isSchule && (
         <View style={{ marginBottom: 12 }}>
           <Text style={styles.bold}>Anreise:</Text>
@@ -222,7 +222,6 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
         </View>
       )}
 
-      {/* Stornierung */}
       <Text style={styles.text}>
         Sofern Sie den gebuchten Termin nicht wahrnehmen können, bitten wir Sie,
         mind. einen Werktag (Mo-Fr) vor dem Termin mit uns Kontakt aufzunehmen.
@@ -230,25 +229,91 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
         gestellt.
       </Text>
 
-      {/* Signature */}
       <Text style={{ marginTop: 20, marginBottom: 5 }}>
         Mit herzlichem Gruß
       </Text>
       <Text>Martina Steiner</Text>
       <Text>Sekretariat/Administration</Text>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.bold}>{orgName}</Text>
-        <Text>Schweizer Straße 5</Text>
-        <Text>6845 Hohenems</Text>
-        <Text>+43 (0)5576 73989</Text>
-        <Text style={styles.link}>{orgEmail}</Text>
-        <Text style={styles.link}>{orgWebsite}</Text>
-        <Text>UID: ATU 3792 6303</Text>
+      <View style={styles.footer} fixed>
+        <View style={styles.footerRow}>
+          <View style={styles.footerColumn}>
+            <Text style={styles.footerTitle}>Kontakt</Text>
+            {organization.email && (
+              <Text style={styles.footerText}>{organization.email}</Text>
+            )}
+            {organization.phone && (
+              <Text style={styles.footerText}>{organization.phone}</Text>
+            )}
+            {organization.details?.website && (
+              <Text style={styles.footerText}>
+                {organization.details.website}
+              </Text>
+            )}
+          </View>
+
+          {organization.addresses.length > 0 && (
+            <View style={styles.footerColumn}>
+              <Text style={styles.footerTitle}>
+                {organization.addresses.length > 1 ? "Adressen" : "Adresse"}
+              </Text>
+              {organization.addresses.map((addr, index) => (
+                <View key={index} style={{ marginBottom: 4 }}>
+                  {addr.label && (
+                    <Text style={[styles.footerText, { fontWeight: "bold" }]}>
+                      {addr.label}
+                    </Text>
+                  )}
+                  <Text style={styles.footerText}>{addr.street}</Text>
+                  <Text style={styles.footerText}>
+                    {addr.postal_code} {addr.city}
+                  </Text>
+                  <Text style={styles.footerText}>{addr.country}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {organization.bankAccounts.length > 0 && (
+            <View style={styles.footerColumn}>
+              <Text style={styles.footerTitle}>
+                {organization.bankAccounts.length > 1
+                  ? "Bankverbindungen"
+                  : "Bankverbindung"}
+              </Text>
+              {organization.bankAccounts.map((bank, index) => (
+                <View key={index} style={{ marginBottom: 4 }}>
+                  <Text style={styles.footerText}>{bank.bank_name}</Text>
+                  <Text style={styles.footerText}>IBAN: {bank.iban}</Text>
+                  <Text style={styles.footerText}>BIC: {bank.bic}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {organization.details && (
+          <View style={{ marginTop: 6 }}>
+            {organization.details.vat && (
+              <Text style={styles.footerText}>
+                UID: {organization.details.vat}
+              </Text>
+            )}
+            {organization.details.zvr && (
+              <Text style={styles.footerText}>
+                ZVR: {organization.details.zvr}
+              </Text>
+            )}
+            {organization.details.authority && (
+              <Text style={styles.footerText}>
+                Behörde: {organization.details.authority}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
-      <BookingFooter />
+      <BookingFooter organization={organization} />
     </Page>
   );
 };
