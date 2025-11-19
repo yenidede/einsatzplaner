@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { useSession } from "next-auth/react";
 import { setUserActiveOrganization } from "@/features/user/user-dal";
+import { toast } from "sonner";
 
 type Props = {
   organizations: OrganizationBasicVisualize[];
@@ -23,35 +24,38 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
   );
 
   const handleSetOrg = async (orgId: string) => {
-    // UI-State
-    setActiveOrgId(orgId);
-    const newOrg = organizations.find((o) => o.id === orgId);
-    if (!newOrg || !session) {
-      console.error("Organization not found or session is null");
-      return;
-    }
-    await Promise.all([
-      // database
-      setUserActiveOrganization(session?.user.id || "", orgId),
-      // session updateSession
-      updateSession({
-        user: {
-          ...session.user,
-          activeOrganization: {
-            id: newOrg.id,
-            name: newOrg.name,
-            logo_url: newOrg.logo_url,
+    const previousOrgId = activeOrgId; // Store the previous organization ID
+    try {
+      // UI-State
+      setActiveOrgId(orgId);
+      const newOrg = organizations.find((o) => o.id === orgId);
+      if (!newOrg || !session) {
+        console.error("Organization not found or session is null");
+        return;
+      }
+      await Promise.all([
+        // database
+        setUserActiveOrganization(session?.user.id || "", orgId),
+        // session updateSession
+        updateSession({
+          user: {
+            ...session.user,
+            activeOrganization: {
+              id: newOrg.id,
+              name: newOrg.name,
+              logo_url: newOrg.logo_url,
+            },
           },
-        },
-      }),
-    ]);
-
-    console.log(
-      "Organization switched to:",
-      orgId,
-      organizations.find((o) => o.id === orgId)?.name
-    );
-    console.log("from session: ", session?.user?.activeOrganization?.id);
+        }),
+      ]);
+      toast.success(
+        "Organization switched to: " +
+          organizations.find((o) => o.id === orgId)?.name
+      );
+    } catch (error) {
+      toast.error("Error switching organization: " + error);
+      setActiveOrgId(previousOrgId); // Rollback to previous organization
+    }
   };
   return (
     <Select value={activeOrgId} onValueChange={handleSetOrg}>

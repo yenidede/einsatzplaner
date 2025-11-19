@@ -239,6 +239,10 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     />
   );
 }
-function deleteMultipleEinsaetze(eventIds: string[]): Promise<boolean> {
-  throw new Error("Function not implemented.");
+function deleteMultipleEinsaetze(eventIds: string[]): Promise<void> {
+  try {
+    throw new Error("Function not implemented.");
+  } catch (error: unknown) {
+    return Promise.reject(error);
+  }
 }
