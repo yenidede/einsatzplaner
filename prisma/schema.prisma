@@ -109,26 +109,31 @@ model einsatz_template {
 }
 
 model organization {
-  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                   String
-  logo_url               String?
-  description            String?
-  helper_name_singular   String?                  @default("Vermittler:in")
-  helper_name_plural     String?                  @default("Vermittler:innen")
-  created_at             DateTime                 @default(now())
-  updated_at             DateTime?
-  einsatz_name_singular  String                   @default("Einsatz")
-  einsatz_name_plural    String                   @default("Einsätze")
-  email                  String?
-  phone                  String?
-  calendar_subscription  calendar_subscription[]
-  einsatz                einsatz[]
-  einsatz_category       einsatz_category[]
-  einsatz_template       einsatz_template[]
-  invitation             invitation[]
-  user                   user[]
-  user_organization_role user_organization_role[]
-  user_property          user_property[]
+  id                           String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                         String
+  logo_url                     String?
+  description                  String?
+  helper_name_singular         String?                     @default("Vermittler:in")
+  helper_name_plural           String?                     @default("Vermittler:innen")
+  created_at                   DateTime                    @default(now())
+  updated_at                   DateTime?
+  einsatz_name_singular        String                      @default("Einsatz")
+  einsatz_name_plural          String                      @default("Einsätze")
+  email                        String?
+  phone                        String?
+  helferansicht_description    String?
+  verwalteransicht_description String?
+  calendar_subscription        calendar_subscription[]
+  einsatz                      einsatz[]
+  einsatz_category             einsatz_category[]
+  einsatz_template             einsatz_template[]
+  invitation                   invitation[]
+  organization_address         organization_address[]
+  organization_bank_account    organization_bank_account[]
+  organization_details         organization_details[]
+  user                         user[]
+  user_organization_role       user_organization_role[]
+  user_property                user_property[]
 }
 
 model type {
@@ -325,4 +330,40 @@ model salutation {
   id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   salutation String
   user       user[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organization_address {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id       String       @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  label        String?
+  street       String
+  postal_code  BigInt
+  city         String
+  country      String
+  organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organization_bank_account {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id       String       @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  bank_name    String
+  iban         String
+  bic          String
+  organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organization_details {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id       String       @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  website      String?
+  vat          String?
+  zvr          String?
+  authority    String?
+  organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
 }

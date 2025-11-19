@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  SettingsIcon,
-  LogOutIcon,
-  PinIcon,
-  UserPenIcon,
-  BuildingIcon,
-} from "lucide-react";
+import { SettingsIcon, LogOutIcon, PinIcon, UserPenIcon } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -18,10 +12,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 
 import { useSession } from "next-auth/react";

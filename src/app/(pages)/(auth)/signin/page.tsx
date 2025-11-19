@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormField, Alert, Button } from "@/components/SimpleFormComponents";
+import { FormField, Alert } from "@/components/SimpleFormComponents";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -46,17 +48,19 @@ export default function SignInPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-foreground">
             Anmelden
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Oder{" "}
-            <a
-              href="/signup"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              hier registrieren, wenn Sie noch kein Konto haben
-            </a>
+            <Button asChild variant="link">
+              <Link
+                href="/signup"
+                className="font-medium text-blue-600 hover:text-blue-500"
+              >
+                hier registrieren, wenn Sie noch kein Konto haben
+              </Link>
+            </Button>
           </p>
         </div>
 
