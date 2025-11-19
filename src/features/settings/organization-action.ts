@@ -177,7 +177,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
 
   if (!isOV) throw new Error("Insufficient permissions");
 
-  const dataToUpdate: any = {};
+  const dataToUpdate: Partial<OrganizationUpdateData> = {};
   if (data.name !== undefined) dataToUpdate.name = data.name;
   if (data.description !== undefined)
     dataToUpdate.description = data.description;
@@ -316,4 +316,69 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
     console.error("uploadOrganizationLogoAction error:", error);
     throw error;
   }
+}
+
+import type { OrganizationForPDF } from "@/features/organization/types";
+
+// ✅ NEU: Get Organization mit allen Relations
+export async function getOrganizationWithRelations(orgId: string) {
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    include: {
+      organization_address: {
+        orderBy: { created_at: "desc" },
+      },
+      organization_bank_account: {
+        orderBy: { created_at: "desc" },
+      },
+      organization_details: {
+        orderBy: { created_at: "desc" },
+      },
+    },
+  });
+
+  if (!org) throw new Error("Organization not found");
+
+  return org;
+}
+
+export async function getOrganizationForPDF(
+  orgId: string
+): Promise<OrganizationForPDF> {
+  const org = await getOrganizationWithRelations(orgId);
+
+  const addresses = (org.organization_address || []).map((addr) => ({
+    label: addr.label,
+    street: addr.street,
+    postal_code: addr.postal_code,
+    city: addr.city,
+    country: addr.country,
+  }));
+
+  const bankAccounts = (org.organization_bank_account || []).map((bank) => ({
+    bank_name: bank.bank_name,
+    iban: bank.iban,
+    bic: bank.bic,
+  }));
+
+  const details = org.organization_details?.[0];
+
+  return {
+    id: org.id,
+    name: org.name,
+    logo_url: org.logo_url,
+    email: org.email,
+    phone: org.phone,
+    addresses,
+    bankAccounts,
+
+    details: details
+      ? {
+          website: details.website,
+          vat: details.vat,
+          zvr: details.zvr,
+          authority: details.authority,
+        }
+      : null,
+  };
 }

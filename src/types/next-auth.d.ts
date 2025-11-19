@@ -22,7 +22,6 @@ type UserBase = {
   picture_url: string | null;
   phone: string | null;
   salutationId: string | null;
-  /*   description: string | null; */
   hasLogoinCalendar: boolean;
 
   orgIds: string[];
