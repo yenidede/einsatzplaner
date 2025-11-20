@@ -292,7 +292,7 @@ export const authOptions: NextAuthOptions = {
             generateRefreshToken(user.id),
           ]);
 
-          return {
+          const returnUser: User = {
             id: user.id,
             email: user.email,
             firstname: user.firstname ?? "",
@@ -300,16 +300,15 @@ export const authOptions: NextAuthOptions = {
             picture_url: user.picture_url,
             phone: user.phone,
             salutationId: user.salutationId,
-            description: user.description,
             hasLogoinCalendar: user.hasLogoinCalendar ?? false,
             orgIds,
             roleIds,
-            organizations: [],
-            roles: [],
             activeOrganization,
             accessToken,
             refreshToken,
-          } as User;
+          }
+
+          return returnUser;
         } catch (error) {
           console.error("Authentication error:", error);
           return null;
@@ -321,7 +320,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, account, trigger, session }): Promise<JWT> {
       if (user && account) {
-        return {
+        const newToken: JWT = {
           ...token,
           id: user.id,
           email: user.email,
@@ -339,10 +338,23 @@ export const authOptions: NextAuthOptions = {
           accessTokenExpires: Date.now() + ACCESS_TOKEN_LIFETIME * 1000,
           refreshTokenExpires: Date.now() + REFRESH_TOKEN_LIFETIME,
         };
+        return newToken;
       }
 
       if (trigger === "update" && session?.user) {
-        return {
+        // Fetch the latest active organization from DB
+        const userData = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { active_org: true },
+        });
+        const activeOrgData = userData?.active_org ? await prisma.organization.findUnique({
+          where: { id: userData.active_org },
+          select: { id: true, name: true, logo_url: true },
+        }) : null;
+        if (!activeOrgData) {
+          throw new Response("Selected Organization not found or user isn't assigned to it", { status: 404 });
+        }
+        const newToken: JWT = {
           ...token,
           firstname: session.user.firstname ?? token.firstname,
           lastname: session.user.lastname ?? token.lastname,
@@ -356,6 +368,7 @@ export const authOptions: NextAuthOptions = {
           activeOrganization:
             session.user.activeOrganization ?? token.activeOrganization ?? null,
         };
+        return newToken;
       }
 
       if (token.error === "RefreshAccessTokenError") {
@@ -401,11 +414,12 @@ export const authOptions: NextAuthOptions = {
           (token.hasLogoinCalendar as boolean) ?? false;
         session.user.orgIds = (token.orgIds as string[]) ?? [];
         session.user.roleIds = (token.roleIds as string[]) ?? [];
-        session.user.activeOrganization = token.activeOrganization as {
-          id: string;
-          name: string;
-          logo_url: string | null;
-        };
+        session.user.activeOrganization =
+          (token.activeOrganization as {
+            id: string;
+            name: string;
+            logo_url: string | null;
+          }) ?? null;
       }
 
       return session;

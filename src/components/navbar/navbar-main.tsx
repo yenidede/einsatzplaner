@@ -38,15 +38,9 @@ export default function Component() {
     queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
     enabled: !!session?.user?.orgIds?.length,
   });
-  const isHidden = !session?.user;
 
   return (
-    <header
-      className={cn(
-        "border-b px-4 md:px-6 position-fixed top-0",
-        isHidden ? "hidden" : ""
-      )}
-    >
+    <header className={cn("border-b px-4 md:px-6 position-fixed top-0")}>
       <div className="flex h-16 items-center justify-between gap-4">
         {/* Left side */}
         <div className="flex items-center gap-2">
@@ -125,10 +119,7 @@ export default function Component() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             {/* Switch organization */}
-            <NavSwitchOrgSelect
-              organizations={organizations || []}
-              activeOrgId={session?.user?.activeOrganization?.id ?? undefined}
-            />
+            <NavSwitchOrgSelect organizations={organizations || []} />
             {/* Notification */}
             <NotificationMenu />
           </div>

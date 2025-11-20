@@ -36,7 +36,7 @@ export default function RootLayout({
             <NextAuthSessionProvider>
               <AlertDialogContextProvider>
                 <Navbar />
-                <main className="px-4 md:px-6 py-8">{children}</main>
+                {children}
                 <Toaster position="bottom-left" />
               </AlertDialogContextProvider>
             </NextAuthSessionProvider>

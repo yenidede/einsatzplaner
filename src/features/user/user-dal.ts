@@ -80,3 +80,18 @@ export async function getAllUsersWithRolesByOrgId(org_id: string, role: string |
   return users;
 }
 
+export async function setUserActiveOrganization(userId: string, orgId: string) {
+  try {
+    const user = await Prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        active_org: orgId,
+      },
+    });
+    return user;
+  } catch (error: Error | unknown) {
+    console.error("Error updating user's active organization:", error);
+  }
+}
