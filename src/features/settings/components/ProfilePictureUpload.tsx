@@ -1,6 +1,10 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
-export default function ProfilePictureUpload({ onUpload }: { onUpload: (file: File) => void }) {
+export default function ProfilePictureUpload({
+  onUpload,
+}: {
+  onUpload: (file: File) => void;
+}) {
   // No preview needed
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -18,7 +22,7 @@ export default function ProfilePictureUpload({ onUpload }: { onUpload: (file: Fi
       accept="image/*"
       ref={fileInputRef}
       className="hidden"
-      style={{ display: 'none' }}
+      style={{ display: "none" }}
       onChange={handleFileChange}
       title="Profilbild auswählen"
       placeholder="Profilbild auswählen"

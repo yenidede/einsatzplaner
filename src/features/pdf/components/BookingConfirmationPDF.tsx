@@ -41,8 +41,7 @@ const styles = StyleSheet.create({
   footerText: { marginBottom: 2 },
 });
 
-// ✅ Types
-interface AssignedUser {
+type AssignedUser = {
   id: string;
   firstname: string | null;
   lastname: string | null;
@@ -50,34 +49,25 @@ interface AssignedUser {
     id: string;
     salutation: string;
   } | null;
-}
+};
 
-interface EinsatzCategory {
+type EinsatzCategory = {
   id: string;
   value: string | null;
   label: string | null;
-}
+};
 
-/* interface Organization {
-  id: string;
-  name: string;
-  logo_url: string | null;
-  email: string | null;
-  website?: string | null;
-  phone?: string | null;
-} */
-
-interface PDFOptions {
+type PDFOptions = {
   showLogos?: boolean;
-}
+};
 
-interface BookingConfirmationPDFProps {
+type BookingConfirmationPDFProps = {
   einsatz: Einsatz;
   einsatzCategories: EinsatzCategory[];
   organization: OrganizationForPDF;
   assignedUsers: AssignedUser[];
   options?: PDFOptions;
-}
+};
 
 export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
   einsatz,
