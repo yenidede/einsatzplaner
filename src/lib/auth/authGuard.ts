@@ -5,8 +5,8 @@ import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
-  SuperAdmin: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org"],
-  Organisationsverwaltung: ["read:einsaetze","manage:org"],
+  SuperAdmin: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org", "users:manage"],
+  Organisationsverwaltung: ["read:einsaetze","manage:org", "users:manage"],
   Einsatzverwaltung: ["read:einsaetze","create:einsaetze","update:einsaetze"],
   Helfer: ["read:einsaetze","join:einsaetze","leave:einsaetze"],
 };

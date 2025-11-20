@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { roleHasPermission } from "@/config/permissions";
+import { hasPermission } from "@/lib/auth/authGuard";
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -257,13 +259,11 @@ export async function removeUserFromOrganizationAction(
 
   if (!requestingUserRole) throw new Error("Forbidden");
 
-  const isOV =
-    requestingUserRole.role?.name === "Organisationsverwaltung" ||
-    requestingUserRole.role?.abbreviation === "OV" ||
-    requestingUserRole.role?.name === "Superadmin";
-
-  if (!isOV) throw new Error("Insufficient permissions");
-
+  
+  if (!hasPermission(session, 'users:manage')) 
+  {
+    console.log("User lacks permission to manage users");
+  }
   // Remove all roles for this user in this organization
   await prisma.user_organization_role.deleteMany({
     where: {
