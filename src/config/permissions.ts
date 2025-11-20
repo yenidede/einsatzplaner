@@ -18,7 +18,7 @@ export const PERMISSIONS: Record<string, RoleName[]> = {
   'users:read': ['Einsatzverwaltung', 'Organisationsverwaltung', 'Superadmin'],
   'users:manage': ['Organisationsverwaltung', 'Superadmin'],
   'users:update': ['Organisationsverwaltung', 'Superadmin'],
-  'users:delete': ['Superadmin'],
+  'users:delete': ['Organisationsverwaltung','Superadmin'],
   
   // Organization Management
   'organization:read': ['Helfer', 'Einsatzverwaltung', 'Organisationsverwaltung', 'Superadmin'],

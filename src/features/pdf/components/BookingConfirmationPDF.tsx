@@ -229,6 +229,7 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
         <View style={styles.footerRow}>
           <View style={styles.footerColumn}>
             <Text style={styles.footerTitle}>Kontakt</Text>
+            {organization.name}
             {organization.email && (
               <Text style={styles.footerText}>{organization.email}</Text>
             )}
@@ -241,66 +242,7 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
               </Text>
             )}
           </View>
-
-          {organization.addresses.length > 0 && (
-            <View style={styles.footerColumn}>
-              <Text style={styles.footerTitle}>
-                {organization.addresses.length > 1 ? "Adressen" : "Adresse"}
-              </Text>
-              {organization.addresses.map((addr, index) => (
-                <View key={index} style={{ marginBottom: 4 }}>
-                  {addr.label && (
-                    <Text style={[styles.footerText, { fontWeight: "bold" }]}>
-                      {addr.label}
-                    </Text>
-                  )}
-                  <Text style={styles.footerText}>{addr.street}</Text>
-                  <Text style={styles.footerText}>
-                    {addr.postal_code} {addr.city}
-                  </Text>
-                  <Text style={styles.footerText}>{addr.country}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {organization.bankAccounts.length > 0 && (
-            <View style={styles.footerColumn}>
-              <Text style={styles.footerTitle}>
-                {organization.bankAccounts.length > 1
-                  ? "Bankverbindungen"
-                  : "Bankverbindung"}
-              </Text>
-              {organization.bankAccounts.map((bank, index) => (
-                <View key={index} style={{ marginBottom: 4 }}>
-                  <Text style={styles.footerText}>{bank.bank_name}</Text>
-                  <Text style={styles.footerText}>IBAN: {bank.iban}</Text>
-                  <Text style={styles.footerText}>BIC: {bank.bic}</Text>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
-
-        {organization.details && (
-          <View style={{ marginTop: 6 }}>
-            {organization.details.vat && (
-              <Text style={styles.footerText}>
-                UID: {organization.details.vat}
-              </Text>
-            )}
-            {organization.details.zvr && (
-              <Text style={styles.footerText}>
-                ZVR: {organization.details.zvr}
-              </Text>
-            )}
-            {organization.details.authority && (
-              <Text style={styles.footerText}>
-                Behörde: {organization.details.authority}
-              </Text>
-            )}
-          </View>
-        )}
       </View>
 
       <BookingFooter organization={organization} />

@@ -76,7 +76,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   useSessionValidation({
-    debug: true,
+    debug: false,
     onTokenExpired: () => {
       console.log("Token abgelaufen - leite zu Login weiter");
       router.push("/signin");
