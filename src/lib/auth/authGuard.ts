@@ -6,7 +6,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   SuperAdmin: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org"],
-  Organisationsverwaltung: ["manage:org"],
+  Organisationsverwaltung: ["read:einsaetze","manage:org"],
   Einsatzverwaltung: ["read:einsaetze","create:einsaetze","update:einsaetze"],
   Helfer: ["read:einsaetze","join:einsaetze","leave:einsaetze"],
 };
