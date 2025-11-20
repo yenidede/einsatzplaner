@@ -16,9 +16,6 @@ export function useUserSettings() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string>("");
 
-
-
-
   const query = useQuery({
     queryKey: userProfileKey,
     queryFn: () => getUserProfileAction(),
