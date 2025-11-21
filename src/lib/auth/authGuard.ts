@@ -1,14 +1,24 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import {
+  getUserByIdWithOrgAndRole,
+  getUserRolesInOrganization,
+} from "@/DataAccessLayer/user";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
-  SuperAdmin: ["read:einsaetze","create:einsaetze","update:einsaetze","delete:einsaetze","manage:org", "users:manage"],
-  Organisationsverwaltung: ["read:einsaetze","manage:org", "users:manage"],
-  Einsatzverwaltung: ["read:einsaetze","create:einsaetze","update:einsaetze"],
-  Helfer: ["read:einsaetze","join:einsaetze","leave:einsaetze"],
+  SuperAdmin: [
+    "read:einsaetze",
+    "create:einsaetze",
+    "update:einsaetze",
+    "delete:einsaetze",
+    "manage:org",
+    "users:manage",
+  ],
+  Organisationsverwaltung: ["read:einsaetze", "manage:org", "users:manage"],
+  Einsatzverwaltung: ["read:einsaetze", "create:einsaetze", "update:einsaetze"],
+  Helfer: ["read:einsaetze", "join:einsaetze", "leave:einsaetze"],
 };
 
 // Auth Guard für Server Components
@@ -16,7 +26,7 @@ export async function requireAuth() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    redirect('/signin');
+    redirect("/signin");
   }
 
   const userId = session.user.id as string;
@@ -27,9 +37,11 @@ export async function requireAuth() {
     include: { role: { select: { id: true, name: true, abbreviation: true } } },
   });
 
-  const orgIds = Array.from(new Set(rows.map(r => r.org_id)));
-  const roleIds = Array.from(new Set(rows.map(r => r.role_id)));
-  const roles = Array.from(new Set(rows.map(r => r.role?.name).filter(Boolean))) as string[];
+  const orgIds = Array.from(new Set(rows.map((r) => r.org_id)));
+  const roleIds = Array.from(new Set(rows.map((r) => r.role_id)));
+  const roles = Array.from(
+    new Set(rows.map((r) => r.role?.name).filter(Boolean))
+  ) as string[];
 
   // erweitere session.user für Kompatibilität (clientseitig kann session.user.roles lesen)
   const extendedSession = {
@@ -63,10 +75,10 @@ export async function requireRole(requiredRoles: string | string[]) {
   const userRoles = userIds.roles || [];
 
   // Prüfe, ob User mindestens eine der benötigten Rollen hat
-  const hasRequiredRole = roles.some(role => userRoles.includes(role));
+  const hasRequiredRole = roles.some((role) => userRoles.includes(role));
 
   if (!hasRequiredRole) {
-    redirect('/unauthorized');
+    redirect("/unauthorized");
   }
 
   return session;
@@ -79,7 +91,7 @@ export async function requireOrganization(orgId?: string) {
   const userOrgIds = userIds.orgIds || [];
 
   if (orgId && !userOrgIds.includes(orgId)) {
-    redirect('/unauthorized');
+    redirect("/unauthorized");
   }
 
   return session;
@@ -90,14 +102,14 @@ export async function getAuthenticatedUser() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    redirect('/signin');
+    redirect("/signin");
   }
 
   try {
     const user = await getUserByIdWithOrgAndRole(session.user.id);
 
     if (!user) {
-      redirect('/signin');
+      redirect("/signin");
     }
 
     return {
@@ -108,32 +120,28 @@ export async function getAuthenticatedUser() {
         userId: user.id,
         orgId: user.user_organization_role[0]?.org_id || null,
         roleId: user.user_organization_role[0]?.role_id || null,
-      }
+      },
     };
   } catch (error) {
-    console.error('Error loading user data:', error);
-    redirect('/signin');
+    console.error("Error loading user data:", error);
+    redirect("/signin");
   }
 }
 
 // Permission Checker
-export function hasPermission(sessionOrRoleOrRoles: any, permission: string): boolean {
+export async function hasPermission(
+  user_id: string,
+  org_id: string,
+  permission: string
+): Promise<boolean> {
+  if (!user_id || !org_id) return false;
   // akzeptiert: session, role string, roles string[]
-  let roles: string[] = [];
-
-  if (!sessionOrRoleOrRoles) return false;
-
-  // session übergeben?
-  if (sessionOrRoleOrRoles?.user) {
-    roles = sessionOrRoleOrRoles.user.roles ?? (sessionOrRoleOrRoles.user.role ? [sessionOrRoleOrRoles.user.role] : []);
-  } else if (Array.isArray(sessionOrRoleOrRoles)) {
-    roles = sessionOrRoleOrRoles;
-  } else if (typeof sessionOrRoleOrRoles === "string") {
-    roles = [sessionOrRoleOrRoles];
-  }
-
+  const roles = await getUserRolesInOrganization(user_id, org_id);
+  if (roles.length === 0) return false;
   // prüfe, ob irgendeine Rolle die Permission hat
-  return roles.some(r => (ROLE_PERMISSION_MAP[r] ?? []).includes(permission));
+  return roles.some((r) =>
+    (ROLE_PERMISSION_MAP[r.role.name] ?? []).includes(permission)
+  );
 }
 
 // API Route Auth Helper
@@ -141,22 +149,31 @@ export async function validateApiAuth(request: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    return { error: 'Nicht authentifiziert', status: 401 };
+    return { error: "Nicht authentifiziert", status: 401 };
   }
 
   return { session, user: session.user };
 }
 
 // API Route Auth mit Berechtigung
-export async function validateApiAuthWithPermission(request: Request, permission: string) {
+export async function validateApiAuthWithPermission(
+  request: Request,
+  permission: string
+) {
   const authResult = await validateApiAuth(request);
 
-  if ('error' in authResult) {
+  if ("error" in authResult) {
     return authResult;
   }
 
-  if (!hasPermission(authResult.session, permission)) {
-    return { error: 'Keine Berechtigung', status: 403 };
+  if (
+    !(await hasPermission(
+      authResult.session.user.id,
+      authResult.session.user.activeOrganization?.id || "",
+      permission
+    ))
+  ) {
+    return { error: "Keine Berechtigung", status: 403 };
   }
 
   return authResult;

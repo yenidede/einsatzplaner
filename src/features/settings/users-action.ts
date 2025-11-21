@@ -259,10 +259,14 @@ export async function removeUserFromOrganizationAction(
 
   if (!requestingUserRole) throw new Error("Forbidden");
 
-  
-  if (!hasPermission(session, 'users:manage')) 
-  {
-    console.log("User lacks permission to manage users");
+  if (
+    !(await hasPermission(
+      requestingUserRole.user_id,
+      requestingUserRole.org_id,
+      "users:manage"
+    ))
+  ) {
+    throw new Error("Insufficient permissions");
   }
   // Remove all roles for this user in this organization
   await prisma.user_organization_role.deleteMany({
