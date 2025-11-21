@@ -178,7 +178,7 @@ export function EventDialog({
   const currentUserId = "5ae139a7-476c-4d76-95cb-4dcb4e909da9";
   // TODO
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const { generatePdf} = usePdfGenerator();
+  const { generatePdf } = usePdfGenerator();
   const [staticFormData, setStaticFormData] =
     useState<EinsatzFormData>(DEFAULTFORMDATA);
   // state for validation on dynamic form data - generated once after template was selected
@@ -382,6 +382,7 @@ export function EventDialog({
   );
 
   const resetForm = useCallback(() => {
+    console.log("Resetting form to default");
     handleFormDataChange(DEFAULTFORMDATA);
     setActiveTemplateId(null);
     setErrors({
@@ -451,7 +452,7 @@ export function EventDialog({
     } else {
       resetForm();
     }
-  }, [currentEinsatz, handleFormDataChange, resetForm]);
+  }, [currentEinsatz, handleFormDataChange, resetForm, isOpen]);
 
   // Generate or refresh dynamic schema/data when template or detailed fields change
   useEffect(() => {
@@ -690,7 +691,7 @@ export function EventDialog({
 
   const handlePDFPrint = async () => {
     // TODO: replace with real PDF generation workflow
-    if(!currentEinsatz?.id) {
+    if (!currentEinsatz?.id) {
       console.warn("No einsatz ID available for PDF generation.");
       return;
     }
@@ -698,7 +699,7 @@ export function EventDialog({
       type: "booking-confirmation",
       einsatzId: currentEinsatz.id || "",
     };
-    
+
     await generatePdf(request);
     //console.warn("PDF confirmation export is not implemented yet.");
   };
@@ -829,7 +830,6 @@ export function EventDialog({
             </Button>
             <Button onClick={handleSave}>Speichern</Button>
           </div>
-
         </DialogFooter>
       </DialogContent>
     </Dialog>
