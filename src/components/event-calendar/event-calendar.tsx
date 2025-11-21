@@ -418,6 +418,14 @@ export function EventCalendar({
         </div>
 
         <div className="flex flex-1 flex-col">
+          {events.length === 0 && (
+            <div className="m-4 rounded-md bg-yellow-50 p-4 text-sm text-yellow-800">
+              Noch keine{" "}
+              {organizations?.find((org) => org.id === activeOrgId)
+                ?.einsatz_name_plural ?? "Einsätze"}{" "}
+              vorhanden.
+            </div>
+          )}
           {view === "month" && (
             <MonthView
               currentDate={currentDate}
@@ -465,9 +473,6 @@ export function EventCalendar({
         </div>
 
         <EventDialog
-          activeOrg={
-            organizations?.find((org) => org.id === activeOrgId) || null
-          }
           einsatz={selectedEvent}
           isOpen={isEventDialogOpen}
           onClose={() => {

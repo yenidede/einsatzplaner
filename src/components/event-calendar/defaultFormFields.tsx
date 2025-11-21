@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RiCalendarLine } from "@remixicon/react";
-import { format, isBefore } from "date-fns";
+import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
 import { cn } from "@/lib/utils";
@@ -22,12 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DefaultEndHour,
-  DefaultStartHour,
-  EndHour,
-  StartHour,
-} from "@/components/event-calendar/constants";
+import { EndHour, StartHour } from "@/components/event-calendar/constants";
 import type { organization as Organization } from "@/generated/prisma";
 import FormGroup from "../form/formGroup";
 import FormField from "../form/formInputField";
@@ -99,7 +94,8 @@ export function DefaultFormFields({
       {/* Title and Categories - CORRECT */}
       <FormGroup className="grid grid-cols-[repeat(auto-fit,minmax(17rem,1fr))]">
         <FormField
-          name="Einsatzname"
+          name={"Name " + (activeOrg?.einsatz_name_singular ?? "Einsatz")}
+          placeholder="Name eingeben..."
           value={formData.title}
           onChange={(e) => handleChange("title", e.target.value)}
           // errors are always accessed through handleChange name. Here "title"
@@ -360,7 +356,7 @@ export function DefaultFormFields({
       {/* Helpers and User Selection */}
       <FormGroup>
         <FormField
-          name={"Anzahl " + (activeOrg?.einsatz_name_plural ?? "Helfer")}
+          name={"Anzahl " + (activeOrg?.helper_name_plural ?? "Helfer")}
           type="number"
           min={0}
           value={formData.helpersNeeded >= 0 ? formData.helpersNeeded : ""}
