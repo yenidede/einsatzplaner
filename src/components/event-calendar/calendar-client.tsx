@@ -15,7 +15,9 @@ import {
 } from "@/features/einsatz/dal-einsatz";
 import { toast } from "sonner";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
+import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
 import { useSession } from "next-auth/react";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
 
 export default function Component({ mode }: { mode: CalendarMode }) {
   const { data: session } = useSession();
@@ -29,6 +31,19 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     queryFn: () => getEinsaetzeData(activeOrgId),
     enabled: !!activeOrgId,
   });
+
+  const { data: organizations } = useQuery({
+    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
+    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
+    enabled: !!session?.user.orgIds?.length,
+  });
+
+  const einsatz_singular =
+    organizations?.find((org) => org.id === activeOrgId)
+      ?.einsatz_name_singular ?? "Einsatz";
+  const einsatz_plural =
+    organizations?.find((org) => org.id === activeOrgId)?.einsatz_name_plural ??
+    "Einsätze";
 
   // Mutations with optimistic update
   const createMutation = useMutation({
@@ -53,10 +68,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error("Fehler beim Erstellen des Einsatzes: " + error);
+      toast.error(`
+        ${einsatz_singular} konnte nicht erstellt werden: ${error}`);
     },
     onSuccess: (_data, vars) => {
-      toast.success("Einsatz '" + vars.title + "' wurde erstellt.");
+      toast.success(einsatz_singular + " '" + vars.title + "' wurde erstellt.");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -97,11 +113,12 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error("Fehler beim Aktualisieren des Einsatzes: " + error);
-      console.error("Error updating Einsatz:", error);
+      toast.error(
+        `${einsatz_singular} konnte nicht aktualisiert werden: ${error}`
+      );
     },
     onSuccess: (_data) => {
-      toast.success("Einsatz '" + _data.title + "' wurde aktualisiert.");
+      toast.success(`${einsatz_singular} '${_data.title}' wurde aktualisiert.`);
     },
     onSettled: (data) => {
       // Invalidate the specific einsatz detail (only if we have a valid id)
@@ -142,12 +159,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error("Fehler beim Löschen des Einsatzes: " + error);
-      console.error("Error deleting Einsatz:", error);
+      toast.error(`${einsatz_singular} konnte nicht gelöscht werden: ${error}`);
     },
     onSuccess: (_data, vars, ctx) => {
       const title = ctx?.toDelete?.title || vars.eventTitle || "Unbenannt";
-      toast.success("Einsatz '" + title + "' wurde gelöscht.");
+      toast.success(`${einsatz_singular} '${title}' wurde gelöscht.`);
     },
     onSettled: (_data, _error, variables) => {
       // Remove any cached detail for the deleted einsatz
@@ -182,14 +198,15 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error("Fehler beim Löschen des Einsatzes: " + error);
-      console.error("Error deleting Einsatz:", error);
+      toast.error(`${einsatz_singular} konnte nicht gelöscht werden: ${error}`);
     },
     onSuccess: (_data, vars) => {
-      toast.success(vars.eventIds.length + " Einsätze wurden gelöscht.");
+      toast.success(
+        vars.eventIds.length + " " + einsatz_plural + " wurden gelöscht."
+      );
     },
     onSettled: (_data, _error, variables) => {
-      // Remove any cached detail for the deleted einsatz
+      // Remove any cached detail for the deleted einsätze
       if (variables?.eventIds) {
         variables.eventIds.forEach((id) => {
           queryClient.removeQueries({
@@ -236,6 +253,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       onEventDelete={handleEventDelete}
       onMultiEventDelete={handleMultiEventDelete}
       mode={mode}
+      activeOrgId={activeOrgId}
     />
   );
 }
