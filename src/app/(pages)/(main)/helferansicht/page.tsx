@@ -32,13 +32,6 @@ export default function Helferansicht() {
   if (!events) {
     return <div>Lade Einsätze...</div>;
   }
-  if (events.length === 0) {
-    return (
-      <div>{`Organisation hat noch keine ${
-        activeOrg?.einsatz_name_plural ?? "Einsätze"
-      } erstellt.`}</div>
-    );
-  }
   return (
     <>
       <h1>{activeOrg?.einsatz_name_plural ?? "Einsätze"}</h1>
