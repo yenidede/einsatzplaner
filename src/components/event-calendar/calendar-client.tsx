@@ -236,6 +236,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       onEventDelete={handleEventDelete}
       onMultiEventDelete={handleMultiEventDelete}
       mode={mode}
+      activeOrgId={activeOrgId}
     />
   );
 }
