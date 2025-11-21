@@ -31,8 +31,10 @@ import {
   StatusValuePairs,
 } from "@/components/event-calendar/constants";
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
-import type { organization as Organization } from "@/generated/prisma";
 import { useQuery } from "@tanstack/react-query";
+import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
+import { queryKeys as TemplateQueryKeys } from "@/features/einsatztemplate/queryKeys";
+import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
 import { EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
 import FormGroup from "../form/formGroup";
 import FormInputFieldCustom from "../form/formInputFieldCustom";
@@ -50,6 +52,9 @@ import TooltipCustom from "../tooltip-custom";
 
 import { PdfGenerationRequest } from "@/features/pdf/types/pdf";
 import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
+import { useSession } from "next-auth/react";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { toast } from "sonner";
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -160,23 +165,21 @@ interface EventDialogProps {
   onClose: () => void;
   onSave: (einsatz: EinsatzCreate) => void;
   onDelete: (eventId: string, eventTitle: string) => void;
-  activeOrg: Organization | null;
 }
 
 export function EventDialog({
   einsatz,
   isOpen,
-  activeOrg,
   onClose,
   onSave,
   onDelete,
 }: EventDialogProps) {
   const { showDialog } = useAlertDialog();
+  const { data: session } = useSession();
 
-  // TODO
-  const activeOrgId = "0c39989e-07bc-4074-92bc-aa274e5f22d0"; // remove this!!!
-  const currentUserId = "5ae139a7-476c-4d76-95cb-4dcb4e909da9";
-  // TODO
+  const activeOrgId = session?.user?.activeOrganization?.id;
+  const currentUserId = session?.user?.id;
+
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const { generatePdf } = usePdfGenerator();
   const [staticFormData, setStaticFormData] =
@@ -213,21 +216,34 @@ export function EventDialog({
   });
 
   const categoriesQuery = useQuery({
-    queryKey: ["categories", activeOrg?.id ?? activeOrgId],
-    queryFn: () => getCategoriesByOrgIds([activeOrg?.id ?? activeOrgId]),
+    queryKey: einsatzQueryKeys.categories(activeOrgId ?? ""),
+    queryFn: () => getCategoriesByOrgIds(activeOrgId ? [activeOrgId] : []),
+    enabled: !!activeOrgId,
   });
 
   const templatesQuery = useQuery({
-    queryKey: ["templates", activeOrg?.id ?? activeOrgId],
-    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrg?.id ?? activeOrgId),
+    queryKey: TemplateQueryKeys.templates(activeOrgId ? [activeOrgId] : []),
+    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrgId ?? ""),
+    enabled: !!activeOrgId,
   });
 
   const usersQuery = useQuery({
-    queryKey: ["users", activeOrg?.id ?? activeOrgId, "helpers"],
+    queryKey: UserQueryKeys.users(activeOrgId ?? ""),
     queryFn: () => {
-      return getAllUsersWithRolesByOrgId(activeOrg?.id ?? activeOrgId);
+      return getAllUsersWithRolesByOrgId(activeOrgId ?? "");
     },
+    enabled: !!activeOrgId,
   });
+
+  const { data: organizations } = useQuery({
+    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
+    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
+    enabled: !!session?.user.orgIds?.length,
+  });
+
+  const einsatz_singular =
+    organizations?.find((org) => org.id === activeOrgId)
+      ?.einsatz_name_singular ?? "Einsatz";
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =
@@ -282,7 +298,9 @@ export function EventDialog({
         return newErrors;
       });
     } else {
-      console.warn("No dynamic schema available for validation");
+      toast.error(
+        "'No dynamic schema available for validation.' Sollte der Fehler häufiger auftreten, wenden Sie sich an den Administrator."
+      );
     }
 
     setDynamicFormData((prev) => ({ ...prev, ...updates }));
@@ -382,7 +400,6 @@ export function EventDialog({
   );
 
   const resetForm = useCallback(() => {
-    console.log("Resetting form to default");
     handleFormDataChange(DEFAULTFORMDATA);
     setActiveTemplateId(null);
     setErrors({
@@ -622,10 +639,10 @@ export function EventDialog({
         setErrors({
           fieldErrors: {
             startTime: [
-              `Selected time must be between ${StartHour}:00 and ${EndHour}:00`,
+              `Zeit muss zwischen ${StartHour}:00 und ${EndHour}:00 liegen`,
             ],
             endTime: [
-              `Selected time must be between ${StartHour}:00 and ${EndHour}:00`,
+              `Zeit muss zwischen ${StartHour}:00 und ${EndHour}:00 liegen`,
             ],
           },
           formErrors: [],
@@ -656,6 +673,17 @@ export function EventDialog({
       }
     );
 
+    const org_id = currentEinsatz?.org_id ?? activeOrgId;
+    if (!org_id) {
+      toast.error("Organisation konnte nicht zugeordnet werden.");
+      return;
+    }
+
+    if (!currentUserId) {
+      toast.error("Benutzerdaten konnten nicht zugeordnet werden.");
+      return;
+    }
+
     onSave({
       id: currentEinsatz?.id,
       title: parsedDataStatic.data.title,
@@ -665,7 +693,7 @@ export function EventDialog({
       participant_count: parsedDataStatic.data.participantCount ?? null,
       price_per_person: parsedDataStatic.data.pricePerPerson ?? null,
       total_price: parsedDataStatic.data.totalPrice ?? null,
-      org_id: currentEinsatz?.org_id ?? activeOrg?.id ?? activeOrgId,
+      org_id,
       status_id: status,
       created_by: currentUserId,
       template_id: activeTemplateId ?? undefined,
@@ -679,8 +707,8 @@ export function EventDialog({
   const handleDelete = async () => {
     if (currentEinsatz?.id) {
       const result = await showDialog({
-        title: "Einsatz löschen",
-        description: `Sind Sie sicher, dass Sie den Einsatz "${staticFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
+        title: einsatz_singular + " löschen",
+        description: `Sind Sie sicher, dass Sie "${staticFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
       });
 
       if (result === "success") {
@@ -701,7 +729,6 @@ export function EventDialog({
     };
 
     await generatePdf(request);
-    //console.warn("PDF confirmation export is not implemented yet.");
   };
 
   return (
@@ -713,12 +740,12 @@ export function EventDialog({
               ? "Laden..."
               : currentEinsatz?.id
               ? "Bearbeite " + staticFormData.title
-              : "Erstelle " + (activeOrg?.einsatz_name_singular ?? " Einsatz")}
+              : "Erstelle " + einsatz_singular}
           </DialogTitle>
           <DialogDescription className="sr-only">
             {currentEinsatz?.id
-              ? "Edit the details of this einsatz"
-              : "Add a new einsatz to your calendar"}
+              ? einsatz_singular + " bearbeiten"
+              : einsatz_singular + " anlegen"}
           </DialogDescription>
         </DialogHeader>
 
@@ -791,7 +818,9 @@ export function EventDialog({
                     }))
                   : []
               }
-              activeOrg={activeOrg}
+              activeOrg={
+                organizations?.find((org) => org.id === activeOrgId) ?? null
+              }
             />
             <DynamicFormFields
               fields={dynamicFormFields}
@@ -803,12 +832,12 @@ export function EventDialog({
         </div>
         <DialogFooter className="flex-row sm:justify-between flex-shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
           {currentEinsatz?.id && (
-            <TooltipCustom text="Einsatz löschen">
+            <TooltipCustom text={einsatz_singular + " löschen"}>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handleDelete}
-                aria-label="Einsatz löschen"
+                aria-label={einsatz_singular + " löschen"}
               >
                 <RiDeleteBinLine size={16} aria-hidden="true" />
               </Button>
