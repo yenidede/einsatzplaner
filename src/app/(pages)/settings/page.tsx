@@ -24,6 +24,7 @@ import {
   uploadProfilePictureAction,
   getSalutationsAction,
   updateOrgMailNotificationAction,
+  UserUpdateData,
 } from "@/features/settings/settings-action";
 import { removeUserFromOrganization } from "@/DataAccessLayer/user";
 
@@ -67,7 +68,7 @@ export default function SettingsPage() {
   const [firstname, setFirstname] = useState<string>("");
   const [lastname, setLastname] = useState<string>("");
   const [pictureUrl, setPictureUrl] = useState<string | null>(null);
-  const [salutationId, setSalutationId] = useState<string | null>(null);
+  const [salutationId, setSalutationId] = useState<string>("");
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(
     null
   );
@@ -119,8 +120,7 @@ export default function SettingsPage() {
 
   const mutation = useMutation({
     mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
-    mutationFn: async (newSettings: UserSettings) => {
-      // TODO (Ömer): Clear this error
+    mutationFn: async (newSettings: UserUpdateData) => {
       const res = await updateUserProfileAction(newSettings);
       if (!res) throw new Error("Fehler beim Speichern");
       return res;
@@ -170,12 +170,12 @@ export default function SettingsPage() {
       console.log("pictureUrl:", finalPictureUrl);
       // Update user profile
       await mutation.mutateAsync({
-        userId: session.user.id,
+        id: session.user.id,
         email,
         firstname,
         lastname,
         phone,
-        picture_url: finalPictureUrl,
+        picture_url: finalPictureUrl || undefined,
         salutationId,
         hasLogoinCalendar: showLogos,
         hasGetMailNotification: true,
@@ -216,7 +216,7 @@ export default function SettingsPage() {
 
       console.log("Einstellungen erfolgreich gespeichert!");
     } catch (error) {
-      console.error("❌ Save failed:", error);
+      console.error("Save failed:", error);
       console.log("Fehler beim Speichern der Einstellungen");
     }
   };
@@ -232,11 +232,11 @@ export default function SettingsPage() {
 
     try {
       await mutation.mutateAsync({
-        userId: session.user.id,
+        id: session.user.id,
         firstname,
         lastname,
         email,
-        picture_url: null,
+        picture_url: "",
         phone,
         salutationId,
         hasLogoinCalendar: showLogos,
