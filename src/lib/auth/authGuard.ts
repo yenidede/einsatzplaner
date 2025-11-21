@@ -8,19 +8,162 @@ import {
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { Session } from "next-auth";
 
+// ✅ ROLE PERMISSION MAP - Single Source of Truth
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
-  SuperAdmin: [
-    "read:einsaetze",
-    "create:einsaetze",
-    "update:einsaetze",
-    "delete:einsaetze",
-    "manage:org",
+  Superadmin: [
+    // Einsätze
+    "einsaetze:read",
+    "einsaetze:create",
+    "einsaetze:update",
+    "einsaetze:delete",
+    "einsaetze:join",
+    "einsaetze:leave",
+    "einsaetze:manage_assignments",
+
+    // Users
+    "users:read",
+    "users:create",
+    "users:update",
+    "users:delete",
     "users:manage",
+    "users:invite",
+
+    // Organization
+    "organization:read",
+    "organization:update",
+    "organization:delete",
+    "organization:manage",
+
+    // Roles
+    "roles:read",
+    "roles:create",
+    "roles:update",
+    "roles:delete",
+    "roles:assign",
+
+    // Settings
+    "settings:read",
+    "settings:update",
+
+    // Dashboard
+    "dashboard:read",
+    "analytics:read",
   ],
-  Organisationsverwaltung: ["read:einsaetze", "manage:org", "users:manage"],
-  Einsatzverwaltung: ["read:einsaetze", "create:einsaetze", "update:einsaetze"],
-  Helfer: ["read:einsaetze", "join:einsaetze", "leave:einsaetze"],
+
+  Organisationsverwaltung: [
+    // Einsätze (nur lesen)
+    "einsaetze:read",
+
+    // Users
+    "users:read",
+    "users:create",
+    "users:update",
+    "users:invite",
+    "users:manage",
+
+    // Organization
+    "organization:read",
+    "organization:update",
+
+    // Roles
+    "roles:read",
+    "roles:assign",
+
+    // Settings
+    "settings:read",
+    "settings:update",
+
+    // Dashboard
+    "dashboard:read",
+  ],
+
+  Einsatzverwaltung: [
+    // Einsätze
+    "einsaetze:read",
+    "einsaetze:create",
+    "einsaetze:update",
+    "einsaetze:delete",
+    "einsaetze:manage_assignments",
+
+    // Users (read-only)
+    "users:read",
+
+    // Dashboard
+    "dashboard:read",
+  ],
+
+  Helfer: [
+    // Einsätze
+    "einsaetze:read",
+    "einsaetze:join",
+    "einsaetze:leave",
+
+    // Dashboard
+    "dashboard:read",
+  ],
 };
+
+// ✅ NEUE METHODE: Get all permissions for a role
+export function getRolePermissions(roleName: string): string[] {
+  return ROLE_PERMISSION_MAP[roleName] || [];
+}
+
+// ✅ NEUE METHODE: Get all permissions for multiple roles
+export function getMultipleRolesPermissions(roleNames: string[]): string[] {
+  const allPermissions = new Set<string>();
+
+  roleNames.forEach((roleName) => {
+    const permissions = ROLE_PERMISSION_MAP[roleName] || [];
+    permissions.forEach((perm) => allPermissions.add(perm));
+  });
+
+  return Array.from(allPermissions);
+}
+
+// ✅ NEUE METHODE: Check if role has specific permission
+export function roleHasPermission(
+  roleName: string,
+  permission: string
+): boolean {
+  const permissions = ROLE_PERMISSION_MAP[roleName] || [];
+  return permissions.includes(permission);
+}
+
+export function getRolesWithPermission(permission: string): string[] {
+  return Object.entries(ROLE_PERMISSION_MAP)
+    .filter(([_, permissions]) => permissions.includes(permission))
+    .map(([roleName, _]) => roleName);
+}
+
+// ✅ NEUE METHODE: Get user's permissions from session (ohne DB Query)
+export function getUserPermissionsFromSession(session: Session): string[] {
+  if (!session?.user?.roles) return [];
+
+  return getMultipleRolesPermissions(session.user.roles);
+}
+
+// ✅ NEUE METHODE: Get user's permissions from DB
+export async function getUserPermissions(
+  userId: string,
+  orgId?: string
+): Promise<string[]> {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id || session.user.id !== userId) {
+    return [];
+  }
+
+  const targetOrgId = orgId || session.user.activeOrganization?.id;
+
+  if (!targetOrgId) {
+    return [];
+  }
+
+  const roles = await getUserRolesInOrganization(userId, targetOrgId);
+  const roleNames = roles.map((r) => r.role.name);
+
+  return getMultipleRolesPermissions(roleNames);
+}
 
 // Auth Guard für Server Components
 export async function requireAuth() {
@@ -32,7 +175,6 @@ export async function requireAuth() {
 
   const userId = session.user.id as string;
 
-  // hole alle Zuordnungen mit Role-Info
   const rows = await prisma.user_organization_role.findMany({
     where: { user_id: userId },
     include: { role: { select: { id: true, name: true, abbreviation: true } } },
@@ -44,7 +186,6 @@ export async function requireAuth() {
     new Set(rows.map((r) => r.role?.name).filter(Boolean))
   ) as string[];
 
-  // erweitere session.user für Kompatibilität (clientseitig kann session.user.roles lesen)
   const extendedSession = {
     ...session,
     user: {
@@ -52,7 +193,7 @@ export async function requireAuth() {
       roles,
       roleIds,
       orgIds,
-      orgId: orgIds.length === 1 ? orgIds[0] : undefined, // fallback für alten code
+      orgId: orgIds.length === 1 ? orgIds[0] : undefined,
     },
   };
 
@@ -75,7 +216,6 @@ export async function requireRole(requiredRoles: string | string[]) {
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
   const userRoles = userIds.roles || [];
 
-  // Prüfe, ob User mindestens eine der benötigten Rollen hat
   const hasRequiredRole = roles.some((role) => userRoles.includes(role));
 
   if (!hasRequiredRole) {
@@ -116,7 +256,6 @@ export async function getAuthenticatedUser() {
     return {
       session,
       user,
-      // Alle UUIDs für die Session
       userIds: {
         userId: user.id,
         orgId: user.user_organization_role[0]?.org_id || null,
@@ -129,6 +268,7 @@ export async function getAuthenticatedUser() {
   }
 }
 
+// ✅ Permission Check - mit DB Query
 export async function hasPermission(
   session: Session,
   permission: string,
@@ -150,25 +290,49 @@ export async function hasPermission(
     return false;
   }
 
-  console.log(roles.map((r) => r.role.name));
-
   return roles.some((r) =>
     (ROLE_PERMISSION_MAP[r.role.name] ?? []).includes(permission)
   );
 }
-/* 
+
+// ✅ Permission Check - ohne DB Query (schneller, nutzt Session)
 export function hasPermissionFromSession(
   session: Session,
   permission: string
 ): boolean {
-  if (!session?.user?.roleIds) return false;
+  if (!session?.user?.roles) return false;
 
-  // ✅ Prüfe direkt gegen die Rollen in der Session
-  return session.user.roleIds.some((roleId) =>
-    (ROLE_PERMISSION_MAP[roleId.] ?? []).includes(permission)
+  return session.user.roles.some((roleName) =>
+    (ROLE_PERMISSION_MAP[roleName] ?? []).includes(permission)
   );
 }
- */
+
+// ✅ Check multiple permissions (user must have ALL)
+export async function hasAllPermissions(
+  session: Session,
+  permissions: string[],
+  orgId?: string
+): Promise<boolean> {
+  for (const permission of permissions) {
+    const result = await hasPermission(session, permission, orgId);
+    if (!result) return false;
+  }
+  return true;
+}
+
+// ✅ Check multiple permissions (user must have AT LEAST ONE)
+export async function hasAnyPermission(
+  session: Session,
+  permissions: string[],
+  orgId?: string
+): Promise<boolean> {
+  for (const permission of permissions) {
+    const result = await hasPermission(session, permission, orgId);
+    if (result) return true;
+  }
+  return false;
+}
+
 // API Route Auth Helper
 export async function validateApiAuth(request: Request) {
   const session = await getServerSession(authOptions);
@@ -180,11 +344,11 @@ export async function validateApiAuth(request: Request) {
   return { session, user: session.user };
 }
 
-// ✅ API Route Auth mit Berechtigung - VEREINFACHT
+// ✅ API Route Auth mit Berechtigung
 export async function validateApiAuthWithPermission(
   request: Request,
   permission: string,
-  orgId?: string // ✅ Optional
+  orgId?: string
 ) {
   const session = await getServerSession(authOptions);
 
@@ -192,10 +356,30 @@ export async function validateApiAuthWithPermission(
     return { error: "Nicht authentifiziert", status: 401 };
   }
 
-  // ✅ Nutze neue hasPermission-Funktion
   const hasPermissionResult = await hasPermission(session, permission, orgId);
 
   if (!hasPermissionResult) {
+    return { error: "Keine Berechtigung", status: 403 };
+  }
+
+  return { session, user: session.user };
+}
+
+// ✅ API Route Auth mit mehreren Permissions (alle erforderlich)
+export async function validateApiAuthWithAllPermissions(
+  request: Request,
+  permissions: string[],
+  orgId?: string
+) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return { error: "Nicht authentifiziert", status: 401 };
+  }
+
+  const result = await hasAllPermissions(session, permissions, orgId);
+
+  if (!result) {
     return { error: "Keine Berechtigung", status: 403 };
   }
 
@@ -213,6 +397,26 @@ export async function requirePermission(permission: string, orgId?: string) {
   const hasPermissionResult = await hasPermission(session, permission, orgId);
 
   if (!hasPermissionResult) {
+    redirect("/unauthorized");
+  }
+
+  return session;
+}
+
+// ✅ Server Component Helper - require multiple permissions
+export async function requireAllPermissions(
+  permissions: string[],
+  orgId?: string
+) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    redirect("/signin");
+  }
+
+  const result = await hasAllPermissions(session, permissions, orgId);
+
+  if (!result) {
     redirect("/unauthorized");
   }
 
