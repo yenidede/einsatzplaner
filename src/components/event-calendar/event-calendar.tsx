@@ -468,7 +468,7 @@ export function EventCalendar({
           activeOrg={
             organizations?.find((org) => org.id === activeOrgId) || null
           }
-          einsatz={selectedEvent as EinsatzCreate}
+          einsatz={selectedEvent}
           isOpen={isEventDialogOpen}
           onClose={() => {
             setIsEventDialogOpen(false);
