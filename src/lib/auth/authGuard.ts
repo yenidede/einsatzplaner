@@ -6,6 +6,7 @@ import {
   getUserRolesInOrganization,
 } from "@/DataAccessLayer/user";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { Session } from "next-auth";
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   SuperAdmin: [
@@ -128,22 +129,46 @@ export async function getAuthenticatedUser() {
   }
 }
 
-// Permission Checker
 export async function hasPermission(
-  user_id: string,
-  org_id: string,
-  permission: string
+  session: Session,
+  permission: string,
+  orgId?: string
 ): Promise<boolean> {
-  if (!user_id || !org_id) return false;
-  // akzeptiert: session, role string, roles string[]
-  const roles = await getUserRolesInOrganization(user_id, org_id);
-  if (roles.length === 0) return false;
-  // prüfe, ob irgendeine Rolle die Permission hat
+  if (!session?.user?.id) return false;
+
+  const targetOrgId = orgId || session.user.activeOrganization?.id;
+
+  if (!targetOrgId) {
+    console.warn("No organization ID available");
+    return false;
+  }
+
+  const roles = await getUserRolesInOrganization(session.user.id, targetOrgId);
+
+  if (roles.length === 0) {
+    console.warn(`User has no roles in org ${targetOrgId}`);
+    return false;
+  }
+
+  console.log(roles.map((r) => r.role.name));
+
   return roles.some((r) =>
     (ROLE_PERMISSION_MAP[r.role.name] ?? []).includes(permission)
   );
 }
+/* 
+export function hasPermissionFromSession(
+  session: Session,
+  permission: string
+): boolean {
+  if (!session?.user?.roleIds) return false;
 
+  // ✅ Prüfe direkt gegen die Rollen in der Session
+  return session.user.roleIds.some((roleId) =>
+    (ROLE_PERMISSION_MAP[roleId.] ?? []).includes(permission)
+  );
+}
+ */
 // API Route Auth Helper
 export async function validateApiAuth(request: Request) {
   const session = await getServerSession(authOptions);
@@ -155,26 +180,41 @@ export async function validateApiAuth(request: Request) {
   return { session, user: session.user };
 }
 
-// API Route Auth mit Berechtigung
+// ✅ API Route Auth mit Berechtigung - VEREINFACHT
 export async function validateApiAuthWithPermission(
   request: Request,
-  permission: string
+  permission: string,
+  orgId?: string // ✅ Optional
 ) {
-  const authResult = await validateApiAuth(request);
+  const session = await getServerSession(authOptions);
 
-  if ("error" in authResult) {
-    return authResult;
+  if (!session?.user?.id) {
+    return { error: "Nicht authentifiziert", status: 401 };
   }
 
-  if (
-    !(await hasPermission(
-      authResult.session.user.id,
-      authResult.session.user.activeOrganization?.id || "",
-      permission
-    ))
-  ) {
+  // ✅ Nutze neue hasPermission-Funktion
+  const hasPermissionResult = await hasPermission(session, permission, orgId);
+
+  if (!hasPermissionResult) {
     return { error: "Keine Berechtigung", status: 403 };
   }
 
-  return authResult;
+  return { session, user: session.user };
+}
+
+// ✅ Server Component Helper - mit Permission Check
+export async function requirePermission(permission: string, orgId?: string) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    redirect("/signin");
+  }
+
+  const hasPermissionResult = await hasPermission(session, permission, orgId);
+
+  if (!hasPermissionResult) {
+    redirect("/unauthorized");
+  }
+
+  return session;
 }

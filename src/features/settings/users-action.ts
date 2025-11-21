@@ -259,13 +259,7 @@ export async function removeUserFromOrganizationAction(
 
   if (!requestingUserRole) throw new Error("Forbidden");
 
-  if (
-    !(await hasPermission(
-      requestingUserRole.user_id,
-      requestingUserRole.org_id,
-      "users:manage"
-    ))
-  ) {
+  if (!(await hasPermission(session, "users:manage", organizationId))) {
     throw new Error("Insufficient permissions");
   }
   // Remove all roles for this user in this organization
