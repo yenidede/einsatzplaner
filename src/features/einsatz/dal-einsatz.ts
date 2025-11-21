@@ -350,17 +350,13 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
   });
 
   if (!existingEinsatz) {
-    throw new Error(`Einsatz with ID ${id} not found`);
+    throw new Response(`Einsatz with ID ${id} not found`, { status: 404 });
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   if (!userOrgIds.includes(existingEinsatz.org_id)) {
     redirect('/unauthorized');
   }
-
-  console.log("Updating Einsatz with data:", updateData);
-  console.log("Dynamic fields:", einsatz_fields);
-
 
   try {
     return prisma.einsatz.update({
@@ -398,7 +394,7 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
       },
     });
   } catch (error) {
-    throw new Error(`Failed to update Einsatz with ID ${id}: ${error}`);
+    throw new Response(`Failed to update Einsatz with ID ${id}: ${error}`, { status: 500 });
   }
 }
 

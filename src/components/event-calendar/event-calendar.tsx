@@ -51,6 +51,7 @@ import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/features/organization/queryKeys";
+import { toast } from "sonner";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -110,6 +111,13 @@ export function EventCalendar({
     queryFn: () => getOrganizationsByIds(orgIds ?? []),
     enabled: !!orgIds?.length,
   });
+
+  const einsatz_singular =
+    organizations?.find((org) => org.id === activeOrgId)
+      ?.einsatz_name_singular ?? "Einsatz";
+  const einsatz_plural =
+    organizations?.find((org) => org.id === activeOrgId)?.einsatz_name_plural ??
+    "Einsätze";
 
   // Add keyboard shortcuts for view switching
   useEffect(() => {
@@ -209,12 +217,18 @@ export function EventCalendar({
       return;
     }
 
+    const userId = sessionData?.user?.id;
+    if (!userId) {
+      toast.error("Keine Benutzerdaten gefunden.");
+      return;
+    }
+
     const newEvent: EinsatzCreate = {
       title: "",
       start: startTime,
       end: addHours(startTime, 1),
       org_id: activeOrgId,
-      created_by: "5ae139a7-476c-4d76-95cb-4dcb4e909da9", // TODO: Set this to the current user ID
+      created_by: userId,
       helpers_needed: 0,
       categories: [],
       einsatz_fields: [],
@@ -412,12 +426,19 @@ export function EventCalendar({
                 size={16}
                 aria-hidden="true"
               />
-              <span className="max-sm:sr-only">Neues Event</span>
+              <span className="max-sm:sr-only">
+                {einsatz_singular} hinzufügen
+              </span>
             </Button>
           </div>
         </div>
 
         <div className="flex flex-1 flex-col">
+          {events.length === 0 && (
+            <div className="m-4 rounded-md bg-yellow-50 p-4 text-sm text-yellow-800">
+              Noch keine {einsatz_plural} vorhanden.
+            </div>
+          )}
           {view === "month" && (
             <MonthView
               currentDate={currentDate}
@@ -465,10 +486,7 @@ export function EventCalendar({
         </div>
 
         <EventDialog
-          activeOrg={
-            organizations?.find((org) => org.id === activeOrgId) || null
-          }
-          einsatz={selectedEvent as EinsatzCreate}
+          einsatz={selectedEvent}
           isOpen={isEventDialogOpen}
           onClose={() => {
             setIsEventDialogOpen(false);
