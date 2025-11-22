@@ -10,7 +10,6 @@ import { getOrganizationForPDF } from "@/features/settings/organization-action";
 import type { Einsatz } from "@/features/einsatz/types";
 import type { PDFActionResult } from "./types/pdf";
 
-// ✅ Types
 interface EinsatzCategory {
   id: string;
   value: string | null;
@@ -32,7 +31,6 @@ interface PDFOptions {
   includeDetails?: boolean;
 }
 
-// ✅ Helper: Generate Filename
 function generateFilename(einsatz: Einsatz): string {
   const date = new Date(einsatz.start).toLocaleDateString("de-DE", {
     day: "2-digit",
@@ -46,7 +44,6 @@ function generateFilename(einsatz: Einsatz): string {
   return `Fuehrungsbestaetigung-${date}-${startTime}.pdf`;
 }
 
-// ✅ Server Action: Generate Einsatz PDF
 export async function generateEinsatzPDF(
   einsatzId: string,
   options?: PDFOptions

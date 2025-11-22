@@ -12,7 +12,6 @@ interface PdfGenerationResult {
   error?: string;
 }
 
-// ✅ Helper: Base64 to Blob conversion
 const base64ToBlob = (base64: string, mimeType: string): Blob => {
   const byteCharacters = atob(base64);
   const byteNumbers = new Array(byteCharacters.length);
@@ -25,7 +24,6 @@ const base64ToBlob = (base64: string, mimeType: string): Blob => {
   return new Blob([byteArray], { type: mimeType });
 };
 
-// ✅ Helper: Download Blob
 const downloadBlob = (blob: Blob, filename: string): void => {
   const link = document.createElement("a");
   const blobUrl = URL.createObjectURL(blob);
@@ -45,22 +43,18 @@ const downloadBlob = (blob: Blob, filename: string): void => {
   setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
 };
 
-// ✅ Main PDF Generation Function
 const generatePdfAction = async (
   request: PdfGenerationRequest
 ): Promise<PdfGenerationResult> => {
   try {
-    // ✅ Call Server Action
     const result = await generateEinsatzPDF(request.einsatzId);
 
     if (!result.success || !result.data) {
       throw new Error(result.error || "PDF Generierung fehlgeschlagen");
     }
 
-    // ✅ Convert Base64 to Blob
     const blob = base64ToBlob(result.data.pdf, result.data.mimeType);
 
-    // ✅ Download the file
     downloadBlob(blob, result.data.filename);
 
     return {
@@ -77,7 +71,6 @@ const generatePdfAction = async (
   }
 };
 
-// ✅ Hook
 export function usePdfGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,8 +117,6 @@ export function usePdfGenerator() {
     reset,
   };
 }
-
-// ✅ TypeScript Interface Export
 export interface UsePdfGeneratorReturn {
   generatePdf: (
     request: PdfGenerationRequest
