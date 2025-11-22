@@ -22,7 +22,7 @@ export const BookingFooter: React.FC<BookingFooterProps> = ({
     const parts = [];
     if (addr.label) parts.push(addr.label);
     parts.push(addr.street);
-    parts.push(`${addr.postal_code} ${addr.city}`);
+    parts.push(`${addr.postal_code.toString()} ${addr.city}`);
     if (addr.country !== "Österreich") parts.push(addr.country);
     return parts.join(" | ");
   });
@@ -49,11 +49,11 @@ export const BookingFooter: React.FC<BookingFooterProps> = ({
     // Line 1: Organization name + Addresses
     [organization.name, ...addressLines].join(" | "),
 
-    // Line 2: Contact + Legal
+    // Line 2: Contact + Legal // if postal code, city and country are same then only show once
     [...contactParts, ...legalParts].join(" | "),
 
     // Line 3+: Bank accounts (each on new line)
-    ...bankLines,
+    [...bankLines].join(" | "),
   ]
     .filter(Boolean)
     .join("\n");
