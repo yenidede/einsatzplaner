@@ -8,7 +8,7 @@ import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
 import { getOrganizationForPDF } from "@/features/settings/organization-action";
 import type { Einsatz } from "@/features/einsatz/types";
-import type { PDFActionResult } from "./types/pdf";
+import type { PDFActionResult } from "./types";
 
 interface EinsatzCategory {
   id: string;
