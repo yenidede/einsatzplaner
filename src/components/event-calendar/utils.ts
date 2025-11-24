@@ -6,6 +6,10 @@ import { z } from "zod";
 import { EinsatzCustomizable, EinsatzForCalendar } from "@/features/einsatz/types";
 import React from "react";
 import { getAllEinsaetzeForCalendar } from "@/features/einsatz/dal-einsatz";
+import { ShowDialogFn } from "@/contexts/AlertDialogContext";
+import { toast } from "sonner";
+import { PdfGenerationRequest } from "@/features/pdf/types/pdf";
+import { UsePdfGeneratorReturn } from "@/features/pdf/hooks/usePdfGenerator";
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -21,6 +25,41 @@ type ValidationOptions = {
   max?: number | null,
   allowedValues?: string[] | null,
 }
+
+
+export const handleDelete = async (einsatz_singular: string, einsatz: { id: string | undefined, title: string }, showDialog: ShowDialogFn, onDelete: (id: string, title: string) => void) => {
+  if (einsatz?.id) {
+    const result = await showDialog({
+      title: einsatz_singular + " löschen",
+      description: `Sind Sie sicher, dass Sie "${einsatz.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
+    });
+
+    if (result === "success") {
+      onDelete(einsatz.id, einsatz.title);
+    }
+  }
+};
+
+export const handlePdfGenerate = async (einsatz_singular: string, einsatz: { id: string | undefined, title: string }, generatePdf: UsePdfGeneratorReturn["generatePdf"]) => {
+  // TODO: replace with real PDF generation workflow
+  if (!einsatz?.id) {
+    toast.error(`${einsatz_singular} nicht gefunden für PDF-Generierung.`);
+    return;
+  }
+  const request: PdfGenerationRequest = {
+    type: "booking-confirmation",
+    einsatzId: einsatz.id,
+  };
+  const t = toast.loading(`Generiere PDF für ${einsatz_singular} '${einsatz.title}'...`);
+
+  const result = await generatePdf(request);
+  if (!result) {
+    toast.error(`Fehler bei der PDF-Generierung für ${einsatz_singular} '${einsatz.title}'.`);
+  }
+  else { toast.success(`PDF für ${einsatz_singular} '${einsatz.title}' wurde generiert.`); }
+  toast.dismiss(t);
+};
+
 export function generateDynamicSchema(fields: { fieldId: string; type: string | null | undefined; options: ValidationOptions }[]) {
   const schemaShape: Record<string, z.ZodType<any>> = {};
 
