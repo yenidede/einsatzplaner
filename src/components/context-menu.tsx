@@ -1,0 +1,72 @@
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { handlePDFPrint, handleDelete } from "./event-calendar/utils";
+import { useAlertDialog } from "@/contexts/AlertDialogContext";
+import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
+
+interface ContextMenuEventRightClickProps {
+  trigger: React.ReactNode;
+  heading?: string;
+  asChild?: boolean;
+  eventId: string;
+  eventTitle: string;
+  onDelete: (eventId: string, eventTitle: string) => void;
+  einsatzSingular?: string;
+}
+
+export function ContextMenuEventRightClick({
+  trigger,
+  heading,
+  asChild = true,
+  eventId,
+  eventTitle,
+  onDelete,
+  einsatzSingular = "Einsatz",
+}: ContextMenuEventRightClickProps) {
+  const { showDialog } = useAlertDialog();
+  const { generatePdf } = usePdfGenerator();
+
+  const handleDeleteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await handleDelete(
+      einsatzSingular,
+      { id: eventId, title: eventTitle },
+      showDialog,
+      onDelete
+    );
+  };
+
+  const handlePDFClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await handlePDFPrint(
+      einsatzSingular,
+      { id: eventId, title: eventTitle },
+      generatePdf
+    );
+  };
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger
+        asChild={asChild}
+        onContextMenu={(e) => e.stopPropagation()}
+      >
+        {trigger}
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52" onClick={(e) => e.stopPropagation()}>
+        {heading && <ContextMenuLabel>{heading}</ContextMenuLabel>}
+        <ContextMenuItem onClick={handlePDFClick}>
+          PDF Generieren
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleDeleteClick} variant="destructive">
+          Löschen
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}

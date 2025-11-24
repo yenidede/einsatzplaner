@@ -8,6 +8,8 @@ import { FileDown } from "lucide-react";
 import z from "zod";
 import {
   generateDynamicSchema,
+  handleDelete,
+  handlePDFPrint,
   mapDbDataTypeToFormFieldType,
   mapFieldsForSchema,
   mapStringValueToType,
@@ -50,7 +52,6 @@ import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { buildInputProps } from "../form/utils";
 import TooltipCustom from "../tooltip-custom";
 
-import { PdfGenerationRequest } from "@/features/pdf/types/pdf";
 import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
 import { useSession } from "next-auth/react";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
@@ -706,32 +707,18 @@ export function EventDialog({
     });
   };
 
-  const handleDelete = async () => {
-    if (currentEinsatz?.id) {
-      const result = await showDialog({
-        title: einsatz_singular + " löschen",
-        description: `Sind Sie sicher, dass Sie "${staticFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
-      });
+  // const handleDelete = async () => {
+  //   if (currentEinsatz?.id) {
+  //     const result = await showDialog({
+  //       title: einsatz_singular + " löschen",
+  //       description: `Sind Sie sicher, dass Sie "${staticFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
+  //     });
 
-      if (result === "success") {
-        onDelete(currentEinsatz.id, currentEinsatz.title);
-      }
-    }
-  };
-
-  const handlePDFPrint = async () => {
-    // TODO: replace with real PDF generation workflow
-    if (!currentEinsatz?.id) {
-      console.warn("No einsatz ID available for PDF generation.");
-      return;
-    }
-    const request: PdfGenerationRequest = {
-      type: "booking-confirmation",
-      einsatzId: currentEinsatz.id || "",
-    };
-
-    await generatePdf(request);
-  };
+  //     if (result === "success") {
+  //       onDelete(currentEinsatz.id, currentEinsatz.title);
+  //     }
+  //   }
+  // };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -838,7 +825,14 @@ export function EventDialog({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={handleDelete}
+                onClick={() =>
+                  handleDelete(
+                    einsatz_singular,
+                    { id: currentEinsatz.id, title: currentEinsatz.title },
+                    showDialog,
+                    onDelete
+                  )
+                }
                 aria-label={einsatz_singular + " löschen"}
               >
                 <RiDeleteBinLine size={16} aria-hidden="true" />
@@ -849,7 +843,16 @@ export function EventDialog({
             <Button
               variant="outline"
               size="icon"
-              onClick={handlePDFPrint}
+              onClick={() =>
+                handlePDFPrint(
+                  einsatz_singular,
+                  {
+                    id: currentEinsatz?.id,
+                    title: currentEinsatz?.title ?? staticFormData.title,
+                  },
+                  generatePdf
+                )
+              }
               aria-label="PDF-Bestätigung drucken"
             >
               <FileDown size={16} aria-hidden="true" />

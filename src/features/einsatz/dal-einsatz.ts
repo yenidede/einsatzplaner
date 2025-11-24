@@ -122,13 +122,6 @@ export async function getEinsaetzeForTableView(active_org_ids: string[]): Promis
       org_id: {
         in: filterOrgIds,
       },
-      user: {
-        user_organization_role: {
-          some: {
-            user_id: session.user.id,
-          }
-        }
-      }
     },
     include: {
       einsatz_status: true,
