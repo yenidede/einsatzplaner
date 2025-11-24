@@ -12,7 +12,9 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 if (!supabaseUrl) {
-  throw new Error("Environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY is not set.");
+  throw new Error(
+    "Environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY is not set."
+  );
 }
 if (!supabaseServiceRoleKey) {
   throw new Error("Environment variable SUPABASE_SERVICE_ROLE_KEY is not set.");
@@ -25,13 +27,16 @@ async function checkUserSession() {
 }
 
 export type UserUpdateData = {
+  id: string;
   email?: string;
   firstname?: string;
   lastname?: string;
   phone?: string;
+  picture_url?: string;
   currentPassword?: string;
-  salutationId?: string;
+  salutationId: string;
   newPassword?: string;
+  hasGetMailNotification?: boolean;
   hasLogoinCalendar?: boolean;
 };
 
@@ -81,14 +86,14 @@ export async function getUserProfileAction() {
       hasLogoinCalendar: true,
       created_at: true,
       salutationId: true,
-      active_org: true, // ✅ Load active_org
+      active_org: true,
       user_organization_role: {
         include: {
           organization: {
             select: {
               id: true,
               name: true,
-              logo_url: true, // ✅ Load logo
+              logo_url: true,
             },
           },
           role: {
@@ -124,7 +129,6 @@ export async function getUserProfileAction() {
     }
   });
 
-  // ✅ Find activeOrganization OBJECT
   const activeOrgId =
     user.active_org || Array.from(organizationsMap.keys())[0] || null;
   const activeOrgData = activeOrgId ? organizationsMap.get(activeOrgId) : null;
@@ -141,10 +145,10 @@ export async function getUserProfileAction() {
     // ✅ activeOrganization als OBJECT
     activeOrganization: activeOrgData
       ? {
-        id: activeOrgData.id,
-        name: activeOrgData.name,
-        logo_url: activeOrgData.logo_url,
-      }
+          id: activeOrgData.id,
+          name: activeOrgData.name,
+          logo_url: activeOrgData.logo_url,
+        }
       : null,
     phone: user.phone ?? "",
     hasLogoinCalendar: user.hasLogoinCalendar ?? true,
@@ -175,7 +179,10 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     }
   }
 
-  const updateData: UserUpdateData = {};
+  const updateData: UserUpdateData = {
+    id: session.user.id,
+    salutationId: data.salutationId ?? "",
+  };
   if (data.email !== undefined) updateData.email = data.email;
   if (data.firstname !== undefined) updateData.firstname = data.firstname;
   if (data.lastname !== undefined) updateData.lastname = data.lastname;
