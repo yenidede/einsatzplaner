@@ -229,7 +229,7 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
         <View style={styles.footerRow}>
           <View style={styles.footerColumn}>
             <Text style={styles.footerTitle}>Kontakt</Text>
-            {organization.name}
+            <Text style={styles.footerText}>{organization.name}</Text>
             {organization.email && (
               <Text style={styles.footerText}>{organization.email}</Text>
             )}
