@@ -8,7 +8,6 @@ import {
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { Session } from "next-auth";
 
-// ✅ ROLE PERMISSION MAP - Single Source of Truth
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Superadmin: [
     // Einsätze
@@ -103,12 +102,10 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   ],
 };
 
-// ✅ NEUE METHODE: Get all permissions for a role
 export function getRolePermissions(roleName: string): string[] {
   return ROLE_PERMISSION_MAP[roleName] || [];
 }
 
-// ✅ NEUE METHODE: Get all permissions for multiple roles
 export function getMultipleRolesPermissions(roleNames: string[]): string[] {
   const allPermissions = new Set<string>();
 
@@ -120,7 +117,6 @@ export function getMultipleRolesPermissions(roleNames: string[]): string[] {
   return Array.from(allPermissions);
 }
 
-// ✅ NEUE METHODE: Check if role has specific permission
 export function roleHasPermission(
   roleName: string,
   permission: string
@@ -135,14 +131,12 @@ export function getRolesWithPermission(permission: string): string[] {
     .map(([roleName, _]) => roleName);
 }
 
-// ✅ NEUE METHODE: Get user's permissions from session (ohne DB Query)
 export function getUserPermissionsFromSession(session: Session): string[] {
-  if (!session?.user?.roles) return [];
+  if (!session?.user?.roleIds) return [];
 
-  return getMultipleRolesPermissions(session.user.roles);
+  return getMultipleRolesPermissions(session.user.roleIds);
 }
 
-// ✅ NEUE METHODE: Get user's permissions from DB
 export async function getUserPermissions(
   userId: string,
   orgId?: string
@@ -268,7 +262,6 @@ export async function getAuthenticatedUser() {
   }
 }
 
-// ✅ Permission Check - mit DB Query
 export async function hasPermission(
   session: Session,
   permission: string,
@@ -295,19 +288,25 @@ export async function hasPermission(
   );
 }
 
-// ✅ Permission Check - ohne DB Query (schneller, nutzt Session)
-export function hasPermissionFromSession(
+export async function hasPermissionFromSession(
   session: Session,
   permission: string
-): boolean {
-  if (!session?.user?.roles) return false;
+): Promise<boolean> {
+  if (!session?.user?.roleIds) return false;
 
-  return session.user.roles.some((roleName) =>
-    (ROLE_PERMISSION_MAP[roleName] ?? []).includes(permission)
+  const targetOrgId = session.user.activeOrganization?.id;
+
+  if (!targetOrgId) {
+    console.warn("No organization ID available in session");
+    return false;
+  }
+
+  const roles = await getUserRolesInOrganization(session.user.id, targetOrgId);
+
+  return roles.some((roleName) =>
+    (ROLE_PERMISSION_MAP[roleName.role.name] ?? []).includes(permission)
   );
 }
-
-// ✅ Check multiple permissions (user must have ALL)
 export async function hasAllPermissions(
   session: Session,
   permissions: string[],
@@ -320,7 +319,6 @@ export async function hasAllPermissions(
   return true;
 }
 
-// ✅ Check multiple permissions (user must have AT LEAST ONE)
 export async function hasAnyPermission(
   session: Session,
   permissions: string[],
@@ -344,7 +342,6 @@ export async function validateApiAuth(request: Request) {
   return { session, user: session.user };
 }
 
-// ✅ API Route Auth mit Berechtigung
 export async function validateApiAuthWithPermission(
   request: Request,
   permission: string,
@@ -365,7 +362,6 @@ export async function validateApiAuthWithPermission(
   return { session, user: session.user };
 }
 
-// ✅ API Route Auth mit mehreren Permissions (alle erforderlich)
 export async function validateApiAuthWithAllPermissions(
   request: Request,
   permissions: string[],
@@ -386,7 +382,6 @@ export async function validateApiAuthWithAllPermissions(
   return { session, user: session.user };
 }
 
-// ✅ Server Component Helper - mit Permission Check
 export async function requirePermission(permission: string, orgId?: string) {
   const session = await getServerSession(authOptions);
 
@@ -403,7 +398,6 @@ export async function requirePermission(permission: string, orgId?: string) {
   return session;
 }
 
-// ✅ Server Component Helper - require multiple permissions
 export async function requireAllPermissions(
   permissions: string[],
   orgId?: string
