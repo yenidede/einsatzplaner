@@ -19,19 +19,21 @@ type Props = {
 
 export function NavSwitchOrgSelect({ organizations }: Props) {
   const { update: updateSession, data: session } = useSession();
-  const [activeOrgId, setActiveOrgId] = React.useState<string | undefined>(
-    session?.user?.activeOrganization?.id || undefined
-  );
+  const [activeOrgId, setActiveOrgId] = React.useState<string>("");
+
+  React.useEffect(() => {
+    const id = session?.user?.activeOrganization?.id;
+    if (id) setActiveOrgId(id);
+  }, [session?.user?.activeOrganization?.id]);
 
   const handleSetOrg = async (orgId: string) => {
-    const previousOrgId = activeOrgId; // Store the previous organization ID
+    const previousOrgId = activeOrgId;
     try {
       // UI-State
       setActiveOrgId(orgId);
       const newOrg = organizations.find((o) => o.id === orgId);
       if (!newOrg || !session) {
-        console.error("Organization not found or session is null");
-        return;
+        throw new Error("Organisation nicht gefunden");
       }
       await Promise.all([
         // database
@@ -49,16 +51,17 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
         }),
       ]);
       toast.success(
-        "Organization switched to: " +
-          organizations.find((o) => o.id === orgId)?.name
+        "Organisation erfolgreich zu " +
+          organizations.find((o) => o.id === orgId)?.name +
+          " gewechselt."
       );
     } catch (error) {
-      toast.error("Error switching organization: " + error);
+      toast.error("Fehler beim Wechseln der Organisation: " + error);
       setActiveOrgId(previousOrgId); // Rollback to previous organization
     }
   };
   return (
-    <Select value={activeOrgId} onValueChange={handleSetOrg}>
+    <Select value={activeOrgId} onValueChange={handleSetOrg} name="orgSwitch">
       <SelectTrigger className="w-[11.5rem]">
         <SelectValue
           placeholder={
