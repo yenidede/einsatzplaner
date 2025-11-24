@@ -48,7 +48,7 @@ export const handlePDFPrint = async (einsatz_singular: string, einsatz: { id: st
   }
   const request: PdfGenerationRequest = {
     type: "booking-confirmation",
-    einsatzId: einsatz.id || "",
+    einsatzId: einsatz.id,
   };
   const t = toast.loading(`Generiere PDF für ${einsatz_singular} '${einsatz.title}'...`);
 
