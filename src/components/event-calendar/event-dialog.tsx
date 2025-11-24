@@ -207,10 +207,12 @@ export function EventDialog({
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
   const { data: detailedEinsatz, isLoading } = useQuery({
+    // only enabled if it's a string (uuid)
     queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
     queryFn: async () => {
-      const returnEinsatz = await getEinsatzWithDetailsById(einsatz as string);
-      return returnEinsatz;
+      const res = await getEinsatzWithDetailsById(einsatz as string);
+      if (!(res instanceof Response)) return res;
+      console.error("Failed to fetch einsatz details:", res);
     },
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
   });
