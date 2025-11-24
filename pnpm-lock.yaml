@@ -21,6 +21,7 @@ importers:
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.0)
       '@hookform/resolvers':
+<<<<<<< HEAD
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.66.1(react@19.2.0))
       '@prisma/client':
@@ -28,6 +29,15 @@ importers:
         version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.15
+=======
+        specifier: ^5.1.1
+        version: 5.2.2(react-hook-form@7.66.1(react@19.2.0))
+      '@prisma/client':
+        specifier: ^6.12.0
+        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
+      '@radix-ui/react-alert-dialog':
+        specifier: ^1.1.14
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.6))(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
@@ -54,10 +64,17 @@ importers:
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.6)(react@19.2.0)
       '@radix-ui/react-switch':
+<<<<<<< HEAD
         specifier: ^1.2.6
         version: 1.2.6(@types/react-dom@19.2.3(@types/react@19.2.6))(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@radix-ui/react-toggle':
         specifier: ^1.1.10
+=======
+        specifier: ^1.2.5
+        version: 1.2.6(@types/react-dom@19.2.3(@types/react@19.2.6))(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@radix-ui/react-toggle':
+        specifier: ^1.1.9
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 1.1.10(@types/react-dom@19.2.3(@types/react@19.2.6))(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@radix-ui/react-tooltip':
         specifier: ^1.2.8
@@ -66,6 +83,7 @@ importers:
         specifier: ^4.3.1
         version: 4.3.1(react@19.2.0)
       '@remixicon/react':
+<<<<<<< HEAD
         specifier: ^4.7.0
         version: 4.7.0(react@19.2.0)
       '@supabase/supabase-js':
@@ -76,6 +94,18 @@ importers:
         version: 5.90.10(react@19.2.0)
       '@tanstack/react-query-devtools':
         specifier: ^5.90.2
+=======
+        specifier: ^4.6.0
+        version: 4.7.0(react@19.2.0)
+      '@supabase/supabase-js':
+        specifier: ^2.52.0
+        version: 2.84.0
+      '@tanstack/react-query':
+        specifier: ^5.83.0
+        version: 5.90.10(react@19.2.0)
+      '@tanstack/react-query-devtools':
+        specifier: ^5.84.2
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 5.90.2(@tanstack/react-query@5.90.10(react@19.2.0))(react@19.2.0)
       '@tanstack/react-table':
         specifier: ^8.21.3
@@ -87,13 +117,21 @@ importers:
         specifier: ^2.4.6
         version: 2.4.6
       '@types/nodemailer':
+<<<<<<< HEAD
         specifier: ^6.4.21
+=======
+        specifier: ^6.4.17
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 6.4.21
       bcrypt:
         specifier: ^6.0.0
         version: 6.0.0
       bcryptjs:
+<<<<<<< HEAD
         specifier: ^3.0.3
+=======
+        specifier: ^3.0.2
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 3.0.3
       class-variance-authority:
         specifier: ^0.7.1
@@ -108,11 +146,21 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       framer-motion:
+<<<<<<< HEAD
         specifier: ^12.23.24
+=======
+        specifier: ^12.23.6
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 12.23.24(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       ical-generator:
         specifier: ^9.0.0
         version: 9.0.0(@types/node@20.19.25)
+<<<<<<< HEAD
+=======
+      jose:
+        specifier: ^6.1.2
+        version: 6.1.2
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -120,16 +168,27 @@ importers:
         specifier: ^0.525.0
         version: 0.525.0(react@19.2.0)
       motion:
+<<<<<<< HEAD
         specifier: ^12.23.24
         version: 12.23.24(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       nanoid:
         specifier: ^5.1.6
+=======
+        specifier: ^12.23.12
+        version: 12.23.24(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      nanoid:
+        specifier: ^5.1.5
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 5.1.6
       next:
         specifier: 15.3.5
         version: 15.3.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       next-auth:
+<<<<<<< HEAD
         specifier: ^4.24.13
+=======
+        specifier: ^4.24.11
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 4.24.13(next@15.3.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(nodemailer@6.10.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       next-themes:
         specifier: ^0.4.6
@@ -138,12 +197,18 @@ importers:
         specifier: ^6.10.1
         version: 6.10.1
       nuqs:
+<<<<<<< HEAD
         specifier: ^2.8.1
         version: 2.8.1(next@15.3.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
+=======
+        specifier: ^2.4.3
+        version: 2.8.0(next@15.3.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
       playwright:
         specifier: ^1.56.1
         version: 1.56.1
       radix-ui:
+<<<<<<< HEAD
         specifier: ^1.4.3
         version: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.6))(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react:
@@ -176,11 +241,46 @@ importers:
         version: 4.1.17
       '@tanstack/eslint-plugin-query':
         specifier: ^5.91.2
+=======
+        specifier: ^1.4.2
+        version: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.6))(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.0
+      react-day-picker:
+        specifier: ^9.8.1
+        version: 9.11.1(react@19.2.0)
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.0(react@19.2.0)
+      react-hook-form:
+        specifier: ^7.60.0
+        version: 7.66.1(react@19.2.0)
+      sonner:
+        specifier: ^2.0.6
+        version: 2.0.7(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      tailwind-merge:
+        specifier: ^3.3.1
+        version: 3.4.0
+      zod:
+        specifier: ^4.0.5
+        version: 4.1.12
+    devDependencies:
+      '@eslint/eslintrc':
+        specifier: ^3
+        version: 3.3.1
+      '@tailwindcss/postcss':
+        specifier: ^4
+        version: 4.1.17
+      '@tanstack/eslint-plugin-query':
+        specifier: ^5.81.2
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 5.91.2(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
       '@types/lodash':
         specifier: ^4.17.20
         version: 4.17.20
       '@types/node':
+<<<<<<< HEAD
         specifier: ^20.19.25
         version: 20.19.25
       '@types/react':
@@ -194,6 +294,21 @@ importers:
         version: 17.2.3
       eslint:
         specifier: ^9.39.1
+=======
+        specifier: ^20
+        version: 20.19.25
+      '@types/react':
+        specifier: ^19
+        version: 19.2.6
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.6)
+      dotenv:
+        specifier: ^17.2.0
+        version: 17.2.3
+      eslint:
+        specifier: ^9
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 9.39.1(jiti@2.6.1)
       eslint-config-next:
         specifier: 15.3.5
@@ -202,6 +317,7 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0(eslint@9.39.1(jiti@2.6.1))
       prisma:
+<<<<<<< HEAD
         specifier: ^6.19.0
         version: 6.19.0(typescript@5.9.3)
       tailwindcss:
@@ -212,6 +328,18 @@ importers:
         version: 1.4.0
       typescript:
         specifier: ^5.9.3
+=======
+        specifier: ^6.12.0
+        version: 6.19.0(typescript@5.9.3)
+      tailwindcss:
+        specifier: ^4
+        version: 4.1.17
+      tw-animate-css:
+        specifier: ^1.3.5
+        version: 1.4.0
+      typescript:
+        specifier: ^5
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
         version: 5.9.3
 
 packages:
@@ -2882,6 +3010,12 @@ packages:
   jose@4.15.9:
     resolution: {integrity: sha512-1vUQX+IdDMVPj4k8kOxgUqlcK518yluMuGZwqlr44FS1ppZB/5GWh4rZG89erpOBOJjU/OBsnCVFfapsRz6nEA==}
 
+<<<<<<< HEAD
+=======
+  jose@6.1.2:
+    resolution: {integrity: sha512-MpcPtHLE5EmztuFIqB0vzHAWJPpmN1E6L4oo+kze56LIs3MyXIj9ZHMDxqOvkP38gBR7K1v3jqd4WU2+nrfONQ==}
+
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
@@ -3144,8 +3278,13 @@ packages:
   normalize-svg-path@1.1.0:
     resolution: {integrity: sha512-r9KHKG2UUeB5LoTouwDzBy2VxXlHsiM6fyLQvnJa0S5hrhzqElH/CH7TUGhT1fVvIYBIKf3OpY4YJ4CK+iaqHg==}
 
+<<<<<<< HEAD
   nuqs@2.8.1:
     resolution: {integrity: sha512-kIw8UW5KXXfVla6B9h0EKzSH/YDpee6lojniQoMyul8wq9brwV0kElE2Jzg4NSCLBo7n2E3wc1J3o7IyPYVlqQ==}
+=======
+  nuqs@2.8.0:
+    resolution: {integrity: sha512-JnVUUNR5hRtt8ZX131KmiGL6IlbyqgXKifL3oYYuDcJ+Kb8fT+WiaMPY7HmfgrECl0FeQBf7H59KfIfbq2DNdw==}
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
     peerDependencies:
       '@remix-run/react': '>=2'
       '@tanstack/react-router': ^1
@@ -6998,6 +7137,11 @@ snapshots:
 
   jose@4.15.9: {}
 
+<<<<<<< HEAD
+=======
+  jose@6.1.2: {}
+
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
   js-tokens@4.0.0: {}
 
   js-yaml@4.1.1:
@@ -7218,7 +7362,11 @@ snapshots:
     dependencies:
       svg-arc-to-cubic-bezier: 3.2.0
 
+<<<<<<< HEAD
   nuqs@2.8.1(next@15.3.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0):
+=======
+  nuqs@2.8.0(next@15.3.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0):
+>>>>>>> e1afaf71060d81d63e1857306476ea12549d8e40
     dependencies:
       '@standard-schema/spec': 1.0.0
       react: 19.2.0

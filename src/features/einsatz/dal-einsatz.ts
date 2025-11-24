@@ -2,13 +2,17 @@
 
 import prisma from "@/lib/prisma";
 import type { einsatz as Einsatz, einsatz_field } from "@/generated/prisma";
-import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, ETV } from "@/features/einsatz/types";
+import type {
+  EinsatzForCalendar,
+  EinsatzCreate,
+  EinsatzDetailed,
+  ETV,
+} from "@/features/einsatz/types";
 import { hasPermission, requireAuth } from "@/lib/auth/authGuard";
 import { redirect } from "next/navigation";
 
 import { ValidateEinsatzCreate } from "./validation-service";
 import z from "zod";
-import { actionWrapper } from "@/lib/action";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDetailed | null | Response> {
@@ -36,7 +40,6 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
     einsatz_field,
     ...rest
   } = einsaetzeFromDb;
-
 
   return {
     ...rest,
@@ -137,14 +140,14 @@ export async function getEinsaetzeForTableView(active_org_ids: string[]): Promis
               id: true,
               firstname: true,
               lastname: true,
-            }
-          }
-        }
+            },
+          },
+        },
       },
       einsatz_to_category: {
         include: {
-          einsatz_category: true
-        }
+          einsatz_category: true,
+        },
       },
       einsatz_field: {
         include: {
@@ -153,30 +156,30 @@ export async function getEinsaetzeForTableView(active_org_ids: string[]): Promis
               type: {
                 select: {
                   datatype: true,
-                }
-              }
-            }
-          }
-        }
+                },
+              },
+            },
+          },
+        },
       },
       user: {
         select: {
           id: true,
           firstname: true,
           lastname: true,
-        }
+        },
       },
       einsatz_template: {
         select: {
           id: true,
           name: true,
-        }
+        },
       },
       _count: {
         select: {
           einsatz_helper: true,
-        }
-      }
+        },
+      },
     },
     orderBy: { created_at: "asc" },
   });
@@ -208,23 +211,32 @@ export async function getEinsaetzeForTableView(active_org_ids: string[]): Promis
       firstname: helper.user.firstname ?? null,
       lastname: helper.user.lastname ?? null,
     })),
-    einsatz_categories: einsatz.einsatz_to_category.map((cat) => cat.einsatz_category),
-    einsatz_fields: einsatz.einsatz_field.map((f) => ({
-      id: f.id,
-      einsatz_id: f.einsatz_id,
-      value: f.value,
-      field_id: f.field_id,
-      datatype: f.field.type?.datatype ?? null,
-    }) as einsatz_field & { datatype: string | null }),
-    user: einsatz.user ? {
-      id: einsatz.user.id,
-      firstname: einsatz.user.firstname ?? null,
-      lastname: einsatz.user.lastname ?? null,
-    } : null,
-    einsatz_template: einsatz.einsatz_template ? {
-      id: einsatz.einsatz_template.id,
-      name: einsatz.einsatz_template.name ?? null,
-    } : null,
+    einsatz_categories: einsatz.einsatz_to_category.map(
+      (cat) => cat.einsatz_category
+    ),
+    einsatz_fields: einsatz.einsatz_field.map(
+      (f) =>
+      ({
+        id: f.id,
+        einsatz_id: f.einsatz_id,
+        value: f.value,
+        field_id: f.field_id,
+        datatype: f.field.type?.datatype ?? null,
+      } as einsatz_field & { datatype: string | null })
+    ),
+    user: einsatz.user
+      ? {
+        id: einsatz.user.id,
+        firstname: einsatz.user.firstname ?? null,
+        lastname: einsatz.user.lastname ?? null,
+      }
+      : null,
+    einsatz_template: einsatz.einsatz_template
+      ? {
+        id: einsatz.einsatz_template.id,
+        name: einsatz.einsatz_template.name ?? null,
+      }
+      : null,
     _count: einsatz._count,
   }));
 
@@ -234,21 +246,24 @@ export async function getEinsaetzeForTableView(active_org_ids: string[]): Promis
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, 'read:templates')) {
-    redirect('/unauthorized');
+  if (!hasPermission(session, "read:templates")) {
+    redirect("/unauthorized");
   }
 
   // Verwende org_id oder erste Organisation des Users
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  const useOrgId = org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
+  const useOrgId =
+    org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
+    throw new Error(
+      "Organisation muss angegeben werden oder User muss genau einer Organisation angehören"
+    );
   }
 
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!userOrgIds.includes(useOrgId)) {
-    redirect('/unauthorized');
+    redirect("/unauthorized");
   }
 
   return prisma.einsatz_template.findMany({
@@ -259,7 +274,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
       template_icon: {
         select: {
           icon_url: true,
-        }
+        },
       },
       template_field: {
         select: {
@@ -272,31 +287,38 @@ export async function getAllTemplatesWithFields(org_id?: string) {
               },
             },
           },
-        }
-      }
+        },
+      },
     },
-  })
+  });
 }
 
-export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
+export async function createEinsatz({
+  data,
+}: {
+  data: EinsatzCreate;
+}): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, 'create:einsaetze')) {
-    redirect('/unauthorized');
+  if (!hasPermission(session, "create:einsaetze")) {
+    redirect("/unauthorized");
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
 
   // Verwende org_id aus data oder erste Organisation des Users
-  const useOrgId = data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
+  const useOrgId =
+    data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
+    throw new Error(
+      "Organisation muss angegeben werden oder User muss genau einer Organisation angehören"
+    );
   }
 
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!userOrgIds.includes(useOrgId)) {
-    redirect('/unauthorized');
+    redirect("/unauthorized");
   }
 
   // Setze created_by und org_id
@@ -306,7 +328,7 @@ export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<
     org_id: useOrgId,
   };
   console.log(data, einsatzWithAuth);
-  return createEinsatzInDb({ data: einsatzWithAuth })
+  return createEinsatzInDb({ data: einsatzWithAuth });
 }
 
 export async function updateEinsatzTime(data: { id: string; start: Date; end: Date }): Promise<Einsatz> {
@@ -333,18 +355,28 @@ export async function updateEinsatzTime(data: { id: string; start: Date; end: Da
   });
 }
 
-export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }): Promise<Einsatz> {
+export async function updateEinsatz({
+  data,
+}: {
+  data: Partial<EinsatzCreate>;
+}): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, 'update:einsaetze')) {
-    redirect('/unauthorized');
+  if (!hasPermission(session, "update:einsaetze")) {
+    redirect("/unauthorized");
   }
 
   if (data.template_id && false) {
     const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
   }
-  const { id, categories, einsatz_fields, assignedUsers, org_id, ...updateData } = data;
-
+  const {
+    id,
+    categories,
+    einsatz_fields,
+    assignedUsers,
+    org_id,
+    ...updateData
+  } = data;
 
   if (!id) {
     throw new Error("Einsatz must have an id for update");
@@ -353,7 +385,7 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
   // Prüfe ob Einsatz existiert und User Zugriff hat
   const existingEinsatz = await prisma.einsatz.findUnique({
     where: { id },
-    select: { org_id: true }
+    select: { org_id: true },
   });
 
   if (!existingEinsatz) {
@@ -362,7 +394,7 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    redirect('/unauthorized');
+    redirect("/unauthorized");
   }
 
   try {
@@ -388,7 +420,7 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
               field: { connect: { id: field.field_id } },
               value: field.value,
             })),
-          })
+          }),
         },
         einsatz_helper: {
           ...(assignedUsers && {
@@ -401,24 +433,28 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
       },
     });
   } catch (error) {
-    throw new Response(`Failed to update Einsatz with ID ${id}: ${error}`, { status: 500 });
+    throw new Response(`Failed to update Einsatz with ID ${id}: ${error}`, {
+      status: 500,
+    });
   }
 }
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   const { session } = await requireAuth();
 
-  if (!hasPermission(session, 'delete:einsaetze')) {
-    throw new Response('Unauthorized', { status: 403 });
+  if (!hasPermission(session, "delete:einsaetze")) {
+    throw new Response("Unauthorized", { status: 403 });
   }
 
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
-    select: { id: true, org_id: true }
+    select: { id: true, org_id: true },
   });
 
   if (!einsatz) {
-    throw new Response(`Einsatz with ID ${einsatzId} not found`, { status: 404 });
+    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
+      status: 404,
+    });
   }
 
   try {
@@ -428,11 +464,16 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
       },
     });
   } catch (error) {
-    throw new Response(`Failed to delete Einsatz with ID ${einsatzId}: ${error}`, { status: 500 });
+    throw new Response(
+      `Failed to delete Einsatz with ID ${einsatzId}: ${error}`,
+      { status: 500 }
+    );
   }
 }
 
-export async function deleteEinsaetzeByIds(einsatzIds: string[]): Promise<void> {
+export async function deleteEinsaetzeByIds(
+  einsatzIds: string[]
+): Promise<void> {
   // TODO: check if logged in user has permission to delete this Einsatz
 
   const einsatz = await prisma.einsatz.findMany({
@@ -449,11 +490,17 @@ export async function deleteEinsaetzeByIds(einsatzIds: string[]): Promise<void> 
       },
     });
   } catch (error) {
-    throw new Error(`Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`);
+    throw new Error(
+      `Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`
+    );
   }
 }
 
-async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
+async function createEinsatzInDb({
+  data,
+}: {
+  data: EinsatzCreate;
+}): Promise<Einsatz> {
   const {
     title,
     start,
@@ -479,16 +526,18 @@ async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Ein
       helpers_needed,
       all_day,
       einsatz_to_category: {
-        create: categories?.map((category) => ({
-          einsatz_category: { connect: { id: category } },
-        })) || [],
+        create:
+          categories?.map((category) => ({
+            einsatz_category: { connect: { id: category } },
+          })) || [],
       },
       einsatz_field: {
-        create: einsatz_fields?.map((field) => ({
-          field: { connect: { id: field.field_id } },
+        create:
+          einsatz_fields?.map((field) => ({
+            field: { connect: { id: field.field_id } },
 
-          value: field.value,
-        })) || [],
+            value: field.value,
+          })) || [],
       },
       einsatz_helper: {
         connect: assignedUsers.map((userId) => ({ id: userId })),
@@ -500,14 +549,15 @@ async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Ein
 }
 function isValidUuid(id?: string): boolean {
   if (!id || typeof id !== "string") return false;
-  return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(id);
+  return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(
+    id
+  );
 }
 
 async function getEinsatzByIdFromDb(
   id: string,
   org_id: string
 ): Promise<Einsatz | null> {
-
   /*   if (!isValidUuid(id)) {
       console.error("ungültige IDs", { id});
       return null;
@@ -653,9 +703,7 @@ async function getAllEinsatzeForCalendarFromDb(
   });
 }
 
-async function getEinsatzWithDetailsByIdFromDb(
-  einsatzId: string
-) {
+async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
   return prisma.einsatz.findUnique({
     where: { id: einsatzId },
     include: {

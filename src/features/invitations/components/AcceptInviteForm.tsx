@@ -1,7 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAcceptInvitation } from "../hooks/useInvitation";
+import { useSession } from "next-auth/react";
 
 interface AcceptInvitationClientProps {
   invitation: {
@@ -21,32 +23,35 @@ interface AcceptInvitationClientProps {
   token: string;
 }
 
-export default function AcceptInvitationClient({ invitation, token }: AcceptInvitationClientProps) {
+export default function AcceptInvitationClient({
+  invitation,
+  token,
+}: AcceptInvitationClientProps) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleAccept = async () => {
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const response = await fetch('/api/invitations/accept', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+      const response = await fetch("/api/invitations/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Fehler beim Akzeptieren');
+        throw new Error(errorData.error || "Fehler beim Akzeptieren");
       }
-
       // Erfolg - zur Organisation weiterleiten
-      router.push('/helferansicht');
-      
+      router.push("/helferansicht");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      setError(
+        err instanceof Error ? err.message : "Ein Fehler ist aufgetreten"
+      );
     } finally {
       setLoading(false);
     }
@@ -59,7 +64,8 @@ export default function AcceptInvitationClient({ invitation, token }: AcceptInvi
           Einladung annehmen
         </h1>
         <p className="text-gray-600">
-          Möchten Sie der Organisation <strong>{invitation.organization.name}</strong> beitreten?
+          Möchten Sie der Organisation{" "}
+          <strong>{invitation.organization.name}</strong> beitreten?
         </p>
       </div>
 
@@ -98,11 +104,11 @@ export default function AcceptInvitationClient({ invitation, token }: AcceptInvi
           disabled={loading}
           className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
         >
-          {loading ? 'Wird angenommen...' : 'Einladung annehmen'}
+          {loading ? "Wird angenommen..." : "Einladung annehmen"}
         </button>
-        
+
         <button
-          onClick={() => router.push('/helferansicht')}
+          onClick={() => router.push("/helferansicht")}
           className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200"
         >
           Ablehnen
