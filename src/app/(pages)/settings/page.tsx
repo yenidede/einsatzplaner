@@ -229,14 +229,13 @@ export default function SettingsPage() {
     if (!session?.user?.id) return;
 
     setProfilePictureFile(null);
-
     try {
       await mutation.mutateAsync({
         id: session.user.id,
         firstname,
         lastname,
         email,
-        picture_url: "",
+        picture_url: null,
         phone,
         salutationId,
         hasLogoinCalendar: showLogos,
