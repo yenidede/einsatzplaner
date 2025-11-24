@@ -101,6 +101,7 @@ export function useAcceptInvitation(): UseAcceptInvitationReturn {
                 throw new Error(errorData.error || `HTTP ${response.status}`);
             }
 
+            
             const result = await response.json();
             setSuccess('Einladung erfolgreich akzeptiert!');
 
