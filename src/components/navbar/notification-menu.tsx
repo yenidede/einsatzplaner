@@ -12,6 +12,7 @@ import { getActivityLogs } from "@/features/activity_log/activity_log-dal";
 import type { ChangeLogEntry } from "@/features/activity_log/types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { useRouter } from "next/dist/client/components/navigation";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -29,10 +30,56 @@ function Dot({ className }: { className?: string }) {
   );
 }
 
+const READ_ACTIVITIES_KEY = "read_activities";
+
+const getReadActivities = (): Set<string> => {
+  if (typeof window === "undefined") return new Set();
+
+  try {
+    const stored = localStorage.getItem(READ_ACTIVITIES_KEY);
+    if (!stored) return new Set();
+
+    const parsed = JSON.parse(stored) as string[];
+    return new Set(parsed);
+  } catch (error) {
+    console.error("Failed to parse read activities from localStorage:", error);
+    return new Set();
+  }
+};
+
+const saveReadActivities = (readIds: Set<string>) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const array = Array.from(readIds);
+    localStorage.setItem(READ_ACTIVITIES_KEY, JSON.stringify(array));
+  } catch (error) {
+    console.error("Failed to save read activities to localStorage:", error);
+  }
+};
+
+const markActivityAsRead = (activityId: string) => {
+  const readActivities = getReadActivities();
+  readActivities.add(activityId);
+  saveReadActivities(readActivities);
+};
+
+const markAllActivitiesAsRead = (activityIds: string[]) => {
+  const readActivities = getReadActivities();
+  activityIds.forEach((id) => readActivities.add(id));
+  saveReadActivities(readActivities);
+};
+
 export default function NotificationMenu() {
+  const router = useRouter();
   const [activities, setActivities] = useState<ChangeLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unreadIds, setUnreadIds] = useState<Set<string>>(new Set());
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [isAllOpen, setIsAllOpen] = useState(false);
+
+  useEffect(() => {
+    setReadIds(getReadActivities());
+  }, []);
 
   useEffect(() => {
     loadActivities();
@@ -44,6 +91,11 @@ export default function NotificationMenu() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleViewAll = () => {
+    setIsAllOpen(true);
+    router.push("/helferansicht");
+  };
+
   const loadActivities = async () => {
     try {
       setLoading(true);
@@ -53,28 +105,27 @@ export default function NotificationMenu() {
       });
 
       setActivities(result.activities);
-
-      const unread = new Set(result.activities.slice(0, 3).map((a) => a.id));
-      setUnreadIds(unread);
+      setReadIds(getReadActivities());
     } catch (error) {
       console.error("Failed to load activities:", error);
     } finally {
       setLoading(false);
     }
   };
-
+  const unreadIds = new Set(
+    activities.filter((a) => !readIds.has(a.id)).map((a) => a.id)
+  );
   const unreadCount = unreadIds.size;
 
   const handleMarkAllAsRead = () => {
-    setUnreadIds(new Set());
+    const activityIds = activities.map((a) => a.id);
+    markAllActivitiesAsRead(activityIds);
+    setReadIds(new Set([...readIds, ...activityIds]));
   };
 
   const handleNotificationClick = (id: string) => {
-    setUnreadIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
+    markActivityAsRead(id);
+    setReadIds((prev) => new Set([...prev, id]));
   };
 
   const formatMessage = (activity: ChangeLogEntry) => {
@@ -143,7 +194,7 @@ export default function NotificationMenu() {
           ) : (
             activities.map((activity) => {
               const { userName, message } = formatMessage(activity);
-              const isUnread = unreadIds.has(activity.id);
+              const isUnread = !readIds.has(activity.id);
 
               return (
                 <div
@@ -221,7 +272,7 @@ export default function NotificationMenu() {
             ></div>
             <div className="px-3 py-2 text-center">
               <a
-                href="/helferansicht"
+                onClick={handleViewAll}
                 className="text-xs font-medium hover:underline"
               >
                 Alle Aktivitäten anzeigen
