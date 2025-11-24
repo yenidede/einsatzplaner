@@ -83,9 +83,9 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
   );
 
   const participantCount = einsatz.participant_count ?? "xx";
-  console.log("Participant Count:", participantCount);
+  /*   console.log("Participant Count:", participantCount);
   console.log("Einsatz Categories:", einsatzCategories);
-  console.log("OrganizationData:", organization);
+  console.log("OrganizationData:", organization); */
 
   const assignedUserNames =
     assignedUsers.length > 0
