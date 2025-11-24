@@ -40,7 +40,7 @@ export const handleDelete = async (einsatz_singular: string, einsatz: { id: stri
   }
 };
 
-export const handlePDFPrint = async (einsatz_singular: string, einsatz: { id: string | undefined, title: string }, generatePdf: UsePdfGeneratorReturn["generatePdf"]) => {
+export const handlePdfGenerate = async (einsatz_singular: string, einsatz: { id: string | undefined, title: string }, generatePdf: UsePdfGeneratorReturn["generatePdf"]) => {
   // TODO: replace with real PDF generation workflow
   if (!einsatz?.id) {
     toast.error(`${einsatz_singular} nicht gefunden für PDF-Generierung.`);
@@ -56,7 +56,7 @@ export const handlePDFPrint = async (einsatz_singular: string, einsatz: { id: st
   if (!result) {
     toast.error(`Fehler bei der PDF-Generierung für ${einsatz_singular} '${einsatz.title}'.`);
   }
-  toast.success(`PDF für ${einsatz_singular} '${einsatz.title}' wurde generiert.`);
+  else { toast.success(`PDF für ${einsatz_singular} '${einsatz.title}' wurde generiert.`); }
   toast.dismiss(t);
 };
 

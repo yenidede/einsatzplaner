@@ -9,7 +9,7 @@ import z from "zod";
 import {
   generateDynamicSchema,
   handleDelete,
-  handlePDFPrint,
+  handlePdfGenerate,
   mapDbDataTypeToFormFieldType,
   mapFieldsForSchema,
   mapStringValueToType,
@@ -844,7 +844,7 @@ export function EventDialog({
               variant="outline"
               size="icon"
               onClick={() =>
-                handlePDFPrint(
+                handlePdfGenerate(
                   einsatz_singular,
                   {
                     id: currentEinsatz?.id,
