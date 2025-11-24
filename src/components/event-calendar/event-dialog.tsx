@@ -733,8 +733,8 @@ export function EventDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="!max-w-[55rem] flex flex-col max-h-[90vh]">
-        <DialogHeader className="flex-shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
+      <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
+        <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>
             {isLoading
               ? "Laden..."
@@ -751,7 +751,7 @@ export function EventDialog({
 
         {/* Display form-level errors */}
         {errors.formErrors.length > 0 && (
-          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm flex-shrink-0">
+          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm shrink-0">
             <ul className="list-disc list-inside">
               {errors.formErrors.map((error, index) => (
                 <li key={index}>{error}</li>
@@ -830,7 +830,7 @@ export function EventDialog({
             />
           </div>
         </div>
-        <DialogFooter className="flex-row sm:justify-between flex-shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
+        <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
           {currentEinsatz?.id && (
             <TooltipCustom text={einsatz_singular + " löschen"}>
               <Button
