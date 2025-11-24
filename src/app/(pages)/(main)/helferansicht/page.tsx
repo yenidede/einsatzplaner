@@ -26,7 +26,7 @@ export default function Helferansicht() {
   const { data: events } = useQuery({
     queryKey: einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []),
     queryFn: () => getEinsaetzeData(activeOrgId),
-    enabled: !!activeOrgId,
+    // enabled: !!activeOrgId,
   });
 
   if (!events) {

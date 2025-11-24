@@ -61,17 +61,20 @@ export async function POST(request: NextRequest) {
 
     const einsatz = await getEinsatzWithDetailsById(einsatzId);
     if (!einsatz) {
-      return NextResponse.json({ error: "Einsatz not found" }, { status: 404 });
+      return Response.json({ error: "Einsatz not found" }, { status: 404 });
+    }
+    if (einsatz instanceof Response) {
+      return einsatz;
     }
 
     const einsatzCategories: EinsatzCategory[] = Array.isArray(
       einsatz.categories
     )
       ? einsatz.categories.map((cat: string) => ({
-          id: cat,
-          value: cat,
-          label: cat,
-        }))
+        id: cat,
+        value: cat,
+        label: cat,
+      }))
       : [];
 
     const assignedUsersRaw = await Promise.all(
@@ -88,9 +91,9 @@ export async function POST(request: NextRequest) {
         lastname: user.lastname,
         salutation: user.salutation
           ? {
-              id: user.salutation.id,
-              salutation: user.salutation.salutation,
-            }
+            id: user.salutation.id,
+            salutation: user.salutation.salutation,
+          }
           : null,
       }));
 

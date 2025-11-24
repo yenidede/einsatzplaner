@@ -78,8 +78,13 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
 }
 
 export async function getEinsaetzeData(activeOrgId: string | null | undefined) {
+  const einsaetzeRaw = await getAllEinsaetzeForCalendar(activeOrgId ? [activeOrgId] : [])
+  if (einsaetzeRaw instanceof Response) {
+    return einsaetzeRaw
+  }
+
   return mapEinsaetzeToCalendarEvents(
-    await getAllEinsaetzeForCalendar(activeOrgId ? [activeOrgId] : [])
+    einsaetzeRaw
   );
 }
 
