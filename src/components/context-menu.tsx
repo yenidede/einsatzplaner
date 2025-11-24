@@ -5,7 +5,7 @@ import {
   ContextMenuLabel,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { handlePDFPrint, handleDelete } from "./event-calendar/utils";
+import { handlePdfGenerate, handleDelete } from "./event-calendar/utils";
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
 import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
 
@@ -43,7 +43,7 @@ export function ContextMenuEventRightClick({
 
   const handlePDFClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await handlePDFPrint(
+    await handlePdfGenerate(
       einsatzSingular,
       { id: eventId, title: eventTitle },
       generatePdf
