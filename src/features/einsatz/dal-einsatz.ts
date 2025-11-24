@@ -15,7 +15,7 @@ import { ValidateEinsatzCreate } from "./validation-service";
 import z from "zod";
 
 // TODO: Add auth check
-export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDetailed | null | Response> {
+export async function getEinsatzWithDetailsById(id: unknown): Promise<EinsatzDetailed | null | Response> {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
     return new Response("Invalid ID", { status: 400 });
@@ -547,7 +547,7 @@ async function createEinsatzInDb({
     },
   });
 }
-function isValidUuid(id?: string): boolean {
+function isValidUuid(id?: unknown): boolean {
   if (!id || typeof id !== "string") return false;
   return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(
     id
