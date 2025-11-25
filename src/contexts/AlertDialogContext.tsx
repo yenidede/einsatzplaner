@@ -12,6 +12,11 @@ interface AlertDialogContextValue {
   showDialog: (options: AlertDialogOptions) => Promise<"success" | "cancel">;
 }
 
+// Convenience exported function type for external helpers
+export type ShowDialogFn = (
+  options: AlertDialogOptions
+) => Promise<"success" | "cancel">;
+
 const AlertDialogContext = createContext<AlertDialogContextValue | undefined>(
   undefined
 );
