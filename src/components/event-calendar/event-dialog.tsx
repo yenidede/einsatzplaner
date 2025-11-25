@@ -832,7 +832,10 @@ export function EventDialog({
                     einsatz_singular,
                     {
                       id: currentEinsatz?.id,
-                      title: currentEinsatz?.title ?? staticFormData.title,
+                      title:
+                        currentEinsatz?.title ??
+                        staticFormData.title ??
+                        einsatz_singular,
                     },
                     showDialog,
                     onDelete
