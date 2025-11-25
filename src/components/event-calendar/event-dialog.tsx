@@ -728,8 +728,10 @@ export function EventDialog({
             {isLoading
               ? "Laden..."
               : currentEinsatz?.id
-              ? "Bearbeite " + staticFormData.title
-              : "Erstelle " + einsatz_singular}
+              ? `Bearbeite '${staticFormData.title}'`
+              : staticFormData.title
+              ? `Erstelle '${staticFormData.title}'`
+              : `Erstelle ${einsatz_singular}`}
           </DialogTitle>
           <DialogDescription className="sr-only">
             {currentEinsatz?.id
@@ -820,7 +822,7 @@ export function EventDialog({
           </div>
         </div>
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
-          {currentEinsatz?.id && (
+          {
             <TooltipCustom text={einsatz_singular + " löschen"}>
               <Button
                 variant="outline"
@@ -828,7 +830,13 @@ export function EventDialog({
                 onClick={() =>
                   handleDelete(
                     einsatz_singular,
-                    { id: currentEinsatz.id, title: currentEinsatz.title },
+                    {
+                      id: currentEinsatz?.id,
+                      title:
+                        currentEinsatz?.title ??
+                        staticFormData.title ??
+                        einsatz_singular,
+                    },
                     showDialog,
                     onDelete
                   )
@@ -838,7 +846,7 @@ export function EventDialog({
                 <RiDeleteBinLine size={16} aria-hidden="true" />
               </Button>
             </TooltipCustom>
-          )}
+          }
           <TooltipCustom text="PDF-Bestätigung drucken">
             <Button
               variant="outline"
