@@ -8,6 +8,8 @@ import { FileDown } from "lucide-react";
 import z from "zod";
 import {
   generateDynamicSchema,
+  handleDelete,
+  handlePdfGenerate,
   mapDbDataTypeToFormFieldType,
   mapFieldsForSchema,
   mapStringValueToType,
@@ -50,7 +52,6 @@ import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { buildInputProps } from "../form/utils";
 import TooltipCustom from "../tooltip-custom";
 
-import { PdfGenerationRequest } from "@/features/pdf/types";
 import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
 import { useSession } from "next-auth/react";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
@@ -215,10 +216,12 @@ export function EventDialog({
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
   const { data: detailedEinsatz, isLoading } = useQuery({
+    // only enabled if it's a string (uuid)
     queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
     queryFn: async () => {
-      const returnEinsatz = await getEinsatzWithDetailsById(einsatz as string);
-      return returnEinsatz;
+      const res = await getEinsatzWithDetailsById(einsatz as string);
+      if (!(res instanceof Response)) return res;
+      console.error("Failed to fetch einsatz details:", res);
     },
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
   });
@@ -745,37 +748,23 @@ export function EventDialog({
     });
   };
 
-  const handleDelete = async () => {
-    if (currentEinsatz?.id) {
-      const result = await showDialog({
-        title: einsatz_singular + " löschen",
-        description: `Sind Sie sicher, dass Sie "${staticFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
-      });
+  // const handleDelete = async () => {
+  //   if (currentEinsatz?.id) {
+  //     const result = await showDialog({
+  //       title: einsatz_singular + " löschen",
+  //       description: `Sind Sie sicher, dass Sie "${staticFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
+  //     });
 
-      if (result === "success") {
-        onDelete(currentEinsatz.id, currentEinsatz.title);
-      }
-    }
-  };
-
-  const handlePDFPrint = async () => {
-    // TODO: replace with real PDF generation workflow
-    if (!currentEinsatz?.id) {
-      console.warn("No einsatz ID available for PDF generation.");
-      return;
-    }
-    const request: PdfGenerationRequest = {
-      type: "booking-confirmation",
-      einsatzId: currentEinsatz.id || "",
-    };
-
-    await generatePdf(request);
-  };
+  //     if (result === "success") {
+  //       onDelete(currentEinsatz.id, currentEinsatz.title);
+  //     }
+  //   }
+  // };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="!max-w-[55rem] flex flex-col max-h-[90vh]">
-        <DialogHeader className="flex-shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
+      <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
+        <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>
             {isLoading
               ? "Laden..."
@@ -792,7 +781,7 @@ export function EventDialog({
 
         {/* Display form-level errors */}
         {errors.formErrors.length > 0 && (
-          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm flex-shrink-0">
+          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm shrink-0">
             <ul className="list-disc list-inside">
               {errors.formErrors.map((error, index) => (
                 <li key={index}>{error}</li>
@@ -871,13 +860,20 @@ export function EventDialog({
             />
           </div>
         </div>
-        <DialogFooter className="flex-row sm:justify-between flex-shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
+        <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
           {currentEinsatz?.id && (
             <TooltipCustom text={einsatz_singular + " löschen"}>
               <Button
                 variant="outline"
                 size="icon"
-                onClick={handleDelete}
+                onClick={() =>
+                  handleDelete(
+                    einsatz_singular,
+                    { id: currentEinsatz.id, title: currentEinsatz.title },
+                    showDialog,
+                    onDelete
+                  )
+                }
                 aria-label={einsatz_singular + " löschen"}
               >
                 <RiDeleteBinLine size={16} aria-hidden="true" />
@@ -888,7 +884,16 @@ export function EventDialog({
             <Button
               variant="outline"
               size="icon"
-              onClick={handlePDFPrint}
+              onClick={() =>
+                handlePdfGenerate(
+                  einsatz_singular,
+                  {
+                    id: currentEinsatz?.id,
+                    title: currentEinsatz?.title ?? staticFormData.title,
+                  },
+                  generatePdf
+                )
+              }
               aria-label="PDF-Bestätigung drucken"
             >
               <FileDown size={16} aria-hidden="true" />

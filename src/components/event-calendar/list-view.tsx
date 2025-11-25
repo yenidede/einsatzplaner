@@ -333,9 +333,9 @@ export function ListView({
   );
 
   const { table } = useDataTable({
-    data: data ?? [],
+    data: Array.isArray(data) ? data : [],
     columns: columns,
-    rowCount: data?.length ?? 0,
+    rowCount: Array.isArray(data) ? data.length : 0,
     pageCount,
     initialState: {
       sorting: [
@@ -356,6 +356,19 @@ export function ListView({
     // run after table rows are computed
     setIsTableReady(true);
   }, [rowModelRows]);
+
+  console.log("Data in ListView:", data);
+
+  if (data instanceof Response) {
+    console.log("Error Response in ListView:", data);
+    return (
+      <div className="flex flex-col gap-4 justify-start items-baseline px-4 py-6">
+        <div>
+          <h2 className="font-bold">{"Ein Fehler ist aufgetreten"}</h2>
+        </div>
+      </div>
+    );
+  }
 
   if (!userOrgIds || userOrgIds.length === 0) {
     return (
