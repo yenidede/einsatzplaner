@@ -15,19 +15,19 @@ import { ValidateEinsatzCreate } from "./validation-service";
 import z from "zod";
 
 // TODO: Add auth check
-export async function getEinsatzWithDetailsById(
-  id: string
-): Promise<EinsatzDetailed | null> {
-  const { session, userIds } = await requireAuth();
+export async function getEinsatzWithDetailsById(id: unknown): Promise<EinsatzDetailed | null | Response> {
+  const { session } = await requireAuth();
+  if (!isValidUuid(id)) {
+    return new Response("Invalid ID", { status: 400 });
+  }
 
   const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
 
   if (!einsaetzeFromDb) return null;
 
   // Prüfe ob User Zugriff auf diese Organisation hat
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  if (!userOrgIds.includes(einsaetzeFromDb.org_id)) {
-    redirect("/unauthorized");
+  if (!session.user.orgIds.includes(einsaetzeFromDb.org_id)) {
+    return new Response(`Unauthorized to access Einsatz with ID ${id}`, { status: 403 });
   }
 
   // Destructure to avoid leaking raw relation arrays in the DTO
@@ -80,31 +80,24 @@ export async function getEinsatzWithDetailsById(
   };
 }
 
-export async function getAllEinsaetze(org_ids?: string[]) {
-  const { session, userIds } = await requireAuth();
-
-  if (!hasPermission(session, "read:einsaetze")) {
-    redirect("/unauthorized");
+export async function getAllEinsaetze(org_ids: string[]) {
+  const { session } = await requireAuth();
+  if (!org_ids || org_ids.length === 0) {
+    return [];
   }
 
-  // Nutze User's orgIds als Default wenn keine org_ids übergeben
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  const filterOrgIds = org_ids && org_ids.length > 0 ? org_ids : userOrgIds;
+  if (!hasPermission(session, "read:einsaetze")) {
+    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  }
 
-  return getAllEinsaetzeFromDb(filterOrgIds);
+  return getAllEinsaetzeFromDb(org_ids, session.user.id);
 }
 
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
 
-  if (
-    !hasPermission(
-      session.user.id,
-      session.user.activeOrganization?.id,
-      "read:einsaetze"
-    )
-  ) {
-    redirect("/unauthorized");
+  if (!hasPermission(session, 'read:einsaetze')) {
+    return new Response("Unauthorized", { status: 403 });
   }
 
   // Nutze User's orgIds als Default wenn keine org_ids übergeben
@@ -118,21 +111,17 @@ export async function getEinsatzForCalendar(id: string) {
   return getEinsatzForCalendarFromDb(id);
 }
 
-export async function getEinsaetzeForTableView(
-  active_org_ids: string[]
-): Promise<ETV[]> {
-  const { session, userIds } = await requireAuth();
+export async function getEinsaetzeForTableView(active_org_ids: string[]): Promise<ETV[]> {
+  const { session } = await requireAuth();
 
-  if (!hasPermission(session, "read:einsaetze")) {
-    redirect("/unauthorized");
-  }
-
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  const userOrgIds = session.user.orgIds;
   const filterOrgIds = active_org_ids ? active_org_ids : userOrgIds;
 
   const einsaetzeFromDb = await prisma.einsatz.findMany({
     where: {
-      org_id: { in: filterOrgIds },
+      org_id: {
+        in: filterOrgIds,
+      },
     },
     include: {
       einsatz_status: true,
@@ -220,26 +209,26 @@ export async function getEinsaetzeForTableView(
     ),
     einsatz_fields: einsatz.einsatz_field.map(
       (f) =>
-        ({
-          id: f.id,
-          einsatz_id: f.einsatz_id,
-          value: f.value,
-          field_id: f.field_id,
-          datatype: f.field.type?.datatype ?? null,
-        } as einsatz_field & { datatype: string | null })
+      ({
+        id: f.id,
+        einsatz_id: f.einsatz_id,
+        value: f.value,
+        field_id: f.field_id,
+        datatype: f.field.type?.datatype ?? null,
+      } as einsatz_field & { datatype: string | null })
     ),
     user: einsatz.user
       ? {
-          id: einsatz.user.id,
-          firstname: einsatz.user.firstname ?? null,
-          lastname: einsatz.user.lastname ?? null,
-        }
+        id: einsatz.user.id,
+        firstname: einsatz.user.firstname ?? null,
+        lastname: einsatz.user.lastname ?? null,
+      }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-          id: einsatz.einsatz_template.id,
-          name: einsatz.einsatz_template.name ?? null,
-        }
+        id: einsatz.einsatz_template.id,
+        name: einsatz.einsatz_template.name ?? null,
+      }
       : null,
     _count: einsatz._count,
   }));
@@ -335,14 +324,10 @@ export async function createEinsatz({
   return createEinsatzInDb({ data: einsatzWithAuth });
 }
 
-export async function updateEinsatzTime(data: {
-  id: string;
-  start: Date;
-  end: Date;
-}): Promise<Einsatz> {
-  const { session, userIds } = await requireAuth();
-  if (!hasPermission(session, "update:einsaetze")) {
-    redirect("/unauthorized");
+export async function updateEinsatzTime(data: { id: string; start: Date; end: Date }): Promise<Einsatz> {
+  const { session } = await requireAuth();
+  if (!hasPermission(session, 'update:einsaetze')) {
+    redirect('/unauthorized');
   }
 
   const dataSchema = z.object({
@@ -555,7 +540,7 @@ async function createEinsatzInDb({
     },
   });
 }
-function isValidUuid(id?: string): boolean {
+function isValidUuid(id?: unknown): boolean {
   if (!id || typeof id !== "string") return false;
   return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(
     id
@@ -587,22 +572,34 @@ async function getEinsatzByIdFromDb(
   });
 }
 
-async function getAllEinsaetzeFromDb(org_ids: string[]): Promise<Einsatz[]> {
+async function getAllEinsaetzeFromDb(org_ids: string[], userId: string): Promise<Einsatz[]> {
   if (!org_ids || org_ids.length === 0) {
     return [];
   }
-  return prisma.einsatz.findMany({
-    where: {
-      org_id: {
-        in: org_ids,
+  return await
+    prisma.einsatz.findMany({
+      where: {
+        org_id: {
+          in: org_ids,
+        },
+        organization: {
+          user_organization_role: {
+            some: {
+              user_id: userId,
+            },
+          }
+        }
       },
-    },
-  });
+    });
 }
 
 async function getEinsatzForCalendarFromDb(
   id: string
-): Promise<EinsatzForCalendar | null> {
+): Promise<EinsatzForCalendar | Response | null> {
+  if (!isValidUuid(id)) {
+    return new Response("Invalid ID", { status: 400 });
+  }
+
   return prisma.einsatz.findUnique({
     select: {
       id: true,
