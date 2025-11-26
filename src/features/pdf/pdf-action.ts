@@ -1,16 +1,15 @@
-export const runtime = "nodejs";
+"use server";
 
-import { NextRequest, NextResponse } from "next/server";
 import React from "react";
-import { Document, renderToBuffer } from "@react-pdf/renderer";
-import { validatePdfAccess } from "@/features/pdf/lib/utils/authorization";
-import { BookingConfirmationPDF } from "@/features/pdf/components/BookingConfirmationPDF";
+import { renderToBuffer } from "@react-pdf/renderer";
+import { BookingConfirmationPDF } from "./components/BookingConfirmationPDF";
+import { validatePdfAccess } from "./lib/utils/authorization";
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
-import { Einsatz } from "@/features/einsatz/types";
 import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
 import { getOrganizationForPDF } from "@/features/settings/organization-action";
+import type { Einsatz } from "@/features/einsatz/types";
+import type { PDFActionResult } from "./types";
 
-// ✅ Types
 interface EinsatzCategory {
   id: string;
   value: string | null;
@@ -27,6 +26,11 @@ interface AssignedUser {
   } | null;
 }
 
+interface PDFOptions {
+  includeSignature?: boolean;
+  includeDetails?: boolean;
+}
+
 function generateFilename(einsatz: Einsatz): string {
   const date = new Date(einsatz.start).toLocaleDateString("de-DE", {
     day: "2-digit",
@@ -40,41 +44,48 @@ function generateFilename(einsatz: Einsatz): string {
   return `Fuehrungsbestaetigung-${date}-${startTime}.pdf`;
 }
 
-export async function POST(request: NextRequest) {
+export async function generateEinsatzPDF(
+  einsatzId: string,
+  options?: PDFOptions
+): Promise<PDFActionResult> {
   try {
-    const { einsatzId, options } = await request.json();
-
     if (!einsatzId) {
-      return NextResponse.json(
-        { error: "einsatzId is required" },
-        { status: 400 }
-      );
+      return {
+        success: false,
+        error: "einsatzId is required",
+      };
     }
 
     const authResult = await validatePdfAccess(einsatzId);
     if (!authResult.authorized) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
+      return {
+        success: false,
+        error: authResult.error || "Nicht autorisiert",
+      };
     }
 
     const einsatz = await getEinsatzWithDetailsById(einsatzId);
     if (!einsatz) {
-      return Response.json({ error: "Einsatz not found" }, { status: 404 });
+      return {
+        success: false,
+        error: "Einsatz not found",
+      };
     }
     if (einsatz instanceof Response) {
-      return einsatz;
+      return {
+        success: false,
+        error: "Einsatz not found",
+      };
     }
 
     const einsatzCategories: EinsatzCategory[] = Array.isArray(
       einsatz.categories
     )
       ? einsatz.categories.map((cat: string) => ({
-        id: cat,
-        value: cat,
-        label: cat,
-      }))
+          id: cat,
+          value: cat,
+          label: cat,
+        }))
       : [];
 
     const assignedUsersRaw = await Promise.all(
@@ -91,15 +102,15 @@ export async function POST(request: NextRequest) {
         lastname: user.lastname,
         salutation: user.salutation
           ? {
-            id: user.salutation.id,
-            salutation: user.salutation.salutation,
-          }
+              id: user.salutation.id,
+              salutation: user.salutation.salutation,
+            }
           : null,
       }));
 
     const organization = await getOrganizationForPDF(einsatz.org_id);
 
-    console.log("📊 PDF Generation Data:", {
+    /*     console.log("📊 PDF Generation Data:", {
       einsatzId: einsatz.id,
       orgName: organization.name,
       addressesCount: organization.addresses.length,
@@ -107,45 +118,40 @@ export async function POST(request: NextRequest) {
       hasDetails: !!organization.details,
       assignedUsersCount: assignedUsers.length,
       categoriesCount: einsatzCategories.length,
-    });
+    }); */
 
-    const documentElement = React.createElement(
-      Document,
-      null,
-      React.createElement(BookingConfirmationPDF, {
-        einsatz,
-        einsatzCategories,
-        organization,
-        assignedUsers,
-        options,
-      })
+    const { Document } = await import("@react-pdf/renderer");
+    const pdfBuffer = await renderToBuffer(
+      React.createElement(
+        Document,
+        null,
+        React.createElement(BookingConfirmationPDF, {
+          einsatz,
+          einsatzCategories,
+          organization,
+          assignedUsers,
+        })
+      )
     );
 
-    const pdfBuffer = await renderToBuffer(documentElement);
+    const base64 = Buffer.from(pdfBuffer).toString("base64");
 
     const filename = generateFilename(einsatz);
 
-    return new NextResponse(new Uint8Array(pdfBuffer), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Content-Length": pdfBuffer.byteLength.toString(),
+    return {
+      success: true,
+      data: {
+        pdf: base64,
+        filename,
+        mimeType: "application/pdf",
       },
-    });
+    };
   } catch (error) {
     console.error("❌ PDF Generation Error:", error);
 
-    return NextResponse.json(
-      {
-        error: "Failed to generate PDF",
-        message: error instanceof Error ? error.message : "Unknown error",
-        stack:
-          process.env.NODE_ENV === "development" && error instanceof Error
-            ? error.stack
-            : undefined,
-      },
-      { status: 500 }
-    );
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate PDF",
+    };
   }
 }

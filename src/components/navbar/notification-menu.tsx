@@ -1,65 +1,18 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { BellIcon } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
+import { useState, useEffect, useCallback } from "react";
+import { BellIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-
-const initialNotifications = [
-  {
-    id: 1,
-    user: "Chris Tompson",
-    action: "requested review on",
-    target: "PR #42: Feature implementation",
-    timestamp: "15 minutes ago",
-    unread: true,
-  },
-  {
-    id: 2,
-    user: "Emma Davis",
-    action: "shared",
-    target: "New component library",
-    timestamp: "45 minutes ago",
-    unread: true,
-  },
-  {
-    id: 3,
-    user: "James Wilson",
-    action: "assigned you to",
-    target: "API integration task",
-    timestamp: "4 hours ago",
-    unread: false,
-  },
-  {
-    id: 4,
-    user: "Alex Morgan",
-    action: "replied to your comment in",
-    target: "Authentication flow",
-    timestamp: "12 hours ago",
-    unread: false,
-  },
-  {
-    id: 5,
-    user: "Sarah Chen",
-    action: "commented on",
-    target: "Dashboard redesign",
-    timestamp: "2 days ago",
-    unread: false,
-  },
-  {
-    id: 6,
-    user: "Miky Derya",
-    action: "mentioned you in",
-    target: "Origin UI open graph image",
-    timestamp: "2 weeks ago",
-    unread: false,
-  },
-]
+} from "@/components/ui/popover";
+import { getActivityLogs } from "@/features/activity_log/activity_log-dal";
+import type { ChangeLogEntry } from "@/features/activity_log/types";
+import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
+import { useRouter } from "next/navigation";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -74,34 +27,128 @@ function Dot({ className }: { className?: string }) {
     >
       <circle cx="3" cy="3" r="3" />
     </svg>
-  )
+  );
 }
 
+const READ_ACTIVITIES_KEY = "read_activities";
+
+const getReadActivities = (): Set<string> => {
+  if (typeof window === "undefined") return new Set();
+
+  try {
+    const stored = localStorage.getItem(READ_ACTIVITIES_KEY);
+    if (!stored) return new Set();
+
+    const parsed = JSON.parse(stored) as string[];
+    return new Set(parsed);
+  } catch (error) {
+    console.error("Failed to parse read activities from localStorage:", error);
+    return new Set();
+  }
+};
+
+const saveReadActivities = (readIds: Set<string>) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const array = Array.from(readIds);
+    localStorage.setItem(READ_ACTIVITIES_KEY, JSON.stringify(array));
+  } catch (error) {
+    console.error("Failed to save read activities to localStorage:", error);
+  }
+};
+
+const markActivityAsRead = (activityId: string) => {
+  const readActivities = getReadActivities();
+  readActivities.add(activityId);
+  saveReadActivities(readActivities);
+};
+
+const markAllActivitiesAsRead = (activityIds: string[]) => {
+  const readActivities = getReadActivities();
+  activityIds.forEach((id) => readActivities.add(id));
+  saveReadActivities(readActivities);
+};
+
 export default function NotificationMenu() {
-  const [notifications, setNotifications] = useState(initialNotifications)
-  const unreadCount = notifications.filter((n) => n.unread).length
+  const router = useRouter();
+  const [activities, setActivities] = useState<ChangeLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [isOpen, setIsOpen] = useState(false);
+
+  const loadActivities = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await getActivityLogs({
+        limit: 10,
+        offset: 0,
+      });
+
+      setActivities(result.activities);
+      setReadIds(getReadActivities());
+    } catch (error) {
+      console.error("Failed to load activities:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setReadIds(getReadActivities());
+  }, []);
+  useEffect(() => {
+    loadActivities();
+  }, [loadActivities]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadActivities();
+    }
+  }, [isOpen, loadActivities]);
+
+  const handleViewAll = () => {
+    setIsOpen(false);
+    router.push("/helferansicht");
+  };
+
+  const unreadIds = new Set(
+    activities.filter((a) => !readIds.has(a.id)).map((a) => a.id)
+  );
+  const unreadCount = unreadIds.size;
 
   const handleMarkAllAsRead = () => {
-    setNotifications(
-      notifications.map((notification) => ({
-        ...notification,
-        unread: false,
-      }))
-    )
-  }
+    const activityIds = activities.map((a) => a.id);
+    markAllActivitiesAsRead(activityIds);
+    setReadIds(new Set([...readIds, ...activityIds]));
+  };
 
-  const handleNotificationClick = (id: number) => {
-    setNotifications(
-      notifications.map((notification) =>
-        notification.id === id
-          ? { ...notification, unread: false }
-          : notification
-      )
-    )
-  }
+  const handleNotificationClick = (id: string) => {
+    markActivityAsRead(id);
+    setReadIds((prev) => new Set([...prev, id]));
+  };
+
+  const formatMessage = (activity: ChangeLogEntry) => {
+    const userName = `${activity.user.firstname} ${activity.user.lastname}`;
+    let message = activity.change_type.message;
+
+    if (userName) {
+      message = message.replace("Username", "");
+    }
+
+    if (activity.affected_user_data && activity.user) {
+      message = message.replace(
+        "AffectedUsername",
+        `${activity.affected_user_data.firstname} ${activity.affected_user_data.lastname}`
+      );
+    }
+
+    return { userName, message };
+  };
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      {" "}
       <PopoverTrigger asChild>
         <Button
           size="icon"
@@ -120,13 +167,13 @@ export default function NotificationMenu() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-1">
         <div className="flex items-baseline justify-between gap-4 px-3 py-2">
-          <div className="text-sm font-semibold">Notifications</div>
+          <div className="text-sm font-semibold">Aktivitäten</div>
           {unreadCount > 0 && (
             <button
               className="text-xs font-medium hover:underline"
               onClick={handleMarkAllAsRead}
             >
-              Mark all as read
+              Alle als gelesen markieren
             </button>
           )}
         </div>
@@ -135,40 +182,106 @@ export default function NotificationMenu() {
           aria-orientation="horizontal"
           className="bg-border -mx-1 my-1 h-px"
         ></div>
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors"
-          >
-            <div className="relative flex items-start pe-3">
-              <div className="flex-1 space-y-1">
-                <button
-                  className="text-foreground/80 text-left after:absolute after:inset-0"
-                  onClick={() => handleNotificationClick(notification.id)}
-                >
-                  <span className="text-foreground font-medium hover:underline">
-                    {notification.user}
-                  </span>{" "}
-                  {notification.action}{" "}
-                  <span className="text-foreground font-medium hover:underline">
-                    {notification.target}
-                  </span>
-                  .
-                </button>
-                <div className="text-muted-foreground text-xs">
-                  {notification.timestamp}
-                </div>
-              </div>
-              {notification.unread && (
-                <div className="absolute end-0 self-center">
-                  <span className="sr-only">Unread</span>
-                  <Dot />
-                </div>
-              )}
+
+        <div className="max-h-[400px] overflow-y-auto">
+          {loading ? (
+            <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+              Lade Aktivitäten...
             </div>
-          </div>
-        ))}
+          ) : activities.length === 0 ? (
+            <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+              Keine Aktivitäten vorhanden
+            </div>
+          ) : (
+            activities.map((activity) => {
+              const { userName, message } = formatMessage(activity);
+              const isUnread = !readIds.has(activity.id);
+
+              return (
+                <div
+                  key={activity.id}
+                  className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors"
+                >
+                  <div className="relative flex items-start gap-3 pe-3">
+                    <div
+                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                      style={{
+                        backgroundColor: `${activity.change_type.change_color}15`,
+                      }}
+                    >
+                      {activity.change_type.change_icon_url ? (
+                        <img
+                          src={activity.change_type.change_icon_url}
+                          alt={activity.change_type.name}
+                          className="h-4 w-4 object-contain"
+                        />
+                      ) : (
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{
+                            backgroundColor: activity.change_type.change_color,
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-1">
+                      <button
+                        className="text-foreground/80 text-left after:absolute after:inset-0"
+                        onClick={() => handleNotificationClick(activity.id)}
+                      >
+                        <span className="text-foreground font-medium hover:underline">
+                          {userName}
+                        </span>{" "}
+                        {message}
+                        {activity.einsatz.title && (
+                          <>
+                            {" "}
+                            <span className="text-foreground font-medium hover:underline">
+                              {activity.einsatz.title}
+                            </span>
+                          </>
+                        )}
+                        .
+                      </button>
+                      <div className="text-muted-foreground text-xs">
+                        {formatDistanceToNow(new Date(activity.created_at), {
+                          addSuffix: true,
+                          locale: de,
+                        })}
+                      </div>
+                    </div>
+                    {isUnread && (
+                      <div className="absolute end-0 self-center">
+                        <span className="sr-only">Ungelesen</span>
+                        <Dot />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {activities.length > 0 && (
+          <>
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              className="bg-border -mx-1 my-1 h-px"
+            ></div>
+            <div className="px-3 py-2 text-center">
+              <button
+                onClick={handleViewAll}
+                className="text-xs font-medium hover:underline"
+              >
+                Alle Aktivitäten anzeigen
+              </button>
+            </div>
+          </>
+        )}
       </PopoverContent>
     </Popover>
-  )
+  );
 }

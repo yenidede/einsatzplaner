@@ -306,7 +306,7 @@ export const authOptions: NextAuthOptions = {
             activeOrganization,
             accessToken,
             refreshToken,
-          }
+          };
 
           return returnUser;
         } catch (error) {
@@ -347,12 +347,17 @@ export const authOptions: NextAuthOptions = {
           where: { id: token.id as string },
           select: { active_org: true },
         });
-        const activeOrgData = userData?.active_org ? await prisma.organization.findUnique({
-          where: { id: userData.active_org },
-          select: { id: true, name: true, logo_url: true },
-        }) : null;
+        const activeOrgData = userData?.active_org
+          ? await prisma.organization.findUnique({
+              where: { id: userData.active_org },
+              select: { id: true, name: true, logo_url: true },
+            })
+          : null;
         if (!activeOrgData) {
-          throw new Response("Selected Organization not found or user isn't assigned to it", { status: 404 });
+          throw new Response(
+            "Selected Organization not found or user isn't assigned to it",
+            { status: 404 }
+          );
         }
         const newToken: JWT = {
           ...token,

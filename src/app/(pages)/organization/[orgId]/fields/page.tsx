@@ -18,7 +18,6 @@ export default function OrganizationFieldsPage() {
       .finally(() => setLoading(false));
   }, [orgId]);
 
-  // Hier kannst du das Design/JSX anpassen:
   return (
     <div>
       <h1>Felder der Organisation</h1>

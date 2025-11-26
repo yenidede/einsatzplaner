@@ -56,7 +56,13 @@ import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
 import { useSession } from "next-auth/react";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { toast } from "sonner";
+import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
 
+import {
+  detectChangeType,
+  detectChangeTypes,
+  getAffectedUserId,
+} from "@/features/activity_log/utils";
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -602,7 +608,7 @@ export function EventDialog({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Full validation before saving
     const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
     //const parsedDataDynamic = dynamicSchema?.safeParse(dynamicFormData);
@@ -686,6 +692,50 @@ export function EventDialog({
       toast.error("Benutzerdaten konnten nicht zugeordnet werden.");
       return;
     }
+
+    //region Activity Change Log
+    const isNewEinsatz = !currentEinsatz?.id;
+
+    const previousAssignedUsers =
+      currentEinsatz && "assigned_users" in currentEinsatz
+        ? currentEinsatz.assigned_users || []
+        : [];
+
+    const currentAssignedUsers = parsedDataStatic.data.assignedUsers;
+
+    const changeTypeNames = detectChangeTypes(
+      isNewEinsatz,
+      previousAssignedUsers,
+      currentAssignedUsers,
+      currentUserId
+    );
+    const affectedUserId = getAffectedUserId(
+      previousAssignedUsers,
+      currentAssignedUsers
+    );
+
+    console.log(
+      "Detected change types for activity log:",
+      changeTypeNames,
+      isNewEinsatz,
+      currentAssignedUsers
+    );
+    for (const changeTypeName of changeTypeNames) {
+      const effectiveAffectedUserId =
+        changeTypeName === "create" ? null : affectedUserId;
+      if (currentEinsatz?.id && currentUserId) {
+        createChangeLogAuto({
+          einsatzId: currentEinsatz.id,
+          userId: currentUserId,
+          typeName: changeTypeName,
+          affectedUserId: effectiveAffectedUserId,
+        }).catch((error) => {
+          console.error("Failed to create activity log:", error);
+        });
+      }
+    }
+
+    //endregion
 
     onSave({
       id: currentEinsatz?.id,

@@ -10,7 +10,8 @@ import { OrganizationRole } from "@/types/next-auth";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 if (!supabaseUrl) {
   throw new Error(
     "Environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY is not set."
@@ -32,7 +33,7 @@ export type UserUpdateData = {
   firstname?: string;
   lastname?: string;
   phone?: string;
-  picture_url?: string;
+  picture_url?: string | null;
   currentPassword?: string;
   salutationId: string;
   newPassword?: string;
@@ -117,7 +118,7 @@ export async function getUserProfileAction() {
       organizationsMap.set(orgId, {
         id: orgId,
         name: uor.organization.name,
-        logo_url: uor.organization.logo_url, // ✅ Include logo
+        logo_url: uor.organization.logo_url,
         roles: [],
         hasGetMailNotification: uor.hasGetMailNotification ?? true,
       });
@@ -142,7 +143,6 @@ export async function getUserProfileAction() {
     salutationId: user.salutationId ?? "",
     orgIds: Array.from(organizationsMap.keys()),
     roleIds: user.user_organization_role.map((uor) => uor.role.id),
-    // ✅ activeOrganization als OBJECT
     activeOrganization: activeOrgData
       ? {
           id: activeOrgData.id,
@@ -179,26 +179,33 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     }
   }
 
-  const updateData: UserUpdateData = {
-    id: session.user.id,
-    salutationId: data.salutationId ?? "",
-  };
-  if (data.email !== undefined) updateData.email = data.email;
-  if (data.firstname !== undefined) updateData.firstname = data.firstname;
-  if (data.lastname !== undefined) updateData.lastname = data.lastname;
-  if (data.phone !== undefined) updateData.phone = data.phone;
-  if (data.salutationId !== undefined)
-    updateData.salutationId = data.salutationId;
-  if (data.hasLogoinCalendar !== undefined)
-    updateData.hasLogoinCalendar = data.hasLogoinCalendar;
+  const cleanedData: Partial<UserUpdateData> = {};
 
+  if (data.salutationId !== undefined) {
+    cleanedData.salutationId =
+      data.salutationId === "" ? "" : data.salutationId;
+  }
+
+  if (data.picture_url !== undefined) {
+    cleanedData.picture_url = data.picture_url === "" ? null : data.picture_url;
+  }
+
+  // Normale Felder
+  if (data.email !== undefined) cleanedData.email = data.email;
+  if (data.firstname !== undefined) cleanedData.firstname = data.firstname;
+  if (data.lastname !== undefined) cleanedData.lastname = data.lastname;
+  if (data.phone !== undefined) cleanedData.phone = data.phone;
+  if (data.hasLogoinCalendar !== undefined)
+    cleanedData.hasLogoinCalendar = data.hasLogoinCalendar;
+
+  // Password hashing
   if (data.newPassword) {
-    updateData.newPassword = await hash(data.newPassword, 10);
+    cleanedData.newPassword = await hash(data.newPassword, 10);
   }
 
   const updatedUser = await prisma.user.update({
     where: { id: session.user.id },
-    data: updateData,
+    data: cleanedData,
     select: {
       id: true,
       email: true,
