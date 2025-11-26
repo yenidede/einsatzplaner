@@ -53,3 +53,76 @@ export function getAffectedUserId(
 
   return currentAssignedUsers[0] || null;
 }
+
+export function detectChangeTypes(
+  isNew: boolean,
+  previousAssignedUsers: string[],
+  currentAssignedUsers: string[],
+  currentUserId?: string
+): string[] {
+  const changeTypes: string[] = [];
+  if (isNew) {
+    changeTypes.push("create");
+
+    if (currentAssignedUsers.length > 0) {
+      changeTypes.push("assign");
+    }
+
+    return changeTypes;
+  }
+
+  if (previousAssignedUsers.length === 0 && currentAssignedUsers.length > 0) {
+    changeTypes.push("assign");
+    return changeTypes;
+  }
+
+  if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
+    changeTypes.push("cancel");
+    return changeTypes;
+  }
+
+  if (
+    currentUserId &&
+    previousAssignedUsers.length > 0 &&
+    !previousAssignedUsers.includes(currentUserId) &&
+    currentAssignedUsers.includes(currentUserId)
+  ) {
+    changeTypes.push("takeover");
+    return changeTypes;
+  }
+
+  if (currentAssignedUsers.length > previousAssignedUsers.length) {
+    changeTypes.push("assign");
+    return changeTypes;
+  }
+
+  if (currentAssignedUsers.length < previousAssignedUsers.length) {
+    changeTypes.push("cancel");
+    return changeTypes;
+  }
+  changeTypes.push("edit");
+  return changeTypes;
+}
+
+export function getAffectedUserIds(
+  previousAssignedUsers: string[],
+  currentAssignedUsers: string[]
+): string[] {
+  const addedUsers = currentAssignedUsers.filter(
+    (id) => !previousAssignedUsers.includes(id)
+  );
+
+  if (addedUsers.length > 0) {
+    return addedUsers;
+  }
+
+  const removedUsers = previousAssignedUsers.filter(
+    (id) => !currentAssignedUsers.includes(id)
+  );
+
+  if (removedUsers.length > 0) {
+    return removedUsers;
+  }
+
+  return currentAssignedUsers.length > 0 ? [currentAssignedUsers[0]] : [];
+}
