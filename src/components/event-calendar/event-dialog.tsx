@@ -705,8 +705,7 @@ export function EventDialog({
     const changeTypeName = detectChangeType(
       isNewEinsatz,
       previousAssignedUsers,
-      currentAssignedUsers,
-      currentUserId // do not forget current user id as it is important for "takeover" detection
+      currentAssignedUsers
     );
 
     const affectedUserId = getAffectedUserId(

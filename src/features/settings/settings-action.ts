@@ -11,7 +11,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!supabaseUrl) {
   throw new Error(
@@ -187,7 +186,6 @@ export async function updateUserProfileAction(data: UserUpdateData) {
       data.salutationId === "" ? "" : data.salutationId;
   }
 
-  // ✅ picture_url: "" → null
   if (data.picture_url !== undefined) {
     cleanedData.picture_url = data.picture_url === "" ? null : data.picture_url;
   }
@@ -204,8 +202,6 @@ export async function updateUserProfileAction(data: UserUpdateData) {
   if (data.newPassword) {
     cleanedData.newPassword = await hash(data.newPassword, 10);
   }
-
-  console.log("cleanedData being sent to Prisma:", cleanedData);
 
   const updatedUser = await prisma.user.update({
     where: { id: session.user.id },
@@ -318,7 +314,6 @@ export async function updateActiveOrganizationAction(
 }> {
   try {
     const session = await checkUserSession();
-    console.log("DATABVASE_URL:", DATABASE_URL);
 
     const hasAccess = await prisma.user_organization_role.findFirst({
       where: {

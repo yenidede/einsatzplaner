@@ -8,6 +8,13 @@ export function detectChangeType(
     return "create";
   }
 
+  if (previousAssignedUsers.length === 0 && currentAssignedUsers.length > 0) {
+    return "assign";
+  }
+  if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
+    return "cancel";
+  }
+  // takeover after the first assignment of a potential einsatz
   if (
     currentUserId &&
     !previousAssignedUsers.includes(currentUserId) &&
@@ -15,14 +22,6 @@ export function detectChangeType(
   ) {
     return "takeover";
   }
-
-  if (previousAssignedUsers.length === 0 && currentAssignedUsers.length > 0) {
-    return "assign";
-  }
-  if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
-    return "cancel";
-  }
-
   if (currentAssignedUsers.length > previousAssignedUsers.length) {
     return "assign";
   }

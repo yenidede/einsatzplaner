@@ -1,10 +1,6 @@
 import { useCallback, useState } from "react";
 import { generateEinsatzPDF } from "../pdf-action";
-import type { PDFActionResult } from "../types";
-
-interface PdfGenerationRequest {
-  einsatzId: string;
-}
+import type { PDFActionResult, PdfGenerationRequest } from "../types";
 
 interface PdfGenerationResult {
   success: boolean;
