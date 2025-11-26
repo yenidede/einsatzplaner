@@ -60,6 +60,7 @@ import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
 
 import {
   detectChangeType,
+  detectChangeTypes,
   getAffectedUserId,
 } from "@/features/activity_log/utils";
 // Defaults for the defaultFormFields (no template loaded yet)
@@ -692,7 +693,7 @@ export function EventDialog({
       return;
     }
 
-    //region Change Log
+    //region Activity Change Log
     const isNewEinsatz = !currentEinsatz?.id;
 
     const previousAssignedUsers =
@@ -702,27 +703,38 @@ export function EventDialog({
 
     const currentAssignedUsers = parsedDataStatic.data.assignedUsers;
 
-    const changeTypeName = detectChangeType(
+    const changeTypeNames = detectChangeTypes(
       isNewEinsatz,
       previousAssignedUsers,
-      currentAssignedUsers
+      currentAssignedUsers,
+      currentUserId
     );
-
     const affectedUserId = getAffectedUserId(
       previousAssignedUsers,
       currentAssignedUsers
     );
 
-    if (currentEinsatz?.id && currentUserId) {
-      createChangeLogAuto({
-        einsatzId: currentEinsatz.id,
-        userId: currentUserId,
-        typeName: changeTypeName,
-        affectedUserId: affectedUserId,
-      }).catch((error) => {
-        console.error("Failed to create activity log:", error);
-      });
+    console.log(
+      "Detected change types for activity log:",
+      changeTypeNames,
+      isNewEinsatz,
+      currentAssignedUsers
+    );
+    for (const changeTypeName of changeTypeNames) {
+      const effectiveAffectedUserId =
+        changeTypeName === "create" ? null : affectedUserId;
+      if (currentEinsatz?.id && currentUserId) {
+        createChangeLogAuto({
+          einsatzId: currentEinsatz.id,
+          userId: currentUserId,
+          typeName: changeTypeName,
+          affectedUserId: effectiveAffectedUserId,
+        }).catch((error) => {
+          console.error("Failed to create activity log:", error);
+        });
+      }
     }
+
     //endregion
 
     onSave({

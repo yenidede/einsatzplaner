@@ -108,7 +108,7 @@ export default function NotificationMenu() {
   }, [isOpen, loadActivities]);
 
   const handleViewAll = () => {
-    setIsOpen(true);
+    setIsOpen(false);
     router.push("/helferansicht");
   };
 
@@ -272,12 +272,12 @@ export default function NotificationMenu() {
               className="bg-border -mx-1 my-1 h-px"
             ></div>
             <div className="px-3 py-2 text-center">
-              <a
+              <button
                 onClick={handleViewAll}
                 className="text-xs font-medium hover:underline"
               >
                 Alle Aktivitäten anzeigen
-              </a>
+              </button>
             </div>
           </>
         )}
