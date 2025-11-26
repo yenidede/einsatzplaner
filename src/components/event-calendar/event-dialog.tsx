@@ -56,10 +56,7 @@ import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
 import { useSession } from "next-auth/react";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { toast } from "sonner";
-import {
-  createChangeLog,
-  createChangeLogAuto,
-} from "@/features/activity_log/activity_log-dal";
+import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
 
 import {
   detectChangeType,
@@ -708,7 +705,8 @@ export function EventDialog({
     const changeTypeName = detectChangeType(
       isNewEinsatz,
       previousAssignedUsers,
-      currentAssignedUsers
+      currentAssignedUsers,
+      currentUserId // do not forget current user id as it is important for "takeover" detection
     );
 
     const affectedUserId = getAffectedUserId(

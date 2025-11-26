@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 
 export class EmailService {
     private transporter: nodemailer.Transporter | null;
-
+    
     constructor() {
         // Prüfe ob E-Mail-Service aktiviert ist
         if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -23,6 +23,7 @@ export class EmailService {
             logger: true,
         });
     }
+
 
     async sendPasswordResetEmail(email: string, resetToken: string) {
         const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
@@ -91,6 +92,7 @@ export class EmailService {
             console.log(`   → Einladungslink: ${inviteUrl}`);
             return;
         }
+        
 
         const htmlContent = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -168,10 +170,10 @@ export class EmailService {
                 html: htmlContent,
             };
 
-            console.log('📧 Sende Einladungs-E-Mail:');
+/*             console.log('📧 Sende Einladungs-E-Mail:');
             console.log(`   → An: ${email}`);
             console.log(`   → Organisation: ${organizationName}`);
-            console.log(`   → Von: ${inviterName}`);
+            console.log(`   → Von: ${inviterName}`); */
 
             const info = await this.transporter.sendMail(mailOptions);
            // console.log('✅ Einladungs-E-Mail erfolgreich gesendet:', info.messageId);
