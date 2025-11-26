@@ -1,48 +1,40 @@
-import { NextResponse } from 'next/server';
-import { InvitationServiceFactory } from '@/features/invitations/services/InvitationService';
+import { NextRequest, NextResponse } from "next/server";
+import { InvitationService } from "@/features/invitations/services/InvitationService";
 
-export async function POST(request: Request) {
-    try {
-        // Überprüfe ob es ein authentifizierter Admin-Request ist
-        const authHeader = request.headers.get('authorization');
-        if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+export async function GET(request: NextRequest) {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-        const invitationService = await InvitationServiceFactory.createDefault();
-        
-        // Bereinigung ausführen
-        const cleanupResult = await invitationService.cleanupExpiredInvitations();
-        
-        // Reminder-E-Mails senden
-        const remindersSent = await invitationService.sendReminderEmails();
+  try {
+    console.log("Starting invitation cleanup and reminder cron job...");
 
-        return NextResponse.json({
-            success: true,
-            message: 'Invitation maintenance completed',
-            results: {
-                expiredInvitations: cleanupResult.cleaned,
-                anonymizedInvitations: cleanupResult.anonymized,
-                remindersSent
-            }
-        });
+    const cleanedCount = await InvitationService.cleanupExpiredInvitations();
 
-    } catch (error) {
-        console.error('Invitation maintenance error:', error);
-        return NextResponse.json(
-            { 
-                error: 'Maintenance failed', 
-                details: error instanceof Error ? error.message : 'Unknown error' 
-            },
-            { status: 500 }
-        );
-    }
-}
+    const remindersSent = await InvitationService.sendReminderEmails();
 
-// Für manuelle Ausführung
-export async function GET() {
-    return NextResponse.json({
-        message: 'Invitation maintenance endpoint',
-        usage: 'POST with Authorization header'
-    });
+    console.log("Invitation cron job completed successfully");
+
+    return NextResponse.json(
+      {
+        success: true,
+        cleanedCount,
+        remindersSent,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Invitation cron job failed:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 }
+    );
+  }
 }
