@@ -72,7 +72,10 @@ export async function generateEinsatzPDF(
       };
     }
     if (einsatz instanceof Response) {
-      return einsatz;
+      return {
+        success: false,
+        error: "Einsatz not found",
+      };
     }
 
     const einsatzCategories: EinsatzCategory[] = Array.isArray(
