@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { emailService } from "@/lib/email/EmailService";
+import { emailService } from "@/lib/email/EmailService"; // ✅ Nutze existierenden Service
 import { randomBytes } from "crypto";
 
 export class InvitationService {
@@ -88,6 +88,7 @@ export class InvitationService {
       },
     });
 
+    // ✅ Nutze existierenden EmailService
     await emailService.sendInvitationEmail(
       email,
       `${inviter.firstname} ${inviter.lastname}`,
@@ -173,7 +174,7 @@ export class InvitationService {
           email: invitation.email,
           firstname: userData.firstname,
           lastname: userData.lastname,
-          password: userData.password, // should already be hashed
+          password: userData.password,
           phone: userData.phone,
         },
       });
@@ -218,5 +219,61 @@ export class InvitationService {
 
     console.log(`${result.count} abgelaufene Einladungen gelöscht`);
     return result.count;
+  }
+
+  static async sendReminderEmails(): Promise<number> {
+    const twoDaysFromNow = new Date();
+    twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const expiringInvitations = await prisma.invitation.findMany({
+      where: {
+        accepted: false,
+        expires_at: {
+          gte: tomorrow,
+          lte: twoDaysFromNow,
+        },
+      },
+      include: {
+        organization: {
+          select: { id: true, name: true },
+        },
+        user: {
+          select: { firstname: true, lastname: true },
+        },
+      },
+    });
+
+    console.log(
+      `Found ${expiringInvitations.length} invitations expiring soon`
+    );
+
+    let sentCount = 0;
+
+    for (const invitation of expiringInvitations) {
+      try {
+        const inviterName = invitation.user
+          ? `${invitation.user.firstname} ${invitation.user.lastname}`
+          : "einem Teammitglied";
+
+        await emailService.sendInvitationReminderEmail(
+          invitation.email,
+          inviterName,
+          invitation.organization.name,
+          invitation.token,
+          invitation.expires_at
+        );
+
+        sentCount++;
+        console.log(`Reminder sent to ${invitation.email}`);
+      } catch (error) {
+        console.error(`Failed to send reminder to ${invitation.email}:`, error);
+      }
+    }
+
+    console.log(`${sentCount} reminder emails sent`);
+    return sentCount;
   }
 }

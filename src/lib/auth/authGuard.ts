@@ -7,6 +7,7 @@ import {
 } from "@/DataAccessLayer/user";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { Session } from "next-auth";
+import { ro } from "date-fns/locale";
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Superadmin: [
@@ -106,17 +107,6 @@ export function getRolePermissions(roleName: string): string[] {
   return ROLE_PERMISSION_MAP[roleName] || [];
 }
 
-export function getMultipleRolesPermissions(roleNames: string[]): string[] {
-  const allPermissions = new Set<string>();
-
-  roleNames.forEach((roleName) => {
-    const permissions = ROLE_PERMISSION_MAP[roleName] || [];
-    permissions.forEach((perm) => allPermissions.add(perm));
-  });
-
-  return Array.from(allPermissions);
-}
-
 export function roleHasPermission(
   roleName: string,
   permission: string
@@ -129,34 +119,6 @@ export function getRolesWithPermission(permission: string): string[] {
   return Object.entries(ROLE_PERMISSION_MAP)
     .filter(([_, permissions]) => permissions.includes(permission))
     .map(([roleName, _]) => roleName);
-}
-
-export function getUserPermissionsFromSession(session: Session): string[] {
-  if (!session?.user?.roleIds) return [];
-
-  return getMultipleRolesPermissions(session.user.roleIds);
-}
-
-export async function getUserPermissions(
-  userId: string,
-  orgId?: string
-): Promise<string[]> {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || session.user.id !== userId) {
-    return [];
-  }
-
-  const targetOrgId = orgId || session.user.activeOrganization?.id;
-
-  if (!targetOrgId) {
-    return [];
-  }
-
-  const roles = await getUserRolesInOrganization(userId, targetOrgId);
-  const roleNames = roles.map((r) => r.role.name);
-
-  return getMultipleRolesPermissions(roleNames);
 }
 
 // Auth Guard für Server Components
@@ -288,25 +250,6 @@ export async function hasPermission(
   );
 }
 
-export async function hasPermissionFromSession(
-  session: Session,
-  permission: string
-): Promise<boolean> {
-  if (!session?.user?.roleIds) return false;
-
-  const targetOrgId = session.user.activeOrganization?.id;
-
-  if (!targetOrgId) {
-    console.warn("No organization ID available in session");
-    return false;
-  }
-
-  const roles = await getUserRolesInOrganization(session.user.id, targetOrgId);
-
-  return roles.some((roleName) =>
-    (ROLE_PERMISSION_MAP[roleName.role.name] ?? []).includes(permission)
-  );
-}
 export async function hasAllPermissions(
   session: Session,
   permissions: string[],

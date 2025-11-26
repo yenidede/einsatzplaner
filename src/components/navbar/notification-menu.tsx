@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BellIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,7 @@ import { getActivityLogs } from "@/features/activity_log/activity_log-dal";
 import type { ChangeLogEntry } from "@/features/activity_log/types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { useRouter } from "next/dist/client/components/navigation";
+import { useRouter } from "next/navigation";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -75,28 +75,9 @@ export default function NotificationMenu() {
   const [activities, setActivities] = useState<ChangeLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
-  const [isAllOpen, setIsAllOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    setReadIds(getReadActivities());
-  }, []);
-
-  useEffect(() => {
-    loadActivities();
-
-    const interval = setInterval(() => {
-      loadActivities();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleViewAll = () => {
-    setIsAllOpen(true);
-    router.push("/helferansicht");
-  };
-
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async () => {
     try {
       setLoading(true);
       const result = await getActivityLogs({
@@ -111,7 +92,26 @@ export default function NotificationMenu() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    setReadIds(getReadActivities());
+  }, []);
+  useEffect(() => {
+    loadActivities();
+  }, [loadActivities]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadActivities();
+    }
+  }, [isOpen, loadActivities]);
+
+  const handleViewAll = () => {
+    setIsOpen(true);
+    router.push("/helferansicht");
   };
+
   const unreadIds = new Set(
     activities.filter((a) => !readIds.has(a.id)).map((a) => a.id)
   );
@@ -147,7 +147,8 @@ export default function NotificationMenu() {
   };
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      {" "}
       <PopoverTrigger asChild>
         <Button
           size="icon"
