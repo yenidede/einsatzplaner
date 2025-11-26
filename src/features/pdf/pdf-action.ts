@@ -68,8 +68,11 @@ export async function generateEinsatzPDF(
     if (!einsatz) {
       return {
         success: false,
-        error: "Einsatz nicht gefunden",
+        error: "Einsatz not found",
       };
+    }
+    if (einsatz instanceof Response) {
+      return einsatz;
     }
 
     const einsatzCategories: EinsatzCategory[] = Array.isArray(

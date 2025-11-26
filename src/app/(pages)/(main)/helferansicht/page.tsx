@@ -26,7 +26,7 @@ export default function Helferansicht() {
   const { data: events } = useQuery({
     queryKey: einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []),
     queryFn: () => getEinsaetzeData(activeOrgId),
-    enabled: !!activeOrgId,
+    // enabled: !!activeOrgId,
   });
 
   if (!events) {
@@ -35,11 +35,11 @@ export default function Helferansicht() {
   return (
     <>
       <h1>{activeOrg?.einsatz_name_plural ?? "Einsätze"}</h1>
-      <p className="text-slate-600 leading-7">
+      <p className="text-muted-foreground leading-7">
         {activeOrg?.helferansicht_description ??
           `Hier kannst du dich für ${
             activeOrg?.einsatz_name_plural ?? "Einsätze"
-          } eintragen. Organisationen werden anschließend automatisch informiert.`}
+          } eintragen. Bitte wähle die Termine aus, an denen du verfügbar bist.`}
       </p>
       <div className="mt-6">
         <Calendar mode="helper" />

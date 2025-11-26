@@ -14,6 +14,7 @@ import {
 } from "@/components/event-calendar";
 import { CalendarMode } from "./types";
 import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
+import { ContextMenuEventRightClick } from "../context-menu";
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -107,6 +108,7 @@ interface EventItemProps {
   onMouseDown?: (e: React.MouseEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
   mode: CalendarMode;
+  onDelete?: (eventId: string, eventTitle: string) => void;
 }
 
 export function EventItem({
@@ -125,6 +127,7 @@ export function EventItem({
   onMouseDown,
   onTouchStart,
   mode,
+  onDelete,
 }: EventItemProps) {
   // Use the provided currentTime (for dragging) or the event's actual time
   const userId = useSession().data?.user?.id;
@@ -165,7 +168,7 @@ export function EventItem({
   };
 
   if (view === "month") {
-    return (
+    const eventWrapper = (
       <EventWrapper
         event={event}
         isFirstDay={isFirstDay}
@@ -193,15 +196,25 @@ export function EventItem({
                 {formatTimeWithOptionalMinutes(displayEnd)}
               </div>
             )}
-            <div className="leading-tight break-words">{event.title}</div>
+            <div className="leading-tight wrap-break-word">{event.title}</div>
           </div>
         )}
       </EventWrapper>
     );
+    return (
+      <ContextMenuEventRightClick
+        trigger={eventWrapper}
+        heading={event.title}
+        asChild={false}
+        eventId={event.id}
+        eventTitle={event.title}
+        onDelete={onDelete || (() => {})}
+      />
+    );
   }
 
   if (view === "week" || view === "day") {
-    return (
+    const eventWrapper = (
       <EventWrapper
         event={event}
         isFirstDay={isFirstDay}
@@ -220,20 +233,30 @@ export function EventItem({
         onTouchStart={onTouchStart}
         mode={mode}
       >
-        <div className="font-medium leading-tight break-words">
+        <div className="font-medium leading-tight wrap-break-word">
           {event.title}
         </div>
         {showTime && (
-          <div className="font-normal opacity-70 text-[10px] sm:text-[11px] leading-tight break-words">
+          <div className="font-normal opacity-70 text-[10px] sm:text-[11px] leading-tight wrap-break-word">
             {getEventTime()}
           </div>
         )}
       </EventWrapper>
     );
+    return (
+      <ContextMenuEventRightClick
+        trigger={eventWrapper}
+        heading={event.title}
+        asChild={false}
+        eventId={event.id}
+        eventTitle={event.title}
+        onDelete={onDelete || (() => {})}
+      />
+    );
   }
 
   // Agenda view - kept separate since it's significantly different
-  return (
+  const agendaView = (
     <button
       className={cn(
         "focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90",
@@ -250,7 +273,7 @@ export function EventItem({
       <div className="text-sm font-medium">{event.title}</div>
       <div className="text-xs opacity-70">
         {event.allDay ? (
-          <span>All day</span>
+          <span>Ganztägig</span>
         ) : (
           <span className="uppercase">
             {formatTimeWithOptionalMinutes(displayStart)}
@@ -260,5 +283,15 @@ export function EventItem({
         )}
       </div>
     </button>
+  );
+  return (
+    <ContextMenuEventRightClick
+      trigger={agendaView}
+      heading={event.title}
+      asChild={true}
+      eventId={event.id}
+      eventTitle={event.title}
+      onDelete={onDelete || (() => {})}
+    />
   );
 }
