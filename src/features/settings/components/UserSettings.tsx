@@ -43,7 +43,7 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
         }
     }, [profile]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit =  (e: React.FormEvent) => {
         e.preventDefault();
 
         // Validate passwords match
@@ -53,7 +53,7 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
         }
 
         try {
-            await updateProfile({
+            updateProfile({
                 email: formData.email,
                 firstname: formData.firstname,
                 lastname: formData.lastname,
@@ -70,7 +70,7 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
             }));
             
             // Update NextAuth session
-            await updateSession();
+            updateSession();
         } catch (error) {
             console.error("Update failed:", error);
         }
