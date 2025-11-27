@@ -25,12 +25,7 @@ export const settingsQueryKeys = {
   userProfile: (userId: string, orgId: string) =>
     [...settingsQueryKeys.all, "userProfile", userId, orgId] as const,
 
-<<<<<<< HEAD
-    organizations: (orgs: string[]) =>
-    ['organizations', orgs] as const,
-=======
   organizations: (orgs: string[]) => ["organizations", orgs] as const,
->>>>>>> 9474a752369a1004da1a8b1ef628347cb4f58da7
 
   organizationById: (id: string) => ["organization", id] as const,
 
