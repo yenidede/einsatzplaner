@@ -10,21 +10,18 @@ import {
 import { settingsQueryKeys } from "../queryKey";
 
 export function useOrganizations(orgs: string[]) {
-  const query = useQuery({
-<<<<<<< HEAD
+  const queries = useQuery({
     queryKey: settingsQueryKeys.organizations(orgs),
-    queryFn: () => getUserOrganizationsAction(),
-=======
-    queryKey: settingsQueryKeys.organization(orgId),
-    queryFn: () => getUserOrganizationByIdAction(orgId),
->>>>>>> 9474a752369a1004da1a8b1ef628347cb4f58da7
+    queryFn: () =>
+      Promise.all(orgs.map((orgId) => getUserOrganizationByIdAction(orgId))),
     staleTime: 60000,
+    enabled: orgs.length > 0,
   });
 
   return {
-    organizations: query.data,
-    isLoading: query.isLoading,
-    error: query.error,
+    organizations: queries.data,
+    isLoading: queries.isLoading,
+    error: queries.error,
   };
 }
 

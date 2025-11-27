@@ -4,9 +4,7 @@ import { authOptions } from "@/lib/auth.config";
 import prisma from "@/lib/prisma";
 
 interface RouteParams {
-  params: {
-    userId: string;
-  };
+  params: Promise<{ userId: string }>;
 }
 
 interface RequestBody {
