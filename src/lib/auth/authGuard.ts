@@ -116,8 +116,8 @@ export function roleHasPermission(
 
 export function getRolesWithPermission(permission: string): string[] {
   return Object.entries(ROLE_PERMISSION_MAP)
-    .filter(([_, permissions]) => permissions.includes(permission))
-    .map(([roleName, _]) => roleName);
+    .filter(([permissions]) => permissions.includes(permission))
+    .map(([roleName]) => roleName);
 }
 
 // Auth Guard für Server Components
@@ -274,7 +274,7 @@ export async function hasAnyPermission(
 }
 
 // API Route Auth Helper
-export async function validateApiAuth(request: Request) {
+export async function validateApiAuth() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {

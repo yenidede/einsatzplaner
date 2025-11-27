@@ -16,7 +16,7 @@ async function ValidateDynamicFormFields(templateId: string) {
     const schema = generateDynamicSchema(mappedFields);
 
     try {
-        return schema.parse(formData);
+        return schema.parse(FormData);
     } catch (error) {
         throw new Error(`Validation failed: ${error}`);
     }
