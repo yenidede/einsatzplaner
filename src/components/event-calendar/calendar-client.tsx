@@ -1,21 +1,13 @@
 "use client";
 
-import { use } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import {
-  EventCalendar,
-  mapEinsaetzeToCalendarEvents,
-  mapEinsatzToCalendarEvent,
-} from "@/components/event-calendar";
+import { EventCalendar } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
 import { EinsatzCreateToCalendarEvent } from "./einsatz-service";
 import { EinsatzCreate } from "@/features/einsatz/types";
-import {
-  getAllEinsaetzeForCalendar,
-  getEinsatzForCalendar,
-  updateEinsatzTime,
-} from "@/features/einsatz/dal-einsatz";
+import { updateEinsatzTime } from "@/features/einsatz/dal-einsatz";
+import { getEinsaetzeData } from "./utils";
 import {
   createEinsatz,
   deleteEinsatzById,
@@ -23,28 +15,35 @@ import {
 } from "@/features/einsatz/dal-einsatz";
 import { toast } from "sonner";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
+import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
+import { useSession } from "next-auth/react";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
 
-export default function Component({
-  einsaetzeProp,
-  mode,
-}: {
-  einsaetzeProp: Promise<CalendarEvent[]>;
-  mode: CalendarMode;
-}) {
-  const orgs = ["0c39989e-07bc-4074-92bc-aa274e5f22d0"]; // TODO: remove - JMH for testing
+export default function Component({ mode }: { mode: CalendarMode }) {
+  const { data: session } = useSession();
+  const activeOrgId = session?.user?.activeOrganization?.id;
+
   const queryClient = useQueryClient();
-
-  const queryKey = einsatzQueryKeys.einsaetze(orgs);
-
-  async function getEinsaetzeData() {
-    return mapEinsaetzeToCalendarEvents(await getAllEinsaetzeForCalendar(orgs));
-  }
+  const queryKey = einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []);
 
   const { data: events } = useQuery({
     queryKey: queryKey,
-    queryFn: getEinsaetzeData,
-    initialData: use(einsaetzeProp),
+    queryFn: () => getEinsaetzeData(activeOrgId),
+    enabled: !!activeOrgId,
   });
+
+  const { data: organizations } = useQuery({
+    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
+    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
+    enabled: !!session?.user.orgIds?.length,
+  });
+
+  const einsatz_singular =
+    organizations?.find((org) => org.id === activeOrgId)
+      ?.einsatz_name_singular ?? "Einsatz";
+  const einsatz_plural =
+    organizations?.find((org) => org.id === activeOrgId)?.einsatz_name_plural ??
+    "Einsätze";
 
   // Mutations with optimistic update
   const createMutation = useMutation({
@@ -69,12 +68,13 @@ export default function Component({
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error("Fehler beim Erstellen des Einsatzes: " + error);
+      toast.error(`
+        ${einsatz_singular} konnte nicht erstellt werden: ${error}`);
     },
     onSuccess: (_data, vars) => {
-      toast.success("Einsatz '" + vars.title + "' wurde erstellt.");
+      toast.success(einsatz_singular + " '" + vars.title + "' wurde erstellt.");
     },
-    onSettled: (_data, _error) => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -113,13 +113,14 @@ export default function Component({
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error("Fehler beim Aktualisieren des Einsatzes: " + error);
-      console.error("Error updating Einsatz:", error);
+      toast.error(
+        `${einsatz_singular} konnte nicht aktualisiert werden: ${error}`
+      );
     },
-    onSuccess: (_data, vars) => {
-      toast.success("Einsatz '" + _data.title + "' wurde aktualisiert.");
+    onSuccess: (_data) => {
+      toast.success(`${einsatz_singular} '${_data.title}' wurde aktualisiert.`);
     },
-    onSettled: (data, _error, _variables) => {
+    onSettled: (data) => {
       // Invalidate the specific einsatz detail (only if we have a valid id)
       if (data?.id) {
         queryClient.invalidateQueries({
@@ -158,12 +159,11 @@ export default function Component({
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error("Fehler beim Löschen des Einsatzes: " + error);
-      console.error("Error deleting Einsatz:", error);
+      toast.error(`${einsatz_singular} konnte nicht gelöscht werden: ${error}`);
     },
     onSuccess: (_data, vars, ctx) => {
       const title = ctx?.toDelete?.title || vars.eventTitle || "Unbenannt";
-      toast.success("Einsatz '" + title + "' wurde gelöscht.");
+      toast.success(`${einsatz_singular} '${title}' wurde gelöscht.`);
     },
     onSettled: (_data, _error, variables) => {
       // Remove any cached detail for the deleted einsatz
@@ -198,14 +198,15 @@ export default function Component({
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error("Fehler beim Löschen des Einsatzes: " + error);
-      console.error("Error deleting Einsatz:", error);
+      toast.error(`${einsatz_singular} konnte nicht gelöscht werden: ${error}`);
     },
-    onSuccess: (_data, vars, ctx) => {
-      toast.success(vars.eventIds.length + " Einsätze wurden gelöscht.");
+    onSuccess: (_data, vars) => {
+      toast.success(
+        vars.eventIds.length + " " + einsatz_plural + " wurden gelöscht."
+      );
     },
     onSettled: (_data, _error, variables) => {
-      // Remove any cached detail for the deleted einsatz
+      // Remove any cached detail for the deleted einsätze
       if (variables?.eventIds) {
         variables.eventIds.forEach((id) => {
           queryClient.removeQueries({
@@ -239,6 +240,10 @@ export default function Component({
     deleteMultipleMutation.mutate({ eventIds });
   };
 
+  if (!events) {
+    return <div>Lade Daten...</div>;
+  }
+
   return (
     <EventCalendar
       events={events}
@@ -248,9 +253,14 @@ export default function Component({
       onEventDelete={handleEventDelete}
       onMultiEventDelete={handleMultiEventDelete}
       mode={mode}
+      activeOrgId={activeOrgId}
     />
   );
 }
-function deleteMultipleEinsaetze(eventIds: string[]): any {
-  throw new Error("Function not implemented.");
+function deleteMultipleEinsaetze(eventIds: string[]): Promise<void> {
+  try {
+    throw new Error("Function not implemented.");
+  } catch (error: unknown) {
+    return Promise.reject(error);
+  }
 }

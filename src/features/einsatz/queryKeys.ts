@@ -7,5 +7,6 @@ export const queryKeys = {
     einsaetzeFiltered: (filters: Partial<EinsatzCustomizable>, sort: { id: string; order: string }, page: number, perPage: number) => ['einsatz', "list", "filtered", filters, sort, page, perPage] as const,
     detailedEinsatz: (id: string) => ['einsatz', "detail", id] as const,
     einsatzComments: (id: string) => ['einsatz', "detail", id, "comments"] as const,
-    einsatzHelpers: (id: string) => ['einsatz', "detail", id, "helpers"] as const
+    einsatzHelpers: (id: string) => ['einsatz', "detail", id, "helpers"] as const,
+    categories: (activeOrgId: string) => ["categories", activeOrgId] as const,
 };

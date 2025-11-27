@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth.config";
 import prisma from "@/lib/prisma";
 
 export async function GET(
@@ -14,10 +14,13 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url);
-    const orgId = searchParams.get('orgId');
+    const orgId = searchParams.get("orgId");
 
     if (!orgId) {
-      return NextResponse.json({ error: "Organization ID required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Organization ID required" },
+        { status: 400 }
+      );
     }
 
     const userProfile = await prisma.user.findUnique({
@@ -30,12 +33,12 @@ export async function GET(
               select: {
                 id: true,
                 name: true,
-                abbreviation: true
-              }
-            }
-          }
-        }
-      }
+                abbreviation: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!userProfile) {
@@ -44,7 +47,10 @@ export async function GET(
 
     const orgRole = userProfile.user_organization_role[0];
     if (!orgRole) {
-      return NextResponse.json({ error: "User not in organization" }, { status: 404 });
+      return NextResponse.json(
+        { error: "User not in organization" },
+        { status: 404 }
+      );
     }
 
     const response = {
@@ -92,7 +98,7 @@ export async function PUT(
       description,
       hasLogoinCalendar,
       hasGetMailNotification,
-      organizationId
+      organizationId,
     } = body;
 
     // Update user basic info
@@ -105,8 +111,8 @@ export async function PUT(
         phone,
         description,
         hasLogoinCalendar,
-        updated_at: new Date()
-      }
+        updated_at: new Date(),
+      },
     });
 
     // Update organization-specific settings
@@ -114,11 +120,11 @@ export async function PUT(
       await prisma.user_organization_role.updateMany({
         where: {
           user_id: params.userId,
-          org_id: organizationId
+          org_id: organizationId,
         },
         data: {
-          hasGetMailNotification
-        }
+          hasGetMailNotification,
+        },
       });
     }
 

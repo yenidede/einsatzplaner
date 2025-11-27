@@ -8,6 +8,8 @@ import { FileDown } from "lucide-react";
 import z from "zod";
 import {
   generateDynamicSchema,
+  handleDelete,
+  handlePdfGenerate,
   mapDbDataTypeToFormFieldType,
   mapFieldsForSchema,
   mapStringValueToType,
@@ -31,8 +33,10 @@ import {
   StatusValuePairs,
 } from "@/components/event-calendar/constants";
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
-import type { organization as Organization } from "@/generated/prisma";
 import { useQuery } from "@tanstack/react-query";
+import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
+import { queryKeys as TemplateQueryKeys } from "@/features/einsatztemplate/queryKeys";
+import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
 import { EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
 import FormGroup from "../form/formGroup";
 import FormInputFieldCustom from "../form/formInputFieldCustom";
@@ -48,9 +52,17 @@ import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { buildInputProps } from "../form/utils";
 import TooltipCustom from "../tooltip-custom";
 
-import { PdfGenerationRequest } from "@/features/pdf/types/pdf";
 import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
+import { useSession } from "next-auth/react";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { toast } from "sonner";
+import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
 
+import {
+  detectChangeType,
+  detectChangeTypes,
+  getAffectedUserId,
+} from "@/features/activity_log/utils";
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -160,25 +172,23 @@ interface EventDialogProps {
   onClose: () => void;
   onSave: (einsatz: EinsatzCreate) => void;
   onDelete: (eventId: string, eventTitle: string) => void;
-  activeOrg: Organization | null;
 }
 
 export function EventDialog({
   einsatz,
   isOpen,
-  activeOrg,
   onClose,
   onSave,
   onDelete,
 }: EventDialogProps) {
   const { showDialog } = useAlertDialog();
+  const { data: session } = useSession();
 
-  // TODO
-  const activeOrgId = "0c39989e-07bc-4074-92bc-aa274e5f22d0"; // remove this!!!
-  const currentUserId = "5ae139a7-476c-4d76-95cb-4dcb4e909da9";
-  // TODO
+  const activeOrgId = session?.user?.activeOrganization?.id;
+  const currentUserId = session?.user?.id;
+
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const { generatePdf} = usePdfGenerator();
+  const { generatePdf } = usePdfGenerator();
   const [staticFormData, setStaticFormData] =
     useState<EinsatzFormData>(DEFAULTFORMDATA);
   // state for validation on dynamic form data - generated once after template was selected
@@ -204,30 +214,45 @@ export function EventDialog({
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
   const { data: detailedEinsatz, isLoading } = useQuery({
+    // only enabled if it's a string (uuid)
     queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
     queryFn: async () => {
-      const returnEinsatz = await getEinsatzWithDetailsById(einsatz as string);
-      return returnEinsatz;
+      const res = await getEinsatzWithDetailsById(einsatz as string);
+      if (!(res instanceof Response)) return res;
+      console.error("Failed to fetch einsatz details:", res);
     },
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
   });
 
   const categoriesQuery = useQuery({
-    queryKey: ["categories", activeOrg?.id ?? activeOrgId],
-    queryFn: () => getCategoriesByOrgIds([activeOrg?.id ?? activeOrgId]),
+    queryKey: einsatzQueryKeys.categories(activeOrgId ?? ""),
+    queryFn: () => getCategoriesByOrgIds(activeOrgId ? [activeOrgId] : []),
+    enabled: !!activeOrgId,
   });
 
   const templatesQuery = useQuery({
-    queryKey: ["templates", activeOrg?.id ?? activeOrgId],
-    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrg?.id ?? activeOrgId),
+    queryKey: TemplateQueryKeys.templates(activeOrgId ? [activeOrgId] : []),
+    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrgId ?? ""),
+    enabled: !!activeOrgId,
   });
 
   const usersQuery = useQuery({
-    queryKey: ["users", activeOrg?.id ?? activeOrgId, "helpers"],
+    queryKey: UserQueryKeys.users(activeOrgId ?? ""),
     queryFn: () => {
-      return getAllUsersWithRolesByOrgId(activeOrg?.id ?? activeOrgId);
+      return getAllUsersWithRolesByOrgId(activeOrgId ?? "");
     },
+    enabled: !!activeOrgId,
   });
+
+  const { data: organizations } = useQuery({
+    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
+    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
+    enabled: !!session?.user.orgIds?.length,
+  });
+
+  const einsatz_singular =
+    organizations?.find((org) => org.id === activeOrgId)
+      ?.einsatz_name_singular ?? "Einsatz";
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =
@@ -282,7 +307,9 @@ export function EventDialog({
         return newErrors;
       });
     } else {
-      console.warn("No dynamic schema available for validation");
+      toast.error(
+        "'No dynamic schema available for validation.' Sollte der Fehler häufiger auftreten, wenden Sie sich an den Administrator."
+      );
     }
 
     setDynamicFormData((prev) => ({ ...prev, ...updates }));
@@ -451,7 +478,7 @@ export function EventDialog({
     } else {
       resetForm();
     }
-  }, [currentEinsatz, handleFormDataChange, resetForm]);
+  }, [currentEinsatz, handleFormDataChange, resetForm, isOpen]);
 
   // Generate or refresh dynamic schema/data when template or detailed fields change
   useEffect(() => {
@@ -581,7 +608,7 @@ export function EventDialog({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Full validation before saving
     const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
     //const parsedDataDynamic = dynamicSchema?.safeParse(dynamicFormData);
@@ -621,10 +648,10 @@ export function EventDialog({
         setErrors({
           fieldErrors: {
             startTime: [
-              `Selected time must be between ${StartHour}:00 and ${EndHour}:00`,
+              `Zeit muss zwischen ${StartHour}:00 und ${EndHour}:00 liegen`,
             ],
             endTime: [
-              `Selected time must be between ${StartHour}:00 and ${EndHour}:00`,
+              `Zeit muss zwischen ${StartHour}:00 und ${EndHour}:00 liegen`,
             ],
           },
           formErrors: [],
@@ -655,6 +682,61 @@ export function EventDialog({
       }
     );
 
+    const org_id = currentEinsatz?.org_id ?? activeOrgId;
+    if (!org_id) {
+      toast.error("Organisation konnte nicht zugeordnet werden.");
+      return;
+    }
+
+    if (!currentUserId) {
+      toast.error("Benutzerdaten konnten nicht zugeordnet werden.");
+      return;
+    }
+
+    //region Activity Change Log
+    const isNewEinsatz = !currentEinsatz?.id;
+
+    const previousAssignedUsers =
+      currentEinsatz && "assigned_users" in currentEinsatz
+        ? currentEinsatz.assigned_users || []
+        : [];
+
+    const currentAssignedUsers = parsedDataStatic.data.assignedUsers;
+
+    const changeTypeNames = detectChangeTypes(
+      isNewEinsatz,
+      previousAssignedUsers,
+      currentAssignedUsers,
+      currentUserId
+    );
+    const affectedUserId = getAffectedUserId(
+      previousAssignedUsers,
+      currentAssignedUsers
+    );
+
+    console.log(
+      "Detected change types for activity log:",
+      changeTypeNames,
+      isNewEinsatz,
+      currentAssignedUsers
+    );
+    for (const changeTypeName of changeTypeNames) {
+      const effectiveAffectedUserId =
+        changeTypeName === "create" ? null : affectedUserId;
+      if (currentEinsatz?.id && currentUserId) {
+        createChangeLogAuto({
+          einsatzId: currentEinsatz.id,
+          userId: currentUserId,
+          typeName: changeTypeName,
+          affectedUserId: effectiveAffectedUserId,
+        }).catch((error) => {
+          console.error("Failed to create activity log:", error);
+        });
+      }
+    }
+
+    //endregion
+
     onSave({
       id: currentEinsatz?.id,
       title: parsedDataStatic.data.title,
@@ -664,7 +746,7 @@ export function EventDialog({
       participant_count: parsedDataStatic.data.participantCount ?? null,
       price_per_person: parsedDataStatic.data.pricePerPerson ?? null,
       total_price: parsedDataStatic.data.totalPrice ?? null,
-      org_id: currentEinsatz?.org_id ?? activeOrg?.id ?? activeOrgId,
+      org_id,
       status_id: status,
       created_by: currentUserId,
       template_id: activeTemplateId ?? undefined,
@@ -675,55 +757,42 @@ export function EventDialog({
     });
   };
 
-  const handleDelete = async () => {
-    if (currentEinsatz?.id) {
-      const result = await showDialog({
-        title: "Einsatz löschen",
-        description: `Sind Sie sicher, dass Sie den Einsatz "${staticFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
-      });
+  // const handleDelete = async () => {
+  //   if (currentEinsatz?.id) {
+  //     const result = await showDialog({
+  //       title: einsatz_singular + " löschen",
+  //       description: `Sind Sie sicher, dass Sie "${staticFormData.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
+  //     });
 
-      if (result === "success") {
-        onDelete(currentEinsatz.id, currentEinsatz.title);
-      }
-    }
-  };
-
-  const handlePDFPrint = async () => {
-    // TODO: replace with real PDF generation workflow
-    if(!currentEinsatz?.id) {
-      console.warn("No einsatz ID available for PDF generation.");
-      return;
-    }
-    const request: PdfGenerationRequest = {
-      type: "booking-confirmation",
-      einsatzId: currentEinsatz.id || "",
-    };
-    
-    await generatePdf(request);
-    //console.warn("PDF confirmation export is not implemented yet.");
-  };
+  //     if (result === "success") {
+  //       onDelete(currentEinsatz.id, currentEinsatz.title);
+  //     }
+  //   }
+  // };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="!max-w-[55rem] flex flex-col max-h-[90vh]">
-        <DialogHeader className="flex-shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
+      <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
+        <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>
             {isLoading
               ? "Laden..."
               : currentEinsatz?.id
-              ? "Bearbeite " + staticFormData.title
-              : "Erstelle " + (activeOrg?.einsatz_name_singular ?? " Einsatz")}
+              ? `Bearbeite '${staticFormData.title}'`
+              : staticFormData.title
+              ? `Erstelle '${staticFormData.title}'`
+              : `Erstelle ${einsatz_singular}`}
           </DialogTitle>
           <DialogDescription className="sr-only">
             {currentEinsatz?.id
-              ? "Edit the details of this einsatz"
-              : "Add a new einsatz to your calendar"}
+              ? einsatz_singular + " bearbeiten"
+              : einsatz_singular + " anlegen"}
           </DialogDescription>
         </DialogHeader>
 
         {/* Display form-level errors */}
         {errors.formErrors.length > 0 && (
-          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm flex-shrink-0">
+          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm shrink-0">
             <ul className="list-disc list-inside">
               {errors.formErrors.map((error, index) => (
                 <li key={index}>{error}</li>
@@ -790,7 +859,9 @@ export function EventDialog({
                     }))
                   : []
               }
-              activeOrg={activeOrg}
+              activeOrg={
+                organizations?.find((org) => org.id === activeOrgId) ?? null
+              }
             />
             <DynamicFormFields
               fields={dynamicFormFields}
@@ -800,24 +871,46 @@ export function EventDialog({
             />
           </div>
         </div>
-        <DialogFooter className="flex-row sm:justify-between flex-shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
-          {currentEinsatz?.id && (
-            <TooltipCustom text="Einsatz löschen">
+        <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
+          {
+            <TooltipCustom text={einsatz_singular + " löschen"}>
               <Button
                 variant="outline"
                 size="icon"
-                onClick={handleDelete}
-                aria-label="Einsatz löschen"
+                onClick={() =>
+                  handleDelete(
+                    einsatz_singular,
+                    {
+                      id: currentEinsatz?.id,
+                      title:
+                        currentEinsatz?.title ??
+                        staticFormData.title ??
+                        einsatz_singular,
+                    },
+                    showDialog,
+                    onDelete
+                  )
+                }
+                aria-label={einsatz_singular + " löschen"}
               >
                 <RiDeleteBinLine size={16} aria-hidden="true" />
               </Button>
             </TooltipCustom>
-          )}
+          }
           <TooltipCustom text="PDF-Bestätigung drucken">
             <Button
               variant="outline"
               size="icon"
-              onClick={handlePDFPrint}
+              onClick={() =>
+                handlePdfGenerate(
+                  einsatz_singular,
+                  {
+                    id: currentEinsatz?.id,
+                    title: currentEinsatz?.title ?? staticFormData.title,
+                  },
+                  generatePdf
+                )
+              }
               aria-label="PDF-Bestätigung drucken"
             >
               <FileDown size={16} aria-hidden="true" />
@@ -829,7 +922,6 @@ export function EventDialog({
             </Button>
             <Button onClick={handleSave}>Speichern</Button>
           </div>
-
         </DialogFooter>
       </DialogContent>
     </Dialog>

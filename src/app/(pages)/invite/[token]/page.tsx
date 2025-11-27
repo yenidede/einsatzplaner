@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface InvitationData {
@@ -19,14 +19,18 @@ export default function InviteAcceptPage() {
   const params = useParams();
   const router = useRouter();
   const token = params?.token as string;
-  
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
 
   // Einladung laden
-  const { data: invitation, isLoading, error } = useQuery({
+  const {
+    data: invitation,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["invitation", token],
     enabled: !!token,
     queryFn: async (): Promise<InvitationData> => {
@@ -52,12 +56,12 @@ export default function InviteAcceptPage() {
           lastname,
         }),
       });
-      
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Fehler beim Annehmen der Einladung");
       }
-      
+
       return res.json();
     },
     onSuccess: () => {
@@ -70,17 +74,17 @@ export default function InviteAcceptPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       alert("Passwörter stimmen nicht überein");
       return;
     }
-    
+
     if (password.length < 8) {
       alert("Passwort muss mindestens 8 Zeichen lang sein");
       return;
     }
-    
+
     acceptMutation.mutate();
   };
 
@@ -100,7 +104,9 @@ export default function InviteAcceptPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
           <div className="text-red-600 text-6xl mb-4">❌</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Einladung ungültig</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Einladung ungültig
+          </h1>
           <p className="text-gray-600 mb-4">{(error as Error).message}</p>
           <button
             onClick={() => router.push("/signin")}
@@ -123,19 +129,30 @@ export default function InviteAcceptPage() {
               Einladung annehmen
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              Sie wurden zu <strong>{invitation?.organizationName}</strong> eingeladen
+              Sie wurden zu <strong>{invitation?.organizationName}</strong>{" "}
+              eingeladen
             </p>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-md">
           <div className="mb-6 p-4 bg-blue-50 rounded-md">
-            <h3 className="font-semibold text-blue-900 mb-2">Einladungsdetails:</h3>
-            <p className="text-sm text-blue-800">📧 E-Mail: {invitation?.email}</p>
-            <p className="text-sm text-blue-800">🏢 Organisation: {invitation?.organizationName}</p>
-            <p className="text-sm text-blue-800">👤 Rolle: {invitation?.roleName}</p>
+            <h3 className="font-semibold text-blue-900 mb-2">
+              Einladungsdetails:
+            </h3>
+            <p className="text-sm text-blue-800">
+              📧 E-Mail: {invitation?.email}
+            </p>
+            <p className="text-sm text-blue-800">
+              🏢 Organisation: {invitation?.organizationName}
+            </p>
+            <p className="text-sm text-blue-800">
+              👤 Rolle: {invitation?.roleName}
+            </p>
             {invitation?.inviterName && (
-              <p className="text-sm text-blue-800">👋 Eingeladen von: {invitation.inviterName}</p>
+              <p className="text-sm text-blue-800">
+                👋 Eingeladen von: {invitation.inviterName}
+              </p>
             )}
           </div>
 

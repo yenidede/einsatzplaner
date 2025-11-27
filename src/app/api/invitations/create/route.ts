@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth.config";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 import crypto from "crypto";
-import { emailService } from '@/lib/email/EmailService';
-import { roleHasPermission } from '@/config/permissions';
+import { emailService } from "@/lib/email/EmailService";
+import { roleHasPermission } from "@/config/permissions";
 import { RoleName } from "@/types/auth";
-
 
 // Validation Schema - role_id wieder hinzufügen
 const createInvitationSchema = z.object({
@@ -19,9 +18,12 @@ const createInvitationSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Nicht authentifiziert" },
+        { status: 401 }
+      );
     }
 
     // Request Body validieren
@@ -34,41 +36,54 @@ export async function POST(request: NextRequest) {
       include: {
         user_organization_role: {
           where: { org_id: validatedData.organizationId }, // <-- WICHTIG: Nur Rollen in DIESER Organisation!
-          include: { role: true }
-        }
-      }
+          include: { role: true },
+        },
+      },
     });
 
     if (!inviter) {
-      return NextResponse.json({ error: "Benutzer nicht gefunden" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Benutzer nicht gefunden" },
+        { status: 404 }
+      );
     }
-    const roleNames = inviter.user_organization_role.map(uor => uor.role?.name || '');
-    const roleAbbrs = inviter.user_organization_role.map(uor => uor.role?.abbreviation || '');
+    const roleNames = inviter.user_organization_role.map(
+      (uor) => uor.role?.name || ""
+    );
+    const roleAbbrs = inviter.user_organization_role.map(
+      (uor) => uor.role?.abbreviation || ""
+    );
 
     // Berechtigung prüfen
-    const canInvite = inviter.user_organization_role.some(uor => 
-      roleHasPermission((uor.role?.name ?? '') as RoleName, 'users:invite')
+    const canInvite = inviter.user_organization_role.some((uor) =>
+      roleHasPermission((uor.role?.name ?? "") as RoleName, "users:invite")
     );
-    /*     console.log('🔍 Permission Check Result:', {
+    /*     console.log('Permission Check Result:', {
       roleNames,
       roleAbbrs,
       canInvite
     }); */
 
     if (!canInvite) {
-      return NextResponse.json({ 
-        error: "Keine Berechtigung zum Einladen von Benutzern",
-        debug: { roleNames, roleAbbrs }
-      }, { status: 403 });
+      return NextResponse.json(
+        {
+          error: "Keine Berechtigung zum Einladen von Benutzern",
+          debug: { roleNames, roleAbbrs },
+        },
+        { status: 403 }
+      );
     }
 
     // Organisation existiert prüfen
     const organization = await prisma.organization.findUnique({
-      where: { id: validatedData.organizationId }
+      where: { id: validatedData.organizationId },
     });
 
     if (!organization) {
-      return NextResponse.json({ error: "Organisation nicht gefunden" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Organisation nicht gefunden" },
+        { status: 404 }
+      );
     }
 
     // Prüfen ob User bereits in Organisation
@@ -76,16 +91,18 @@ export async function POST(request: NextRequest) {
       where: { email: validatedData.email },
       include: {
         user_organization_role: {
-          where: { org_id: validatedData.organizationId }
-        }
-      }
+          where: { org_id: validatedData.organizationId },
+        },
+      },
     });
-    
 
     if (existingUser && existingUser?.user_organization_role.length > 0) {
-      return NextResponse.json({ 
-        error: "Benutzer ist bereits Mitglied dieser Organisation" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Benutzer ist bereits Mitglied dieser Organisation",
+        },
+        { status: 400 }
+      );
     }
 
     // Prüfen ob bereits eine offene Einladung existiert
@@ -93,37 +110,43 @@ export async function POST(request: NextRequest) {
       where: {
         email: validatedData.email,
         org_id: validatedData.organizationId,
-        expires_at: { gt: new Date() }
-      }
+        expires_at: { gt: new Date() },
+      },
     });
 
     if (existingInvitation) {
-      return NextResponse.json({ 
-        error: "Es existiert bereits eine offene Einladung für diese E-Mail-Adresse" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            "Es existiert bereits eine offene Einladung für diese E-Mail-Adresse",
+        },
+        { status: 400 }
+      );
     }
 
-    const token = crypto.randomBytes(32).toString('hex');
-    
+    const token = crypto.randomBytes(32).toString("hex");
 
     let roleId = validatedData.roleId;
     if (!roleId) {
       const defaultRole = await prisma.role.findFirst({
-        where: { name: "Helfer" }
+        where: { name: "Helfer" },
       });
       roleId = defaultRole?.id;
     }
 
     if (!roleId) {
-      return NextResponse.json({ error: "Standard-Rolle nicht gefunden" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Standard-Rolle nicht gefunden" },
+        { status: 500 }
+      );
     }
 
-    // Einladung erstellen 
+    // Einladung erstellen
     const invitation = await prisma.invitation.create({
       data: {
         email: validatedData.email,
         org_id: validatedData.organizationId,
-        role_id: roleId, 
+        role_id: roleId,
         invited_by: inviter.id,
         token: token,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -131,21 +154,22 @@ export async function POST(request: NextRequest) {
       },
       include: {
         organization: true,
-        role: true, 
-        user: true 
-      }
+        role: true,
+        user: true,
+      },
     });
 
     // Invite Link generieren
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const inviteLink = `${baseUrl}/invite/${token}`;
 
     // E-Mail senden
     try {
       // Einladender Name ermitteln
-      const inviterName = inviter.firstname && inviter.lastname 
-        ? `${inviter.firstname} ${inviter.lastname}`
-        : inviter.email;
+      const inviterName =
+        inviter.firstname && inviter.lastname
+          ? `${inviter.firstname} ${inviter.lastname}`
+          : inviter.email;
 
       await emailService.sendInvitationEmail(
         invitation.email,
@@ -153,19 +177,23 @@ export async function POST(request: NextRequest) {
         organization.name,
         token
       );
-      
-      console.log('✅ Invitation email sent successfully');
+
+      console.log("nvitation email sent successfully");
     } catch (emailError) {
-      console.error('❌ Failed to send invitation email:', emailError);
+      console.error("Failed to send invitation email:", emailError);
       await prisma.invitation.delete({
-        where: { id: invitation.id }
+        where: { id: invitation.id },
       });
-      return NextResponse.json({
-        error: "Einladung erstellt, aber E-Mail konnte nicht gesendet werden. Einladung wurde zurückgezogen."
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error:
+            "Einladung erstellt, aber E-Mail konnte nicht gesendet werden. Einladung wurde zurückgezogen.",
+        },
+        { status: 500 }
+      );
     }
 
-/*     console.log('Invitation created:', {
+    /*     console.log('Invitation created:', {
       id: invitation.id,
       email: invitation.email,
       organization: organization.name,
@@ -178,34 +206,42 @@ export async function POST(request: NextRequest) {
       invitation: {
         id: invitation.id,
         email: invitation.email,
-        accepted: invitation.accepted,  // <-- Das Feld existiert
+        accepted: invitation.accepted, // <-- Das Feld existiert
         expires_at: invitation.expires_at,
-        created_at: invitation.created_at
+        created_at: invitation.created_at,
       },
-      inviteLink: inviteLink
+      inviteLink: inviteLink,
     });
-
   } catch (error) {
     console.error("Error creating invitation:", error);
-    
+
     // Zod Validation Errors
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ 
-        error: "Validierungsfehler", 
-        details: error.message
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Validierungsfehler",
+          details: error.message,
+        },
+        { status: 400 }
+      );
     }
-    
+
     // Prisma Errors
-    if (error instanceof Error && error.message.includes('Unique constraint')) {
-      return NextResponse.json({ 
-        error: "Einladung existiert bereits" 
-      }, { status: 400 });
+    if (error instanceof Error && error.message.includes("Unique constraint")) {
+      return NextResponse.json(
+        {
+          error: "Einladung existiert bereits",
+        },
+        { status: 400 }
+      );
     }
-    
-    return NextResponse.json({ 
-      error: "Fehler beim Erstellen der Einladung",
-      details: error instanceof Error ? error.message : "Unbekannter Fehler"
-    }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        error: "Fehler beim Erstellen der Einladung",
+        details: error instanceof Error ? error.message : "Unbekannter Fehler",
+      },
+      { status: 500 }
+    );
   }
 }

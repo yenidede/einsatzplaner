@@ -1,9 +1,11 @@
 "use server";
 
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth.config";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { roleHasPermission } from "@/config/permissions";
+import { hasPermission } from "@/lib/auth/authGuard";
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -34,6 +36,7 @@ export async function getUserProfileAction(userId: string, orgId: string) {
       lastname: true,
       phone: true,
       picture_url: true,
+      salutationId: true,
       description: true,
       user_organization_role: {
         where: { org_id: orgId },
@@ -70,19 +73,26 @@ export async function getUserProfileAction(userId: string, orgId: string) {
     phone: user.phone,
     picture_url: user.picture_url,
     description: user.description,
-    hasLogoinCalendar: false, 
+    hasLogoinCalendar: false,
     hasGetMailNotification: false,
-    role: userOrgRole?.role ? {
-      id: userOrgRole.role.id,
-      name: userOrgRole.role.name,
-      abbreviation: userOrgRole.role.abbreviation ?? "",
-    } : null,
-    organization: userOrgRole?.organization ? {
-      id: userOrgRole.organization.id,
-      name: userOrgRole.organization.name,
-      helper_name_singular: userOrgRole.organization.helper_name_singular ?? "Helfer:in",
-      helper_name_plural: userOrgRole.organization.helper_name_plural ?? "Helfer:innen",
-    } : null,
+    salutationId: user.salutationId ?? "",
+    role: userOrgRole?.role
+      ? {
+          id: userOrgRole.role.id,
+          name: userOrgRole.role.name,
+          abbreviation: userOrgRole.role.abbreviation ?? "",
+        }
+      : null,
+    organization: userOrgRole?.organization
+      ? {
+          id: userOrgRole.organization.id,
+          name: userOrgRole.organization.name,
+          helper_name_singular:
+            userOrgRole.organization.helper_name_singular ?? "Helfer:in",
+          helper_name_plural:
+            userOrgRole.organization.helper_name_plural ?? "Helfer:innen",
+        }
+      : null,
   };
 }
 
@@ -105,7 +115,7 @@ export async function getUserOrgRolesAction(orgId: string, userId: string) {
     },
   });
 
-  return userRoles.map(ur => ({
+  return userRoles.map((ur) => ({
     id: ur.id,
     role: {
       id: ur.role.id,
@@ -143,7 +153,7 @@ export async function getAllUserOrgRolesAction(orgId: string) {
     },
   });
 
-  return userRoles.map(ur => ({
+  return userRoles.map((ur) => ({
     user: {
       id: ur.user.id,
       email: ur.user.email,
@@ -178,19 +188,19 @@ export async function updateUserRoleAction(
   });
 
   if (!requestingUserRole) throw new Error("Forbidden");
-  const isPermitted = requestingUserRole.some(role => role.role?.name === "Organisationsverwaltung") ||
-                      requestingUserRole.some(role => role.role?.abbreviation === "OV") ||
-                      requestingUserRole.some(role => role.role?.name === "Superadmin");
+  const isPermitted =
+    requestingUserRole.some(
+      (role) => role.role?.name === "Organisationsverwaltung"
+    ) ||
+    requestingUserRole.some((role) => role.role?.abbreviation === "OV") ||
+    requestingUserRole.some((role) => role.role?.name === "Superadmin");
 
   if (!isPermitted) throw new Error("Insufficient permissions");
 
   // Get the role by abbreviation
   const role = await prisma.role.findFirst({
     where: {
-      OR: [
-        { abbreviation: roleAbbreviation },
-        { name: roleAbbreviation },
-      ],
+      OR: [{ abbreviation: roleAbbreviation }, { name: roleAbbreviation }],
     },
   });
 
@@ -249,12 +259,9 @@ export async function removeUserFromOrganizationAction(
 
   if (!requestingUserRole) throw new Error("Forbidden");
 
-  const isOV = requestingUserRole.role?.name === "Organisationsverwaltung" ||
-               requestingUserRole.role?.abbreviation === "OV" ||
-               requestingUserRole.role?.name === "Superadmin";
-
-  if (!isOV) throw new Error("Insufficient permissions");
-
+  if (!(await hasPermission(session, "users:manage", organizationId))) {
+    throw new Error("Insufficient permissions");
+  }
   // Remove all roles for this user in this organization
   await prisma.user_organization_role.deleteMany({
     where: {

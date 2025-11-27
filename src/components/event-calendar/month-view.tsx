@@ -113,6 +113,7 @@ export function MonthView({
           >
             {week.map((day) => {
               if (!day) return null; // Skip if day is undefined
+              if (!events || events.length === 0) return null;
 
               // Get events for this day, normalizing multi-day events to separate instances
               const allDayEventsForDay: CalendarEvent[] = [];
