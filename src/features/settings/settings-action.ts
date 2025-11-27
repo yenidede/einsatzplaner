@@ -6,17 +6,8 @@ import { authOptions } from "@/lib/auth.config";
 import prisma from "@/lib/prisma";
 import { hash, compare } from "bcrypt";
 import { revalidatePath } from "next/cache";
-<<<<<<< HEAD
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-=======
 import { OrganizationRole } from "@/types/next-auth";
 import { createClient } from "@supabase/supabase-js";
->>>>>>> 9474a752369a1004da1a8b1ef628347cb4f58da7
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -188,16 +179,6 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     }
   }
 
-<<<<<<< HEAD
-  const updateData: any = {};
-  if (data.email !== undefined) updateData.email = data.email;
-  if (data.firstname !== undefined) updateData.firstname = data.firstname;
-  if (data.lastname !== undefined) updateData.lastname = data.lastname;
-  if (data.phone !== undefined) updateData.phone = data.phone;
-  if (data.hasLogoinCalendar !== undefined)
-    updateData.hasLogoinCalendar = data.hasLogoinCalendar;
-
-=======
   const cleanedData: Partial<UserUpdateData> = {};
 
   if (data.salutationId !== undefined) {
@@ -218,7 +199,6 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     cleanedData.hasLogoinCalendar = data.hasLogoinCalendar;
 
   // Password hashing
->>>>>>> 9474a752369a1004da1a8b1ef628347cb4f58da7
   if (data.newPassword) {
     cleanedData.newPassword = await hash(data.newPassword, 10);
   }
@@ -251,10 +231,6 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     hasLogoinCalendar: updatedUser.hasLogoinCalendar ?? true,
   };
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> 9474a752369a1004da1a8b1ef628347cb4f58da7
 export async function updateOrgMailNotificationAction(
   organizationId: string,
   hasGetMailNotification: boolean
@@ -289,43 +265,10 @@ export async function uploadProfilePictureAction(formData: FormData) {
     throw new Error("File size must be less than 5MB");
   }
 
-<<<<<<< HEAD
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const filename = `${session.user.id}.${ext}`;
-  const filePath = `users/${session.user.id}/${filename}`;
-
-  const { error: uploadError } = await supabaseAdmin.storage
-    .from("logos")
-    .upload(filePath, buffer, {
-      contentType: file.type,
-      cacheControl: "3600",
-      upsert: true,
-    });
-
-  if (uploadError) {
-    console.error("Supabase upload error:", uploadError);
-    throw new Error(`Upload failed: ${uploadError.message}`);
-  }
-
-  const { data: urlData } = await supabaseAdmin.storage
-    .from("logos")
-    .getPublicUrl(filePath);
-
-  let publicUrl = (urlData as any)?.publicUrl as string | undefined;
-  if (!publicUrl) {
-    const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
-    if (!base) throw new Error("NEXT_PUBLIC_SUPABASE_URL not set");
-    publicUrl = `${base}/storage/v1/object/public/logos/${encodeURIComponent(filePath)}`;
-  }
-=======
   const bytes = await file.arrayBuffer();
   const buffer = new Uint8Array(bytes);
   const extension = file.name.split(".").pop() || "jpg";
   const filePath = `users/${session.user.id}/${session.user.id}.${extension}`;
->>>>>>> 9474a752369a1004da1a8b1ef628347cb4f58da7
 
   const { error } = await supabase.storage
     .from("logos")
@@ -349,14 +292,6 @@ export async function uploadProfilePictureAction(formData: FormData) {
   await prisma.user.update({
     where: { id: session.user.id },
     data: { picture_url: publicUrl },
-<<<<<<< HEAD
-    select: { picture_url: true },
-  });
-
-  revalidatePath("/settings");
-  return { picture_url: updatedUser.picture_url };
-}
-=======
   });
 
   revalidatePath("/settings");
@@ -418,4 +353,3 @@ export async function updateActiveOrganizationAction(
     return { success: false, error: "Fehler beim Aktualisieren" };
   }
 }
->>>>>>> 9474a752369a1004da1a8b1ef628347cb4f58da7
