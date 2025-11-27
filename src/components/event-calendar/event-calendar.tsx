@@ -46,12 +46,12 @@ import {
   ListView,
 } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
-import { organization as Organization } from "@/generated/prisma";
 import { EinsatzCreate } from "@/features/einsatz/types";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useSession } from "next-auth/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/features/organization/queryKeys";
+import { toast } from "sonner";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -63,6 +63,7 @@ export interface EventCalendarProps {
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;
+  activeOrgId?: string | null;
 }
 // TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
@@ -75,14 +76,13 @@ export function EventCalendar({
   className,
   initialView = "month",
   mode,
+  activeOrgId,
 }: EventCalendarProps) {
-  const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<
     EinsatzCreate | string | null
   >(null);
-  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
 
   const [view, setView] = useQueryState<CalendarView>(
     "view",
@@ -104,13 +104,20 @@ export function EventCalendar({
     list: "Liste",
   } as const;
 
-  // TODO use logged in user data
   const { data: sessionData } = useSession();
-  const orgs = sessionData?.orgIds || ["0c39989e-07bc-4074-92bc-aa274e5f22d0"];
-  const orgsQuery = useQuery({
-    queryKey: queryKeys.organizations(orgs), // also map all orgs by id
-    queryFn: () => getOrganizationsByIds(orgs),
+  const orgIds = sessionData?.user.orgIds;
+  const { data: organizations } = useQuery({
+    queryKey: queryKeys.organizations(orgIds ?? []),
+    queryFn: () => getOrganizationsByIds(orgIds ?? []),
+    enabled: !!orgIds?.length,
   });
+
+  const einsatz_singular =
+    organizations?.find((org) => org.id === activeOrgId)
+      ?.einsatz_name_singular ?? "Einsatz";
+  const einsatz_plural =
+    organizations?.find((org) => org.id === activeOrgId)?.einsatz_name_plural ??
+    "Einsätze";
 
   // Add keyboard shortcuts for view switching
   useEffect(() => {
@@ -150,7 +157,7 @@ export function EventCalendar({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isEventDialogOpen]);
+  }, [isEventDialogOpen, setView]);
 
   const handlePrevious = () => {
     if (view === "month") {
@@ -205,9 +212,14 @@ export function EventCalendar({
       startTime.setMilliseconds(0);
     }
 
-    const currentOrg = selectedOrg || orgsQuery.data?.[0];
-    if (!currentOrg) {
+    if (!activeOrgId) {
       console.error("No organization selected or available");
+      return;
+    }
+
+    const userId = sessionData?.user?.id;
+    if (!userId) {
+      toast.error("Keine Benutzerdaten gefunden.");
       return;
     }
 
@@ -215,8 +227,8 @@ export function EventCalendar({
       title: "",
       start: startTime,
       end: addHours(startTime, 1),
-      org_id: currentOrg?.id,
-      created_by: "5ae139a7-476c-4d76-95cb-4dcb4e909da9", // TODO: Set this to the current user ID
+      org_id: activeOrgId,
+      created_by: userId,
       helpers_needed: 0,
       categories: [],
       einsatz_fields: [],
@@ -249,7 +261,11 @@ export function EventCalendar({
     setSelectedEvent(null);
   };
 
-  const handleMultiEventDelete = (eventIds: string[]) => {};
+  const handleMultiEventDelete = (eventIds: string[]) => {
+    onMultiEventDelete?.(eventIds);
+    setIsEventDialogOpen(false);
+    setSelectedEvent(null);
+  };
 
   const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
     // Type guard to handle both types
@@ -410,12 +426,19 @@ export function EventCalendar({
                 size={16}
                 aria-hidden="true"
               />
-              <span className="max-sm:sr-only">Neues Event</span>
+              <span className="max-sm:sr-only">
+                {einsatz_singular} hinzufügen
+              </span>
             </Button>
           </div>
         </div>
 
         <div className="flex flex-1 flex-col">
+          {events.length === 0 && (
+            <div className="m-4 rounded-md bg-yellow-50 p-4 text-sm text-yellow-800">
+              Noch keine {einsatz_plural} vorhanden.
+            </div>
+          )}
           {view === "month" && (
             <MonthView
               currentDate={currentDate}
@@ -463,8 +486,7 @@ export function EventCalendar({
         </div>
 
         <EventDialog
-          activeOrg={selectedOrg}
-          einsatz={selectedEvent as EinsatzCreate}
+          einsatz={selectedEvent}
           isOpen={isEventDialogOpen}
           onClose={() => {
             setIsEventDialogOpen(false);

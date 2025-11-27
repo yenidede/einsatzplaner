@@ -24,6 +24,7 @@ interface DraggableEventProps {
   isLastDay?: boolean;
   "aria-hidden"?: boolean | "true" | "false";
   mode: CalendarMode;
+  onDelete?: (eventId: string, eventTitle: string) => void;
 }
 
 export function DraggableEvent({
@@ -38,6 +39,7 @@ export function DraggableEvent({
   isLastDay = true,
   "aria-hidden": ariaHidden,
   mode,
+  onDelete,
 }: DraggableEventProps) {
   const { activeId } = useCalendarDnd();
   const elementRef = useRef<HTMLDivElement>(null);
@@ -139,6 +141,7 @@ export function DraggableEvent({
         dndAttributes={attributes}
         aria-hidden={ariaHidden}
         mode={mode}
+        onDelete={onDelete}
       />
     </div>
   );

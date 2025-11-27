@@ -1,158 +1,168 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { InvitationService } from '../services/InvitationService';
-import type { InviteUserData } from '@/features/invitations/types/invitation';
+import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { InviteUserData } from "@/features/invitations/types/invitation";
 
 export interface UseInvitationReturn {
-    loading: boolean;
-    error: string;
-    success: string;
-    sendInvitation: (data: InviteUserData) => Promise<void>;
-    clearMessages: () => void;
+  loading: boolean;
+  error: string;
+  success: string;
+  sendInvitation: (data: InviteUserData) => Promise<void>;
+  clearMessages: () => void;
 }
 
 export function useInvitation(): UseInvitationReturn {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-    const sendInvitation = useCallback(async (data: InviteUserData) => {
-        setLoading(true);
-        setError('');
-        setSuccess('');
+  const sendInvitation = useCallback(async (data: InviteUserData) => {
+    setLoading(true);
+    setError("");
+    setSuccess("");
 
-        try {
-            const response = await fetch('/api/invitations/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
+    try {
+      const response = await fetch("/api/invitations/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP ${response.status}`);
-            }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
 
-            const result = await response.json();
-            setSuccess('Einladung erfolgreich versendet!');
-            
-            return result;
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Fehler beim Senden der Einladung';
-            setError(errorMessage);
-            throw err;
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+      const result = await response.json();
+      setSuccess("Einladung erfolgreich versendet!");
 
-    const clearMessages = useCallback(() => {
-        setError('');
-        setSuccess('');
-    }, []);
+      return result;
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Fehler beim Senden der Einladung";
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    return {
-        loading,
-        error,
-        success,
-        sendInvitation,
-        clearMessages
-    };
+  const clearMessages = useCallback(() => {
+    setError("");
+    setSuccess("");
+  }, []);
+
+  return {
+    loading,
+    error,
+    success,
+    sendInvitation,
+    clearMessages,
+  };
 }
 
 // Hook für Einladungsannahme
 export interface UseAcceptInvitationReturn {
-    loading: boolean;
-    error: string;
-    success: string;
-    acceptInvitation: (token: string, password: string, confirmPassword: string) => Promise<void>;
-    clearMessages: () => void;
+  loading: boolean;
+  error: string;
+  success: string;
+  acceptInvitation: (
+    token: string,
+    password: string,
+    confirmPassword: string
+  ) => Promise<void>;
+  clearMessages: () => void;
 }
 
 export function useAcceptInvitation(): UseAcceptInvitationReturn {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-    const acceptInvitation = useCallback(async (token: string, password: string, confirmPassword: string) => {
-        setLoading(true);
-        setError('');
-        setSuccess('');
+  const acceptInvitation = useCallback(
+    async (token: string, password: string, confirmPassword: string) => {
+      setLoading(true);
+      setError("");
+      setSuccess("");
 
-        try {
-            const response = await fetch('/api/invitations/accept', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    token,
-                    password,
-                    confirmPassword
-                }),
-            });
+      try {
+        const response = await fetch("/api/invitations/accept", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            password,
+            confirmPassword,
+          }),
+        });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP ${response.status}`);
-            }
-
-            const result = await response.json();
-            setSuccess('Einladung erfolgreich akzeptiert!');
-
-            return result;
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Fehler beim Annehmen der Einladung';
-            setError(errorMessage);
-            throw err;
-        } finally {
-            setLoading(false);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP ${response.status}`);
         }
-    }, []);
 
-    const clearMessages = useCallback(() => {
-        setError('');
-        setSuccess('');
-    }, []);
+        const result = await response.json();
+        setSuccess("Einladung erfolgreich akzeptiert!");
 
-    return {
-        loading,
-        error,
-        success,
-        acceptInvitation,
-        clearMessages
-    };
+        return result;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Fehler beim Annehmen der Einladung";
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const clearMessages = useCallback(() => {
+    setError("");
+    setSuccess("");
+  }, []);
+
+  return {
+    loading,
+    error,
+    success,
+    acceptInvitation,
+    clearMessages,
+  };
 }
 
 export function useInvitations(organizationId: string) {
   return useQuery({
-    queryKey: ['invitations', organizationId],
+    queryKey: ["invitations", organizationId],
     queryFn: async () => {
       const response = await fetch(`/api/invitations?orgId=${organizationId}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch invitations');
+        throw new Error("Failed to fetch invitations");
       }
       return response.json();
     },
-    enabled: !!organizationId
+    enabled: !!organizationId,
   });
 }
 
 export function useInvitationValidation(token: string) {
   return useQuery({
-    queryKey: ['invitation', token],
+    queryKey: ["invitation", token],
     queryFn: async () => {
       const response = await fetch(`/api/invitations/${token}`);
       if (!response.ok) {
-        throw new Error('Failed to validate invitation');
+        throw new Error("Failed to validate invitation");
       }
       return response.json();
     },
     enabled: !!token,
-    retry: false
+    retry: false,
   });
 }

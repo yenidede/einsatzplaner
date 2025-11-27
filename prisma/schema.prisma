@@ -109,25 +109,31 @@ model einsatz_template {
 }
 
 model organization {
-  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                   String
-  logo_url               String?
-  description            String?
-  helper_name_singular   String?                  @default("Vermittler:in")
-  helper_name_plural     String?                  @default("Vermittler:innen")
-  created_at             DateTime                 @default(now())
-  updated_at             DateTime?
-  einsatz_name_singular  String                   @default("Einsatz")
-  einsatz_name_plural    String                   @default("Einsätze")
-  email                  String?
-  phone                  String?
-  calendar_subscription  calendar_subscription[]
-  einsatz                einsatz[]
-  einsatz_category       einsatz_category[]
-  einsatz_template       einsatz_template[]
-  invitation             invitation[]
-  user_organization_role user_organization_role[]
-  user_property          user_property[]
+  id                           String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                         String
+  logo_url                     String?
+  description                  String?
+  helper_name_singular         String?                     @default("Vermittler:in")
+  helper_name_plural           String?                     @default("Vermittler:innen")
+  created_at                   DateTime                    @default(now())
+  updated_at                   DateTime?
+  einsatz_name_singular        String                      @default("Einsatz")
+  einsatz_name_plural          String                      @default("Einsätze")
+  email                        String?
+  phone                        String?
+  helferansicht_description    String?
+  verwalteransicht_description String?
+  calendar_subscription        calendar_subscription[]
+  einsatz                      einsatz[]
+  einsatz_category             einsatz_category[]
+  einsatz_template             einsatz_template[]
+  invitation                   invitation[]
+  organization_address         organization_address[]
+  organization_bank_account    organization_bank_account[]
+  organization_details         organization_details[]
+  user                         user[]
+  user_organization_role       user_organization_role[]
+  user_property                user_property[]
 }
 
 model type {
@@ -156,6 +162,8 @@ model user {
   last_read_notifications                   DateTime?                @db.Timestamptz(6)
   resetToken                                String?
   resetTokenExpires                         DateTime?                @db.Timestamp(6)
+  salutationId                              String?                  @db.Uuid
+  active_org                                String?                  @map("active-org") @db.Uuid
   calendar_subscription                     calendar_subscription[]
   change_log_change_log_affected_userTouser change_log[]             @relation("change_log_affected_userTouser")
   change_log                                change_log[]
@@ -164,9 +172,11 @@ model user {
   einsatz_helper                            einsatz_helper[]
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
+  organization                              organization?            @relation(fields: [active_org], references: [id])
+  salutation                                salutation?              @relation(fields: [salutationId], references: [id], onDelete: Cascade)
   user_organization_role                    user_organization_role[]
   user_property_value                       user_property_value[]
-  user_session                      user_session[]
+  user_session                              user_session[]
 }
 
 model user_organization_role {
@@ -313,4 +323,47 @@ model user_session {
   created_at    DateTime  @default(now()) @db.Timestamptz(6)
   updated_at    DateTime? @db.Timestamp(6)
   user          user?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model salutation {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salutation String
+  user       user[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organization_address {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id       String       @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  label        String?
+  street       String
+  postal_code  BigInt
+  city         String
+  country      String
+  organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organization_bank_account {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id       String       @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  bank_name    String
+  iban         String
+  bic          String
+  organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organization_details {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id       String       @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  website      String?
+  vat          String?
+  zvr          String?
+  authority    String?
+  organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
 }

@@ -2,25 +2,38 @@
 
 import prisma from "@/lib/prisma";
 import type { einsatz as Einsatz, einsatz_field } from "@/generated/prisma";
-import type { EinsatzForCalendar, EinsatzCreate, EinsatzDetailed, ETV } from "@/features/einsatz/types";
+import type {
+  EinsatzForCalendar,
+  EinsatzCreate,
+  EinsatzDetailed,
+  ETV,
+} from "@/features/einsatz/types";
 import { hasPermission, requireAuth } from "@/lib/auth/authGuard";
 import { redirect } from "next/navigation";
 
 import { ValidateEinsatzCreate } from "./validation-service";
 import z from "zod";
+import { detectChangeTypes, getAffectedUserIds } from "../activity_log/utils";
+import { createChangeLogAuto } from "../activity_log/activity_log-dal";
 
 // TODO: Add auth check
-export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDetailed | null> {
-  const { session, userIds } = await requireAuth();
+export async function getEinsatzWithDetailsById(
+  id: unknown
+): Promise<EinsatzDetailed | null | Response> {
+  const { session } = await requireAuth();
+  if (!isValidUuid(id)) {
+    return new Response("Invalid ID", { status: 400 });
+  }
 
   const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
 
   if (!einsaetzeFromDb) return null;
 
   // Prüfe ob User Zugriff auf diese Organisation hat
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  if (!userOrgIds.includes(einsaetzeFromDb.org_id)) {
-    redirect('/unauthorized');
+  if (!session.user.orgIds.includes(einsaetzeFromDb.org_id)) {
+    return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
+      status: 403,
+    });
   }
 
   // Destructure to avoid leaking raw relation arrays in the DTO
@@ -33,7 +46,6 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
     einsatz_field,
     ...rest
   } = einsaetzeFromDb;
-
 
   return {
     ...rest,
@@ -74,25 +86,24 @@ export async function getEinsatzWithDetailsById(id: string): Promise<EinsatzDeta
   };
 }
 
-export async function getAllEinsaetze(org_ids?: string[]) {
-  const { session, userIds } = await requireAuth();
-
-  if (!hasPermission(session, "read:einsaetze")) {
-    redirect("/unauthorized");
+export async function getAllEinsaetze(org_ids: string[]) {
+  const { session } = await requireAuth();
+  if (!org_ids || org_ids.length === 0) {
+    return [];
   }
 
-  // Nutze User's orgIds als Default wenn keine org_ids übergeben
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  const filterOrgIds = org_ids && org_ids.length > 0 ? org_ids : userOrgIds;
+  if (!hasPermission(session, "read:einsaetze")) {
+    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  }
 
-  return getAllEinsaetzeFromDb(filterOrgIds);
+  return getAllEinsaetzeFromDb(org_ids, session.user.id);
 }
 
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, 'read:einsaetze')) {
-    redirect('/unauthorized');
+  if (!hasPermission(session, "read:einsaetze")) {
+    return new Response("Unauthorized", { status: 403 });
   }
 
   // Nutze User's orgIds als Default wenn keine org_ids übergeben
@@ -106,19 +117,19 @@ export async function getEinsatzForCalendar(id: string) {
   return getEinsatzForCalendarFromDb(id);
 }
 
-export async function getEinsaetzeForTableView(active_org_ids: string[]): Promise<ETV[]> {
-  const { session, userIds } = await requireAuth();
+export async function getEinsaetzeForTableView(
+  active_org_ids: string[]
+): Promise<ETV[]> {
+  const { session } = await requireAuth();
 
-  if (!hasPermission(session, 'read:einsaetze')) {
-    redirect('/unauthorized');
-  }
-
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  const userOrgIds = session.user.orgIds;
   const filterOrgIds = active_org_ids ? active_org_ids : userOrgIds;
 
   const einsaetzeFromDb = await prisma.einsatz.findMany({
     where: {
-      org_id: { in: filterOrgIds }
+      org_id: {
+        in: filterOrgIds,
+      },
     },
     include: {
       einsatz_status: true,
@@ -130,14 +141,14 @@ export async function getEinsaetzeForTableView(active_org_ids: string[]): Promis
               id: true,
               firstname: true,
               lastname: true,
-            }
-          }
-        }
+            },
+          },
+        },
       },
       einsatz_to_category: {
         include: {
-          einsatz_category: true
-        }
+          einsatz_category: true,
+        },
       },
       einsatz_field: {
         include: {
@@ -146,30 +157,30 @@ export async function getEinsaetzeForTableView(active_org_ids: string[]): Promis
               type: {
                 select: {
                   datatype: true,
-                }
-              }
-            }
-          }
-        }
+                },
+              },
+            },
+          },
+        },
       },
       user: {
         select: {
           id: true,
           firstname: true,
           lastname: true,
-        }
+        },
       },
       einsatz_template: {
         select: {
           id: true,
           name: true,
-        }
+        },
       },
       _count: {
         select: {
           einsatz_helper: true,
-        }
-      }
+        },
+      },
     },
     orderBy: { created_at: "asc" },
   });
@@ -201,23 +212,32 @@ export async function getEinsaetzeForTableView(active_org_ids: string[]): Promis
       firstname: helper.user.firstname ?? null,
       lastname: helper.user.lastname ?? null,
     })),
-    einsatz_categories: einsatz.einsatz_to_category.map((cat) => cat.einsatz_category),
-    einsatz_fields: einsatz.einsatz_field.map((f) => ({
-      id: f.id,
-      einsatz_id: f.einsatz_id,
-      value: f.value,
-      field_id: f.field_id,
-      datatype: f.field.type?.datatype ?? null,
-    }) as einsatz_field & { datatype: string | null }),
-    user: einsatz.user ? {
-      id: einsatz.user.id,
-      firstname: einsatz.user.firstname ?? null,
-      lastname: einsatz.user.lastname ?? null,
-    } : null,
-    einsatz_template: einsatz.einsatz_template ? {
-      id: einsatz.einsatz_template.id,
-      name: einsatz.einsatz_template.name ?? null,
-    } : null,
+    einsatz_categories: einsatz.einsatz_to_category.map(
+      (cat) => cat.einsatz_category
+    ),
+    einsatz_fields: einsatz.einsatz_field.map(
+      (f) =>
+        ({
+          id: f.id,
+          einsatz_id: f.einsatz_id,
+          value: f.value,
+          field_id: f.field_id,
+          datatype: f.field.type?.datatype ?? null,
+        } as einsatz_field & { datatype: string | null })
+    ),
+    user: einsatz.user
+      ? {
+          id: einsatz.user.id,
+          firstname: einsatz.user.firstname ?? null,
+          lastname: einsatz.user.lastname ?? null,
+        }
+      : null,
+    einsatz_template: einsatz.einsatz_template
+      ? {
+          id: einsatz.einsatz_template.id,
+          name: einsatz.einsatz_template.name ?? null,
+        }
+      : null,
     _count: einsatz._count,
   }));
 
@@ -227,21 +247,24 @@ export async function getEinsaetzeForTableView(active_org_ids: string[]): Promis
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, 'read:templates')) {
-    redirect('/unauthorized');
+  if (!hasPermission(session, "read:templates")) {
+    redirect("/unauthorized");
   }
 
   // Verwende org_id oder erste Organisation des Users
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  const useOrgId = org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
+  const useOrgId =
+    org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
+    throw new Error(
+      "Organisation muss angegeben werden oder User muss genau einer Organisation angehören"
+    );
   }
 
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!userOrgIds.includes(useOrgId)) {
-    redirect('/unauthorized');
+    redirect("/unauthorized");
   }
 
   return prisma.einsatz_template.findMany({
@@ -252,7 +275,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
       template_icon: {
         select: {
           icon_url: true,
-        }
+        },
       },
       template_field: {
         select: {
@@ -265,47 +288,81 @@ export async function getAllTemplatesWithFields(org_id?: string) {
               },
             },
           },
-        }
-      }
+        },
+      },
     },
-  })
+  });
 }
 
-export async function createEinsatz({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
+export async function createEinsatz({
+  data,
+}: {
+  data: EinsatzCreate;
+}): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, 'create:einsaetze')) {
-    redirect('/unauthorized');
+  if (!hasPermission(session, "create:einsaetze")) {
+    redirect("/unauthorized");
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-
-  // Verwende org_id aus data oder erste Organisation des Users
-  const useOrgId = data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
+  const useOrgId =
+    data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new Error('Organisation muss angegeben werden oder User muss genau einer Organisation angehören');
+    throw new Error("Organisation muss angegeben werden");
   }
 
-  // Prüfe ob User Zugriff auf diese Organisation hat
   if (!userOrgIds.includes(useOrgId)) {
-    redirect('/unauthorized');
+    redirect("/unauthorized");
   }
 
-  // Setze created_by und org_id
   const einsatzWithAuth = {
     ...data,
     created_by: userIds.userId,
     org_id: useOrgId,
   };
-  console.log(data, einsatzWithAuth);
-  return createEinsatzInDb({ data: einsatzWithAuth })
+
+  const createdEinsatz = await createEinsatzInDb({ data: einsatzWithAuth });
+
+  if (createdEinsatz.id && userIds.userId) {
+    try {
+      const changeTypeNames = detectChangeTypes(
+        true,
+        [],
+        data.assignedUsers || [],
+        userIds.userId
+      );
+
+      const affectedUserIds = getAffectedUserIds([], data.assignedUsers || []);
+
+      for (const typeName of changeTypeNames) {
+        const affectedUserId =
+          typeName === "create" ? null : affectedUserIds[0] || null;
+
+        await createChangeLogAuto({
+          einsatzId: createdEinsatz.id,
+          userId: userIds.userId,
+          typeName: typeName,
+          affectedUserId: affectedUserId,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to create activity logs:", error);
+    }
+  }
+
+  return createdEinsatz;
 }
 
-export async function updateEinsatzTime(data: { id: string; start: Date; end: Date }): Promise<Einsatz> {
-  const { session, userIds } = await requireAuth();
-  if (!hasPermission(session, 'update:einsaetze')) {
-    redirect('/unauthorized');
+export async function updateEinsatzTime(data: {
+  id: string;
+  start: Date;
+  end: Date;
+}): Promise<Einsatz> {
+  const { session } = await requireAuth();
+  if (!hasPermission(session, "update:einsaetze")) {
+    redirect("/unauthorized");
   }
 
   const dataSchema = z.object({
@@ -326,18 +383,28 @@ export async function updateEinsatzTime(data: { id: string; start: Date; end: Da
   });
 }
 
-export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }): Promise<Einsatz> {
+export async function updateEinsatz({
+  data,
+}: {
+  data: Partial<EinsatzCreate>;
+}): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, 'update:einsaetze')) {
-    redirect('/unauthorized');
+  if (!hasPermission(session, "update:einsaetze")) {
+    redirect("/unauthorized");
   }
 
   if (data.template_id && false) {
     const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
   }
-  const { id, categories, einsatz_fields, assignedUsers, org_id, ...updateData } = data;
-
+  const {
+    id,
+    categories,
+    einsatz_fields,
+    assignedUsers,
+    org_id,
+    ...updateData
+  } = data;
 
   if (!id) {
     throw new Error("Einsatz must have an id for update");
@@ -346,21 +413,17 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
   // Prüfe ob Einsatz existiert und User Zugriff hat
   const existingEinsatz = await prisma.einsatz.findUnique({
     where: { id },
-    select: { org_id: true }
+    select: { org_id: true },
   });
 
   if (!existingEinsatz) {
-    throw new Error(`Einsatz with ID ${id} not found`);
+    throw new Response(`Einsatz with ID ${id} not found`, { status: 404 });
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    redirect('/unauthorized');
+    redirect("/unauthorized");
   }
-
-  console.log("Updating Einsatz with data:", updateData);
-  console.log("Dynamic fields:", einsatz_fields);
-
 
   try {
     return prisma.einsatz.update({
@@ -385,7 +448,7 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
               field: { connect: { id: field.field_id } },
               value: field.value,
             })),
-          })
+          }),
         },
         einsatz_helper: {
           ...(assignedUsers && {
@@ -398,31 +461,28 @@ export async function updateEinsatz({ data }: { data: Partial<EinsatzCreate> }):
       },
     });
   } catch (error) {
-    throw new Error(`Failed to update Einsatz with ID ${id}: ${error}`);
+    throw new Response(`Failed to update Einsatz with ID ${id}: ${error}`, {
+      status: 500,
+    });
   }
 }
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
-  const { session, userIds } = await requireAuth();
+  const { session } = await requireAuth();
 
-  if (!hasPermission(session, 'delete:einsaetze')) {
-    redirect('/unauthorized');
+  if (!hasPermission(session, "delete:einsaetze")) {
+    throw new Response("Unauthorized", { status: 403 });
   }
-  // TODO: check if logged in user has permission to delete this Einsatz
 
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
-    select: { id: true, org_id: true }
+    select: { id: true, org_id: true },
   });
 
   if (!einsatz) {
-    throw new Error(`Einsatz with ID ${einsatzId} not found`);
-  }
-
-  // Prüfe ob User Zugriff auf diese Organisation hat
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  if (!userOrgIds.includes(einsatz.org_id)) {
-    redirect('/unauthorized');
+    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
+      status: 404,
+    });
   }
 
   try {
@@ -432,11 +492,16 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
       },
     });
   } catch (error) {
-    throw new Error(`Failed to delete Einsatz with ID ${einsatzId}: ${error}`);
+    throw new Response(
+      `Failed to delete Einsatz with ID ${einsatzId}: ${error}`,
+      { status: 500 }
+    );
   }
 }
 
-export async function deleteEinsaetzeByIds(einsatzIds: string[]): Promise<void> {
+export async function deleteEinsaetzeByIds(
+  einsatzIds: string[]
+): Promise<void> {
   // TODO: check if logged in user has permission to delete this Einsatz
 
   const einsatz = await prisma.einsatz.findMany({
@@ -453,11 +518,17 @@ export async function deleteEinsaetzeByIds(einsatzIds: string[]): Promise<void> 
       },
     });
   } catch (error) {
-    throw new Error(`Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`);
+    throw new Error(
+      `Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`
+    );
   }
 }
 
-async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Einsatz> {
+async function createEinsatzInDb({
+  data,
+}: {
+  data: EinsatzCreate;
+}): Promise<Einsatz> {
   const {
     title,
     start,
@@ -483,35 +554,40 @@ async function createEinsatzInDb({ data }: { data: EinsatzCreate }): Promise<Ein
       helpers_needed,
       all_day,
       einsatz_to_category: {
-        create: categories?.map((category) => ({
-          einsatz_category: { connect: { id: category } },
-        })) || [],
+        create:
+          categories?.map((category) => ({
+            einsatz_category: { connect: { id: category } },
+          })) || [],
       },
       einsatz_field: {
-        create: einsatz_fields?.map((field) => ({
-          field: { connect: { id: field.field_id } },
+        create:
+          einsatz_fields?.map((field) => ({
+            field: { connect: { id: field.field_id } },
 
-          value: field.value,
-        })) || [],
+            value: field.value,
+          })) || [],
       },
       einsatz_helper: {
-        connect: assignedUsers.map((userId) => ({ id: userId })),
+        create: assignedUsers.map((userId) => ({
+          user: { connect: { id: userId } },
+        })),
       },
       status_id,
       template_id,
     },
   });
 }
-function isValidUuid(id?: string): boolean {
+function isValidUuid(id?: unknown): boolean {
   if (!id || typeof id !== "string") return false;
-  return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(id);
+  return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(
+    id
+  );
 }
 
 async function getEinsatzByIdFromDb(
   id: string,
   org_id: string
 ): Promise<Einsatz | null> {
-
   /*   if (!isValidUuid(id)) {
       console.error("ungültige IDs", { id});
       return null;
@@ -533,14 +609,24 @@ async function getEinsatzByIdFromDb(
   });
 }
 
-async function getAllEinsaetzeFromDb(org_ids: string[]): Promise<Einsatz[]> {
+async function getAllEinsaetzeFromDb(
+  org_ids: string[],
+  userId: string
+): Promise<Einsatz[]> {
   if (!org_ids || org_ids.length === 0) {
     return [];
   }
-  return prisma.einsatz.findMany({
+  return await prisma.einsatz.findMany({
     where: {
       org_id: {
         in: org_ids,
+      },
+      organization: {
+        user_organization_role: {
+          some: {
+            user_id: userId,
+          },
+        },
       },
     },
   });
@@ -548,7 +634,11 @@ async function getAllEinsaetzeFromDb(org_ids: string[]): Promise<Einsatz[]> {
 
 async function getEinsatzForCalendarFromDb(
   id: string
-): Promise<EinsatzForCalendar | null> {
+): Promise<EinsatzForCalendar | Response | null> {
+  if (!isValidUuid(id)) {
+    return new Response("Invalid ID", { status: 400 });
+  }
+
   return prisma.einsatz.findUnique({
     select: {
       id: true,
@@ -645,9 +735,7 @@ async function getAllEinsatzeForCalendarFromDb(
   });
 }
 
-async function getEinsatzWithDetailsByIdFromDb(
-  einsatzId: string
-) {
+async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
   return prisma.einsatz.findUnique({
     where: { id: einsatzId },
     include: {

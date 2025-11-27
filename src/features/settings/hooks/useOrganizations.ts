@@ -2,8 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getUserOrganizationsAction,
-  getOrganizationAction,
+  getUserOrganizationByIdAction,
   updateOrganizationAction,
   deleteOrganizationAction,
   type OrganizationUpdateData,
@@ -12,8 +11,13 @@ import { settingsQueryKeys } from "../queryKey";
 
 export function useOrganizations(orgs: string[]) {
   const query = useQuery({
+<<<<<<< HEAD
     queryKey: settingsQueryKeys.organizations(orgs),
     queryFn: () => getUserOrganizationsAction(),
+=======
+    queryKey: settingsQueryKeys.organization(orgId),
+    queryFn: () => getUserOrganizationByIdAction(orgId),
+>>>>>>> 9474a752369a1004da1a8b1ef628347cb4f58da7
     staleTime: 60000,
   });
 
@@ -29,13 +33,14 @@ export function useOrganization(orgId: string) {
 
   const query = useQuery({
     queryKey: settingsQueryKeys.organization(orgId),
-    queryFn: () => getOrganizationAction(orgId),
+    queryFn: () => getUserOrganizationByIdAction(orgId),
     enabled: !!orgId,
     staleTime: 60000,
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: OrganizationUpdateData) => updateOrganizationAction(data),
+    mutationFn: (data: OrganizationUpdateData) =>
+      updateOrganizationAction(data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.organization(orgId),
