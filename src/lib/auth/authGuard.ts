@@ -5,7 +5,7 @@ import {
   getUserByIdWithOrgAndRole,
   getUserRolesInOrganization,
 } from "@/DataAccessLayer/user";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth.config";
 import { Session } from "next-auth";
 import { ro } from "date-fns/locale";
 

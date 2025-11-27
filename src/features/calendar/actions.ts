@@ -1,7 +1,7 @@
-'use server';
+"use server";
 
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth.config";
 import {
   getOrCreateCalendarSubscription,
   rotateCalendarSubscription,
@@ -9,17 +9,21 @@ import {
   buildCalendarSubscriptionUrl,
 } from "./calendarSubscription";
 
-async function checkUserSession(){
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) throw new Error("Unauthorized");
-    return session;
+async function checkUserSession() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Unauthorized");
+  return session;
 }
 
 export async function getSubscriptionAction(orgId: string) {
   const session = await checkUserSession();
 
-  const response = await getOrCreateCalendarSubscription(orgId, session.user.id);
-  if (!response) throw new Error("Failed to get or create calendar subscription");
+  const response = await getOrCreateCalendarSubscription(
+    orgId,
+    session.user.id
+  );
+  if (!response)
+    throw new Error("Failed to get or create calendar subscription");
 
   return {
     id: response.id,

@@ -43,7 +43,6 @@ export default function OrganizationManagePage() {
   const { data: session, status } = useSession();
   const [user, setUser] = useState<any>(null);
 
-  // Invitation
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const [name, setName] = useState("");
@@ -73,13 +72,11 @@ export default function OrganizationManagePage() {
     enabled: !!session?.user?.id,
     queryFn: () => getUserProfileAction(),
   });
-  /* console.log("Data", data); */
-  // setze user sobald query daten da sind
+
   useEffect(() => {
     if (data) setUser(data);
   }, [data]);
 
-  // lade die spezifische Organisation und setze Name/Beschreibung
   const {
     data: orgData,
     isLoading: orgLoading,
@@ -89,7 +86,7 @@ export default function OrganizationManagePage() {
     enabled: !!orgId,
     queryFn: () => getUserOrganizationByIdAction(orgId || ""),
   });
-  /* console.log("Org Data", orgData); */
+
   useEffect(() => {
     if (orgData) {
       setName(orgData.name ?? "");
@@ -101,7 +98,6 @@ export default function OrganizationManagePage() {
       setHelperPlural(orgData.helper_name_plural ?? "Helfer:innen");
     }
   }, [orgData]);
-  /* console.log(session?.user.id, orgId) */
 
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: settingsQueryKeys.userOrganizations(orgId),

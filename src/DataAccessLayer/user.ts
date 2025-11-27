@@ -130,6 +130,11 @@ export async function getUserForAuth(email: string) {
         picture_url: true,
         password: true,
         phone: true,
+        description: true,
+        hasLogoinCalendar: true,
+        created_at: true,
+        last_login: true,
+        updated_at: true,
       },
     });
   } catch (error: any) {
