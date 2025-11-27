@@ -3,11 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth.config";
 import prisma from "@/lib/prisma";
 
-// GET - Hole alle Rollen eines Users in einer Organisation
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+type RouteContext = {
+  params: Promise<{ userId: string }>;
+};
+
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -21,7 +21,7 @@ export async function GET(
       return NextResponse.json({ error: "orgId fehlt" }, { status: 400 });
     }
 
-    const { userId } = params;
+    const { userId } = await context.params;
 
     const userRoles = await prisma.user_organization_role.findMany({
       where: {
@@ -50,17 +50,14 @@ export async function GET(
 }
 
 // POST - Füge Rolle zu User hinzu
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { userId } = params;
+    const { userId } = await context.params;
     const { orgId, roleAbbreviation } = await request.json();
 
     if (!orgId || !roleAbbreviation) {
@@ -115,17 +112,14 @@ export async function POST(
 }
 
 // DELETE - Entferne Rolle von User
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { userId } = params;
+    const { userId } = await context.params;
     const { orgId, roleAbbreviation } = await request.json();
 
     if (!orgId || !roleAbbreviation) {

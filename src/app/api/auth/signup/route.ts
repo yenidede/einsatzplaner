@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       firstname: userData.firstname,
       lastname: userData.lastname,
       password: passwordHash,
-      phone: userData.phone,
+      phone: userData.phone ?? undefined,
       orgId: organization.id,
       roleNames: [defaultRoleName],
     });
