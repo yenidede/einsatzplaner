@@ -4,7 +4,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth.config";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { roleHasPermission } from "@/config/permissions";
 import { hasPermission } from "@/lib/auth/authGuard";
 
 async function checkUserSession() {
