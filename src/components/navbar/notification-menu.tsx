@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { BellIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,8 @@ import { getActivityLogs } from "@/features/activity_log/activity_log-dal";
 import type { ChangeLogEntry } from "@/features/activity_log/types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/features/activity_log/queryKeys";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -31,6 +32,8 @@ function Dot({ className }: { className?: string }) {
 }
 
 const READ_ACTIVITIES_KEY = "read_activities";
+
+// Query Keys
 
 const getReadActivities = (): Set<string> => {
   if (typeof window === "undefined") return new Set();
@@ -71,45 +74,43 @@ const markAllActivitiesAsRead = (activityIds: string[]) => {
 };
 
 export default function NotificationMenu() {
-  const router = useRouter();
-  const [activities, setActivities] = useState<ChangeLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [isOpen, setIsOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  const loadActivities = useCallback(async () => {
-    try {
-      setLoading(true);
+  const { data, isLoading } = useQuery({
+    queryKey: queryKeys.list({ limit: 10, offset: 0 }),
+    queryFn: async () => {
       const result = await getActivityLogs({
         limit: 10,
         offset: 0,
       });
+      return result.activities;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: false,
+  });
 
-      setActivities(result.activities);
-      setReadIds(getReadActivities());
-    } catch (error) {
-      console.error("Failed to load activities:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const activities = data || [];
 
+  // Read IDs beim Mount laden
   useEffect(() => {
     setReadIds(getReadActivities());
   }, []);
-  useEffect(() => {
-    loadActivities();
-  }, [loadActivities]);
 
+  // Beim Öffnen des Popovers refetch
   useEffect(() => {
     if (isOpen) {
-      loadActivities();
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.list({ limit: 10, offset: 0 }),
+      });
     }
-  }, [isOpen, loadActivities]);
+  }, [isOpen, queryClient]);
 
   const handleViewAll = () => {
     setIsOpen(false);
-    router.push("/helferansicht");
   };
 
   const unreadIds = new Set(
@@ -148,7 +149,6 @@ export default function NotificationMenu() {
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      {" "}
       <PopoverTrigger asChild>
         <Button
           size="icon"
@@ -184,7 +184,7 @@ export default function NotificationMenu() {
         ></div>
 
         <div className="max-h-[400px] overflow-y-auto">
-          {loading ? (
+          {isLoading ? (
             <div className="px-3 py-8 text-center text-sm text-muted-foreground">
               Lade Aktivitäten...
             </div>
