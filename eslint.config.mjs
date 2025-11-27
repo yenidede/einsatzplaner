@@ -10,6 +10,7 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  globalIgnores(["**/build/**", "**/.next/**", "**/node_modules/**", "**/src/generated/**"]),
   ...compat.extends("next/core-web-vitals", "next/typescript", "plugin:react-hooks/recommended"),
 ];
 
