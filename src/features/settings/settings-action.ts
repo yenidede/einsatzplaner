@@ -231,7 +231,6 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     hasLogoinCalendar: updatedUser.hasLogoinCalendar ?? true,
   };
 }
-
 export async function updateOrgMailNotificationAction(
   organizationId: string,
   hasGetMailNotification: boolean
@@ -252,17 +251,16 @@ export async function updateOrgMailNotificationAction(
 
   return { success: true };
 }
-
+// TODO (Ömer): Correct Implementation of Uploading Profile Picture to Supabase Storage
 export async function uploadProfilePictureAction(formData: FormData) {
   const session = await checkUserSession();
 
-  const file = formData.get("file") as File;
+  const file = formData.get("file") as File | null;
   if (!file) throw new Error("No file provided");
 
   if (!file.type.startsWith("image/")) {
     throw new Error("File must be an image");
   }
-
   if (file.size > 5 * 1024 * 1024) {
     throw new Error("File size must be less than 5MB");
   }
