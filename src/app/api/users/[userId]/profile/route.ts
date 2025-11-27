@@ -3,10 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth.config";
 import prisma from "@/lib/prisma";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+type RouteContext = {
+  params: Promise<{ userId: string }>;
+};
+
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -24,7 +25,7 @@ export async function GET(
     }
 
     const userProfile = await prisma.user.findUnique({
-      where: { id: params.userId },
+      where: { id: (await context.params).userId },
       include: {
         user_organization_role: {
           where: { org_id: orgId },
@@ -79,10 +80,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -103,7 +101,7 @@ export async function PUT(
 
     // Update user basic info
     const updatedUser = await prisma.user.update({
-      where: { id: params.userId },
+      where: { id: (await context.params).userId },
       data: {
         firstname,
         lastname,
@@ -119,7 +117,7 @@ export async function PUT(
     if (organizationId && hasGetMailNotification !== undefined) {
       await prisma.user_organization_role.updateMany({
         where: {
-          user_id: params.userId,
+          user_id: (await context.params).userId,
           org_id: organizationId,
         },
         data: {

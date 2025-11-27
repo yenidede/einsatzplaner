@@ -30,6 +30,7 @@ export async function getUserByEmail(email: string) {
         hasLogoinCalendar: true,
         created_at: true,
         last_login: true,
+        password: true,
         updated_at: true,
         user_organization_role: {
           include: {

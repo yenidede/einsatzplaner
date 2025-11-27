@@ -261,7 +261,7 @@ export async function deleteOrganizationAction(orgId: string) {
   };
 }
 
-// POST - Logo der Organisation hochladen
+// TODO (Ömer): Correct Implementation of Uploading Organization Logo to Supabase Storage
 export async function uploadOrganizationLogoAction(formData: FormData) {
   try {
     const session = await checkUserSession();
