@@ -246,7 +246,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
 
   return (
     <EventCalendar
-      events={events}
+      events={events as CalendarEvent[]}
       onEventAdd={handleEventAdd}
       onEventUpdate={handleEventUpdate}
       onEventTimeUpdate={handleEventTimeUpdate}

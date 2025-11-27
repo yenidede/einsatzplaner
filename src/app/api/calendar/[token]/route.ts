@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import ical, {ICalEventStatus, ICalCalendarMethod} from "ical-generator";
-import { getOrganizationsByIds } from "@/features/settings/org-dal";
-import { sub } from "date-fns";
 
 export async function GET(request: NextRequest,{params}: {params : {token : string}}){
     // good variable name for params extraction
@@ -53,7 +51,7 @@ export async function GET(request: NextRequest,{params}: {params : {token : stri
     
         const urlToHelferansichtPage = `${process.env.NEXTAUTH_URL}/helferansicht`
 
-        let start = einsatz.start;
+        const start = einsatz.start;
         let end = einsatz.end;
         if (isAllDay){
             end = new Date(einsatz.end);
@@ -78,7 +76,6 @@ export async function GET(request: NextRequest,{params}: {params : {token : stri
         if(phone || subscription.organization.email){
             event.organizer({name: einsatz.organization?.name,
                 email: subscription.organization.email || undefined,
-                phone: phone || undefined
             });
         }
 
