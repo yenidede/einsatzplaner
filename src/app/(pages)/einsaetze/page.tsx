@@ -1,4 +1,3 @@
-import EinsaetzeManager from "@/features/einsatz-old/components/EinsaetzeManager";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
@@ -9,9 +8,5 @@ export default async function EinsaetzePage() {
     redirect("/signin");
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <EinsaetzeManager />
-    </div>
-  );
+  return <div className="min-h-screen bg-gray-50"></div>;
 }

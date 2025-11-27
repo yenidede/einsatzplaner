@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth.config";
 import { CreateInvitationSchema } from "@/features/invitations/types/invitation";
 import { InvitationService } from "@/features/invitations/services/InvitationService";
 import prisma from "@/lib/prisma";
@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { 
-          error: "Ungültige Eingabedaten", 
-          details: parseResult.error.issues 
+        {
+          error: "Ungültige Eingabedaten",
+          details: parseResult.error.issues,
         },
         { status: 400 }
       );
@@ -34,19 +34,24 @@ export async function POST(request: NextRequest) {
         user_organization_role: {
           where: { org_id: organizationId },
           include: {
-            role: true
-          }
-        }
-      }
+            role: true,
+          },
+        },
+      },
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User nicht gefunden" }, { status: 404 });
+      return NextResponse.json(
+        { error: "User nicht gefunden" },
+        { status: 404 }
+      );
     }
 
     // Prüfe Berechtigung (nur OrgVerwaltung und Superadmin)
     const userRole = currentUser.user_organization_role[0]?.role?.name;
-    const canInvite = ['Organisationsverwaltung', 'Superadmin'].includes(userRole || '');
+    const canInvite = ["Organisationsverwaltung", "Superadmin"].includes(
+      userRole || ""
+    );
 
     if (!canInvite) {
       return NextResponse.json(
@@ -62,19 +67,18 @@ export async function POST(request: NextRequest) {
       currentUser.id
     );
 
-    return NextResponse.json({
-      message: "Einladung erfolgreich versendet",
-      invitation
-    }, { status: 201 });
-
+    return NextResponse.json(
+      {
+        message: "Einladung erfolgreich versendet",
+        invitation,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating invitation:", error);
-    
+
     if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     return NextResponse.json(
@@ -92,10 +96,13 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const orgId = searchParams.get('orgId');
+    const orgId = searchParams.get("orgId");
 
     if (!orgId) {
-      return NextResponse.json({ error: "Organization ID required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Organization ID required" },
+        { status: 400 }
+      );
     }
 
     // Hole aktive Einladungen für Organisation
@@ -104,19 +111,18 @@ export async function GET(request: NextRequest) {
         org_id: orgId,
         accepted: false,
         expires_at: {
-          gt: new Date()
-        }
+          gt: new Date(),
+        },
       },
       include: {
         user: {
-          select: { firstname: true, lastname: true }
-        }
+          select: { firstname: true, lastname: true },
+        },
       },
-      orderBy: { created_at: 'desc' }
+      orderBy: { created_at: "desc" },
     });
 
     return NextResponse.json(invitations);
-
   } catch (error) {
     console.error("Error fetching invitations:", error);
     return NextResponse.json(
