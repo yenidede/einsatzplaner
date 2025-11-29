@@ -575,6 +575,7 @@ export default function SettingsPage() {
                   </LabelSettings>
                   <select
                     id="salutation"
+                    title="Anrede auswählen"
                     value={salutationId || ""}
                     onChange={(e) => setSalutationId(e.target.value)}
                     className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-400 w-full"
