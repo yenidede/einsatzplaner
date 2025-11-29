@@ -29,9 +29,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  console.log(
+  /*   console.log(
     await getOrganizationById("0c39989e-07bc-4074-92bc-aa274e5f22d0")
-  );
+  ); */
 
   return (
     <html lang="de">
