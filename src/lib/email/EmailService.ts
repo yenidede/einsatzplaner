@@ -29,8 +29,6 @@ export class EmailService {
     const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
 
     if (!this.transporter) {
-      console.log("📧 E-Mail-Service deaktiviert. Reset-Link:");
-      console.log(`   → ${resetUrl}`);
       return;
     }
 
@@ -84,11 +82,11 @@ export class EmailService {
     const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}/accept`;
 
     if (!this.transporter) {
-      console.log("📧 E-Mail-Service deaktiviert. Einladungs-Details:");
+      /*       console.log("📧 E-Mail-Service deaktiviert. Einladungs-Details:");
       console.log(`   → An: ${email}`);
       console.log(`   → Von: ${inviterName}`);
       console.log(`   → Organisation: ${organizationName}`);
-      console.log(`   → Einladungslink: ${inviteUrl}`);
+      console.log(`   → Einladungslink: ${inviteUrl}`); */
       return;
     }
 
@@ -181,7 +179,7 @@ export class EmailService {
     }
   }
 
-  // ✅ NEU: Reminder Email Methode
+  //  Reminder Email Methode
   async sendInvitationReminderEmail(
     recipientEmail: string,
     inviterName: string,
@@ -298,10 +296,9 @@ export class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log(`✅ Invitation reminder sent to ${recipientEmail}`);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error("❌ Failed to send invitation reminder:", error);
+      console.error("Failed to send invitation reminder:", error);
       throw new Error(
         `Failed to send invitation reminder email: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -311,5 +308,4 @@ export class EmailService {
   }
 }
 
-// Singleton instance
 export const emailService = new EmailService();
