@@ -551,7 +551,6 @@ export function UserProfileDialog({
               </div>
             </div>
             {/*//#endregion*/}
-
             {/*//#region Roles Management Section*/}
             <div className="self-stretch flex flex-col justify-center items-start">
               <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">

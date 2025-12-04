@@ -82,7 +82,7 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
     category.value?.toLowerCase().includes("schule")
   );
 
-  const participantCount = einsatz.participant_count ?? "xx";
+  const participantCount = einsatz.participant_count ?? "Nicht bekannt";
 
   const assignedUserNames =
     assignedUsers.length > 0
@@ -166,6 +166,12 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Programm:</Text>
+          <Text style={styles.value}>
+            {einsatzCategories.find((cat) => cat.value === "fluchtwege")
+              ? "Fluchtwege"
+              : "Nicht bekannt"}
+          </Text>
+          {/* Beschreibung */}
           <Text style={[styles.value, styles.bold]}>{einsatz.title}</Text>
         </View>
 
