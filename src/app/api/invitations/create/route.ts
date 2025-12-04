@@ -58,11 +58,6 @@ export async function POST(request: NextRequest) {
     const canInvite = inviter.user_organization_role.some((uor) =>
       roleHasPermission((uor.role?.name ?? "") as RoleName, "users:invite")
     );
-    /*     console.log('Permission Check Result:', {
-      roleNames,
-      roleAbbrs,
-      canInvite
-    }); */
 
     if (!canInvite) {
       return NextResponse.json(
@@ -177,8 +172,6 @@ export async function POST(request: NextRequest) {
         organization.name,
         token
       );
-
-      console.log("nvitation email sent successfully");
     } catch (emailError) {
       console.error("Failed to send invitation email:", emailError);
       await prisma.invitation.delete({
@@ -192,13 +185,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    /*     console.log('Invitation created:', {
-      id: invitation.id,
-      email: invitation.email,
-      organization: organization.name,
-      inviteLink: inviteLink
-    }); */
 
     return NextResponse.json({
       success: true,
