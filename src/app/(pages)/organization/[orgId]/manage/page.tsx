@@ -104,8 +104,6 @@ export default function OrganizationManagePage() {
     queryFn: () => getAllUserOrgRolesAction(orgId),
   });
 
-  /* console.log("Users Data", usersData); */
-
   const handleSignOut = async () => {
     try {
       await signOut({
@@ -416,8 +414,6 @@ export default function OrganizationManagePage() {
                       onChange={handleLogoUpload}
                       className="hidden"
                       id="logo-upload"
-                      title="Logo hochladen"
-                      aria-label="Logo hochladen"
                     />
                     {/* Logo Upload Button */}
                     <button
@@ -622,6 +618,54 @@ export default function OrganizationManagePage() {
                     </div>
                   </div>
                   <div className="self-stretch px-4 flex flex-col justify-center items-center gap-2.5">
+                    {/*                             <div className="w-60 h-52 relative">
+                                <div className="w-[3.40px] h-[3.39px] left-[188.66px] top-[51.57px] absolute bg-slate-300" />
+                                <div className="w-[3.40px] h-[3.39px] left-[23.13px] top-[51.57px] absolute bg-slate-300" />
+                                <div className="w-[3.40px] h-[3.39px] left-[165.59px] top-[36.27px] absolute bg-slate-300" />
+                                <div className="w-7 h-7 left-[124.74px] top-[4.65px] absolute bg-slate-300" />
+                                <div className="w-6 h-5 left-[126.38px] top-[6.27px] absolute bg-white" />
+                                <div className="w-2.5 h-2.5 left-[133.05px] top-[12.35px] absolute bg-slate-500" />
+                                <div className="w-14 h-3.5 left-[141.68px] top-[1.70px] absolute bg-gray-700" />
+                                <div className="w-2.5 h-2.5 left-[191.91px] top-[2.06px] absolute bg-gray-700" />
+                                <div className="w-6 h-0.5 left-[206.31px] top-[11.43px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[206.31px] top-[21.25px] absolute bg-slate-300" />
+                                <div className="w-12 h-0.5 left-[206.31px] top-[16.34px] absolute bg-slate-300" />
+                                <div className="w-7 h-7 left-[115.63px] top-[43.23px] absolute bg-slate-300" />
+                                <div className="w-6 h-5 left-[117.27px] top-[44.85px] absolute bg-white" />
+                                <div className="w-2.5 h-2.5 left-[125.13px] top-[50.59px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[157.78px] top-[75.05px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[157.78px] top-[84.88px] absolute bg-slate-300" />
+                                <div className="w-12 h-0.5 left-[157.78px] top-[79.97px] absolute bg-slate-300" />
+                                <div className="w-6 h-4 left-[128.96px] top-[54.61px] absolute bg-gray-700" />
+                                <div className="w-3 h-3 left-[143.17px] top-[64.08px] absolute bg-gray-700" />
+                                <div className="w-7 h-7 left-[23.28px] top-[1.69px] absolute bg-slate-300" />
+                                <div className="w-6 h-5 left-[24.92px] top-[3.31px] absolute bg-white" />
+                                <div className="w-2.5 h-2.5 left-[31.59px] top-[9.72px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[-11px] top-[41.38px] absolute bg-slate-500" />
+                                <div className="w-6 h-0.5 left-[-11px] top-[51.21px] absolute bg-slate-300" />
+                                <div className="w-12 h-0.5 left-[-11px] top-[46.29px] absolute bg-slate-300" />
+                                <div className="w-4 h-6 left-[20.33px] top-[14.15px] absolute bg-gray-700" />
+                                <div className="w-3 h-3 left-[16.89px] top-[28.96px] absolute bg-gray-700" />
+                                <div className="w-[1.20px] h-[2.84px] left-[81.32px] top-[191.60px] absolute bg-gradient-to-l from-zinc-500/25 via-zinc-500/10 to-zinc-500/10" />
+                                <div className="w-3.5 h-3 left-[76.18px] top-[58.70px] absolute bg-red-300" />
+                                <div className="w-2 h-3 left-[118.92px] top-[54.49px] absolute bg-red-300" />
+                                <div className="w-2 h-1.5 left-[71.95px] top-[192.33px] absolute bg-red-300" />
+                                <div className="w-4 h-2.5 left-[82.42px] top-[186.46px] absolute bg-slate-800" />
+                                <div className="w-7 h-16 left-[72.10px] top-[118.80px] absolute bg-slate-700" />
+                                <div className="w-7 h-20 left-[71.34px] top-[119.97px] absolute bg-slate-700" />
+                                <div className="w-5 h-5 left-[76.49px] top-[46.09px] absolute bg-red-300" />
+                                <div className="w-8 h-14 left-[66.71px] top-[67.72px] absolute bg-slate-500" />
+                                <div className="w-8 h-6 left-[91.77px] top-[63.09px] absolute bg-slate-500" />
+                                <div className="w-7 h-5 left-[63.08px] top-[66.21px] absolute bg-slate-500" />
+                                <div className="w-7 h-5 left-[63.08px] top-[66.21px] absolute opacity-5 bg-slate-900" />
+                                <div className="w-6 h-2.5 left-[69.80px] top-[194.18px] absolute bg-slate-800" />
+                                <div className="w-0.5 h-[0.34px] left-[75.25px] top-[56.56px] absolute opacity-10 bg-slate-900" />
+                                <div className="w-6 h-5 left-[72.19px] top-[42.45px] absolute origin-top-left rotate-[-6.99deg] bg-slate-800" />
+                                <div className="w-10 h-16 left-[94.93px] top-[-17.76px] absolute origin-top-left rotate-[15deg] overflow-hidden">
+                                    <div className="w-6 h-8 left-[13.97px] top-[15.92px] absolute origin-top-left rotate-3 bg-slate-300" />
+                                </div>
+                                <div className="w-2.5 h-5 left-[71px] top-[9.31px] absolute origin-top-left rotate-[-12.79deg] bg-slate-300" />
+                            </div> */}
                     <Image
                       src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/undraw_instant-analysis_vm8x%201.svg"
                       alt=""
@@ -765,7 +809,7 @@ export default function OrganizationManagePage() {
                           <button
                             onClick={() =>
                               handleUserProfileClick(groupedUser.user?.id)
-                            }
+                            } // Hier war das Problem!
                             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-md flex justify-center items-center gap-2.5 transition-colors"
                           >
                             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
@@ -785,6 +829,7 @@ export default function OrganizationManagePage() {
             </div>
 
             {(() => {
+              // Sammle ALLE Rollen des Users
               const currentUserRoles = usersData?.filter((userOrgRole: any) => {
                 return userOrgRole.user?.email === session?.user?.email;
               });
@@ -801,6 +846,12 @@ export default function OrganizationManagePage() {
 
               return (
                 <div className="self-stretch px-4 py-4 border-t border-slate-200 flex flex-col gap-4">
+                  {/* {            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+                <h4 className="font-semibold text-yellow-800">Debug Info:</h4>
+                <p className="text-sm text-yellow-700">User Roles: {roleNames.join(', ')}</p>
+                <p className="text-sm text-yellow-700">Can Invite: {canInviteUsers ? 'Ja' : 'Nein'}</p>
+            </div>} */}
+
                   {canInviteUsers && (
                     <button
                       onClick={() => setIsInviteModalOpen(true)}
@@ -836,11 +887,11 @@ export default function OrganizationManagePage() {
             />
           )}
 
+          {/* Modal - IMMER rendern für Debug */}
           <InviteUserForm
             organizationId={orgId}
             isOpen={isInviteModalOpen}
             onClose={() => {
-              console.log("Modal closing...");
               setIsInviteModalOpen(false);
             }}
           />

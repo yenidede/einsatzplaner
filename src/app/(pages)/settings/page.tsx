@@ -213,11 +213,8 @@ export default function SettingsPage() {
       await queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.userSettings(session?.user.id || ""),
       });
-
-      console.log("Einstellungen erfolgreich gespeichert!");
     } catch (error) {
       console.error("Save failed:", error);
-      console.log("Fehler beim Speichern der Einstellungen");
     }
   };
 
@@ -575,7 +572,6 @@ export default function SettingsPage() {
                   </LabelSettings>
                   <select
                     id="salutation"
-                    title="Anrede auswählen"
                     value={salutationId || ""}
                     onChange={(e) => setSalutationId(e.target.value)}
                     className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-400 w-full"
