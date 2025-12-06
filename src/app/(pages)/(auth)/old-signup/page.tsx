@@ -50,7 +50,6 @@ export default function SignUpPage() {
                 organizationName: formData.organizationName.trim()
             };
 
-            console.log('Sending signup data:', signupData);
 
             const response = await fetch('/api/auth/signup', {
                 method: 'POST',
@@ -61,7 +60,6 @@ export default function SignUpPage() {
             });
 
             const data = await response.json();
-            console.log('Signup response:', data);
 
             if (response.ok) {
                 setSuccess('Registrierung erfolgreich! Sie werden angemeldet...');
@@ -89,7 +87,6 @@ export default function SignUpPage() {
                         if (signInResult?.ok && !signInResult.error) {
                             router.push('/helferansicht');
                         } else {
-                            console.log('Auto-signin failed, redirecting to signin');
                             router.push('/signin?message=Registrierung erfolgreich! Bitte melden Sie sich an.');
                         }
                     } catch (loginError) {

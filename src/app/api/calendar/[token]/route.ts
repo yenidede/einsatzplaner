@@ -80,7 +80,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
             location: ortField?.value,
             status: ICalEventStatus.CONFIRMED,
         });
-        //console.log(subscription.organization.phone);
         event.uid(`${einsatz.id}@${host}`)
         if(categories.length){
             event.categories(categories.map(name => ({name})));
