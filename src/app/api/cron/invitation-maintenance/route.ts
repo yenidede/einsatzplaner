@@ -8,13 +8,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log("Starting invitation cleanup and reminder cron job...");
 
     const cleanedCount = await InvitationService.cleanupExpiredInvitations();
 
     const remindersSent = await InvitationService.sendReminderEmails();
 
-    console.log("Invitation cron job completed successfully");
 
     return NextResponse.json(
       {

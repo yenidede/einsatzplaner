@@ -14,23 +14,18 @@ export default function CalendarSubscription(
 
     const copy = async () => {
         await navigator.clipboard.writeText(subscription.webcalUrl);
-        console.log("Kalender-Abo kopiert");
     }
 
     const container =
     variant === "card" ? "space-y-3 rounded-2xl p-4 border": "mt-3 rounded-xl border p-3";
 
   const statusBadge = subscription.is_active ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-700";
-//console.log("webcal:", subscription.webcalUrl)
   return (
     <div className={container}>
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium">
           Kalender-Integration {orgName ? `– ${orgName}` : ""}
         </div>
-{/*         <span className={`text-[10px] px-2 py-0.5 rounded ${statusBadge}`}>
-          {subscription.is_active ? "Aktiv" : "Deaktiviert"}
-        </span> */}
       </div>
 
 {/*       {subscription.last_accessed && (

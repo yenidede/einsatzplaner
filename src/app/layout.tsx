@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import NextAuthSessionProvider from "@/components/SessionProvider";
-import "@/styles/globals.css";
 import Navbar from "@/components/navbar/navbar-main";
 import QueryProvider from "@/components/QueryProvider";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -29,9 +28,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  /*   console.log(
-    await getOrganizationById("0c39989e-07bc-4074-92bc-aa274e5f22d0")
-  ); */
 
   return (
     <html lang="de">

@@ -82,11 +82,6 @@ export class EmailService {
     const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}/accept`;
 
     if (!this.transporter) {
-      /*       console.log("📧 E-Mail-Service deaktiviert. Einladungs-Details:");
-      console.log(`   → An: ${email}`);
-      console.log(`   → Von: ${inviterName}`);
-      console.log(`   → Organisation: ${organizationName}`);
-      console.log(`   → Einladungslink: ${inviteUrl}`); */
       return;
     }
 
@@ -197,11 +192,6 @@ export class EmailService {
     });
 
     if (!this.transporter) {
-      console.log("📧 E-Mail-Service deaktiviert. Reminder-Details:");
-      console.log(`   → An: ${recipientEmail}`);
-      console.log(`   → Organisation: ${organizationName}`);
-      console.log(`   → Läuft ab: ${expiryDate}`);
-      console.log(`   → Link: ${acceptUrl}`);
       return;
     }
 

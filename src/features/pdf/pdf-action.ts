@@ -110,7 +110,7 @@ export async function generateEinsatzPDF(
 
     const organization = await getOrganizationForPDF(einsatz.org_id);
 
-    /*     console.log("📊 PDF Generation Data:", {
+    /*     console.log(" PDF Generation Data:", {
       einsatzId: einsatz.id,
       orgName: organization.name,
       addressesCount: organization.addresses.length,
