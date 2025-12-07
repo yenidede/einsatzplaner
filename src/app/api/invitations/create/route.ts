@@ -5,8 +5,7 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 import crypto from "crypto";
 import { emailService } from "@/lib/email/EmailService";
-import { roleHasPermission } from "@/config/permissions";
-import { RoleName } from "@/types/auth";
+import { hasPermission } from "@/lib/auth/authGuard";
 
 // Validation Schema - role_id wieder hinzufügen
 const createInvitationSchema = z.object({
@@ -56,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Berechtigung prüfen
     const canInvite = inviter.user_organization_role.some((uor) =>
-      roleHasPermission((uor.role?.name ?? "") as RoleName, "users:invite")
+      hasPermission(session, "users:invite")
     );
 
     if (!canInvite) {
