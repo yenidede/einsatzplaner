@@ -46,7 +46,7 @@ function determinePDFTemplate(einsatz: Einsatz, categories: EinsatzCategory[]): 
   // Prüfe auf Fluchtweg-Kategorie
   const hasFluchtwegCategory = categoryValues.some(val => val.includes('fluchtweg'));
 
-  console.log("🔍 PDF Template Detection - Start:", {
+  console.log("PDF Template Detection - Start:", {
     einsatzId: einsatz.id,
     einsatzTitle: einsatz.title,
     categories: categories.map(c => c.value),
@@ -80,7 +80,7 @@ function determinePDFTemplate(einsatz: Einsatz, categories: EinsatzCategory[]): 
     reason = 'Standard (keine Schulstufe, keine Fluchtwege)';
   }
 
-  console.log("✅ PDF Template Selection:", {
+  console.log("PDF Template Selection:", {
     templateType,
     reason,
     pdfComponent: {
@@ -117,52 +117,52 @@ export async function generateEinsatzPDF(
   einsatzId: string,
   options?: PDFOptions
 ): Promise<PDFActionResult> {
-  console.log("\n📄 ========== PDF GENERATION START ==========");
+  console.log("\nPDF GENERATION STARTED ================");
   console.log("Input:", { einsatzId, options });
 
   try {
     if (!einsatzId) {
-      console.error("❌ Missing einsatzId");
+      console.error("Missing einsatzId");
       return {
         success: false,
         error: "einsatzId is required",
       };
     }
 
-    console.log("🔐 Validating access...");
+    console.log("Validating access...");
     const authResult = await validatePdfAccess(einsatzId);
     if (!authResult.authorized) {
-      console.error("❌ Access denied:", authResult.error);
+      console.error("Access denied:", authResult.error);
       return {
         success: false,
         error: authResult.error || "Nicht autorisiert",
       };
     }
-    console.log("✅ Access granted");
+    console.log("Access granted");
 
-    console.log("📥 Loading Einsatz data...");
+    console.log("Loading Einsatz data...");
     const einsatz = await getEinsatzWithDetailsById(einsatzId);
     if (!einsatz) {
-      console.error("❌ Einsatz not found");
+      console.error("Einsatz not found");
       return {
         success: false,
         error: "Einsatz not found",
       };
     }
     if (einsatz instanceof Response) {
-      console.error("❌ Einsatz returned Response object");
+      console.error("Einsatz returned Response object");
       return {
         success: false,
         error: "Einsatz not found",
       };
     }
-    console.log("✅ Einsatz loaded:", {
+    console.log("Einsatz loaded:", {
       id: einsatz.id,
       title: einsatz.title,
       start: einsatz.start,
     });
 
-    console.log("🏷️ Processing categories...");
+    console.log("Processing categories...");
     const einsatzCategories: EinsatzCategory[] = Array.isArray(
       einsatz.categories
     )
@@ -194,11 +194,11 @@ export async function generateEinsatzPDF(
             }
           : null,
       }));
-    console.log("✅ Assigned users:", assignedUsers.map(u => `${u.firstname} ${u.lastname}`));
+    console.log("Assigned users:", assignedUsers.map(u => `${u.firstname} ${u.lastname}`));
 
-    console.log("🏢 Loading organization...");
+    console.log("Loading organization...");
     const organization = await getOrganizationForPDF(einsatz.org_id);
-    console.log("✅ Organization:", organization?.name);
+    console.log("Organization:", organization?.name);
 
     const templateType = determinePDFTemplate(einsatz, einsatzCategories);
 
@@ -208,7 +208,7 @@ export async function generateEinsatzPDF(
       'gruppe': BookingConfirmationPDF_Group,
     }[templateType];
 
-    console.log("📝 Rendering PDF component...");
+    console.log("Rendering PDF component...");
     const { Document } = await import("@react-pdf/renderer");
     const pdfBuffer = await renderToBuffer(
       React.createElement(
@@ -223,14 +223,14 @@ export async function generateEinsatzPDF(
         })
       )
     );
-    console.log("✅ PDF rendered, buffer size:", pdfBuffer.length, "bytes");
+    console.log("PDF rendered, buffer size:", pdfBuffer.length, "bytes");
 
     const base64 = Buffer.from(pdfBuffer).toString("base64");
     const filename = generateFilename(einsatz, templateType);
 
-    console.log("✅ PDF Generation Success!");
-    console.log("📄 Filename:", filename);
-    console.log("📊 Base64 size:", base64.length, "characters");
+    console.log("PDF Generation Success!");
+    console.log("Filename:", filename);
+    console.log("Base64 size:", base64.length, "characters");
     console.log("========== PDF GENERATION END ==========\n");
 
     return {
