@@ -51,11 +51,11 @@ type AssignedUser = {
   } | null;
 };
 
-type EinsatzCategory = {
+interface EinsatzCategory {
   id: string;
   value: string | null;
-  label: string | null;
-};
+  abbreviation: string | null;
+}
 
 type PDFOptions = {
   showLogos?: boolean;

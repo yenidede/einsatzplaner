@@ -5,40 +5,51 @@ import type { Einsatz } from "@/features/einsatz/types";
 import { OrganizationForPDF } from "@/features/organization/types";
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: "Helvetica", fontSize: 11 },
-  header: { alignItems: "flex-end", marginBottom: 30 },
-  logo: { width: 120, height: 60, objectFit: "contain" },
-  greeting: { marginBottom: 15 },
-  text: { marginBottom: 12, lineHeight: 1.5 },
+  page: {
+    padding: 40,
+    paddingBottom: 100,
+    fontFamily: "Helvetica",
+    fontSize: 12,
+  },
+  header: { alignItems: "flex-end", marginBottom: 20 },
+  logo: { width: 100, height: 50, objectFit: "contain" },
+  greeting: { marginBottom: 10, fontSize: 12 },
+  text: { marginBottom: 8, lineHeight: 1.4, fontSize: 12 },
   infoBox: {
-    backgroundColor: "#f8f9fa",
-    padding: 15,
-    marginVertical: 20,
-    borderRadius: 4,
+    paddingVertical: 12,
+    marginVertical: 12,
   },
   infoRow: { flexDirection: "row", marginBottom: 8 },
-  label: { width: 150, fontWeight: "bold", fontSize: 10 },
-  value: { flex: 1, fontSize: 10 },
-  highlight: {
-    backgroundColor: "#fff3cd",
-    padding: 10,
-    marginVertical: 15,
-    borderLeftWidth: 4,
-    borderLeftColor: "#ffc107",
-  },
+  label: { width: 120, fontWeight: "bold", fontSize: 12 },
+  value: { flex: 1, fontSize: 12, lineHeight: 1.35 },
+  paragraph: { marginBottom: 6, fontSize: 12, lineHeight: 1.4 },
   bold: { fontWeight: "bold" },
-  footer: {
-    marginTop: 40,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#ddd",
-    fontSize: 10,
+  costInfo: {
+    marginTop: 8,
+    paddingTop: 6,
+    fontSize: 12,
+    lineHeight: 1.3,
+  },
+  contactSection: {
+    marginTop: 20,
+    marginBottom: 10,
+    fontSize: 11,
+    lineHeight: 1.4,
   },
   link: { color: "#0066cc", textDecoration: "underline" },
-  footerRow: { flexDirection: "row", justifyContent: "space-between" },
-  footerColumn: { flex: 1, marginRight: 20 },
-  footerTitle: { fontWeight: "bold", marginBottom: 4 },
-  footerText: { marginBottom: 2 },
+  footer: {
+    position: "absolute",
+    bottom: 30,
+    left: 40,
+    right: 40,
+    borderTop: "1px solid #e0e0e0",
+    paddingTop: 8,
+  },
+  contact: {
+    fontSize: 8,
+    color: "#666",
+    lineHeight: 1.6,
+  },
 });
 
 type AssignedUser = {
@@ -51,11 +62,12 @@ type AssignedUser = {
   } | null;
 };
 
-type EinsatzCategory = {
+interface EinsatzCategory {
   id: string;
   value: string | null;
-  label: string | null;
-};
+  abbreviation: string | null;
+  label?: string | null;
+}
 
 type PDFOptions = {
   showLogos?: boolean;
@@ -66,6 +78,7 @@ type BookingConfirmationPDFProps = {
   einsatzCategories: EinsatzCategory[];
   organization: OrganizationForPDF;
   assignedUsers: AssignedUser[];
+  currentUser?: AssignedUser | null;
   options?: PDFOptions;
 };
 
@@ -76,15 +89,23 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
   einsatzCategories,
   organization,
   assignedUsers = [],
+  currentUser,
   options,
 }) => {
   const { showLogos = true } = options || {};
 
   const isSchule = einsatzCategories.some((category) =>
-    category.value?.toLowerCase().includes("schule")
+    (category.value ?? "").toLowerCase().includes("schule")
   );
 
-  const participantCount = einsatz.participant_count ?? "Nicht bekannt";
+  const participantCount = einsatz.participant_count ?? 0;
+
+  // Schulstufe aus einsatz_fields extrahieren
+  const schulstufeField = (einsatz as any).einsatz_fields?.find((field: any) =>
+    field.field?.name?.toLowerCase().includes("schulstufe")
+  );
+
+  const schulstufe = schulstufeField?.value || "x";
 
   const assignedUserNames =
     assignedUsers.length > 0
@@ -121,37 +142,52 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
     );
   };
 
-  const pricePerPerson =
-    einsatz.price_per_person?.toFixed(2) ?? (isSchule ? "3,50" : "9,00");
-  const totalPrice = einsatz.total_price?.toFixed(2) ?? "90,00";
+  const pricePerPerson = einsatz.price_per_person?.toFixed(2) ?? "3,50";
+  const minParticipants = 10;
+  const pauschale = "30,00";
 
   const orgName = organization?.name ?? "Jüdisches Museum Hohenems";
   const logoUrl = organization?.logo_url ?? null;
 
+  const isFluchtwege = einsatzCategories.some((cat) =>
+    (cat.value ?? "").toLowerCase().includes("fluchtweg")
+  );
+
+  // Formatiere den Namen des aktuellen Users
+  const currentUserName = currentUser
+    ? (() => {
+        const firstname = currentUser.firstname ?? "";
+        const lastname = currentUser.lastname ?? "";
+        const salutation = currentUser.salutation?.salutation.trim() ?? "";
+        return salutation
+          ? `${salutation} ${firstname} ${lastname}`.trim()
+          : `${firstname} ${lastname}`.trim();
+      })()
+    : "Martina Steiner";
+
   return (
     <Page size="A4" style={styles.page}>
-      {/* Header */}
+      {/* Header / Logo */}
       {showLogos && logoUrl && (
         <View style={styles.header}>
           <Image src={logoUrl} style={styles.logo} />
         </View>
       )}
 
-      {/* Content */}
-      <Text style={styles.greeting}>Sehr geehrte Damen und Herren,</Text>
+      {/* Intro */}
+      <Text style={styles.greeting}>Sehr geehrte,</Text>
       <Text style={styles.text}>
         gerne bestätigen wir Ihnen die Buchung einer Führung im {orgName}:
       </Text>
 
+      {/* Info Box */}
       <View style={styles.infoBox}>
         <View style={styles.infoRow}>
           <Text style={styles.label}>Gruppe:</Text>
           <View style={styles.value}>
-            <Text style={styles.bold}>{isSchule ? "Schule" : "Gruppe"}</Text>
-            <Text>
-              {isSchule
-                ? `${participantCount} Schüler*innen, x. Schulstufe`
-                : `${participantCount} Erwachsene / Senioren`}
+            <Text style={styles.bold}>{einsatz.title}</Text>
+            <Text style={styles.paragraph}>
+              {participantCount} Schüler*innen, {schulstufe}. Schulstufe
             </Text>
           </View>
         </View>
@@ -160,7 +196,7 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
           <Text style={styles.label}>Zeit:</Text>
           <View style={styles.value}>
             <Text style={styles.bold}>{formatDate(einsatz.start)}</Text>
-            <Text>
+            <Text style={styles.paragraph}>
               {formatTime(einsatz.start)} – {formatTime(einsatz.end)}
             </Text>
           </View>
@@ -168,88 +204,128 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Programm:</Text>
-          <Text style={styles.value}>
-            {einsatzCategories.find((cat) => cat.value === "fluchtwege")
-              ? "Fluchtwege"
-              : "Nicht bekannt"}
-          </Text>
-          {/* Beschreibung */}
-          <Text style={[styles.value, styles.bold]}>{einsatz.title}</Text>
+          <View style={styles.value}>
+            <Text style={[styles.bold, { marginBottom: 6 }]}>
+              {isFluchtwege ? "Fluchtwege" : einsatz.title}
+            </Text>
+
+            {isFluchtwege && (
+              <>
+                <Text style={styles.paragraph}>
+                  Die Exkursion startet beim Jüdischen Museum Hohenems und führt
+                  über gut drei Kilometer in zwei Stunden bis zur Schweizer
+                  Grenze. Das Ende des Programms ist beim Zollamt Hohenems. Bei
+                  dieser Führung wird die Grenze zur Schweiz überschritten, das
+                  Mitführen eines gültigen Personalausweises ist daher
+                  verpflichtend.
+                </Text>
+
+                <Text style={styles.paragraph}>
+                  Der Rückweg zum Museum kann in ca. 30 Minuten zurückgelegt
+                  werden. Alternativ fährt die Linie RTB 303 stündlich vom
+                  Zollamt nach Hohenems Zentrum, auch mit einem Halt beim
+                  Bahnhof Hohenems.
+                </Text>
+
+                <Text style={styles.paragraph}>
+                  Die Exkursion wird in der Regel bei jedem Wetter durchgeführt.
+                  Bei sehr schlechtem Wetter wie beispielsweise Gewitter oder
+                  starkem Schneefall wird vor Ort über eine Durchführung bzw.
+                  ein Alternativprogramm im Museum entschieden. Bitte
+                  informieren Sie Ihre Gruppe entsprechend und weisen Sie sie
+                  auf wetterangepasste Ausrüstung, Regen- bzw. Sonnenschutz hin.
+                  Wir empfehlen das Mitnehmen einer Wasserflasche, während der
+                  Exkursion gibt es keine Möglichkeit sich zu verpflegen.
+                </Text>
+              </>
+            )}
+          </View>
         </View>
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Vermittlung:</Text>
-          <Text style={styles.value}>{assignedUserNames}</Text>
+          <Text style={[styles.value, styles.bold]}>{assignedUserNames}</Text>
         </View>
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Kosten:</Text>
-          <Text style={styles.value}>
-            € {pricePerPerson}/Person
-            {isSchule && ", unter 10 Personen € 35,00 Pauschale"}
-            {!isSchule && `, unter 10 Personen € ${totalPrice} Pauschale`}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.highlight}>
-        <Text style={styles.bold}>
-          Wir bitten Sie, den gesamten Betrag vorher einzusammeln.{"\n"}
-        </Text>
-        <Text>
-          Einzel-Zahlungen sind nicht möglich! Auf Wunsch lassen wir Ihnen auch
-          gerne eine Rechnung zukommen.
-        </Text>
-      </View>
-
-      {isSchule && (
-        <View style={{ marginBottom: 12 }}>
-          <Text style={styles.bold}>Anreise:</Text>
-          <Text style={styles.text}>
-            Nutzen Sie die Freie Fahrt im Vorarlberger Verkehrsverbund!
-            Schüler:innen und Lehrlinge können gemeinsam mit den Begleitpersonen
-            im Klassenverband unterwegs sein.{"\n"}
-            Genaueres unter{" "}
-            <Text style={styles.link}>
-              double-check.at/forderung/freie-fahrt-zur-kultur
+          <View style={styles.value}>
+            <Text style={styles.bold}>
+              € {pricePerPerson}/Person bzw. € {pauschale} Pauschale bei weniger
+              als {minParticipants} Teilnehmer:innen
             </Text>
-          </Text>
-        </View>
-      )}
 
-      <Text style={styles.text}>
-        Sofern Sie den gebuchten Termin nicht wahrnehmen können, bitten wir Sie,
-        mind. einen Werktag (Mo-Fr) vor dem Termin mit uns Kontakt aufzunehmen.
-        Für Stornierungen am Führungstag wird der Gesamtbetrag in Rechnung
-        gestellt.
-      </Text>
-
-      <Text style={{ marginTop: 20, marginBottom: 5 }}>
-        Mit herzlichem Gruß
-      </Text>
-      <Text>Martina Steiner</Text>
-      <Text>Sekretariat/Administration</Text>
-
-      <View style={styles.footer} fixed>
-        <View style={styles.footerRow}>
-          <View style={styles.footerColumn}>
-            <Text style={styles.footerTitle}>Kontakt</Text>
-            <Text style={styles.footerText}>{organization.name}</Text>
-            {organization.email && (
-              <Text style={styles.footerText}>{organization.email}</Text>
-            )}
-            {organization.phone && (
-              <Text style={styles.footerText}>{organization.phone}</Text>
-            )}
-            {organization.details?.website && (
-              <Text style={styles.footerText}>
-                {organization.details.website}
+            <View style={styles.costInfo}>
+              <Text style={styles.bold}>
+                Wir bitten Sie, den gesamten Betrag vorher einzusammeln.
               </Text>
-            )}
+              <Text style={{ marginTop: 3 }}>
+                Einzel-Zahlungen sind nicht möglich! Auf Wunsch lassen wir Ihnen
+                auch gerne eine Rechnung zukommen.
+              </Text>
+            </View>
           </View>
         </View>
       </View>
 
+      {/* Optional school-specific notice */}
+
+      {/* Anreise - mit Tab-Abstand wie andere Felder */}
+      <View style={styles.infoRow}>
+        <Text style={styles.label}>Anreise:</Text>
+        <View style={styles.value}>
+          <Text style={styles.text}>
+            Nutzen Sie die Freie Fahrt im Vorarlberger Verkehrsverbund!
+            Schüler:innen und Lehrlinge können gemeinsam mit den Begleitpersonen
+            im Klassenverband unterwegs sein und die Kulturlandschaft
+            Vorarlbergs erkunden. Genaueres unter{" "}
+            <Text style={styles.link}>
+              double-check.at/forderung/freie-fahrt-zur-kultur
+            </Text>
+            .
+          </Text>
+        </View>
+      </View>
+
+      {/* Cancellation / contact */}
+      <Text style={styles.text}>
+        Sofern Sie den gebuchten Termin nicht wahrnehmen können, bitten wir Sie,
+        mind. einen Werktag (Mo-Fr) vor dem Termin mit uns Kontakt aufzunehmen.
+        Für Stornierungen am Führungstag wird der Gesamtbetrag in Rechnung
+        gestellt. Sollten Sie sich zu dem von Ihnen gebuchten Termin verspäten,
+        geben Sie uns bitte unter der unten angeführten Telefonnummer +43 5576
+        73989-20 Bescheid.
+      </Text>
+
+      <Text style={{ marginTop: 20, marginBottom: 6, fontSize: 12 }}>
+        Mit herzlichem Gruß
+      </Text>
+      <Text style={{ fontSize: 12 }}>{currentUserName}</Text>
+      <Text style={{ fontSize: 12 }}>Sekretariat/Administration</Text>
+
+      {/* Contact Section */}
+      <View style={styles.contactSection}>
+        <Text style={styles.bold}>{organization.name}</Text>
+        <Text>Schweizer Straße 5</Text>
+        <Text>6845 Hohenems</Text>
+        <Text>+43 (0)5576 73989</Text>
+        {organization.email && (
+          <Text style={styles.link}>{organization.email}</Text>
+        )}
+        {organization.details?.website && (
+          <Text style={styles.link}>{organization.details.website}</Text>
+        )}
+        <Text>UID: ATU 37926303</Text>
+
+        <Text style={{ marginTop: 10, fontWeight: "bold" }}>
+          Öffnungszeiten
+        </Text>
+        <Text>Museum und Café: Di bis SO und an Feiertagen 10-17 Uhr</Text>
+        <Text>Bibliothek: Di bis FR 10-12 und 14-16 Uhr</Text>
+        <Text>Büro: Di bis FR 9-12 und 14-16 Uhr</Text>
+      </View>
+
+      {/* Footer */}
       <BookingFooter organization={organization} />
     </Page>
   );
