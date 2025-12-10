@@ -54,7 +54,7 @@ type AssignedUser = {
 type EinsatzCategory = {
   id: string;
   value: string | null;
-  label: string | null;
+  abbreviation: string | null;
 };
 
 type PDFOptions = {
