@@ -62,7 +62,7 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
   };
   return (
     <Select value={activeOrgId} onValueChange={handleSetOrg} name="orgSwitch">
-      <SelectTrigger className="w-[11.5rem]">
+      <SelectTrigger className="w-46">
         <SelectValue
           placeholder={
             session?.user?.activeOrganization?.name || "Organisation wählen"
