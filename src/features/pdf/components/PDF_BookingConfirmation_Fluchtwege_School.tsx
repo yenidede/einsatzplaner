@@ -163,7 +163,7 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
           ? `${salutation} ${firstname} ${lastname}`.trim()
           : `${firstname} ${lastname}`.trim();
       })()
-    : "Martina Steiner";
+    : "";
 
   return (
     <Page size="A4" style={styles.page}>
