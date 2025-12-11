@@ -8,7 +8,7 @@ import React from "react";
 import { getAllEinsaetzeForCalendar } from "@/features/einsatz/dal-einsatz";
 import { ShowDialogFn } from "@/contexts/AlertDialogContext";
 import { toast } from "sonner";
-import { PdfGenerationRequest } from "@/features/pdf/types/pdf";
+import { PdfGenerationRequest } from "@/features/pdf/types";
 import { UsePdfGeneratorReturn } from "@/features/pdf/hooks/usePdfGenerator";
 
 /**
