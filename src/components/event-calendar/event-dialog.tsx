@@ -59,10 +59,11 @@ import { toast } from "sonner";
 import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
 
 import {
-  detectChangeType,
   detectChangeTypes,
   getAffectedUserId,
 } from "@/features/activity_log/utils";
+import { Select, SelectContent, SelectItem } from "../ui/select";
+import { SelectTrigger } from "@radix-ui/react-select";
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -825,16 +826,32 @@ export function EventDialog({
                   </div>
                 </FormInputFieldCustom>
               ) : (
-                // option to switch template (TODO later)
-                <div>
-                  <span className="font-semibold">
+                <div className="flex justify-between">
+                  <div>
+                    Aktive Vorlage:{" "}
                     {
                       templatesQuery.data?.find(
                         (t) => t.id === activeTemplateId
                       )?.name
                     }
-                  </span>{" "}
-                  ausgewählt.
+                  </div>
+                  <Select
+                    value={activeTemplateId}
+                    onValueChange={handleTemplateSelect}
+                  >
+                    <SelectTrigger>
+                      <Button asChild variant="outline">
+                        <div>Aktive Vorlage ändern</div>
+                      </Button>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templatesQuery.data?.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </FormGroup>
