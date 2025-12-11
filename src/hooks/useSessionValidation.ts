@@ -1,3 +1,4 @@
+import { Session } from 'next-auth';
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useRef } from 'react';
 
@@ -36,7 +37,7 @@ export function useSessionValidation(options: UseSessionValidationOptions = {}) 
     if (status === 'authenticated' && session) {
       const validateSession = () => {
         try {
-          const tokenInfo = (session as any).token;
+          const tokenInfo = (session as Session).token;
           const now = Date.now();
 
           if (debug) {
