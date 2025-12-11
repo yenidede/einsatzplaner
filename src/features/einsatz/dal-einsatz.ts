@@ -8,7 +8,11 @@ import type {
   EinsatzDetailed,
   ETV,
 } from "@/features/einsatz/types";
-import { hasPermission, requireAuth } from "@/lib/auth/authGuard";
+import {
+  hasPermission,
+  hasPermissionFromSession,
+  requireAuth,
+} from "@/lib/auth/authGuard";
 import { redirect } from "next/navigation";
 
 import { ValidateEinsatzCreate } from "./validation-service";
@@ -92,7 +96,7 @@ export async function getAllEinsaetze(org_ids: string[]) {
     return [];
   }
 
-  if (!hasPermission(session, "read:einsaetze")) {
+  if (!hasPermissionFromSession(session, "read:einsaetze")) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -102,7 +106,7 @@ export async function getAllEinsaetze(org_ids: string[]) {
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, "read:einsaetze")) {
+  if (!hasPermissionFromSession(session, "read:einsaetze")) {
     return new Response("Unauthorized", { status: 403 });
   }
 
@@ -247,7 +251,7 @@ export async function getEinsaetzeForTableView(
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, "read:templates")) {
+  if (!hasPermissionFromSession(session, "read:templates")) {
     redirect("/unauthorized");
   }
 
@@ -301,7 +305,9 @@ export async function createEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, "create:einsaetze")) {
+  if (
+    !hasPermissionFromSession(session, "create:einsaetze", session.user.roles)
+  ) {
     redirect("/unauthorized");
   }
 
@@ -361,7 +367,7 @@ export async function updateEinsatzTime(data: {
   end: Date;
 }): Promise<Einsatz> {
   const { session } = await requireAuth();
-  if (!hasPermission(session, "update:einsaetze")) {
+  if (!hasPermissionFromSession(session, "update:einsaetze")) {
     redirect("/unauthorized");
   }
 
@@ -389,13 +395,14 @@ export async function updateEinsatz({
   data: Partial<EinsatzCreate>;
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
-
-  if (!hasPermission(session, "update:einsaetze")) {
+  if (!hasPermissionFromSession(session, "update:einsaetze")) {
     redirect("/unauthorized");
   }
 
   if (data.template_id && false) {
-    const parsedDynamicFields = await ValidateEinsatzCreate(data as EinsatzCreate);
+    const parsedDynamicFields = await ValidateEinsatzCreate(
+      data as EinsatzCreate
+    );
   }
   const {
     id,
@@ -470,7 +477,7 @@ export async function updateEinsatz({
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   const { session } = await requireAuth();
 
-  if (!hasPermission(session, "delete:einsaetze")) {
+  if (!hasPermissionFromSession(session, "delete:einsaetze")) {
     throw new Response("Unauthorized", { status: 403 });
   }
 

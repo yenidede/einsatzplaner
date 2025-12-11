@@ -8,6 +8,13 @@ import {
 import { authOptions } from "@/lib/auth.config";
 import { Session } from "next-auth";
 
+export const ROLE_NAME_MAP = {
+  Superadmin: "559ed0cd-2644-47dd-9fb8-c6e333589e05",
+  Helfer: "90f7c6ce-f696-419c-9a29-4c70c3ab4cef",
+  Einsatzverwaltung: "d54836b9-a1ff-4dd8-8633-20c98378aa87",
+  Organisationsverwaltung: "d8c4c6ad-10bc-4947-bf16-1652f55298cc",
+};
+
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Superadmin: [
     // Einsätze
@@ -102,6 +109,14 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   ],
 };
 
+export type ExtendedSession = Session & {
+  user: Session["user"] & {
+    roles?: string[];
+    roleIds?: string[];
+    orgIds?: string[];
+    orgId?: string;
+  };
+};
 export function getRolePermissions(roleName: string): string[] {
   return ROLE_PERMISSION_MAP[roleName] || [];
 }
@@ -246,6 +261,20 @@ export async function hasPermission(
 
   return roles.some((r) =>
     (ROLE_PERMISSION_MAP[r.role.name] ?? []).includes(permission)
+  );
+}
+
+export function hasPermissionFromSession(
+  session: ExtendedSession,
+  permission: string,
+  roles?: string[]
+): boolean {
+  if (!session?.user?.id) return false;
+
+  // Nutze die Rollen die bereits in der Session sind
+  const userRoles = session.user.roles || (roles ?? []);
+  return userRoles.some((roleName) =>
+    (ROLE_PERMISSION_MAP[roleName] ?? []).includes(permission)
   );
 }
 
