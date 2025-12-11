@@ -25,7 +25,6 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "einsaetze:join",
     "einsaetze:leave",
     "einsaetze:manage_assignments",
-
     // Users
     "users:read",
     "users:create",
@@ -33,24 +32,20 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "users:delete",
     "users:manage",
     "users:invite",
-
     // Organization
     "organization:read",
     "organization:update",
     "organization:delete",
     "organization:manage",
-
     // Roles
     "roles:read",
     "roles:create",
     "roles:update",
     "roles:delete",
     "roles:assign",
-
     // Settings
     "settings:read",
     "settings:update",
-
     // Dashboard
     "dashboard:read",
     "analytics:read",
@@ -266,16 +261,18 @@ export async function hasPermission(
 
 export function hasPermissionFromSession(
   session: ExtendedSession,
-  permission: string,
-  roles?: string[]
+  permission: string
 ): boolean {
-  if (!session?.user?.id) return false;
+  if (!session?.user?.id) {
+    return false;
+  }
 
-  // Nutze die Rollen die bereits in der Session sind
-  const userRoles = session.user.roles || (roles ?? []);
-  return userRoles.some((roleName) =>
-    (ROLE_PERMISSION_MAP[roleName] ?? []).includes(permission)
-  );
+  const userRoles = session.user.roles || [];
+
+  return userRoles.some((roleName) => {
+    const rolePermissions = ROLE_PERMISSION_MAP[roleName] ?? [];
+    return rolePermissions.includes(permission);
+  });
 }
 
 export async function hasAllPermissions(
