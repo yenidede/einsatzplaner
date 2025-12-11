@@ -7,7 +7,13 @@ import {
 } from "@/DataAccessLayer/user";
 import { authOptions } from "@/lib/auth.config";
 import { Session } from "next-auth";
-import { ro } from "date-fns/locale";
+
+export const ROLE_NAME_MAP = {
+  Superadmin: "559ed0cd-2644-47dd-9fb8-c6e333589e05",
+  Helfer: '90f7c6ce-f696-419c-9a29-4c70c3ab4cef',
+  Einsatzverwaltung: "d54836b9-a1ff-4dd8-8633-20c98378aa87",
+  Organisationsverwaltung: "d8c4c6ad-10bc-4947-bf16-1652f55298cc",
+}
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Superadmin: [
