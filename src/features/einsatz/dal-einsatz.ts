@@ -18,7 +18,7 @@ import { createChangeLogAuto } from "../activity_log/activity_log-dal";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(
-  id: unknown
+  id: string
 ): Promise<EinsatzDetailed | null | Response> {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
@@ -395,7 +395,7 @@ export async function updateEinsatz({
   }
 
   if (data.template_id && false) {
-    const parsedDynamicFields = await ValidateEinsatzCreate(data.template_id);
+    const parsedDynamicFields = await ValidateEinsatzCreate(data as EinsatzCreate);
   }
   const {
     id,
