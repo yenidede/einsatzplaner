@@ -13,7 +13,7 @@ export default async function Home() {
   }
 
   // Redirect authenticated users based on their role
-  const userRoles = session?.user.roleIds || [];
+  const userRoles = session.user.roleIds || [];
 
   if (
     userRoles.includes(ROLE_NAME_MAP["Superadmin"]) ||
@@ -26,18 +26,20 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col items-center justify-center grow bg-secondary prose">
-      <h1>Welcome to Our App</h1>
+      <h1 className="text-center max-w-160">
+        Maturaprojekt der 5adb zusammen mit dem JMH
+      </h1>
       <p className="text-center mb-4">
-        Einstellungen können über den Avatar/Profilbild oben rechts vorgenommen
-        werden. <br />
-        Bei Fragen melden Sie sich bitte an Ihren Administrator.
+        mit ❤️ erstellt von{" "}
+        <b>
+          <Link href="https://davidkathrein.at">David Kathrein</Link>, Ömer
+          Yenidede
+        </b>{" "}
+        und <b>Luca Raffeiner</b>.
       </p>
       <div className="flex gap-2">
         <Button asChild>
-          <Link href="/signup">Account erstellen</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/signin">Anmelden</Link>
+          <Link href="/settings">Einstellungen öffnen</Link>
         </Button>
       </div>
     </div>
