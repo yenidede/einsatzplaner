@@ -176,7 +176,7 @@ export function EventItem({
         isDragging={isDragging}
         onClick={onClick}
         className={cn(
-          "mt-[var(--event-gap)] items-center text-[0.7rem] sm:text-xs",
+          "mt-(--event-gap) items-center text-[0.7rem] sm:text-xs",
           event.allDay ? "h-auto py-1" : "min-h-fit h-auto py-1",
           className
         )}
