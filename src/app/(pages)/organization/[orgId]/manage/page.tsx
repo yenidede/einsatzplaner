@@ -1,28 +1,20 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import Link from "next/link";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import LogoutIcon from "@/components/icon/LogoutIcon";
-import { Switch } from "@/features/settings/components/ui/switch";
-import { Label } from "@/features/settings/components/ui/label";
 import Image from "next/image";
-import { LabelSettings } from "@/features/settings/components/ui/LabelSettings";
-import { InputSettings } from "@/features/settings/components/ui/InputSettings";
+
 import SettingsIcon from "@/components/icon/SettingsIcon";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import OrganisationIcon from "@/features/settings/components/ui/OrganisationIcon";
 import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadProfilePictureIcon";
-import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
-import OrganizationCard from "@/features/settings/components/OrganizationCard";
-import { hasPermission } from "@/lib/auth/authGuard";
 import { UserProfileDialog } from "@/features/settings/components/UserProfileDialog";
 import { InviteUserForm } from "@/features/invitations/components/InviteUserForm";
-import { useInvitations } from "@/features/invitations/hooks/useInvitation";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 import { settingsQueryKeys } from "@/features/settings/queryKey";
 import {
@@ -32,7 +24,6 @@ import {
 } from "@/features/settings/organization-action";
 import { getUserProfileAction } from "@/features/settings/settings-action";
 import { getAllUserOrgRolesAction } from "@/features/settings/users-action";
-import { NextResponse } from "next/server";
 
 export default function OrganizationManagePage() {
   const params = useParams();
