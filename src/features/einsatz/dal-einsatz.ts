@@ -35,7 +35,9 @@ export async function getEinsatzWithDetailsById(
 
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!session.user.orgIds.includes(einsaetzeFromDb.org_id)) {
-    throw new Error("Unauthorized");
+    return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
+      status: 403,
+    });
   }
 
   // Destructure to avoid leaking raw relation arrays in the DTO
@@ -95,7 +97,7 @@ export async function getAllEinsaetze(org_ids: string[]) {
   }
 
   if (!hasPermissionFromSession(session, "einsaetze:read")) {
-    throw new Error("Unauthorized");
+    return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
   return getAllEinsaetzeFromDb(org_ids, session.user.id);
@@ -105,7 +107,7 @@ export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
 
   if (!hasPermissionFromSession(session, "einsaetze:read")) {
-    throw new Error("Unauthorized");
+    return new Response("Unauthorized", { status: 403 });
   }
 
   // Nutze User's orgIds als Default wenn keine org_ids übergeben
@@ -250,7 +252,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
   if (!hasPermissionFromSession(session, "read:templates")) {
-    throw new Error("Unauthorized");
+    return new Response("Unauthorized", { status: 403 });
   }
 
   // Verwende org_id oder erste Organisation des Users
@@ -266,7 +268,9 @@ export async function getAllTemplatesWithFields(org_id?: string) {
 
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!userOrgIds.includes(useOrgId)) {
-    throw new Error("Unauthorized");
+    return new Response(`Unauthorized to access templates for org ${useOrgId}`, {
+      status: 403,
+    });
   }
 
   return prisma.einsatz_template.findMany({
@@ -304,7 +308,7 @@ export async function createEinsatz({
   const { session, userIds } = await requireAuth();
 
   if (!hasPermissionFromSession(session, "create:einsaetze")) {
-    throw new Error("Unauthorized");
+    redirect("/unauthorized");
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
@@ -316,7 +320,7 @@ export async function createEinsatz({
   }
 
   if (!userOrgIds.includes(useOrgId)) {
-    throw new Error("Unauthorized");
+    redirect("/unauthorized");
   }
 
   const einsatzWithAuth = {
@@ -363,8 +367,8 @@ export async function updateEinsatzTime(data: {
   end: Date;
 }): Promise<Einsatz> {
   const { session } = await requireAuth();
-  if (!hasPermissionFromSession(session, "update:einsaetze")) {
-    throw new Error("Unauthorized");
+  if (!hasPermissionFromSession(session, "einsaetze:update")) {
+    redirect("/unauthorized");
   }
 
   const dataSchema = z.object({
@@ -392,8 +396,8 @@ export async function updateEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "update:einsaetze")) {
-    throw new Error("Unauthorized");
+  if (!hasPermissionFromSession(session, "einsaetze:update")) {
+    redirect("/unauthorized");
   }
 
   if (data.template_id && false) {
@@ -474,8 +478,8 @@ export async function updateEinsatz({
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   const { session } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "delete:einsaetze")) {
-    throw new Error("Unauthorized");
+  if (!hasPermissionFromSession(session, "einsaetze:delete")) {
+    throw new Response("Unauthorized", { status: 403 });
   }
 
   const einsatz = await prisma.einsatz.findUnique({
