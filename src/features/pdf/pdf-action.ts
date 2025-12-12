@@ -95,22 +95,22 @@ async function determinePDFTemplate(
   }); */
 
   let templateType: PDFTemplateType;
-  let reason: string;
+  /* let reason: string; */
 
   // 1. Kategorie "Fluchtwege" + Feld "Schulstufe" → Fluchtwege-Schule-PDF
   if (hasFluchtwegCategory && hasSchulstufeField) {
     templateType = "fluchtwege";
-    reason = 'Hat Kategorie "Fluchtwege" UND Template-Feld "Schulstufe"';
+    /* reason = 'Hat Kategorie "Fluchtwege" UND Template-Feld "Schulstufe"'; */
   }
   // 2. Nur Feld "Schulstufe" → Standard-Schul-PDF
   else if (hasSchulstufeField) {
     templateType = "schule";
-    reason = 'Hat Template-Feld "Schulstufe" (ohne Fluchtweg-Kategorie)';
+    /* reason = 'Hat Template-Feld "Schulstufe" (ohne Fluchtweg-Kategorie)'; */
   }
   // 3. Standard → Gruppen-PDF
   else {
     templateType = "gruppe";
-    reason = "Standard (keine Schulstufe, keine Fluchtwege)";
+    /* reason = "Standard (keine Schulstufe, keine Fluchtwege)"; */
   }
 
 /*   console.log("PDF Template Selection:", {
