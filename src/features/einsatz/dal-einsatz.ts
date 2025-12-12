@@ -8,7 +8,11 @@ import type {
   EinsatzDetailed,
   ETV,
 } from "@/features/einsatz/types";
-import { hasPermission, requireAuth } from "@/lib/auth/authGuard";
+import {
+  hasPermission,
+  hasPermissionFromSession,
+  requireAuth,
+} from "@/lib/auth/authGuard";
 import { redirect } from "next/navigation";
 
 import { ValidateEinsatzCreate } from "./validation-service";
@@ -31,9 +35,7 @@ export async function getEinsatzWithDetailsById(
 
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!session.user.orgIds.includes(einsaetzeFromDb.org_id)) {
-    return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
-      status: 403,
-    });
+    throw new Error("Unauthorized");
   }
 
   // Destructure to avoid leaking raw relation arrays in the DTO
@@ -92,8 +94,8 @@ export async function getAllEinsaetze(org_ids: string[]) {
     return [];
   }
 
-  if (!hasPermission(session, "read:einsaetze")) {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  if (!hasPermissionFromSession(session, "einsaetze:read")) {
+    throw new Error("Unauthorized");
   }
 
   return getAllEinsaetzeFromDb(org_ids, session.user.id);
@@ -102,8 +104,8 @@ export async function getAllEinsaetze(org_ids: string[]) {
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, "read:einsaetze")) {
-    return new Response("Unauthorized", { status: 403 });
+  if (!hasPermissionFromSession(session, "einsaetze:read")) {
+    throw new Error("Unauthorized");
   }
 
   // Nutze User's orgIds als Default wenn keine org_ids übergeben
@@ -247,8 +249,8 @@ export async function getEinsaetzeForTableView(
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, "read:templates")) {
-    redirect("/unauthorized");
+  if (!hasPermissionFromSession(session, "read:templates")) {
+    throw new Error("Unauthorized");
   }
 
   // Verwende org_id oder erste Organisation des Users
@@ -264,7 +266,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
 
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!userOrgIds.includes(useOrgId)) {
-    redirect("/unauthorized");
+    throw new Error("Unauthorized");
   }
 
   return prisma.einsatz_template.findMany({
@@ -301,8 +303,8 @@ export async function createEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, "create:einsaetze")) {
-    redirect("/unauthorized");
+  if (!hasPermissionFromSession(session, "create:einsaetze")) {
+    throw new Error("Unauthorized");
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
@@ -314,7 +316,7 @@ export async function createEinsatz({
   }
 
   if (!userOrgIds.includes(useOrgId)) {
-    redirect("/unauthorized");
+    throw new Error("Unauthorized");
   }
 
   const einsatzWithAuth = {
@@ -361,8 +363,8 @@ export async function updateEinsatzTime(data: {
   end: Date;
 }): Promise<Einsatz> {
   const { session } = await requireAuth();
-  if (!hasPermission(session, "update:einsaetze")) {
-    redirect("/unauthorized");
+  if (!hasPermissionFromSession(session, "update:einsaetze")) {
+    throw new Error("Unauthorized");
   }
 
   const dataSchema = z.object({
@@ -390,12 +392,14 @@ export async function updateEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, "update:einsaetze")) {
-    redirect("/unauthorized");
+  if (!hasPermissionFromSession(session, "update:einsaetze")) {
+    throw new Error("Unauthorized");
   }
 
   if (data.template_id && false) {
-    const parsedDynamicFields = await ValidateEinsatzCreate(data as EinsatzCreate);
+    const parsedDynamicFields = await ValidateEinsatzCreate(
+      data as EinsatzCreate
+    );
   }
   const {
     id,
@@ -422,7 +426,7 @@ export async function updateEinsatz({
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    redirect("/unauthorized");
+    throw new Error("Unauthorized");
   }
 
   try {
@@ -470,8 +474,8 @@ export async function updateEinsatz({
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   const { session } = await requireAuth();
 
-  if (!hasPermission(session, "delete:einsaetze")) {
-    throw new Response("Unauthorized", { status: 403 });
+  if (!hasPermissionFromSession(session, "delete:einsaetze")) {
+    throw new Error("Unauthorized");
   }
 
   const einsatz = await prisma.einsatz.findUnique({

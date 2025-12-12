@@ -425,7 +425,6 @@ export const authOptions: NextAuthOptions = {
             logo_url: string | null;
           }) ?? null;
       }
-
       return session;
     },
   },

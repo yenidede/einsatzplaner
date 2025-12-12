@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { resetPasswordAction } from "@/features/auth/actions";
-//r adjust the path as needed to match your project structure.
 
 const resetPasswordSchema = z
   .object({

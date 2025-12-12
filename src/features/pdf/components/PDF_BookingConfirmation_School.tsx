@@ -51,11 +51,11 @@ type AssignedUser = {
   } | null;
 };
 
-type EinsatzCategory = {
+interface EinsatzCategory {
   id: string;
   value: string | null;
   abbreviation: string | null;
-};
+}
 
 type PDFOptions = {
   showLogos?: boolean;
@@ -69,7 +69,9 @@ type BookingConfirmationPDFProps = {
   options?: PDFOptions;
 };
 
-export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
+export const BookingConfirmationPDF_School: React.FC<
+  BookingConfirmationPDFProps
+> = ({
   einsatz,
   einsatzCategories,
   organization,
@@ -209,12 +211,7 @@ export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
         </View>
       )}
 
-      <Text style={styles.text}>
-        Sofern Sie den gebuchten Termin nicht wahrnehmen können, bitten wir Sie,
-        mind. einen Werktag (Mo-Fr) vor dem Termin mit uns Kontakt aufzunehmen.
-        Für Stornierungen am Führungstag wird der Gesamtbetrag in Rechnung
-        gestellt.
-      </Text>
+      <Text style={styles.text}>SCHULE</Text>
 
       <Text style={{ marginTop: 20, marginBottom: 5 }}>
         Mit herzlichem Gruß

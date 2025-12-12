@@ -11,7 +11,6 @@ import LogoutIcon from "@/components/icon/LogoutIcon";
 import { Switch } from "@/features/settings/components/ui/switch";
 import { Label } from "@/features/settings/components/ui/label";
 import Image from "next/image";
-
 import { LabelSettings } from "@/features/settings/components/ui/LabelSettings";
 import { InputSettings } from "@/features/settings/components/ui/InputSettings";
 import SettingsIcon from "@/components/icon/SettingsIcon";
@@ -104,8 +103,6 @@ export default function OrganizationManagePage() {
     enabled: !!orgId,
     queryFn: () => getAllUserOrgRolesAction(orgId),
   });
-
-  /* console.log("Users Data", usersData); */
 
   const handleSignOut = async () => {
     try {
@@ -895,19 +892,9 @@ export default function OrganizationManagePage() {
             organizationId={orgId}
             isOpen={isInviteModalOpen}
             onClose={() => {
-              console.log("Modal closing...");
               setIsInviteModalOpen(false);
             }}
           />
-
-          {/* User Settings Modal - ENTFERNEN */}
-          {/* 
-<UserProfileDialog
-    isOpen={isUserSettingsOpen}
-    onClose={() => setIsUserSettingsOpen(false)}
-    userId={user.id}
-/>
-*/}
         </div>
       </div>
     </div>

@@ -1,12 +1,19 @@
 import React from "react";
-import { Text, StyleSheet } from "@react-pdf/renderer";
+import { Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { OrganizationForPDF } from "@/features/organization/types";
 
 const styles = StyleSheet.create({
+  footer: {
+    position: "absolute",
+    bottom: 30,
+    left: 40,
+    right: 40,
+    borderTop: "1px solid #e0e0e0",
+    paddingTop: 8,
+  },
   contact: {
     fontSize: 8,
     color: "#666",
-    marginTop: 10,
     lineHeight: 1.6,
   },
 });
@@ -49,7 +56,7 @@ export const BookingFooter: React.FC<BookingFooterProps> = ({
     // Line 1: Organization name + Addresses
     [organization.name, ...addressLines].join(" | "),
 
-    // Line 2: Contact + Legal // if postal code, city and country are same then only show once
+    // Line 2: Contact + Legal
     [...contactParts, ...legalParts].join(" | "),
 
     // Line 3+: Bank accounts (each on new line)
@@ -58,5 +65,9 @@ export const BookingFooter: React.FC<BookingFooterProps> = ({
     .filter(Boolean)
     .join("\n");
 
-  return <Text style={styles.contact}>{footerText}</Text>;
+  return (
+    <View style={styles.footer} fixed>
+      <Text style={styles.contact}>{footerText}</Text>
+    </View>
+  );
 };

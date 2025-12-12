@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
           organizationId: organization.id,
           organizationName: organization.name,
         },
-        redirect: '/helferansicht',
+        redirect: "/helferansicht",
       },
       { status: 201 }
     );

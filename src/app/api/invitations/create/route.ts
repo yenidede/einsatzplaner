@@ -5,8 +5,7 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 import crypto from "crypto";
 import { emailService } from "@/lib/email/EmailService";
-import { roleHasPermission } from "@/config/permissions";
-import { RoleName } from "@/types/auth";
+import { hasPermission } from "@/lib/auth/authGuard";
 
 // Validation Schema - role_id wieder hinzufügen
 const createInvitationSchema = z.object({
@@ -56,13 +55,8 @@ export async function POST(request: NextRequest) {
 
     // Berechtigung prüfen
     const canInvite = inviter.user_organization_role.some((uor) =>
-      roleHasPermission((uor.role?.name ?? "") as RoleName, "users:invite")
+      hasPermission(session, "users:invite")
     );
-    /*     console.log('Permission Check Result:', {
-      roleNames,
-      roleAbbrs,
-      canInvite
-    }); */
 
     if (!canInvite) {
       return NextResponse.json(
@@ -177,8 +171,6 @@ export async function POST(request: NextRequest) {
         organization.name,
         token
       );
-
-      console.log("nvitation email sent successfully");
     } catch (emailError) {
       console.error("Failed to send invitation email:", emailError);
       await prisma.invitation.delete({
@@ -192,13 +184,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    /*     console.log('Invitation created:', {
-      id: invitation.id,
-      email: invitation.email,
-      organization: organization.name,
-      inviteLink: inviteLink
-    }); */
 
     return NextResponse.json({
       success: true,
