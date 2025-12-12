@@ -288,7 +288,7 @@ export function DataTableFilterMenu<TData>({
         </PopoverTrigger>
         <PopoverContent
           align={align}
-          className="w-full max-w-[var(--radix-popover-content-available-width)] origin-[var(--radix-popover-content-transform-origin)] p-0"
+          className="w-full max-w-(--radix-popover-content-available-width) origin-(--radix-popover-content-transform-origin) p-0"
           {...props}
         >
           <Command loop className="[&_[cmdk-input-wrapper]_svg]:hidden">
@@ -452,7 +452,7 @@ function DataTableFilterItem<TData>({
           </PopoverTrigger>
           <PopoverContent
             align="start"
-            className="w-48 origin-[var(--radix-popover-content-transform-origin)] p-0"
+            className="w-48 origin-(--radix-popover-content-transform-origin) p-0"
           >
             <Command loop>
               <CommandInput placeholder="Optionen durchsuchen..." />
@@ -511,13 +511,13 @@ function DataTableFilterItem<TData>({
         >
           <SelectTrigger
             aria-controls={operatorListboxId}
-            className="h-8 rounded-none border-r-0 px-2.5 lowercase [&[data-size]]:h-8 [&_svg]:hidden"
+            className="h-8 rounded-none border-r-0 px-2.5 lowercase data-size:h-8 [&_svg]:hidden"
           >
             <SelectValue placeholder={filter.operator} />
           </SelectTrigger>
           <SelectContent
             id={operatorListboxId}
-            className="origin-[var(--radix-select-content-transform-origin)]"
+            className="origin-(--radix-select-content-transform-origin)"
           >
             {filterOperators.map((operator) => (
               <SelectItem
@@ -708,7 +708,7 @@ function onFilterInputRender<TData>({
             column={column}
             inputId={inputId}
             onFilterUpdate={onFilterUpdate}
-            className="size-full max-w-28 gap-0 [&_[data-slot='range-min']]:border-r-0 [&_input]:rounded-none [&_input]:px-1.5"
+            className="size-full max-w-28 gap-0 **:data-[slot='range-min']:border-r-0 [&_input]:rounded-none [&_input]:px-1.5"
           />
         );
       }
@@ -813,7 +813,7 @@ function onFilterInputRender<TData>({
           <PopoverContent
             id={inputListboxId}
             align="start"
-            className="w-48 origin-[var(--radix-popover-content-transform-origin)] p-0"
+            className="w-48 origin-(--radix-popover-content-transform-origin) p-0"
           >
             <Command>
               <CommandInput placeholder="Optionen durchsuchen..." />
@@ -893,7 +893,7 @@ function onFilterInputRender<TData>({
           <PopoverContent
             id={inputListboxId}
             align="start"
-            className="w-auto origin-[var(--radix-popover-content-transform-origin)] p-0"
+            className="w-auto origin-(--radix-popover-content-transform-origin) p-0"
           >
             {filter.operator === "dateIsBetween" ? (
               <Calendar
