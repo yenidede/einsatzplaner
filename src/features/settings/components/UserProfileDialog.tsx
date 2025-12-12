@@ -4,15 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import SwitchIcon from "@/components/icon/SwitchIcon";
-import { Button } from "@/features/auth/components/ui/FormComponents";
 import {
   getUserProfileAction,
-  getAllUserOrgRolesAction,
   updateUserRoleAction,
   removeUserFromOrganizationAction,
   getUserOrgRolesAction,
 } from "@/features/settings/users-action";
-import { DayButton } from "react-day-picker";
 import { settingsQueryKeys } from "../queryKey";
 
 //#region TypeScript Interfaces

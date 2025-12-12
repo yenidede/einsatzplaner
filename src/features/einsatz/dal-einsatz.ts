@@ -9,7 +9,6 @@ import type {
   ETV,
 } from "@/features/einsatz/types";
 import {
-  hasPermission,
   hasPermissionFromSession,
   requireAuth,
 } from "@/lib/auth/authGuard";
