@@ -41,7 +41,6 @@ export const handleDelete = async (einsatz_singular: string, einsatz: { id: stri
 };
 
 export const handlePdfGenerate = async (einsatz_singular: string, einsatz: { id: string | undefined, title: string }, generatePdf: UsePdfGeneratorReturn["generatePdf"]) => {
-  // TODO: replace with real PDF generation workflow
   if (!einsatz?.id) {
     toast.error(`${einsatz_singular} nicht gefunden für PDF-Generierung.`);
     return;

@@ -69,7 +69,9 @@ type BookingConfirmationPDFProps = {
   options?: PDFOptions;
 };
 
-export const BookingConfirmationPDF: React.FC<BookingConfirmationPDFProps> = ({
+export const BookingConfirmationPDF_Group: React.FC<
+  BookingConfirmationPDFProps
+> = ({
   einsatz,
   einsatzCategories,
   organization,

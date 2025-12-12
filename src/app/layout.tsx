@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import NextAuthSessionProvider from "@/components/SessionProvider";
-import "@/styles/globals.css";
 import Navbar from "@/components/navbar/navbar-main";
 import QueryProvider from "@/components/QueryProvider";
+import "@/styles/globals.css";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { AlertDialogContextProvider } from "@/contexts/AlertDialogContext";

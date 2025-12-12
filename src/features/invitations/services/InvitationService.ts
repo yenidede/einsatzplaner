@@ -216,8 +216,6 @@ export class InvitationService {
         accepted: false,
       },
     });
-
-    console.log(`${result.count} abgelaufene Einladungen gelöscht`);
     return result.count;
   }
 
@@ -246,9 +244,6 @@ export class InvitationService {
       },
     });
 
-    console.log(
-      `Found ${expiringInvitations.length} invitations expiring soon`
-    );
 
     let sentCount = 0;
 
@@ -267,13 +262,10 @@ export class InvitationService {
         );
 
         sentCount++;
-        console.log(`Reminder sent to ${invitation.email}`);
       } catch (error) {
         console.error(`Failed to send reminder to ${invitation.email}:`, error);
       }
     }
-
-    console.log(`${sentCount} reminder emails sent`);
     return sentCount;
   }
 }

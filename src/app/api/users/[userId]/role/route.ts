@@ -24,7 +24,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
     const { userId } = await params;
-    console.log(userId);
     const body: RequestBody = await request.json();
     const { organizationId, role, action } = body;
 

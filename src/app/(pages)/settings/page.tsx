@@ -213,11 +213,8 @@ export default function SettingsPage() {
       await queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.userSettings(session?.user.id || ""),
       });
-
-      console.log("Einstellungen erfolgreich gespeichert!");
     } catch (error) {
       console.error("Save failed:", error);
-      console.log("Fehler beim Speichern der Einstellungen");
     }
   };
 
