@@ -10,7 +10,7 @@ import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
 import { getOrganizationForPDF } from "@/features/settings/organization-action";
 import type { Einsatz } from "@/features/einsatz/types";
-import type { PDFActionResult } from "./types";
+import type { PDFActionResult } from "./types/types";
 import { getEinsatzCategoriesForPDF } from "./category-action";
 import prisma from "@/lib/prisma";
 
@@ -66,7 +66,7 @@ async function determinePDFTemplate(
         },
       });
 
-/*       console.log(
+      /*       console.log(
         "Loaded field names:",
         fields.map((f) => f.name)
       ); */
@@ -82,7 +82,7 @@ async function determinePDFTemplate(
     (val) => val.includes("fluchtweg") || val.includes("fluchtwege")
   );
 
-/*   console.log("PDF Template Detection - Start:", {
+  /*   console.log("PDF Template Detection - Start:", {
     einsatzId: einsatz.id,
     einsatzTitle: einsatz.title,
     categories: categories.map((c) => c.value),
@@ -113,7 +113,7 @@ async function determinePDFTemplate(
     /* reason = "Standard (keine Schulstufe, keine Fluchtwege)"; */
   }
 
-/*   console.log("PDF Template Selection:", {
+  /*   console.log("PDF Template Selection:", {
     templateType,
     reason,
     pdfComponent: {
@@ -153,7 +153,7 @@ export async function generateEinsatzPDF(
   einsatzId: string,
   options?: PDFOptions
 ): Promise<PDFActionResult> {
-/*   console.log("\nPDF GENERATION STARTED ================");
+  /*   console.log("\nPDF GENERATION STARTED ================");
   console.log("Input:", { einsatzId, options });
  */
   try {
@@ -181,7 +181,7 @@ export async function generateEinsatzPDF(
     const currentUser = authResult.userId
       ? await getUserByIdWithOrgAndRole(authResult.userId)
       : null;
-/*     console.log(
+    /*     console.log(
       "Current user:",
       currentUser
         ? `${currentUser.firstname} ${currentUser.lastname}`
@@ -204,7 +204,7 @@ export async function generateEinsatzPDF(
         error: "Einsatz not found",
       };
     }
-/*     console.log("Einsatz loaded:", {
+    /*     console.log("Einsatz loaded:", {
       id: einsatz.id,
       title: einsatz.title,
       start: einsatz.start,
@@ -213,7 +213,7 @@ export async function generateEinsatzPDF(
     //console.log("Processing categories...");
     const einsatzCategories = await getEinsatzCategoriesForPDF(einsatzId);
 
-/*     console.log(
+    /*     console.log(
       "Categories:",
       einsatzCategories.map((c) => `${c.value} (${c.id})`)
     ); */
@@ -238,7 +238,7 @@ export async function generateEinsatzPDF(
             }
           : null,
       }));
-/*     console.log(
+    /*     console.log(
       "Assigned users:",
       assignedUsers.map((u) => `${u.firstname} ${u.lastname}`)
     ); */
@@ -287,7 +287,7 @@ export async function generateEinsatzPDF(
     const base64 = Buffer.from(pdfBuffer).toString("base64");
     const filename = generateFilename(einsatz, templateType);
 
-/*     console.log("PDF Generation Success!");
+    /*     console.log("PDF Generation Success!");
     console.log("Filename:", filename);
     console.log("Base64 size:", base64.length, "characters");
     console.log("========== PDF GENERATION END ==========\n"); */

@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Mail, Send, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Mail, Send, X, CheckCircle, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 interface InviteUserFormProps {
   organizationId: string;
@@ -10,68 +11,76 @@ interface InviteUserFormProps {
   isOpen: boolean;
 }
 
-export function InviteUserForm({ organizationId, onClose, isOpen }: InviteUserFormProps) {
-  const [email, setEmail] = useState('');
+export function InviteUserForm({
+  organizationId,
+  onClose,
+  isOpen,
+}: InviteUserFormProps) {
+  const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const queryClient = useQueryClient();
 
   const inviteMutation = useMutation({
     mutationFn: async (email: string) => {
-      const response = await fetch('/api/invitations/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, organizationId })
+      const response = await fetch("/api/invitations/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, organizationId }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Fehler beim Senden der Einladung');
+        throw new Error(error.error || "Fehler beim Senden der Einladung");
       }
 
       return response.json();
     },
     onSuccess: (data) => {
       setSuccessMessage(`Einladung erfolgreich an ${email} gesendet!`);
-      setEmail('');
-      setErrorMessage('');
-      queryClient.invalidateQueries({ queryKey: ['invitations', organizationId] });
-      
+      setEmail("");
+      setErrorMessage("");
+      queryClient.invalidateQueries({
+        queryKey: ["invitations", organizationId],
+      });
+
       // Auto-close nach 3 Sekunden
       setTimeout(() => {
         onClose();
-        setSuccessMessage('');
+        setSuccessMessage("");
       }, 3000);
     },
     onError: (error: Error) => {
       setErrorMessage(error.message);
-      setSuccessMessage('');
-    }
+      setSuccessMessage("");
+    },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email.trim()) {
-      setErrorMessage('Bitte geben Sie eine E-Mail-Adresse ein');
+      setErrorMessage("Bitte geben Sie eine E-Mail-Adresse ein");
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setErrorMessage('Bitte geben Sie eine gültige E-Mail-Adresse ein');
+      setErrorMessage("Bitte geben Sie eine gültige E-Mail-Adresse ein");
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
+    setErrorMessage("");
+    setSuccessMessage("");
 
     try {
       await inviteMutation.mutateAsync(email);
+      toast.success("Einladung erfolgreich gesendet.");
     } catch (error) {
       // Error is handled in onError
+      toast.error("Fehler beim Senden der Einladung.");
     } finally {
       setIsSubmitting(false);
     }
@@ -86,7 +95,7 @@ export function InviteUserForm({ organizationId, onClose, isOpen }: InviteUserFo
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center z-50"
       onClick={handleBackdropClick}
     >
@@ -132,7 +141,10 @@ export function InviteUserForm({ organizationId, onClose, isOpen }: InviteUserFo
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-slate-700 mb-2"
+              >
                 E-Mail-Adresse
               </label>
               <input
