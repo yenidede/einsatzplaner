@@ -27,6 +27,7 @@ import {
   UserUpdateData,
 } from "@/features/settings/settings-action";
 import { removeUserFromOrganization } from "@/DataAccessLayer/user";
+import { toast } from "sonner";
 
 type Organization = {
   id: string;
@@ -125,10 +126,24 @@ export default function SettingsPage() {
       if (!res) throw new Error("Fehler beim Speichern");
       return res;
     },
-    onSuccess: () => {
+    onMutate: () => {
+      return { toastId: toast.loading("Speichert...") };
+    },
+    onSuccess: (data, variables, context) => {
+      toast.success("Einstellungen erfolgreich gespeichert!", {
+        id: context.toastId,
+      });
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
       });
+    },
+    onError: (error, variables, context) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Fehler beim Speichern der Einstellungen",
+        { id: context?.toastId }
+      );
     },
   });
 
@@ -159,15 +174,22 @@ export default function SettingsPage() {
 
       // Upload profile picture if changed
       if (profilePictureFile) {
-        const formData = new FormData();
-        formData.append("file", profilePictureFile);
-        const res = await uploadProfilePictureAction(formData);
-        if (!res) {
-          throw new Error(`Upload fehlgeschlagen`);
+        const toastId = toast.loading("Profilbild wird hochgeladen...");
+        try {
+          const formData = new FormData();
+          formData.append("file", profilePictureFile);
+          const res = await uploadProfilePictureAction(formData);
+          if (!res) {
+            throw new Error(`Upload fehlgeschlagen`);
+          }
+          finalPictureUrl = res.picture_url;
+          toast.success("Profilbild erfolgreich hochgeladen!", { id: toastId });
+        } catch (error) {
+          toast.error("Fehler beim Hochladen des Profilbilds", { id: toastId });
+          throw error;
         }
-        finalPictureUrl = res.picture_url;
       }
-      console.log("pictureUrl:", finalPictureUrl);
+
       // Update user profile
       await mutation.mutateAsync({
         id: session.user.id,
@@ -214,7 +236,8 @@ export default function SettingsPage() {
         queryKey: settingsQueryKeys.userSettings(session?.user.id || ""),
       });
     } catch (error) {
-      console.error("Save failed:", error);
+      // Error toast wird bereits von mutation.onError behandelt
+      console.error("Fehler beim Speichern:", error);
     }
   };
 
@@ -226,6 +249,8 @@ export default function SettingsPage() {
     if (!session?.user?.id) return;
 
     setProfilePictureFile(null);
+    const toastId = toast.loading("Profilbild wird entfernt...");
+
     try {
       await mutation.mutateAsync({
         id: session.user.id,
@@ -238,16 +263,23 @@ export default function SettingsPage() {
         hasLogoinCalendar: showLogos,
         hasGetMailNotification: true,
       });
+
       await update({
         user: {
           ...session.user,
           picture_url: "",
         },
       });
+
       setPictureUrl(null);
+      toast.success("Profilbild erfolgreich entfernt!", { id: toastId });
     } catch (error) {
-      console.error("Failed to remove profile picture:", error);
-      alert("Fehler beim Entfernen des Profilbilds");
+      toast.error(
+        `Fehler beim Entfernen des Profilbilds${
+          error instanceof Error ? ": " + error.message : ""
+        }`,
+        { id: toastId }
+      );
     }
   };
 
@@ -259,14 +291,26 @@ export default function SettingsPage() {
     );
     if (!confirmed) return;
 
+    const toastId = toast.loading("Organisation wird verlassen...");
+
     try {
       await leaveOrgMutation.mutateAsync({
         userId: session.user.id,
         organizationId,
       });
+      toast.success(
+        `${
+          organizations.find((org) => org.id === organizationId)?.name
+        } erfolgreich verlassen.`,
+        { id: toastId }
+      );
     } catch (err) {
-      console.error("Failed to leave organization:", err);
-      alert("Fehler beim Verlassen der Organisation.");
+      toast.error(
+        `Fehler beim Verlassen der Organisation.${
+          err instanceof Error ? " " + err.message : ""
+        }`,
+        { id: toastId }
+      );
     }
   }
 
@@ -287,7 +331,7 @@ export default function SettingsPage() {
   };
 
   if (status === "unauthenticated") {
-    router.push("/signin");
+    signOut({ callbackUrl: "/signin" });
     return <div>Leite weiter…</div>;
   }
 

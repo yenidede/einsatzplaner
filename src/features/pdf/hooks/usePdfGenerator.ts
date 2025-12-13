@@ -1,5 +1,7 @@
-import { useCallback, useState } from "react";import { generateEinsatzPDF } from "../pdf-action";
-import type { PDFActionResult, PdfGenerationRequest } from "../types";
+import { useCallback, useState } from "react";
+import { generateEinsatzPDF } from "../pdf-action";
+import { toast } from "sonner";
+import type { PDFActionResult, PdfGenerationRequest } from "../types/types";
 
 interface PdfGenerationResult {
   success: boolean;
@@ -91,6 +93,7 @@ export function usePdfGenerator() {
         const errorMessage =
           error instanceof Error ? error.message : "Unbekannter Fehler";
         setError(errorMessage);
+        toast.error(errorMessage);
         console.error("Error in generatePdf:", error);
         return null;
       } finally {

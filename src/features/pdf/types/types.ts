@@ -97,3 +97,24 @@ export interface MultiplePDFResult {
     }>;
   };
 }
+
+export type AssignedUser = {
+  id: string;
+  firstname: string | null;
+  lastname: string | null;
+  salutation?: {
+    id: string;
+    salutation: string;
+  } | null;
+};
+
+export interface EinsatzCategory {
+  id: string;
+  value: string | null;
+  abbreviation: string | null;
+  label?: string | null;
+}
+
+export type PDFOptions = {
+  showLogos?: boolean;
+};

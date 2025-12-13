@@ -8,6 +8,7 @@ import { hash, compare } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { OrganizationRole } from "@/types/next-auth";
 import { createClient } from "@supabase/supabase-js";
+import { toast } from "sonner";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -279,8 +280,7 @@ export async function uploadProfilePictureAction(formData: FormData) {
     });
 
   if (error) {
-    console.error("Supabase upload error:", error);
-    throw new Error(`Upload failed: ${error.message}`);
+    throw new Error("Failed to upload image: " + error.message);
   }
 
   const { data: urlData } = supabase.storage
@@ -293,7 +293,6 @@ export async function uploadProfilePictureAction(formData: FormData) {
     where: { id: session.user.id },
     data: { picture_url: publicUrl },
   });
-
   revalidatePath("/settings");
 
   return { picture_url: publicUrl };
