@@ -46,7 +46,6 @@ export default function AcceptInvitationClient({
         const errorData = await response.json();
         throw new Error(errorData.error || "Fehler beim Akzeptieren");
       }
-      // Erfolg - zur Organisation weiterleiten
       router.push("/helferansicht");
     } catch (err) {
       setError(

@@ -33,7 +33,8 @@ export default function OrganizationClient({ organization }: Props) {
           {organization.description || "Keine Beschreibung verfügbar"}
         </p>
         <p className="text-sm text-gray-500 mt-4">
-          Erstellt am: {new Date(organization.created_at).toLocaleDateString("de-DE")}
+          Erstellt am:{" "}
+          {new Date(organization.created_at).toLocaleDateString("de-DE")}
         </p>
       </div>
     </div>
