@@ -104,8 +104,7 @@ export class InvitationService {
   }
 
   static async validateInvitation(token: string) {
-    // Changed from findUnique to findFirst since token is no longer unique
-    const invitation = await prisma.invitation.findFirst({
+    const invitations = await prisma.invitation.findMany({
       where: {
         token,
         accepted: false,
@@ -123,26 +122,32 @@ export class InvitationService {
       },
     });
 
-    if (!invitation) {
+    if (!invitations || invitations.length === 0) {
       throw new Error("Einladung nicht gefunden");
     }
 
-    if (invitation.accepted) {
+    const firstInvitation = invitations[0];
+
+    if (firstInvitation.accepted) {
       throw new Error("Diese Einladung wurde bereits angenommen");
     }
 
-    if (new Date() > invitation.expires_at) {
+    if (new Date() > firstInvitation.expires_at) {
       throw new Error("Diese Einladung ist abgelaufen");
     }
 
     return {
-      id: invitation.id,
-      email: invitation.email,
-      token: invitation.token,
-      expires_at: invitation.expires_at.toISOString(),
-      organization: invitation.organization,
-      inviter: invitation.user,
-      role: invitation.role,
+      id: firstInvitation.id,
+      email: firstInvitation.email,
+      token: firstInvitation.token,
+      expires_at: firstInvitation.expires_at.toISOString(),
+      organization: firstInvitation.organization,
+      inviter: firstInvitation.user,
+      role: firstInvitation.role,
+      roles: invitations.map((inv) => ({
+        id: inv.role?.id || "",
+        name: inv.role?.name || "Unbekannt",
+      })),
     };
   }
 

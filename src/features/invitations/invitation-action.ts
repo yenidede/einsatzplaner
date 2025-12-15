@@ -39,7 +39,6 @@ export async function createInvitationAction(data: {
       throw new Error("Ungültige E-Mail-Adresse");
     }
 
-    // Einladender User finden mit ALLEN Rollen in der spezifischen Organisation
     const inviter = await prisma.user.findUnique({
       where: { email: session.user.email! },
       include: {
@@ -54,7 +53,6 @@ export async function createInvitationAction(data: {
       throw new Error("Benutzer nicht gefunden");
     }
 
-    // Berechtigung prüfen
     const canInvite = hasPermission(session, "users:invite");
 
     if (!canInvite) {

@@ -25,9 +25,11 @@ import {
   getSalutationsAction,
   updateOrgMailNotificationAction,
   UserUpdateData,
+  removeUserFromOrganizationAction,
 } from "@/features/settings/settings-action";
 import { removeUserFromOrganization } from "@/DataAccessLayer/user";
 import { toast } from "sonner";
+import { useAlertDialog } from "@/hooks/use-alert-dialog";
 
 type Organization = {
   id: string;
@@ -64,6 +66,7 @@ export default function SettingsPage() {
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const { data: session, status, update } = useSession();
   const router = useRouter();
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [firstname, setFirstname] = useState<string>("");
@@ -155,7 +158,10 @@ export default function SettingsPage() {
       userId: string;
       organizationId: string;
     }) => {
-      const res = await removeUserFromOrganization(userId, organizationId);
+      const res = await removeUserFromOrganizationAction(
+        userId,
+        organizationId
+      );
       if (!res) throw new Error("Failed to leave organization");
       return res;
     },
@@ -286,10 +292,19 @@ export default function SettingsPage() {
   async function handleOrganizationLeave(organizationId: string) {
     if (!session?.user?.id) return;
 
-    const confirmed = window.confirm(
-      "Möchtest du die Organisation wirklich verlassen?"
-    );
-    if (!confirmed) return;
+    const orgName =
+      organizations.find((org) => org.id === organizationId)?.name ||
+      "Organisation";
+
+    const result = await showDialog({
+      title: "Organisation verlassen",
+      description: `Möchten Sie wirklich ${orgName} verlassen? Sie verlieren den Zugriff auf alle Daten dieser Organisation.`,
+      confirmText: "Verlassen",
+      cancelText: "Abbrechen",
+      variant: "destructive",
+    });
+
+    if (result !== "success") return;
 
     const toastId = toast.loading("Organisation wird verlassen...");
 
@@ -298,12 +313,7 @@ export default function SettingsPage() {
         userId: session.user.id,
         organizationId,
       });
-      toast.success(
-        `${
-          organizations.find((org) => org.id === organizationId)?.name
-        } erfolgreich verlassen.`,
-        { id: toastId }
-      );
+      toast.success(`${orgName} erfolgreich verlassen.`, { id: toastId });
     } catch (err) {
       toast.error(
         `Fehler beim Verlassen der Organisation.${
@@ -350,384 +360,396 @@ export default function SettingsPage() {
   const manageableOrganizations = organizations.filter(hasManagePermission);
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
-      {/* Header */}
-      <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
-        <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
-          <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
-            Einstellungen
+    <>
+      {AlertDialogComponent}
+      <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
+        {/* Header */}
+        <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
+          <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
+            <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
+              Einstellungen
+            </div>
           </div>
-        </div>
-        <div className="flex justify-end items-center gap-2">
-          <button
-            className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
-            onClick={() => router.back()}
-          >
-            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-              Abbrechen (ESC)
-            </div>
-          </button>
-          <button
-            className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5"
-            onClick={handleSave}
-          >
-            <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-              Speichern
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
-        {/* Sidebar */}
-        <div className="self-stretch inline-flex flex-col justify-between items-start">
-          <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
-            {/* Allgemein */}
-            <div className="self-stretch px-2 py-1.5 bg-slate-100 rounded-md inline-flex justify-start items-center gap-2">
-              <div className="w-4 h-4 relative overflow-hidden">
-                <SettingsIcon className="w-4 h-4 relative overflow-hidden" />
-              </div>
-              <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
-                Allgemein
-              </div>
-            </div>
-
-            <div className="self-stretch h-px bg-slate-200" />
-
-            {/* Organisationsverwaltung */}
-            <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">
-              Organisationsverwaltung
-            </div>
-
-            {manageableOrganizations.length > 0 ? (
-              manageableOrganizations.map((org) => (
-                <button
-                  key={org.id}
-                  onClick={() => router.push(`/organization/${org.id}/manage`)}
-                  className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
-                >
-                  <OrganisationIcon />
-                  <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
-                    {org.name}
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="px-2 py-1.5 text-xs text-gray-400">
-                Keine Berechtigung
-              </div>
-            )}
-          </div>
-
-          {/* Logout Button */}
-          <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
+          <div className="flex justify-end items-center gap-2">
             <button
-              className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2"
-              onClick={() => signOut()}
+              className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
+              onClick={() => router.back()}
             >
-              <LogoutIcon className="w-4 h-4 relative overflow-hidden" />
-              <span className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-                Ausloggen
-              </span>
+              <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
+                Abbrechen (ESC)
+              </div>
+            </button>
+            <button
+              className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5"
+              onClick={handleSave}
+            >
+              <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
+                Speichern
+              </div>
             </button>
           </div>
         </div>
 
-        {/* Content Area */}
-        <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
-          {/* Mein Account */}
-          <div className="self-stretch flex flex-col justify-center items-start gap-4">
-            <div className="self-stretch flex flex-col justify-start items-start gap-2">
-              <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
-                <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">
-                  Mein Account
+        {/* Main Content */}
+        <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
+          {/* Sidebar */}
+          <div className="self-stretch inline-flex flex-col justify-between items-start">
+            <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
+              {/* Allgemein */}
+              <div className="self-stretch px-2 py-1.5 bg-slate-100 rounded-md inline-flex justify-start items-center gap-2">
+                <div className="w-4 h-4 relative overflow-hidden">
+                  <SettingsIcon className="w-4 h-4 relative overflow-hidden" />
+                </div>
+                <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
+                  Allgemein
                 </div>
               </div>
 
-              <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
-                {/* Profile Picture */}{" "}
-                {/* TODO (Ömer): picture_url wirft langen url ab, funkt also nicht optimal -> verbessern */}
-                <div className="self-stretch px-4 flex flex-col justify-start items-start gap-2">
-                  <div className="inline-flex justify-start items-center gap-2">
-                    {profilePictureFile ? (
-                      <img
-                        src={URL.createObjectURL(profilePictureFile)}
-                        alt="Profilbild Vorschau"
-                        className="w-10 h-10 rounded-full object-cover border"
-                      />
-                    ) : pictureUrl ? (
-                      <img
-                        src={pictureUrl}
-                        alt="Profilbild"
-                        className="w-10 h-10 rounded-full object-cover border"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 px-2 py-1.5 bg-slate-200 rounded-[20px] inline-flex flex-col justify-center items-center gap-2.5">
-                        <div className="justify-start text-slate-900 text-base font-normal font-['Inter'] leading-7">
-                          {initials}
+              <div className="self-stretch h-px bg-slate-200" />
+
+              {/* Organisationsverwaltung */}
+              <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">
+                Organisationsverwaltung
+              </div>
+
+              {manageableOrganizations.length > 0 ? (
+                manageableOrganizations.map((org) => (
+                  <button
+                    key={org.id}
+                    onClick={() =>
+                      router.push(`/organization/${org.id}/manage`)
+                    }
+                    className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
+                  >
+                    <OrganisationIcon />
+                    <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
+                      {org.name}
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="px-2 py-1.5 text-xs text-gray-400">
+                  Keine Berechtigung
+                </div>
+              )}
+            </div>
+
+            {/* Logout Button */}
+            <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
+              <button
+                className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2"
+                onClick={() => signOut()}
+              >
+                <LogoutIcon className="w-4 h-4 relative overflow-hidden" />
+                <span className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
+                  Ausloggen
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
+            {/* Mein Account */}
+            <div className="self-stretch flex flex-col justify-center items-start gap-4">
+              <div className="self-stretch flex flex-col justify-start items-start gap-2">
+                <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
+                  <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">
+                    Mein Account
+                  </div>
+                </div>
+
+                <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
+                  {/* Profile Picture */}{" "}
+                  {/* TODO (Ömer): picture_url wirft langen url ab, funkt also nicht optimal -> verbessern */}
+                  <div className="self-stretch px-4 flex flex-col justify-start items-start gap-2">
+                    <div className="inline-flex justify-start items-center gap-2">
+                      {profilePictureFile ? (
+                        <img
+                          src={URL.createObjectURL(profilePictureFile)}
+                          alt="Profilbild Vorschau"
+                          className="w-10 h-10 rounded-full object-cover border"
+                        />
+                      ) : pictureUrl ? (
+                        <img
+                          src={pictureUrl}
+                          alt="Profilbild"
+                          className="w-10 h-10 rounded-full object-cover border"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 px-2 py-1.5 bg-slate-200 rounded-[20px] inline-flex flex-col justify-center items-center gap-2.5">
+                          <div className="justify-start text-slate-900 text-base font-normal font-['Inter'] leading-7">
+                            {initials}
+                          </div>
+                        </div>
+                      )}
+                      <div className="inline-flex flex-col justify-center items-start">
+                        <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-normal">
+                          {firstname} {lastname}
                         </div>
                       </div>
-                    )}
-                    <div className="inline-flex flex-col justify-center items-start">
-                      <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-normal">
-                        {firstname} {lastname}
-                      </div>
+                    </div>
+
+                    <div className="inline-flex justify-start items-start gap-2">
+                      <button
+                        type="button"
+                        className="px-4 py-2 bg-slate-900 text-white rounded-md inline-flex justify-center items-center gap-2"
+                        onClick={() =>
+                          (
+                            document.querySelector(
+                              "input[type=file]"
+                            ) as HTMLInputElement | null
+                          )?.click()
+                        }
+                      >
+                        <UploadProfilePictureIcon />
+                        <span>Profilbild hochladen</span>
+                      </button>
+                      <ProfilePictureUpload
+                        onUpload={handleProfilePictureUpload}
+                      />
+
+                      <button
+                        type="button"
+                        className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
+                        onClick={handleRemoveProfilePicture}
+                      >
+                        <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
+                          Profilbild entfernen
+                        </div>
+                      </button>
                     </div>
                   </div>
-
-                  <div className="inline-flex justify-start items-start gap-2">
-                    <button
-                      type="button"
-                      className="px-4 py-2 bg-slate-900 text-white rounded-md inline-flex justify-center items-center gap-2"
-                      onClick={() =>
-                        (
-                          document.querySelector(
-                            "input[type=file]"
-                          ) as HTMLInputElement | null
-                        )?.click()
-                      }
-                    >
-                      <UploadProfilePictureIcon />
-                      <span>Profilbild hochladen</span>
-                    </button>
-                    <ProfilePictureUpload
-                      onUpload={handleProfilePictureUpload}
-                    />
-
-                    <button
-                      type="button"
-                      className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
-                      onClick={handleRemoveProfilePicture}
-                    >
-                      <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-                        Profilbild entfernen
-                      </div>
-                    </button>
-                  </div>
-                </div>
-                {/* Name Fields */}
-                <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                  <div className="grid w-full max-w-sm items-center gap-3">
-                    <LabelSettings
-                      htmlFor="firstname"
-                      className="text-sm font-medium"
-                    >
-                      Vorname
-                    </LabelSettings>
-                    <InputSettings
-                      id="firstname"
-                      value={firstname}
-                      className="w-full"
-                      onChange={(e) => setFirstname(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid w-full max-w-sm items-center gap-3">
-                    <LabelSettings
-                      htmlFor="lastname"
-                      className="text-sm font-medium"
-                    >
-                      Nachname
-                    </LabelSettings>
-                    <InputSettings
-                      id="lastname"
-                      value={lastname}
-                      className="w-full"
-                      onChange={(e) => setLastname(e.target.value)}
-                    />
-                  </div>
-                </div>
-                {/* Contact Fields */}
-                <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                  <div className="grid w-full max-w-sm items-center gap-3">
-                    <LabelSettings htmlFor={id} className="text-sm font-medium">
-                      E-Mail
-                    </LabelSettings>
-                    <InputSettings
-                      id={id}
-                      value={email}
-                      className="w-full"
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid w-full max-w-sm items-center gap-3">
-                    <LabelSettings
-                      htmlFor="phone"
-                      className="text-sm font-medium"
-                    >
-                      Telefon
-                    </LabelSettings>
-                    <InputSettings
-                      id="phone"
-                      value={phone}
-                      className="w-full"
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Persönliche Präferenzen */}
-          <div className="self-stretch flex flex-col justify-center items-start">
-            <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-              <div className="flex-1 flex justify-start items-center gap-2">
-                <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                  Persönliche Präferenzen
-                </div>
-              </div>
-            </div>
-
-            {/* Logo Switch */}
-            <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-              <div className="flex-1 px-4 flex justify-start items-start gap-4">
-                <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                  <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                    Zeige Logos in Kalenderansicht
-                  </div>
-                  <div className="inline-flex items-center gap-2">
-                    <Switch
-                      id="logo-switch"
-                      checked={showLogos}
-                      onCheckedChange={setShowLogos}
-                      aria-label="Toggle switch"
-                    />
-                    <Label
-                      htmlFor="logo-switch"
-                      className="text-sm font-medium"
-                    >
-                      {showLogos ? "On" : "Off"}
-                    </Label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Salutation Select */}
-            <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-              <div className="flex-1 px-4 flex justify-start items-start gap-4">
-                <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                  <LabelSettings
-                    htmlFor="salutation"
-                    className="text-sm font-medium"
-                  >
-                    Anrede
-                  </LabelSettings>
-                  <select
-                    id="salutation"
-                    value={salutationId || ""}
-                    onChange={(e) => setSalutationId(e.target.value)}
-                    className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-400 w-full"
-                  >
-                    <option value="">Bitte wählen</option>
-                    {salutations.map((sal: Salutation) => (
-                      <option key={sal.id} value={sal.id}>
-                        {sal.salutation}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Benachrichtigungen */}
-          <div className="self-stretch flex flex-col justify-center items-start">
-            <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-              <div className="flex-1 flex justify-start items-center gap-2">
-                <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                  Benachrichtigungen
-                </div>
-              </div>
-            </div>
-
-            <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-              <div className="flex-1 px-4 flex flex-col gap-2">
-                {organizations.length > 0 ? (
-                  organizations.map((org) => {
-                    const isOn = org.hasGetMailNotification ?? true;
-
-                    return (
-                      <div
-                        key={org.id}
-                        className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5"
+                  {/* Name Fields */}
+                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                    <div className="grid w-full max-w-sm items-center gap-3">
+                      <LabelSettings
+                        htmlFor="firstname"
+                        className="text-sm font-medium"
                       >
-                        <Label
-                          htmlFor={`org-switch-${org.id}`}
-                          className="text-sm font-medium"
-                        >
-                          Emails von{" "}
-                          <span className="font-bold">{org.name}</span> erhalten
-                        </Label>
+                        Vorname
+                      </LabelSettings>
+                      <InputSettings
+                        id="firstname"
+                        value={firstname}
+                        className="w-full"
+                        onChange={(e) => setFirstname(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid w-full max-w-sm items-center gap-3">
+                      <LabelSettings
+                        htmlFor="lastname"
+                        className="text-sm font-medium"
+                      >
+                        Nachname
+                      </LabelSettings>
+                      <InputSettings
+                        id="lastname"
+                        value={lastname}
+                        className="w-full"
+                        onChange={(e) => setLastname(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  {/* Contact Fields */}
+                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                    <div className="grid w-full max-w-sm items-center gap-3">
+                      <LabelSettings
+                        htmlFor={id}
+                        className="text-sm font-medium"
+                      >
+                        E-Mail
+                      </LabelSettings>
+                      <InputSettings
+                        id={id}
+                        value={email}
+                        className="w-full"
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid w-full max-w-sm items-center gap-3">
+                      <LabelSettings
+                        htmlFor="phone"
+                        className="text-sm font-medium"
+                      >
+                        Telefon
+                      </LabelSettings>
+                      <InputSettings
+                        id="phone"
+                        value={phone}
+                        className="w-full"
+                        onChange={(e) => setPhone(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                        <div className="inline-flex items-center gap-2">
-                          <Switch
-                            id={`org-switch-${org.id}`}
-                            checked={isOn}
-                            onCheckedChange={(checked) => {
-                              setOrganizations((prev) =>
-                                prev.map((o) =>
-                                  o.id === org.id
-                                    ? { ...o, hasGetMailNotification: checked }
-                                    : o
-                                )
-                              );
-                            }}
-                            aria-label={`Toggle switch for ${org.name}`}
-                          />
+            {/* Persönliche Präferenzen */}
+            <div className="self-stretch flex flex-col justify-center items-start">
+              <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
+                <div className="flex-1 flex justify-start items-center gap-2">
+                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+                    Persönliche Präferenzen
+                  </div>
+                </div>
+              </div>
+
+              {/* Logo Switch */}
+              <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
+                <div className="flex-1 px-4 flex justify-start items-start gap-4">
+                  <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
+                    <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+                      Zeige Logos in Kalenderansicht
+                    </div>
+                    <div className="inline-flex items-center gap-2">
+                      <Switch
+                        id="logo-switch"
+                        checked={showLogos}
+                        onCheckedChange={setShowLogos}
+                        aria-label="Toggle switch"
+                      />
+                      <Label
+                        htmlFor="logo-switch"
+                        className="text-sm font-medium"
+                      >
+                        {showLogos ? "On" : "Off"}
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Salutation Select */}
+              <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
+                <div className="flex-1 px-4 flex justify-start items-start gap-4">
+                  <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
+                    <LabelSettings
+                      htmlFor="salutation"
+                      className="text-sm font-medium"
+                    >
+                      Anrede
+                    </LabelSettings>
+                    <select
+                      id="salutation"
+                      value={salutationId || ""}
+                      onChange={(e) => setSalutationId(e.target.value)}
+                      className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-400 w-full"
+                    >
+                      <option value="">Bitte wählen</option>
+                      {salutations.map((sal: Salutation) => (
+                        <option key={sal.id} value={sal.id}>
+                          {sal.salutation}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Benachrichtigungen */}
+            <div className="self-stretch flex flex-col justify-center items-start">
+              <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
+                <div className="flex-1 flex justify-start items-center gap-2">
+                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+                    Benachrichtigungen
+                  </div>
+                </div>
+              </div>
+
+              <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
+                <div className="flex-1 px-4 flex flex-col gap-2">
+                  {organizations.length > 0 ? (
+                    organizations.map((org) => {
+                      const isOn = org.hasGetMailNotification ?? true;
+
+                      return (
+                        <div
+                          key={org.id}
+                          className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5"
+                        >
                           <Label
                             htmlFor={`org-switch-${org.id}`}
                             className="text-sm font-medium"
                           >
-                            {isOn ? "On" : "Off"}
+                            Emails von{" "}
+                            <span className="font-bold">{org.name}</span>{" "}
+                            erhalten
                           </Label>
+
+                          <div className="inline-flex items-center gap-2">
+                            <Switch
+                              id={`org-switch-${org.id}`}
+                              checked={isOn}
+                              onCheckedChange={(checked) => {
+                                setOrganizations((prev) =>
+                                  prev.map((o) =>
+                                    o.id === org.id
+                                      ? {
+                                          ...o,
+                                          hasGetMailNotification: checked,
+                                        }
+                                      : o
+                                  )
+                                );
+                              }}
+                              aria-label={`Toggle switch for ${org.name}`}
+                            />
+                            <Label
+                              htmlFor={`org-switch-${org.id}`}
+                              className="text-sm font-medium"
+                            >
+                              {isOn ? "On" : "Off"}
+                            </Label>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-slate-500">
-                    Keine Organisationen für Benachrichtigungen.
+                      );
+                    })
+                  ) : (
+                    <div className="text-slate-500">
+                      Keine Organisationen für Benachrichtigungen.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Meine Organisationen */}
+            <div className="self-stretch flex flex-col justify-center items-start">
+              <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
+                <div className="flex-1 flex justify-start items-center gap-2">
+                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+                    Meine Organisationen
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Meine Organisationen */}
-          <div className="self-stretch flex flex-col justify-center items-start">
-            <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-              <div className="flex-1 flex justify-start items-center gap-2">
-                <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                  Meine Organisationen
                 </div>
               </div>
-            </div>
 
-            {organizations.length > 0 ? (
-              organizations.map((org) => (
-                <div key={org.id}>
-                  <OrganizationCard
-                    name={org.name}
-                    roles={org.roles || []}
-                    onLeave={() => handleOrganizationLeave(org.id)}
-                  />
-                  <CalendarSubscription
-                    orgId={org.id}
-                    orgName={org.name}
-                    variant="card"
-                  />
+              {organizations.length > 0 ? (
+                organizations.map((org) => (
+                  <div key={org.id}>
+                    <OrganizationCard
+                      name={org.name}
+                      roles={org.roles || []}
+                      onLeave={() => handleOrganizationLeave(org.id)}
+                    />
+                    <CalendarSubscription
+                      orgId={org.id}
+                      orgName={org.name}
+                      variant="card"
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="text-slate-500">
+                  Du bist in keiner Organisation.
                 </div>
-              ))
-            ) : (
-              <div className="text-slate-500">
-                Du bist in keiner Organisation.
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

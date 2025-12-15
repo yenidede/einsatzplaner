@@ -352,3 +352,73 @@ export async function updateActiveOrganizationAction(
     return { success: false, error: "Fehler beim Aktualisieren" };
   }
 }
+
+export async function removeUserFromOrganizationAction(
+  userId: string,
+  organizationId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await checkUserSession();
+
+    // Verify the user is removing themselves (security check)
+    if (session.user.id !== userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Check if user is in the organization
+    const userOrgRoles = await prisma.user_organization_role.findMany({
+      where: {
+        user_id: userId,
+        org_id: organizationId,
+      },
+    });
+
+    if (userOrgRoles.length === 0) {
+      return {
+        success: false,
+        error: "Benutzer ist nicht Mitglied dieser Organisation",
+      };
+    }
+
+    // Remove all roles for this user in this organization
+    await prisma.user_organization_role.deleteMany({
+      where: {
+        user_id: userId,
+        org_id: organizationId,
+      },
+    });
+
+    // If this was the active organization, update to another org or null
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { active_org: true },
+    });
+
+    if (user?.active_org === organizationId) {
+      // Find another organization the user belongs to
+      const otherOrg = await prisma.user_organization_role.findFirst({
+        where: {
+          user_id: userId,
+          org_id: { not: organizationId },
+        },
+        select: { org_id: true },
+      });
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { active_org: otherOrg?.org_id || null },
+      });
+    }
+
+    revalidatePath("/settings");
+    revalidatePath("/");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to remove user from organization:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unbekannter Fehler",
+    };
+  }
+}
