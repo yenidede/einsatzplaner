@@ -71,11 +71,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await prisma.invitation.update({
+    await prisma.invitation.delete({
       where: { id: invitation.id },
-      data: {
-        accepted: true,
-      },
     });
 
     const updatedUser = await prisma.user.findUnique({
