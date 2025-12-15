@@ -23,7 +23,23 @@ async function checkUserSession() {
   if (!session?.user?.id) throw new Error("Unauthorized");
   return session;
 }
+export async function getAllRolesExceptSuperAdmin() {
+  const roles = await prisma.role.findMany({
+    select: {
+      id: true,
+      name: true,
+      abbreviation: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+    where: {
+      name: { not: "Superadmin" },
+    },
+  });
 
+  return roles;
+}
 export async function getOrganizationById(orgId: string) {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -54,8 +70,21 @@ export async function getOrganizationById(orgId: string) {
     created_at: org.created_at.toISOString(),
   };
 }
+export async function getEinsatzNamesByOrgId(orgId: string) {
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: {
+      einsatz_name_singular: true,
+      einsatz_name_plural: true,
+    },
+  });
+  if (!org) throw new Error("Organization not found");
 
-// GET - Alle Organisationen des Users
+  return {
+    einsatz_name_singular: org.einsatz_name_singular ?? "Einsatz",
+    einsatz_name_plural: org.einsatz_name_plural ?? "Einsätze",
+  };
+} // GET - Alle Organisationen des Users
 export async function getUserOrganizationsAction() {
   const session = await checkUserSession();
 

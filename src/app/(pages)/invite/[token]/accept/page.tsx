@@ -1,24 +1,27 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { useInvitationValidation } from '@/features/invitations/hooks/useInvitation';
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useInvitationValidation } from "@/features/invitations/hooks/useInvitation";
+import { acceptInvitationAction } from "@/features/invitations/invitation-action";
 
 export default function AcceptPage() {
   const router = useRouter();
   const params = useParams();
   const token = params?.token as string;
-  
+
   const { data: session, status: sessionStatus } = useSession();
   const { data: invitation, isLoading, error } = useInvitationValidation(token);
-  
+
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (sessionStatus === 'unauthenticated') {
-      router.push(`/signin?callbackUrl=${encodeURIComponent(`/invite/${token}/accept`)}`);
+    if (sessionStatus === "unauthenticated") {
+      router.push(
+        `/signin?callbackUrl=${encodeURIComponent(`/invite/${token}/accept`)}`
+      );
     }
   }, [sessionStatus, router, token]);
 
@@ -32,22 +35,19 @@ export default function AcceptPage() {
     const acceptInvitation = async () => {
       setAccepting(true);
       try {
-        const response = await fetch('/api/invitations/accept', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
+        const response = await acceptInvitationAction(token);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Fehler beim Akzeptieren');
+        if (!response) {
+          throw new Error(response);
         }
 
         setTimeout(() => {
-          router.push('/helferansicht');
+          router.push("/helferansicht");
         }, 2000);
       } catch (err) {
-        setAcceptError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+        setAcceptError(
+          err instanceof Error ? err.message : "Unbekannter Fehler"
+        );
         setAccepting(false);
       }
     };
@@ -55,7 +55,7 @@ export default function AcceptPage() {
     acceptInvitation();
   }, [invitation, session, accepting, token, router]);
 
-  if (isLoading || sessionStatus === 'loading') {
+  if (isLoading || sessionStatus === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
@@ -70,12 +70,15 @@ export default function AcceptPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Einladung nicht gefunden</h1>
+          <h1 className="text-2xl font-bold text-red-600 mb-4">
+            Einladung nicht gefunden
+          </h1>
           <p className="text-gray-600 mb-6">
-            {error?.message || 'Die Einladung ist ungültig, bereits akzeptiert oder abgelaufen.'}
+            {error?.message ||
+              "Die Einladung ist ungültig, bereits akzeptiert oder abgelaufen."}
           </p>
           <button
-            onClick={() => router.push('/helferansicht')}
+            onClick={() => router.push("/helferansicht")}
             className="inline-block bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
           >
             Zur Helferansicht
@@ -89,7 +92,9 @@ export default function AcceptPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Falsche E-Mail-Adresse</h1>
+          <h1 className="text-2xl font-bold text-red-600 mb-4">
+            Falsche E-Mail-Adresse
+          </h1>
           <p className="text-gray-600 mb-4">
             Sie sind als <strong>{session.user.email}</strong> angemeldet.
           </p>
@@ -101,13 +106,19 @@ export default function AcceptPage() {
           </p>
           <div className="space-y-3">
             <button
-              onClick={() => router.push(`/signout?callbackUrl=${encodeURIComponent(`/invite/${token}/accept`)}`)}
+              onClick={() =>
+                router.push(
+                  `/signout?callbackUrl=${encodeURIComponent(
+                    `/invite/${token}/accept`
+                  )}`
+                )
+              }
               className="block w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 font-medium"
             >
               Abmelden und richtige E-Mail verwenden
             </button>
             <button
-              onClick={() => router.push('/helferansicht')}
+              onClick={() => router.push("/helferansicht")}
               className="block w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200"
             >
               Zur Startseite
@@ -125,7 +136,7 @@ export default function AcceptPage() {
           <h1 className="text-2xl font-bold text-red-600 mb-4">Fehler</h1>
           <p className="text-gray-600 mb-6">{acceptError}</p>
           <button
-            onClick={() => router.push('/helferansicht')}
+            onClick={() => router.push("/helferansicht")}
             className="inline-block bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
           >
             Zur Helferansicht
