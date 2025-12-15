@@ -29,7 +29,6 @@ export async function GET(request: NextRequest) {
 
     const firstInvitation = invitations[0];
 
-    // Prüfen ob abgelaufen
     if (firstInvitation.expires_at < new Date()) {
       return NextResponse.json(
         { error: "Einladung ist abgelaufen" },
@@ -37,7 +36,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Prüfen ob bereits angenommen
     if (firstInvitation.accepted) {
       return NextResponse.json(
         { error: "Einladung wurde bereits angenommen" },
@@ -45,7 +43,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Einladender User laden
     const inviter = await prisma.user.findUnique({
       where: { id: firstInvitation.invited_by },
       select: { firstname: true, lastname: true, email: true },
@@ -56,7 +53,6 @@ export async function GET(request: NextRequest) {
         ? `${inviter.firstname} ${inviter.lastname}`
         : inviter?.email || "Unbekannt";
 
-    // Return all role names
     const roleNames = invitations
       .map((inv) => inv.role?.name)
       .filter(Boolean)
@@ -75,7 +71,7 @@ export async function GET(request: NextRequest) {
       expiresAt: firstInvitation.expires_at.toISOString(),
     });
   } catch (error) {
-    console.error("❌ Error verifying invitation:", error);
+    console.error("Error verifying invitation:", error);
     return NextResponse.json(
       {
         error: "Fehler beim Überprüfen der Einladung",

@@ -296,9 +296,6 @@ export function InviteUserForm({
                       className="text-sm text-slate-700 cursor-pointer select-none"
                     >
                       <span className="font-medium">Helfer</span>
-                      <span className="text-slate-500 ml-2">
-                        - Basis-Berechtigung
-                      </span>
                     </label>
                   </div>
 
@@ -315,10 +312,7 @@ export function InviteUserForm({
                       className="text-sm text-slate-700 cursor-pointer select-none"
                     >
                       <span className="font-medium">
-                        {einsatzNamePlural}verwaltung (EV)
-                      </span>
-                      <span className="text-slate-500 ml-2">
-                        - {einsatzNamePlural} erstellen & verwalten
+                        Einsatzverwaltung (EV)
                       </span>
                     </label>
                   </div>
@@ -337,9 +331,6 @@ export function InviteUserForm({
                     >
                       <span className="font-medium">
                         Organisationsverwaltung (OV)
-                      </span>
-                      <span className="text-slate-500 ml-2">
-                        - Organisation & Benutzer verwalten
                       </span>
                     </label>
                   </div>

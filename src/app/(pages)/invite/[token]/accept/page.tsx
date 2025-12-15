@@ -6,6 +6,11 @@ import { useSession } from "next-auth/react";
 import { useInvitationValidation } from "@/features/invitations/hooks/useInvitation";
 import { acceptInvitationAction } from "@/features/invitations/invitation-action";
 
+interface Role {
+  id: string;
+  name: string;
+}
+
 export default function AcceptPage() {
   const router = useRouter();
   const params = useParams();
@@ -16,6 +21,7 @@ export default function AcceptPage() {
 
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
@@ -25,35 +31,33 @@ export default function AcceptPage() {
     }
   }, [sessionStatus, router, token]);
 
-  useEffect(() => {
+  const handleAcceptClick = async () => {
     if (!invitation || !session?.user?.email || accepting) return;
 
     if (session.user.email !== invitation.email) {
+      setAcceptError("E-Mail-Adressen stimmen nicht überein");
       return;
     }
 
-    const acceptInvitation = async () => {
-      setAccepting(true);
-      try {
-        const response = await acceptInvitationAction(token);
+    setAccepting(true);
+    setAcceptError(null);
 
-        if (!response) {
-          throw new Error(response);
-        }
+    try {
+      const response = await acceptInvitationAction(token);
 
-        setTimeout(() => {
-          router.push("/helferansicht");
-        }, 2000);
-      } catch (err) {
-        setAcceptError(
-          err instanceof Error ? err.message : "Unbekannter Fehler"
-        );
-        setAccepting(false);
+      if (!response) {
+        throw new Error("Fehler beim Annehmen der Einladung");
       }
-    };
 
-    acceptInvitation();
-  }, [invitation, session, accepting, token, router]);
+      setSuccess(true);
+      setTimeout(() => {
+        router.push("/helferansicht");
+      }, 2000);
+    } catch (err) {
+      setAcceptError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setAccepting(false);
+    }
+  };
 
   if (isLoading || sessionStatus === "loading") {
     return (
@@ -98,43 +102,9 @@ export default function AcceptPage() {
           <p className="text-gray-600 mb-4">
             Sie sind als <strong>{session.user.email}</strong> angemeldet.
           </p>
-          <p className="text-gray-600 mb-4">
-            Diese Einladung ist aber für <strong>{invitation.email}</strong>.
-          </p>
           <p className="text-gray-600 mb-6">
-            Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.
+            Diese Einladung ist für <strong>{invitation.email}</strong>.
           </p>
-          <div className="space-y-3">
-            <button
-              onClick={() =>
-                router.push(
-                  `/signout?callbackUrl=${encodeURIComponent(
-                    `/invite/${token}/accept`
-                  )}`
-                )
-              }
-              className="block w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 font-medium"
-            >
-              Abmelden und richtige E-Mail verwenden
-            </button>
-            <button
-              onClick={() => router.push("/helferansicht")}
-              className="block w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200"
-            >
-              Zur Startseite
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (acceptError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Fehler</h1>
-          <p className="text-gray-600 mb-6">{acceptError}</p>
           <button
             onClick={() => router.push("/helferansicht")}
             className="inline-block bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
@@ -146,15 +116,15 @@ export default function AcceptPage() {
     );
   }
 
-  if (accepting) {
+  if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <div className="text-green-600 text-6xl mb-4">✓</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Einladung wird angenommen...
+            Erfolgreich beigetreten!
           </h1>
-          <p className="text-gray-600">Bitte warten Sie einen Moment.</p>
+          <p className="text-gray-600 mb-6">Sie werden weitergeleitet...</p>
         </div>
       </div>
     );
@@ -162,23 +132,95 @@ export default function AcceptPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-        <div className="text-green-600 text-6xl mb-4">✓</div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">
-          Einladung angenommen!
-        </h1>
-        <p className="text-gray-600 mb-2">
-          Sie sind jetzt Mitglied der Organisation
-        </p>
-        <p className="text-lg font-semibold text-blue-600 mb-6">
-          {invitation.organization.name}
-        </p>
-        <p className="text-sm text-gray-500 mb-6">
-          Ihre Rolle: {invitation.role?.name}
-        </p>
-        <p className="text-sm text-gray-400">
-          Sie werden automatisch weitergeleitet...
-        </p>
+      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Einladung annehmen
+          </h1>
+          <p className="text-gray-600">
+            Möchten Sie der Organisation{" "}
+            <strong>{invitation.organization.name}</strong> beitreten?
+          </p>
+        </div>
+
+        <div className="bg-blue-50 p-4 rounded-lg mb-6">
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between items-start">
+              <span className="text-gray-600 font-medium">E-Mail:</span>
+              <span className="text-gray-900">{invitation.email}</span>
+            </div>
+            <div className="flex justify-between items-start">
+              <span className="text-gray-600 font-medium">Organisation:</span>
+              <span className="text-gray-900">
+                {invitation.organization.name}
+              </span>
+            </div>
+            <div className="flex justify-between items-start">
+              <span className="text-gray-600 font-medium">
+                {invitation.roles && invitation.roles.length > 1
+                  ? "Rollen:"
+                  : "Rolle:"}
+              </span>
+              <div className="flex flex-col items-end gap-1">
+                {invitation.roles && invitation.roles.length > 0 ? (
+                  invitation.roles.map((role: Role, index: number) => (
+                    <span
+                      key={role.id || index}
+                      className="text-sm bg-blue-100 text-blue-900 px-2 py-0.5 rounded font-medium"
+                    >
+                      {role.name}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-900">
+                    {invitation.role?.name || "Helfer"}
+                  </span>
+                )}
+              </div>
+            </div>
+            {invitation.inviter && (
+              <div className="flex justify-between items-start">
+                <span className="text-gray-600 font-medium">
+                  Eingeladen von:
+                </span>
+                <span className="text-gray-900">
+                  {invitation.inviter.firstname} {invitation.inviter.lastname}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {acceptError && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
+            {acceptError}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <button
+            onClick={handleAcceptClick}
+            disabled={accepting}
+            className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+          >
+            {accepting ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Wird angenommen...
+              </div>
+            ) : (
+              "Einladung annehmen"
+            )}
+          </button>
+
+          <button
+            onClick={() => router.push("/helferansicht")}
+            disabled={accepting}
+            className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+          >
+            Abbrechen
+          </button>
+        </div>
       </div>
     </div>
   );
