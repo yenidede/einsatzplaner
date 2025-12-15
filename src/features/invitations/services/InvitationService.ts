@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { emailService } from "@/lib/email/EmailService"; // ✅ Nutze existierenden Service
+import { emailService } from "@/lib/email/EmailService";
 import { randomBytes } from "crypto";
 
 export class InvitationService {
@@ -88,7 +88,6 @@ export class InvitationService {
       },
     });
 
-    // ✅ Nutze existierenden EmailService
     await emailService.sendInvitationEmail(
       email,
       `${inviter.firstname} ${inviter.lastname}`,
@@ -105,14 +104,21 @@ export class InvitationService {
   }
 
   static async validateInvitation(token: string) {
-    const invitation = await prisma.invitation.findUnique({
-      where: { token },
+    // Changed from findUnique to findFirst since token is no longer unique
+    const invitation = await prisma.invitation.findFirst({
+      where: {
+        token,
+        accepted: false,
+      },
       include: {
         organization: {
           select: { id: true, name: true },
         },
         user: {
           select: { firstname: true, lastname: true },
+        },
+        role: {
+          select: { id: true, name: true },
         },
       },
     });
@@ -136,6 +142,7 @@ export class InvitationService {
       expires_at: invitation.expires_at.toISOString(),
       organization: invitation.organization,
       inviter: invitation.user,
+      role: invitation.role,
     };
   }
 
@@ -148,10 +155,33 @@ export class InvitationService {
       phone?: string;
     }
   ) {
-    const invitation = await this.validateInvitation(token);
+    const invitations = await prisma.invitation.findMany({
+      where: {
+        token,
+        accepted: false,
+      },
+      include: {
+        organization: {
+          select: { id: true, name: true },
+        },
+        role: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    if (!invitations || invitations.length === 0) {
+      throw new Error("Einladung nicht gefunden");
+    }
+
+    const firstInvitation = invitations[0];
+
+    if (new Date() > firstInvitation.expires_at) {
+      throw new Error("Diese Einladung ist abgelaufen");
+    }
 
     const existingUser = await prisma.user.findUnique({
-      where: { email: invitation.email },
+      where: { email: firstInvitation.email },
     });
 
     if (existingUser) {
@@ -160,35 +190,34 @@ export class InvitationService {
       );
     }
 
-    const helperRole = await prisma.role.findFirst({
-      where: { name: "Helfer" },
-    });
-
-    if (!helperRole) {
-      throw new Error("Standard-Rolle nicht gefunden");
-    }
-
     const user = await prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: {
-          email: invitation.email,
+          email: firstInvitation.email,
           firstname: userData.firstname,
           lastname: userData.lastname,
           password: userData.password,
           phone: userData.phone,
+          active_org: firstInvitation.organization.id,
         },
       });
 
-      await tx.user_organization_role.create({
-        data: {
-          user_id: newUser.id,
-          org_id: invitation.organization.id,
-          role_id: helperRole.id,
-          hasGetMailNotification: true,
-        },
-      });
+      // Create user_organization_role for all invited roles
+      await Promise.all(
+        invitations.map((invitation) =>
+          tx.user_organization_role.create({
+            data: {
+              user_id: newUser.id,
+              org_id: invitation.org_id,
+              role_id: invitation.role_id,
+              hasGetMailNotification: true,
+            },
+          })
+        )
+      );
 
-      await tx.invitation.update({
+      // Mark all invitations as accepted
+      await tx.invitation.updateMany({
         where: { token },
         data: { accepted: true },
       });
@@ -203,7 +232,8 @@ export class InvitationService {
         firstname: user.firstname,
         lastname: user.lastname,
       },
-      organization: invitation.organization,
+      organization: firstInvitation.organization,
+      roles: invitations.map((inv) => inv.role),
     };
   }
 
@@ -226,6 +256,7 @@ export class InvitationService {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // Get unique tokens for expiring invitations
     const expiringInvitations = await prisma.invitation.findMany({
       where: {
         accepted: false,
@@ -242,8 +273,8 @@ export class InvitationService {
           select: { firstname: true, lastname: true },
         },
       },
+      distinct: ["token"], // Only get one invitation per token
     });
-
 
     let sentCount = 0;
 

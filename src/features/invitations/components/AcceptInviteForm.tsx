@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAcceptInvitation } from "../hooks/useInvitation";
-import { useSession } from "next-auth/react";
+import { acceptInvitationAction } from "../invitation-action";
 
 interface AcceptInvitationClientProps {
   invitation: {
@@ -36,16 +35,7 @@ export default function AcceptInvitationClient({
     setError("");
 
     try {
-      const response = await fetch("/api/invitations/accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Fehler beim Akzeptieren");
-      }
+      const response = await acceptInvitationAction(token);
       router.push("/helferansicht");
     } catch (err) {
       setError(

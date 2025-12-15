@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { acceptInvitationAction } from "@/features/invitations/invitation-action";
 
 interface InvitationData {
   id: string;
@@ -46,23 +47,7 @@ export default function InviteAcceptPage() {
   // Einladung annehmen
   const acceptMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/invitations/accept`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          password,
-          firstname,
-          lastname,
-        }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Fehler beim Annehmen der Einladung");
-      }
-
-      return res.json();
+      return await acceptInvitationAction(token);
     },
     onSuccess: () => {
       router.push("/helferansicht");
