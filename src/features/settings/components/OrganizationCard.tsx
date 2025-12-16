@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 
 interface RoleType {
@@ -10,18 +11,30 @@ interface OrganizationRoleBadgeProps {
   role: RoleType;
 }
 
-export const OrganizationRoleBadge: React.FC<OrganizationRoleBadgeProps> = ({ role }) => {
-  const label = role?.abbreviation && role.abbreviation.trim().length > 0 ? role.abbreviation : role?.name ?? "";
+export const OrganizationRoleBadge: React.FC<OrganizationRoleBadgeProps> = ({
+  role,
+}) => {
+  const label =
+    role?.abbreviation && role.abbreviation.trim().length > 0
+      ? role.abbreviation
+      : role?.name ?? "";
   let bg = "bg-slate-200";
   const roleName = role?.name ?? "";
   if (roleName === "Superadmin") bg = "bg-rose-400";
-  else if (roleName === "OV" || roleName === "Organisationsverwaltung") bg = "bg-red-300";
-  else if (roleName === "EV" || roleName === "Einsatzverwaltung") bg = "bg-orange-300";
-  else if (roleName === "Helfer:in" || roleName === "Helfer") bg = "bg-cyan-200";
+  else if (roleName === "OV" || roleName === "Organisationsverwaltung")
+    bg = "bg-red-300";
+  else if (roleName === "EV" || roleName === "Einsatzverwaltung")
+    bg = "bg-orange-300";
+  else if (roleName === "Helfer:in" || roleName === "Helfer")
+    bg = "bg-cyan-200";
 
   return (
-    <div className={`p-1 ${bg} rounded-md flex justify-center items-center gap-2.5`}>
-      <div className="text-slate-700 text-sm font-medium leading-none">{label}</div>
+    <div
+      className={`p-1 ${bg} rounded-md flex justify-center items-center gap-2.5`}
+    >
+      <div className="text-slate-700 text-sm font-medium leading-none">
+        {label}
+      </div>
     </div>
   );
 };
@@ -33,7 +46,12 @@ interface OrganizationCardProps {
   onLeave?: () => void;
 }
 
-export const OrganizationCard: React.FC<OrganizationCardProps> = ({ name, roles = [], logo, onLeave }) => {
+export const OrganizationCard: React.FC<OrganizationCardProps> = ({
+  name,
+  roles = [],
+  logo,
+  onLeave,
+}) => {
   // normalize roles to array of RoleType objects
   const normalizedRoles: RoleType[] = Array.isArray(roles)
     ? (roles as any[]).map((r) => (typeof r === "string" ? { name: r } : r))
@@ -44,7 +62,9 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({ name, roles 
       <div className="inline-flex justify-start items-center gap-4">
         {logo}
         <div className="inline-flex flex-col justify-center items-start gap-0.5">
-          <div className="text-slate-800 text-xl font-normal leading-7">{name}</div>
+          <div className="text-slate-800 text-xl font-normal leading-7">
+            {name}
+          </div>
           <div className="inline-flex flex-wrap gap-2 mt-2">
             {normalizedRoles.map((r) => (
               <OrganizationRoleBadge key={r.id ?? r.name} role={r} />
