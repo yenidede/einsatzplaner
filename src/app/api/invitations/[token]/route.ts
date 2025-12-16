@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-
     const { token } = await params;
 
     if (!token) {
@@ -17,7 +15,7 @@ export async function GET(
       );
     }
 
-    const invitation = await prisma.invitation.findUnique({
+    const invitations = await prisma.invitation.findMany({
       where: { token },
       include: {
         organization: {
@@ -42,32 +40,28 @@ export async function GET(
       },
     });
 
-    if (!invitation) {
+    if (!invitations || invitations.length === 0) {
       return NextResponse.json(
         { valid: false, error: "Einladung nicht gefunden" },
         { status: 404 }
       );
     }
 
-    // Prüfe ob abgelaufen
-    if (new Date(invitation.expires_at) < new Date()) {
-      return NextResponse.json(
-        { valid: false, error: "Einladung ist abgelaufen" },
-        { status: 410 }
-      );
-    }
+    // Filtere abgelaufene und bereits akzeptierte Einladungen
+    const validInvitations = invitations.filter(
+      (inv) => new Date(inv.expires_at) >= new Date() && !inv.accepted
+    );
 
-    // Prüfe ob bereits akzeptiert
-    if (invitation.accepted) {
+    if (validInvitations.length === 0) {
       return NextResponse.json(
-        { valid: false, error: "Einladung wurde bereits akzeptiert" },
+        { valid: false, error: "Keine gültigen Einladungen gefunden" },
         { status: 410 }
       );
     }
 
     return NextResponse.json({
       valid: true,
-      invitation: {
+      invitations: validInvitations.map((invitation) => ({
         id: invitation.id,
         email: invitation.email,
         organization_id: invitation.org_id,
@@ -83,7 +77,7 @@ export async function GET(
               lastname: invitation.user.lastname,
             }
           : null,
-      },
+      })),
     });
   } catch (error) {
     console.error("Invitation validation error:", error);
