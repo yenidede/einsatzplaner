@@ -328,7 +328,6 @@ export async function verifyInvitationAction(token: string) {
           role: { select: { name: true } },
         },
       });
-  
       if (!invitations || invitations.length === 0) {
         throw new Error("Einladung nicht gefunden");
       }
