@@ -3,9 +3,13 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { acceptInvitationAction } from "@/features/invitations/invitation-action";
+import {
+  acceptInvitationAction,
+  verifyInvitationAction,
+} from "@/features/invitations/invitation-action";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface Role {
   id: string;
@@ -43,12 +47,11 @@ export default function InviteAcceptPage() {
     queryKey: ["invitation", token],
     enabled: !!token,
     queryFn: async (): Promise<InvitationData> => {
-      const res = await fetch(`/api/invitations/verify?token=${token}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Einladung nicht gefunden");
+      const res = await verifyInvitationAction(token);
+      if (!res) {
+        toast.error("Einladung konnte nicht geladen werden");
       }
-      return res.json();
+      return res;
     },
   });
 
