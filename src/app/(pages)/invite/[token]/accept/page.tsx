@@ -1,15 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useInvitationValidation } from "@/features/invitations/hooks/useInvitation";
 import { acceptInvitationAction } from "@/features/invitations/invitation-action";
-
-interface Role {
-  id: string;
-  name: string;
-}
 
 export default function AcceptPage() {
   const router = useRouter();
@@ -17,11 +12,19 @@ export default function AcceptPage() {
   const token = params?.token as string;
 
   const { data: session, status: sessionStatus } = useSession();
-  const { data: invitation, isLoading, error } = useInvitationValidation(token);
+  const {
+    data: validationData,
+    isLoading,
+    error,
+  } = useInvitationValidation(token);
 
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const invitation = validationData?.invitation;
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
@@ -30,6 +33,14 @@ export default function AcceptPage() {
       );
     }
   }, [sessionStatus, router, token]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleAcceptClick = async () => {
     if (!invitation || !session?.user?.email || accepting) return;
@@ -50,7 +61,8 @@ export default function AcceptPage() {
       }
 
       setSuccess(true);
-      setTimeout(() => {
+
+      timeoutRef.current = setTimeout(() => {
         router.push("/helferansicht");
       }, 2000);
     } catch (err) {
@@ -70,7 +82,7 @@ export default function AcceptPage() {
     );
   }
 
-  if (error || !invitation) {
+  if (error || !validationData?.valid || !invitation) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
@@ -78,7 +90,8 @@ export default function AcceptPage() {
             Einladung nicht gefunden
           </h1>
           <p className="text-gray-600 mb-6">
-            {error?.message ||
+            {validationData?.error ||
+              error?.message ||
               "Die Einladung ist ungültig, bereits akzeptiert oder abgelaufen."}
           </p>
           <button
@@ -130,6 +143,12 @@ export default function AcceptPage() {
     );
   }
 
+  const organizationName = invitation.organization?.name || "Unbekannt";
+  const roleName = invitation.role?.name || "Helfer";
+  const inviterName = invitation.inviter
+    ? `${invitation.inviter.firstname} ${invitation.inviter.lastname}`.trim()
+    : null;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
@@ -138,8 +157,8 @@ export default function AcceptPage() {
             Einladung annehmen
           </h1>
           <p className="text-gray-600">
-            Möchten Sie der Organisation{" "}
-            <strong>{invitation.organization.name}</strong> beitreten?
+            Möchten Sie der Organisation <strong>{organizationName}</strong>{" "}
+            beitreten?
           </p>
         </div>
 
@@ -151,41 +170,20 @@ export default function AcceptPage() {
             </div>
             <div className="flex justify-between items-start">
               <span className="text-gray-600 font-medium">Organisation:</span>
-              <span className="text-gray-900">
-                {invitation.organization.name}
-              </span>
+              <span className="text-gray-900">{organizationName}</span>
             </div>
             <div className="flex justify-between items-start">
-              <span className="text-gray-600 font-medium">
-                {invitation.roles && invitation.roles.length > 1
-                  ? "Rollen:"
-                  : "Rolle:"}
+              <span className="text-gray-600 font-medium">Rolle:</span>
+              <span className="text-sm bg-blue-100 text-blue-900 px-2 py-0.5 rounded font-medium">
+                {roleName}
               </span>
-              <div className="flex flex-col items-end gap-1">
-                {invitation.roles && invitation.roles.length > 0 ? (
-                  invitation.roles.map((role: Role, index: number) => (
-                    <span
-                      key={role.id || index}
-                      className="text-sm bg-blue-100 text-blue-900 px-2 py-0.5 rounded font-medium"
-                    >
-                      {role.name}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-gray-900">
-                    {invitation.role?.name || "Helfer"}
-                  </span>
-                )}
-              </div>
             </div>
-            {invitation.inviter && (
+            {inviterName && (
               <div className="flex justify-between items-start">
                 <span className="text-gray-600 font-medium">
                   Eingeladen von:
                 </span>
-                <span className="text-gray-900">
-                  {invitation.inviter.firstname} {invitation.inviter.lastname}
-                </span>
+                <span className="text-gray-900">{inviterName}</span>
               </div>
             )}
           </div>

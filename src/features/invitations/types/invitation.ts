@@ -1,7 +1,5 @@
 import { z } from 'zod';
-import { UserRole, UserRoleSchema } from '../../../types/user';
 
-// Invitation status enum
 export const InvitationStatus = {
   PENDING: 'pending',
   ACCEPTED: 'accepted',
@@ -10,12 +8,58 @@ export const InvitationStatus = {
 
 export type InvitationStatus = typeof InvitationStatus[keyof typeof InvitationStatus];
 
-// Invitation validation schemas
+export interface Invitation {
+  id: string;
+  email: string;
+  organization_id: string; 
+  role_id: string;
+  token: string;
+  expires_at: string;
+  created_at: string;
+  organization: {
+    id: string;
+    name: string;
+  };
+  role: {
+    id: string;
+    name: string;
+  } | null;
+  inviter?: {
+    firstname: string;
+    lastname: string;
+  } | null;
+}
+
+export interface InvitationValidation {
+  valid: boolean;
+  invitation?: Invitation;
+  error?: string;
+}
+
+export interface InviteUserFormData {
+  email: string;
+  organization_id?: string;
+  organizationId?: string;
+  role_id?: string;
+  roleId?: string;
+}
+
+export interface CreateInvitationData {
+  email: string;
+  organizationId: string;
+  roleIds: string[];
+}
+
+export interface AcceptInvitationResult {
+  success: boolean;
+  message?: string;
+  data?: any;
+}
+
 export const InviteUserSchema = z.object({
   email: z.string().email('Ungültige E-Mail-Adresse'),
   firstname: z.string().min(2, 'Vorname muss mindestens 2 Zeichen haben'),
   lastname: z.string().min(2, 'Nachname muss mindestens 2 Zeichen haben'),
-  role: UserRoleSchema,
   organizationName: z.string().min(2, 'Organisationsname muss mindestens 2 Zeichen haben'),
   message: z.string().optional()
 });
@@ -37,57 +81,3 @@ export const AcceptInvitationSchema = z.object({
 
 export type AcceptInvitationData = z.infer<typeof AcceptInvitationSchema>;
 export type CreateInvitationInput = z.infer<typeof CreateInvitationSchema>;
-
-// Invitation interface for client-side use
-export interface Invitation {
-  _id: string;
-  email: string;
-  firstname: string;
-  lastname: string;
-  role: UserRole;
-  organizationName: string;
-  message?: string;
-  token: string;
-  status: InvitationStatus;
-  invitedBy: string;
-  expiresAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface InvitationData {
-  id: string;
-  email: string;
-  token: string;
-  expires_at: string;
-  organization: {
-    id: string;
-    name: string;
-  };
-  inviter: {
-    firstname: string;
-    lastname: string;
-  };
-}
-
-
-
-export interface InviteUserFormData {
-  email: string;
-  organization_id?: string;
-  organizationId?: string;
-  role_id?: string;
-  roleId?: string;
-}
-
-export interface CreateInvitationData {
-  email: string;
-  organizationId: string;
-  roleIds: string[];
-}
-
-export interface AcceptInvitationResult {
-  success: boolean;
-  message?: string;
-  data?: any;
-}
