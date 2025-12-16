@@ -216,7 +216,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
 
   if (!userOrgRole) throw new Error("Forbidden");
 
-  if (!hasPermission(session, "organization:update"))
+  if (!await hasPermission(session, "organization:update"))
     throw new Error("Insufficient permissions");
 
   const dataToUpdate: Partial<OrganizationUpdateData> = {};
