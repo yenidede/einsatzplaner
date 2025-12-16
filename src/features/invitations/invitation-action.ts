@@ -310,62 +310,62 @@ export async function acceptInvitationAction(token: string) {
 }
 
 export async function verifyInvitationAction(token: string) {
-    try {
-      if (!token) {
-        throw new Error("Token ist erforderlich");
-      }
-      const invitations = await prisma.invitation.findMany({
-        where: { token },
-        include: {
-          organization: { select: { name: true } },
-          role: { select: { name: true } },
-        },
-      });
-      if (!invitations || invitations.length === 0) {
-        throw new Error("Einladung nicht gefunden");
-      }
-  
-      const firstInvitation = invitations[0];
-  
-      if (firstInvitation.expires_at < new Date()) {
-        throw new Error("Einladung ist abgelaufen");
-      }
-  
-      if (firstInvitation.accepted) {
-        throw new Error("Einladung wurde bereits angenommen");
-      }
-  
-      const inviter = await prisma.user.findUnique({
-        where: { id: firstInvitation.invited_by },
-        select: { firstname: true, lastname: true, email: true },
-      });
-  
-      const inviterName =
-        inviter?.firstname && inviter?.lastname
-          ? `${inviter.firstname} ${inviter.lastname}`
-          : inviter?.email || "Unbekannt";
-  
-      const roleNames = invitations
-        .map((inv) => inv.role?.name)
-        .filter(Boolean)
-        .join(", ");
-  
-      return {
-        id: firstInvitation.id,
-        email: firstInvitation.email,
-        organizationName: firstInvitation.organization?.name || "Organisation",
-        roleName: roleNames || "Helfer",
-        roles: invitations.map((inv) => ({
-          id: inv.role_id,
-          name: inv.role?.name || "Unbekannt",
-        })),
-        inviterName: inviterName,
-        expiresAt: firstInvitation.expires_at.toISOString(),
-      };
-    } catch (error) {
-      console.error("Error verifying invitation:", error);
-      throw error instanceof Error
-        ? error
-        : new Error("Fehler bei der Überprüfung der Einladung");
+  try {
+    if (!token) {
+      throw new Error("Token ist erforderlich");
     }
+    const invitations = await prisma.invitation.findMany({
+      where: { token },
+      include: {
+        organization: { select: { name: true } },
+        role: { select: { name: true } },
+      },
+    });
+    if (!invitations || invitations.length === 0) {
+      throw new Error("Einladung nicht gefunden");
+    }
+
+    const firstInvitation = invitations[0];
+
+    if (firstInvitation.expires_at < new Date()) {
+      throw new Error("Einladung ist abgelaufen");
+    }
+
+    if (firstInvitation.accepted) {
+      throw new Error("Einladung wurde bereits angenommen");
+    }
+
+    const inviter = await prisma.user.findUnique({
+      where: { id: firstInvitation.invited_by },
+      select: { firstname: true, lastname: true, email: true },
+    });
+
+    const inviterName =
+      inviter?.firstname && inviter?.lastname
+        ? `${inviter.firstname} ${inviter.lastname}`
+        : inviter?.email || "Unbekannt";
+
+    const roleNames = invitations
+      .map((inv) => inv.role?.name)
+      .filter(Boolean)
+      .join(", ");
+
+    return {
+      id: firstInvitation.id,
+      email: firstInvitation.email,
+      organizationName: firstInvitation.organization?.name || "Organisation",
+      roleName: roleNames || "Helfer",
+      roles: invitations.map((inv) => ({
+        id: inv.role_id,
+        name: inv.role?.name || "Unbekannt",
+      })),
+      inviterName: inviterName,
+      expiresAt: firstInvitation.expires_at.toISOString(),
+    };
+  } catch (error) {
+    console.error("Error verifying invitation:", error);
+    throw error instanceof Error
+      ? error
+      : new Error("Fehler bei der Überprüfung der Einladung");
+  }
 }
