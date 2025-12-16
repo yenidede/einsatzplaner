@@ -41,6 +41,7 @@ export function formatAssignedUserNames(assignedUsers: AssignedUser[]): string {
 export function formatCurrentUserName(
   currentUser: AssignedUser | null | undefined
 ): string {
+
   if (!currentUser) return "Martina Steiner";
 
   const firstname = currentUser.firstname ?? "";
