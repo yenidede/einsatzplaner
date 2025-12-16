@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -66,6 +66,8 @@ export default function SettingsPage() {
   );
   const [organizations, setOrganizations] = useState<Organization[]>([]);
 
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   const queryClient = useQueryClient();
 
   useSessionValidation({
@@ -75,6 +77,20 @@ export default function SettingsPage() {
       router.push("/signin");
     },
   });
+
+  useEffect(() => {
+    if (!profilePictureFile) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(profilePictureFile);
+    setPreviewUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [profilePictureFile]);
 
   const { data: userData, isLoading: isLoadingUser } = useQuery({
     queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
@@ -326,7 +342,7 @@ export default function SettingsPage() {
   };
 
   if (status === "unauthenticated") {
-    await signOut({ callbackUrl: "/signin" });
+    signOut({ callbackUrl: "/signin" });
     return <div>Leite weiter…</div>;
   }
 
@@ -447,9 +463,9 @@ export default function SettingsPage() {
                   {/* TODO (Ömer): picture_url wirft langen url ab, funkt also nicht optimal -> verbessern */}
                   <div className="self-stretch px-4 flex flex-col justify-start items-start gap-2">
                     <div className="inline-flex justify-start items-center gap-2">
-                      {profilePictureFile ? (
+                      {previewUrl ? (
                         <img
-                          src={URL.createObjectURL(profilePictureFile)}
+                          src={previewUrl}
                           alt="Profilbild Vorschau"
                           className="w-10 h-10 rounded-full object-cover border"
                         />
