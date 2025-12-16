@@ -70,7 +70,7 @@ export default function UserMenu(): JSX.Element | null {
             {session?.user?.picture_url && (
               <AvatarImage
                 src={session.user.picture_url}
-                alt={`Profile image for ${session.user.firstname} ${session.user.lastname}`}
+                alt={`Profilbild für ${session.user.firstname} ${session.user.lastname}`}
               />
             )}
             <AvatarFallback>{initials}</AvatarFallback>
@@ -90,16 +90,16 @@ export default function UserMenu(): JSX.Element | null {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href="/settings" className="cursor-pointer">
+          <Link href="/settings">
+            <DropdownMenuItem>
               <SettingsIcon
                 size={16}
                 className="opacity-60"
                 aria-hidden="true"
               />
               <span>Einstellungen</span>
-            </Link>
-          </DropdownMenuItem>
+            </DropdownMenuItem>
+          </Link>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
