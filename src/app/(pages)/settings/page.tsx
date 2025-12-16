@@ -27,9 +27,9 @@ import {
   UserUpdateData,
   removeUserFromOrganizationAction,
 } from "@/features/settings/settings-action";
-import { removeUserFromOrganization } from "@/DataAccessLayer/user";
 import { toast } from "sonner";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
+import Link from "next/link";
 
 type Organization = {
   id: string;
@@ -47,18 +47,6 @@ type Organization = {
 type Salutation = {
   id: string;
   salutation: string;
-};
-
-type UserSettings = {
-  userId: string;
-  firstname: string | null;
-  lastname: string | null;
-  email: string;
-  picture_url: string | null;
-  phone: string;
-  salutationId: string | null;
-  hasLogoinCalendar: boolean;
-  hasGetMailNotification: boolean;
 };
 
 export default function SettingsPage() {
@@ -178,7 +166,6 @@ export default function SettingsPage() {
     try {
       let finalPictureUrl = pictureUrl;
 
-      // Upload profile picture if changed
       if (profilePictureFile) {
         const toastId = toast.loading("Profilbild wird hochgeladen...");
         try {
@@ -196,7 +183,6 @@ export default function SettingsPage() {
         }
       }
 
-      // Update user profile
       await mutation.mutateAsync({
         id: session.user.id,
         email,
@@ -209,7 +195,6 @@ export default function SettingsPage() {
         hasGetMailNotification: true,
       });
 
-      // Update organization mail notifications
       if (organizations.length > 0) {
         await Promise.all(
           organizations.map(async (org) => {
@@ -221,7 +206,6 @@ export default function SettingsPage() {
         );
       }
 
-      // Update session
       if (session) {
         await update({
           user: {
@@ -242,8 +226,9 @@ export default function SettingsPage() {
         queryKey: settingsQueryKeys.userSettings(session?.user.id || ""),
       });
     } catch (error) {
-      // Error toast wird bereits von mutation.onError behandelt
-      console.error("Fehler beim Speichern:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Unbekannter Fehler"
+      );
     }
   };
 
@@ -414,18 +399,16 @@ export default function SettingsPage() {
 
               {manageableOrganizations.length > 0 ? (
                 manageableOrganizations.map((org) => (
-                  <button
+                  <Link
                     key={org.id}
-                    onClick={() =>
-                      router.push(`/organization/${org.id}/manage`)
-                    }
+                    href={`/organization/${org.id}/manage`}
                     className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
                   >
                     <OrganisationIcon />
                     <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
                       {org.name}
                     </div>
-                  </button>
+                  </Link>
                 ))
               ) : (
                 <div className="px-2 py-1.5 text-xs text-gray-400">

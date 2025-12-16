@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -252,16 +253,14 @@ export default function OrganizationManagePage() {
           </div>
         </div>
         <div className="flex justify-end items-center gap-2">
-          <button
-            data-state="Default"
-            data-type="outline"
+          <Link
+            href="/settings"
             className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
-            onClick={() => router.push(`/settings`)}
           >
             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
               Abbrechen (ESC)
             </div>
-          </button>
+          </Link>
           <div
             data-state="Default"
             data-type="default"
@@ -323,22 +322,16 @@ export default function OrganizationManagePage() {
 
               if (managedOrgs.length > 0) {
                 return managedOrgs.map((org: any) => (
-                  <button
+                  <Link
                     key={org.id}
-                    onClick={() =>
-                      router.push(`/organization/${org.id}/manage`)
-                    }
-                    className={`w-full text-left px-2 py-1.5 rounded-md inline-flex justify-start items-center gap-2 transition-colors ${
-                      org.id === orgId
-                        ? "bg-slate-100 text-slate-900 font-medium"
-                        : "bg-white hover:bg-slate-50 text-slate-700"
-                    }`}
+                    href={`/organization/${org.id}/manage`}
+                    className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
                   >
                     <OrganisationIcon />
-                    <div className="flex-1 justify-start text-base font-medium font-['Inter'] leading-normal">
+                    <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
                       {org.name}
                     </div>
-                  </button>
+                  </Link>
                 ));
               }
               return (
