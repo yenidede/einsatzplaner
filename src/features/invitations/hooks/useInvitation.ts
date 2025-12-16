@@ -6,6 +6,7 @@ import type {
   InviteUserFormData,
   CreateInvitationData,
   AcceptInvitationResult,
+  Invitation,
 } from "@/features/invitations/types/invitation";
 import {
   acceptInvitationAction,
@@ -132,16 +133,6 @@ export function useAcceptInvitation(): UseAcceptInvitationReturn {
     acceptInvitation,
     clearMessages,
   };
-}
-
-interface Invitation {
-  id: string;
-  email: string;
-  organization_id: string;
-  role_id: string;
-  token: string;
-  expires_at: string;
-  created_at: string;
 }
 
 export function useInvitations(organizationId: string) {
