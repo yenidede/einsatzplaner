@@ -1,14 +1,20 @@
 import { isSameDay } from "date-fns";
 
-import { einsatz_status, einsatz_status as EinsatzStatus } from "@/generated/prisma";
+import {
+  einsatz_status,
+  einsatz_status as EinsatzStatus,
+} from "@/generated/prisma";
 import { CalendarEvent, CalendarMode, FormFieldType } from "./types";
 import { z } from "zod";
-import { EinsatzCustomizable, EinsatzForCalendar } from "@/features/einsatz/types";
+import {
+  EinsatzCustomizable,
+  EinsatzForCalendar,
+} from "@/features/einsatz/types";
 import React from "react";
 import { getAllEinsaetzeForCalendar } from "@/features/einsatz/dal-einsatz";
 import { ShowDialogFn } from "@/contexts/AlertDialogContext";
 import { toast } from "sonner";
-import { PdfGenerationRequest } from "@/features/pdf/types";
+import { PdfGenerationRequest } from "@/features/pdf/types/types";
 import { UsePdfGeneratorReturn } from "@/features/pdf/hooks/usePdfGenerator";
 
 /**
@@ -19,15 +25,19 @@ import { UsePdfGeneratorReturn } from "@/features/pdf/hooks/usePdfGenerator";
  */
 
 type ValidationOptions = {
-  isMultiline?: boolean | null,
-  isRequired?: boolean | null,
-  min?: number | null,
-  max?: number | null,
-  allowedValues?: string[] | null,
-}
+  isMultiline?: boolean | null;
+  isRequired?: boolean | null;
+  min?: number | null;
+  max?: number | null;
+  allowedValues?: string[] | null;
+};
 
-
-export const handleDelete = async (einsatz_singular: string, einsatz: { id: string | undefined, title: string }, showDialog: ShowDialogFn, onDelete: (id: string, title: string) => void) => {
+export const handleDelete = async (
+  einsatz_singular: string,
+  einsatz: { id: string | undefined; title: string },
+  showDialog: ShowDialogFn,
+  onDelete: (id: string, title: string) => void
+) => {
   if (einsatz?.id) {
     const result = await showDialog({
       title: einsatz_singular + " löschen",
@@ -40,7 +50,11 @@ export const handleDelete = async (einsatz_singular: string, einsatz: { id: stri
   }
 };
 
-export const handlePdfGenerate = async (einsatz_singular: string, einsatz: { id: string | undefined, title: string }, generatePdf: UsePdfGeneratorReturn["generatePdf"]) => {
+export const handlePdfGenerate = async (
+  einsatz_singular: string,
+  einsatz: { id: string | undefined; title: string },
+  generatePdf: UsePdfGeneratorReturn["generatePdf"]
+) => {
   if (!einsatz?.id) {
     toast.error(`${einsatz_singular} nicht gefunden für PDF-Generierung.`);
     return;
@@ -49,59 +63,75 @@ export const handlePdfGenerate = async (einsatz_singular: string, einsatz: { id:
     type: "booking-confirmation",
     einsatzId: einsatz.id,
   };
-  const t = toast.loading(`Generiere PDF für ${einsatz_singular} '${einsatz.title}'...`);
+  const t = toast.loading(
+    `Generiere PDF für ${einsatz_singular} '${einsatz.title}'...`
+  );
 
   const result = await generatePdf(request);
   if (!result) {
-    toast.error(`Fehler bei der PDF-Generierung für ${einsatz_singular} '${einsatz.title}'.`);
+    toast.error(
+      `Fehler bei der PDF-Generierung für ${einsatz_singular} '${einsatz.title}'.`
+    );
+  } else {
+    toast.success(
+      `PDF für ${einsatz_singular} '${einsatz.title}' wurde generiert.`
+    );
   }
-  else { toast.success(`PDF für ${einsatz_singular} '${einsatz.title}' wurde generiert.`); }
   toast.dismiss(t);
 };
 
-export function generateDynamicSchema(fields: { fieldId: string; type: string | null | undefined; options: ValidationOptions }[]) {
+export function generateDynamicSchema(
+  fields: {
+    fieldId: string;
+    type: string | null | undefined;
+    options: ValidationOptions;
+  }[]
+) {
   const schemaShape: Record<string, z.ZodType<any>> = {};
 
   fields.forEach((field) => {
     const { fieldId, type, options } = field;
 
-    if (!type) { console.log("no type specified:", field); return; };
+    if (!type) {
+      console.log("no type specified:", field);
+      return;
+    }
 
     let fieldSchema;
 
     switch (type) {
       case "text":
         fieldSchema = z.string().min(1, "Text darf nicht leer sein");
-        if (options.min)
-          fieldSchema = fieldSchema.min(options.min);
-        if (options.max)
-          fieldSchema = fieldSchema.max(options.max);
+        if (options.min) fieldSchema = fieldSchema.min(options.min);
+        if (options.max) fieldSchema = fieldSchema.max(options.max);
         break;
       case "number":
         fieldSchema = z.int();
-        if (options.min)
-          fieldSchema = fieldSchema.gte(options.min);
-        if (options.max)
-          fieldSchema = fieldSchema.lte(options.max);
+        if (options.min) fieldSchema = fieldSchema.gte(options.min);
+        if (options.max) fieldSchema = fieldSchema.lte(options.max);
         break;
       case "currency":
         fieldSchema = z.float64();
-        if (options.min)
-          fieldSchema = fieldSchema.gte(options.min);
-        if (options.max)
-          fieldSchema = fieldSchema.lte(options.max);
+        if (options.min) fieldSchema = fieldSchema.gte(options.min);
+        if (options.max) fieldSchema = fieldSchema.lte(options.max);
         break;
       case "boolean":
         fieldSchema = z.boolean();
         break;
       case "phone":
-        fieldSchema = z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number. Example: +1234567890");
+        fieldSchema = z
+          .string()
+          .regex(
+            /^\+[1-9]\d{1,14}$/,
+            "Invalid phone number. Example: +1234567890"
+          );
         break;
       case "mail":
         fieldSchema = z.email("Invalid email address");
         break;
       case "select":
-        if (!options.allowedValues) throw new Error("Select field requires allowedValues");
+        if (!options.allowedValues)
+          throw new Error("Select field requires allowedValues");
         fieldSchema = z.enum(options.allowedValues as [string, ...string[]]);
         break;
       default:
@@ -116,14 +146,14 @@ export function generateDynamicSchema(fields: { fieldId: string; type: string | 
 }
 
 export async function getEinsaetzeData(activeOrgId: string | null | undefined) {
-  const einsaetzeRaw = await getAllEinsaetzeForCalendar(activeOrgId ? [activeOrgId] : [])
+  const einsaetzeRaw = await getAllEinsaetzeForCalendar(
+    activeOrgId ? [activeOrgId] : []
+  );
   if (einsaetzeRaw instanceof Response) {
-    return einsaetzeRaw
+    return einsaetzeRaw;
   }
 
-  return mapEinsaetzeToCalendarEvents(
-    einsaetzeRaw
-  );
+  return mapEinsaetzeToCalendarEvents(einsaetzeRaw);
 }
 
 export const mapEinsaetzeToCalendarEvents = (
@@ -138,7 +168,9 @@ export const mapEinsaetzeToCalendarEvents = (
   }, []);
 };
 
-export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): CalendarEvent | null => {
+export const mapEinsatzToCalendarEvent = (
+  einsatz: EinsatzForCalendar | null
+): CalendarEvent | null => {
   if (!einsatz) {
     return null;
   }
@@ -149,8 +181,8 @@ export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): C
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-        .map((c) => c.einsatz_category.abbreviation)
-        .join(", ")})`
+          .map((c) => c.einsatz_category.abbreviation)
+          .join(", ")})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
@@ -160,7 +192,10 @@ export const mapEinsatzToCalendarEvent = (einsatz: EinsatzForCalendar | null): C
   };
 };
 
-export function mapStringValueToType(value: string | null | undefined, fieldType: string | undefined | null): any {
+export function mapStringValueToType(
+  value: string | null | undefined,
+  fieldType: string | undefined | null
+): any {
   if (value === null || value === undefined) return null;
   if (!fieldType) return value; // return as is (text)
   switch (fieldType) {
@@ -181,12 +216,13 @@ export function mapStringValueToType(value: string | null | undefined, fieldType
     default:
       throw new Error("Unsupported type for mapping: " + fieldType);
   }
-};
+}
 
 export function mapTypeToStringValue(value: any): string | null {
   if (value === null || value === undefined) return null;
   if (value instanceof Date) {
-    if (isNaN(value.getTime())) throw new Error("Invalid date object: " + value);
+    if (isNaN(value.getTime()))
+      throw new Error("Invalid date object: " + value);
     return value.toISOString();
   }
   if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
@@ -194,7 +230,7 @@ export function mapTypeToStringValue(value: any): string | null {
     return null;
   }
   return value.toString();
-};
+}
 
 type fieldsForSchema = {
   field: {
@@ -212,7 +248,7 @@ type fieldsForSchema = {
     default_value: string | null;
     group_name: string | null;
   };
-}[]
+}[];
 
 export function mapFieldsForSchema(fields: fieldsForSchema) {
   return fields.map((f) => {
@@ -230,17 +266,21 @@ export function mapFieldsForSchema(fields: fieldsForSchema) {
   });
 }
 
-export function mapDbDataTypeToFormFieldType(datatype: string | null | undefined): FormFieldType {
+export function mapDbDataTypeToFormFieldType(
+  datatype: string | null | undefined
+): FormFieldType {
   const defaultTypes = ["text", "number", "currency", "phone", "mail"];
   if (datatype) {
     if (defaultTypes.includes(datatype)) return "default";
-    if (datatype === "boolean") return "checkbox"
+    if (datatype === "boolean") return "checkbox";
     if (datatype === "select") return "select";
   }
   throw new Error("Can't map datatype: " + datatype + " to its FormField.");
 }
 
-export function mapDbDataTypeToInputProps(datatype: string | null | undefined): React.ComponentProps<"input"> | null {
+export function mapDbDataTypeToInputProps(
+  datatype: string | null | undefined
+): React.ComponentProps<"input"> | null {
   const defaultTypes = ["text", "number", "currency", "phone", "mail"];
   if (datatype) {
     if (!defaultTypes.includes(datatype)) return null;
@@ -273,16 +313,18 @@ export const isEventPast = (event: EinsatzCustomizable): boolean => {
   return event.end ? new Date(event.end) < new Date() : false;
 };
 
-export function mapStatusIdsToLabels(value: any[], statusData: EinsatzStatus[], mode: string) {
+export function mapStatusIdsToLabels(
+  value: any[],
+  statusData: EinsatzStatus[],
+  mode: string
+) {
   const labels = Array.from(
     new Set(
       value
         .map((statusId) => {
           const status = statusData.find((s) => s.id === statusId);
           if (!status) return null;
-          return mode === "helper"
-            ? status.helper_text
-            : status.verwalter_text;
+          return mode === "helper" ? status.helper_text : status.verwalter_text;
         })
         .filter((label): label is string => label !== null)
     )
@@ -331,13 +373,18 @@ export function getEventColorClasses(
   }
 }
 
-type reducedStatus = { id: string; text: string; color: string; }
+type reducedStatus = { id: string; text: string; color: string };
 
-export function getStatusByMode(status: einsatz_status | string, mode: CalendarMode): reducedStatus | undefined {
+export function getStatusByMode(
+  status: einsatz_status | string,
+  mode: CalendarMode
+): reducedStatus | undefined {
   let statusObject: einsatz_status | undefined;
 
   if (typeof status === "string") {
-    statusObject = staticStatusList.find((s) => mode === "helper" ? s.helper_text === status : s.verwalter_text === status);
+    statusObject = staticStatusList.find((s) =>
+      mode === "helper" ? s.helper_text === status : s.verwalter_text === status
+    );
   } else {
     statusObject = status;
   }
@@ -387,7 +434,10 @@ export const staticStatusList = [
   },
 ] as readonly einsatz_status[];
 
-export function getBadgeColorClassByStatus(status: einsatz_status | string, mode: CalendarMode): string {
+export function getBadgeColorClassByStatus(
+  status: einsatz_status | string,
+  mode: CalendarMode
+): string {
   let badgeColor = "";
 
   const statusObject = getStatusByMode(status, mode);
@@ -462,9 +512,12 @@ export function getEventsForDay(
   events: CalendarEvent[],
   day: Date
 ): CalendarEvent[] {
-  const validEvents = events.filter(event => !!event.start);
+  const validEvents = events.filter((event) => !!event.start);
   if (validEvents.length < events.length) {
-    console.warn("Some events are missing the 'start' property and will be skipped:", events.filter(event => !event.start));
+    console.warn(
+      "Some events are missing the 'start' property and will be skipped:",
+      events.filter((event) => !event.start)
+    );
   }
   return validEvents
     .filter((event) => {
@@ -547,4 +600,3 @@ export function getAgendaEventsForDay(
     })
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 }
-

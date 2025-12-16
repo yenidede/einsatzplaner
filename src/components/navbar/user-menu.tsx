@@ -1,7 +1,6 @@
 "use client";
 
 import { SettingsIcon, LogOutIcon, PinIcon, UserPenIcon } from "lucide-react";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,12 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSessionSync } from "@/hooks/useSessionSync";
 import { JSX } from "react";
+import Link from "next/link";
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
@@ -35,18 +34,22 @@ export default function UserMenu(): JSX.Element | null {
       </Button>
     );
   }
+
   if (status === "unauthenticated") {
     return (
       <Button
         variant="ghost"
         className="h-auto p-0 hover:bg-transparent"
-        onClick={() => router.push("/signin")}
-      ></Button>
+        asChild
+      >
+        <Link href="/signin"></Link>
+      </Button>
     );
   }
 
   if (session == null || !session.user) {
     router.push("/signin");
+    return null;
   }
 
   const handleLogout = async () => {
@@ -56,9 +59,6 @@ export default function UserMenu(): JSX.Element | null {
   const initials = `${session?.user?.firstname?.charAt(0) ?? ""}${
     session?.user?.lastname?.charAt(0) ?? ""
   }`.toUpperCase();
-  const handleSettings = () => {
-    router.push("/settings");
-  };
 
   return (
     <DropdownMenu>
@@ -88,9 +88,15 @@ export default function UserMenu(): JSX.Element | null {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={handleSettings}>
-            <SettingsIcon size={16} className="opacity-60" aria-hidden="true" />
-            <span>Einstellungen</span>
+          <DropdownMenuItem>
+            <Link href="/settings" className="cursor-pointer">
+              <SettingsIcon
+                size={16}
+                className="opacity-60"
+                aria-hidden="true"
+              />
+              <span>Einstellungen</span>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

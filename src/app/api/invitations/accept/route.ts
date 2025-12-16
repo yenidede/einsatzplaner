@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Token is required" }, { status: 400 });
     }
 
-    const invitation = await prisma.invitation.findUnique({
+    // Changed from findUnique to findMany since token is no longer unique
+    const invitations = await prisma.invitation.findMany({
       where: { token },
       include: {
         organization: {
@@ -35,47 +36,53 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (!invitation) {
+    if (!invitations || invitations.length === 0) {
       return NextResponse.json(
         { error: "Invalid invitation token" },
         { status: 404 }
       );
     }
 
-    if (invitation.expires_at < new Date()) {
+    // Use the first invitation for common checks
+    const firstInvitation = invitations[0];
+
+    if (firstInvitation.expires_at < new Date()) {
       return NextResponse.json(
         { error: "Invitation has expired" },
         { status: 400 }
       );
     }
 
-    if (invitation.accepted) {
+    if (firstInvitation.accepted) {
       return NextResponse.json(
         { error: "Invitation already accepted" },
         { status: 400 }
       );
     }
 
-    if (invitation.email !== session.user.email) {
+    if (firstInvitation.email !== session.user.email) {
       return NextResponse.json(
         { error: "Email does not match" },
         { status: 403 }
       );
     }
 
-    await prisma.user_organization_role.create({
-      data: {
-        user_id: session.user.id,
-        org_id: invitation.org_id,
-        role_id: invitation.role_id,
-      },
-    });
+    // Create user_organization_role entries for all roles in the invitations
+    await Promise.all(
+      invitations.map((invitation) =>
+        prisma.user_organization_role.create({
+          data: {
+            user_id: session.user.id,
+            org_id: invitation.org_id,
+            role_id: invitation.role_id,
+          },
+        })
+      )
+    );
 
-    await prisma.invitation.update({
-      where: { id: invitation.id },
-      data: {
-        accepted: true,
-      },
+    // Delete all invitations with this token
+    await prisma.invitation.deleteMany({
+      where: { token },
     });
 
     const updatedUser = await prisma.user.findUnique({
@@ -120,11 +127,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!activeOrganization) {
-      activeOrganization = invitation.organization;
+      activeOrganization = firstInvitation.organization;
 
       await prisma.user.update({
         where: { id: session.user.id },
-        data: { active_org: invitation.org_id },
+        data: { active_org: firstInvitation.org_id },
       });
     }
 
