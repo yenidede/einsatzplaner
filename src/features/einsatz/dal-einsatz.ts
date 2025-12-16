@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import type { einsatz as Einsatz, einsatz_field } from "@/generated/prisma";
+import type { einsatz as Einsatz, einsatz_field, einsatz_status } from "@/generated/prisma";
 import type {
   EinsatzForCalendar,
   EinsatzCreate,
@@ -398,7 +398,7 @@ export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<
 
   const existingEinsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
-    select: { id: true, title: true, org_id: true, einsatz_helper: { select: { user_id: true } } },
+    select: { id: true, title: true, org_id: true, einsatz_helper: { select: { user_id: true } }, helpers_needed: true },
   });
 
   if (!existingEinsatz) {
@@ -407,8 +407,42 @@ export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<
     });
   }
 
-  const isUserAssigned = existingEinsatz.einsatz_helper.some((helper) => helper.user_id === session.user.id);
-  if (!isUserAssigned) {
+  const isSignedInUserAssigned = existingEinsatz.einsatz_helper.some(
+    (helper) => helper.user_id === session.user.id
+  );
+
+  const addOrRemoveOne = isSignedInUserAssigned ? -1 : 1;
+
+  const newStatusId =
+    existingEinsatz.helpers_needed >
+      existingEinsatz.einsatz_helper.length + addOrRemoveOne
+      ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
+      : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
+
+  if (isSignedInUserAssigned) {
+    // USER IS ALREADY ASSIGNED → REMOVE THEM
+    return prisma.einsatz.update({
+      where: {
+        id: einsatzId,
+        organization: {
+          user_organization_role: {
+            some: {
+              user_id: session.user.id,
+            },
+          },
+        },
+      },
+      data: {
+        einsatz_helper: {
+          deleteMany: {
+            user_id: session.user.id,
+          },
+        },
+        status_id: newStatusId,
+      },
+    });
+  } else {
+    // USER IS NOT ASSIGNED → ADD THEM
     return prisma.einsatz.update({
       where: {
         id: einsatzId,
@@ -423,33 +457,12 @@ export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<
       data: {
         einsatz_helper: {
           create: {
-            user: {
-              connect: {
-                id: session.user.id
-              }
-            }
-          }
-        }
-      }
-    });
-  }
-  else {
-    const delResult = await prisma.einsatz_helper.deleteMany({
-      where: {
-        einsatz_id: einsatzId,
-        user: { id: session.user.id },
+            user: { connect: { id: session.user.id } },
+          },
+        },
+        status_id: newStatusId,
       },
     });
-
-    if (delResult.count === 0) {
-      throw new Response("Austragen nicht erfolgreich", { status: 500 });
-    }
-
-    return {
-      id: existingEinsatz.id,
-      title: existingEinsatz.title,
-      deleted: true,
-    }
   }
 }
 

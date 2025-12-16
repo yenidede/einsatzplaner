@@ -157,10 +157,8 @@ export function EventDialogHelfer({
     return;
   }
 
-  if (isOpen && !einsatz)
-    return (
-      <div>Event nicht richtig übergeben. Bitte später erneut versuchen.</div>
-    );
+  // normally should open the create dialog, in helper just return
+  if (isOpen && !einsatz) return;
 
   const assigned_count = detailedEinsatz?.assigned_users?.length ?? "0";
   const max_assigned_count = detailedEinsatz?.helpers_needed ?? "0";

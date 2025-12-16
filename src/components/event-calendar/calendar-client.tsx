@@ -19,8 +19,10 @@ import {
 import { toast } from "sonner";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
+import { queryKeys as StatusQueryKeys } from "@/features/einsatz_status/queryKeys";
 import { useSession } from "next-auth/react";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { GetStatuses } from "@/features/einsatz_status/status-dal";
 
 export default function Component({ mode }: { mode: CalendarMode }) {
   const { data: session } = useSession();
@@ -39,6 +41,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
     queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
     enabled: !!session?.user.orgIds?.length,
+  });
+
+  const { data: statuses } = useQuery({
+    queryKey: StatusQueryKeys.statuses(),
+    queryFn: () => GetStatuses(),
   });
 
   const einsatz_singular =
