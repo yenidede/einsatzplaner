@@ -1,15 +1,15 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import {
   acceptInvitationAction,
   verifyInvitationAction,
 } from "@/features/invitations/invitation-action";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import Link from "next/link";
-import { toast } from "sonner";
 
 interface Role {
   id: string;
@@ -32,27 +32,21 @@ export default function InviteAcceptPage() {
   const params = useParams();
   const router = useRouter();
   const token = params?.token as string;
+  const { data: session, status: sessionStatus } = useSession();
   const { showDialog, AlertDialogComponent } = useAlertDialog();
-
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [firstname, setFirstname] = useState("");
-  const [lastname, setLastname] = useState("");
 
   const {
     data: invitation,
     isLoading,
     error,
-  } = useQuery({
+  } = useQuery<InvitationData>({
     queryKey: ["invitation", token],
     enabled: !!token,
-    queryFn: async (): Promise<InvitationData> => {
+    queryFn: async () => {
       const res = await verifyInvitationAction(token);
-      if (!res) {
-        toast.error("Einladung konnte nicht geladen werden");
-      }
       return res;
     },
+    retry: false,
   });
 
   const acceptMutation = useMutation({
@@ -72,24 +66,16 @@ export default function InviteAcceptPage() {
     },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (password !== confirmPassword) {
-      await showDialog({
-        title: "Passwörter stimmen nicht überein",
-        description:
-          "Bitte stellen Sie sicher, dass beide Passwörter identisch sind.",
-        confirmText: "OK",
-        variant: "destructive",
-      });
+  const handleAcceptClick = async () => {
+    if (!session?.user) {
       return;
     }
 
-    if (password.length < 8) {
+    // Prüfen ob E-Mail übereinstimmt
+    if (session.user.email !== invitation?.email) {
       await showDialog({
-        title: "Passwort zu kurz",
-        description: "Das Passwort muss mindestens 8 Zeichen lang sein.",
+        title: "E-Mail stimmt nicht überein",
+        description: `Diese Einladung ist für ${invitation?.email}, aber Sie sind als ${session.user.email} angemeldet. Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.`,
         confirmText: "OK",
         variant: "destructive",
       });
@@ -99,7 +85,7 @@ export default function InviteAcceptPage() {
     acceptMutation.mutate();
   };
 
-  if (isLoading) {
+  if (isLoading || sessionStatus === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -116,9 +102,12 @@ export default function InviteAcceptPage() {
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
           <div className="text-red-600 text-6xl mb-4">❌</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Einladung ungültig
+            Einladung nicht gefunden
           </h1>
-          <p className="text-gray-600 mb-4">{(error as Error).message}</p>
+          <p className="text-gray-600 mb-4">
+            {(error as Error).message ||
+              "Diese Einladung ist ungültig, abgelaufen oder wurde bereits verwendet."}
+          </p>
           <Link
             href="/signin"
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 inline-block"
@@ -130,6 +119,12 @@ export default function InviteAcceptPage() {
     );
   }
 
+  if (!invitation) {
+    return null;
+  }
+
+  const callbackUrl = `/invite/${token}`;
+
   return (
     <>
       {AlertDialogComponent}
@@ -137,13 +132,12 @@ export default function InviteAcceptPage() {
         <div className="max-w-md w-full space-y-8">
           <div>
             <div className="text-center">
-              <div className="text-blue-600 text-6xl mb-4">📧</div>
               <h2 className="text-3xl font-extrabold text-gray-900">
                 Einladung annehmen
               </h2>
               <p className="mt-2 text-sm text-gray-600">
                 Möchten Sie der Organisation{" "}
-                <strong>{invitation?.organizationName}</strong> beitreten?
+                <strong>{invitation.organizationName}</strong> beitreten?
               </p>
             </div>
           </div>
@@ -159,7 +153,7 @@ export default function InviteAcceptPage() {
                     E-Mail:
                   </span>
                   <span className="text-sm text-blue-800">
-                    {invitation?.email}
+                    {invitation.email}
                   </span>
                 </div>
                 <div className="flex justify-between items-start">
@@ -167,17 +161,17 @@ export default function InviteAcceptPage() {
                     Organisation:
                   </span>
                   <span className="text-sm text-blue-800">
-                    {invitation?.organizationName}
+                    {invitation.organizationName}
                   </span>
                 </div>
                 <div className="flex justify-between items-start">
                   <span className="text-sm text-blue-800 font-medium">
-                    {invitation?.roles && invitation.roles.length > 1
+                    {invitation.roles && invitation.roles.length > 1
                       ? "Rollen:"
                       : "Rolle:"}
                   </span>
                   <div className="flex flex-col items-end gap-1">
-                    {invitation?.roles && invitation.roles.length > 0 ? (
+                    {invitation.roles && invitation.roles.length > 0 ? (
                       invitation.roles.map((role, index) => (
                         <span
                           key={role.id || index}
@@ -188,12 +182,12 @@ export default function InviteAcceptPage() {
                       ))
                     ) : (
                       <span className="text-sm text-blue-800">
-                        {invitation?.roleName || "Helfer"}
+                        {invitation.roleName || "Helfer"}
                       </span>
                     )}
                   </div>
                 </div>
-                {invitation?.inviterName && (
+                {invitation.inviterName && (
                   <div className="flex justify-between items-start">
                     <span className="text-sm text-blue-800 font-medium">
                       Eingeladen von:
@@ -206,81 +200,58 @@ export default function InviteAcceptPage() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Vorname
-                  </label>
-                  <input
-                    type="text"
-                    value={firstname}
-                    onChange={(e) => setFirstname(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder={invitation?.firstname || "Vorname"}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nachname
-                  </label>
-                  <input
-                    type="text"
-                    value={lastname}
-                    onChange={(e) => setLastname(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder={invitation?.lastname || "Nachname"}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Passwort
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Mindestens 8 Zeichen"
-                  required
-                  minLength={8}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Passwort bestätigen
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Passwort wiederholen"
-                  required
-                  minLength={8}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={acceptMutation.isPending}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
-              >
-                {acceptMutation.isPending ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Konto wird erstellt...
+            {/* Wenn eingeloggt: Akzeptieren-Button */}
+            {session?.user ? (
+              <div className="space-y-3">
+                {session.user.email !== invitation.email && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Achtung:</strong> Sie sind als{" "}
+                      <strong>{session.user.email}</strong> angemeldet, aber die
+                      Einladung ist für <strong>{invitation.email}</strong>.
+                    </p>
                   </div>
-                ) : (
-                  "Einladung annehmen & Konto erstellen"
                 )}
-              </button>
-            </form>
+                <button
+                  onClick={handleAcceptClick}
+                  disabled={acceptMutation.isPending}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
+                >
+                  {acceptMutation.isPending ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Wird akzeptiert...
+                    </div>
+                  ) : (
+                    "Einladung akzeptieren"
+                  )}
+                </button>
+              </div>
+            ) : (
+              /* Wenn nicht eingeloggt: Login/Signup Optionen */
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600 text-center mb-4">
+                  Um diese Einladung anzunehmen, müssen Sie sich anmelden oder
+                  ein Konto erstellen.
+                </p>
+                <Link
+                  href={`/signin?callbackUrl=${encodeURIComponent(
+                    callbackUrl
+                  )}`}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Anmelden
+                </Link>
+                <Link
+                  href={`/signup?callbackUrl=${encodeURIComponent(
+                    callbackUrl
+                  )}`}
+                  className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Konto erstellen
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
