@@ -405,7 +405,6 @@ export async function createAccountFromInvitationAction(data: {
       throw new Error("Das Passwort muss mindestens 8 Zeichen lang sein");
     }
 
-    // Einladung verifizieren
     const invitations = await prisma.invitation.findMany({
       where: {
         token: data.token,
@@ -424,7 +423,6 @@ export async function createAccountFromInvitationAction(data: {
 
     const firstInvitation = invitations[0];
 
-    // Prüfen ob Benutzer bereits existiert
     const existingUser = await prisma.user.findUnique({
       where: { email: firstInvitation.email },
     });
@@ -439,34 +437,37 @@ export async function createAccountFromInvitationAction(data: {
     const bcrypt = require("bcrypt");
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // Neuen Benutzer erstellen
-    const newUser = await prisma.user.create({
-      data: {
-        email: firstInvitation.email,
-        firstname: data.firstname,
-        lastname: data.lastname,
-        password: hashedPassword,
-        active_org: firstInvitation.org_id,
-        email_verified: true, // Da die Einladung per E-Mail kam
-      },
-    });
+    const result = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email: firstInvitation.email,
+          firstname: data.firstname,
+          lastname: data.lastname,
+          password: hashedPassword,
+          active_org: firstInvitation.org_id,
+        },
+      });
 
-    // Benutzer zu Organisation und Rollen hinzufügen
-    await Promise.all(
-      invitations.map((invitation) =>
-        prisma.user_organization_role.create({
-          data: {
-            user_id: newUser.id,
-            org_id: invitation.org_id,
-            role_id: invitation.role_id,
-          },
-        })
-      )
-    );
+      await Promise.all(
+        invitations.map((invitation) =>
+          tx.user_organization_role.create({
+            data: {
+              user_id: newUser.id,
+              org_id: invitation.org_id,
+              role_id: invitation.role_id,
+            },
+          })
+        )
+      );
 
-    // Einladungen als akzeptiert markieren
-    await prisma.invitation.deleteMany({
-      where: { token: data.token },
+      await tx.invitation.deleteMany({
+        where: { token: data.token },
+      });
+
+      return {
+        email: newUser.email,
+        addedRoles: invitations.map((inv) => inv.role.name),
+      };
     });
 
     revalidatePath("/");
@@ -475,8 +476,8 @@ export async function createAccountFromInvitationAction(data: {
     return {
       success: true,
       message: "Account erfolgreich erstellt",
-      email: newUser.email,
-      addedRoles: invitations.map((inv) => inv.role.name),
+      email: result.email,
+      addedRoles: result.addedRoles,
     };
   } catch (error) {
     console.error("Error creating account from invitation:", error);
