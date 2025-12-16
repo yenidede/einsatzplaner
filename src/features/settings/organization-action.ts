@@ -11,6 +11,10 @@ import { hasPermission } from "@/lib/auth/authGuard";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error("Supabase environment variables are not set");
+}
+
 const supabaseServer = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
@@ -212,7 +216,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
 
   if (!userOrgRole) throw new Error("Forbidden");
 
-  if (!hasPermission(session, "organization:update"))
+  if (!await hasPermission(session, "organization:update"))
     throw new Error("Insufficient permissions");
 
   const dataToUpdate: Partial<OrganizationUpdateData> = {};

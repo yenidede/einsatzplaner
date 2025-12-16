@@ -42,7 +42,9 @@ export default function UserMenu(): JSX.Element | null {
         className="h-auto p-0 hover:bg-transparent"
         asChild
       >
-        <Link href="/signin"></Link>
+        <Link href="/signin">
+          <Avatar></Avatar>
+        </Link>
       </Button>
     );
   }
@@ -88,7 +90,7 @@ export default function UserMenu(): JSX.Element | null {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link href="/settings" className="cursor-pointer">
               <SettingsIcon
                 size={16}
