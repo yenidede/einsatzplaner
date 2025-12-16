@@ -69,3 +69,25 @@ export interface InvitationData {
     lastname: string;
   };
 }
+
+
+
+export interface InviteUserFormData {
+  email: string;
+  organization_id?: string;
+  organizationId?: string;
+  role_id?: string;
+  roleId?: string;
+}
+
+export interface CreateInvitationData {
+  email: string;
+  organizationId: string;
+  roleIds: string[];
+}
+
+export interface AcceptInvitationResult {
+  success: boolean;
+  message?: string;
+  data?: any;
+}
