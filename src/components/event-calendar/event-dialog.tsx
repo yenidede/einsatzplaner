@@ -525,7 +525,7 @@ export function EventDialogVerwaltung({
           }, {} as Record<string, any>)
         );
       } catch (error) {
-        toast.error("Error generating schema:" + error);
+        console.error("Error generating schema: " + error);
       }
     }
   }, [activeTemplateId, templatesQuery.data, detailedEinsatz?.einsatz_fields]);
