@@ -23,7 +23,7 @@ import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
 import { queryKeys as RolesQueryKeys } from "@/features/roles/queryKeys";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { cn } from "@/lib/utils";
-import { getRolesValuePairs } from "@/features/roles/roles-dal";
+import { getAllRoles } from "@/features/roles/roles-dal";
 
 export default function Component() {
   const { data: session } = useSession();
@@ -36,7 +36,7 @@ export default function Component() {
 
   const { data: roles } = useQuery({
     queryKey: RolesQueryKeys.roles(),
-    queryFn: () => getRolesValuePairs(),
+    queryFn: () => getAllRoles(),
   });
 
   // Navigation links array to be used in both desktop and mobile menus
