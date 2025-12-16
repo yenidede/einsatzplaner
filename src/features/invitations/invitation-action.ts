@@ -1,4 +1,3 @@
-
 "use server";
 
 import { getServerSession } from "next-auth";
@@ -23,7 +22,6 @@ export async function createInvitationAction(data: {
   try {
     const session = await checkUserSession();
 
-    // Validierung
     if (
       !data.email ||
       !data.organizationId ||
@@ -33,7 +31,6 @@ export async function createInvitationAction(data: {
       throw new Error("Ungültige Eingabedaten");
     }
 
-    // Email-Format validieren
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(data.email)) {
       throw new Error("Ungültige E-Mail-Adresse");
@@ -53,7 +50,7 @@ export async function createInvitationAction(data: {
       throw new Error("Benutzer nicht gefunden");
     }
 
-    const canInvite = await  hasPermission(session, "users:invite");
+    const canInvite = await hasPermission(session, "users:invite");
 
     if (!canInvite) {
       const roleNames = inviter.user_organization_role.map(
@@ -181,7 +178,6 @@ export async function acceptInvitationAction(token: string) {
       throw new Error("Token ist erforderlich");
     }
 
-    // Alle Einladungen mit diesem Token laden (mehrere Rollen)
     const invitations = await prisma.invitation.findMany({
       where: { token },
       include: {
@@ -220,7 +216,6 @@ export async function acceptInvitationAction(token: string) {
       throw new Error("E-Mail-Adresse stimmt nicht überein");
     }
 
-    // Alle Rollen zur Organisation hinzufügen
     await Promise.all(
       invitations.map((invitation) =>
         prisma.user_organization_role.create({
@@ -233,12 +228,10 @@ export async function acceptInvitationAction(token: string) {
       )
     );
 
-    // Alle Einladungen mit diesem Token löschen
     await prisma.invitation.deleteMany({
       where: { token },
     });
 
-    // User-Daten aktualisieren
     const updatedUser = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {

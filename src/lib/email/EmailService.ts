@@ -81,7 +81,6 @@ export class EmailService {
   ) {
     const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}/accept`;
 
-
     if (!this.transporter) {
       return;
     }
