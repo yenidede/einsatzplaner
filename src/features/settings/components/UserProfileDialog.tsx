@@ -4,16 +4,14 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import SwitchIcon from "@/components/icon/SwitchIcon";
-import { Button } from "@/features/auth/components/ui/FormComponents";
 import {
   getUserProfileAction,
-  getAllUserOrgRolesAction,
   updateUserRoleAction,
   removeUserFromOrganizationAction,
   getUserOrgRolesAction,
 } from "@/features/settings/users-action";
-import { DayButton } from "react-day-picker";
 import { settingsQueryKeys } from "../queryKey";
+import { useAlertDialog } from "@/hooks/use-alert-dialog";
 
 //#region TypeScript Interfaces
 interface UserProfileDialogProps {
@@ -267,11 +265,16 @@ export function UserProfileDialog({
       });
       queryClient.invalidateQueries({ queryKey: ["organizationUsers"] });
     },
-    onError: (error) => {
+    onError: async (error) => {
       console.error("Error saving role changes:", error);
       setUserRoles([...originalRoles]);
       setHasChanges(false);
-      alert("Fehler beim Speichern der Rollenänderungen");
+      await showDialog({
+        title: "Fehler",
+        description: "Fehler beim Speichern der Rollenänderungen",
+        confirmText: "OK",
+        variant: "destructive",
+      });
     },
   });
 
@@ -313,13 +316,20 @@ export function UserProfileDialog({
     }
   };
 
-  const handleClose = () => {
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
+
+  const handleClose = async () => {
     if (hasChanges) {
-      if (
-        confirm(
-          "Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?"
-        )
-      ) {
+      const result = await showDialog({
+        title: "Ungespeicherte Änderungen",
+        description:
+          "Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?",
+        confirmText: "Schließen",
+        cancelText: "Abbrechen",
+        variant: "destructive",
+      });
+
+      if (result === "success") {
         setUserRoles([...originalRoles]);
         setHasChanges(false);
         onClose();
@@ -329,22 +339,29 @@ export function UserProfileDialog({
     }
   };
 
-  const handleRemoveUser = () => {
-    if (
-      confirm(
-        `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich aus der Organisation entfernen?`
-      )
-    ) {
+  const handleRemoveUser = async () => {
+    const result = await showDialog({
+      title: "Benutzer entfernen",
+      description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich aus der Organisation entfernen?`,
+      confirmText: "Entfernen",
+      cancelText: "Abbrechen",
+      variant: "destructive",
+    });
+
+    if (result === "success") {
       removeUserMutation.mutate();
     }
   };
 
   const handlePromoteToSuperadmin = async () => {
-    if (
-      confirm(
-        `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen?`
-      )
-    ) {
+    const result = await showDialog({
+      title: "Zum Superadmin ernennen",
+      description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen?`,
+      confirmText: "Ernennen",
+      cancelText: "Abbrechen",
+    });
+
+    if (result === "success") {
       // TODO (Ömer): Implement superadmin promotion
       console.log("Promote to superadmin not implemented yet");
     }
@@ -409,313 +426,316 @@ export function UserProfileDialog({
 
   //#region Main Dialog Render
   const content = (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      aria-modal="true"
-      role="dialog"
-    >
-      {/* Backdrop */}
+    <>
+      {AlertDialogComponent}
       <div
-        className="fixed inset-0 bg-white/20 backdrop-blur-md transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Dialog */}
-      <div
-        ref={dialogRef}
-        onClick={(e) => e.stopPropagation()}
-        className="w-[656px] h-[1024px] px-4 relative bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] inline-flex justify-start items-center gap-2.5 rounded-lg overflow-hidden"
+        className="fixed inset-0 z-[9999] flex items-center justify-center"
+        aria-modal="true"
+        role="dialog"
       >
-        <div className="flex-1 h-[740px] flex justify-start items-start gap-2 overflow-y-auto">
-          <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
-            {/*//#region User Header Section - Updated with dynamic roles*/}
-            <div className="px-4 flex flex-col justify-start items-start gap-2">
-              <div className="w-16 h-16 px-3 py-2 rounded-[30px] flex flex-col justify-center items-center gap-3.5">
-                {userProfile.picture_url ? (
-                  <img
-                    src={userProfile.picture_url}
-                    alt={`${userProfile.firstname} ${userProfile.lastname}`}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="justify-start text-slate-900 text-base font-normal font-['Inter'] leading-7">
-                    {initials}
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col justify-center items-start gap-1">
-                <div className="justify-start text-slate-800 text-2xl font-semibold font-['Inter'] leading-loose">
-                  {userProfile.firstname} {userProfile.lastname}
-                </div>
-                <div className="inline-flex justify-start items-start gap-1 flex-wrap">
-                  {/* Display all actual roles from API */}
-                  {userOrgRoles.map((userRole, index) => (
-                    <div
-                      key={index}
-                      className={`p-1 ${getRoleColor(
-                        userRole.role
-                      )} rounded-md flex justify-center items-center gap-2.5`}
-                    >
-                      <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">
-                        {getRoleDisplayName(userRole.role)}
-                      </div>
-                    </div>
-                  ))}
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-white/20 backdrop-blur-md transition-opacity"
+          onClick={onClose}
+        />
 
-                  {/* Show placeholder if no roles */}
-                  {userOrgRoles.length === 0 && (
-                    <div className="p-1 bg-gray-200 rounded-md flex justify-center items-center gap-2.5">
-                      <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">
-                        Keine Rollen zugewiesen
+        {/* Dialog */}
+        <div
+          ref={dialogRef}
+          onClick={(e) => e.stopPropagation()}
+          className="w-[656px] h-[1024px] px-4 relative bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] inline-flex justify-start items-center gap-2.5 rounded-lg overflow-hidden"
+        >
+          <div className="flex-1 h-[740px] flex justify-start items-start gap-2 overflow-y-auto">
+            <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
+              {/*//#region User Header Section - Updated with dynamic roles*/}
+              <div className="px-4 flex flex-col justify-start items-start gap-2">
+                <div className="w-16 h-16 px-3 py-2 rounded-[30px] flex flex-col justify-center items-center gap-3.5">
+                  {userProfile.picture_url ? (
+                    <img
+                      src={userProfile.picture_url}
+                      alt={`${userProfile.firstname} ${userProfile.lastname}`}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="justify-start text-slate-900 text-base font-normal font-['Inter'] leading-7">
+                      {initials}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col justify-center items-start gap-1">
+                  <div className="justify-start text-slate-800 text-2xl font-semibold font-['Inter'] leading-loose">
+                    {userProfile.firstname} {userProfile.lastname}
+                  </div>
+                  <div className="inline-flex justify-start items-start gap-1 flex-wrap">
+                    {/* Display all actual roles from API */}
+                    {userOrgRoles.map((userRole, index) => (
+                      <div
+                        key={index}
+                        className={`p-1 ${getRoleColor(
+                          userRole.role
+                        )} rounded-md flex justify-center items-center gap-2.5`}
+                      >
+                        <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">
+                          {getRoleDisplayName(userRole.role)}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Show placeholder if no roles */}
+                    {userOrgRoles.length === 0 && (
+                      <div className="p-1 bg-gray-200 rounded-md flex justify-center items-center gap-2.5">
+                        <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">
+                          Keine Rollen zugewiesen
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/*#endregion*/}
+
+              {/* #region Contact Information Section*/}
+              <div className="px-4 flex flex-col justify-center items-start gap-2.5">
+                <div className="w-96 inline-flex justify-start items-center gap-2.5">
+                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+                    Kontaktinformationen
+                  </div>
+                </div>
+                <div className="inline-flex justify-center items-center gap-4">
+                  <div className="flex justify-start items-center gap-2">
+                    <div className="w-4 h-4 relative overflow-hidden">
+                      <div className="w-3.5 h-2.5 left-[1.33px] top-[2.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
+                      <div className="w-3.5 h-1 left-[1.33px] top-[4.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
+                    </div>
+                    <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
+                      {userProfile.email}
+                    </div>
+                  </div>
+                  {userProfile.phone && (
+                    <div className="flex justify-start items-center gap-2">
+                      <div className="w-4 h-4 relative overflow-hidden">
+                        <div className="w-3.5 h-3.5 left-[1.41px] top-[1.33px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
+                      </div>
+                      <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
+                        {userProfile.phone}
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
-            {/*#endregion*/}
+              {/* #endregion*/}
 
-            {/* #region Contact Information Section*/}
-            <div className="px-4 flex flex-col justify-center items-start gap-2.5">
-              <div className="w-96 inline-flex justify-start items-center gap-2.5">
-                <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                  Kontaktinformationen
-                </div>
-              </div>
-              <div className="inline-flex justify-center items-center gap-4">
-                <div className="flex justify-start items-center gap-2">
-                  <div className="w-4 h-4 relative overflow-hidden">
-                    <div className="w-3.5 h-2.5 left-[1.33px] top-[2.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
-                    <div className="w-3.5 h-1 left-[1.33px] top-[4.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
-                  </div>
-                  <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
-                    {userProfile.email}
-                  </div>
-                </div>
-                {userProfile.phone && (
-                  <div className="flex justify-start items-center gap-2">
-                    <div className="w-4 h-4 relative overflow-hidden">
-                      <div className="w-3.5 h-3.5 left-[1.41px] top-[1.33px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
-                    </div>
-                    <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
-                      {userProfile.phone}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* #endregion*/}
-
-            {/* #region Personal Properties Section*/}
-            <div className="self-stretch flex flex-col justify-center items-start">
-              <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-start items-center gap-2">
-                <div className="flex-1 flex justify-start items-center gap-2">
-                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                    Personeneigenschaften
-                  </div>
-                  <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
-                    {userProfile.organization?.name}
-                  </div>
-                </div>
-              </div>
-              <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-                <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                  <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                    <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                      Person hat Schlüssel?
-                    </div>
-                    <button
-                      onClick={() => setHasKey(!hasKey)}
-                      className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-                      border-0 p-0 outline-none focus:outline-none hover:bg-transparent click:bg-transparent"
-                    >
-                      <SwitchIcon isOn={hasKey} disabled={false} />
-                    </button>
-                  </div>
-                </div>
-                <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                  <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
-                    <div className="self-stretch flex flex-col justify-start items-start gap-2">
-                      <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-none">
-                        Anmerkung
-                      </div>
-                      <textarea
-                        className="w-full h-20 px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 resize-none"
-                        placeholder="Anmerkung hier eingeben"
-                        value={userProfile.description || ""}
-                        readOnly
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/*//#endregion*/}
-            {/*//#region Roles Management Section*/}
-            <div className="self-stretch flex flex-col justify-center items-start">
-              <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-                <div className="flex-1 flex justify-start items-center gap-2">
-                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                    Rollen
-                  </div>
-                  <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
-                    {userProfile.organization?.name}
-                  </div>
-                </div>
-              </div>
-
-              {/* OV Rolle */}
-              <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-                <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                  <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                    <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                      Organisationsverwaltung (OV)
-                    </div>
-                    <button
-                      onClick={() => toggleRole("OV")}
-                      disabled={saving}
-                      className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-                      border-0 p-0 outline-none focus:outline-none"
-                    >
-                      <SwitchIcon
-                        isOn={userRoles.includes("OV")}
-                        disabled={saving}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* EV Rolle */}
-              <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-                <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                  <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                    <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                      Einsatzverwaltung (EV)
-                    </div>
-                    <button
-                      onClick={() => toggleRole("EV")}
-                      disabled={saving}
-                      className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-                      border-0 p-0 outline-none focus:outline-none"
-                    >
-                      <SwitchIcon
-                        isOn={userRoles.includes("EV")}
-                        disabled={saving}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Helfer Rolle */}
-              <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-                <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                  <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                    <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                      Helfer:in (Helfer:in)
-                    </div>
-                    <button
-                      onClick={() => toggleRole("Helfer")}
-                      disabled={saving}
-                      className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-                      border-0 p-0 outline-none focus:outline-none"
-                    >
-                      {/* TODO (Ömer): Update SwitchIcon for AAll roles after db update already works, performance*/}
-                      <SwitchIcon
-                        isOn={userRoles.includes("Helfer")}
-                        disabled={saving}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/*//#endregion*/}
-
-            {/*//#region Danger Zone Section*/}
-            <div className="self-stretch flex flex-col justify-center items-start">
-              <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-                <div className="flex-1 flex justify-start items-center gap-2">
-                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                    Gefahrenzone!
-                  </div>
-                  <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
-                    {userProfile.organization?.name}
-                  </div>
-                </div>
-              </div>
+              {/* #region Personal Properties Section*/}
               <div className="self-stretch flex flex-col justify-center items-start">
-                <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-                  <div className="px-4 pt-2 flex justify-start items-start gap-2">
-                    <button
-                      onClick={handleRemoveUser}
-                      disabled={removeUserMutation.isPending}
-                      className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
-                    >
-                      <div className="w-4 h-4 relative overflow-hidden">
-                        <div className="w-3 h-0 left-[2px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                        <div className="w-2.5 h-2.5 left-[3.33px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                        <div className="w-1.5 h-[2.67px] left-[5.33px] top-[1.33px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
+                <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-start items-center gap-2">
+                  <div className="flex-1 flex justify-start items-center gap-2">
+                    <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+                      Personeneigenschaften
+                    </div>
+                    <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
+                      {userProfile.organization?.name}
+                    </div>
+                  </div>
+                </div>
+                <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
+                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                    <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
+                      <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+                        Person hat Schlüssel?
                       </div>
-                      <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                        {removeUserMutation.isPending
-                          ? "Entfernt..."
-                          : "Aus Organisation Entfernen"}
+                      <button
+                        onClick={() => setHasKey(!hasKey)}
+                        className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
+                      border-0 p-0 outline-none focus:outline-none hover:bg-transparent click:bg-transparent"
+                      >
+                        <SwitchIcon isOn={hasKey} disabled={false} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                    <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
+                      <div className="self-stretch flex flex-col justify-start items-start gap-2">
+                        <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-none">
+                          Anmerkung
+                        </div>
+                        <textarea
+                          className="w-full h-20 px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 resize-none"
+                          placeholder="Anmerkung hier eingeben"
+                          value={userProfile.description || ""}
+                          readOnly
+                        />
                       </div>
-                    </button>
-                    <button
-                      onClick={handlePromoteToSuperadmin}
-                      className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors"
-                    >
-                      <div className="w-4 h-4 relative overflow-hidden">
-                        <div className="w-3.5 h-2.5 left-[1.33px] top-[2.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-white" />
-                      </div>
-                      <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                        Zu Superadmin Ernennen
-                      </div>
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            {/*//#endregion*/}
-          </div>
-        </div>
+              {/*//#endregion*/}
+              {/*//#region Roles Management Section*/}
+              <div className="self-stretch flex flex-col justify-center items-start">
+                <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
+                  <div className="flex-1 flex justify-start items-center gap-2">
+                    <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+                      Rollen
+                    </div>
+                    <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
+                      {userProfile.organization?.name}
+                    </div>
+                  </div>
+                </div>
 
-        {/*//#region Header Action Buttons*/}
-        <div className="w-[592px] left-[32px] top-[28px] absolute flex justify-end items-center gap-10">
-          <div className="flex justify-end items-center gap-2">
-            <button
-              onClick={handleClose}
-              className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-gray-50 transition-colors"
-            >
-              <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-normal">
-                {hasChanges ? "Abbrechen (ESC)" : "Schließen (ESC)"}
+                {/* OV Rolle */}
+                <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
+                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                    <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
+                      <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+                        Organisationsverwaltung (OV)
+                      </div>
+                      <button
+                        onClick={() => toggleRole("OV")}
+                        disabled={saving}
+                        className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
+                      border-0 p-0 outline-none focus:outline-none"
+                      >
+                        <SwitchIcon
+                          isOn={userRoles.includes("OV")}
+                          disabled={saving}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* EV Rolle */}
+                <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
+                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                    <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
+                      <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+                        Einsatzverwaltung (EV)
+                      </div>
+                      <button
+                        onClick={() => toggleRole("EV")}
+                        disabled={saving}
+                        className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
+                      border-0 p-0 outline-none focus:outline-none"
+                      >
+                        <SwitchIcon
+                          isOn={userRoles.includes("EV")}
+                          disabled={saving}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Helfer Rolle */}
+                <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
+                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+                    <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
+                      <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+                        Helfer:in (Helfer:in)
+                      </div>
+                      <button
+                        onClick={() => toggleRole("Helfer")}
+                        disabled={saving}
+                        className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
+                      border-0 p-0 outline-none focus:outline-none"
+                      >
+                        {/* TODO (Ömer): Update SwitchIcon for AAll roles after db update already works, performance*/}
+                        <SwitchIcon
+                          isOn={userRoles.includes("Helfer")}
+                          disabled={saving}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </button>
-            <button
-              onClick={handleSaveAndClose}
-              disabled={saving}
-              className={`px-3 py-1 rounded-md flex justify-center items-center gap-2.5 disabled:opacity-50 transition-colors ${
-                hasChanges
-                  ? "bg-blue-600 hover:bg-blue-700"
-                  : "bg-slate-900 hover:bg-slate-800"
-              }`}
-            >
-              <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                {saving
-                  ? "Speichert..."
-                  : hasChanges
-                  ? "Änderungen Speichern"
-                  : "Schließen"}
+              {/*//#endregion*/}
+
+              {/*//#region Danger Zone Section*/}
+              <div className="self-stretch flex flex-col justify-center items-start">
+                <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
+                  <div className="flex-1 flex justify-start items-center gap-2">
+                    <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+                      Gefahrenzone!
+                    </div>
+                    <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
+                      {userProfile.organization?.name}
+                    </div>
+                  </div>
+                </div>
+                <div className="self-stretch flex flex-col justify-center items-start">
+                  <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
+                    <div className="px-4 pt-2 flex justify-start items-start gap-2">
+                      <button
+                        onClick={handleRemoveUser}
+                        disabled={removeUserMutation.isPending}
+                        className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
+                      >
+                        <div className="w-4 h-4 relative overflow-hidden">
+                          <div className="w-3 h-0 left-[2px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
+                          <div className="w-2.5 h-2.5 left-[3.33px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
+                          <div className="w-1.5 h-[2.67px] left-[5.33px] top-[1.33px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
+                        </div>
+                        <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
+                          {removeUserMutation.isPending
+                            ? "Entfernt..."
+                            : "Aus Organisation Entfernen"}
+                        </div>
+                      </button>
+                      <button
+                        onClick={handlePromoteToSuperadmin}
+                        className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors"
+                      >
+                        <div className="w-4 h-4 relative overflow-hidden">
+                          <div className="w-3.5 h-2.5 left-[1.33px] top-[2.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-white" />
+                        </div>
+                        <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
+                          Zu Superadmin Ernennen
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </button>
+              {/*//#endregion*/}
+            </div>
           </div>
+
+          {/*//#region Header Action Buttons*/}
+          <div className="w-[592px] left-[32px] top-[28px] absolute flex justify-end items-center gap-10">
+            <div className="flex justify-end items-center gap-2">
+              <button
+                onClick={handleClose}
+                className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-gray-50 transition-colors"
+              >
+                <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-normal">
+                  {hasChanges ? "Abbrechen (ESC)" : "Schließen (ESC)"}
+                </div>
+              </button>
+              <button
+                onClick={handleSaveAndClose}
+                disabled={saving}
+                className={`px-3 py-1 rounded-md flex justify-center items-center gap-2.5 disabled:opacity-50 transition-colors ${
+                  hasChanges
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-slate-900 hover:bg-slate-800"
+                }`}
+              >
+                <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
+                  {saving
+                    ? "Speichert..."
+                    : hasChanges
+                    ? "Änderungen Speichern"
+                    : "Schließen"}
+                </div>
+              </button>
+            </div>
+          </div>
+          {/*//#endregion*/}
         </div>
-        {/*//#endregion*/}
       </div>
-    </div>
+    </>
   );
   //#endregion
 
