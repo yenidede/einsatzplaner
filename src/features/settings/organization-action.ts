@@ -4,13 +4,46 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth.config";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { createClient } from "@supabase/supabase-js";
+import type { OrganizationForPDF } from "@/features/organization/types";
+import { hasPermission } from "@/lib/auth/authGuard";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error("Supabase environment variables are not set");
+}
+
+const supabaseServer = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Unauthorized");
   return session;
 }
+export async function getAllRolesExceptSuperAdmin() {
+  const roles = await prisma.role.findMany({
+    select: {
+      id: true,
+      name: true,
+      abbreviation: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+    where: {
+      name: { not: "Superadmin" },
+    },
+  });
 
+  return roles;
+}
 export async function getOrganizationById(orgId: string) {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -41,8 +74,21 @@ export async function getOrganizationById(orgId: string) {
     created_at: org.created_at.toISOString(),
   };
 }
+export async function getEinsatzNamesByOrgId(orgId: string) {
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: {
+      einsatz_name_singular: true,
+      einsatz_name_plural: true,
+    },
+  });
+  if (!org) throw new Error("Organization not found");
 
-// GET - Alle Organisationen des Users
+  return {
+    einsatz_name_singular: org.einsatz_name_singular ?? "Einsatz",
+    einsatz_name_plural: org.einsatz_name_plural ?? "Einsätze",
+  };
+} // GET - Alle Organisationen des Users
 export async function getUserOrganizationsAction() {
   const session = await checkUserSession();
 
@@ -170,12 +216,8 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
 
   if (!userOrgRole) throw new Error("Forbidden");
 
-  const isOV =
-    userOrgRole.role?.name === "Organisationsverwaltung" ||
-    userOrgRole.role?.abbreviation === "OV" ||
-    userOrgRole.role?.name === "Superadmin";
-
-  if (!isOV) throw new Error("Insufficient permissions");
+  if (!await hasPermission(session, "organization:update"))
+    throw new Error("Insufficient permissions");
 
   const dataToUpdate: Partial<OrganizationUpdateData> = {};
   if (data.name !== undefined) dataToUpdate.name = data.name;
@@ -282,12 +324,8 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
 
     if (!userOrgRole) throw new Error("Forbidden");
 
-    const isOV =
-      userOrgRole.role?.name === "Organisationsverwaltung" ||
-      userOrgRole.role?.abbreviation === "OV" ||
-      userOrgRole.role?.name === "Superadmin";
-
-    if (!isOV) throw new Error("Insufficient permissions");
+    if (!hasPermission(session, "organization:update"))
+      throw new Error("Insufficient permissions");
 
     // Validate file
     if (!file.type.startsWith("image/")) {
@@ -298,29 +336,60 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       throw new Error("File size must be less than 5MB");
     }
 
-    // Convert to base64
-    const buffer = await file.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
-    const dataUrl = `data:${file.type};base64,${base64}`;
+    // Upload to Supabase Storage
 
-    // Update organization
+    const fileExt = file.name.split(".").pop();
+    const fileName = `logo-${orgId}.${fileExt}`;
+    const filePath = `organizations/${fileName}`;
+
+    const buffer = await file.arrayBuffer();
+
+    const { data: uploadData, error: uploadError } =
+      await supabaseServer.storage.from("logos").upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("Supabase upload error:", uploadError);
+      throw new Error(`Failed to upload image: ${uploadError.message}`);
+    }
+
+    // Get public URL
+    const { data: urlData } = supabaseServer.storage
+      .from("logos")
+      .getPublicUrl(filePath);
+
+    const publicUrl = urlData.publicUrl;
+
+    // Delete old logo if exists
+    const oldOrg = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { logo_url: true },
+    });
+
+    if (oldOrg?.logo_url && oldOrg.logo_url.includes("supabase")) {
+      const oldPath = oldOrg.logo_url.split("/logos/")[1];
+      if (oldPath) {
+        await supabaseServer.storage.from("logos").remove([oldPath]);
+      }
+    }
+
+    // Update organization with new URL
     await prisma.organization.update({
       where: { id: orgId },
-      data: { logo_url: dataUrl },
+      data: { logo_url: publicUrl },
     });
 
     revalidatePath(`/organization/${orgId}/manage`);
 
-    return { url: dataUrl };
+    return { url: publicUrl };
   } catch (error) {
     console.error("uploadOrganizationLogoAction error:", error);
     throw error;
   }
 }
 
-import type { OrganizationForPDF } from "@/features/organization/types";
-
-// ✅ NEU: Get Organization mit allen Relations
 export async function getOrganizationWithRelations(orgId: string) {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
