@@ -1,4 +1,7 @@
 "use client";
+import TooltipCustom from "@/components/tooltip-custom";
+import { Button } from "@/features/auth/components/ui/FormComponents";
+import { RiDeleteBinLine } from "@remixicon/react";
 import React from "react";
 
 interface RoleType {
@@ -79,6 +82,7 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
           className="px-4 py-2 bg-red-600 text-white rounded-md inline-flex items-center gap-2"
           onClick={onLeave}
         >
+          <RiDeleteBinLine size={16} aria-hidden="true" />
           <span>Organisation verlassen</span>
         </button>
       </div>
