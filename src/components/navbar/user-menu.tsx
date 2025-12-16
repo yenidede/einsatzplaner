@@ -90,7 +90,7 @@ export default function UserMenu(): JSX.Element | null {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link href="/settings" className="cursor-pointer">
               <SettingsIcon
                 size={16}
