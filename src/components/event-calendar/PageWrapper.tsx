@@ -17,7 +17,14 @@ export default function CalendarPageWrapper({
   mode: CalendarMode;
   description?: string;
 }) {
-  const { data: organizations, isLoading: isLoadingOrgs, isError: isOrgError } = useQuery({
+  const { data: session } = useSession();
+  const orgIds = session?.user?.orgIds;
+
+  const {
+    data: organizations,
+    isLoading: isLoadingOrgs,
+    isError: isOrgError,
+  } = useQuery({
     queryKey: orgsQueryKeys.organizations(orgIds ?? []),
     queryFn: () => getOrganizationsByIds(orgIds ?? []),
     enabled: !!orgIds?.length,
@@ -27,7 +34,7 @@ export default function CalendarPageWrapper({
   const activeOrg =
     organizations?.find((org) => org.id === activeOrgId) ?? null;
 
-  const { data: events, isLoading: isLoadingEvents, isError: isEventError } = useQuery({
+  const { isLoading: isLoadingEvents, isError: isEventError } = useQuery({
     queryKey: einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []),
     queryFn: () => getEinsaetzeData(activeOrgId),
     enabled: !!activeOrgId,
