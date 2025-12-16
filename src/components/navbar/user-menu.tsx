@@ -1,7 +1,6 @@
 "use client";
 
 import { SettingsIcon, LogOutIcon, PinIcon, UserPenIcon } from "lucide-react";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -36,18 +34,24 @@ export default function UserMenu(): JSX.Element | null {
       </Button>
     );
   }
+
   if (status === "unauthenticated") {
     return (
       <Button
         variant="ghost"
         className="h-auto p-0 hover:bg-transparent"
-        onClick={() => router.push("/signin")}
-      ></Button>
+        asChild
+      >
+        <Link href="/signin">
+          <Avatar></Avatar>
+        </Link>
+      </Button>
     );
   }
 
   if (session == null || !session.user) {
     router.push("/signin");
+    return null;
   }
 
   const handleLogout = async () => {

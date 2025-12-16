@@ -12,42 +12,39 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Einladung finden und prüfen
-    const invitation = await prisma.invitation.findUnique({
+    const invitations = await prisma.invitation.findMany({
       where: { token },
       include: {
         organization: { select: { name: true } },
-        //role: { select: { name: true } }
+        role: { select: { name: true } },
       },
     });
 
-    if (!invitation) {
+    if (!invitations || invitations.length === 0) {
       return NextResponse.json(
         { error: "Einladung nicht gefunden" },
         { status: 404 }
       );
     }
 
-    // Prüfen ob abgelaufen
-    if (invitation.expires_at < new Date()) {
+    const firstInvitation = invitations[0];
+
+    if (firstInvitation.expires_at < new Date()) {
       return NextResponse.json(
         { error: "Einladung ist abgelaufen" },
         { status: 400 }
       );
     }
 
-    // Prüfen ob bereits angenommen
-    if (invitation.accepted) {
+    if (firstInvitation.accepted) {
       return NextResponse.json(
         { error: "Einladung wurde bereits angenommen" },
         { status: 400 }
       );
     }
 
-    // Einladender User laden
     const inviter = await prisma.user.findUnique({
-      where: { id: invitation.invited_by },
+      where: { id: firstInvitation.invited_by },
       select: { firstname: true, lastname: true, email: true },
     });
 
@@ -56,16 +53,25 @@ export async function GET(request: NextRequest) {
         ? `${inviter.firstname} ${inviter.lastname}`
         : inviter?.email || "Unbekannt";
 
+    const roleNames = invitations
+      .map((inv) => inv.role?.name)
+      .filter(Boolean)
+      .join(", ");
+
     return NextResponse.json({
-      id: invitation.id,
-      email: invitation.email,
-      organizationName: invitation.organization?.name || "Organisation",
-      roleName: "Helfer",
+      id: firstInvitation.id,
+      email: firstInvitation.email,
+      organizationName: firstInvitation.organization?.name || "Organisation",
+      roleName: roleNames || "Helfer",
+      roles: invitations.map((inv) => ({
+        id: inv.role_id,
+        name: inv.role?.name || "Unbekannt",
+      })),
       inviterName: inviterName,
-      expiresAt: invitation.expires_at.toISOString(),
+      expiresAt: firstInvitation.expires_at.toISOString(),
     });
   } catch (error) {
-    console.error("❌ Error verifying invitation:", error);
+    console.error("Error verifying invitation:", error);
     return NextResponse.json(
       {
         error: "Fehler beim Überprüfen der Einladung",

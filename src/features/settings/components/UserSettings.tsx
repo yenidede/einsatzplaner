@@ -9,6 +9,7 @@ import {
   Button,
   FormSection,
 } from "../../auth/components/ui/FormComponents";
+import { useAlertDialog } from "@/hooks/use-alert-dialog";
 
 interface UserSettingsProps {
   isModal?: boolean;
@@ -16,6 +17,7 @@ interface UserSettingsProps {
 
 export default function UserSettings({ isModal = false }: UserSettingsProps) {
   const { update: updateSession } = useSession();
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
   const {
     profile,
     isLoading,
@@ -48,7 +50,7 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
     }
   }, [profile]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate passwords match
@@ -56,7 +58,13 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
       formData.newPassword &&
       formData.newPassword !== formData.confirmPassword
     ) {
-      alert("Passwörter stimmen nicht überein");
+      await showDialog({
+        title: "Passwörter stimmen nicht überein",
+        description:
+          "Bitte stellen Sie sicher, dass beide Passwörter identisch sind.",
+        confirmText: "OK",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -107,123 +115,128 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
   }
 
   return (
-    <div
-      className={`${isModal ? "p-6" : "max-w-2xl mx-auto p-6"} bg-white ${
-        isModal ? "" : "rounded-lg shadow-md"
-      }`}
-    >
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
-          Persönliche Accountverwaltung
-        </h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Verwalten Sie Ihre persönlichen Daten und Sicherheitseinstellungen
-        </p>
+    <>
+      {AlertDialogComponent}
+      <div
+        className={`${isModal ? "p-6" : "max-w-2xl mx-auto p-6"} bg-white ${
+          isModal ? "" : "rounded-lg shadow-md"
+        }`}
+      >
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">
+            Persönliche Accountverwaltung
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Verwalten Sie Ihre persönlichen Daten und Sicherheitseinstellungen
+          </p>
+        </div>
+
+        {error && (
+          <Alert type="error" message={error.message} onClose={() => {}} />
+        )}
+
+        {message && (
+          <Alert type="success" message={message} onClose={() => {}} />
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <FormField
+              label="E-Mail-Adresse"
+              type="email"
+              value={formData.email}
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, email: value }))
+              }
+              error={fieldErrors.email}
+              required
+              autoComplete="email"
+            />
+
+            <FormField
+              label="Vorname"
+              type="text"
+              value={formData.firstname}
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, firstname: value }))
+              }
+              error={fieldErrors.firstname}
+              required
+              autoComplete="given-name"
+            />
+
+            <FormField
+              label="Nachname"
+              type="text"
+              value={formData.lastname}
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, lastname: value }))
+              }
+              error={fieldErrors.lastname}
+              required
+              autoComplete="family-name"
+            />
+          </div>
+
+          <FormSection title="Passwort ändern">
+            <FormField
+              label="Aktuelles Passwort"
+              type="password"
+              value={formData.currentPassword}
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, currentPassword: value }))
+              }
+              error={fieldErrors.currentPassword}
+              autoComplete="current-password"
+              placeholder="Nur ausfüllen wenn Sie das Passwort ändern möchten"
+            />
+
+            <FormField
+              label="Neues Passwort"
+              type="password"
+              value={formData.newPassword}
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, newPassword: value }))
+              }
+              error={fieldErrors.newPassword}
+              autoComplete="new-password"
+              placeholder="Mindestens 8 Zeichen"
+            />
+
+            <FormField
+              label="Neues Passwort bestätigen"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, confirmPassword: value }))
+              }
+              error={fieldErrors.confirmPassword}
+              autoComplete="new-password"
+              placeholder="Passwort wiederholen"
+            />
+          </FormSection>
+
+          <div className="flex justify-between pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              disabled={isUpdating}
+            >
+              Zurücksetzen
+            </Button>
+
+            <Button
+              type="submit"
+              variant="primary"
+              loading={isUpdating}
+              disabled={isUpdating}
+            >
+              Änderungen speichern
+            </Button>
+          </div>
+        </form>
       </div>
-
-      {error && (
-        <Alert type="error" message={error.message} onClose={() => {}} />
-      )}
-
-      {message && <Alert type="success" message={message} onClose={() => {}} />}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <FormField
-            label="E-Mail-Adresse"
-            type="email"
-            value={formData.email}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, email: value }))
-            }
-            error={fieldErrors.email}
-            required
-            autoComplete="email"
-          />
-
-          <FormField
-            label="Vorname"
-            type="text"
-            value={formData.firstname}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, firstname: value }))
-            }
-            error={fieldErrors.firstname}
-            required
-            autoComplete="given-name"
-          />
-
-          <FormField
-            label="Nachname"
-            type="text"
-            value={formData.lastname}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, lastname: value }))
-            }
-            error={fieldErrors.lastname}
-            required
-            autoComplete="family-name"
-          />
-        </div>
-
-        <FormSection title="Passwort ändern">
-          <FormField
-            label="Aktuelles Passwort"
-            type="password"
-            value={formData.currentPassword}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, currentPassword: value }))
-            }
-            error={fieldErrors.currentPassword}
-            autoComplete="current-password"
-            placeholder="Nur ausfüllen wenn Sie das Passwort ändern möchten"
-          />
-
-          <FormField
-            label="Neues Passwort"
-            type="password"
-            value={formData.newPassword}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, newPassword: value }))
-            }
-            error={fieldErrors.newPassword}
-            autoComplete="new-password"
-            placeholder="Mindestens 8 Zeichen"
-          />
-
-          <FormField
-            label="Neues Passwort bestätigen"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, confirmPassword: value }))
-            }
-            error={fieldErrors.confirmPassword}
-            autoComplete="new-password"
-            placeholder="Passwort wiederholen"
-          />
-        </FormSection>
-
-        <div className="flex justify-between pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleReset}
-            disabled={isUpdating}
-          >
-            Zurücksetzen
-          </Button>
-
-          <Button
-            type="submit"
-            variant="primary"
-            loading={isUpdating}
-            disabled={isUpdating}
-          >
-            Änderungen speichern
-          </Button>
-        </div>
-      </form>
-    </div>
+    </>
   );
 }
