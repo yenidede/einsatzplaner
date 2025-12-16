@@ -56,8 +56,10 @@ export default function AcceptPage() {
     try {
       const response = await acceptInvitationAction(token);
 
-      if (!response) {
-        throw new Error("Fehler beim Annehmen der Einladung");
+      if (!response || !response.success) {
+        throw new Error(
+          response.message || "Fehler beim Annehmen der Einladung"
+        );
       }
 
       setSuccess(true);
