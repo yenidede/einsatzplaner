@@ -220,26 +220,26 @@ export async function getEinsaetzeForTableView(
     ),
     einsatz_fields: einsatz.einsatz_field.map(
       (f) =>
-        ({
-          id: f.id,
-          einsatz_id: f.einsatz_id,
-          value: f.value,
-          field_id: f.field_id,
-          datatype: f.field.type?.datatype ?? null,
-        } as einsatz_field & { datatype: string | null })
+      ({
+        id: f.id,
+        einsatz_id: f.einsatz_id,
+        value: f.value,
+        field_id: f.field_id,
+        datatype: f.field.type?.datatype ?? null,
+      } as einsatz_field & { datatype: string | null })
     ),
     user: einsatz.user
       ? {
-          id: einsatz.user.id,
-          firstname: einsatz.user.firstname ?? null,
-          lastname: einsatz.user.lastname ?? null,
-        }
+        id: einsatz.user.id,
+        firstname: einsatz.user.firstname ?? null,
+        lastname: einsatz.user.lastname ?? null,
+      }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-          id: einsatz.einsatz_template.id,
-          name: einsatz.einsatz_template.name ?? null,
-        }
+        id: einsatz.einsatz_template.id,
+        name: einsatz.einsatz_template.name ?? null,
+      }
       : null,
     _count: einsatz._count,
   }));
@@ -388,6 +388,71 @@ export async function updateEinsatzTime(data: {
   });
 }
 
+export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<Einsatz | { id: string, title: string, deleted: true }> {
+  // Adds the user if he isnt already assigned, removes him otherwise
+  const { session } = await requireAuth();
+
+  if (!session?.user.id) {
+    throw new Response("User ID is required", { status: 400 });
+  }
+
+  const existingEinsatz = await prisma.einsatz.findUnique({
+    where: { id: einsatzId },
+    select: { id: true, title: true, org_id: true, einsatz_helper: { select: { user_id: true } } },
+  });
+
+  if (!existingEinsatz) {
+    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
+      status: 404,
+    });
+  }
+
+  const isUserAssigned = existingEinsatz.einsatz_helper.some((helper) => helper.user_id === session.user.id);
+  if (!isUserAssigned) {
+    return prisma.einsatz.update({
+      where: {
+        id: einsatzId,
+        organization: {
+          user_organization_role: {
+            some: {
+              user_id: session.user.id,
+            },
+          },
+        },
+      },
+      data: {
+        einsatz_helper: {
+          create: {
+            user: {
+              connect: {
+                id: session.user.id
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+  else {
+    const delResult = await prisma.einsatz_helper.deleteMany({
+      where: {
+        einsatz_id: einsatzId,
+        user: { id: session.user.id },
+      },
+    });
+
+    if (delResult.count === 0) {
+      throw new Response("Austragen nicht erfolgreich", { status: 500 });
+    }
+
+    return {
+      id: existingEinsatz.id,
+      title: existingEinsatz.title,
+      deleted: true,
+    }
+  }
+}
+
 export async function updateEinsatz({
   data,
 }: {
@@ -400,6 +465,7 @@ export async function updateEinsatz({
   }
 
   if (data.template_id && false) {
+    // TODO implement server side validation
     const parsedDynamicFields = await ValidateEinsatzCreate(
       data as EinsatzCreate
     );

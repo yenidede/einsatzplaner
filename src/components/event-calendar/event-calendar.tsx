@@ -58,6 +58,7 @@ export interface EventCalendarProps {
   events?: CalendarEvent[];
   onEventAdd: (event: EinsatzCreate) => void;
   onEventUpdate: (event: EinsatzCreate) => void;
+  onAssignToggleEvent: (eventId: string) => void;
   onEventTimeUpdate: (event: CalendarEvent) => void;
   onEventDelete: (eventId: string, eventTitle: string) => void;
   onMultiEventDelete: (eventIds: string[]) => void;
@@ -71,6 +72,7 @@ export function EventCalendar({
   events = [],
   onEventAdd,
   onEventUpdate,
+  onAssignToggleEvent,
   onEventTimeUpdate,
   onEventDelete,
   onMultiEventDelete,
@@ -256,6 +258,13 @@ export function EventCalendar({
     setSelectedEvent(null);
   };
 
+  const handleAssignToggleEvent = (eventId: string) => {
+    onAssignToggleEvent(eventId);
+
+    setIsEventDialogOpen(false);
+    setSelectedEvent(null);
+  };
+
   const handleEventDelete = (eventId: string, eventTitle: string) => {
     onEventDelete?.(eventId, eventTitle);
     setIsEventDialogOpen(false);
@@ -298,7 +307,7 @@ export function EventCalendar({
           <span className="min-[480px]:hidden" aria-hidden="true">
             {format(currentDate, "MMM d, yyyy", { locale: de })}
           </span>
-          <span className="max-[479px]:hidden min-md:hidden" aria-hidden="true">
+          <span className="max-[479px]:hidden md:hidden" aria-hidden="true">
             {format(currentDate, "MMMM d, yyyy", { locale: de })}
           </span>
           <span className="max-md:hidden">
@@ -505,13 +514,17 @@ export function EventCalendar({
           />
         ) : mode === "helper" ? (
           <EventDialogHelfer
-            einsatz={typeof selectedEvent === "string" ? selectedEvent : selectedEvent?.id || null}
+            einsatz={
+              typeof selectedEvent === "string"
+                ? selectedEvent
+                : selectedEvent?.id || null
+            }
             isOpen={isEventDialogOpen}
             onClose={() => {
               setIsEventDialogOpen(false);
               setSelectedEvent(null);
             }}
-            onSave={handleEventSave}
+            onAssignToggleEvent={handleAssignToggleEvent}
           />
         ) : null}
       </CalendarDndProvider>

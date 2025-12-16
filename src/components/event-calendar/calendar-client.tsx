@@ -6,7 +6,10 @@ import { EventCalendar } from "@/components/event-calendar";
 import { CalendarEvent, CalendarMode } from "./types";
 import { EinsatzCreateToCalendarEvent } from "./einsatz-service";
 import { EinsatzCreate } from "@/features/einsatz/types";
-import { updateEinsatzTime } from "@/features/einsatz/dal-einsatz";
+import {
+  toggleUserAssignmentToEinsatz,
+  updateEinsatzTime,
+} from "@/features/einsatz/dal-einsatz";
 import { getEinsaetzeData } from "./utils";
 import {
   createEinsatz,
@@ -134,6 +137,62 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     },
   });
 
+  const toggleUserAssignToEvent = useMutation({
+    mutationFn: async (eventId: string) => {
+      return await toggleUserAssignmentToEinsatz(eventId);
+    },
+    onMutate: async (eventId) => {
+      await queryClient.cancelQueries({ queryKey });
+
+      const previous =
+        queryClient.getQueryData<CalendarEvent[]>(queryKey) ?? [];
+
+      const userId = session?.user.id;
+      if (!userId) return { previous };
+
+      const updated = previous.map((event) => {
+        if (event.id !== eventId) return event;
+
+        const isAssigned = event.assignedUsers.includes(userId);
+        const newAssignedUsers = isAssigned
+          ? event.assignedUsers.filter((id) => id !== userId)
+          : [...event.assignedUsers, userId];
+
+        // return a new object → important!
+        return { ...event, assignedUsers: newAssignedUsers };
+      });
+
+      queryClient.setQueryData<CalendarEvent[]>(queryKey, updated);
+
+      return { previous };
+    },
+    onError: (_error, _vars, ctx) => {
+      queryClient.setQueryData(queryKey, ctx?.previous);
+      toast.error(`${einsatz_singular} konnte nicht aktualisiert werden`);
+    },
+    onSuccess: (data) => {
+      // if helper was already assigned, the toggle returns with a property deleted = true
+      if (!Object.hasOwn(data, "deleted"))
+        toast.success(
+          `Du hast dich erfolgreich bei '${data.title}' eingetragen`
+        );
+      else
+        toast.success(`Du hast dich erfolgreich von ${data.title} ausgetragen`);
+    },
+    onSettled: (data) => {
+      // Invalidate the specific einsatz detail (only if we have a valid id)
+      if (data?.id) {
+        queryClient.invalidateQueries({
+          queryKey: einsatzQueryKeys.detailedEinsatz(data.id),
+        });
+      }
+      // Keep the list in sync as well
+      queryClient.invalidateQueries({
+        queryKey: einsatzQueryKeys.allEinsaetze(),
+      });
+    },
+  });
+
   // Delete Mutation with optimistic update
   const deleteMutation = useMutation({
     mutationFn: async ({
@@ -228,6 +287,10 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     updateMutation.mutate(updatedEvent);
   };
 
+  const handleAssignToggleEvent = (eventId: string) => {
+    toggleUserAssignToEvent.mutate(eventId);
+  };
+
   const handleEventTimeUpdate = (event: CalendarEvent) => {
     updateMutation.mutate(event);
   };
@@ -249,6 +312,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       events={events as CalendarEvent[]}
       onEventAdd={handleEventAdd}
       onEventUpdate={handleEventUpdate}
+      onAssignToggleEvent={handleAssignToggleEvent}
       onEventTimeUpdate={handleEventTimeUpdate}
       onEventDelete={handleEventDelete}
       onMultiEventDelete={handleMultiEventDelete}
