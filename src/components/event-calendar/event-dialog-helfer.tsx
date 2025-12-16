@@ -46,7 +46,7 @@ import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
-import { CustomFormField, SupportedDataTypes } from "./types";
+import { CalendarEvent, CustomFormField, SupportedDataTypes } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { buildInputProps } from "../form/utils";
@@ -69,18 +69,14 @@ interface EventDialogProps {
   einsatz: string | null;
   isOpen: boolean;
   onClose: () => void;
-  onAssignToEvent: (
-    eventId: string,
-    eventTitle: string,
-    userId: string
-  ) => void;
+  onAssignToggleEvent: (einsatzId: string, userId: string) => void;
 }
 
 export function EventDialogHelfer({
   einsatz,
   isOpen,
   onClose,
-  onAssignToEvent,
+  onAssignToggleEvent,
 }: EventDialogProps) {
   const { showDialog } = useAlertDialog();
   const { data: session } = useSession();
@@ -233,19 +229,27 @@ export function EventDialogHelfer({
 
             <DefinitionItem label={helper_plural}>
               <ul className="list-disc list-inside space-y-1">
-                {detailedEinsatz?.assigned_users?.length &&
-                detailedEinsatz.assigned_users.length > 0
-                  ? usersQuery.data
-                      ?.filter((user) =>
-                        detailedEinsatz?.assigned_users?.includes(user.id)
-                      )
-                      .map((user) => (
-                        <li key={user.id}>
-                          {user.firstname} {user.lastname}{" "}
-                          {user.id === currentUserId && <b>(Ich)</b>}
-                        </li>
-                      ))
-                  : `Noch Niemand zugeordnet`}
+                {detailedEinsatz?.assigned_users ===
+                undefined ? null : detailedEinsatz.assigned_users.length ===
+                  0 ? (
+                  <li className="text-gray-500 italic">
+                    Noch niemand hinzugefügt.
+                  </li>
+                ) : (
+                  usersQuery.data
+                    ?.filter((user) =>
+                      detailedEinsatz.assigned_users?.includes(user.id)
+                    )
+                    .map((user) => (
+                      <li key={user.id}>
+                        {user.id === session.user.id ? (
+                          <b>{`${user.firstname} ${user.lastname} (Ich)`}</b>
+                        ) : (
+                          `${user.firstname} ${user.lastname} (${user.email})`
+                        )}
+                      </li>
+                    ))
+                )}
               </ul>
             </DefinitionItem>
             <DefinitionItem label="Erstellt von">
@@ -282,23 +286,35 @@ export function EventDialogHelfer({
             <Button variant="outline" onClick={onClose}>
               Schließen
             </Button>
-            <Button
-              onClick={() => {
-                if (!detailedEinsatz?.id || !session?.user?.id) {
-                  toast.error(
-                    "Eintragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen."
-                  );
-                  return;
-                }
-                onAssignToEvent(
-                  detailedEinsatz?.id,
-                  detailedEinsatz?.title,
-                  session.user.id
-                );
-              }}
-            >
-              Eintragen
-            </Button>
+            {!detailedEinsatz?.assigned_users?.includes(currentUserId) ? (
+              <Button
+                onClick={() => {
+                  if (!detailedEinsatz?.id || !session?.user?.id) {
+                    toast.error(
+                      "Eintragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen."
+                    );
+                    return;
+                  }
+                  onAssignToggleEvent(detailedEinsatz.id, session.user.id);
+                }}
+              >
+                Eintragen
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  if (!detailedEinsatz?.id || !session?.user?.id) {
+                    toast.error(
+                      "Eintragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen."
+                    );
+                    return;
+                  }
+                  onAssignToggleEvent(detailedEinsatz.id, session.user.id);
+                }}
+              >
+                Austragen
+              </Button>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>

@@ -181,8 +181,8 @@ export const mapEinsatzToCalendarEvent = (
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(", ")})`
+        .map((c) => c.einsatz_category.abbreviation)
+        .join(", ")})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
