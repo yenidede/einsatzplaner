@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-
     const { token } = await params;
 
     if (!token) {
@@ -17,7 +15,7 @@ export async function GET(
       );
     }
 
-    const invitation = await prisma.invitation.findUnique({
+    const invitations = await prisma.invitation.findMany({
       where: { token },
       include: {
         organization: {
@@ -42,47 +40,53 @@ export async function GET(
       },
     });
 
-    if (!invitation) {
+    if (!invitations || invitations.length === 0) {
       return NextResponse.json(
         { valid: false, error: "Einladung nicht gefunden" },
         { status: 404 }
       );
     }
 
-    // Prüfe ob abgelaufen
-    if (new Date(invitation.expires_at) < new Date()) {
+    // Filtere abgelaufene und bereits akzeptierte Einladungen
+    const validInvitations = invitations.filter(
+      (inv) => new Date(inv.expires_at) >= new Date() && !inv.accepted
+    );
+
+    if (validInvitations.length === 0) {
       return NextResponse.json(
-        { valid: false, error: "Einladung ist abgelaufen" },
+        { valid: false, error: "Keine gültigen Einladungen gefunden" },
         { status: 410 }
       );
     }
 
-    // Prüfe ob bereits akzeptiert
-    if (invitation.accepted) {
-      return NextResponse.json(
-        { valid: false, error: "Einladung wurde bereits akzeptiert" },
-        { status: 410 }
-      );
-    }
+    const firstInvitation = validInvitations[0];
+
+    const roles = validInvitations.map((inv) => ({
+      id: inv.role_id,
+      name: inv.role?.name || "Unbekannt",
+    }));
+
+    const roleNames = validInvitations
+      .map((inv) => inv.role?.name)
+      .filter(Boolean)
+      .join(", ");
 
     return NextResponse.json({
       valid: true,
       invitation: {
-        id: invitation.id,
-        email: invitation.email,
-        organization_id: invitation.org_id,
-        role_id: invitation.role_id,
-        token: invitation.token,
-        expires_at: invitation.expires_at.toISOString(),
-        created_at: invitation.created_at.toISOString(),
-        organization: invitation.organization,
-        role: invitation.role,
-        inviter: invitation.user
-          ? {
-              firstname: invitation.user.firstname,
-              lastname: invitation.user.lastname,
-            }
-          : null,
+        id: firstInvitation.id,
+        email: firstInvitation.email,
+        organizationId: firstInvitation.org_id,
+        organizationName: firstInvitation.organization?.name || "Organisation",
+        roleName: roleNames || "Helfer",
+        roles: roles,
+        token: firstInvitation.token,
+        expiresAt: firstInvitation.expires_at.toISOString(),
+        createdAt: firstInvitation.created_at.toISOString(),
+        inviterName:
+          firstInvitation.user?.firstname && firstInvitation.user?.lastname
+            ? `${firstInvitation.user.firstname} ${firstInvitation.user.lastname}`
+            : "Unbekannt",
       },
     });
   } catch (error) {

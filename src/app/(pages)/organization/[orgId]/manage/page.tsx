@@ -51,6 +51,8 @@ export default function OrganizationManagePage() {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 
+  const staleTime = 5 * 60 * 1000; // 5 Minuten
+  const gcTime = 10 * 60 * 1000; // 10 Minuten
   useSessionValidation({
     debug: false,
     onTokenExpired: () => {
@@ -63,6 +65,8 @@ export default function OrganizationManagePage() {
     queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     enabled: !!session?.user?.id,
     queryFn: () => getUserProfileAction(),
+    staleTime: staleTime,
+    gcTime: gcTime,
   });
 
   useEffect(() => {
@@ -77,6 +81,8 @@ export default function OrganizationManagePage() {
     queryKey: settingsQueryKeys.organization(orgId),
     enabled: !!orgId,
     queryFn: () => getUserOrganizationByIdAction(orgId || ""),
+    staleTime: staleTime,
+    gcTime: gcTime,
   });
 
   useEffect(() => {
@@ -95,6 +101,8 @@ export default function OrganizationManagePage() {
     queryKey: settingsQueryKeys.userOrganizations(orgId),
     enabled: !!orgId,
     queryFn: () => getAllUserOrgRolesAction(orgId),
+    staleTime: staleTime,
+    gcTime: gcTime,
   });
 
   const handleSignOut = async () => {
