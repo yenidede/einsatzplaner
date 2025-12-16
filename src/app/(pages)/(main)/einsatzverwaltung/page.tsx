@@ -2,6 +2,6 @@
 
 import CalendarPageWrapper from "@/components/event-calendar/PageWrapper";
 
-export default function Helferansicht() {
+export default function EinsatzVerwaltung() {
   return CalendarPageWrapper({ mode: "verwaltung" });
 }
