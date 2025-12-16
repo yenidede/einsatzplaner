@@ -20,15 +20,10 @@ import NavSwitchOrgSelect from "./switch-org";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
+import { queryKeys as RolesQueryKeys } from "@/features/roles/queryKeys";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { cn } from "@/lib/utils";
-
-// Navigation links array to be used in both desktop and mobile menus
-const navigationLinks = [
-  { href: "/helferansicht", label: "Helferansicht" },
-  { href: "/einsatzverwaltung", label: "Einsatzverwaltung" },
-  { href: "/auswertungen", label: "Auswertungen" },
-];
+import { getRolesValuePairs } from "@/features/roles/roles-dal";
 
 export default function Component() {
   const { data: session } = useSession();
@@ -38,6 +33,34 @@ export default function Component() {
     queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
     enabled: !!session?.user?.orgIds?.length,
   });
+
+  const { data: roles } = useQuery({
+    queryKey: RolesQueryKeys.roles(),
+    queryFn: () => getRolesValuePairs(),
+  });
+
+  // Navigation links array to be used in both desktop and mobile menus
+  const navigationLinks = [
+    {
+      href: "/helferansicht",
+      label: "Helferansicht",
+      hidden:
+        !session ||
+        !session.user.roleIds.includes(
+          roles?.find((r) => r.name === "Helfer")?.id || ""
+        ),
+    },
+    {
+      href: "/einsatzverwaltung",
+      label: "Einsatzverwaltung",
+      hidden:
+        !session ||
+        !session.user.roleIds.includes(
+          roles?.find((r) => r.name === "Einsatzverwaltung")?.id || ""
+        ),
+    },
+    { href: "/auswertungen", label: "Auswertungen", hidden: true },
+  ];
 
   return (
     <header className={cn("border-b px-4 md:px-6 position-fixed top-0")}>
@@ -82,13 +105,15 @@ export default function Component() {
             <PopoverContent align="start" className="w-36 p-1 md:hidden">
               <NavigationMenu className="max-w-none *:w-full">
                 <NavigationMenuList className="flex-col items-start gap-0 md:gap-2">
-                  {navigationLinks.map((link, index) => (
-                    <NavigationMenuItem key={index} className="w-full">
-                      <NavigationMenuLink href={link.href} className="py-1.5">
-                        {link.label}
-                      </NavigationMenuLink>
-                    </NavigationMenuItem>
-                  ))}
+                  {navigationLinks
+                    .filter((link) => !link.hidden)
+                    .map((link, index) => (
+                      <NavigationMenuItem key={index} className="w-full">
+                        <NavigationMenuLink href={link.href} className="py-1.5">
+                          {link.label}
+                        </NavigationMenuLink>
+                      </NavigationMenuItem>
+                    ))}
                 </NavigationMenuList>
               </NavigationMenu>
             </PopoverContent>
@@ -101,16 +126,18 @@ export default function Component() {
             {/* Navigation menu */}
             <NavigationMenu className="max-md:hidden">
               <NavigationMenuList className="gap-2">
-                {navigationLinks.map((link, index) => (
-                  <NavigationMenuItem key={index}>
-                    <Link
-                      href={link.href}
-                      className="text-muted-foreground hover:text-primary py-1.5 font-medium data-active:focus:bg-accent data-active:hover:bg-accent data-active:bg-accent data-active:text-accent-foreground hover:bg-accent focus:bg-accent focus:text-accent-foreground focus-visible:ring-ring/50 [&_svg:not([class*='text-'])]:text-muted-foreground flex flex-col gap-1 rounded-sm p-2 text-sm transition-all outline-none focus-visible:ring-[3px] focus-visible:outline-1 [&_svg:not([class*='size-'])]:size-4"
-                    >
-                      {link.label}
-                    </Link>
-                  </NavigationMenuItem>
-                ))}
+                {navigationLinks
+                  .filter((link) => !link.hidden)
+                  .map((link, index) => (
+                    <NavigationMenuItem key={index}>
+                      <Link
+                        href={link.href}
+                        className="text-muted-foreground hover:text-primary py-1.5 font-medium data-active:focus:bg-accent data-active:hover:bg-accent data-active:bg-accent data-active:text-accent-foreground hover:bg-accent focus:bg-accent focus:text-accent-foreground focus-visible:ring-ring/50 [&_svg:not([class*='text-'])]:text-muted-foreground flex flex-col gap-1 rounded-sm p-2 text-sm transition-all outline-none focus-visible:ring-[3px] focus-visible:outline-1 [&_svg:not([class*='size-'])]:size-4"
+                      >
+                        {link.label}
+                      </Link>
+                    </NavigationMenuItem>
+                  ))}
               </NavigationMenuList>
             </NavigationMenu>
           </div>
