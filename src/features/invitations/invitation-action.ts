@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { emailService } from "@/lib/email/EmailService";
 import { hasPermission } from "@/lib/auth/authGuard";
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcrypt";
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -139,8 +140,6 @@ export async function createInvitationAction(data: {
         token
       );
     } catch (emailError) {
-      console.error("Failed to send invitation email:", emailError);
-      // Lösche alle erstellten Einladungen
       await prisma.invitation.deleteMany({
         where: { token: token },
       });
@@ -163,7 +162,6 @@ export async function createInvitationAction(data: {
       },
     };
   } catch (error) {
-    console.error("Error creating invitation:", error);
     throw error instanceof Error
       ? error
       : new Error("Fehler beim Erstellen der Einladung");
@@ -302,7 +300,6 @@ export async function acceptInvitationAction(token: string) {
       addedRoles: invitations.map((inv) => inv.role.name),
     };
   } catch (error) {
-    console.error("Error accepting invitation:", error);
     throw error instanceof Error
       ? error
       : new Error("Fehler beim Annehmen der Einladung");
@@ -311,8 +308,6 @@ export async function acceptInvitationAction(token: string) {
 
 export async function verifyInvitationAction(token: string) {
   try {
-    console.log("Verifying invitation with token:", token);
-
     if (!token) {
       throw new Error("Token ist erforderlich");
     }
@@ -328,8 +323,6 @@ export async function verifyInvitationAction(token: string) {
         role: { select: { id: true, name: true } },
       },
     });
-
-    console.log("Found invitations:", invitations.length);
 
     if (!invitations || invitations.length === 0) {
       // Debug: Prüfen ob überhaupt eine Einladung mit diesem Token existiert
@@ -383,7 +376,6 @@ export async function verifyInvitationAction(token: string) {
       expiresAt: firstInvitation.expires_at.toISOString(),
     };
   } catch (error) {
-    console.error("Error verifying invitation:", error);
     throw error instanceof Error
       ? error
       : new Error("Fehler bei der Überprüfung der Einladung");
@@ -434,7 +426,6 @@ export async function createAccountFromInvitationAction(data: {
     }
 
     // Passwort hashen
-    const bcrypt = require("bcrypt");
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -480,7 +471,6 @@ export async function createAccountFromInvitationAction(data: {
       addedRoles: result.addedRoles,
     };
   } catch (error) {
-    console.error("Error creating account from invitation:", error);
     throw error instanceof Error
       ? error
       : new Error("Fehler beim Erstellen des Accounts");
