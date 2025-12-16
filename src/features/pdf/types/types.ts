@@ -115,6 +115,6 @@ export interface EinsatzCategory {
   label?: string | null;
 }
 
-export type PDFOptions = {
+export type PDFDisplayOptions = {
   showLogos?: boolean;
 };

@@ -10,7 +10,11 @@ import { PDFAnreiseInfo } from "../shared/PDFAnreiseInfo";
 import type { Einsatz } from "@/features/einsatz/types";
 import { OrganizationForPDF } from "@/features/organization/types";
 import { commonStyles } from "../styles/common-styles";
-import type { AssignedUser, EinsatzCategory, PDFOptions } from "../types/types";
+import type {
+  AssignedUser,
+  EinsatzCategory,
+  PDFDisplayOptions,
+} from "../types/types";
 import {
   formatDate,
   formatTime,
@@ -25,7 +29,7 @@ type BookingConfirmationPDFProps = {
   organization: OrganizationForPDF;
   assignedUsers: AssignedUser[];
   currentUser?: AssignedUser | null;
-  options?: PDFOptions;
+  options?: PDFDisplayOptions;
 };
 
 export const BookingConfirmationPDF_Fluchtwege_School: React.FC<

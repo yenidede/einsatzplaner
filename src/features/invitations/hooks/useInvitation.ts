@@ -2,7 +2,12 @@
 
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { InviteUserData } from "@/features/invitations/types/invitation";
+import type {
+  InviteUserFormData,
+  CreateInvitationData,
+  AcceptInvitationResult,
+  Invitation,
+} from "@/features/invitations/types/invitation";
 import {
   acceptInvitationAction,
   createInvitationAction,
@@ -12,8 +17,28 @@ export interface UseInvitationReturn {
   loading: boolean;
   error: string;
   success: string;
-  sendInvitation: (data: InviteUserData) => Promise<any>;
+  sendInvitation: (data: InviteUserFormData) => Promise<AcceptInvitationResult>;
   clearMessages: () => void;
+}
+
+function mapToCreateInvitationData(
+  data: InviteUserFormData
+): CreateInvitationData {
+  const organizationId = data.organizationId ?? data.organization_id ?? "";
+  const roleId = data.roleId ?? data.role_id ?? "";
+
+  if (!organizationId) {
+    throw new Error("organizationId is required");
+  }
+  if (!roleId) {
+    throw new Error("roleId is required");
+  }
+
+  return {
+    email: data.email,
+    organizationId,
+    roleIds: [roleId],
+  };
 }
 
 export function useInvitation(): UseInvitationReturn {
@@ -21,33 +46,29 @@ export function useInvitation(): UseInvitationReturn {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const sendInvitation = useCallback(async (data: InviteUserData) => {
-    setLoading(true);
-    setError("");
-    setSuccess("");
+  const sendInvitation = useCallback(
+    async (data: InviteUserFormData): Promise<AcceptInvitationResult> => {
+      setLoading(true);
+      setError("");
+      setSuccess("");
 
-    try {
-      const mappedData = {
-        email: data.email,
-        organizationId:
-          (data as any).organizationId ?? (data as any).organization_id ?? "",
-        roleIds: [(data as any).roleId ?? (data as any).role_id ?? ""].filter(
-          Boolean
-        ),
-      };
+      try {
+        const mappedData = mapToCreateInvitationData(data);
+        const result = await createInvitationAction(mappedData);
 
-      const result = await createInvitationAction(mappedData);
-      setSuccess("Einladung erfolgreich versendet!");
-      return result;
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Fehler beim Senden der Einladung";
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        setSuccess("Einladung erfolgreich versendet!");
+        return result;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Fehler beim Senden der Einladung";
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   const clearMessages = useCallback(() => {
     setError("");
@@ -67,7 +88,7 @@ export interface UseAcceptInvitationReturn {
   loading: boolean;
   error: string;
   success: string;
-  acceptInvitation: (token: string) => Promise<any>;
+  acceptInvitation: (token: string) => Promise<AcceptInvitationResult>;
   clearMessages: () => void;
 }
 
@@ -76,26 +97,29 @@ export function useAcceptInvitation(): UseAcceptInvitationReturn {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const acceptInvitation = useCallback(async (token: string) => {
-    setLoading(true);
-    setError("");
-    setSuccess("");
+  const acceptInvitation = useCallback(
+    async (token: string): Promise<AcceptInvitationResult> => {
+      setLoading(true);
+      setError("");
+      setSuccess("");
 
-    try {
-      const result = await acceptInvitationAction(token);
-      setSuccess("Einladung erfolgreich akzeptiert!");
-      return result;
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Fehler beim Annehmen der Einladung";
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      try {
+        const result = await acceptInvitationAction(token);
+        setSuccess("Einladung erfolgreich akzeptiert!");
+        return result;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Fehler beim Annehmen der Einladung";
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   const clearMessages = useCallback(() => {
     setError("");
@@ -112,7 +136,7 @@ export function useAcceptInvitation(): UseAcceptInvitationReturn {
 }
 
 export function useInvitations(organizationId: string) {
-  return useQuery({
+  return useQuery<Invitation[]>({
     queryKey: ["invitations", organizationId],
     queryFn: async () => {
       const response = await fetch(`/api/invitations?orgId=${organizationId}`);
@@ -125,8 +149,14 @@ export function useInvitations(organizationId: string) {
   });
 }
 
+interface InvitationValidation {
+  valid: boolean;
+  invitation?: Invitation;
+  error?: string;
+}
+
 export function useInvitationValidation(token: string) {
-  return useQuery({
+  return useQuery<InvitationValidation>({
     queryKey: ["invitation", token],
     queryFn: async () => {
       const response = await fetch(`/api/invitations/${token}`);

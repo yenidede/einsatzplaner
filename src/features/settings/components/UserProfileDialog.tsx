@@ -83,6 +83,8 @@ export function UserProfileDialog({
   const [hasKey, setHasKey] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
   //#endregion
 
   //#region Effects
@@ -228,12 +230,6 @@ export function UserProfileDialog({
         }
       });
 
-      interface RoleChangePromises {
-        rolesToAdd: string[];
-        rolesToRemove: string[];
-        promises: Promise<any>[];
-      }
-
       const promises: Promise<any>[] = [];
 
       rolesToAdd.forEach((role) => {
@@ -315,8 +311,6 @@ export function UserProfileDialog({
       setSaving(false);
     }
   };
-
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
 
   const handleClose = async () => {
     if (hasChanges) {

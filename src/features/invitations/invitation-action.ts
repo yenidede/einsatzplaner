@@ -1,4 +1,4 @@
-// src/features/invitations/actions/invitation-actions.ts
+
 "use server";
 
 import { getServerSession } from "next-auth";
@@ -53,7 +53,7 @@ export async function createInvitationAction(data: {
       throw new Error("Benutzer nicht gefunden");
     }
 
-    const canInvite = hasPermission(session, "users:invite");
+    const canInvite = await  hasPermission(session, "users:invite");
 
     if (!canInvite) {
       const roleNames = inviter.user_organization_role.map(
