@@ -66,12 +66,14 @@ interface CalendarDndProviderProps {
   children: ReactNode;
   onEventUpdate: (event: CalendarEvent) => void;
   mode: CalendarMode;
+  disableDragAndDrop?: boolean;
 }
 
 export function CalendarDndProvider({
   children,
   onEventUpdate,
   mode,
+  disableDragAndDrop = false,
 }: CalendarDndProviderProps) {
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -327,6 +329,26 @@ export function CalendarDndProvider({
     }
   };
 
+  const contextValue = {
+    activeEvent,
+    activeId,
+    activeView,
+    currentTime,
+    eventHeight,
+    isMultiDay,
+    multiDayWidth,
+    dragHandlePosition,
+  };
+
+  // If drag and drop is disabled, just render children without DndContext
+  if (disableDragAndDrop) {
+    return (
+      <CalendarDndContext.Provider value={contextValue}>
+        {children}
+      </CalendarDndContext.Provider>
+    );
+  }
+
   return (
     <DndContext
       id={dndContextId}
@@ -335,18 +357,7 @@ export function CalendarDndProvider({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <CalendarDndContext.Provider
-        value={{
-          activeEvent,
-          activeId,
-          activeView,
-          currentTime,
-          eventHeight,
-          isMultiDay,
-          multiDayWidth,
-          dragHandlePosition,
-        }}
-      >
+      <CalendarDndContext.Provider value={contextValue}>
         {children}
 
         <DragOverlay adjustScale={false} dropAnimation={null}>
@@ -356,7 +367,6 @@ export function CalendarDndProvider({
                 height: eventHeight ? `${eventHeight}px` : "auto",
                 width:
                   isMultiDay && multiDayWidth ? `${multiDayWidth}%` : "100%",
-                // Remove the transform that was causing the shift
               }}
             >
               <EventItem

@@ -181,8 +181,8 @@ export const mapEinsatzToCalendarEvent = (
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(", ")})`
+        .map((c) => c.einsatz_category.abbreviation)
+        .join(", ")})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
@@ -438,7 +438,8 @@ export function getBadgeColorClassByStatus(
   status: einsatz_status | string,
   mode: CalendarMode
 ): string {
-  let badgeColor = "";
+  let badgeColor: string;
+  if (status === "eigene") return "bg-blue-400 text-bg-blue-900 dark:bg-blue-800 dark:text-blue-200";
 
   const statusObject = getStatusByMode(status, mode);
 
