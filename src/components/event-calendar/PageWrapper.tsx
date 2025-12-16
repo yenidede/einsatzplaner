@@ -17,10 +17,7 @@ export default function CalendarPageWrapper({
   mode: CalendarMode;
   description?: string;
 }) {
-  const { data: session } = useSession();
-  const orgIds = session?.user.orgIds;
-
-  const { data: organizations } = useQuery({
+  const { data: organizations, isLoading: isLoadingOrgs, isError: isOrgError } = useQuery({
     queryKey: orgsQueryKeys.organizations(orgIds ?? []),
     queryFn: () => getOrganizationsByIds(orgIds ?? []),
     enabled: !!orgIds?.length,
@@ -30,7 +27,7 @@ export default function CalendarPageWrapper({
   const activeOrg =
     organizations?.find((org) => org.id === activeOrgId) ?? null;
 
-  const { data: events } = useQuery({
+  const { data: events, isLoading: isLoadingEvents, isError: isEventError } = useQuery({
     queryKey: einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []),
     queryFn: () => getEinsaetzeData(activeOrgId),
     enabled: !!activeOrgId,
@@ -48,7 +45,15 @@ export default function CalendarPageWrapper({
         activeOrg?.einsatz_name_plural ?? "Einsätze"
       }. Bitte tragen Sie sich für die Termine ein, an denen Sie verfügbar sind.`;
 
-  if (!events) {
+  if (isOrgError) {
+    return <div>Fehler beim Laden der Organisationen</div>;
+  }
+
+  if (isEventError) {
+    return <div>Fehler beim Laden der Einsätze</div>;
+  }
+
+  if (isLoadingOrgs || isLoadingEvents) {
     return <div>Lade Einsätze...</div>;
   }
   return (
