@@ -37,7 +37,8 @@ import {
   CalendarDndProvider,
   CalendarView,
   DayView,
-  EventDialog,
+  EventDialogVerwaltung,
+  EventDialogHelfer,
   EventGap,
   EventHeight,
   MonthView,
@@ -335,7 +336,11 @@ export function EventCalendar({
         } as React.CSSProperties
       }
     >
-      <CalendarDndProvider onEventUpdate={handleEventUpdate} mode={mode}>
+      <CalendarDndProvider
+        onEventUpdate={handleEventUpdate}
+        mode={mode}
+        disableDragAndDrop={mode !== "verwaltung"}
+      >
         <div
           className={cn(
             "flex items-center justify-between p-2 sm:p-4",
@@ -414,22 +419,24 @@ export function EventCalendar({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              className="max-[479px]:aspect-square max-[479px]:p-0!"
-              onClick={() => {
-                setSelectedEvent(null); // Ensure we're creating a new event
-                setIsEventDialogOpen(true);
-              }}
-            >
-              <PlusIcon
-                className="opacity-60 sm:-ms-1"
-                size={16}
-                aria-hidden="true"
-              />
-              <span className="max-sm:sr-only">
-                {einsatz_singular} hinzufügen
-              </span>
-            </Button>
+            {mode === "verwaltung" && (
+              <Button
+                className="max-[479px]:aspect-square max-[479px]:p-0!"
+                onClick={() => {
+                  setSelectedEvent(null); // Ensure we're creating a new event
+                  setIsEventDialogOpen(true);
+                }}
+              >
+                <PlusIcon
+                  className="opacity-60 sm:-ms-1"
+                  size={16}
+                  aria-hidden="true"
+                />
+                <span className="max-sm:sr-only">
+                  {einsatz_singular} hinzufügen
+                </span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -485,16 +492,28 @@ export function EventCalendar({
           )}
         </div>
 
-        <EventDialog
-          einsatz={selectedEvent}
-          isOpen={isEventDialogOpen}
-          onClose={() => {
-            setIsEventDialogOpen(false);
-            setSelectedEvent(null);
-          }}
-          onSave={handleEventSave}
-          onDelete={handleEventDelete}
-        />
+        {mode === "verwaltung" ? (
+          <EventDialogVerwaltung
+            einsatz={selectedEvent}
+            isOpen={isEventDialogOpen}
+            onClose={() => {
+              setIsEventDialogOpen(false);
+              setSelectedEvent(null);
+            }}
+            onSave={handleEventSave}
+            onDelete={handleEventDelete}
+          />
+        ) : mode === "helper" ? (
+          <EventDialogHelfer
+            einsatz={typeof selectedEvent === "string" ? selectedEvent : selectedEvent?.id || null}
+            isOpen={isEventDialogOpen}
+            onClose={() => {
+              setIsEventDialogOpen(false);
+              setSelectedEvent(null);
+            }}
+            onSave={handleEventSave}
+          />
+        ) : null}
       </CalendarDndProvider>
     </div>
   );

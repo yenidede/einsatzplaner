@@ -19,6 +19,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSessionSync } from "@/hooks/useSessionSync";
 import { JSX } from "react";
+import Link from "next/link";
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
@@ -56,9 +57,6 @@ export default function UserMenu(): JSX.Element | null {
   const initials = `${session?.user?.firstname?.charAt(0) ?? ""}${
     session?.user?.lastname?.charAt(0) ?? ""
   }`.toUpperCase();
-  const handleSettings = () => {
-    router.push("/settings");
-  };
 
   return (
     <DropdownMenu>
@@ -68,7 +66,7 @@ export default function UserMenu(): JSX.Element | null {
             {session?.user?.picture_url && (
               <AvatarImage
                 src={session.user.picture_url}
-                alt={`Profile image for ${session.user.firstname} ${session.user.lastname}`}
+                alt={`Profilbild für ${session.user.firstname} ${session.user.lastname}`}
               />
             )}
             <AvatarFallback>{initials}</AvatarFallback>
@@ -88,10 +86,16 @@ export default function UserMenu(): JSX.Element | null {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={handleSettings}>
-            <SettingsIcon size={16} className="opacity-60" aria-hidden="true" />
-            <span>Einstellungen</span>
-          </DropdownMenuItem>
+          <Link href="/settings">
+            <DropdownMenuItem>
+              <SettingsIcon
+                size={16}
+                className="opacity-60"
+                aria-hidden="true"
+              />
+              <span>Einstellungen</span>
+            </DropdownMenuItem>
+          </Link>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>

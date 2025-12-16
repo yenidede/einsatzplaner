@@ -103,12 +103,12 @@ export default function Component() {
               <NavigationMenuList className="gap-2">
                 {navigationLinks.map((link, index) => (
                   <NavigationMenuItem key={index}>
-                    <NavigationMenuLink
+                    <Link
                       href={link.href}
-                      className="text-muted-foreground hover:text-primary py-1.5 font-medium"
+                      className="text-muted-foreground hover:text-primary py-1.5 font-medium data-active:focus:bg-accent data-active:hover:bg-accent data-active:bg-accent data-active:text-accent-foreground hover:bg-accent focus:bg-accent focus:text-accent-foreground focus-visible:ring-ring/50 [&_svg:not([class*='text-'])]:text-muted-foreground flex flex-col gap-1 rounded-sm p-2 text-sm transition-all outline-none focus-visible:ring-[3px] focus-visible:outline-1 [&_svg:not([class*='size-'])]:size-4"
                     >
                       {link.label}
-                    </NavigationMenuLink>
+                    </Link>
                   </NavigationMenuItem>
                 ))}
               </NavigationMenuList>
