@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import type { einsatz as Einsatz, einsatz_field } from "@/generated/prisma";
+import type { einsatz as Einsatz, einsatz_field, einsatz_status } from "@/generated/prisma";
 import type {
   EinsatzForCalendar,
   EinsatzCreate,
@@ -220,26 +220,26 @@ export async function getEinsaetzeForTableView(
     ),
     einsatz_fields: einsatz.einsatz_field.map(
       (f) =>
-        ({
-          id: f.id,
-          einsatz_id: f.einsatz_id,
-          value: f.value,
-          field_id: f.field_id,
-          datatype: f.field.type?.datatype ?? null,
-        } as einsatz_field & { datatype: string | null })
+      ({
+        id: f.id,
+        einsatz_id: f.einsatz_id,
+        value: f.value,
+        field_id: f.field_id,
+        datatype: f.field.type?.datatype ?? null,
+      } as einsatz_field & { datatype: string | null })
     ),
     user: einsatz.user
       ? {
-          id: einsatz.user.id,
-          firstname: einsatz.user.firstname ?? null,
-          lastname: einsatz.user.lastname ?? null,
-        }
+        id: einsatz.user.id,
+        firstname: einsatz.user.firstname ?? null,
+        lastname: einsatz.user.lastname ?? null,
+      }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-          id: einsatz.einsatz_template.id,
-          name: einsatz.einsatz_template.name ?? null,
-        }
+        id: einsatz.einsatz_template.id,
+        name: einsatz.einsatz_template.name ?? null,
+      }
       : null,
     _count: einsatz._count,
   }));
@@ -388,6 +388,84 @@ export async function updateEinsatzTime(data: {
   });
 }
 
+export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<Einsatz | { id: string, title: string, deleted: true }> {
+  // Adds the user if he isnt already assigned, removes him otherwise
+  const { session } = await requireAuth();
+
+  if (!session?.user.id) {
+    throw new Response("User ID is required", { status: 400 });
+  }
+
+  const existingEinsatz = await prisma.einsatz.findUnique({
+    where: { id: einsatzId },
+    select: { id: true, title: true, org_id: true, einsatz_helper: { select: { user_id: true } }, helpers_needed: true },
+  });
+
+  if (!existingEinsatz) {
+    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
+      status: 404,
+    });
+  }
+
+  const isSignedInUserAssigned = existingEinsatz.einsatz_helper.some(
+    (helper) => helper.user_id === session.user.id
+  );
+
+  const addOrRemoveOne = isSignedInUserAssigned ? -1 : 1;
+
+  const newStatusId =
+    existingEinsatz.helpers_needed >
+      existingEinsatz.einsatz_helper.length + addOrRemoveOne
+      ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
+      : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
+
+  if (isSignedInUserAssigned) {
+    // USER IS ALREADY ASSIGNED → REMOVE THEM
+    return prisma.einsatz.update({
+      where: {
+        id: einsatzId,
+        organization: {
+          user_organization_role: {
+            some: {
+              user_id: session.user.id,
+            },
+          },
+        },
+      },
+      data: {
+        einsatz_helper: {
+          deleteMany: {
+            user_id: session.user.id,
+          },
+        },
+        status_id: newStatusId,
+      },
+    });
+  } else {
+    // USER IS NOT ASSIGNED → ADD THEM
+    return prisma.einsatz.update({
+      where: {
+        id: einsatzId,
+        organization: {
+          user_organization_role: {
+            some: {
+              user_id: session.user.id,
+            },
+          },
+        },
+      },
+      data: {
+        einsatz_helper: {
+          create: {
+            user: { connect: { id: session.user.id } },
+          },
+        },
+        status_id: newStatusId,
+      },
+    });
+  }
+}
+
 export async function updateEinsatz({
   data,
 }: {
@@ -400,6 +478,7 @@ export async function updateEinsatz({
   }
 
   if (data.template_id && false) {
+    // TODO implement server side validation
     const parsedDynamicFields = await ValidateEinsatzCreate(
       data as EinsatzCreate
     );

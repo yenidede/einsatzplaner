@@ -175,7 +175,7 @@ interface EventDialogProps {
   onDelete: (eventId: string, eventTitle: string) => void;
 }
 
-export function EventDialog({
+export function EventDialogVerwaltung({
   einsatz,
   isOpen,
   onClose,
@@ -220,7 +220,7 @@ export function EventDialog({
     queryFn: async () => {
       const res = await getEinsatzWithDetailsById(einsatz as string);
       if (!(res instanceof Response)) return res;
-      console.error("Failed to fetch einsatz details:", res);
+      toast.error("Failed to fetch einsatz details: " + res.statusText);
     },
     enabled: typeof einsatz === "string" && !!einsatz && isOpen,
   });
@@ -525,7 +525,7 @@ export function EventDialog({
           }, {} as Record<string, any>)
         );
       } catch (error) {
-        console.error("Error generating schema:", error);
+        toast.error("Error generating schema:" + error);
       }
     }
   }, [activeTemplateId, templatesQuery.data, detailedEinsatz?.einsatz_fields]);
@@ -731,7 +731,7 @@ export function EventDialog({
           typeName: changeTypeName,
           affectedUserId: effectiveAffectedUserId,
         }).catch((error) => {
-          console.error("Failed to create activity log:", error);
+          toast.error("Failed to create activity log: " + error);
         });
       }
     }
