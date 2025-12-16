@@ -439,7 +439,7 @@ export function getBadgeColorClassByStatus(
   mode: CalendarMode
 ): string {
   let badgeColor: string;
-  if (status === "eigene") return "bg-blue-400 text-bg-blue-900 dark:bg-blue-800 dark:text-blue-200";
+  if (status === "eigene") return "bg-blue-400 text-blue-900 dark:bg-blue-800 dark:text-blue-200";
 
   const statusObject = getStatusByMode(status, mode);
 
@@ -447,7 +447,7 @@ export function getBadgeColorClassByStatus(
     switch (statusObject?.color) {
       case "red":
         badgeColor =
-          "bg-red-400 text-bg-red-900 dark:bg-red-800 dark:text-red-200";
+          "bg-red-400 text-red-900 dark:bg-red-800 dark:text-red-200";
         break;
       case "lime":
         badgeColor =
@@ -455,13 +455,13 @@ export function getBadgeColorClassByStatus(
         break;
       default:
         badgeColor =
-          "bg-slate-400 text-bg-slate-900 dark:bg-slate-800 dark:text-slate-200";
+          "bg-slate-400 text-slate-900 dark:bg-slate-800 dark:text-slate-200";
     }
   } else {
     switch (statusObject?.color) {
       case "red":
         badgeColor =
-          "bg-red-400 text-bg-red-900 dark:bg-red-800 dark:text-red-200";
+          "bg-red-400 text-red-900 dark:bg-red-800 dark:text-red-200";
         break;
       case "orange":
         badgeColor =
@@ -473,7 +473,7 @@ export function getBadgeColorClassByStatus(
         break;
       default:
         badgeColor =
-          "bg-slate-400 text-bg-slate-900 dark:bg-slate-800 dark:text-slate-200";
+          "bg-slate-400 text-slate-900 dark:bg-slate-800 dark:text-slate-200";
     }
   }
   return badgeColor;

@@ -1,21 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { InputHTMLAttributes, ReactNode } from "react";
-import { RiDeleteBinLine } from "@remixicon/react";
+import { useState } from "react";
+import type { ReactNode } from "react";
 import { FileDown } from "lucide-react";
 
-import z from "zod";
-import {
-  generateDynamicSchema,
-  getBadgeColorClassByStatus,
-  handleDelete,
-  handlePdfGenerate,
-  mapDbDataTypeToFormFieldType,
-  mapFieldsForSchema,
-  mapStringValueToType,
-  mapTypeToStringValue,
-} from "./utils";
+import { getBadgeColorClassByStatus, handlePdfGenerate } from "./utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,46 +15,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DefaultEndHour,
-  DefaultStartHour,
-  EndHour,
-  StartHour,
-  StatusValuePairs,
-} from "@/components/event-calendar/constants";
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
 import { queryKeys as TemplateQueryKeys } from "@/features/einsatztemplate/queryKeys";
 import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
 import { queryKeys as StatusQueryKeys } from "@/features/einsatz_status/queryKeys";
-import { EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
-import FormGroup from "../form/formGroup";
-import FormInputFieldCustom from "../form/formInputFieldCustom";
-import ToggleItemBig from "../form/toggle-item-big";
 import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
-import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
 import { useAlertDialog } from "@/contexts/AlertDialogContext";
-import { CalendarEvent, CustomFormField, SupportedDataTypes } from "./types";
-import DynamicFormFields from "./dynamicFormfields";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
-import { buildInputProps } from "../form/utils";
 import TooltipCustom from "../tooltip-custom";
 
 import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
 import { useSession } from "next-auth/react";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { toast } from "sonner";
-import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
 
-import {
-  detectChangeTypes,
-  getAffectedUserId,
-} from "@/features/activity_log/utils";
-import { Select, SelectContent, SelectItem } from "../ui/select";
-import { SelectTrigger } from "@radix-ui/react-select";
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +40,7 @@ interface EventDialogProps {
   einsatz: string | null;
   isOpen: boolean;
   onClose: () => void;
-  onAssignToggleEvent: (einsatzId: string, userId: string) => void;
+  onAssignToggleEvent: (einsatzId: string) => void;
 }
 
 export function EventDialogHelfer({
@@ -82,13 +49,11 @@ export function EventDialogHelfer({
   onClose,
   onAssignToggleEvent,
 }: EventDialogProps) {
-  const { showDialog } = useAlertDialog();
   const { data: session } = useSession();
 
   const activeOrgId = session?.user?.activeOrganization?.id;
   const currentUserId = session?.user?.id;
 
-  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const { generatePdf } = usePdfGenerator();
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
@@ -98,7 +63,7 @@ export function EventDialogHelfer({
     queryFn: async () => {
       const res = await getEinsatzWithDetailsById(einsatz as string);
       if (!(res instanceof Response)) return res;
-      toast.error("Failed to fetch einsatz details:" + res.statusText);
+      toast.error("Failed to fetch einsatz details: " + res.statusText);
     },
     enabled: typeof einsatz === "string" && isOpen,
   });
@@ -106,12 +71,6 @@ export function EventDialogHelfer({
   const categoriesQuery = useQuery({
     queryKey: einsatzQueryKeys.categories(activeOrgId ?? ""),
     queryFn: () => getCategoriesByOrgIds(activeOrgId ? [activeOrgId] : []),
-    enabled: !!activeOrgId,
-  });
-
-  const templatesQuery = useQuery({
-    queryKey: TemplateQueryKeys.templates(activeOrgId ? [activeOrgId] : []),
-    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrgId ?? ""),
     enabled: !!activeOrgId,
   });
 
@@ -146,22 +105,20 @@ export function EventDialogHelfer({
     (user) => user.id === detailedEinsatz?.created_by
   );
 
-  const org_id = detailedEinsatz?.org_id ?? activeOrgId;
-  if (!org_id) {
-    toast.error("Organisation konnte nicht zugeordnet werden.");
-    return;
-  }
-
-  if (!currentUserId) {
-    toast.error("Benutzerdaten konnten nicht zugeordnet werden.");
-    return;
+  // Return early without error toast during loading
+  if (!activeOrgId || !currentUserId) {
+    return isOpen ? (
+      <Dialog open={isOpen}>
+        <DialogContent>Laden...</DialogContent>
+      </Dialog>
+    ) : null;
   }
 
   // normally should open the create dialog, in helper just return
   if (isOpen && !einsatz) return;
 
-  const assigned_count = detailedEinsatz?.assigned_users?.length ?? "0";
-  const max_assigned_count = detailedEinsatz?.helpers_needed ?? "0";
+  const assigned_count = detailedEinsatz?.assigned_users?.length ?? 0;
+  const max_assigned_count = Number(detailedEinsatz?.helpers_needed ?? 0);
   const status = detailedEinsatz?.assigned_users?.includes(currentUserId)
     ? "eigene"
     : statuses?.find((s) => s.id === detailedEinsatz?.status_id);
@@ -329,7 +286,7 @@ export function EventDialogHelfer({
                     );
                     return;
                   }
-                  onAssignToggleEvent(detailedEinsatz.id, session.user.id);
+                  onAssignToggleEvent(detailedEinsatz.id);
                 }}
               >
                 Eintragen
@@ -343,7 +300,7 @@ export function EventDialogHelfer({
                     );
                     return;
                   }
-                  onAssignToggleEvent(detailedEinsatz.id, session.user.id);
+                  onAssignToggleEvent(detailedEinsatz.id);
                 }}
               >
                 Austragen
