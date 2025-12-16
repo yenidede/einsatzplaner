@@ -326,7 +326,7 @@ export default function SettingsPage() {
   };
 
   if (status === "unauthenticated") {
-    signOut({ callbackUrl: "/signin" });
+    await signOut({ callbackUrl: "/signin" });
     return <div>Leite weiter…</div>;
   }
 
