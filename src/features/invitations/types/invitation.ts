@@ -53,7 +53,20 @@ export interface CreateInvitationData {
 export interface AcceptInvitationResult {
   success: boolean;
   message?: string;
-  data?: any;
+  data?: {
+    sessionUpdate?: {
+      user: {
+        orgIds: string[];
+        roleIds: string[];
+        activeOrganization: {
+          id: string;
+          name: string;
+          logo_url: string | null;
+        } | null;
+      };
+    };
+    addedRoles?: string[];
+  };
 }
 
 export const InviteUserSchema = z.object({
