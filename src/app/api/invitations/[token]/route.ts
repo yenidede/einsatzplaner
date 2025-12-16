@@ -59,25 +59,35 @@ export async function GET(
       );
     }
 
+    const firstInvitation = validInvitations[0];
+
+    const roles = validInvitations.map((inv) => ({
+      id: inv.role_id,
+      name: inv.role?.name || "Unbekannt",
+    }));
+
+    const roleNames = validInvitations
+      .map((inv) => inv.role?.name)
+      .filter(Boolean)
+      .join(", ");
+
     return NextResponse.json({
       valid: true,
-      invitations: validInvitations.map((invitation) => ({
-        id: invitation.id,
-        email: invitation.email,
-        organization_id: invitation.org_id,
-        role_id: invitation.role_id,
-        token: invitation.token,
-        expires_at: invitation.expires_at.toISOString(),
-        created_at: invitation.created_at.toISOString(),
-        organization: invitation.organization,
-        role: invitation.role,
-        inviter: invitation.user
-          ? {
-              firstname: invitation.user.firstname,
-              lastname: invitation.user.lastname,
-            }
-          : null,
-      })),
+      invitation: {
+        id: firstInvitation.id,
+        email: firstInvitation.email,
+        organizationId: firstInvitation.org_id,
+        organizationName: firstInvitation.organization?.name || "Organisation",
+        roleName: roleNames || "Helfer",
+        roles: roles,
+        token: firstInvitation.token,
+        expiresAt: firstInvitation.expires_at.toISOString(),
+        createdAt: firstInvitation.created_at.toISOString(),
+        inviterName:
+          firstInvitation.user?.firstname && firstInvitation.user?.lastname
+            ? `${firstInvitation.user.firstname} ${firstInvitation.user.lastname}`
+            : "Unbekannt",
+      },
     });
   } catch (error) {
     console.error("Invitation validation error:", error);
