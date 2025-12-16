@@ -1,4 +1,3 @@
-
 "use server";
 
 import { getServerSession } from "next-auth";
@@ -8,6 +7,7 @@ import crypto from "crypto";
 import { emailService } from "@/lib/email/EmailService";
 import { hasPermission } from "@/lib/auth/authGuard";
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcrypt";
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -23,7 +23,6 @@ export async function createInvitationAction(data: {
   try {
     const session = await checkUserSession();
 
-    // Validierung
     if (
       !data.email ||
       !data.organizationId ||
@@ -33,7 +32,6 @@ export async function createInvitationAction(data: {
       throw new Error("Ungültige Eingabedaten");
     }
 
-    // Email-Format validieren
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(data.email)) {
       throw new Error("Ungültige E-Mail-Adresse");
@@ -53,7 +51,7 @@ export async function createInvitationAction(data: {
       throw new Error("Benutzer nicht gefunden");
     }
 
-    const canInvite = await  hasPermission(session, "users:invite");
+    const canInvite = await hasPermission(session, "users:invite");
 
     if (!canInvite) {
       const roleNames = inviter.user_organization_role.map(
@@ -142,8 +140,6 @@ export async function createInvitationAction(data: {
         token
       );
     } catch (emailError) {
-      console.error("Failed to send invitation email:", emailError);
-      // Lösche alle erstellten Einladungen
       await prisma.invitation.deleteMany({
         where: { token: token },
       });
@@ -166,7 +162,6 @@ export async function createInvitationAction(data: {
       },
     };
   } catch (error) {
-    console.error("Error creating invitation:", error);
     throw error instanceof Error
       ? error
       : new Error("Fehler beim Erstellen der Einladung");
@@ -181,7 +176,6 @@ export async function acceptInvitationAction(token: string) {
       throw new Error("Token ist erforderlich");
     }
 
-    // Alle Einladungen mit diesem Token laden (mehrere Rollen)
     const invitations = await prisma.invitation.findMany({
       where: { token },
       include: {
@@ -220,7 +214,6 @@ export async function acceptInvitationAction(token: string) {
       throw new Error("E-Mail-Adresse stimmt nicht überein");
     }
 
-    // Alle Rollen zur Organisation hinzufügen
     await Promise.all(
       invitations.map((invitation) =>
         prisma.user_organization_role.create({
@@ -233,12 +226,10 @@ export async function acceptInvitationAction(token: string) {
       )
     );
 
-    // Alle Einladungen mit diesem Token löschen
     await prisma.invitation.deleteMany({
       where: { token },
     });
 
-    // User-Daten aktualisieren
     const updatedUser = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -309,9 +300,179 @@ export async function acceptInvitationAction(token: string) {
       addedRoles: invitations.map((inv) => inv.role.name),
     };
   } catch (error) {
-    console.error("Error accepting invitation:", error);
     throw error instanceof Error
       ? error
       : new Error("Fehler beim Annehmen der Einladung");
+  }
+}
+
+export async function verifyInvitationAction(token: string) {
+  try {
+    if (!token) {
+      throw new Error("Token ist erforderlich");
+    }
+
+    const invitations = await prisma.invitation.findMany({
+      where: {
+        token,
+        accepted: false, // Nur nicht akzeptierte Einladungen
+        expires_at: { gt: new Date() }, // Nur nicht abgelaufene
+      },
+      include: {
+        organization: { select: { name: true } },
+        role: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!invitations || invitations.length === 0) {
+      // Debug: Prüfen ob überhaupt eine Einladung mit diesem Token existiert
+      const anyInvitation = await prisma.invitation.findFirst({
+        where: { token },
+        include: {
+          organization: { select: { name: true } },
+          role: { select: { name: true } },
+        },
+      });
+
+      if (anyInvitation) {
+        if (anyInvitation.accepted) {
+          throw new Error("Einladung wurde bereits angenommen");
+        }
+        if (anyInvitation.expires_at < new Date()) {
+          throw new Error("Einladung ist abgelaufen");
+        }
+      }
+
+      throw new Error("Einladung nicht gefunden");
+    }
+
+    const firstInvitation = invitations[0];
+
+    const inviter = await prisma.user.findUnique({
+      where: { id: firstInvitation.invited_by },
+      select: { firstname: true, lastname: true, email: true },
+    });
+
+    const inviterName =
+      inviter?.firstname && inviter?.lastname
+        ? `${inviter.firstname} ${inviter.lastname}`
+        : inviter?.email || "Unbekannt";
+
+    const roleNames = invitations
+      .map((inv) => inv.role?.name)
+      .filter(Boolean)
+      .join(", ");
+
+    return {
+      id: firstInvitation.id,
+      email: firstInvitation.email,
+      organizationName: firstInvitation.organization?.name || "Organisation",
+      roleName: roleNames || "Helfer",
+      roles: invitations.map((inv) => ({
+        id: inv.role_id,
+        name: inv.role?.name || "Unbekannt",
+      })),
+      inviterName: inviterName,
+      expiresAt: firstInvitation.expires_at.toISOString(),
+    };
+  } catch (error) {
+    throw error instanceof Error
+      ? error
+      : new Error("Fehler bei der Überprüfung der Einladung");
+  }
+}
+
+export async function createAccountFromInvitationAction(data: {
+  token: string;
+  firstname: string;
+  lastname: string;
+  password: string;
+}) {
+  try {
+    if (!data.token || !data.firstname || !data.lastname || !data.password) {
+      throw new Error("Alle Felder sind erforderlich");
+    }
+
+    if (data.password.length < 8) {
+      throw new Error("Das Passwort muss mindestens 8 Zeichen lang sein");
+    }
+
+    const invitations = await prisma.invitation.findMany({
+      where: {
+        token: data.token,
+        accepted: false,
+        expires_at: { gt: new Date() },
+      },
+      include: {
+        organization: true,
+        role: true,
+      },
+    });
+
+    if (!invitations || invitations.length === 0) {
+      throw new Error("Ungültige oder abgelaufene Einladung");
+    }
+
+    const firstInvitation = invitations[0];
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email: firstInvitation.email },
+    });
+
+    if (existingUser) {
+      throw new Error(
+        "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an."
+      );
+    }
+
+    // Passwort hashen
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email: firstInvitation.email,
+          firstname: data.firstname,
+          lastname: data.lastname,
+          password: hashedPassword,
+          active_org: firstInvitation.org_id,
+        },
+      });
+
+      await Promise.all(
+        invitations.map((invitation) =>
+          tx.user_organization_role.create({
+            data: {
+              user_id: newUser.id,
+              org_id: invitation.org_id,
+              role_id: invitation.role_id,
+            },
+          })
+        )
+      );
+
+      await tx.invitation.deleteMany({
+        where: { token: data.token },
+      });
+
+      return {
+        email: newUser.email,
+        addedRoles: invitations.map((inv) => inv.role.name),
+      };
+    });
+
+    revalidatePath("/");
+    revalidatePath(`/organization/${firstInvitation.org_id}`);
+
+    return {
+      success: true,
+      message: "Account erfolgreich erstellt",
+      email: result.email,
+      addedRoles: result.addedRoles,
+    };
+  } catch (error) {
+    throw error instanceof Error
+      ? error
+      : new Error("Fehler beim Erstellen des Accounts");
   }
 }

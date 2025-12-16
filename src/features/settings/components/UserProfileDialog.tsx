@@ -12,6 +12,8 @@ import {
 } from "@/features/settings/users-action";
 import { settingsQueryKeys } from "../queryKey";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
+import { RiDeleteBinLine } from "@remixicon/react";
+import { Crown } from "lucide-react";
 
 //#region TypeScript Interfaces
 interface UserProfileDialogProps {
@@ -369,7 +371,7 @@ export function UserProfileDialog({
 
   if (isLoading) {
     return createPortal(
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      <div className="fixed inset-0 z-40 flex items-center justify-center">
         <div className="fixed inset-0 bg-white/20 backdrop-blur-sm" />
         <div className="relative bg-white rounded-xl shadow-2xl p-8 border border-gray-200">
           <div className="flex items-center gap-3">
@@ -386,7 +388,7 @@ export function UserProfileDialog({
 
   if (error) {
     return createPortal(
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      <div className="fixed inset-0 z-40 flex items-center justify-center">
         <div
           className="fixed inset-0 bg-white/20 backdrop-blur-sm"
           onClick={onClose}
@@ -423,7 +425,7 @@ export function UserProfileDialog({
     <>
       {AlertDialogComponent}
       <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center"
+        className="fixed inset-0 z-40 flex items-center justify-center"
         aria-modal="true"
         role="dialog"
       >
@@ -666,11 +668,11 @@ export function UserProfileDialog({
                         disabled={removeUserMutation.isPending}
                         className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
                       >
-                        <div className="w-4 h-4 relative overflow-hidden">
-                          <div className="w-3 h-0 left-[2px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                          <div className="w-2.5 h-2.5 left-[3.33px] top-[4px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                          <div className="w-1.5 h-[2.67px] left-[5.33px] top-[1.33px] absolute outline outline-2 outline-offset-[-1px] outline-white" />
-                        </div>
+                        <RiDeleteBinLine
+                          size={24}
+                          aria-hidden="true"
+                          className="text-white"
+                        />
                         <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
                           {removeUserMutation.isPending
                             ? "Entfernt..."
@@ -681,9 +683,7 @@ export function UserProfileDialog({
                         onClick={handlePromoteToSuperadmin}
                         className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors"
                       >
-                        <div className="w-4 h-4 relative overflow-hidden">
-                          <div className="w-3.5 h-2.5 left-[1.33px] top-[2.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-white" />
-                        </div>
+                        <Crown className="text-white"></Crown>
                         <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
                           Zu Superadmin Ernennen
                         </div>

@@ -29,7 +29,7 @@ export default function AcceptPage() {
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
       router.push(
-        `/signin?callbackUrl=${encodeURIComponent(`/invite/${token}/accept`)}`
+        `/signin?callbackUrl=${encodeURIComponent(`/invite/${token}`)}`
       );
     }
   }, [sessionStatus, router, token]);

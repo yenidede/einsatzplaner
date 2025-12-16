@@ -79,8 +79,7 @@ export class EmailService {
     organizationName: string,
     token: string
   ) {
-    const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}/accept`;
-
+    const inviteUrl = `${process.env.NEXTAUTH_URL}/invite/${token}`;
 
     if (!this.transporter) {
       return;
@@ -183,7 +182,7 @@ export class EmailService {
     token: string,
     expiresAt: Date
   ) {
-    const acceptUrl = `${process.env.NEXTAUTH_URL}/invite/${token}/accept`;
+    const acceptUrl = `${process.env.NEXTAUTH_URL}/invite/${token}`;
 
     const expiryDate = expiresAt.toLocaleDateString("de-DE", {
       weekday: "long",
