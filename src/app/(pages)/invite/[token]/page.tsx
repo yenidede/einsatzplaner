@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { acceptInvitationAction } from "@/features/invitations/invitation-action";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
+import Link from "next/link";
 
 interface Role {
   id: string;
@@ -115,12 +116,12 @@ export default function InviteAcceptPage() {
             Einladung ungültig
           </h1>
           <p className="text-gray-600 mb-4">{(error as Error).message}</p>
-          <button
-            onClick={() => router.push("/signin")}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          <Link
+            href="/signin"
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 inline-block"
           >
             Zur Anmeldung
-          </button>
+          </Link>
         </div>
       </div>
     );
