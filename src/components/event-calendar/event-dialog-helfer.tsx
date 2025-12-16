@@ -8,6 +8,7 @@ import { FileDown } from "lucide-react";
 import z from "zod";
 import {
   generateDynamicSchema,
+  getBadgeColorClassByStatus,
   handleDelete,
   handlePdfGenerate,
   mapDbDataTypeToFormFieldType,
@@ -37,6 +38,7 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
 import { queryKeys as TemplateQueryKeys } from "@/features/einsatztemplate/queryKeys";
 import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
+import { queryKeys as StatusQueryKeys } from "@/features/einsatz_status/queryKeys";
 import { EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
 import FormGroup from "../form/formGroup";
 import FormInputFieldCustom from "../form/formInputFieldCustom";
@@ -64,6 +66,8 @@ import {
 } from "@/features/activity_log/utils";
 import { Select, SelectContent, SelectItem } from "../ui/select";
 import { SelectTrigger } from "@radix-ui/react-select";
+import { GetStatuses } from "@/features/einsatz_status/status-dal";
+import { cn } from "@/lib/utils";
 
 interface EventDialogProps {
   einsatz: string | null;
@@ -125,6 +129,11 @@ export function EventDialogHelfer({
     enabled: !!session?.user.orgIds?.length,
   });
 
+  const { data: statuses } = useQuery({
+    queryKey: StatusQueryKeys.statuses(),
+    queryFn: () => GetStatuses(),
+  });
+
   const einsatz_singular =
     organizations?.find((org) => org.id === activeOrgId)
       ?.einsatz_name_singular ?? "Einsatz";
@@ -153,16 +162,38 @@ export function EventDialogHelfer({
       <div>Event nicht richtig übergeben. Bitte später erneut versuchen.</div>
     );
 
+  const assigned_count = detailedEinsatz?.assigned_users?.length ?? "0";
+  const max_assigned_count = detailedEinsatz?.helpers_needed ?? "0";
+  const status = detailedEinsatz?.assigned_users?.includes(currentUserId)
+    ? "eigene"
+    : statuses?.find((s) => s.id === detailedEinsatz?.status_id);
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
         <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>
-            {isLoading
-              ? "Laden..."
-              : `Für ${detailedEinsatz?.title ?? ""} eintragen (${
-                  detailedEinsatz?.assigned_users?.length ?? "0"
-                }/${detailedEinsatz?.helpers_needed ?? "0"})`}
+            <div className="flex items-center">
+              {isLoading
+                ? "Laden..."
+                : `Für '${
+                    detailedEinsatz?.title ?? ""
+                  }' eintragen (${assigned_count}/${max_assigned_count})`}
+              {status && (
+                <TooltipCustom
+                  text={`${
+                    status === "eigene" ? "eigene" : status.helper_text
+                  }`}
+                >
+                  <div
+                    className={cn(
+                      getBadgeColorClassByStatus(status, "helper"),
+                      "h-4 w-4 inline-block ml-2 rounded-full"
+                    )}
+                  ></div>
+                </TooltipCustom>
+              )}
+            </div>
           </DialogTitle>
           <div>
             {detailedEinsatz ? (
@@ -263,6 +294,7 @@ export function EventDialogHelfer({
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
           <TooltipCustom text="PDF-Bestätigung drucken">
             <Button
+              autoFocus={false}
               variant="outline"
               size="icon"
               onClick={() =>
@@ -283,11 +315,15 @@ export function EventDialogHelfer({
             </Button>
           </TooltipCustom>
           <div className="flex flex-1 justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} autoFocus={isOpen}>
               Schließen
             </Button>
             {!detailedEinsatz?.assigned_users?.includes(currentUserId) ? (
               <Button
+                disabled={
+                  max_assigned_count !== 0 &&
+                  max_assigned_count <= assigned_count
+                }
                 onClick={() => {
                   if (!detailedEinsatz?.id || !session?.user?.id) {
                     toast.error(
@@ -345,8 +381,8 @@ interface DefinitionItemProps {
 export function DefinitionItem({ label, children }: DefinitionItemProps) {
   return (
     <div className="contents">
-      <dt className="font-semibold shrink-0">{label}</dt>
-      <dd className="text-foreground/70">{children}</dd>
+      <dt className="font-semibold shrink-0 text-right">{label}</dt>
+      <dd className="text-foreground/75">{children}</dd>
     </div>
   );
 }

@@ -32,10 +32,7 @@ export default function CalendarPageWrapper({
 
   const { data: events } = useQuery({
     queryKey: einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []),
-    queryFn: () => {
-      console.log(activeOrgId);
-      return getEinsaetzeData(activeOrgId);
-    },
+    queryFn: () => getEinsaetzeData(activeOrgId),
     enabled: !!activeOrgId,
   });
 
@@ -43,21 +40,24 @@ export default function CalendarPageWrapper({
     ? description
     : mode === "verwaltung"
     ? activeOrg?.verwalteransicht_description ??
-      `Hier kannst du dich für ${
+      `Hier können ${
         activeOrg?.einsatz_name_plural ?? "Einsätze"
-      } eintragen. Bitte wähle die Termine aus, an denen du verfügbar bist.`
+      } bearbeitet, erstellt und gelöscht werden..`
     : activeOrg?.helferansicht_description ??
-      `Hier siehst du alle verfügbaren ${
+      `Hier sehen Sie alle ${
         activeOrg?.einsatz_name_plural ?? "Einsätze"
-      }. Bitte trage dich für die Termine ein, an denen du helfen kannst.`;
+      }. Bitte tragen Sie sich für die Termine ein, an denen Sie verfügbar sind.`;
 
   if (!events) {
     return <div>Lade Einsätze...</div>;
   }
   return (
     <>
-      <h1>{activeOrg?.einsatz_name_plural ?? "Einsätze"}</h1>
-      <p className="text-muted-foreground leading-7">{descriptionText}</p>
+      <h1>
+        {activeOrg?.einsatz_name_plural ?? "Einsätze"}{" "}
+        {mode === "verwaltung" ? "verwalten" : "ansehen"}
+      </h1>
+      <p className="text-muted-foreground leading-4">{descriptionText}</p>
       <div className="mt-6">
         <Calendar mode={mode} />
       </div>
