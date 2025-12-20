@@ -7,7 +7,7 @@ import {
   deleteOrganizationAction,
   type OrganizationUpdateData,
 } from "../organization-action";
-import { settingsQueryKeys } from "../queryKey";
+import { settingsQueryKeys } from "../queryKeys/queryKey";
 
 export function useOrganizations(orgs: string[]) {
   const queries = useQuery({

@@ -7,7 +7,7 @@ import {
   uploadOrganizationLogoAction,
   type OrganizationUpdateData,
 } from "../organization-action";
-import { settingsQueryKeys } from "../queryKey";
+import { settingsQueryKeys } from "../queryKeys/queryKey";
 
 export function useOrganizationManage(orgId: string) {
   const queryClient = useQueryClient();

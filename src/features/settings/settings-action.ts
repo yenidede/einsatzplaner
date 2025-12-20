@@ -9,7 +9,6 @@ import { revalidatePath } from "next/cache";
 import { OrganizationRole } from "@/types/next-auth";
 import { createClient } from "@supabase/supabase-js";
 
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -252,7 +251,6 @@ export async function updateOrgMailNotificationAction(
 
   return { success: true };
 }
-// TODO (Ömer): Correct Implementation of Uploading Profile Picture to Supabase Storage
 export async function uploadProfilePictureAction(formData: FormData) {
   const session = await checkUserSession();
 
