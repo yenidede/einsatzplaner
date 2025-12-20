@@ -226,9 +226,8 @@ export default function OrganizationManagePage() {
     return <div className="p-6">Lädt Organisation...</div>;
   if (orgError)
     return (
-      <div className="p-6">
-        Fehler beim Laden der Organisation: {orgError?.message}
-      </div>
+      toast.error("Fehler beim Laden der Organisation"),
+      (<div className="p-6">Fehler beim Laden der Organisation</div>)
     );
 
   return (

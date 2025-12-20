@@ -23,7 +23,7 @@ export function PersonPropertySection() {
           <div className="self-stretch px-4 flex flex-col justify-center items-center gap-2.5">
             <Image
               src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/undraw_instant-analysis_vm8x%201.svg"
-              alt="Personeneigenschaften Illustration"
+              alt="Illustration showing data analysis concept for person properties feature"
               width={245}
               height={210}
               unoptimized
