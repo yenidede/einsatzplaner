@@ -1,0 +1,162 @@
+"use server";
+
+import {
+  createUserProperty,
+  getUserPropertiesByOrgId,
+  getExistingPropertyNames,
+  getUserCountByOrgId,
+  updateUserProperty,
+  deleteUserProperty,
+  type CreateUserPropertyInput,
+  type UpdateUserPropertyInput,
+  type UserPropertyWithField,
+} from "./user_property-dal";
+import type { PropertyConfig } from "./types";
+
+/**
+ * Lädt alle User Properties für eine Organisation
+ */
+export async function getUserPropertiesAction(
+  orgId: string
+): Promise<UserPropertyWithField[]> {
+  try {
+    return await getUserPropertiesByOrgId(orgId);
+  } catch (error) {
+    console.error("Error loading user properties:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lädt existierende Property-Namen
+ */
+export async function getExistingPropertyNamesAction(
+  orgId: string
+): Promise<string[]> {
+  try {
+    return await getExistingPropertyNames(orgId);
+  } catch (error) {
+    console.error("Error loading property names:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lädt User-Anzahl für eine Organisation
+ */
+export async function getUserCountAction(orgId: string): Promise<number> {
+  try {
+    return await getUserCountByOrgId(orgId);
+  } catch (error) {
+    console.error("Error loading user count:", error);
+    throw error;
+  }
+}
+
+/**
+ * Konvertiert PropertyConfig zu CreateUserPropertyInput
+ */
+function configToCreateInput(
+  config: PropertyConfig,
+  orgId: string
+): CreateUserPropertyInput {
+  // Bestimme datatype basierend auf fieldType
+  let datatype: "text" | "number" | "boolean" | "select";
+
+  switch (config.fieldType) {
+    case "text":
+      datatype = "text";
+      break;
+    case "number":
+      datatype = "number";
+      break;
+    case "boolean":
+      datatype = "boolean";
+      break;
+    case "select":
+      datatype = "select";
+      break;
+    default:
+      throw new Error(`Unknown field type: ${config.fieldType}`);
+  }
+
+  // Bestimme defaultValue basierend auf fieldType
+  let defaultValue: string | undefined;
+
+  if (config.fieldType === "boolean" && config.booleanDefaultValue !== null) {
+    defaultValue = config.booleanDefaultValue ? "true" : "false";
+  } else if (config.fieldType === "select" && config.defaultOption) {
+    defaultValue = config.defaultOption;
+  } else if (config.defaultValue) {
+    defaultValue = config.defaultValue;
+  }
+
+  return {
+    name: config.name,
+    description: config.description,
+    datatype,
+    isRequired: config.isRequired,
+    placeholder: config.placeholder,
+    defaultValue,
+    isMultiline: config.isMultiline,
+    min: config.minValue,
+    max: config.maxValue,
+    allowedValues: config.options,
+    orgId,
+  };
+}
+
+/**
+ * Erstellt eine neue User Property
+ */
+export async function createUserPropertyAction(
+  config: PropertyConfig,
+  orgId: string
+): Promise<UserPropertyWithField> {
+  try {
+    const input = configToCreateInput(config, orgId);
+    return await createUserProperty(input);
+  } catch (error) {
+    console.error("Error creating user property:", error);
+    throw error;
+  }
+}
+
+/**
+ * Aktualisiert eine User Property
+ */
+export async function updateUserPropertyAction(
+  id: string,
+  config: Partial<PropertyConfig>
+): Promise<UserPropertyWithField> {
+  try {
+    const input: UpdateUserPropertyInput = {
+      id,
+      name: config.name,
+      isRequired: config.isRequired,
+      placeholder: config.placeholder,
+      defaultValue: config.defaultValue,
+      isMultiline: config.isMultiline,
+      min: config.minValue,
+      max: config.maxValue,
+      allowedValues: config.options,
+    };
+
+    return await updateUserProperty(input);
+  } catch (error) {
+    console.error("Error updating user property:", error);
+    throw error;
+  }
+}
+
+/**
+ * Löscht eine User Property
+ */
+export async function deleteUserPropertyAction(id: string): Promise<void> {
+  try {
+    await deleteUserProperty(id);
+  } catch (error) {
+    console.error("Error deleting user property:", error);
+    throw error;
+  }
+}
