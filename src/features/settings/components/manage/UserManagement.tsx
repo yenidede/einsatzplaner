@@ -17,7 +17,6 @@ export function UsersManagementSection({
   onUserProfileClick,
   onInviteClick,
 }: UsersManagementSectionProps) {
-  // Gruppiere nach User-ID um mehrere Rollen zu sammeln
   const groupedUsers = usersData?.reduce((acc: any, userOrgRole: any) => {
     const userId = userOrgRole.user?.id;
     if (!acc[userId]) {
@@ -29,8 +28,6 @@ export function UsersManagementSection({
     acc[userId].roles.push(userOrgRole.role);
     return acc;
   }, {});
-
-  // Sortiere User nach höchster Rolle (Superadmin -> OV -> EV -> Helfer)
   const sortedUsers = Object.values(groupedUsers || {}).sort(
     (a: any, b: any) => {
       const getRoleWeight = (roles: any[]) => {

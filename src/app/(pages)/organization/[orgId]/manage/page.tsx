@@ -23,6 +23,8 @@ import { InviteUserForm } from "@/features/invitations/components/InviteUserForm
 import { OrganizationSidebar } from "@/features/settings/components/manage/OrganizationSideBar";
 import { OrganizationLogoSection } from "@/features/settings/components/manage/OrganizationLogo";
 import { OrganizationDetailsForm } from "@/features/settings/components/manage/OrganizationDetailsForm";
+import { OrganizationPreferences } from "@/features/settings/components/manage/OrganizationPreferences";
+import { PersonPropertySection } from "@/features/settings/components/manage/PersonPropertySection";
 import { UsersManagementSection } from "@/features/settings/components/manage/UserManagement";
 
 export default function OrganizationManagePage() {
@@ -231,7 +233,6 @@ export default function OrganizationManagePage() {
 
   return (
     <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
-      {/* Header */}
       <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
         <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
           <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
@@ -258,12 +259,10 @@ export default function OrganizationManagePage() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
         <OrganizationSidebar user={user} onSignOut={handleSignOut} />
 
         <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
-          {/* Organization Details Section */}
           <div className="self-stretch flex flex-col justify-center items-start gap-4">
             <div className="self-stretch flex flex-col justify-start items-start gap-2">
               <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
@@ -283,20 +282,27 @@ export default function OrganizationManagePage() {
                   email={email}
                   phone={phone}
                   description={description}
-                  helperSingular={helperSingular}
-                  helperPlural={helperPlural}
                   onNameChange={setName}
                   onEmailChange={setEmail}
                   onPhoneChange={setPhone}
                   onDescriptionChange={setDescription}
-                  onHelperSingularChange={setHelperSingular}
-                  onHelperPluralChange={setHelperPlural}
                 />
               </div>
             </div>
           </div>
 
-          {/* Users Management Section */}
+          <div className="self-stretch flex flex-col justify-center items-start gap-4">
+            <OrganizationPreferences
+              helperSingular={helperSingular}
+              helperPlural={helperPlural}
+              onHelperSingularChange={setHelperSingular}
+              onHelperPluralChange={setHelperPlural}
+            />
+          </div>
+          <div className="self-stretch flex flex-col justify-center items-start gap-4">
+            <PersonPropertySection />
+          </div>
+
           <UsersManagementSection
             usersData={usersData || []}
             usersLoading={usersLoading}
@@ -305,7 +311,6 @@ export default function OrganizationManagePage() {
             onInviteClick={() => setIsInviteModalOpen(true)}
           />
 
-          {/* Modals */}
           {selectedUserId && (
             <UserProfileDialog
               isOpen={isProfileDialogOpen}
