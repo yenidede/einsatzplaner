@@ -259,19 +259,21 @@ export function UserProfileDialog({
 
   const demoteFromSuperadminMutation = useMutation({
     mutationFn: () => demoteFromSuperadminAction(userId, organizationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: userProfileQueryKeys.profile(userId, organizationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: organizationUsersQueryKeys.byOrg(organizationId),
-      });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKeys.profile(userId, organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+        }),
+      ]);
       onClose();
     },
     onError: async (error: Error) => {
