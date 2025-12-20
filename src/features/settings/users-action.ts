@@ -15,7 +15,6 @@ async function checkUserSession() {
 export async function getUserProfileAction(userId: string, orgId: string) {
   const session = await checkUserSession();
 
-  // Check if requesting user has access to this organization
   const requestingUserAccess = await prisma.user_organization_role.findFirst({
     where: {
       org_id: orgId,
@@ -25,7 +24,6 @@ export async function getUserProfileAction(userId: string, orgId: string) {
 
   if (!requestingUserAccess) throw new Error("Forbidden");
 
-  // Get user profile with their role in this organization
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -177,7 +175,6 @@ export async function updateUserRoleAction(
 ) {
   const session = await checkUserSession();
 
-  // Check if requesting user has OV or Superadmin permission
   const requestingUserRole = await prisma.user_organization_role.findMany({
     where: {
       org_id: organizationId,
@@ -196,7 +193,6 @@ export async function updateUserRoleAction(
 
   if (!isPermitted) throw new Error("Insufficient permissions");
 
-  // Get the role by abbreviation
   const role = await prisma.role.findFirst({
     where: {
       OR: [{ abbreviation: roleAbbreviation }, { name: roleAbbreviation }],
@@ -206,7 +202,6 @@ export async function updateUserRoleAction(
   if (!role) throw new Error(`Role ${roleAbbreviation} not found`);
 
   if (action === "add") {
-    // Check if already exists
     const existing = await prisma.user_organization_role.findFirst({
       where: {
         user_id: userId,
@@ -247,8 +242,7 @@ export async function removeUserFromOrganizationAction(
 ) {
   const session = await checkUserSession();
 
-  // Check permission
-  const requestingUserRole = await prisma.user_organization_role.findFirst({
+  const requestingUserRoles = await prisma.user_organization_role.findMany({
     where: {
       org_id: organizationId,
       user_id: session.user.id,
@@ -256,12 +250,40 @@ export async function removeUserFromOrganizationAction(
     include: { role: true },
   });
 
-  if (!requestingUserRole) throw new Error("Forbidden");
-
-  if (!(await hasPermission(session, "users:manage", organizationId))) {
-    throw new Error("Insufficient permissions");
+  if (!requestingUserRoles || requestingUserRoles.length === 0) {
+    throw new Error("Forbidden");
   }
-  // Remove all roles for this user in this organization
+
+  const isSuperadmin = requestingUserRoles.some(
+    (role) => role.role?.name === "Superadmin"
+  );
+  const isOV = requestingUserRoles.some(
+    (role) =>
+      role.role?.name === "Organisationsverwaltung" ||
+      role.role?.abbreviation === "OV"
+  );
+
+  const targetUserRoles = await prisma.user_organization_role.findMany({
+    where: {
+      user_id: userId,
+      org_id: organizationId,
+    },
+    include: { role: true },
+  });
+
+  const targetIsSuperadmin = targetUserRoles.some(
+    (role) => role.role?.name === "Superadmin"
+  );
+
+  if (targetIsSuperadmin && !isSuperadmin) {
+    throw new Error(
+      "Nur Superadmins können andere Superadmins aus der Organisation entfernen"
+    );
+  }
+  if (!isOV && !isSuperadmin) {
+    throw new Error("Keine Berechtigung zum Entfernen von Benutzern");
+  }
+
   await prisma.user_organization_role.deleteMany({
     where: {
       user_id: userId,
@@ -272,4 +294,106 @@ export async function removeUserFromOrganizationAction(
   revalidatePath(`/organization/${organizationId}`);
 
   return { message: "User removed from organization" };
+}
+
+export async function promoteToSuperadminAction(
+  userId: string,
+  organizationId: string
+) {
+  const session = await checkUserSession();
+
+  const requestingUserRoles = await prisma.user_organization_role.findMany({
+    where: {
+      org_id: organizationId,
+      user_id: session.user.id,
+    },
+    include: { role: true },
+  });
+
+  const isSuperadmin = requestingUserRoles.some(
+    (role) => role.role?.name === "Superadmin"
+  );
+
+  if (!isSuperadmin) {
+    throw new Error(
+      "Nur Superadmins können andere Benutzer zu Superadmins ernennen"
+    );
+  }
+
+  const superadminRole = await prisma.role.findFirst({
+    where: { name: "Superadmin" },
+  });
+
+  if (!superadminRole) {
+    throw new Error("Superadmin-Rolle nicht gefunden");
+  }
+  const existingSuperadmin = await prisma.user_organization_role.findFirst({
+    where: {
+      user_id: userId,
+      org_id: organizationId,
+      role_id: superadminRole.id,
+    },
+  });
+
+  if (existingSuperadmin) {
+    throw new Error("Benutzer ist bereits Superadmin");
+  }
+  await prisma.user_organization_role.create({
+    data: {
+      user_id: userId,
+      org_id: organizationId,
+      role_id: superadminRole.id,
+    },
+  });
+
+  revalidatePath(`/organization/${organizationId}`);
+
+  return { message: "Benutzer erfolgreich zum Superadmin ernannt" };
+}
+
+export async function demoteFromSuperadminAction(
+  userId: string,
+  organizationId: string
+) {
+  const session = await checkUserSession();
+
+  const requestingUserRoles = await prisma.user_organization_role.findMany({
+    where: {
+      org_id: organizationId,
+      user_id: session.user.id,
+    },
+    include: { role: true },
+  });
+
+  const isSuperadmin = requestingUserRoles.some(
+    (role) => role.role?.name === "Superadmin"
+  );
+
+  if (!isSuperadmin) {
+    throw new Error("Nur Superadmins können andere Superadmins degradieren");
+  }
+
+  if (userId === session.user.id) {
+    throw new Error("Sie können sich nicht selbst degradieren");
+  }
+
+  const superadminRole = await prisma.role.findFirst({
+    where: { name: "Superadmin" },
+  });
+
+  if (!superadminRole) {
+    throw new Error("Superadmin-Rolle nicht gefunden");
+  }
+
+  await prisma.user_organization_role.deleteMany({
+    where: {
+      user_id: userId,
+      org_id: organizationId,
+      role_id: superadminRole.id,
+    },
+  });
+
+  revalidatePath(`/organization/${organizationId}`);
+
+  return { message: "Superadmin-Rolle erfolgreich entfernt" };
 }

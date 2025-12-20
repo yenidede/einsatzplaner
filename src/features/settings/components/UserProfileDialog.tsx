@@ -3,19 +3,25 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import SwitchIcon from "@/components/icon/SwitchIcon";
 import {
   getUserProfileAction,
   updateUserRoleAction,
   removeUserFromOrganizationAction,
   getUserOrgRolesAction,
+  promoteToSuperadminAction,
+  demoteFromSuperadminAction,
 } from "@/features/settings/users-action";
-import { settingsQueryKeys } from "../queryKey";
+import {
+  userProfileQueryKeys,
+  organizationUsersQueryKeys,
+} from "../queryKeys/userProfile-QueryKeys";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
-import { RiDeleteBinLine } from "@remixicon/react";
-import { Crown } from "lucide-react";
+import { UserProfileHeader } from "./UserProfile/UserProfileHeader";
+import { UserContactInfo } from "./UserProfile/UserContactInfo";
+import { UserPersonalProperties } from "./UserProfile/UserPersonalProperties";
+import { UserRoleManagement } from "./UserProfile/UserRoleManagement";
+import { UserDangerZone } from "./UserProfile/UserDangerZone";
 
-//#region TypeScript Interfaces
 interface UserProfileDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,53 +29,14 @@ interface UserProfileDialogProps {
   organizationId: string;
 }
 
-interface Role {
-  id: string;
-  name: string;
-  abbreviation: string;
-  color?: string;
-  description?: string;
-}
-
 interface UserRole {
-  user: {
-    id: string;
-    email: string;
-    firstname: string;
-    lastname: string;
-    phone: string | null;
-    picture_url: string | null;
-  };
-  role: {
-    id: string;
-    name: string;
-    abbreviation: string;
-  };
-}
-
-interface UserProfile {
   id: string;
-  email: string;
-  firstname: string;
-  lastname: string;
-  phone: string | null;
-  picture_url: string | null;
-  description: string | null;
-  hasLogoinCalendar: boolean;
-  hasGetMailNotification: boolean;
   role: {
     id: string;
     name: string;
     abbreviation: string;
-  } | null;
-  organization: {
-    id: string;
-    name: string;
-    helper_name_singular: string;
-    helper_name_plural: string;
-  } | null;
+  };
 }
-//#endregion
 
 export function UserProfileDialog({
   isOpen,
@@ -77,7 +44,6 @@ export function UserProfileDialog({
   userId,
   organizationId,
 }: UserProfileDialogProps) {
-  //#region State Management
   const queryClient = useQueryClient();
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
@@ -87,23 +53,39 @@ export function UserProfileDialog({
   const [saving, setSaving] = useState(false);
 
   const { showDialog, AlertDialogComponent } = useAlertDialog();
-  //#endregion
 
-  //#region Effects
-  // Disable background scroll + ESC key handler
+  // Queries
+  const {
+    data: userProfile,
+    isLoading: profileLoading,
+    error,
+  } = useQuery({
+    queryKey: userProfileQueryKeys.profile(userId, organizationId),
+    queryFn: async () => await getUserProfileAction(userId, organizationId),
+    enabled: isOpen && !!userId && !!organizationId,
+    staleTime: 30000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const { data: userOrgRoles = [] } = useQuery<UserRole[]>({
+    queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+    queryFn: async () => await getUserOrgRolesAction(organizationId, userId),
+    enabled: isOpen && !!userId && !!organizationId,
+    staleTime: 30000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  // Effects
   useEffect(() => {
     if (!isOpen) return;
-
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const preventTouch = (e: Event) => e.preventDefault();
     document.addEventListener("touchmove", preventTouch, { passive: false });
-
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) onClose();
     };
     document.addEventListener("keydown", onKey);
-
     return () => {
       document.body.style.overflow = prevOverflow || "";
       document.removeEventListener("touchmove", preventTouch);
@@ -111,47 +93,18 @@ export function UserProfileDialog({
     };
   }, [isOpen, onClose]);
 
-  // Check for changes
   useEffect(() => {
     const rolesChanged =
       JSON.stringify(userRoles.sort()) !== JSON.stringify(originalRoles.sort());
     setHasChanges(rolesChanged);
   }, [userRoles, originalRoles]);
-  //#endregion
 
-  //#region Queries
-  // Fetch user profile
-  const {
-    data: userProfile,
-    isLoading: profileLoading,
-    error,
-  } = useQuery({
-    queryKey: settingsQueryKeys.userProfile(userId, organizationId),
-    queryFn: async () => await getUserProfileAction(userId, organizationId),
-    enabled: isOpen && !!userId && !!organizationId,
-    staleTime: 30000,
-    gcTime: 5 * 60 * 1000,
-  });
-
-  const { data: userOrgRoles = [] } = useQuery({
-    queryKey: settingsQueryKeys.userOrgRoles(userId, organizationId),
-    queryFn: async () => await getUserOrgRolesAction(organizationId, userId),
-    enabled: isOpen && !!userId && !!organizationId,
-    staleTime: 30000,
-    gcTime: 5 * 60 * 1000,
-  });
-
-  //#endregion
-
-  //#region Initialize form data when user profile loads
   useEffect(() => {
     if (userOrgRoles && userOrgRoles.length > 0) {
       const roles: string[] = [];
-
       userOrgRoles.forEach((userRole) => {
         const roleAbbr =
           userRole.role?.abbreviation || userRole.role?.name || "";
-
         if (
           roleAbbr === "OV" ||
           userRole.role?.name === "Organisationsverwaltung"
@@ -169,7 +122,6 @@ export function UserProfileDialog({
         ) {
           if (!roles.includes("Helfer")) roles.push("Helfer");
         }
-
         if (
           userRole.role?.name === "Superadmin" ||
           userRole.role?.abbreviation === "SA"
@@ -179,20 +131,17 @@ export function UserProfileDialog({
           if (!roles.includes("Helfer")) roles.push("Helfer");
         }
       });
-
       setUserRoles(roles);
       setOriginalRoles([...roles]);
       setHasKey(false);
       setHasChanges(false);
     }
   }, [userOrgRoles]);
-  //#endregion
 
-  //#region Helper Functions
+  // Helper functions
   const getRoleColor = (role: any) => {
     const roleName = role.name || "";
     const roleAbbr = role.abbreviation || "";
-
     if (roleName === "Superadmin" || roleAbbr === "SA") return "bg-rose-400";
     if (roleName === "Organisationsverwaltung" || roleAbbr === "OV")
       return "bg-red-300";
@@ -204,64 +153,59 @@ export function UserProfileDialog({
       roleAbbr === "Helfer"
     )
       return "bg-cyan-200";
-
     return "bg-gray-300";
   };
 
   const getRoleDisplayName = (role: any) => {
     return role.name || role.abbreviation || "Unbekannt";
   };
-  //#endregion
 
-  //#region Mutations
-  // Batch save mutation
+  const isSuperadmin = userOrgRoles.some(
+    (userRole) =>
+      userRole.role?.name === "Superadmin" ||
+      userRole.role?.abbreviation === "SA"
+  );
+
+  // Mutations
   const saveChangesMutation = useMutation({
     mutationFn: async () => {
       const rolesToAdd: string[] = [];
       const rolesToRemove: string[] = [];
-
       userRoles.forEach((role) => {
-        if (!originalRoles.includes(role)) {
-          rolesToAdd.push(role);
-        }
+        if (!originalRoles.includes(role)) rolesToAdd.push(role);
       });
-
       originalRoles.forEach((role) => {
-        if (!userRoles.includes(role)) {
-          rolesToRemove.push(role);
-        }
+        if (!userRoles.includes(role)) rolesToRemove.push(role);
       });
-
       const promises: Promise<any>[] = [];
-
       rolesToAdd.forEach((role) => {
         promises.push(
           updateUserRoleAction(userId, organizationId, role, "add")
         );
       });
-
       rolesToRemove.forEach((role) => {
         promises.push(
           updateUserRoleAction(userId, organizationId, role, "remove")
         );
       });
-
       await Promise.all(promises);
-
       return { rolesToAdd, rolesToRemove };
     },
     onSuccess: () => {
       setOriginalRoles([...userRoles]);
       setHasChanges(false);
-
-      queryClient.invalidateQueries({ queryKey: ["userProfile", userId] });
       queryClient.invalidateQueries({
-        queryKey: ["userAllOrgRoles", organizationId],
+        queryKey: userProfileQueryKeys.profile(userId, organizationId),
       });
       queryClient.invalidateQueries({
-        queryKey: ["userOrgRoles", userId, organizationId],
+        queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
       });
-      queryClient.invalidateQueries({ queryKey: ["organizationUsers"] });
+      queryClient.invalidateQueries({
+        queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+      });
     },
     onError: async (error) => {
       console.error("Error saving role changes:", error);
@@ -276,20 +220,74 @@ export function UserProfileDialog({
     },
   });
 
-  // Remove user mutation
   const removeUserMutation = useMutation({
     mutationFn: () => removeUserFromOrganizationAction(userId, organizationId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizationUsers"] });
+      queryClient.invalidateQueries({
+        queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+      });
       onClose();
     },
   });
-  //#endregion
 
-  //#region Event Handlers
+  const promoteToSuperadminMutation = useMutation({
+    mutationFn: () => promoteToSuperadminAction(userId, organizationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: userProfileQueryKeys.profile(userId, organizationId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+      });
+      onClose();
+    },
+    onError: async (error: Error) => {
+      await showDialog({
+        title: "Fehler",
+        description: error.message || "Fehler beim Ernennen zum Superadmin",
+        confirmText: "OK",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const demoteFromSuperadminMutation = useMutation({
+    mutationFn: () => demoteFromSuperadminAction(userId, organizationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: userProfileQueryKeys.profile(userId, organizationId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+      });
+      onClose();
+    },
+    onError: async (error: Error) => {
+      await showDialog({
+        title: "Fehler",
+        description:
+          error.message || "Fehler beim Entfernen der Superadmin-Rolle",
+        confirmText: "OK",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Event handlers
   const toggleRole = (roleAbbreviation: string) => {
     const isCurrentlyActive = userRoles.includes(roleAbbreviation);
-
     if (isCurrentlyActive) {
       setUserRoles((prev) => prev.filter((role) => role !== roleAbbreviation));
     } else {
@@ -302,7 +300,6 @@ export function UserProfileDialog({
       onClose();
       return;
     }
-
     setSaving(true);
     try {
       await saveChangesMutation.mutateAsync();
@@ -324,7 +321,6 @@ export function UserProfileDialog({
         cancelText: "Abbrechen",
         variant: "destructive",
       });
-
       if (result === "success") {
         setUserRoles([...originalRoles]);
         setHasChanges(false);
@@ -343,7 +339,6 @@ export function UserProfileDialog({
       cancelText: "Abbrechen",
       variant: "destructive",
     });
-
     if (result === "success") {
       removeUserMutation.mutate();
     }
@@ -352,21 +347,30 @@ export function UserProfileDialog({
   const handlePromoteToSuperadmin = async () => {
     const result = await showDialog({
       title: "Zum Superadmin ernennen",
-      description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen?`,
+      description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen? Diese Person erhält dann alle Berechtigungen.`,
       confirmText: "Ernennen",
       cancelText: "Abbrechen",
     });
-
     if (result === "success") {
-      // TODO (Ömer): Implement superadmin promotion
-      console.log("Promote to superadmin not implemented yet");
+      promoteToSuperadminMutation.mutate();
     }
   };
-  //#endregion
 
-  //#region Early Returns & Loading States
+  const handleDemoteFromSuperadmin = async () => {
+    const result = await showDialog({
+      title: "Superadmin-Rolle entfernen",
+      description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich die Superadmin-Rolle entziehen? Die Person behält alle anderen Rollen.`,
+      confirmText: "Degradieren",
+      cancelText: "Abbrechen",
+      variant: "destructive",
+    });
+    if (result === "success") {
+      demoteFromSuperadminMutation.mutate();
+    }
+  };
+
+  // Early returns
   if (!isOpen) return null;
-
   const isLoading = profileLoading;
 
   if (isLoading) {
@@ -410,17 +414,7 @@ export function UserProfileDialog({
   }
 
   if (!userProfile) return null;
-  //#endregion
 
-  //#region Helper Variables
-  // Generate initials
-  const initials =
-    `${userProfile.firstname?.[0] || ""}${
-      userProfile.lastname?.[0] || ""
-    }`.toUpperCase() || "U";
-  //#endregion
-
-  //#region Main Dialog Render
   const content = (
     <>
       {AlertDialogComponent}
@@ -429,13 +423,10 @@ export function UserProfileDialog({
         aria-modal="true"
         role="dialog"
       >
-        {/* Backdrop */}
         <div
           className="fixed inset-0 bg-white/20 backdrop-blur-md transition-opacity"
           onClick={onClose}
         />
-
-        {/* Dialog */}
         <div
           ref={dialogRef}
           onClick={(e) => e.stopPropagation()}
@@ -443,260 +434,42 @@ export function UserProfileDialog({
         >
           <div className="flex-1 h-[740px] flex justify-start items-start gap-2 overflow-y-auto">
             <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
-              {/*//#region User Header Section - Updated with dynamic roles*/}
-              <div className="px-4 flex flex-col justify-start items-start gap-2">
-                <div className="w-16 h-16 px-3 py-2 rounded-[30px] flex flex-col justify-center items-center gap-3.5">
-                  {userProfile.picture_url ? (
-                    <img
-                      src={userProfile.picture_url}
-                      alt={`${userProfile.firstname} ${userProfile.lastname}`}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="justify-start text-slate-900 text-base font-normal font-['Inter'] leading-7">
-                      {initials}
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col justify-center items-start gap-1">
-                  <div className="justify-start text-slate-800 text-2xl font-semibold font-['Inter'] leading-loose">
-                    {userProfile.firstname} {userProfile.lastname}
-                  </div>
-                  <div className="inline-flex justify-start items-start gap-1 flex-wrap">
-                    {/* Display all actual roles from API */}
-                    {userOrgRoles.map((userRole, index) => (
-                      <div
-                        key={index}
-                        className={`p-1 ${getRoleColor(
-                          userRole.role
-                        )} rounded-md flex justify-center items-center gap-2.5`}
-                      >
-                        <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">
-                          {getRoleDisplayName(userRole.role)}
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Show placeholder if no roles */}
-                    {userOrgRoles.length === 0 && (
-                      <div className="p-1 bg-gray-200 rounded-md flex justify-center items-center gap-2.5">
-                        <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-none">
-                          Keine Rollen zugewiesen
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {/*#endregion*/}
-
-              {/* #region Contact Information Section*/}
-              <div className="px-4 flex flex-col justify-center items-start gap-2.5">
-                <div className="w-96 inline-flex justify-start items-center gap-2.5">
-                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                    Kontaktinformationen
-                  </div>
-                </div>
-                <div className="inline-flex justify-center items-center gap-4">
-                  <div className="flex justify-start items-center gap-2">
-                    <div className="w-4 h-4 relative overflow-hidden">
-                      <div className="w-3.5 h-2.5 left-[1.33px] top-[2.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
-                      <div className="w-3.5 h-1 left-[1.33px] top-[4.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
-                    </div>
-                    <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
-                      {userProfile.email}
-                    </div>
-                  </div>
-                  {userProfile.phone && (
-                    <div className="flex justify-start items-center gap-2">
-                      <div className="w-4 h-4 relative overflow-hidden">
-                        <div className="w-3.5 h-3.5 left-[1.41px] top-[1.33px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
-                      </div>
-                      <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
-                        {userProfile.phone}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* #endregion*/}
-
-              {/* #region Personal Properties Section*/}
-              <div className="self-stretch flex flex-col justify-center items-start">
-                <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-start items-center gap-2">
-                  <div className="flex-1 flex justify-start items-center gap-2">
-                    <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                      Personeneigenschaften
-                    </div>
-                    <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
-                      {userProfile.organization?.name}
-                    </div>
-                  </div>
-                </div>
-                <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                    <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                      <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                        Person hat Schlüssel?
-                      </div>
-                      <button
-                        onClick={() => setHasKey(!hasKey)}
-                        className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-                      border-0 p-0 outline-none focus:outline-none hover:bg-transparent click:bg-transparent"
-                      >
-                        <SwitchIcon isOn={hasKey} disabled={false} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                    <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
-                      <div className="self-stretch flex flex-col justify-start items-start gap-2">
-                        <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-none">
-                          Anmerkung
-                        </div>
-                        <textarea
-                          className="w-full h-20 px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 resize-none"
-                          placeholder="Anmerkung hier eingeben"
-                          value={userProfile.description || ""}
-                          readOnly
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/*//#endregion*/}
-              {/*//#region Roles Management Section*/}
-              <div className="self-stretch flex flex-col justify-center items-start">
-                <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-                  <div className="flex-1 flex justify-start items-center gap-2">
-                    <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                      Rollen
-                    </div>
-                    <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
-                      {userProfile.organization?.name}
-                    </div>
-                  </div>
-                </div>
-
-                {/* OV Rolle */}
-                <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                    <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                      <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                        Organisationsverwaltung (OV)
-                      </div>
-                      <button
-                        onClick={() => toggleRole("OV")}
-                        disabled={saving}
-                        className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-                      border-0 p-0 outline-none focus:outline-none"
-                      >
-                        <SwitchIcon
-                          isOn={userRoles.includes("OV")}
-                          disabled={saving}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* EV Rolle */}
-                <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                    <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                      <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                        Einsatzverwaltung (EV)
-                      </div>
-                      <button
-                        onClick={() => toggleRole("EV")}
-                        disabled={saving}
-                        className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-                      border-0 p-0 outline-none focus:outline-none"
-                      >
-                        <SwitchIcon
-                          isOn={userRoles.includes("EV")}
-                          disabled={saving}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Helfer Rolle */}
-                <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                    <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                      <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                        Helfer:in (Helfer:in)
-                      </div>
-                      <button
-                        onClick={() => toggleRole("Helfer")}
-                        disabled={saving}
-                        className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-                      border-0 p-0 outline-none focus:outline-none"
-                      >
-                        {/* TODO (Ömer): Update SwitchIcon for AAll roles after db update already works, performance*/}
-                        <SwitchIcon
-                          isOn={userRoles.includes("Helfer")}
-                          disabled={saving}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/*//#endregion*/}
-
-              {/*//#region Danger Zone Section*/}
-              <div className="self-stretch flex flex-col justify-center items-start">
-                <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-                  <div className="flex-1 flex justify-start items-center gap-2">
-                    <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                      Gefahrenzone!
-                    </div>
-                    <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
-                      {userProfile.organization?.name}
-                    </div>
-                  </div>
-                </div>
-                <div className="self-stretch flex flex-col justify-center items-start">
-                  <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-                    <div className="px-4 pt-2 flex justify-start items-start gap-2">
-                      <button
-                        onClick={handleRemoveUser}
-                        disabled={removeUserMutation.isPending}
-                        className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
-                      >
-                        <RiDeleteBinLine
-                          size={24}
-                          aria-hidden="true"
-                          className="text-white"
-                        />
-                        <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                          {removeUserMutation.isPending
-                            ? "Entfernt..."
-                            : "Aus Organisation Entfernen"}
-                        </div>
-                      </button>
-                      <button
-                        onClick={handlePromoteToSuperadmin}
-                        className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors"
-                      >
-                        <Crown className="text-white"></Crown>
-                        <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                          Zu Superadmin Ernennen
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/*//#endregion*/}
+              <UserProfileHeader
+                firstname={userProfile.firstname}
+                lastname={userProfile.lastname}
+                pictureUrl={userProfile.picture_url}
+                userOrgRoles={userOrgRoles}
+                getRoleColor={getRoleColor}
+                getRoleDisplayName={getRoleDisplayName}
+              />
+              <UserContactInfo
+                email={userProfile.email}
+                phone={userProfile.phone}
+              />
+              <UserPersonalProperties
+                organizationName={userProfile.organization?.name || ""}
+                hasKey={hasKey}
+                onToggleKey={() => setHasKey(!hasKey)}
+                description={userProfile.description}
+              />
+              <UserRoleManagement
+                organizationName={userProfile.organization?.name || ""}
+                userRoles={userRoles}
+                saving={saving}
+                onToggleRole={toggleRole}
+              />
+              <UserDangerZone
+                organizationName={userProfile.organization?.name || ""}
+                isSuperadmin={isSuperadmin}
+                isRemovingUser={removeUserMutation.isPending}
+                isDemoting={demoteFromSuperadminMutation.isPending}
+                isPromoting={promoteToSuperadminMutation.isPending}
+                onRemoveUser={handleRemoveUser}
+                onDemoteFromSuperadmin={handleDemoteFromSuperadmin}
+                onPromoteToSuperadmin={handlePromoteToSuperadmin}
+              />
             </div>
           </div>
-
-          {/*//#region Header Action Buttons*/}
           <div className="w-[592px] left-[32px] top-[28px] absolute flex justify-end items-center gap-10">
             <div className="flex justify-end items-center gap-2">
               <button
@@ -726,12 +499,10 @@ export function UserProfileDialog({
               </button>
             </div>
           </div>
-          {/*//#endregion*/}
         </div>
       </div>
     </>
   );
-  //#endregion
 
   return createPortal(content, document.body);
 }
