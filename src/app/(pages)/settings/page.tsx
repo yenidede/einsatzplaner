@@ -17,7 +17,7 @@ import ProfilePictureUpload from "@/features/settings/components/ProfilePictureU
 import OrganizationCard from "@/features/settings/components/OrganizationCard";
 import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
-import { settingsQueryKeys } from "@/features/settings/queryKey";
+import { settingsQueryKeys } from "@/features/settings/queryKeys/queryKey";
 import {
   getUserProfileAction,
   updateUserProfileAction,
@@ -466,21 +466,17 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
-                  {/* Profile Picture */}{" "}
-                  {/* TODO (Ömer): picture_url wirft langen url ab, funkt also nicht optimal -> verbessern */}
                   <div className="self-stretch px-4 flex flex-col justify-start items-start gap-2">
                     <div className="inline-flex justify-start items-center gap-2">
-                      {previewUrl ? (
+                      {previewUrl || pictureUrl ? (
                         <img
-                          src={previewUrl}
-                          alt="Profilbild Vorschau"
+                          src={previewUrl || pictureUrl || ""}
+                          alt={
+                            previewUrl ? "Profilbild Vorschau" : "Profilbild"
+                          }
                           className="w-10 h-10 rounded-full object-cover border"
-                        />
-                      ) : pictureUrl ? (
-                        <img
-                          src={pictureUrl}
-                          alt="Profilbild"
-                          className="w-10 h-10 rounded-full object-cover border"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
                         />
                       ) : (
                         <div className="w-10 h-10 px-2 py-1.5 bg-slate-200 rounded-[20px] inline-flex flex-col justify-center items-center gap-2.5">

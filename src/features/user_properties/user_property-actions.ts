@@ -13,9 +13,6 @@ import {
 } from "./user_property-dal";
 import type { PropertyConfig } from "./types";
 
-/**
- * Lädt alle User Properties für eine Organisation
- */
 export async function getUserPropertiesAction(
   orgId: string
 ): Promise<UserPropertyWithField[]> {
@@ -27,9 +24,6 @@ export async function getUserPropertiesAction(
   }
 }
 
-/**
- * Lädt existierende Property-Namen
- */
 export async function getExistingPropertyNamesAction(
   orgId: string
 ): Promise<string[]> {
@@ -41,9 +35,6 @@ export async function getExistingPropertyNamesAction(
   }
 }
 
-/**
- * Lädt User-Anzahl für eine Organisation
- */
 export async function getUserCountAction(orgId: string): Promise<number> {
   try {
     return await getUserCountByOrgId(orgId);
@@ -53,9 +44,6 @@ export async function getUserCountAction(orgId: string): Promise<number> {
   }
 }
 
-/**
- * Konvertiert PropertyConfig zu CreateUserPropertyInput
- */
 function configToCreateInput(
   config: PropertyConfig,
   orgId: string
@@ -80,7 +68,6 @@ function configToCreateInput(
       throw new Error(`Unknown field type: ${config.fieldType}`);
   }
 
-  // Bestimme defaultValue basierend auf fieldType
   let defaultValue: string | undefined;
 
   if (config.fieldType === "boolean" && config.booleanDefaultValue !== null) {
@@ -106,9 +93,6 @@ function configToCreateInput(
   };
 }
 
-/**
- * Erstellt eine neue User Property
- */
 export async function createUserPropertyAction(
   config: PropertyConfig,
   orgId: string
@@ -122,9 +106,6 @@ export async function createUserPropertyAction(
   }
 }
 
-/**
- * Aktualisiert eine User Property
- */
 export async function updateUserPropertyAction(
   id: string,
   config: Partial<PropertyConfig>
@@ -149,9 +130,6 @@ export async function updateUserPropertyAction(
   }
 }
 
-/**
- * Löscht eine User Property
- */
 export async function deleteUserPropertyAction(id: string): Promise<void> {
   try {
     await deleteUserProperty(id);

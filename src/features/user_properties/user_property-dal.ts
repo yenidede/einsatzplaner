@@ -33,15 +33,11 @@ export interface UserPropertyWithField {
   userCount?: number;
 }
 
-/**
- * Holt alle User Properties für eine Organisation
- */
 export async function getUserPropertiesByOrgId(
   orgId: string
 ): Promise<UserPropertyWithField[]> {
   const { session } = await requireAuth();
 
-  // Prüfe ob User Zugriff auf diese Organisation hat
   if (!session.user.orgIds.includes(orgId)) {
     throw new Error("Unauthorized to access this organization");
   }
@@ -68,7 +64,6 @@ export async function getUserPropertiesByOrgId(
     },
   });
 
-  // Zähle Anzahl der Personen mit Wert für jede Property
   return properties.map((prop) => ({
     id: prop.id,
     field_id: prop.field_id,
@@ -78,9 +73,6 @@ export async function getUserPropertiesByOrgId(
   }));
 }
 
-/**
- * Holt alle vorhandenen Property-Namen für eine Organisation
- */
 export async function getExistingPropertyNames(
   orgId: string
 ): Promise<string[]> {
@@ -107,9 +99,6 @@ export async function getExistingPropertyNames(
     .map((name) => name.toLowerCase());
 }
 
-/**
- * Holt die Anzahl der User in einer Organisation
- */
 export async function getUserCountByOrgId(orgId: string): Promise<number> {
   const { session } = await requireAuth();
 
@@ -124,9 +113,6 @@ export async function getUserCountByOrgId(orgId: string): Promise<number> {
   return count;
 }
 
-/**
- * Holt einen Type anhand des datatype-Strings
- */
 export async function getTypeByDatatype(
   datatype: string
 ): Promise<FieldType | null> {
@@ -135,16 +121,11 @@ export async function getTypeByDatatype(
   });
 }
 
-/**
- * Erstellt oder findet einen Type
- */
 async function ensureTypeExists(datatype: string): Promise<string> {
-  // Versuche existierenden Type zu finden
   let type = await prisma.type.findFirst({
     where: { datatype },
   });
 
-  // Falls nicht vorhanden, erstelle neuen Type
   if (!type) {
     type = await prisma.type.create({
       data: {
@@ -172,23 +153,17 @@ export interface CreateUserPropertyInput {
   orgId: string;
 }
 
-/**
- * Erstellt eine neue User Property
- */
 export async function createUserProperty(
   input: CreateUserPropertyInput
 ): Promise<UserPropertyWithField> {
   const { session } = await requireAuth();
 
-  // Prüfe ob User Zugriff auf diese Organisation hat
   if (!session.user.orgIds.includes(input.orgId)) {
     throw new Error("Unauthorized to access this organization");
   }
 
-  // Stelle sicher, dass der Type existiert
   const typeId = await ensureTypeExists(input.datatype);
 
-  // Erstelle zuerst das Field
   const field = await prisma.field.create({
     data: {
       name: input.name,
@@ -203,7 +178,6 @@ export async function createUserProperty(
     },
   });
 
-  // Dann erstelle die User Property (Verknüpfung zur Organisation)
   const userProperty = await prisma.user_property.create({
     data: {
       field_id: field.id,
@@ -246,15 +220,11 @@ export interface UpdateUserPropertyInput {
   allowedValues?: string[];
 }
 
-/**
- * Aktualisiert eine User Property
- */
 export async function updateUserProperty(
   input: UpdateUserPropertyInput
 ): Promise<UserPropertyWithField> {
   const { session } = await requireAuth();
 
-  // Hole die User Property um die Berechtigung zu prüfen
   const userProperty = await prisma.user_property.findUnique({
     where: { id: input.id },
     include: { field: true },
@@ -268,7 +238,6 @@ export async function updateUserProperty(
     throw new Error("Unauthorized to update this property");
   }
 
-  // Update das Field
   const updatedField = await prisma.field.update({
     where: { id: userProperty.field_id },
     data: {
@@ -283,7 +252,6 @@ export async function updateUserProperty(
     },
   });
 
-  // Hole die aktualisierte User Property mit allen Relations
   const updated = await prisma.user_property.findUnique({
     where: { id: input.id },
     include: {
@@ -319,13 +287,9 @@ export async function updateUserProperty(
   };
 }
 
-/**
- * Löscht eine User Property
- */
 export async function deleteUserProperty(id: string): Promise<void> {
   const { session } = await requireAuth();
 
-  // Hole die User Property um die Berechtigung zu prüfen
   const userProperty = await prisma.user_property.findUnique({
     where: { id },
   });
@@ -338,7 +302,6 @@ export async function deleteUserProperty(id: string): Promise<void> {
     throw new Error("Unauthorized to delete this property");
   }
 
-  // Lösche die User Property (Cascade löscht auch field und user_property_values)
   await prisma.user_property.delete({
     where: { id },
   });
