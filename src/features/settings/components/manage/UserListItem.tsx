@@ -46,16 +46,14 @@ export function UserListItem({
     return "bg-cyan-200";
   };
 
-  // Sortiere Rollen: Helfer -> EV -> OV -> Superadmin
   const sortedRoles = [...roles].sort((a, b) => {
     const order: Record<string, number> = {
-      Helfer: 1,
-      "Helfer:in": 1,
-      Einsatzverwaltung: 2,
-      EV: 2,
-      Organisationsverwaltung: 3,
-      OV: 3,
-      Superadmin: 4,
+      Helfer: 4,
+      Einsatzverwaltung: 3,
+      EV: 3,
+      Organisationsverwaltung: 2,
+      OV: 2,
+      Superadmin: 1,
     };
     const aName = a?.name || "";
     const bName = b?.name || "";
