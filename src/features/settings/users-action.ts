@@ -277,11 +277,12 @@ export async function removeUserFromOrganizationAction(
 
   if (targetIsSuperadmin && !isSuperadmin) {
     throw new Error(
-      "Nur Superadmins können andere Superadmins aus der Organisation entfernen"
+      "Only Superadmins can remove other Superadmins from the organization"
     );
   }
+
   if (!isOV && !isSuperadmin) {
-    throw new Error("Keine Berechtigung zum Entfernen von Benutzern");
+    throw new Error("Insufficient permissions to remove users");
   }
 
   await prisma.user_organization_role.deleteMany({
@@ -302,53 +303,78 @@ export async function promoteToSuperadminAction(
 ) {
   const session = await checkUserSession();
 
-  const requestingUserRoles = await prisma.user_organization_role.findMany({
-    where: {
-      org_id: organizationId,
-      user_id: session.user.id,
-    },
-    include: { role: true },
-  });
+  return await prisma.$transaction(async (tx) => {
+    // Validate organization exists
+    const organization = await tx.organization.findUnique({
+      where: { id: organizationId },
+    });
 
-  const isSuperadmin = requestingUserRoles.some(
-    (role) => role.role?.name === "Superadmin"
-  );
+    if (!organization) {
+      throw new Error("Organisation nicht gefunden");
+    }
 
-  if (!isSuperadmin) {
-    throw new Error(
-      "Nur Superadmins können andere Benutzer zu Superadmins ernennen"
+    const requestingUserRoles = await tx.user_organization_role.findMany({
+      where: {
+        org_id: organizationId,
+        user_id: session.user.id,
+      },
+      include: { role: true },
+    });
+
+    const isSuperadmin = requestingUserRoles.some(
+      (role) => role.role?.name === "Superadmin"
     );
-  }
 
-  const superadminRole = await prisma.role.findFirst({
-    where: { name: "Superadmin" },
+    if (!isSuperadmin) {
+      throw new Error(
+        "Nur Superadmins können andere Benutzer zu Superadmins ernennen"
+      );
+    }
+
+    // Verify target user belongs to organization
+    const targetUserInOrg = await tx.user_organization_role.findFirst({
+      where: {
+        user_id: userId,
+        org_id: organizationId,
+      },
+    });
+
+    if (!targetUserInOrg) {
+      throw new Error("Benutzer gehört nicht zu dieser Organisation");
+    }
+
+    const superadminRole = await tx.role.findFirst({
+      where: { name: "Superadmin" },
+    });
+
+    if (!superadminRole) {
+      throw new Error("Superadmin-Rolle nicht gefunden");
+    }
+
+    const existingSuperadmin = await tx.user_organization_role.findFirst({
+      where: {
+        user_id: userId,
+        org_id: organizationId,
+        role_id: superadminRole.id,
+      },
+    });
+
+    if (existingSuperadmin) {
+      throw new Error("Benutzer ist bereits Superadmin");
+    }
+
+    await tx.user_organization_role.create({
+      data: {
+        user_id: userId,
+        org_id: organizationId,
+        role_id: superadminRole.id,
+      },
+    });
+
+    revalidatePath(`/organization/${organizationId}`);
+
+    return { message: "Benutzer erfolgreich zum Superadmin ernannt" };
   });
-
-  if (!superadminRole) {
-    throw new Error("Superadmin-Rolle nicht gefunden");
-  }
-  const existingSuperadmin = await prisma.user_organization_role.findFirst({
-    where: {
-      user_id: userId,
-      org_id: organizationId,
-      role_id: superadminRole.id,
-    },
-  });
-
-  if (existingSuperadmin) {
-    throw new Error("Benutzer ist bereits Superadmin");
-  }
-  await prisma.user_organization_role.create({
-    data: {
-      user_id: userId,
-      org_id: organizationId,
-      role_id: superadminRole.id,
-    },
-  });
-
-  revalidatePath(`/organization/${organizationId}`);
-
-  return { message: "Benutzer erfolgreich zum Superadmin ernannt" };
 }
 
 export async function demoteFromSuperadminAction(
@@ -357,43 +383,68 @@ export async function demoteFromSuperadminAction(
 ) {
   const session = await checkUserSession();
 
-  const requestingUserRoles = await prisma.user_organization_role.findMany({
-    where: {
-      org_id: organizationId,
-      user_id: session.user.id,
-    },
-    include: { role: true },
+  return await prisma.$transaction(async (tx) => {
+    // Validate organization exists
+    const organization = await tx.organization.findUnique({
+      where: { id: organizationId },
+    });
+
+    if (!organization) {
+      throw new Error("Organisation nicht gefunden");
+    }
+
+    const requestingUserRoles = await tx.user_organization_role.findMany({
+      where: {
+        org_id: organizationId,
+        user_id: session.user.id,
+      },
+      include: { role: true },
+    });
+
+    const isSuperadmin = requestingUserRoles.some(
+      (role) => role.role?.name === "Superadmin"
+    );
+
+    if (!isSuperadmin) {
+      throw new Error("Nur Superadmins können andere Superadmins degradieren");
+    }
+
+    if (userId === session.user.id) {
+      throw new Error("Sie können sich nicht selbst degradieren");
+    }
+
+    const superadminRole = await tx.role.findFirst({
+      where: { name: "Superadmin" },
+    });
+
+    if (!superadminRole) {
+      throw new Error("Superadmin-Rolle nicht gefunden");
+    }
+
+    // Verify at least one Superadmin remains
+    const superadminCount = await tx.user_organization_role.count({
+      where: {
+        org_id: organizationId,
+        role_id: superadminRole.id,
+      },
+    });
+
+    if (superadminCount <= 1) {
+      throw new Error(
+        "Mindestens ein Superadmin muss in der Organisation verbleiben"
+      );
+    }
+
+    await tx.user_organization_role.deleteMany({
+      where: {
+        user_id: userId,
+        org_id: organizationId,
+        role_id: superadminRole.id,
+      },
+    });
+
+    revalidatePath(`/organization/${organizationId}`);
+
+    return { message: "Superadmin-Rolle erfolgreich entfernt" };
   });
-
-  const isSuperadmin = requestingUserRoles.some(
-    (role) => role.role?.name === "Superadmin"
-  );
-
-  if (!isSuperadmin) {
-    throw new Error("Nur Superadmins können andere Superadmins degradieren");
-  }
-
-  if (userId === session.user.id) {
-    throw new Error("Sie können sich nicht selbst degradieren");
-  }
-
-  const superadminRole = await prisma.role.findFirst({
-    where: { name: "Superadmin" },
-  });
-
-  if (!superadminRole) {
-    throw new Error("Superadmin-Rolle nicht gefunden");
-  }
-
-  await prisma.user_organization_role.deleteMany({
-    where: {
-      user_id: userId,
-      org_id: organizationId,
-      role_id: superadminRole.id,
-    },
-  });
-
-  revalidatePath(`/organization/${organizationId}`);
-
-  return { message: "Superadmin-Rolle erfolgreich entfernt" };
 }

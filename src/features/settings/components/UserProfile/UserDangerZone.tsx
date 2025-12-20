@@ -24,6 +24,8 @@ export function UserDangerZone({
   onDemoteFromSuperadmin,
   onPromoteToSuperadmin,
 }: UserDangerZoneProps) {
+  const isLoading = isDemoting || isPromoting;
+
   return (
     <div className="self-stretch flex flex-col justify-center items-start">
       <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
@@ -57,17 +59,17 @@ export function UserDangerZone({
               onClick={
                 isSuperadmin ? onDemoteFromSuperadmin : onPromoteToSuperadmin
               }
-              disabled={isSuperadmin ? isDemoting : isPromoting}
+              disabled={isLoading}
               className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
             >
               <Crown className="text-white" />
               <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                {isSuperadmin
-                  ? isDemoting
+                {isLoading
+                  ? isSuperadmin
                     ? "Wird degradiert..."
-                    : "Superadmin-Rolle entfernen"
-                  : isPromoting
-                  ? "Ernennt..."
+                    : "Wird ernannt..."
+                  : isSuperadmin
+                  ? "Superadmin-Rolle entfernen"
                   : "Zu Superadmin Ernennen"}
               </div>
             </button>
