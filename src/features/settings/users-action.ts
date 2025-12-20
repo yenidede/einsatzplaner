@@ -304,7 +304,6 @@ export async function promoteToSuperadminAction(
   const session = await checkUserSession();
 
   return await prisma.$transaction(async (tx) => {
-    // Validate organization exists
     const organization = await tx.organization.findUnique({
       where: { id: organizationId },
     });
@@ -331,7 +330,6 @@ export async function promoteToSuperadminAction(
       );
     }
 
-    // Verify target user belongs to organization
     const targetUserInOrg = await tx.user_organization_role.findFirst({
       where: {
         user_id: userId,
@@ -384,7 +382,6 @@ export async function demoteFromSuperadminAction(
   const session = await checkUserSession();
 
   return await prisma.$transaction(async (tx) => {
-    // Validate organization exists
     const organization = await tx.organization.findUnique({
       where: { id: organizationId },
     });
@@ -421,7 +418,6 @@ export async function demoteFromSuperadminAction(
       throw new Error("Superadmin-Rolle nicht gefunden");
     }
 
-    // Verify at least one Superadmin remains
     const superadminCount = await tx.user_organization_role.count({
       where: {
         org_id: organizationId,
