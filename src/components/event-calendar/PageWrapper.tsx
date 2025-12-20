@@ -20,11 +20,7 @@ export default function CalendarPageWrapper({
   const { data: session } = useSession();
   const orgIds = session?.user?.orgIds;
 
-  const {
-    data: organizations,
-    isLoading: isLoadingOrgs,
-    isError: isOrgError,
-  } = useQuery({
+  const { data: organizations, isError: isOrgError } = useQuery({
     queryKey: orgsQueryKeys.organizations(orgIds ?? []),
     queryFn: () => getOrganizationsByIds(orgIds ?? []),
     enabled: !!orgIds?.length,
@@ -34,7 +30,7 @@ export default function CalendarPageWrapper({
   const activeOrg =
     organizations?.find((org) => org.id === activeOrgId) ?? null;
 
-  const { isLoading: isLoadingEvents, isError: isEventError } = useQuery({
+  const { isError: isEventError } = useQuery({
     queryKey: einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []),
     queryFn: () => getEinsaetzeData(activeOrgId),
     enabled: !!activeOrgId,
@@ -58,10 +54,6 @@ export default function CalendarPageWrapper({
 
   if (isEventError) {
     return <div>Fehler beim Laden der Einsätze</div>;
-  }
-
-  if (isLoadingOrgs || isLoadingEvents) {
-    return <div>Lade Einsätze...</div>;
   }
   return (
     <>

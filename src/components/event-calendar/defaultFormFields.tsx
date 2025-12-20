@@ -337,7 +337,7 @@ export function DefaultFormFields({
             min={0}
             value={formData.totalPrice ?? ""}
             errors={errors.fieldErrors["totalPrice"] || []}
-            className="shrink-[20]"
+            className="shrink-20"
             onChange={(e) => {
               const totalPrice = Number(e.target.value) || 0;
               const pricePerPerson = calcPricePerPersonFromTotal(
