@@ -15,6 +15,7 @@ export default async function Home() {
   // Redirect authenticated users based on their role
   const userRoles = session.user.roleIds || [];
 
+  // Redirect based on highest available role (to /einsatzverwaltung or /helferansicht)
   if (
     userRoles.includes(ROLE_NAME_MAP["Superadmin"]) ||
     userRoles.includes(ROLE_NAME_MAP["Einsatzverwaltung"])
