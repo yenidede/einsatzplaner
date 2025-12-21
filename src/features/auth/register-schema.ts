@@ -1,5 +1,6 @@
 import * as z from "zod";
 import parsePhoneNumberFromString, { isValidPhoneNumber, parsePhoneNumber, parsePhoneNumberWithError } from "libphonenumber-js";
+import { getPublicStorageUrlFromPath } from "@/lib/supabase-client";
 
 export interface ActionResponse<T = any> {
     success: boolean;
@@ -19,15 +20,16 @@ export interface ActionResponse<T = any> {
     inputs?: T;
 }
 
+const { NEXT_PUBLIC_SUPABASE_URL } = process.env;
 export const formSchema = z
     .object({
+        userId: z.uuid().optional(),
         email: z
             .email("Bitte geben Sie eine gültige E-Mail-Adresse ein"),
         passwort1: z
             .string()
             .min(8, "Das Passwort muss mindestens 8 Zeichen lang sein")
             .max(128, "Das Passwort darf maximal 128 Zeichen lang sein"),
-
         passwort2: z
             .string(),
         vorname: z
@@ -56,41 +58,22 @@ export const formSchema = z
                 if (!value) return value;
                 return parsePhoneNumberWithError(value).format("E.164");
             }),
+        pictureUrl: z.preprocess(
+            (value) => {
+                if (Array.isArray(value)) {
+                    if (value.length === 0) {
+                        return undefined;
+                    }
+                    return getPublicStorageUrlFromPath(value[0], "avatars");
+                }
 
-        picture: z
-            .preprocess((value) => {
-                if (Array.isArray(value)) return value[0];
+                if (value === "") {
+                    return undefined;
+                }
                 return value;
             },
-                z
-                    .custom<File | undefined>(
-                        (file) =>
-                            !file ||
-                            (typeof file === "object" &&
-                                typeof (file as File).type === "string" &&
-                                typeof (file as File).size === "number"),
-                        "Bitte wählen Sie eine Bilddatei aus"
-                    )
-                    .refine(
-                        (file) =>
-                            !file ||
-                            [
-                                "image/png",
-                                "image/jpeg",
-                                "image/gif",
-                                "image/webp",
-                                "image/svg+xml",
-                                "image/avif",
-                                "image/heif",
-                            ].includes(file.type),
-                        "Ungültiger Dateityp. Bitte Bild auswählen."
-                    )
-                    .refine(
-                        (file) => !file || file.size <= 5_242_880,
-                        "Die Datei darf maximal 5 MB groß sein"
-                    )
-                    .optional()
-            ),
+            z.url().optional(),
+        ),
     })
     .refine(
         (data) => data.passwort1 === data.passwort2,

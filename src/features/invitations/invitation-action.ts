@@ -397,6 +397,7 @@ export async function verifyInvitationAction(token: string) {
       inviterName: inviterName,
       expiresAt: firstInvitation.expires_at.toISOString(),
       userExists: !!existingUser,
+      newUserId: existingUser ? existingUser.id : firstInvitation.new_user_id,
     };
   } catch (error) {
     throw error instanceof Error

@@ -36,6 +36,7 @@ interface InvitationData {
   helperNameSingular?: string;
   helperNamePlural?: string;
   userExists: boolean;
+  newUserId: string;
 }
 
 export default function InviteAcceptPage() {
@@ -260,6 +261,7 @@ export default function InviteAcceptPage() {
             </TabsContent>
             <SignUpForm
               email={invitation.email}
+              userId={invitation.newUserId}
               tab={tab}
               setTab={setTab}
             ></SignUpForm>
