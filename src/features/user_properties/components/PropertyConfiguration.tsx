@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/SimpleFormComponents";
 import FormInputFieldCustom from "@/components/form/formInputFieldCustom";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import type { PropertyConfig, ValidationError } from "../types";
 import { UsageSettings } from "./UsageSettings";
 import { TextFieldSettings } from "./fieldtypes/TextFieldSettings";
@@ -73,7 +72,6 @@ export function PropertyConfiguration({
       </div>
 
       <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-6">
-        {/* Grundlegende Informationen */}
         <div className="self-stretch px-4 flex flex-col gap-4">
           <h3 className="text-sm font-semibold text-slate-700">
             Grundinformationen
@@ -90,18 +88,8 @@ export function PropertyConfiguration({
               className="w-full"
             />
           </FormInputFieldCustom>
-
-          <FormInputFieldCustom name="Beschreibung (optional)" errors={[]}>
-            <Textarea
-              value={config.description}
-              onChange={(e) => onConfigChange({ description: e.target.value })}
-              placeholder="Zusätzliche Informationen zur Eigenschaft (wird als Hilfetext angezeigt)"
-              className="w-full min-h-[80px]"
-            />
-          </FormInputFieldCustom>
         </div>
 
-        {/* Feldtyp-spezifische Einstellungen */}
         <div className="self-stretch px-4 flex flex-col gap-4">
           <h3 className="text-sm font-semibold text-slate-700">
             Feldeinstellungen
@@ -130,42 +118,36 @@ export function PropertyConfiguration({
             <BooleanFieldSettings
               trueLabel={config.trueLabel || "Ja"}
               falseLabel={config.falseLabel || "Nein"}
-              defaultValue={config.booleanDefaultValue}
+              booleanDefaultValue={config.booleanDefaultValue}
               onChange={onConfigChange}
             />
           )}
 
           {config.fieldType === "select" && (
-            <div className="flex flex-col gap-2">
-              <SelectFieldSettings
-                options={config.options || []}
-                defaultOption={config.defaultOption}
-                onChange={onConfigChange}
-              />
-              {getFieldError("options").length > 0 && (
-                <p className="text-sm text-red-600">
-                  {getFieldError("options")[0]}
-                </p>
-              )}
-            </div>
+            <SelectFieldSettings
+              options={config.options || []}
+              defaultOption={config.defaultOption}
+              onChange={onConfigChange}
+              errors={getFieldError("options")}
+            />
           )}
 
           {config.fieldType === "number" &&
-            getFieldError("minValue").length > 0 && (
+            config.minValue !== undefined &&
+            config.maxValue !== undefined &&
+            config.minValue > config.maxValue && (
               <p className="text-sm text-red-600">
                 {getFieldError("minValue")[0]}
               </p>
             )}
         </div>
 
-        {/* Eingabe-Regeln */}
         <UsageSettings
           isRequired={config.isRequired}
           onChange={onConfigChange}
           warningMessage={warningMessage}
         />
 
-        {/* Aktionen */}
         <div className="self-stretch px-4 pt-2 inline-flex justify-end items-start gap-2 border-t border-slate-200">
           <Button
             onClick={onCancel}
@@ -177,11 +159,11 @@ export function PropertyConfiguration({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!config.name.trim() || errors.length > 0}
-            className="px-4 py-2 bg-slate-900 text-white rounded-md flex justify-center items-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={errors.length > 0}
+            className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-              Eigenschaft speichern
+              Speichern
             </div>
           </Button>
         </div>

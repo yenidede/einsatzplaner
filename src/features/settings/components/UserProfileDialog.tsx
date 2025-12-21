@@ -23,6 +23,12 @@ import { UserContactInfo } from "./UserProfile/UserContactInfo";
 import { UserPersonalProperties } from "./UserProfile/UserPersonalProperties";
 import { UserRoleManagement } from "./UserProfile/UserRoleManagement";
 import { UserDangerZone } from "./UserProfile/UserDangerZone";
+import {
+  getUserPropertiesAction,
+  getUserPropertyValuesAction,
+  upsertUserPropertyValueAction,
+} from "@/features/user_properties/user_property-actions";
+import type { UserPropertyWithField } from "@/features/user_properties/user_property-dal";
 
 interface UserProfileDialogProps {
   isOpen: boolean;
@@ -55,10 +61,15 @@ export function UserProfileDialog({
   const [hasKey, setHasKey] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [propertyValues, setPropertyValues] = useState<Record<string, string>>(
+    {}
+  );
+  const [originalPropertyValues, setOriginalPropertyValues] = useState<
+    Record<string, string>
+  >({});
 
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
-  // Queries
   const {
     data: userProfile,
     isLoading: profileLoading,
@@ -79,7 +90,6 @@ export function UserProfileDialog({
     gcTime: 5 * 60 * 1000,
   });
 
-  // Check if current user is superadmin
   const { data: currentUserOrgRoles = [] } = useQuery<UserRole[]>({
     queryKey: userProfileQueryKeys.orgRoles(
       currentUserId || "",
@@ -98,7 +108,20 @@ export function UserProfileDialog({
       userRole.role?.abbreviation === "SA"
   );
 
-  // Effects
+  const { data: userProperties = [] } = useQuery<UserPropertyWithField[]>({
+    queryKey: ["userProperties", organizationId],
+    queryFn: () => getUserPropertiesAction(organizationId),
+    enabled: isOpen && !!organizationId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: userPropertyValues = [] } = useQuery({
+    queryKey: ["userPropertyValues", userId, organizationId],
+    queryFn: () => getUserPropertyValuesAction(userId, organizationId),
+    enabled: isOpen && !!userId && !!organizationId,
+    staleTime: 30000,
+  });
+
   useEffect(() => {
     if (!isOpen) return;
     const prevOverflow = document.body.style.overflow;
@@ -118,9 +141,19 @@ export function UserProfileDialog({
 
   useEffect(() => {
     const rolesChanged =
-      JSON.stringify(userRoles.sort()) !== JSON.stringify(originalRoles.sort());
-    setHasChanges(rolesChanged);
-  }, [userRoles, originalRoles]);
+      JSON.stringify([...userRoles].sort()) !==
+      JSON.stringify([...originalRoles].sort());
+
+    const propertyValuesChanged =
+      Object.keys(propertyValues).some(
+        (key) => propertyValues[key] !== originalPropertyValues[key]
+      ) ||
+      Object.keys(originalPropertyValues).some(
+        (key) => propertyValues[key] !== originalPropertyValues[key]
+      );
+
+    setHasChanges(rolesChanged || propertyValuesChanged);
+  }, [userRoles, originalRoles, propertyValues, originalPropertyValues]);
 
   useEffect(() => {
     if (userOrgRoles && userOrgRoles.length > 0) {
@@ -157,11 +190,26 @@ export function UserProfileDialog({
       setUserRoles(roles);
       setOriginalRoles([...roles]);
       setHasKey(false);
-      setHasChanges(false);
     }
   }, [userOrgRoles]);
 
-  // Helper functions
+  useEffect(() => {
+    if (userPropertyValues && userPropertyValues.length >= 0) {
+      const values: Record<string, string> = {};
+      userPropertyValues.forEach((pv) => {
+        values[pv.user_property_id] = pv.value;
+      });
+
+      const currentValuesString = JSON.stringify(propertyValues);
+      const newValuesString = JSON.stringify(values);
+
+      if (currentValuesString !== newValuesString) {
+        setPropertyValues(values);
+        setOriginalPropertyValues(values);
+      }
+    }
+  }, [userPropertyValues]);
+
   const getRoleColor = (role: any) => {
     const roleName = role.name || "";
     const roleAbbr = role.abbreviation || "";
@@ -189,7 +237,6 @@ export function UserProfileDialog({
       userRole.role?.abbreviation === "SA"
   );
 
-  // Mutations
   const saveChangesMutation = useMutation({
     mutationFn: async () => {
       const rolesToAdd: string[] = [];
@@ -215,13 +262,11 @@ export function UserProfileDialog({
       return { rolesToAdd, rolesToRemove };
     },
     onMutate: () => {
-      return { toastId: toast.loading("Rollen werden gespeichert...") };
+      return { toastId: toast.loading("Profil wird gespeichert...") };
     },
     onSuccess: async (data, variables, context) => {
       setOriginalRoles([...userRoles]);
-      setHasChanges(false);
 
-      // Invalidate all related queries in parallel
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: userProfileQueryKeys.profile(userId, organizationId),
@@ -248,7 +293,6 @@ export function UserProfileDialog({
     onError: async (error, variables, context) => {
       console.error("Error saving role changes:", error);
       setUserRoles([...originalRoles]);
-      setHasChanges(false);
 
       toast.error("Fehler beim Speichern der Rollenänderungen", {
         id: context?.toastId,
@@ -383,7 +427,6 @@ export function UserProfileDialog({
     },
   });
 
-  // Event handlers
   const toggleRole = (roleAbbreviation: string) => {
     const isCurrentlyActive = userRoles.includes(roleAbbreviation);
     if (isCurrentlyActive) {
@@ -391,6 +434,10 @@ export function UserProfileDialog({
     } else {
       setUserRoles((prev) => [...prev, roleAbbreviation]);
     }
+  };
+
+  const handlePropertyValueChange = (propertyId: string, value: string) => {
+    setPropertyValues((prev) => ({ ...prev, [propertyId]: value }));
   };
 
   const handleSaveAndClose = async () => {
@@ -401,9 +448,29 @@ export function UserProfileDialog({
     setSaving(true);
     try {
       await saveChangesMutation.mutateAsync();
+
+      const promises: Promise<void>[] = [];
+      for (const [propertyId, value] of Object.entries(propertyValues)) {
+        if (value !== originalPropertyValues[propertyId]) {
+          promises.push(
+            upsertUserPropertyValueAction(userId, propertyId, value)
+          );
+        }
+      }
+      await Promise.all(promises);
+
+      await queryClient.invalidateQueries({
+        queryKey: ["userPropertyValues", userId, organizationId],
+      });
+
+      setOriginalPropertyValues({ ...propertyValues });
+      setHasChanges(false);
+
+      toast.success("Änderungen erfolgreich gespeichert!");
       onClose();
     } catch (error) {
-      // Error is handled in mutation
+      console.error("Error saving changes:", error);
+      toast.error("Fehler beim Speichern der Änderungen");
     } finally {
       setSaving(false);
     }
@@ -421,6 +488,7 @@ export function UserProfileDialog({
       });
       if (result === "success") {
         setUserRoles([...originalRoles]);
+        setPropertyValues({ ...originalPropertyValues });
         setHasChanges(false);
         onClose();
       }
@@ -467,7 +535,6 @@ export function UserProfileDialog({
     }
   };
 
-  // Early returns
   if (!isOpen) return null;
   const isLoading = profileLoading;
 
@@ -549,6 +616,9 @@ export function UserProfileDialog({
                 hasKey={hasKey}
                 onToggleKey={() => setHasKey(!hasKey)}
                 description={userProfile.description}
+                userProperties={userProperties}
+                propertyValues={propertyValues}
+                onPropertyValueChange={handlePropertyValueChange}
               />
               <UserRoleManagement
                 organizationName={userProfile.organization?.name || ""}

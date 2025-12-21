@@ -7,6 +7,8 @@ import {
   getUserCountByOrgId,
   updateUserProperty,
   deleteUserProperty,
+  getUserPropertyValues,
+  upsertUserPropertyValue,
   type CreateUserPropertyInput,
   type UpdateUserPropertyInput,
   type UserPropertyWithField,
@@ -111,6 +113,13 @@ export async function updateUserPropertyAction(
   config: Partial<PropertyConfig>
 ): Promise<UserPropertyWithField> {
   try {
+    let maxValue: number | undefined;
+    if (config.fieldType === "text") {
+      maxValue = config.maxLength;
+    } else if (config.fieldType === "number") {
+      maxValue = config.maxValue;
+    }
+
     const input: UpdateUserPropertyInput = {
       id,
       name: config.name,
@@ -119,7 +128,7 @@ export async function updateUserPropertyAction(
       defaultValue: config.defaultValue,
       isMultiline: config.isMultiline,
       min: config.minValue,
-      max: config.maxValue,
+      max: maxValue,
       allowedValues: config.options,
     };
 
@@ -135,6 +144,31 @@ export async function deleteUserPropertyAction(id: string): Promise<void> {
     await deleteUserProperty(id);
   } catch (error) {
     console.error("Error deleting user property:", error);
+    throw error;
+  }
+}
+
+export async function getUserPropertyValuesAction(
+  userId: string,
+  orgId: string
+) {
+  try {
+    return await getUserPropertyValues(userId, orgId);
+  } catch (error) {
+    console.error("Error loading user property values:", error);
+    throw error;
+  }
+}
+
+export async function upsertUserPropertyValueAction(
+  userId: string,
+  userPropertyId: string,
+  value: string
+): Promise<void> {
+  try {
+    await upsertUserPropertyValue(userId, userPropertyId, value);
+  } catch (error) {
+    console.error("Error upserting user property value:", error);
     throw error;
   }
 }

@@ -302,7 +302,139 @@ export async function deleteUserProperty(id: string): Promise<void> {
     throw new Error("Unauthorized to delete this property");
   }
 
+  const fieldId = userProperty.field_id;
+
   await prisma.user_property.delete({
     where: { id },
+  });
+
+  await prisma.field.delete({
+    where: { id: fieldId },
+  });
+}
+
+export interface UserPropertyValue {
+  id: string;
+  user_property_id: string;
+  user_id: string;
+  value: string;
+  user_property: UserPropertyWithField;
+}
+
+export async function getUserPropertyValues(
+  userId: string,
+  orgId: string
+): Promise<UserPropertyValue[]> {
+  const { session } = await requireAuth();
+
+  if (!session.user.orgIds.includes(orgId)) {
+    throw new Error("Unauthorized to access this organization");
+  }
+
+  const values = await prisma.user_property_value.findMany({
+    where: {
+      user_id: userId,
+      user_property: {
+        org_id: orgId,
+      },
+    },
+    include: {
+      user_property: {
+        include: {
+          field: {
+            include: {
+              type: {
+                select: {
+                  id: true,
+                  name: true,
+                  datatype: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return values.map((val) => ({
+    id: val.id,
+    user_property_id: val.user_property_id,
+    user_id: val.user_id,
+    value: val.value,
+    user_property: {
+      id: val.user_property.id,
+      field_id: val.user_property.field_id,
+      org_id: val.user_property.org_id,
+      field: val.user_property.field,
+    },
+  }));
+}
+
+export async function upsertUserPropertyValue(
+  userId: string,
+  userPropertyId: string,
+  value: string
+): Promise<void> {
+  const { session } = await requireAuth();
+
+  const userProperty = await prisma.user_property.findUnique({
+    where: { id: userPropertyId },
+  });
+
+  if (!userProperty) {
+    throw new Error("User property not found");
+  }
+
+  if (!session.user.orgIds.includes(userProperty.org_id)) {
+    throw new Error("Unauthorized");
+  }
+
+  const existing = await prisma.user_property_value.findFirst({
+    where: {
+      user_id: userId,
+      user_property_id: userPropertyId,
+    },
+  });
+
+  if (existing) {
+    await prisma.user_property_value.update({
+      where: { id: existing.id },
+      data: { value },
+    });
+  } else {
+    await prisma.user_property_value.create({
+      data: {
+        user_id: userId,
+        user_property_id: userPropertyId,
+        value,
+      },
+    });
+  }
+}
+
+export async function deleteUserPropertyValue(
+  userId: string,
+  userPropertyId: string
+): Promise<void> {
+  const { session } = await requireAuth();
+
+  const userProperty = await prisma.user_property.findUnique({
+    where: { id: userPropertyId },
+  });
+
+  if (!userProperty) {
+    throw new Error("User property not found");
+  }
+
+  if (!session.user.orgIds.includes(userProperty.org_id)) {
+    throw new Error("Unauthorized");
+  }
+
+  await prisma.user_property_value.deleteMany({
+    where: {
+      user_id: userId,
+      user_property_id: userPropertyId,
+    },
   });
 }

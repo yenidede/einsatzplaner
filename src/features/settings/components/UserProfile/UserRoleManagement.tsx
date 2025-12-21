@@ -28,7 +28,6 @@ export function UserRoleManagement({
         </div>
       </div>
 
-      {/* OV Rolle */}
       <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
         <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
           <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
@@ -47,7 +46,6 @@ export function UserRoleManagement({
         </div>
       </div>
 
-      {/* EV Rolle */}
       <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
         <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
           <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
@@ -66,7 +64,6 @@ export function UserRoleManagement({
         </div>
       </div>
 
-      {/* Helfer Rolle */}
       <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
         <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
           <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
