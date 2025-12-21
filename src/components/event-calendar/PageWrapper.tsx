@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Calendar from "@/components/event-calendar/calendar";
 import { useSession } from "next-auth/react";
 import { queryKeys as orgsQueryKeys } from "@/features/organization/queryKeys";
@@ -9,6 +9,8 @@ import { getOrganizationsByIds } from "@/features/organization/org-dal";
 import { useQuery } from "@tanstack/react-query";
 import { getEinsaetzeData } from "@/components/event-calendar/utils";
 import { CalendarMode } from "./types";
+import { redirect } from "next/dist/server/api-utils";
+import { useRouter } from "next/navigation";
 
 export default function CalendarPageWrapper({
   mode,
@@ -18,6 +20,7 @@ export default function CalendarPageWrapper({
   description?: string;
 }) {
   const { data: session } = useSession();
+  const router = useRouter();
   const orgIds = session?.user?.orgIds;
 
   const { data: organizations, isError: isOrgError } = useQuery({
@@ -53,8 +56,18 @@ export default function CalendarPageWrapper({
   }
 
   if (isEventError) {
-    return <div>Fehler beim Laden der Einsätze</div>;
+    return <div>Fehler beim Laden der Einsätze. {}</div>;
   }
+
+  useEffect(() => {
+    // If not logged in, redirect to signin. Could happen if logout on another tab
+    if (!session) {
+      router.push(
+        `/signin?callbackUrl=${encodeURIComponent(window.location.href)}`
+      );
+    }
+  }, [session, router]);
+
   return (
     <>
       <h1>
