@@ -52,8 +52,8 @@ function SignInContent() {
             Anmelden
           </h2>
           <p className="text-sm pt-1">
-            Oder Admin um eine Einladung bitten, falls Sie noch kein Konto
-            haben.
+            Falls Sie noch kein Konto haben, bitten Sie Ihren Administrator um
+            eine Einladung.
           </p>
         </div>
 
@@ -69,6 +69,8 @@ function SignInContent() {
             onChange={setEmail}
             required
             placeholder="ihre@email.com"
+            id="email"
+            name="email"
           />
           <div>
             <FormField
@@ -79,6 +81,8 @@ function SignInContent() {
               required
               placeholder="Ihr Passwort"
               className="mb-0"
+              id="password"
+              name="password"
             />
 
             <Button className="p-0" asChild variant="link">

@@ -10,6 +10,8 @@ import {
   updateUserResetToken,
 } from "@/DataAccessLayer/user";
 import { emailService } from "@/lib/email/EmailService";
+import { actionClient } from "@/lib/safe-action";
+import { formSchema as registerFormSchema } from "./register-schema";
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "Token ist erforderlich"),
@@ -19,6 +21,17 @@ const resetPasswordSchema = z.object({
 const forgotPasswordSchema = z.object({
   email: z.string().email("Ungültige E-Mail-Adresse"),
 });
+
+export const acceptInviteAndCreateNewAccount = actionClient
+  .inputSchema(registerFormSchema)
+  .action(async ({ parsedInput }) => {
+    // do something with the data
+    console.log(parsedInput);
+    return {
+      success: true,
+      message: "Form submitted successfully",
+    };
+  });
 
 export async function resetPasswordAction(data: {
   token: string;

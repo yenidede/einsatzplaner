@@ -348,9 +348,9 @@ export const authOptions: NextAuthOptions = {
         });
         const activeOrgData = userData?.active_org
           ? await prisma.organization.findUnique({
-              where: { id: userData.active_org },
-              select: { id: true, name: true, logo_url: true },
-            })
+            where: { id: userData.active_org },
+            select: { id: true, name: true, logo_url: true },
+          })
           : null;
         if (!activeOrgData) {
           throw new Response(

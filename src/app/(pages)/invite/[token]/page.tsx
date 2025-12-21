@@ -10,7 +10,13 @@ import {
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { useState } from "react";
+import SignUpForm, {
+  AvailableTab,
+} from "@/features/auth/components/acceptAndRegister-Form";
+import { ChevronLeft } from "lucide-react";
 
 interface Role {
   id: string;
@@ -29,6 +35,7 @@ interface InvitationData {
   expiresAt: string;
   helperNameSingular?: string;
   helperNamePlural?: string;
+  userExists: boolean;
 }
 
 export default function InviteAcceptPage() {
@@ -37,6 +44,8 @@ export default function InviteAcceptPage() {
   const token = params?.token as string;
   const { data: session, status: sessionStatus } = useSession();
   const { showDialog, AlertDialogComponent } = useAlertDialog();
+
+  const [tab, setTab] = useState<AvailableTab>("accept");
 
   const {
     data: invitation,
@@ -57,7 +66,7 @@ export default function InviteAcceptPage() {
       return await acceptInvitationAction(token);
     },
     onSuccess: () => {
-      router.push("/helferansicht");
+      router.push("/");
     },
     onError: async (error: Error) => {
       await showDialog({
@@ -104,7 +113,7 @@ export default function InviteAcceptPage() {
       <div className="grow flex items-center justify-center">
         <div className="max-w-md w-full rounded-lg shadow-md p-6 text-center">
           <h1 className="text-2xl font-bold mb-2">
-            Einladung nicht gefunden ❌
+            Einladung kann nicht angenommen werden ❌
           </h1>
           <p className="mb-4">
             {(error as Error).message ||
@@ -146,108 +155,115 @@ export default function InviteAcceptPage() {
       {AlertDialogComponent}
       <div className="grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
-          <div>
-            <div className="text-center">
-              <h2 className="text-3xl font-extrabold">Einladung annehmen?</h2>
-              <p className="mt-2 text-sm">
-                Möchten Sie der Organisation{" "}
-                <strong>{invitation.organizationName}</strong> beitreten?
-              </p>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-lg shadow-md">
-            <div className="mb-6 p-4 rounded-md">
-              <h3 className="font-semibold mb-2">Einladungsdetails:</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-start">
-                  <span className="text-sm font-medium">E-Mail:</span>
-                  <span className="text-sm">{invitation.email}</span>
+          <Tabs value={tab} className="space-y-6">
+            <TabsContent value="accept">
+              <div className="p-6 rounded-lg shadow-md">
+                <div className="text-center mb-4">
+                  <h2 className="text-3xl font-extrabold">
+                    Einladung annehmen?
+                  </h2>
+                  <p className="mt-2 text-sm">
+                    Möchten Sie der Organisation{" "}
+                    <strong>{invitation.organizationName}</strong> beitreten?
+                  </p>
                 </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-sm font-medium">Organisation:</span>
-                  <span className="text-sm">{invitation.organizationName}</span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-sm font-medium">
-                    {invitation.roles && invitation.roles.length > 1
-                      ? "Rollen:"
-                      : "Rolle:"}
-                  </span>
-                  <div className="flex flex-col items-end gap-1">
-                    {invitation.roles && invitation.roles.length > 0 ? (
-                      invitation.roles.map((role, index) => (
-                        <span
-                          key={role.id || index}
-                          className="text-sm px-2 py-0.5 rounded"
-                        >
-                          {role.name === "Helfer"
-                            ? invitation.helperNameSingular ?? role.name
-                            : role.name}
-                        </span>
-                      ))
-                    ) : (
+                <div className="mb-6 p-4 rounded-md">
+                  <h3 className="font-semibold mb-2">Einladungsdetails:</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <span className="text-sm font-medium">E-Mail:</span>
+                      <span className="text-sm">{invitation.email}</span>
+                    </div>
+                    <div className="flex justify-between items-start">
+                      <span className="text-sm font-medium">Organisation:</span>
                       <span className="text-sm">
-                        {invitation.roleName || "Helfer"}
+                        {invitation.organizationName}
                       </span>
+                    </div>
+                    <div className="flex justify-between items-start">
+                      <span className="text-sm font-medium">
+                        {invitation.roles && invitation.roles.length > 1
+                          ? "Rollen:"
+                          : "Rolle:"}
+                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        {invitation.roles && invitation.roles.length > 0 ? (
+                          invitation.roles.map((role, index) => (
+                            <span
+                              key={role.id || index}
+                              className="text-sm px-2 py-0.5 rounded"
+                            >
+                              {role.name === "Helfer"
+                                ? invitation.helperNameSingular ?? role.name
+                                : role.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm">
+                            {invitation.roleName || "Helfer"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {invitation.inviterName && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm font-medium">
+                          Eingeladen von:
+                        </span>
+                        <span className="text-sm">
+                          {invitation.inviterName}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
-                {invitation.inviterName && (
-                  <div className="flex justify-between items-start">
-                    <span className="text-sm font-medium">Eingeladen von:</span>
-                    <span className="text-sm">{invitation.inviterName}</span>
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Wenn eingeloggt: Akzeptieren-Button */}
-            {session?.user ? (
-              <div className="space-y-3">
-                <Button
-                  variant={"default"}
-                  onClick={handleAcceptClick}
-                  disabled={acceptMutation.isPending || isWrongMail}
-                  className="w-full"
-                >
-                  {acceptMutation.isPending ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Wird akzeptiert...
-                    </div>
-                  ) : (
-                    "Einladung akzeptieren"
-                  )}
-                </Button>
-              </div>
-            ) : (
-              /* Wenn nicht eingeloggt: Login/Signup Optionen */
-              <div className="flex flex-col justify-center">
-                <Button asChild variant={"default"}>
-                  <Link
-                    href={`/signup?callbackUrl=${encodeURIComponent(
-                      callbackUrl
-                    )}`}
-                  >
-                    Konto erstellen und Organisation beitreten
-                  </Link>
-                </Button>
-                <div className="flex text-sm justify-center items-center gap-1">
-                  <div>Ich habe bereits ein Konto.</div>
-                  <Button asChild variant={"link"} className="p-0">
+                {/* Wenn eingeloggt: Akzeptieren-Button */}
+                {session?.user ? (
+                  <div className="space-y-3">
+                    <Button
+                      variant={"default"}
+                      onClick={handleAcceptClick}
+                      disabled={acceptMutation.isPending || isWrongMail}
+                      className="w-full"
+                    >
+                      {acceptMutation.isPending ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Wird akzeptiert...
+                        </div>
+                      ) : (
+                        "Einladung akzeptieren"
+                      )}
+                    </Button>
+                  </div>
+                ) : invitation.userExists ? (
+                  <Button asChild variant={"default"} className="w-full">
                     <Link
                       href={`/signin?callbackUrl=${encodeURIComponent(
                         callbackUrl
                       )}`}
                     >
-                      Jetzt anmelden.
+                      Anmelden und anschließend beitreten
                     </Link>
                   </Button>
-                </div>
+                ) : (
+                  <Button
+                    variant={"default"}
+                    onClick={() => setTab("register1")}
+                    className="w-full"
+                  >
+                    Konto erstellen und Organisation beitreten
+                  </Button>
+                )}
               </div>
-            )}
-          </div>
+            </TabsContent>
+            <SignUpForm
+              email={invitation.email}
+              tab={tab}
+              setTab={setTab}
+            ></SignUpForm>
+          </Tabs>
         </div>
       </div>
     </>
