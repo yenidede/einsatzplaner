@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GripVertical, X } from "lucide-react";
+import { GripVertical, X, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/SimpleFormComponents";
@@ -17,6 +17,7 @@ export function SelectFieldSettings({
   options,
   defaultOption,
   onChange,
+  errors,
 }: SelectFieldSettingsProps) {
   const [newOption, setNewOption] = useState("");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -74,9 +75,7 @@ export function SelectFieldSettings({
     const newOptions = [...options];
     const draggedItem = newOptions[draggedIndex];
 
-    // Remove from old position
     newOptions.splice(draggedIndex, 1);
-    // Insert at new position
     newOptions.splice(targetIndex, 0, draggedItem);
 
     onChange({ options: newOptions });
@@ -112,6 +111,21 @@ export function SelectFieldSettings({
             Hinzufügen
           </Button>
         </div>
+
+        {/* ✅ Error Display */}
+        {errors.length > 0 && (
+          <div className="flex flex-col gap-1">
+            {errors.map((error, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {options.length > 0 && (
           <div className="border border-slate-200 rounded-md divide-y">
