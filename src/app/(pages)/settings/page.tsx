@@ -26,6 +26,7 @@ import {
   updateOrgMailNotificationAction,
   UserUpdateData,
   removeUserFromOrganizationAction,
+  removeProfilePictureAction,
 } from "@/features/settings/settings-action";
 import { toast } from "sonner";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
@@ -262,30 +263,26 @@ export default function SettingsPage() {
   const handleRemoveProfilePicture = async () => {
     if (!session?.user?.id) return;
 
-    setProfilePictureFile(null);
     const toastId = toast.loading("Profilbild wird entfernt...");
 
     try {
-      await mutation.mutateAsync({
-        id: session.user.id,
-        firstname,
-        lastname,
-        email,
-        picture_url: null,
-        phone,
-        salutationId,
-        hasLogoinCalendar: showLogos,
-        hasGetMailNotification: true,
-      });
+      await removeProfilePictureAction();
+
+      setProfilePictureFile(null);
+      setPictureUrl(null);
+      setPreviewUrl(null);
 
       await update({
         user: {
           ...session.user,
-          picture_url: "",
+          picture_url: null,
         },
       });
 
-      setPictureUrl(null);
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.userSettings(session.user.id),
+      });
+
       toast.success("Profilbild erfolgreich entfernt!", { id: toastId });
     } catch (error) {
       toast.error(
@@ -371,7 +368,6 @@ export default function SettingsPage() {
     <>
       {AlertDialogComponent}
       <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
-        {/* Header */}
         <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
           <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
             <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
@@ -398,12 +394,9 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
-          {/* Sidebar */}
           <div className="self-stretch inline-flex flex-col justify-between items-start">
             <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
-              {/* Allgemein */}
               <div className="self-stretch px-2 py-1.5 bg-slate-100 rounded-md inline-flex justify-start items-center gap-2">
                 <div className="w-4 h-4 relative overflow-hidden">
                   <SettingsIcon className="w-4 h-4 relative overflow-hidden" />
@@ -415,7 +408,6 @@ export default function SettingsPage() {
 
               <div className="self-stretch h-px bg-slate-200" />
 
-              {/* Organisationsverwaltung */}
               <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">
                 Organisationsverwaltung
               </div>
@@ -440,7 +432,6 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Logout Button */}
             <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
               <button
                 className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2"
@@ -454,9 +445,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Content Area */}
           <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
-            {/* Mein Account */}
             <div className="self-stretch flex flex-col justify-center items-start gap-4">
               <div className="self-stretch flex flex-col justify-start items-start gap-2">
                 <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
@@ -522,7 +511,6 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   </div>
-                  {/* Name Fields */}
                   <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                     <div className="grid w-full max-w-sm items-center gap-3">
                       <LabelSettings
@@ -553,7 +541,6 @@ export default function SettingsPage() {
                       />
                     </div>
                   </div>
-                  {/* Contact Fields */}
                   <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
                     <div className="grid w-full max-w-sm items-center gap-3">
                       <LabelSettings
@@ -587,8 +574,6 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-
-            {/* Persönliche Präferenzen */}
             <div className="self-stretch flex flex-col justify-center items-start">
               <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
                 <div className="flex-1 flex justify-start items-center gap-2">
@@ -598,7 +583,6 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Logo Switch */}
               <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
                 <div className="flex-1 px-4 flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
@@ -623,7 +607,6 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Salutation Select */}
               <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
                 <div className="flex-1 px-4 flex justify-start items-start gap-4">
                   <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
@@ -651,7 +634,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Benachrichtigungen */}
             <div className="self-stretch flex flex-col justify-center items-start">
               <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
                 <div className="flex-1 flex justify-start items-center gap-2">
@@ -718,7 +700,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Meine Organisationen */}
             <div className="self-stretch flex flex-col justify-center items-start">
               <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
                 <div className="flex-1 flex justify-start items-center gap-2">
