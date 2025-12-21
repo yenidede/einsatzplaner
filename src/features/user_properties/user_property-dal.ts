@@ -238,7 +238,7 @@ export async function updateUserProperty(
     throw new Error("Unauthorized to update this property");
   }
 
-  const updatedField = await prisma.field.update({
+  await prisma.field.update({
     where: { id: userProperty.field_id },
     data: {
       name: input.name,
@@ -380,6 +380,14 @@ export async function upsertUserPropertyValue(
 
   const userProperty = await prisma.user_property.findUnique({
     where: { id: userPropertyId },
+    include: {
+      field: {
+        select: {
+          name: true,
+          is_required: true,
+        },
+      },
+    },
   });
 
   if (!userProperty) {
@@ -388,6 +396,14 @@ export async function upsertUserPropertyValue(
 
   if (!session.user.orgIds.includes(userProperty.org_id)) {
     throw new Error("Unauthorized");
+  }
+
+  if (userProperty.field.is_required && (!value || value.trim() === "")) {
+    throw new Error(
+      `Das Feld "${
+        userProperty.field.name || "Unbekannt"
+      }" ist ein Pflichtfeld und darf nicht leer sein.`
+    );
   }
 
   const existing = await prisma.user_property_value.findFirst({

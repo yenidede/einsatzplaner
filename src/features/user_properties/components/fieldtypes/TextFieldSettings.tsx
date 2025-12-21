@@ -54,7 +54,9 @@ export function TextFieldSettings({
           value={maxLength || ""}
           onChange={(e) =>
             onChange({
-              maxLength: e.target.value ? parseInt(e.target.value) : undefined,
+              maxLength: e.target.value
+                ? parseInt(e.target.value, 10)
+                : undefined,
             })
           }
           placeholder="z.B. 100"

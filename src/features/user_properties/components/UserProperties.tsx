@@ -161,8 +161,24 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
     const property = properties?.find((p) => p.id === propertyId);
     if (!property) return;
 
-    const fieldType = property.field.type?.datatype as FieldType | null;
-    if (!fieldType) return;
+    const datatype = property.field.type?.datatype;
+
+    const isValidFieldType = (value: unknown): value is FieldType => {
+      return (
+        typeof value === "string" &&
+        ["text", "number", "boolean", "select"].includes(value)
+      );
+    };
+
+    if (!datatype || !isValidFieldType(datatype)) {
+      toast.error(
+        `Ungültiger Feldtyp: ${datatype}. Eigenschaft kann nicht bearbeitet werden.`
+      );
+      console.error("Invalid field type:", datatype);
+      return;
+    }
+
+    const fieldType: FieldType = datatype;
 
     const editConfig: PropertyConfig = {
       name: property.field.name || "",

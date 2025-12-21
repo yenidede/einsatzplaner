@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import SwitchIcon from "@/components/icon/SwitchIcon";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
