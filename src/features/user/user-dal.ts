@@ -1,6 +1,8 @@
 "use server"
 
 import Prisma from "@/lib/prisma";
+import { actionClient } from "@/lib/safe-action";
+import { formSchema as registerFormSchema } from "../../app/(pages)/(auth)/signup/register-schema";
 
 export async function getAllUsersWithRolesByOrgIds(org_ids: string[], role: string | null = null) {
   const roleFilter = role ? { role: { name: role } } : {};
@@ -95,3 +97,14 @@ export async function setUserActiveOrganization(userId: string, orgId: string) {
     console.error("Error updating user's active organization:", error);
   }
 }
+
+export const serverAction = actionClient
+  .inputSchema(registerFormSchema)
+  .action(async ({ parsedInput }) => {
+    // do something with the data
+    console.log(parsedInput);
+    return {
+      success: true,
+      message: "Form submitted successfully",
+    };
+  });
