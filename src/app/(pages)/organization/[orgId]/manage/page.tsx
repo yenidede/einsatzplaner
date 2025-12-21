@@ -14,6 +14,7 @@ import {
   getUserOrganizationByIdAction,
   updateOrganizationAction,
   uploadOrganizationLogoAction,
+  removeOrganizationLogoAction,
 } from "@/features/settings/organization-action";
 import { getUserProfileAction } from "@/features/settings/settings-action";
 import { getAllUserOrgRolesAction } from "@/features/settings/users-action";
@@ -128,22 +129,51 @@ export default function OrganizationManagePage() {
       return;
     }
 
-    setLogoFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setLogoUrl(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+    const toastId = toast.loading("Logo wird hochgeladen...");
+    try {
+      const formData = new FormData();
+      formData.append("logo", file);
+      formData.append("orgId", orgId);
+      const uploadRes = await uploadOrganizationLogoAction(formData);
+
+      if (!uploadRes) throw new Error("Upload fehlgeschlagen");
+
+      setLogoUrl(uploadRes.url);
+      setLogoFile(null);
+
+      queryClient.invalidateQueries({
+        queryKey: organizationManageQueryKeys.organization(orgId),
+      });
+
+      toast.success("Logo erfolgreich hochgeladen!", { id: toastId });
+    } catch (error) {
+      toast.error("Fehler beim Hochladen", { id: toastId });
+      console.error(error);
+    }
   };
 
-  const handleLogoRemove = () => {
-    setLogoUrl("");
-    setLogoFile(null);
-    const fileInput = document.getElementById(
-      "logo-upload"
-    ) as HTMLInputElement;
-    if (fileInput) fileInput.value = "";
-    toast.success("Logo entfernt");
+  const handleLogoRemove = async () => {
+    const toastId = toast.loading("Logo wird entfernt...");
+    try {
+      await removeOrganizationLogoAction(orgId);
+
+      setLogoUrl("");
+      setLogoFile(null);
+
+      const fileInput = document.getElementById(
+        "logo-upload"
+      ) as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
+      queryClient.invalidateQueries({
+        queryKey: organizationManageQueryKeys.organization(orgId),
+      });
+
+      toast.success("Logo erfolgreich entfernt!", { id: toastId });
+    } catch (error) {
+      toast.error("Fehler beim Entfernen des Logos", { id: toastId });
+      console.error(error);
+    }
   };
 
   const updateMutation = useMutation({
@@ -155,24 +185,18 @@ export default function OrganizationManagePage() {
       helper_name_singular?: string;
       helper_name_plural?: string;
       logoFile?: File | null;
-      removeLogo?: boolean;
     }) => {
-      let finalLogoUrl = logoUrl;
-      if (data.removeLogo) {
-        finalLogoUrl = "";
-      } else if (data.logoFile) {
-        const formData = new FormData();
-        formData.append("logo", data.logoFile);
-        formData.append("orgId", orgId);
-        const uploadRes = await uploadOrganizationLogoAction(formData);
-        if (!uploadRes) throw new Error("Logo Upload fehlgeschlagen");
-        finalLogoUrl = uploadRes.url;
-      }
-      const res = await updateOrganizationAction({
+      const updateData: any = {
         id: orgId,
         name: data.name,
         description: data.description,
-      });
+        email: data.email,
+        phone: data.phone,
+        helper_name_singular: data.helper_name_singular,
+        helper_name_plural: data.helper_name_plural,
+      };
+
+      const res = await updateOrganizationAction(updateData);
       if (!res) throw new Error("Fehler beim Speichern");
       return res;
     },
@@ -208,7 +232,6 @@ export default function OrganizationManagePage() {
       helper_name_singular: helperSingular,
       helper_name_plural: helperPlural,
       logoFile,
-      removeLogo: false,
     });
   };
 
