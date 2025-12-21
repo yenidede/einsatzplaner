@@ -10,6 +10,7 @@ interface SelectFieldSettingsProps {
   options: string[];
   defaultOption?: string;
   onChange: (updates: { options?: string[]; defaultOption?: string }) => void;
+  errors: string[];
 }
 
 export function SelectFieldSettings({
@@ -18,6 +19,7 @@ export function SelectFieldSettings({
   onChange,
 }: SelectFieldSettingsProps) {
   const [newOption, setNewOption] = useState("");
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const handleAddOption = () => {
     if (newOption.trim()) {
@@ -30,7 +32,6 @@ export function SelectFieldSettings({
     const removedOption = options[index];
     const newOptions = options.filter((_, i) => i !== index);
 
-    // Wenn die Standardoption gelöscht wird, zurücksetzen
     const updates: { options: string[]; defaultOption?: string } = {
       options: newOptions,
     };
@@ -52,6 +53,38 @@ export function SelectFieldSettings({
       newOptions[index],
     ];
     onChange({ options: newOptions });
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const newOptions = [...options];
+    const draggedItem = newOptions[draggedIndex];
+
+    // Remove from old position
+    newOptions.splice(draggedIndex, 1);
+    // Insert at new position
+    newOptions.splice(targetIndex, 0, draggedItem);
+
+    onChange({ options: newOptions });
+    setDraggedIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   return (
@@ -85,9 +118,16 @@ export function SelectFieldSettings({
             {options.map((option, index) => (
               <div
                 key={index}
-                className="flex items-center gap-2 p-2 hover:bg-slate-50"
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={(e) => handleDrop(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center gap-2 p-2 hover:bg-slate-50 transition-colors ${
+                  draggedIndex === index ? "opacity-50" : ""
+                }`}
               >
-                <GripVertical className="w-4 h-4 text-slate-400 cursor-grab" />
+                <GripVertical className="w-4 h-4 text-slate-400 cursor-grab active:cursor-grabbing" />
                 <span className="flex-1 text-sm">{option}</span>
                 <div className="flex gap-1">
                   <button
@@ -120,7 +160,6 @@ export function SelectFieldSettings({
         )}
       </div>
 
-      {/* Standardoption */}
       {options.length > 0 && (
         <div className="flex flex-col gap-2">
           <Label className="text-sm font-medium">

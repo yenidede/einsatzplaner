@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 interface BooleanFieldSettingsProps {
   trueLabel: string;
   falseLabel: string;
-  defaultValue?: boolean | null;
+  booleanDefaultValue?: boolean | null;
   onChange: (updates: {
     trueLabel?: string;
     falseLabel?: string;

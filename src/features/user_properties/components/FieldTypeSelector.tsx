@@ -22,10 +22,9 @@ export function FieldTypeSelector({
       <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
         <div className="self-stretch px-4 flex flex-col justify-start items-start gap-4">
           <div className="self-stretch grid grid-cols-2 gap-4">
-            {/* Text Feld */}
             <div
               onClick={() => onSelectType("text")}
-              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-white flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
+              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-slate-50 flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
             >
               <div className="text-4xl font-semibold text-slate-900">T</div>
               <div className="text-slate-900 text-base font-medium text-center">
@@ -33,10 +32,9 @@ export function FieldTypeSelector({
               </div>
             </div>
 
-            {/* Zahl Feld */}
             <div
               onClick={() => onSelectType("number")}
-              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-white flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
+              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-slate-50 flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
             >
               <div className="text-4xl font-semibold text-slate-900">#</div>
               <div className="text-slate-900 text-base font-medium text-center">
@@ -44,10 +42,9 @@ export function FieldTypeSelector({
               </div>
             </div>
 
-            {/* Ja/Nein Feld */}
             <div
               onClick={() => onSelectType("boolean")}
-              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-white flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
+              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-slate-50 flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
             >
               <div className="flex items-center justify-center">
                 <svg
@@ -74,10 +71,9 @@ export function FieldTypeSelector({
               </div>
             </div>
 
-            {/* Auswahl Feld */}
             <div
               onClick={() => onSelectType("select")}
-              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-white flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
+              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-slate-50 flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
             >
               <div className="flex items-center justify-center">
                 <svg
