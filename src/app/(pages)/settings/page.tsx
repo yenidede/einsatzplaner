@@ -26,6 +26,7 @@ import {
   updateOrgMailNotificationAction,
   UserUpdateData,
   removeUserFromOrganizationAction,
+  removeProfilePictureAction,
 } from "@/features/settings/settings-action";
 import { toast } from "sonner";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
@@ -262,30 +263,26 @@ export default function SettingsPage() {
   const handleRemoveProfilePicture = async () => {
     if (!session?.user?.id) return;
 
-    setProfilePictureFile(null);
     const toastId = toast.loading("Profilbild wird entfernt...");
 
     try {
-      await mutation.mutateAsync({
-        id: session.user.id,
-        firstname,
-        lastname,
-        email,
-        picture_url: null,
-        phone,
-        salutationId,
-        hasLogoinCalendar: showLogos,
-        hasGetMailNotification: true,
-      });
+      await removeProfilePictureAction();
+
+      setProfilePictureFile(null);
+      setPictureUrl(null);
+      setPreviewUrl(null);
 
       await update({
         user: {
           ...session.user,
-          picture_url: "",
+          picture_url: null,
         },
       });
 
-      setPictureUrl(null);
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.userSettings(session.user.id),
+      });
+
       toast.success("Profilbild erfolgreich entfernt!", { id: toastId });
     } catch (error) {
       toast.error(

@@ -211,6 +211,7 @@ model invitation {
   accepted     Boolean      @default(false)
   org_id       String       @db.Uuid
   role_id      String       @db.Uuid
+  new_user_id  String       @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user         user         @relation(fields: [invited_by], references: [id], onDelete: Cascade)
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
   role         role         @relation(fields: [role_id], references: [id], onDelete: NoAction)
