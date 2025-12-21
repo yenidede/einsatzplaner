@@ -1,8 +1,17 @@
 "use client";
 
+import { useRef } from "react";
 import { AlertCircleIcon, XIcon, CloudUpload, File } from "lucide-react";
-import { formatBytes, useFileUpload } from "@/hooks/use-file-upload";
+import {
+  FileMetadata,
+  formatBytes,
+  useFileUpload,
+  type FileWithPreview,
+} from "@/hooks/use-file-upload";
 import { Button } from "@/components/ui/button";
+import { optimizeImage } from "@/lib/utils";
+import { toast } from "sonner";
+import { getPublicStorageUrlFromPath } from "@/lib/supabase-client";
 
 const getFileIcon = (file: { file: File | { type: string; name: string } }) => {
   const fileType = file.file.type;
@@ -35,6 +44,8 @@ export function FileUpload({
   name,
   disabled,
   id,
+  onUpload,
+  onFileRemove,
 }: {
   maxFiles: number;
   maxSize: number;
@@ -54,6 +65,8 @@ export function FileUpload({
   accept?: string;
   name: string;
   id: string;
+  onUpload: (optimizedFile: File) => Promise<string>;
+  onFileRemove?: (userId: string) => void;
 }) {
   const [
     { files, isDragging, errors },
@@ -74,14 +87,19 @@ export function FileUpload({
     accept,
     onFilesChange: (files) => {
       queueMicrotask(() => {
-        setValue(
-          name,
-          files.map((file) => file.file),
-          { shouldValidate: true, shouldDirty: true, shouldTouch: true }
-        );
+        optimizeFilesAndUpload(files, maxSize).then((optimizedFiles) => {
+          setValue(name, optimizedFiles, {
+            shouldValidate: true,
+            shouldDirty: true,
+            shouldTouch: true,
+          });
+        });
       });
     },
   });
+
+  const lastUploadKeyRef = useRef<string | null>(null);
+  const lastUploadValueRef = useRef<string | null>(null);
 
   return (
     <div className="flex flex-col gap-2 pb-2">
@@ -118,7 +136,7 @@ export function FileUpload({
             Upload
           </p> */}
             <p className="text-foreground font-medium text-sm mb-2">
-              Datei hierher ziehen oder auswählen{" "}
+              Datei{maxFiles > 1 ? "en" : ""} hierher ziehen oder auswählen{" "}
             </p>
             <div className="text-muted-foreground/70 flex flex-wrap justify-center gap-1 text-xs">
               {placeholder}
@@ -161,7 +179,10 @@ export function FileUpload({
                 size="icon"
                 variant="ghost"
                 className="text-muted-foreground/80 hover:text-foreground -me-2 size-8 hover:bg-transparent"
-                onClick={() => removeFile(file.id)}
+                onClick={() => {
+                  removeFile(file.id);
+                  onFileRemove?.(file.id);
+                }}
                 aria-label="Remove file"
               >
                 <XIcon className="size-4" aria-hidden="true" />
@@ -181,4 +202,73 @@ export function FileUpload({
       )}
     </div>
   );
+
+  function isFileMetadata(value: unknown): value is FileMetadata {
+    return (
+      typeof File !== "undefined" && Object.hasOwn(value as object, "path")
+    );
+  }
+
+  function getFileUniqueKey(file: File | FileMetadata) {
+    if (isFileMetadata(file)) {
+      return `metadata:${file.url}`;
+    }
+    return `file:${file.name}-${file.size}-${file.lastModified ?? 0}`;
+  }
+
+  async function optimizeFilesAndUpload(
+    files: FileWithPreview[],
+    maxSize: number
+  ): Promise<string[]> {
+    return Promise.all(
+      files.map((file) => optimizeAndUploadIfImage(file.file, maxSize))
+    );
+  }
+
+  async function optimizeAndUploadIfImage(
+    file: File | FileMetadata,
+    maxSize: number
+  ): Promise<string> {
+    const fileKey = getFileUniqueKey(file);
+    if (isFileMetadata(file)) {
+      lastUploadKeyRef.current = fileKey;
+      lastUploadValueRef.current = file.url;
+      return file.url;
+    }
+
+    if (fileKey === lastUploadKeyRef.current && lastUploadValueRef.current) {
+      return lastUploadValueRef.current;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      throw new Error("Only image files are supported for upload.");
+    }
+
+    const targetSizeMB = Math.max(
+      0.25,
+      Math.min(2, maxSize / 1024 / 1024, file.size / 1024 / 1024)
+    );
+
+    try {
+      const optimized = await optimizeImage(file);
+      if (
+        optimized.size < file.size &&
+        optimized.size / 1024 / 1024 <= targetSizeMB
+      ) {
+        const uploadedPath = await onUpload(optimized);
+        lastUploadKeyRef.current = fileKey;
+        lastUploadValueRef.current = uploadedPath;
+        return uploadedPath;
+      } else {
+        throw new Error(
+          "Optimized image not smaller than original or exceeds target size"
+        );
+      }
+    } catch (error: unknown) {
+      toast.error(`Image optimization failed ${error}`, {
+        id: "file-upload-optimize-error",
+      });
+      throw error;
+    }
+  }
 }

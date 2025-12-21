@@ -36,27 +36,34 @@ import type {
   ControllerFieldState,
   ControllerRenderProps,
 } from "react-hook-form";
-import { FileUpload } from "@/components/form-fields/file-upload";
+import { FileUpload } from "@/components/form/file-upload";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { settingsQueryKeys } from "@/features/settings/queryKeys/queryKey";
 import { getSalutationsAction } from "@/features/settings/settings-action";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { TabsContent } from "@/components/ui/tabs";
+import {
+  createAvatarUploadUrl,
+  deleteAvatarFromStorage,
+} from "@/features/user/user-dal";
 
 type Schema = z.infer<typeof formSchema>;
 export type AvailableTab = "accept" | "register1" | "register2" | "other";
 
 export function SignUpForm({
   email,
+  userId,
   tab,
   setTab,
 }: {
   email: string;
+  userId: string;
   tab: AvailableTab;
   setTab: (tab: AvailableTab) => void;
 }) {
+  const [anredePopoverOpen, setAnredePopoverOpen] = useState(false);
   const { data: salutations = [] } = useQuery({
     queryKey: settingsQueryKeys.salutation(),
     queryFn: async () => {
@@ -64,9 +71,40 @@ export function SignUpForm({
       return res;
     },
   });
+  const profilePictureUploadFromClient = async (
+    optimizedFile: File
+  ): Promise<string> => {
+    const loadingToastId = toast.loading("Profilbild wird hochgeladen...");
+    const { uploadUrl, path } = await createAvatarUploadUrl(userId);
+
+    const res = await fetch(uploadUrl, {
+      method: "PUT",
+      body: optimizedFile,
+      headers: {
+        "Content-Type": optimizedFile.type,
+      },
+    });
+
+    toast.dismiss(loadingToastId);
+    if (!res.ok) {
+      toast.error("Failed to upload profile picture.", { id: "upload-failed" });
+    } else toast.success("Profilbild erfolgreich hochgeladen!");
+
+    return path;
+  };
 
   const form = useForm<Schema>({
     resolver: zodResolver(formSchema as any),
+    defaultValues: {
+      vorname: "",
+      nachname: "",
+      email,
+      passwort1: "",
+      passwort2: "",
+      anredeId: undefined,
+      telefon: "",
+      pictureUrl: "",
+    },
   });
   const formAction = useAction(serverAction, {
     onSuccess: () => {
@@ -82,12 +120,14 @@ export function SignUpForm({
       );
     },
   });
-  const handleSubmit = form.handleSubmit(async (data: Schema) => {
+  const handleSubmit = form.handleSubmit(async (data: Schema) =>
     formAction.execute({
       ...data,
-      picture: data.picture ?? null,
-    });
-  });
+      email,
+      userId,
+      pictureUrl: data.pictureUrl || undefined,
+    })
+  );
 
   const { isExecuting, hasSucceeded } = formAction;
 
@@ -155,6 +195,7 @@ export function SignUpForm({
           <Controller
             name="vorname"
             control={form.control}
+            defaultValue=""
             render={({ field, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid}
@@ -182,6 +223,7 @@ export function SignUpForm({
           <Controller
             name="nachname"
             control={form.control}
+            defaultValue=""
             render={({ field, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid}
@@ -208,6 +250,7 @@ export function SignUpForm({
           <Controller
             name="email"
             control={form.control}
+            defaultValue={email}
             render={({ field, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid}
@@ -220,13 +263,8 @@ export function SignUpForm({
                   {...field}
                   id="email"
                   type="text"
-                  // onChange={(e) => {
-                  //   field.onChange(e.target.value);
-                  // }}
                   aria-invalid={fieldState.invalid}
                   placeholder="max.mustermann@example.com"
-                  // the mail should not be editable as it comes from the invite
-                  value={email}
                   readOnly
                   aria-readonly
                   tabIndex={-1}
@@ -243,6 +281,7 @@ export function SignUpForm({
           <Controller
             name="passwort1"
             control={form.control}
+            defaultValue=""
             render={({ field, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid}
@@ -267,6 +306,7 @@ export function SignUpForm({
           <Controller
             name="passwort2"
             control={form.control}
+            defaultValue=""
             render={({ field, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid}
@@ -296,9 +336,18 @@ export function SignUpForm({
             </Button>
             <Button
               type="button"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault();
-                setTab("register2");
+                const valid = await form.trigger();
+                console.log(
+                  "Form valid:",
+                  valid,
+                  form.formState.errors,
+                  form.getValues("userId")
+                );
+                if (valid) {
+                  setTab("register2");
+                }
               }}
             >
               Weiter
@@ -315,6 +364,7 @@ export function SignUpForm({
           <Controller
             name="anredeId"
             control={form.control}
+            defaultValue={undefined}
             render={({ field, fieldState }) => {
               return (
                 <Field
@@ -323,7 +373,10 @@ export function SignUpForm({
                 >
                   <FieldLabel htmlFor="anredeId">Anrede </FieldLabel>
 
-                  <Popover>
+                  <Popover
+                    open={anredePopoverOpen}
+                    onOpenChange={setAnredePopoverOpen}
+                  >
                     <PopoverTrigger asChild>
                       <Button
                         id="anredeId"
@@ -360,6 +413,7 @@ export function SignUpForm({
                                 key={id}
                                 onSelect={() => {
                                   form.setValue("anredeId", id);
+                                  setAnredePopoverOpen(false);
                                 }}
                               >
                                 {salutation}
@@ -389,6 +443,7 @@ export function SignUpForm({
           <Controller
             name="telefon"
             control={form.control}
+            defaultValue=""
             render={({ field, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid}
@@ -416,13 +471,14 @@ export function SignUpForm({
           />
 
           <Controller
-            name="picture"
+            name="pictureUrl"
             control={form.control}
+            defaultValue=""
             render={({ field, fieldState }) => (
               <div className="col-span-full">
                 <Field data-invalid={fieldState.invalid}>
                   <div>
-                    <FieldLabel htmlFor="picture">
+                    <FieldLabel htmlFor="pictureUrl">
                       Profilbild hinzufügen{" "}
                     </FieldLabel>
                     <FieldDescription>
@@ -431,7 +487,7 @@ export function SignUpForm({
                   </div>
                   <FileUpload
                     {...field}
-                    id="picture"
+                    id="pictureUrl"
                     setValue={(name, value, options) => {
                       form.setValue(
                         name as keyof Schema,
@@ -439,11 +495,18 @@ export function SignUpForm({
                         options
                       );
                     }}
-                    name="picture"
+                    onUpload={async (file) => {
+                      const path = await profilePictureUploadFromClient(file);
+                      // store the string, not the file
+                      field.onChange(path);
+                      return path;
+                    }}
+                    onFileRemove={deleteAvatarFromStorage}
+                    name="pictureUrl"
                     placeholder="PNG, JPEG oder Gif (max. 5MB)"
                     accept={`image/png, image/jpeg, image/gif`}
                     maxFiles={1}
-                    maxSize={5242880}
+                    maxSize={500000} // approx 480kB, 500kB max allowed in db
                   />
                 </Field>
                 {Array.isArray(fieldState.error) ? (
