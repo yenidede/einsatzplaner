@@ -216,7 +216,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
 
   if (!userOrgRole) throw new Error("Forbidden");
 
-  if (!await hasPermission(session, "organization:update"))
+  if (!(await hasPermission(session, "organization:update")))
     throw new Error("Insufficient permissions");
 
   const dataToUpdate: Partial<OrganizationUpdateData> = {};
@@ -303,7 +303,6 @@ export async function deleteOrganizationAction(orgId: string) {
   };
 }
 
-// TODO (Ömer): Correct Implementation of Uploading Organization Logo to Supabase Storage
 export async function uploadOrganizationLogoAction(formData: FormData) {
   try {
     const session = await checkUserSession();
