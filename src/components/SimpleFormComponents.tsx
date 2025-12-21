@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useId } from "react";
 
 interface FormFieldProps {
   label: string;
@@ -9,6 +10,8 @@ interface FormFieldProps {
   autoComplete?: string;
   placeholder?: string;
   className?: string;
+  id?: string;
+  name?: string;
 }
 
 export function FormField({
@@ -20,14 +23,24 @@ export function FormField({
   autoComplete,
   placeholder,
   className,
+  id,
+  name,
 }: FormFieldProps) {
+  const generatedId = useId();
+  const inputId = id || generatedId;
+  const inputName = name || label.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
   return (
     <div className={cn("mb-4", className)}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label
+        htmlFor={inputId}
+        className="block text-sm font-medium text-gray-700 mb-2"
+      >
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       <input
+        id={inputId}
+        name={inputName}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}

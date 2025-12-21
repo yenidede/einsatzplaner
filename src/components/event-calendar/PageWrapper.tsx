@@ -19,7 +19,7 @@ export default function CalendarPageWrapper({
   mode: CalendarMode;
   description?: string;
 }) {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
   const orgIds = session?.user?.orgIds;
 
@@ -59,14 +59,18 @@ export default function CalendarPageWrapper({
     return <div>Fehler beim Laden der Einsätze. {}</div>;
   }
 
+  // Redirect to sign-in if not authenticated (could happen if logout on different page)
   useEffect(() => {
-    // If not logged in, redirect to signin. Could happen if logout on another tab
+    if (sessionStatus === "loading") {
+      return;
+    }
+
     if (!session) {
       router.push(
         `/signin?callbackUrl=${encodeURIComponent(window.location.href)}`
       );
     }
-  }, [session, router]);
+  }, [router, session, sessionStatus]);
 
   return (
     <>

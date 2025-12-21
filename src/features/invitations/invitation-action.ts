@@ -354,10 +354,13 @@ export async function verifyInvitationAction(token: string) {
 
     const firstInvitation = invitations[0];
 
-    const inviter = await prisma.user.findUnique({
+    const [inviter, existingUser] = await Promise.all([prisma.user.findUnique({
       where: { id: firstInvitation.invited_by },
       select: { firstname: true, lastname: true, email: true },
-    });
+    }), prisma.user.findUnique({
+      where: { email: firstInvitation.email },
+      select: { id: true },
+    })]);
 
     const inviterName =
       inviter?.firstname && inviter?.lastname
@@ -393,6 +396,7 @@ export async function verifyInvitationAction(token: string) {
       })),
       inviterName: inviterName,
       expiresAt: firstInvitation.expires_at.toISOString(),
+      userExists: !!existingUser,
     };
   } catch (error) {
     throw error instanceof Error
