@@ -190,15 +190,12 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     cleanedData.picture_url = data.picture_url === "" ? null : data.picture_url;
   }
 
-  // Normale Felder
   if (data.email !== undefined) cleanedData.email = data.email;
   if (data.firstname !== undefined) cleanedData.firstname = data.firstname;
   if (data.lastname !== undefined) cleanedData.lastname = data.lastname;
   if (data.phone !== undefined) cleanedData.phone = data.phone;
   if (data.hasLogoinCalendar !== undefined)
     cleanedData.hasLogoinCalendar = data.hasLogoinCalendar;
-
-  // Password hashing
   if (data.newPassword) {
     cleanedData.newPassword = await hash(data.newPassword, 10);
   }
@@ -264,10 +261,17 @@ export async function uploadProfilePictureAction(formData: FormData) {
     throw new Error("File size must be less than 5MB");
   }
 
+  const oldUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { picture_url: true },
+  });
+
   const bytes = await file.arrayBuffer();
   const buffer = new Uint8Array(bytes);
   const extension = file.name.split(".").pop() || "jpg";
-  const filePath = `users/${session.user.id}/${session.user.id}.${extension}`;
+  const timestamp = Date.now();
+  const fileName = `${session.user.id}.${extension}`;
+  const filePath = `users/${session.user.id}/${fileName}`;
 
   const { error } = await supabase.storage
     .from("logos")
@@ -285,15 +289,72 @@ export async function uploadProfilePictureAction(formData: FormData) {
     .from("logos")
     .getPublicUrl(filePath);
 
-  const publicUrl = urlData.publicUrl;
+  const publicUrl = `${urlData.publicUrl}?t=${timestamp}`;
 
   await prisma.user.update({
     where: { id: session.user.id },
     data: { picture_url: publicUrl },
   });
+
+  if (oldUser?.picture_url && oldUser.picture_url.includes("supabase")) {
+    try {
+      const urlParts = oldUser.picture_url.split("/logos/");
+      if (urlParts[1]) {
+        const oldPathWithParams = urlParts[1];
+        const oldPath = oldPathWithParams.split("?")[0];
+
+        if (
+          oldPath !== filePath &&
+          oldPath.startsWith(`users/${session.user.id}/`)
+        ) {
+          const { error: deleteError } = await supabase.storage
+            .from("logos")
+            .remove([oldPath]);
+
+          if (deleteError) {
+            console.warn("Failed to delete old picture:", deleteError);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("Error while deleting old picture:", error);
+    }
+  }
+
   revalidatePath("/settings");
 
   return { picture_url: publicUrl };
+}
+export async function removeProfilePictureAction() {
+  const session = await checkUserSession();
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { picture_url: true },
+  });
+
+  if (user?.picture_url && user.picture_url.includes("supabase")) {
+    try {
+      const urlParts = user.picture_url.split("/logos/");
+      if (urlParts[1]) {
+        const pathWithParams = urlParts[1];
+        const path = pathWithParams.split("?")[0];
+        const { error } = await supabase.storage.from("logos").remove([path]);
+        if (error) {
+          console.warn("Failed to delete picture from storage:", error);
+        }
+      }
+    } catch (error) {
+      console.warn("Error while deleting profile picture:", error);
+    }
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { picture_url: null },
+  });
+  revalidatePath("/settings");
+
+  return { success: true };
 }
 
 export async function updateActiveOrganizationAction(
@@ -358,12 +419,10 @@ export async function removeUserFromOrganizationAction(
   try {
     const session = await checkUserSession();
 
-    // Verify the user is removing themselves (security check)
     if (session.user.id !== userId) {
       return { success: false, error: "Unauthorized" };
     }
 
-    // Check if user is in the organization
     const userOrgRoles = await prisma.user_organization_role.findMany({
       where: {
         user_id: userId,
@@ -378,22 +437,18 @@ export async function removeUserFromOrganizationAction(
       };
     }
 
-    // Remove all roles for this user in this organization
     await prisma.user_organization_role.deleteMany({
       where: {
         user_id: userId,
         org_id: organizationId,
       },
     });
-
-    // If this was the active organization, update to another org or null
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { active_org: true },
     });
 
     if (user?.active_org === organizationId) {
-      // Find another organization the user belongs to
       const otherOrg = await prisma.user_organization_role.findFirst({
         where: {
           user_id: userId,

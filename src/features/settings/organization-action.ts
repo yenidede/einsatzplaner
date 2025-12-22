@@ -88,7 +88,7 @@ export async function getEinsatzNamesByOrgId(orgId: string) {
     einsatz_name_singular: org.einsatz_name_singular ?? "Einsatz",
     einsatz_name_plural: org.einsatz_name_plural ?? "Einsätze",
   };
-} // GET - Alle Organisationen des Users
+}
 export async function getUserOrganizationsAction() {
   const session = await checkUserSession();
 
@@ -124,11 +124,9 @@ export async function getUserOrganizationsAction() {
   }));
 }
 
-// GET - Eine spezifische Organisation
 export async function getUserOrganizationByIdAction(orgId: string) {
   const session = await checkUserSession();
 
-  // Check if user has access
   const membership = await prisma.user_organization_role.findFirst({
     where: {
       org_id: orgId,
@@ -181,14 +179,13 @@ export async function getUserOrganizationByIdAction(orgId: string) {
     members: org.user_organization_role.map((uor) => ({
       user: {
         ...uor.user,
-        picture_url: uor.user.picture_url, // Map für Kompatibilität
+        picture_url: uor.user.picture_url,
       },
       role: uor.role,
     })),
   };
 }
 
-// PUT - Organisation bearbeiten
 export type OrganizationUpdateData = {
   id: string;
   name?: string;
@@ -203,7 +200,6 @@ export type OrganizationUpdateData = {
 export async function updateOrganizationAction(data: OrganizationUpdateData) {
   const session = await checkUserSession();
 
-  // Check if user has permission
   const userOrgRole = await prisma.user_organization_role.findFirst({
     where: {
       org_id: data.id,
@@ -261,11 +257,9 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
   };
 }
 
-// DELETE - Organisation löschen
 export async function deleteOrganizationAction(orgId: string) {
   const session = await checkUserSession();
 
-  // Check if user has permission (must be Superadmin or OV)
   const userOrgRole = await prisma.user_organization_role.findFirst({
     where: {
       org_id: orgId,
@@ -285,12 +279,10 @@ export async function deleteOrganizationAction(orgId: string) {
 
   if (!isOV) throw new Error("Insufficient permissions");
 
-  // Delete all related roles first
   await prisma.user_organization_role.deleteMany({
     where: { org_id: orgId },
   });
 
-  // Then delete the organization
   const deletedOrg = await prisma.organization.delete({
     where: { id: orgId },
   });
@@ -312,7 +304,6 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
 
     if (!file || !orgId) throw new Error("Missing file or orgId");
 
-    // Check permission
     const userOrgRole = await prisma.user_organization_role.findFirst({
       where: {
         org_id: orgId,
@@ -323,10 +314,9 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
 
     if (!userOrgRole) throw new Error("Forbidden");
 
-    if (!hasPermission(session, "organization:update"))
+    if (!(await hasPermission(session, "organization:update")))
       throw new Error("Insufficient permissions");
 
-    // Validate file
     if (!file.type.startsWith("image/")) {
       throw new Error("File must be an image");
     }
@@ -335,17 +325,23 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       throw new Error("File size must be less than 5MB");
     }
 
-    // Upload to Supabase Storage
+    const oldOrg = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { logo_url: true },
+    });
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `logo-${orgId}.${fileExt}`;
-    const filePath = `organizations/${fileName}`;
+    const fileExt = file.name.split(".").pop() || "jpg";
+    const timestamp = Date.now();
+    const fileName = `${orgId}.${fileExt}`;
+    const filePath = `organizations/${orgId}/${fileName}`;
 
     const buffer = await file.arrayBuffer();
 
-    const { data: uploadData, error: uploadError } =
-      await supabaseServer.storage.from("logos").upload(filePath, buffer, {
+    const { error: uploadError } = await supabaseServer.storage
+      .from("logos")
+      .upload(filePath, buffer, {
         contentType: file.type,
+        cacheControl: "3600",
         upsert: true,
       });
 
@@ -354,31 +350,41 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       throw new Error(`Failed to upload image: ${uploadError.message}`);
     }
 
-    // Get public URL
     const { data: urlData } = supabaseServer.storage
       .from("logos")
       .getPublicUrl(filePath);
 
-    const publicUrl = urlData.publicUrl;
+    const publicUrl = `${urlData.publicUrl}?t=${timestamp}`;
 
-    // Delete old logo if exists
-    const oldOrg = await prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { logo_url: true },
-    });
-
-    if (oldOrg?.logo_url && oldOrg.logo_url.includes("supabase")) {
-      const oldPath = oldOrg.logo_url.split("/logos/")[1];
-      if (oldPath) {
-        await supabaseServer.storage.from("logos").remove([oldPath]);
-      }
-    }
-
-    // Update organization with new URL
     await prisma.organization.update({
       where: { id: orgId },
       data: { logo_url: publicUrl },
     });
+
+    if (oldOrg?.logo_url && oldOrg.logo_url.includes("supabase")) {
+      try {
+        const urlParts = oldOrg.logo_url.split("/logos/");
+        if (urlParts[1]) {
+          const oldPathWithParams = urlParts[1];
+          const oldPath = oldPathWithParams.split("?")[0];
+
+          if (
+            oldPath !== filePath &&
+            oldPath.startsWith(`organizations/${orgId}/`)
+          ) {
+            const { error: deleteError } = await supabaseServer.storage
+              .from("logos")
+              .remove([oldPath]);
+
+            if (deleteError) {
+              console.warn("Failed to delete old logo:", deleteError);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("Error while deleting old logo:", error);
+      }
+    }
 
     revalidatePath(`/organization/${orgId}/manage`);
 
@@ -387,6 +393,51 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
     console.error("uploadOrganizationLogoAction error:", error);
     throw error;
   }
+}
+export async function removeOrganizationLogoAction(orgId: string) {
+  const session = await checkUserSession();
+
+  const userOrgRole = await prisma.user_organization_role.findFirst({
+    where: {
+      org_id: orgId,
+      user_id: session.user.id,
+    },
+    include: { role: true },
+  });
+  if (!userOrgRole) throw new Error("Forbidden");
+
+  if (!(await hasPermission(session, "organization:update")))
+    throw new Error("Insufficient permissions");
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { logo_url: true },
+  });
+  if (!org) throw new Error("Organization not found");
+
+  if (org.logo_url && org.logo_url.includes("supabase")) {
+    try {
+      const urlParts = org.logo_url.split("/logos/");
+      if (urlParts[1]) {
+        const pathWithParams = urlParts[1];
+        const path = pathWithParams.split("?")[0];
+        const { error: deleteError } = await supabaseServer.storage
+          .from("logos")
+          .remove([path]);
+        if (deleteError) {
+          console.warn("Failed to delete logo from storage:", deleteError);
+        }
+      }
+    } catch (error) {
+      console.warn("Error while deleting logo from storage:", error);
+    }
+  }
+
+  await prisma.organization.update({
+    where: { id: orgId },
+    data: { logo_url: null },
+  });
+  revalidatePath(`/organization/${orgId}/manage`);
+  return { message: "Logo erfolgreich entfernt" };
 }
 
 export async function getOrganizationWithRelations(orgId: string) {

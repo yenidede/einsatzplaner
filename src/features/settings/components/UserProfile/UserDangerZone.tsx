@@ -6,6 +6,7 @@ import { Crown } from "lucide-react";
 interface UserDangerZoneProps {
   organizationName: string;
   isSuperadmin: boolean;
+  isCurrentUserSuperadmin: boolean;
   isRemovingUser: boolean;
   isDemoting: boolean;
   isPromoting: boolean;
@@ -17,6 +18,7 @@ interface UserDangerZoneProps {
 export function UserDangerZone({
   organizationName,
   isSuperadmin,
+  isCurrentUserSuperadmin,
   isRemovingUser,
   isDemoting,
   isPromoting,
@@ -55,24 +57,26 @@ export function UserDangerZone({
                 {isRemovingUser ? "Entfernt..." : "Aus Organisation Entfernen"}
               </div>
             </button>
-            <button
-              onClick={
-                isSuperadmin ? onDemoteFromSuperadmin : onPromoteToSuperadmin
-              }
-              disabled={isLoading}
-              className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
-            >
-              <Crown className="text-white" />
-              <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                {isLoading
-                  ? isSuperadmin
-                    ? "Wird degradiert..."
-                    : "Wird ernannt..."
-                  : isSuperadmin
-                  ? "Superadmin-Rolle entfernen"
-                  : "Zu Superadmin Ernennen"}
-              </div>
-            </button>
+            {isCurrentUserSuperadmin && (
+              <button
+                onClick={
+                  isSuperadmin ? onDemoteFromSuperadmin : onPromoteToSuperadmin
+                }
+                disabled={isLoading}
+                className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                <Crown className="text-white" />
+                <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
+                  {isLoading
+                    ? isSuperadmin
+                      ? "Wird degradiert..."
+                      : "Wird ernannt..."
+                    : isSuperadmin
+                    ? "Superadmin-Rolle entfernen"
+                    : "Zu Superadmin Ernennen"}
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -46,20 +46,21 @@ export function UserListItem({
     return "bg-cyan-200";
   };
 
+  // Sortiere Rollen: Helfer -> EV -> OV -> Superadmin
   const sortedRoles = [...roles].sort((a, b) => {
     const order: Record<string, number> = {
-      Helfer: 1,
-      Einsatzverwaltung: 2,
-      EV: 2,
-      Organisationsverwaltung: 3,
-      OV: 3,
-      Superadmin: 4,
+      Helfer: 4,
+      Einsatzverwaltung: 3,
+      EV: 3,
+      Organisationsverwaltung: 2,
+      OV: 2,
+      Superadmin: 1,
     };
     const aName = a?.name || "";
     const bName = b?.name || "";
     const aOrder = order[aName] || 0;
     const bOrder = order[bName] || 0;
-    return bOrder - aOrder;
+    return aOrder - bOrder;
   });
 
   return (
@@ -98,7 +99,7 @@ export function UserListItem({
         className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-md flex justify-center items-center gap-2.5 transition-colors"
       >
         <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-          Profil anzeigen
+          Profil Verwalten
         </div>
       </button>
     </div>

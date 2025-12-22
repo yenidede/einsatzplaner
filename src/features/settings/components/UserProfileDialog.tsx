@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   getUserProfileAction,
   updateUserRoleAction,
@@ -15,18 +16,26 @@ import {
   userProfileQueryKeys,
   organizationUsersQueryKeys,
 } from "../queryKeys/userProfile-QueryKeys";
+import { organizationManageQueryKeys } from "../queryKeys/manage-QueryKeys";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import { UserProfileHeader } from "./UserProfile/UserProfileHeader";
 import { UserContactInfo } from "./UserProfile/UserContactInfo";
 import { UserPersonalProperties } from "./UserProfile/UserPersonalProperties";
 import { UserRoleManagement } from "./UserProfile/UserRoleManagement";
 import { UserDangerZone } from "./UserProfile/UserDangerZone";
+import {
+  getUserPropertiesAction,
+  getUserPropertyValuesAction,
+  upsertUserPropertyValueAction,
+} from "@/features/user_properties/user_property-actions";
+import type { UserPropertyWithField } from "@/features/user_properties/user_property-dal";
 
 interface UserProfileDialogProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
   organizationId: string;
+  currentUserId?: string;
 }
 
 interface UserRole {
@@ -43,6 +52,7 @@ export function UserProfileDialog({
   onClose,
   userId,
   organizationId,
+  currentUserId,
 }: UserProfileDialogProps) {
   const queryClient = useQueryClient();
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -51,10 +61,15 @@ export function UserProfileDialog({
   const [hasKey, setHasKey] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [propertyValues, setPropertyValues] = useState<Record<string, string>>(
+    {}
+  );
+  const [originalPropertyValues, setOriginalPropertyValues] = useState<
+    Record<string, string>
+  >({});
 
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
-  // Queries
   const {
     data: userProfile,
     isLoading: profileLoading,
@@ -75,7 +90,38 @@ export function UserProfileDialog({
     gcTime: 5 * 60 * 1000,
   });
 
-  // Effects
+  const { data: currentUserOrgRoles = [] } = useQuery<UserRole[]>({
+    queryKey: userProfileQueryKeys.orgRoles(
+      currentUserId || "",
+      organizationId
+    ),
+    queryFn: async () =>
+      await getUserOrgRolesAction(organizationId, currentUserId || ""),
+    enabled: isOpen && !!currentUserId && !!organizationId,
+    staleTime: 30000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const isCurrentUserSuperadmin = currentUserOrgRoles.some(
+    (userRole) =>
+      userRole.role?.name === "Superadmin" ||
+      userRole.role?.abbreviation === "SA"
+  );
+
+  const { data: userProperties = [] } = useQuery<UserPropertyWithField[]>({
+    queryKey: ["userProperties", organizationId],
+    queryFn: () => getUserPropertiesAction(organizationId),
+    enabled: isOpen && !!organizationId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: userPropertyValues = [] } = useQuery({
+    queryKey: ["userPropertyValues", userId, organizationId],
+    queryFn: () => getUserPropertyValuesAction(userId, organizationId),
+    enabled: isOpen && !!userId && !!organizationId,
+    staleTime: 30000,
+  });
+
   useEffect(() => {
     if (!isOpen) return;
     const prevOverflow = document.body.style.overflow;
@@ -95,9 +141,19 @@ export function UserProfileDialog({
 
   useEffect(() => {
     const rolesChanged =
-      JSON.stringify(userRoles.sort()) !== JSON.stringify(originalRoles.sort());
-    setHasChanges(rolesChanged);
-  }, [userRoles, originalRoles]);
+      JSON.stringify([...userRoles].sort()) !==
+      JSON.stringify([...originalRoles].sort());
+
+    const propertyValuesChanged =
+      Object.keys(propertyValues).some(
+        (key) => propertyValues[key] !== originalPropertyValues[key]
+      ) ||
+      Object.keys(originalPropertyValues).some(
+        (key) => propertyValues[key] !== originalPropertyValues[key]
+      );
+
+    setHasChanges(rolesChanged || propertyValuesChanged);
+  }, [userRoles, originalRoles, propertyValues, originalPropertyValues]);
 
   useEffect(() => {
     if (userOrgRoles && userOrgRoles.length > 0) {
@@ -134,11 +190,26 @@ export function UserProfileDialog({
       setUserRoles(roles);
       setOriginalRoles([...roles]);
       setHasKey(false);
-      setHasChanges(false);
     }
   }, [userOrgRoles]);
 
-  // Helper functions
+  useEffect(() => {
+    if (userPropertyValues && userPropertyValues.length >= 0) {
+      const values: Record<string, string> = {};
+      userPropertyValues.forEach((pv) => {
+        values[pv.user_property_id] = pv.value;
+      });
+
+      const currentValuesString = JSON.stringify(propertyValues);
+      const newValuesString = JSON.stringify(values);
+
+      if (currentValuesString !== newValuesString) {
+        setPropertyValues(values);
+        setOriginalPropertyValues(values);
+      }
+    }
+  }, [userPropertyValues]);
+
   const getRoleColor = (role: any) => {
     const roleName = role.name || "";
     const roleAbbr = role.abbreviation || "";
@@ -166,7 +237,6 @@ export function UserProfileDialog({
       userRole.role?.abbreviation === "SA"
   );
 
-  // Mutations
   const saveChangesMutation = useMutation({
     mutationFn: async () => {
       const rolesToAdd: string[] = [];
@@ -191,75 +261,12 @@ export function UserProfileDialog({
       await Promise.all(promises);
       return { rolesToAdd, rolesToRemove };
     },
-    onSuccess: () => {
+    onMutate: () => {
+      return { toastId: toast.loading("Profil wird gespeichert...") };
+    },
+    onSuccess: async (data, variables, context) => {
       setOriginalRoles([...userRoles]);
-      setHasChanges(false);
-      queryClient.invalidateQueries({
-        queryKey: userProfileQueryKeys.profile(userId, organizationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: organizationUsersQueryKeys.byOrg(organizationId),
-      });
-    },
-    onError: async (error) => {
-      console.error("Error saving role changes:", error);
-      setUserRoles([...originalRoles]);
-      setHasChanges(false);
-      await showDialog({
-        title: "Fehler",
-        description: "Fehler beim Speichern der Rollenänderungen",
-        confirmText: "OK",
-        variant: "destructive",
-      });
-    },
-  });
 
-  const removeUserMutation = useMutation({
-    mutationFn: () => removeUserFromOrganizationAction(userId, organizationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: organizationUsersQueryKeys.byOrg(organizationId),
-      });
-      onClose();
-    },
-  });
-
-  const promoteToSuperadminMutation = useMutation({
-    mutationFn: () => promoteToSuperadminAction(userId, organizationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: userProfileQueryKeys.profile(userId, organizationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: organizationUsersQueryKeys.byOrg(organizationId),
-      });
-      onClose();
-    },
-    onError: async (error: Error) => {
-      await showDialog({
-        title: "Fehler",
-        description: error.message || "Fehler beim Ernennen zum Superadmin",
-        confirmText: "OK",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const demoteFromSuperadminMutation = useMutation({
-    mutationFn: () => demoteFromSuperadminAction(userId, organizationId),
-    onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: userProfileQueryKeys.profile(userId, organizationId),
@@ -273,10 +280,143 @@ export function UserProfileDialog({
         queryClient.invalidateQueries({
           queryKey: organizationUsersQueryKeys.byOrg(organizationId),
         }),
+        queryClient.invalidateQueries({
+          queryKey:
+            organizationManageQueryKeys.userOrganizations(organizationId),
+        }),
       ]);
+
+      toast.success("Rollen erfolgreich aktualisiert", {
+        id: context.toastId,
+      });
+    },
+    onError: async (error, variables, context) => {
+      console.error("Error saving role changes:", error);
+      setUserRoles([...originalRoles]);
+
+      toast.error("Fehler beim Speichern der Rollenänderungen", {
+        id: context?.toastId,
+      });
+
+      await showDialog({
+        title: "Fehler",
+        description: "Fehler beim Speichern der Rollenänderungen",
+        confirmText: "OK",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeUserMutation = useMutation({
+    mutationFn: () => removeUserFromOrganizationAction(userId, organizationId),
+    onMutate: () => {
+      return { toastId: toast.loading("Benutzer wird entfernt...") };
+    },
+    onSuccess: async (data, variables, context) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey:
+            organizationManageQueryKeys.userOrganizations(organizationId),
+        }),
+      ]);
+
+      toast.success("Benutzer erfolgreich entfernt", {
+        id: context.toastId,
+      });
       onClose();
     },
-    onError: async (error: Error) => {
+    onError: (error, variables, context) => {
+      toast.error("Fehler beim Entfernen des Benutzers", {
+        id: context?.toastId,
+      });
+    },
+  });
+
+  const promoteToSuperadminMutation = useMutation({
+    mutationFn: () => promoteToSuperadminAction(userId, organizationId),
+    onMutate: () => {
+      return { toastId: toast.loading("Wird zum Superadmin ernannt...") };
+    },
+    onSuccess: async (data, variables, context) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKeys.profile(userId, organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey:
+            organizationManageQueryKeys.userOrganizations(organizationId),
+        }),
+      ]);
+
+      toast.success("Erfolgreich zum Superadmin ernannt", {
+        id: context.toastId,
+      });
+      onClose();
+    },
+    onError: async (error: Error, variables, context) => {
+      toast.error(error.message || "Fehler beim Ernennen zum Superadmin", {
+        id: context?.toastId,
+      });
+
+      await showDialog({
+        title: "Fehler",
+        description: error.message || "Fehler beim Ernennen zum Superadmin",
+        confirmText: "OK",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const demoteFromSuperadminMutation = useMutation({
+    mutationFn: () => demoteFromSuperadminAction(userId, organizationId),
+    onMutate: () => {
+      return { toastId: toast.loading("Superadmin-Rolle wird entfernt...") };
+    },
+    onSuccess: async (data, variables, context) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKeys.profile(userId, organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey:
+            organizationManageQueryKeys.userOrganizations(organizationId),
+        }),
+      ]);
+
+      toast.success("Superadmin-Rolle erfolgreich entfernt", {
+        id: context.toastId,
+      });
+      onClose();
+    },
+    onError: async (error: Error, variables, context) => {
+      toast.error(
+        error.message || "Fehler beim Entfernen der Superadmin-Rolle",
+        {
+          id: context?.toastId,
+        }
+      );
+
       await showDialog({
         title: "Fehler",
         description:
@@ -287,7 +427,6 @@ export function UserProfileDialog({
     },
   });
 
-  // Event handlers
   const toggleRole = (roleAbbreviation: string) => {
     const isCurrentlyActive = userRoles.includes(roleAbbreviation);
     if (isCurrentlyActive) {
@@ -295,6 +434,10 @@ export function UserProfileDialog({
     } else {
       setUserRoles((prev) => [...prev, roleAbbreviation]);
     }
+  };
+
+  const handlePropertyValueChange = (propertyId: string, value: string) => {
+    setPropertyValues((prev) => ({ ...prev, [propertyId]: value }));
   };
 
   const handleSaveAndClose = async () => {
@@ -305,9 +448,29 @@ export function UserProfileDialog({
     setSaving(true);
     try {
       await saveChangesMutation.mutateAsync();
+
+      const promises: Promise<void>[] = [];
+      for (const [propertyId, value] of Object.entries(propertyValues)) {
+        if (value !== originalPropertyValues[propertyId]) {
+          promises.push(
+            upsertUserPropertyValueAction(userId, propertyId, value)
+          );
+        }
+      }
+      await Promise.all(promises);
+
+      await queryClient.invalidateQueries({
+        queryKey: ["userPropertyValues", userId, organizationId],
+      });
+
+      setOriginalPropertyValues({ ...propertyValues });
+      setHasChanges(false);
+
+      toast.success("Änderungen erfolgreich gespeichert!");
       onClose();
     } catch (error) {
-      // Error is handled in mutation
+      console.error("Error saving changes:", error);
+      toast.error("Fehler beim Speichern der Änderungen");
     } finally {
       setSaving(false);
     }
@@ -325,6 +488,7 @@ export function UserProfileDialog({
       });
       if (result === "success") {
         setUserRoles([...originalRoles]);
+        setPropertyValues({ ...originalPropertyValues });
         setHasChanges(false);
         onClose();
       }
@@ -371,7 +535,6 @@ export function UserProfileDialog({
     }
   };
 
-  // Early returns
   if (!isOpen) return null;
   const isLoading = profileLoading;
 
@@ -453,6 +616,9 @@ export function UserProfileDialog({
                 hasKey={hasKey}
                 onToggleKey={() => setHasKey(!hasKey)}
                 description={userProfile.description}
+                userProperties={userProperties}
+                propertyValues={propertyValues}
+                onPropertyValueChange={handlePropertyValueChange}
               />
               <UserRoleManagement
                 organizationName={userProfile.organization?.name || ""}
@@ -463,6 +629,7 @@ export function UserProfileDialog({
               <UserDangerZone
                 organizationName={userProfile.organization?.name || ""}
                 isSuperadmin={isSuperadmin}
+                isCurrentUserSuperadmin={isCurrentUserSuperadmin}
                 isRemovingUser={removeUserMutation.isPending}
                 isDemoting={demoteFromSuperadminMutation.isPending}
                 isPromoting={promoteToSuperadminMutation.isPending}
