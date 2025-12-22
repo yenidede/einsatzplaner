@@ -13,7 +13,7 @@ import type { ChangeLogEntry } from "@/features/activity_log/types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/features/activity_log/queryKeys";
+import { activityLogQueryKeys } from "@/features/activity_log/queryKeys";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -79,7 +79,7 @@ export default function NotificationMenu() {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: queryKeys.list({ limit: 10, offset: 0 }),
+    queryKey: activityLogQueryKeys.list({ limit: 10, offset: 0 }),
     queryFn: async () => {
       const result = await getActivityLogs({
         limit: 10,
@@ -104,7 +104,7 @@ export default function NotificationMenu() {
   useEffect(() => {
     if (isOpen) {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.list({ limit: 10, offset: 0 }),
+        queryKey: activityLogQueryKeys.list({ limit: 10, offset: 0 }),
       });
     }
   }, [isOpen, queryClient]);

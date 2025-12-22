@@ -11,7 +11,7 @@ import { settingsQueryKeys } from "../queryKeys/queryKey";
 
 export function useOrganizations(orgs: string[]) {
   const queries = useQuery({
-    queryKey: settingsQueryKeys.organizations(orgs),
+    queryKey: settingsQueryKeys.userOrganizations(orgs.join(",")),
     queryFn: () =>
       Promise.all(orgs.map((orgId) => getUserOrganizationByIdAction(orgId))),
     staleTime: 60000,
@@ -29,7 +29,7 @@ export function useOrganization(orgId: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: settingsQueryKeys.organization(orgId),
+    queryKey: settingsQueryKeys.userOrganizations(orgId),
     queryFn: () => getUserOrganizationByIdAction(orgId),
     enabled: !!orgId,
     staleTime: 60000,
@@ -40,7 +40,7 @@ export function useOrganization(orgId: string) {
       updateOrganizationAction(data),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.userOrganizations(orgId),
       });
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
     },
