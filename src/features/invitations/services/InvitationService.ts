@@ -207,7 +207,6 @@ export class InvitationService {
         },
       });
 
-      // Create user_organization_role for all invited roles
       await Promise.all(
         invitations.map((invitation) =>
           tx.user_organization_role.create({
@@ -221,7 +220,6 @@ export class InvitationService {
         )
       );
 
-      // Mark all invitations as accepted
       await tx.invitation.updateMany({
         where: { token },
         data: { accepted: true },
@@ -260,8 +258,6 @@ export class InvitationService {
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // Get unique tokens for expiring invitations
     const expiringInvitations = await prisma.invitation.findMany({
       where: {
         accepted: false,
@@ -278,7 +274,7 @@ export class InvitationService {
           select: { firstname: true, lastname: true },
         },
       },
-      distinct: ["token"], // Only get one invitation per token
+      distinct: ["token"],
     });
 
     let sentCount = 0;
