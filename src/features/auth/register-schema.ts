@@ -20,13 +20,13 @@ export interface ActionResponse<T = any> {
     inputs?: T;
 }
 
-const { NEXT_PUBLIC_SUPABASE_URL } = process.env;
 export const formSchema = z
     .object({
         userId: z.uuid().optional(),
+        invitationId: z.uuid().optional(),
         email: z
             .email("Bitte geben Sie eine gültige E-Mail-Adresse ein"),
-        passwort1: z
+        passwort: z
             .string()
             .min(8, "Das Passwort muss mindestens 8 Zeichen lang sein")
             .max(128, "Das Passwort darf maximal 128 Zeichen lang sein"),
@@ -76,7 +76,7 @@ export const formSchema = z
         ),
     })
     .refine(
-        (data) => data.passwort1 === data.passwort2,
+        (data) => data.passwort === data.passwort2,
         {
             path: ["passwort2"],
             message: "Die Passwörter stimmen nicht überein",

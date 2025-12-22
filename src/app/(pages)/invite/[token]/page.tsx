@@ -23,22 +23,6 @@ interface Role {
   name: string;
 }
 
-interface InvitationData {
-  id: string;
-  email: string;
-  firstname?: string;
-  lastname?: string;
-  organizationName: string;
-  roleName: string;
-  roles: Role[];
-  inviterName: string;
-  expiresAt: string;
-  helperNameSingular?: string;
-  helperNamePlural?: string;
-  userExists: boolean;
-  newUserId: string;
-}
-
 export default function InviteAcceptPage() {
   const params = useParams();
   const router = useRouter();
@@ -52,7 +36,7 @@ export default function InviteAcceptPage() {
     data: invitation,
     isLoading,
     error,
-  } = useQuery<InvitationData>({
+  } = useQuery({
     queryKey: ["invitation", token],
     enabled: !!token,
     queryFn: async () => {
@@ -113,11 +97,11 @@ export default function InviteAcceptPage() {
     return (
       <div className="grow flex items-center justify-center">
         <div className="max-w-md w-full rounded-lg shadow-md p-6 text-center">
-          <h1 className="text-2xl font-bold mb-2">
-            Einladung kann nicht angenommen werden ❌
+          <h1 className="text-2xl font-bold mb-2 leading-tight!">
+            Einladung kann nicht angenommen werden
           </h1>
           <p className="mb-4">
-            {(error as Error).message ||
+            {error.message ||
               "Diese Einladung ist ungültig, abgelaufen oder wurde bereits verwendet."}
           </p>
           <Button asChild variant={"default"}>
@@ -261,6 +245,7 @@ export default function InviteAcceptPage() {
             </TabsContent>
             <SignUpForm
               email={invitation.email}
+              invitationId={invitation.id}
               userId={invitation.newUserId}
               tab={tab}
               setTab={setTab}

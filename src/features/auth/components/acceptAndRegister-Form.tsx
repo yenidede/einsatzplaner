@@ -13,7 +13,6 @@ import {
   FieldLabel,
   FieldDescription,
   FieldError,
-  FieldSeparator,
 } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,10 +31,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type {
-  ControllerFieldState,
-  ControllerRenderProps,
-} from "react-hook-form";
 import { FileUpload } from "@/components/form/file-upload";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -48,6 +43,7 @@ import {
   createAvatarUploadUrl,
   deleteAvatarFromStorage,
 } from "@/features/user/user-dal";
+import { signIn } from "next-auth/react";
 
 type Schema = z.infer<typeof formSchema>;
 export type AvailableTab = "accept" | "register1" | "register2" | "other";
@@ -57,8 +53,10 @@ export function SignUpForm({
   userId,
   tab,
   setTab,
+  invitationId,
 }: {
   email: string;
+  invitationId: string;
   userId: string;
   tab: AvailableTab;
   setTab: (tab: AvailableTab) => void;
@@ -99,7 +97,7 @@ export function SignUpForm({
       vorname: "",
       nachname: "",
       email,
-      passwort1: "",
+      passwort: "",
       passwort2: "",
       anredeId: undefined,
       telefon: "",
@@ -107,24 +105,34 @@ export function SignUpForm({
     },
   });
   const formAction = useAction(serverAction, {
-    onSuccess: () => {
-      // TODO: show success message
-      toast.success("Account erfolgreich erstellt!");
-      form.reset();
+    onSuccess: (res) => {
+      if (res.data?.success !== true) {
+        toast.error(
+          "Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator."
+        );
+        setTab("register1");
+        return;
+      }
+      toast.success(res.data?.message);
+      signIn("credentials", {
+        email: form.getValues("email"),
+        password: form.getValues("passwort"),
+        redirect: true,
+        callbackUrl: "/",
+      });
     },
     onError: (error) => {
       // TODO: show error message
       toast.error(
-        "Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut." +
-          error.error.validationErrors
+        "Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator. \nError:" +
+          error.error
       );
+      setTab("register1");
     },
   });
   const handleSubmit = form.handleSubmit(async (data: Schema) =>
     formAction.execute({
       ...data,
-      email,
-      userId,
       pictureUrl: data.pictureUrl || undefined,
     })
   );
@@ -133,11 +141,10 @@ export function SignUpForm({
 
   // email field comes from invite link
   useEffect(() => {
-    form.setValue("email", email, {
-      shouldValidate: true,
-      shouldDirty: false,
-    });
-  }, [email, form]);
+    form.setValue("email", email);
+    form.setValue("userId", userId);
+    form.setValue("invitationId", invitationId);
+  }, [form, email, userId, invitationId]);
 
   useEffect(() => {
     if (hasSucceeded) {
@@ -262,15 +269,17 @@ export function SignUpForm({
                 <Input
                   {...field}
                   id="email"
-                  type="text"
+                  name="email"
+                  type="email"
                   aria-invalid={fieldState.invalid}
                   placeholder="max.mustermann@example.com"
-                  readOnly
-                  aria-readonly
-                  tabIndex={-1}
-                  className="bg-muted cursor-not-allowed"
+                  autoComplete="username"
+                  className="bg-muted"
                 />
-
+                <FieldDescription>
+                  Diese E-Mail-Adresse wurde Ihnen zugewiesen und kann nicht
+                  geändert werden.
+                </FieldDescription>
                 {fieldState.invalid && (
                   <FieldError errors={[fieldState.error]} />
                 )}
@@ -279,7 +288,7 @@ export function SignUpForm({
           />
 
           <Controller
-            name="passwort1"
+            name="passwort"
             control={form.control}
             defaultValue=""
             render={({ field, fieldState }) => (
@@ -288,12 +297,13 @@ export function SignUpForm({
                 className="gap-1 md:col-span-3"
               >
                 <FieldContent className="gap-0.5">
-                  <FieldLabel htmlFor="passwort1">Neues Passwort *</FieldLabel>
+                  <FieldLabel htmlFor="passwort">Neues Passwort *</FieldLabel>
                 </FieldContent>
                 <Password
                   {...field}
+                  autoComplete="new-password"
                   aria-invalid={fieldState.invalid}
-                  id="passwort1"
+                  id="passwort"
                   placeholder="Mindestens 8 Zeichen"
                 />
                 {fieldState.invalid && (
@@ -319,6 +329,7 @@ export function SignUpForm({
                 </FieldContent>
                 <Password
                   {...field}
+                  autoComplete="new-password"
                   aria-invalid={fieldState.invalid}
                   id="passwort2"
                   placeholder="Passwort wiederholen"
@@ -381,6 +392,7 @@ export function SignUpForm({
                       <Button
                         id="anredeId"
                         variant="outline"
+                        type="submit"
                         role="combobox"
                         className={cn(
                           "justify-between active:scale-100 bg-transparent"
