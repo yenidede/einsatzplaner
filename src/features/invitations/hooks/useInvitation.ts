@@ -12,6 +12,7 @@ import {
   acceptInvitationAction,
   createInvitationAction,
 } from "../invitation-action";
+import { invitationQueryKeys } from "../queryKeys";
 
 export interface UseInvitationReturn {
   loading: boolean;
@@ -137,7 +138,7 @@ export function useAcceptInvitation(): UseAcceptInvitationReturn {
 
 export function useInvitations(organizationId: string) {
   return useQuery<Invitation[]>({
-    queryKey: ["invitations", organizationId],
+    queryKey: invitationQueryKeys.invitations(organizationId),
     queryFn: async () => {
       const response = await fetch(`/api/invitations?orgId=${organizationId}`);
       if (!response.ok) {
@@ -157,7 +158,7 @@ interface InvitationValidation {
 
 export function useInvitationValidation(token: string) {
   return useQuery<InvitationValidation>({
-    queryKey: ["invitation", token],
+    queryKey: [invitationQueryKeys.invitation, token],
     queryFn: async () => {
       const response = await fetch(`/api/invitations/${token}`);
       if (!response.ok) {

@@ -36,6 +36,13 @@ import { toast } from "sonner";
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { cn } from "@/lib/utils";
 
+import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
+
+import {
+  detectChangeTypes,
+  getAffectedUserId,
+} from "@/features/activity_log/utils";
+
 interface EventDialogProps {
   einsatz: string | null;
   isOpen: boolean;
