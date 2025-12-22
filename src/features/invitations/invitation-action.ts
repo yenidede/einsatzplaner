@@ -341,15 +341,12 @@ export async function verifyInvitationAction(token: string) {
       });
 
       if (anyInvitation) {
-        if (anyInvitation.accepted) {
-          throw new Error("Einladung wurde bereits angenommen");
-        }
         if (anyInvitation.expires_at < new Date()) {
           throw new Error("Einladung ist abgelaufen");
         }
       }
 
-      throw new Error("Einladung nicht gefunden");
+      throw new Error("Einladung nicht gefunden oder wurde bereits angenommen");
     }
 
     const firstInvitation = invitations[0];
@@ -387,6 +384,7 @@ export async function verifyInvitationAction(token: string) {
       id: firstInvitation.id,
       email: firstInvitation.email,
       organizationName: firstInvitation.organization?.name || "Organisation",
+      orgId: firstInvitation.org_id,
       roleName: roleNames || "Helfer",
       helperNameSingular,
       helperNamePlural,
