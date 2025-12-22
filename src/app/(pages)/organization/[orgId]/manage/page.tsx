@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useSessionValidation } from "@/hooks/useSessionValidation";
-import { organizationManageQueryKeys } from "@/features/settings/queryKeys/manage-QueryKeys";
+import { settingsQueryKeys } from "@/features/settings/queryKeys/queryKey";
 import {
   getUserOrganizationByIdAction,
   updateOrganizationAction,
@@ -59,7 +59,7 @@ export default function OrganizationManagePage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: organizationManageQueryKeys.userSettings(session?.user?.id || ""),
+    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     enabled: !!session?.user?.id,
     queryFn: () => getUserProfileAction(),
     staleTime,
@@ -75,7 +75,7 @@ export default function OrganizationManagePage() {
     isLoading: orgLoading,
     error: orgError,
   } = useQuery({
-    queryKey: organizationManageQueryKeys.organization(orgId),
+    queryKey: settingsQueryKeys.organization(orgId),
     enabled: !!orgId,
     queryFn: () => getUserOrganizationByIdAction(orgId || ""),
     staleTime,
@@ -95,7 +95,7 @@ export default function OrganizationManagePage() {
   }, [orgData]);
 
   const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: organizationManageQueryKeys.userOrganizations(orgId),
+    queryKey: settingsQueryKeys.userOrganizations(orgId),
     enabled: !!orgId,
     queryFn: () => getAllUserOrgRolesAction(orgId),
     staleTime,
@@ -142,7 +142,7 @@ export default function OrganizationManagePage() {
       setLogoFile(null);
 
       queryClient.invalidateQueries({
-        queryKey: organizationManageQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.organization(orgId),
       });
 
       toast.success("Logo erfolgreich hochgeladen!", { id: toastId });
@@ -166,7 +166,7 @@ export default function OrganizationManagePage() {
       if (fileInput) fileInput.value = "";
 
       queryClient.invalidateQueries({
-        queryKey: organizationManageQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.organization(orgId),
       });
 
       toast.success("Logo erfolgreich entfernt!", { id: toastId });
@@ -205,7 +205,7 @@ export default function OrganizationManagePage() {
     },
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
-        queryKey: organizationManageQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.organization(orgId),
       });
       setLogoFile(null);
       toast.success("Organisation erfolgreich aktualisiert!", {
