@@ -214,7 +214,6 @@ export function InviteUserForm({
         onClick={handleBackdropClick}
       >
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-          {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-slate-200">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -237,7 +236,6 @@ export function InviteUserForm({
             </button>
           </div>
 
-          {/* Content */}
           <div className="p-6">
             {successMessage && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md flex items-center gap-2">
@@ -276,13 +274,11 @@ export function InviteUserForm({
                 </p>
               </div>
 
-              {/* Rollen-Auswahl */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-3">
                   Berechtigungen
                 </label>
                 <div className="space-y-3">
-                  {/* Helfer */}
                   <div className="flex items-center space-x-4">
                     <Checkbox
                       id="role-helfer"
@@ -300,7 +296,6 @@ export function InviteUserForm({
                     </label>
                   </div>
 
-                  {/* Einsatzverwaltung */}
                   <div className="flex items-center space-x-4">
                     <Checkbox
                       id="role-ev"
@@ -318,7 +313,6 @@ export function InviteUserForm({
                     </label>
                   </div>
 
-                  {/* Organisationsverwaltung */}
                   <div className="flex items-center space-x-4">
                     <Checkbox
                       id="role-ov"
@@ -380,7 +374,6 @@ export function InviteUserForm({
         </div>
       </div>
 
-      {/* Bestätigungs-Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
