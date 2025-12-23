@@ -10,7 +10,7 @@ import { queryKeys as ActivityLogQueryKeys } from "../queryKeys";
 import { getActivitiesForEinsatzAction } from "../activity_log-actions";
 
 interface EinsatzActivityLogProps {
-  einsatzId: string;
+  einsatzId: string | null;
   initialLimit?: number;
   className?: string;
 }
@@ -20,17 +20,22 @@ export function EinsatzActivityLog({
   initialLimit = 3,
   className,
 }: EinsatzActivityLogProps) {
+  const MAX_ACTIVITIES_LIMIT = 9999;
   const [showAll, setShowAll] = useState(false);
 
   const limitedQuery = useQuery({
-    queryKey: ActivityLogQueryKeys.einsatz(einsatzId, initialLimit),
-    queryFn: () => getActivitiesForEinsatzAction(einsatzId, initialLimit),
+    queryKey: ActivityLogQueryKeys.einsatz(einsatzId ?? "", initialLimit),
+    queryFn: () => getActivitiesForEinsatzAction(einsatzId ?? "", initialLimit),
     enabled: !!einsatzId && !showAll,
   });
 
   const allQuery = useQuery({
-    queryKey: ActivityLogQueryKeys.einsatz(einsatzId, 9999),
-    queryFn: () => getActivitiesForEinsatzAction(einsatzId, 9999),
+    queryKey: ActivityLogQueryKeys.einsatz(
+      einsatzId ?? "",
+      MAX_ACTIVITIES_LIMIT
+    ),
+    queryFn: () =>
+      getActivitiesForEinsatzAction(einsatzId ?? "", MAX_ACTIVITIES_LIMIT),
     enabled: !!einsatzId && showAll,
   });
 
@@ -67,12 +72,9 @@ export function EinsatzActivityLog({
     return <ActivityLogListSkeleton className="max-h-64 overflow-auto" />;
   }
 
+  // Dont show anything if no einsatzId is provided (einsatz is newly created)
   if (!activities) {
-    return (
-      <div className="text-muted-foreground text-sm">
-        Aktivitäten konnten nicht geladen werden.
-      </div>
-    );
+    return null;
   }
 
   return (

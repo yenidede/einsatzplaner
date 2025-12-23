@@ -1,6 +1,5 @@
 import { JSX } from "react";
 import { ChangeLogEntry } from "./types";
-import { divide } from "lodash";
 import { Einsatz } from "../einsatz/types";
 import TooltipCustom from "@/components/tooltip-custom";
 
