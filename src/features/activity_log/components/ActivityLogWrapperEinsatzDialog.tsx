@@ -74,7 +74,7 @@ export function EinsatzActivityLog({
 
   // Dont show anything if no einsatzId is provided (einsatz is newly created)
   if (!activities) {
-    return <div></div>;
+    return null;
   }
 
   return (
