@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { signIn } from "next-auth/react";
+import { Suspense, useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormField, Alert } from "@/components/SimpleFormComponents";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,14 @@ function SignInContent() {
   const [error, setError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      router.push("/");
+    }
+  }, [session?.user?.id, router]);
 
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
