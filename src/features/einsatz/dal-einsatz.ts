@@ -56,9 +56,12 @@ export async function getEinsatzWithDetailsById(
     assigned_users: einsatz_helper.map((helper) => helper.user_id),
     einsatz_fields: einsatz_field.map((field) => ({
       id: field.id,
+      field_name: field.field.name,
       einsatz_id: field.einsatz_id,
       field_id: field.field_id,
       value: field.value,
+      group_name: field.field.group_name,
+      field_type: { datatype: field.field.type?.datatype ?? null },
     })),
     categories: einsatz_to_category.map((cat) => cat.einsatz_category.id),
     comments: einsatz_comment.map((comment) => ({
@@ -901,6 +904,7 @@ async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
               type: {
                 select: {
                   name: true,
+                  datatype: true,
                 },
               },
             },
