@@ -30,11 +30,11 @@ export async function getActivitiesAction() {
   }
 }
 
-export async function getActivitiesForEinsatzAction(einsatzId: string) {
+export async function getActivitiesForEinsatzAction(einsatzId: string, limit?: number) {
   try {
     await requireAuth();
 
-    const activities = await getEinsatzActivityLogs(einsatzId);
+    const activities = await getEinsatzActivityLogs(einsatzId, limit);
 
     return { success: true, data: activities };
   } catch (error) {

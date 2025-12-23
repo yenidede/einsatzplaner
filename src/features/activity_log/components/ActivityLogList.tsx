@@ -1,15 +1,20 @@
 "use client";
 
-import { useMemo } from "react";
+import { Dispatch, SetStateAction, useMemo, useState } from "react";
 import type { ChangeLogEntry } from "../types";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { getFormattedMessage } from "../utils";
+import { Button } from "@/components/ui/button";
 
 interface ActivityLogListProps {
   activities: ChangeLogEntry[];
   className?: string;
+  renderCount?: number;
+  showAll: boolean;
+  isRemainingLoading: boolean;
+  setShowAll: Dispatch<SetStateAction<boolean>>;
 }
 
 interface GroupedActivities {
@@ -98,15 +103,20 @@ function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
 function ActivityGroup({
   title,
   activities,
+  button,
 }: {
   title: string;
+  button?: React.ReactNode;
   activities: ChangeLogEntry[];
 }) {
   if (activities.length === 0) return null;
 
   return (
     <div className="space-y-1">
-      <h4 className="text-base font-semibold mb-3">{title}</h4>
+      <div className="flex justify-between">
+        <h4 className="text-base font-semibold mb-3">{title}</h4>
+        {button}
+      </div>
       {activities.map((activity) => (
         <ActivityItem key={activity.id} activity={activity} />
       ))}
@@ -117,15 +127,13 @@ function ActivityGroup({
 export function ActivityLogList({
   activities,
   className,
+  showAll,
+  setShowAll,
+  isRemainingLoading,
 }: ActivityLogListProps) {
   const groupedActivities = useMemo(
     () => groupActivitiesByTime(activities),
     [activities]
-  );
-
-  toast.info(
-    "Activities length: " + activities.map((a) => a.einsatz_id).join(", "),
-    { id: "activity-log-length" }
   );
 
   if (activities.length === 0) {
@@ -136,11 +144,51 @@ export function ActivityLogList({
     );
   }
 
+  const handleLoadAll = () => {
+    setShowAll((prev) => !prev);
+  };
+
+  const toggleButton = (
+    <Button
+      variant={"link"}
+      onClick={handleLoadAll}
+      disabled={isRemainingLoading}
+    >
+      {isRemainingLoading
+        ? "Lade..."
+        : showAll
+        ? "Weniger anzeigen"
+        : "Alle anzeigen"}
+    </Button>
+  );
+
   return (
-    <div className={cn("space-y-6", className)}>
-      <ActivityGroup title="Heute" activities={groupedActivities.heute} />
-      <ActivityGroup title="Gestern" activities={groupedActivities.gestern} />
-      <ActivityGroup title="Früher" activities={groupedActivities.frueher} />
-    </div>
+    <>
+      <div className={cn("space-y-6", className)}>
+        <ActivityGroup
+          title="Heute"
+          activities={groupedActivities.heute}
+          button={toggleButton}
+        />
+        <ActivityGroup
+          title="Gestern"
+          activities={groupedActivities.gestern}
+          button={
+            groupedActivities.heute.length === 0 ? toggleButton : undefined
+          }
+        />
+        <ActivityGroup
+          title="Früher"
+          activities={groupedActivities.frueher}
+          button={
+            groupedActivities.heute.length +
+              groupedActivities.gestern.length ===
+            0
+              ? toggleButton
+              : undefined
+          }
+        />
+      </div>
+    </>
   );
 }

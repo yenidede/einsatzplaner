@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { JSX, ReactNode } from "react";
 import { FileDown } from "lucide-react";
 
@@ -54,6 +54,8 @@ export function EventDialogHelfer({
   onClose,
   onAssignToggleEvent,
 }: EventDialogProps) {
+  const [showAllActivities, setShowAllActivities] = useState(false);
+
   const { data: session } = useSession();
 
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -99,21 +101,43 @@ export function EventDialogHelfer({
   });
 
   const { data: activities, isLoading: activitiesLoading } = useQuery({
-    queryKey: ActivityLogQueryKeys.einsatz(einsatz ?? ""),
-    queryFn: () => getActivitiesForEinsatzAction(einsatz ?? ""),
-    enabled: !!einsatz,
-    throwOnError: false,
+    queryKey: ActivityLogQueryKeys.einsatz(einsatz ?? "", 3),
+    queryFn: () => getActivitiesForEinsatzAction(einsatz ?? "", 3),
+    enabled: !!einsatz && !showAllActivities,
   });
+
+  const { data: allActivities, isLoading: isAllActivitiesLoading } = useQuery({
+    queryKey: ActivityLogQueryKeys.einsatz(einsatz ?? "", 9999),
+    queryFn: () => getActivitiesForEinsatzAction(einsatz ?? "", 9999),
+    enabled: !!einsatz && showAllActivities,
+  });
+
+  const resolvedActivities = useMemo(() => {
+    const limited = activities?.data?.activities;
+    const all = allActivities?.data?.activities;
+
+    // Prefer based on state, fallback to the other
+    const preferred = showAllActivities ? all : limited;
+    const fallback = showAllActivities ? limited : all;
+
+    return preferred ?? fallback ?? null;
+  }, [
+    showAllActivities,
+    activities?.data?.activities,
+    allActivities?.data?.activities,
+  ]);
 
   useEffect(() => {
-    if (activities?.success === false) {
-      toast.error("Fehler beim Laden der Aktivitäten: " + activities.error);
+    if (
+      activities?.success === false ||
+      allActivities?.success === false ||
+      (resolvedActivities === null && isOpen)
+    ) {
+      toast.error("Aktivitäten konnten nicht geladen werden", {
+        id: "activity-load-error",
+      });
     }
-  }, [activities?.success]);
-
-  toast.message(einsatz ?? "Kein Einsatz ausgewählt", {
-    id: "einsatz-id-info",
-  });
+  }, [activities?.success, allActivities?.success, resolvedActivities]);
 
   const einsatz_singular =
     organizations?.find((org) => org.id === activeOrgId)
@@ -136,6 +160,11 @@ export function EventDialogHelfer({
     ) : null;
   }
 
+  const handleClose = () => {
+    setShowAllActivities(false);
+    onClose();
+  };
+
   // normally should open the create dialog, in helferansicht just return
   if (isOpen && !einsatz) return;
 
@@ -146,7 +175,7 @@ export function EventDialogHelfer({
     : statuses?.find((s) => s.id === detailedEinsatz?.status_id);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
         <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>
@@ -290,21 +319,25 @@ export function EventDialogHelfer({
             {activities?.success === false ? (
               <div>Aktivitäten konnten nicht geladen werden.</div>
             ) : (
-              <>
-                {/* Kein Datenfehler (noch am Laden oder ) */}
-                <SectionDivider text="Aktivitäten" isLeft />
-                <div className="col-span-full">
-                  {/*  */}
-                  {activitiesLoading || !activities?.data ? (
-                    <ActivityLogListSkeleton className="max-h-64 overflow-auto" />
-                  ) : (
-                    <ActivityLogList
-                      activities={activities.data.activities}
-                      className="max-h-64 overflow-auto"
-                    />
-                  )}
-                </div>
-              </>
+              <div className="col-span-full pt-4 border-t">
+                {activitiesLoading || !activities?.data ? (
+                  <ActivityLogListSkeleton className="max-h-64 overflow-auto" />
+                ) : (
+                  <ActivityLogList
+                    activities={
+                      showAllActivities
+                        ? allActivities?.data?.activities ??
+                          activities.data.activities
+                        : activities.data.activities ??
+                          allActivities?.data?.activities ??
+                          []
+                    }
+                    showAll={showAllActivities}
+                    setShowAll={setShowAllActivities}
+                    isRemainingLoading={isAllActivitiesLoading}
+                  />
+                )}
+              </div>
             )}
             {}
           </DefinitionList>
@@ -333,7 +366,7 @@ export function EventDialogHelfer({
             </Button>
           </TooltipCustom>
           <div className="flex flex-1 justify-end gap-2">
-            <Button variant="outline" onClick={onClose} autoFocus={isOpen}>
+            <Button variant="outline" onClick={handleClose} autoFocus={isOpen}>
               Schließen
             </Button>
             {!detailedEinsatz?.assigned_users?.includes(currentUserId) ? (
