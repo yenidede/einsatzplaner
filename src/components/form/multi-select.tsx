@@ -169,7 +169,7 @@ export const MultiSelect = React.forwardRef<
         allowedActiveItems &&
         selectedValues.length >= allowedActiveItems
       ) {
-        toast.message(allowedActiveItemsReachedMessage);
+        toast.info(allowedActiveItemsReachedMessage);
         setIsPopoverOpen(false);
       }
     }, [isPopoverOpen, allowedActiveItems, selectedValues.length]);
@@ -202,7 +202,7 @@ export const MultiSelect = React.forwardRef<
 
     const handleTogglePopover = () => {
       if (allowedActiveItems && selectedValues.length >= allowedActiveItems) {
-        toast.message(allowedActiveItemsReachedMessage);
+        toast.info(allowedActiveItemsReachedMessage);
         return;
       }
       setIsPopoverOpen((prev) => !prev);

@@ -298,8 +298,8 @@ export function EventDialogHelfer({
             {!!detailedEinsatz && detailedEinsatz.einsatz_fields.length > 0 && (
               <>
                 <SectionDivider text="Eigene Felder" />
-                {/* TODO: display group names */}
-                {detailedEinsatz?.einsatz_fields
+                {/* maybe TODO: display group names */}
+                {detailedEinsatz.einsatz_fields
                   .filter((field) => field.field_type.datatype !== "fieldgroup")
                   .sort((a, b) =>
                     (a.group_name || "").localeCompare(b.group_name || "")
