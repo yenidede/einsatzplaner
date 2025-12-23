@@ -244,6 +244,33 @@ export function EventDialogHelfer({
               </div>
               <div>{creator?.email}</div>
             </DefinitionItem>
+            {!!detailedEinsatz && detailedEinsatz.einsatz_fields.length > 0 && (
+              <>
+                <div className="pt-4 font-bold text-right flex items-center grow">
+                  <div className="bg-border h-[0.09375em] grow"></div>
+                  <div className="pl-4 shrink-0">Eigene Felder</div>
+                </div>
+                <div className="pt-4 flex items-center">
+                  <div className="bg-border h-[0.09375em] w-full"></div>
+                </div>
+                {/* TODO: display group names */}
+                {detailedEinsatz?.einsatz_fields
+                  .filter((field) => field.field_type.datatype !== "fieldgroup")
+                  .sort((a, b) =>
+                    (a.group_name || "").localeCompare(b.group_name || "")
+                  )
+                  .map((field) => {
+                    return (
+                      <DefinitionItem
+                        key={field.id}
+                        label={field.field_name || "Kein Feldname verfügbar"}
+                      >
+                        {field.value}
+                      </DefinitionItem>
+                    );
+                  })}
+              </>
+            )}
           </DefinitionList>
         </div>
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
