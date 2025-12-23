@@ -79,8 +79,6 @@ function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
             src={activity.change_type.change_icon_url}
             alt={activity.change_type.name}
             unoptimized
-            width={16}
-            height={16}
             className="text-foreground w-4 h-4"
           ></Image>
         </div>
