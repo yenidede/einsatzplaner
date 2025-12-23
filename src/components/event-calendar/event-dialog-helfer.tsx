@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 import { FileDown } from "lucide-react";
 
@@ -20,7 +20,6 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
 import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
 import { queryKeys as StatusQueryKeys } from "@/features/einsatz_status/queryKeys";
-import { queryKeys as ActivityLogQueryKeys } from "@/features/activity_log/queryKeys";
 import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
@@ -33,7 +32,6 @@ import { toast } from "sonner";
 
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { cn } from "@/lib/utils";
-import { getActivitiesForEinsatzAction } from "@/features/activity_log/activity_log-actions";
 import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
 import { motion } from "motion/react";
 
@@ -96,45 +94,6 @@ export function EventDialogHelfer({
     queryFn: () => GetStatuses(),
   });
 
-  const { data: activities, isLoading: activitiesLoading } = useQuery({
-    queryKey: ActivityLogQueryKeys.einsatz(einsatz ?? "", 3),
-    queryFn: () => getActivitiesForEinsatzAction(einsatz ?? "", 3),
-    enabled: !!einsatz && !showAllActivities,
-  });
-
-  const { data: allActivities, isLoading: isAllActivitiesLoading } = useQuery({
-    queryKey: ActivityLogQueryKeys.einsatz(einsatz ?? "", 9999),
-    queryFn: () => getActivitiesForEinsatzAction(einsatz ?? "", 9999),
-    enabled: !!einsatz && showAllActivities,
-  });
-
-  const resolvedActivities = useMemo(() => {
-    const limited = activities?.data?.activities;
-    const all = allActivities?.data?.activities;
-
-    // Prefer based on state, fallback to the other
-    const preferred = showAllActivities ? all : limited;
-    const fallback = showAllActivities ? limited : all;
-
-    return preferred ?? fallback ?? null;
-  }, [
-    showAllActivities,
-    activities?.data?.activities,
-    allActivities?.data?.activities,
-  ]);
-
-  useEffect(() => {
-    if (
-      activities?.success === false ||
-      allActivities?.success === false ||
-      (resolvedActivities === null && isOpen)
-    ) {
-      toast.error("Aktivitäten konnten nicht geladen werden", {
-        id: "activity-load-error",
-      });
-    }
-  }, [activities?.success, allActivities?.success, resolvedActivities]);
-
   const einsatz_singular =
     organizations?.find((org) => org.id === activeOrgId)
       ?.einsatz_name_singular ?? "Einsatz";
@@ -156,11 +115,6 @@ export function EventDialogHelfer({
     ) : null;
   }
 
-  const handleClose = () => {
-    setShowAllActivities(false);
-    onClose();
-  };
-
   // normally should open the create dialog, in helferansicht just return
   if (isOpen && !einsatz) return;
 
@@ -171,7 +125,7 @@ export function EventDialogHelfer({
     : statuses?.find((s) => s.id === detailedEinsatz?.status_id);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
         <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>
@@ -294,7 +248,6 @@ export function EventDialogHelfer({
             {!!detailedEinsatz && detailedEinsatz.einsatz_fields.length > 0 && (
               <>
                 <SectionDivider text="Eigene Felder" />
-                {/* maybe TODO: display group names */}
                 {detailedEinsatz.einsatz_fields
                   .filter((field) => field.field_type.datatype !== "fieldgroup")
                   .sort((a, b) =>
@@ -343,7 +296,7 @@ export function EventDialogHelfer({
             </Button>
           </TooltipCustom>
           <div className="flex flex-1 justify-end gap-2">
-            <Button variant="outline" onClick={handleClose} autoFocus={isOpen}>
+            <Button variant="outline" onClick={onClose} autoFocus={isOpen}>
               Schließen
             </Button>
             {!detailedEinsatz?.assigned_users?.includes(currentUserId) ? (
