@@ -1,10 +1,9 @@
 "use client";
 
-import { Dispatch, SetStateAction, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useMemo } from "react";
 import type { ChangeLogEntry } from "../types";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import { getFormattedMessage } from "../utils";
 import { Button } from "@/components/ui/button";
 import { motion } from "motion/react";
@@ -80,8 +79,6 @@ function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
             src={activity.change_type.change_icon_url}
             alt={activity.change_type.name}
             unoptimized
-            width={16}
-            height={16}
             className="text-foreground w-4 h-4"
           ></Image>
         </div>
