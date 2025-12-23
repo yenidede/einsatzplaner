@@ -12,7 +12,11 @@ import type {
   EinsatzDetailed,
   ETV,
 } from "@/features/einsatz/types";
-import { hasPermission, hasPermissionFromSession, requireAuth } from "@/lib/auth/authGuard";
+import {
+  hasPermission,
+  hasPermissionFromSession,
+  requireAuth,
+} from "@/lib/auth/authGuard";
 import { redirect } from "next/navigation";
 
 import { ValidateEinsatzCreate } from "./validation-service";
