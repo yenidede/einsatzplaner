@@ -1,4 +1,6 @@
-export const queryKeys = {
+export const activityLogQueryKeys = {
+  all: ["activities"] as const,
+
   list: (params: { limit: number; offset: number }) =>
-    ["activities", "list", params] as const,
+    [...activityLogQueryKeys.all, "list", params] as const,
 };

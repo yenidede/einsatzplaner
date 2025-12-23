@@ -7,17 +7,14 @@ export const settingsQueryKeys = {
   appConfigurations: () =>
     [...settingsQueryKeys.all, "appConfigurations"] as const,
 
+  organization: (orgId: string) =>
+    [...settingsQueryKeys.all, "organization", orgId] as const,
+
   organizationSettings: (userId: string, orgId: string) =>
     [...settingsQueryKeys.all, "organizationSettings", userId, orgId] as const,
 
-  userOrganizations: (userId: string) =>
-    [...settingsQueryKeys.all, "userOrganizations", userId] as const,
-
   profilePicture: (userId: string) =>
     [...settingsQueryKeys.all, "profilePicture", userId] as const,
-
-  organization: (orgId: string) =>
-    [...settingsQueryKeys.all, "organization", orgId] as const,
 
   userOrgRoles: (userId: string, orgId: string) =>
     [...settingsQueryKeys.all, "userOrgRoles", userId, orgId] as const,
@@ -25,12 +22,14 @@ export const settingsQueryKeys = {
   userProfile: (userId: string, orgId: string) =>
     [...settingsQueryKeys.all, "userProfile", userId, orgId] as const,
 
-  organizations: (orgs: string[]) => ["organizations", orgs] as const,
-
-  organizationById: (id: string) => ["organization", id] as const,
+  allOrgRoles: (orgId: string) =>
+    [...settingsQueryKeys.all, "org", orgId, "roles", "all"] as const,
 
   organizationUsers: (orgId: string) =>
-    [...settingsQueryKeys.all, "organizationUsers", orgId] as const,
+    [...settingsQueryKeys.all, "org", orgId, "users"] as const,
+
+  userOrganizations: (orgId: string) =>
+    [...settingsQueryKeys.all, "org", orgId, "userOrganizations"] as const,
 
   mailNotifications: (userId: string, orgId: string) =>
     [...settingsQueryKeys.all, "mailNotifications", userId, orgId] as const,
