@@ -28,6 +28,7 @@ import {
   getAllRolesExceptSuperAdmin,
 } from "@/features/settings/organization-action";
 import { createInvitationAction } from "../invitation-action";
+import { Button } from "@/components/ui/button";
 
 interface InviteUserFormProps {
   organizationId: string;
@@ -377,51 +378,46 @@ export function InviteUserForm({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-600" />
               Erweiterte Berechtigungen bestätigen
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                Sind Sie sicher, dass <strong>{pendingFormData?.email}</strong>{" "}
-                mit folgenden erweiterten Berechtigungen hinzugefügt werden
-                soll?
-              </p>
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mt-3">
-                <p className="text-sm font-medium text-amber-900 mb-2">
-                  Ausgewählte Rollen:
-                </p>
-                <ul className="text-sm text-amber-800 space-y-1">
+            <div className="space-y-2">
+              <AlertDialogDescription className="space-y-2">
+                Sind Sie sicher, dass <b>{pendingFormData?.email}</b> mit
+                erweiterten Berechtigungen hinzugefügt werden soll? Dies kann
+                schwerwiegende Folgen haben.
+              </AlertDialogDescription>
+              <div className="text-sm">
+                <p>Ausgewählte Rollen: </p>
+                <ul className="list-disc ml-4">
                   {getSelectedRoleNames().map((role, index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-amber-600 rounded-full"></span>
-                      {role}
-                    </li>
+                    <li key={index}>{role}</li>
                   ))}
                 </ul>
+                <div className="text-sm mt-2 font-bold">
+                  {evRole &&
+                    ovRole &&
+                    `Diese Person erhält umfassende Verwaltungsrechte für ${einsatzNamePlural} (erstellen, bearbeiten und löschen) sowie für deine Organisation.`}
+                  {evRole &&
+                    !ovRole &&
+                    `Diese Person kann ${einsatzNamePlural} erstellen, bearbeiten und löschen.`}
+                  {!evRole &&
+                    ovRole &&
+                    "Diese Person kann deine Organisation verwalten sowie Benutzer hinzufügen und entfernen."}
+                </div>
               </div>
-              <p className="text-xs text-slate-600 mt-3">
-                {evRole &&
-                  ovRole &&
-                  `Diese Person erhält volle Verwaltungsrechte für ${einsatzNamePlural} und Organisation.`}
-                {evRole &&
-                  !ovRole &&
-                  `Diese Person kann ${einsatzNamePlural} erstellen und verwalten.`}
-                {!evRole &&
-                  ovRole &&
-                  "Diese Person kann die Organisation und Benutzer verwalten."}
-              </p>
-            </AlertDialogDescription>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelConfirmation}>
-              Abbrechen
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmInvitation}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Ja, Einladung senden
-            </AlertDialogAction>
+            <Button asChild variant={"outline"}>
+              <AlertDialogCancel onClick={handleCancelConfirmation}>
+                Abbrechen
+              </AlertDialogCancel>
+            </Button>
+            <Button asChild variant={"destructive"}>
+              <AlertDialogAction onClick={handleConfirmInvitation}>
+                Ja, Einladung senden
+              </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

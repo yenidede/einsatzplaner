@@ -15,7 +15,7 @@ function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const callbackUrl = searchParams.get("callbackUrl") || "/helferansicht";
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,20 +47,13 @@ function SignInContent() {
   return (
     <div className="bg-secondary grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
+        <div className="text-center">
           <h2 className="mt-6 text-center text-3xl font-extrabold text-foreground">
             Anmelden
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Oder{" "}
-            <Button asChild variant="link">
-              <Link
-                href="/signup"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
-                hier registrieren, wenn Sie noch kein Konto haben
-              </Link>
-            </Button>
+          <p className="text-sm pt-1">
+            Falls Sie noch kein Konto haben, bitten Sie Ihren Administrator um
+            eine Einladung.
           </p>
         </div>
 
@@ -76,26 +69,27 @@ function SignInContent() {
             onChange={setEmail}
             required
             placeholder="ihre@email.com"
+            id="email"
+            name="email"
           />
+          <div>
+            <FormField
+              label="Passwort"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              required
+              placeholder="Ihr Passwort"
+              className="mb-0"
+              id="password"
+              name="password"
+            />
 
-          <FormField
-            label="Passwort"
-            type="password"
-            value={password}
-            onChange={setPassword}
-            required
-            placeholder="Ihr Passwort"
-          />
-
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <a
-                href="/forgot-password"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
+            <Button className="p-0" asChild variant="link">
+              <Link href="/forgot-password" tabIndex={0}>
                 Passwort vergessen?
-              </a>
-            </div>
+              </Link>
+            </Button>
           </div>
 
           <Button type="submit" disabled={loading} className="w-full">
