@@ -12,7 +12,7 @@ import type {
   EinsatzDetailed,
   ETV,
 } from "@/features/einsatz/types";
-import { hasPermissionFromSession, requireAuth } from "@/lib/auth/authGuard";
+import { hasPermission, hasPermissionFromSession, requireAuth } from "@/lib/auth/authGuard";
 import { redirect } from "next/navigation";
 
 import { ValidateEinsatzCreate } from "./validation-service";
@@ -105,8 +105,7 @@ export async function getAllEinsaetze(org_ids: string[]) {
 
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
-
-  if (!hasPermissionFromSession(session, "einsaetze:read")) {
+  if (!hasPermissionFromSession(session, "einsaetze:create")) {
     return new Response("Unauthorized", { status: 403 });
   }
 
