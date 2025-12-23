@@ -18,14 +18,11 @@ import {
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
-import { queryKeys as TemplateQueryKeys } from "@/features/einsatztemplate/queryKeys";
 import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
 import { queryKeys as StatusQueryKeys } from "@/features/einsatz_status/queryKeys";
 import { queryKeys as ActivityLogQueryKeys } from "@/features/activity_log/queryKeys";
 import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
-import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
-import { useAlertDialog } from "@/contexts/AlertDialogContext";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import TooltipCustom from "../tooltip-custom";
 
@@ -37,9 +34,8 @@ import { toast } from "sonner";
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { cn } from "@/lib/utils";
 import { getActivitiesForEinsatzAction } from "@/features/activity_log/activity_log-actions";
-import { ActivityLogList } from "@/features/activity_log/components/ActivityLogList";
-import { is } from "date-fns/locale";
-import { ActivityLogListSkeleton } from "@/features/activity_log/components/ActivityLogListSkeleton";
+import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
+import { motion } from "motion/react";
 
 interface EventDialogProps {
   einsatz: string | null;
@@ -316,30 +312,11 @@ export function EventDialogHelfer({
                   })}
               </>
             )}
-            {activities?.success === false ? (
-              <div>Aktivitäten konnten nicht geladen werden.</div>
-            ) : (
-              <div className="col-span-full pt-4 border-t">
-                {activitiesLoading || !activities?.data ? (
-                  <ActivityLogListSkeleton className="max-h-64 overflow-auto" />
-                ) : (
-                  <ActivityLogList
-                    activities={
-                      showAllActivities
-                        ? allActivities?.data?.activities ??
-                          activities.data.activities
-                        : activities.data.activities ??
-                          allActivities?.data?.activities ??
-                          []
-                    }
-                    showAll={showAllActivities}
-                    setShowAll={setShowAllActivities}
-                    isRemainingLoading={isAllActivitiesLoading}
-                  />
-                )}
-              </div>
-            )}
-            {}
+            <div className="col-span-full pt-4 border-t">
+              {einsatz && (
+                <EinsatzActivityLog einsatzId={einsatz} initialLimit={3} />
+              )}
+            </div>
           </DefinitionList>
         </div>
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
@@ -444,11 +421,11 @@ function SectionDivider({
 }
 export function DefinitionList({ children, className }: DefinitionListProps) {
   return (
-    <dl
+    <motion.dl
       className={`grid grid-cols-[auto_1fr] gap-x-6 gap-y-4 ${className ?? ""}`}
     >
       {children}
-    </dl>
+    </motion.dl>
   );
 }
 
