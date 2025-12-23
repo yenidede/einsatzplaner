@@ -10,13 +10,8 @@ export default function NotFoundPage() {
         <p>
           Die gesuchte Seite konnte nicht gefunden werden. Vielleicht wurde sie
           verschoben, ist gerade im Depot oder existiert nicht mehr. Kein Grund
-          zur Sorge: Ihre Personalverwaltung ist weiterhin sicher und
-          vollständig erhalten. →{" "}
-          <Button asChild variant="link">
-            <Link href="/">Zur Startseite</Link>
-          </Button>
-          → Oder nutzen Sie die Navigation, um den richtigen Bereich zu finden
-          Bei Fragen hilft unser Support gerne weiter.
+          zur Sorge: Ihre Verwaltung ist weiterhin sicher und vollständig
+          erhalten.
         </p>
         <div className="flex mt-4 gap-2">
           <Button asChild variant="default">
