@@ -2,20 +2,14 @@ import type {
   einsatz as EinsatzRawDb,
   einsatz_comment as CommentRawDb,
   change_log as ChangeLogRawDb,
-  organization,
   einsatz_category,
-  einsatz_status,
-  einsatz_field,
 } from "@/generated/prisma";
 export type Einsatz = EinsatzRawDb;
 import type {
   einsatz_status as EinsatzStatus,
   einsatz_field as EinsatzField,
-  organization as Organization,
-  user as User,
   einsatz_category as EinsatzCategory,
 } from "@/generated/prisma";
-import z from "zod";
 
 export type { CalendarEvent } from "@/components/event-calendar/types";
 
@@ -55,7 +49,7 @@ export type EinsatzCreate = {
 export type EinsatzDetailed = EinsatzRawDb & {
   einsatz_status: EinsatzStatus;
   assigned_users?: string[];
-  einsatz_fields: EinsatzField[];
+  einsatz_fields: (EinsatzField & { field_name: string | null, group_name: string | null, field_type: { datatype: string | null } })[];
   categories: string[];
   comments: (CommentRawDb & {
     user: { id: string; firstname: string | null; lastname: string | null };

@@ -7,6 +7,7 @@ import type {
   ActivityLogFilters,
   ActivityLogResult,
 } from "./types";
+import { Prisma } from "@/generated/prisma";
 
 export async function createChangeLogAuto({
   einsatzId,
@@ -220,9 +221,11 @@ export async function getActivityLogs(
     limit = 50,
     offset = 0,
   } = filters;
+  console.log("Fetching activity logs with filters:", filters);
 
-  const where: any = {};
-
+  const where: Prisma.change_logWhereInput = {
+    AND: [],
+  };
   if (einsatzId) {
     where.einsatz_id = einsatzId;
   }
@@ -356,7 +359,7 @@ export async function getEinsatzActivityLogs(
   limit = 50,
   offset = 0
 ): Promise<ActivityLogResult> {
-  return getActivityLogs({ einsatzId, limit, offset });
+  return getActivityLogs({ einsatzId, orgId: "0c39989e-07bc-4074-92bc-aa274e5f22d0", limit, offset });
 }
 
 export async function getUserActivityLogs(
