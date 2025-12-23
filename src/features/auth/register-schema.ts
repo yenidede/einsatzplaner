@@ -1,24 +1,6 @@
 import * as z from "zod";
-import parsePhoneNumberFromString, { isValidPhoneNumber, parsePhoneNumber, parsePhoneNumberWithError } from "libphonenumber-js";
+import { isValidPhoneNumber, parsePhoneNumberWithError } from "libphonenumber-js";
 import { getPublicStorageUrlFromPath } from "@/lib/supabase-client";
-
-export interface ActionResponse<T = any> {
-    success: boolean;
-    message: string;
-    errors?: {
-        [K in keyof T]?: string[];
-    };
-    inputs?: T;
-}
-
-export interface ActionResponse<T = any> {
-    success: boolean;
-    message: string;
-    errors?: {
-        [K in keyof T]?: string[];
-    };
-    inputs?: T;
-}
 
 export const formSchema = z
     .object({

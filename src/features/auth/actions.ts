@@ -2,7 +2,7 @@
 
 import { hash } from "bcryptjs";
 import { randomBytes } from "crypto";
-import { z, ZodError } from "zod";
+import { z } from "zod";
 import {
   getUserWithValidResetToken,
   resetUserPassword,
@@ -14,8 +14,6 @@ import { emailService } from "@/lib/email/EmailService";
 import { actionClient } from "@/lib/safe-action";
 import { formSchema as registerFormSchema } from "./register-schema";
 import prisma from "@/lib/prisma";
-import { signIn } from "next-auth/react";
-import { redirect } from "next/navigation";
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "Token ist erforderlich"),
@@ -69,7 +67,8 @@ export const acceptInviteAndCreateNewAccount = actionClient
         password: hashedPassword,
         phone: parsedInput.telefon,
         roleIds: invitations.map(i => i.role_id),
-        
+        salutationId: parsedInput.anredeId,
+        userId: firstInvitation.new_user_id || undefined,
       });
       await prisma.invitation.deleteMany({
         where: {
@@ -96,7 +95,6 @@ export async function resetPasswordAction(data: {
     const user = await getUserWithValidResetToken(validated.token);
 
     if (!user) {
-      return
       return {
         success: false,
         error: "Ungültiger oder abgelaufener Token",
