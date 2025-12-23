@@ -22,6 +22,7 @@ export function getFormattedMessage(activity: smallActivity): JSX.Element {
 
   return (
     <>
+      {/* In database dynamic values are typed as static: 'Username' => user.name */}
       {message.split(/\b(Username|AffectedUsername)\b/).map((part, index) => {
         if (part === "Username") {
           return (
@@ -36,7 +37,7 @@ export function getFormattedMessage(activity: smallActivity): JSX.Element {
           return (
             <TooltipCustom
               text={activity.affected_user_data?.email || ""}
-              key={activity.affected_user_data?.email || index}
+              key={index}
             >
               <span key={index} style={{ textDecoration: "underline" }}>
                 {affectedName}
