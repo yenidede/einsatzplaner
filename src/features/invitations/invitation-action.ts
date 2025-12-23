@@ -211,7 +211,7 @@ export async function acceptInvitationAction(token: string) {
     }
 
     if (firstInvitation.email !== session.user.email) {
-      throw new Error("E-Mail-Adresse stimmt nicht überein");
+      throw new Error("E-Mail-Adresse stimmt nicht überein. Einladung ist gültig für " + firstInvitation.email.substring(0, 3) + "****");
     }
 
     await Promise.all(
@@ -319,7 +319,13 @@ export async function verifyInvitationAction(token: string) {
         expires_at: { gt: new Date() }, // Nur nicht abgelaufene
       },
       include: {
-        organization: { select: { name: true } },
+        organization: {
+          select: {
+            name: true,
+            helper_name_singular: true,
+            helper_name_plural: true,
+          },
+        },
         role: { select: { id: true, name: true } },
       },
     });
@@ -335,31 +341,42 @@ export async function verifyInvitationAction(token: string) {
       });
 
       if (anyInvitation) {
-        if (anyInvitation.accepted) {
-          throw new Error("Einladung wurde bereits angenommen");
-        }
         if (anyInvitation.expires_at < new Date()) {
           throw new Error("Einladung ist abgelaufen");
         }
       }
 
-      throw new Error("Einladung nicht gefunden");
+      throw new Error("Einladung nicht gefunden oder wurde bereits angenommen");
     }
 
     const firstInvitation = invitations[0];
 
-    const inviter = await prisma.user.findUnique({
+    const [inviter, existingUser] = await Promise.all([prisma.user.findUnique({
       where: { id: firstInvitation.invited_by },
       select: { firstname: true, lastname: true, email: true },
-    });
+    }), prisma.user.findUnique({
+      where: { email: firstInvitation.email },
+      select: { id: true },
+    })]);
 
     const inviterName =
       inviter?.firstname && inviter?.lastname
         ? `${inviter.firstname} ${inviter.lastname}`
         : inviter?.email || "Unbekannt";
 
+    const helperNameSingular =
+      firstInvitation.organization?.helper_name_singular ?? "Helfer";
+    const helperNamePlural =
+      firstInvitation.organization?.helper_name_plural ?? helperNameSingular;
+
+    const formatRoleName = (name?: string | null) => {
+      if (!name) return helperNameSingular;
+      if (name === "Helfer") return helperNameSingular;
+      return name;
+    };
+
     const roleNames = invitations
-      .map((inv) => inv.role?.name)
+      .map((inv) => formatRoleName(inv.role?.name))
       .filter(Boolean)
       .join(", ");
 
@@ -367,13 +384,18 @@ export async function verifyInvitationAction(token: string) {
       id: firstInvitation.id,
       email: firstInvitation.email,
       organizationName: firstInvitation.organization?.name || "Organisation",
+      orgId: firstInvitation.org_id,
       roleName: roleNames || "Helfer",
+      helperNameSingular,
+      helperNamePlural,
       roles: invitations.map((inv) => ({
         id: inv.role_id,
-        name: inv.role?.name || "Unbekannt",
+        name: formatRoleName(inv.role?.name),
       })),
       inviterName: inviterName,
       expiresAt: firstInvitation.expires_at.toISOString(),
+      userExists: !!existingUser,
+      newUserId: existingUser ? existingUser.id : firstInvitation.new_user_id,
     };
   } catch (error) {
     throw error instanceof Error

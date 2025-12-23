@@ -309,7 +309,7 @@ export async function createEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "create:einsaetze")) {
+  if (!hasPermissionFromSession(session, "einsaetze:create")) {
     redirect("/unauthorized");
   }
 

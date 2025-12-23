@@ -46,6 +46,7 @@ export default function Component() {
       label: "Helferansicht",
       hidden:
         !session ||
+        !Array.isArray(session.user.roleIds) ||
         !session.user.roleIds.includes(
           roles?.find((r) => r.name === "Helfer")?.id || ""
         ),
@@ -55,6 +56,7 @@ export default function Component() {
       label: "Einsatzverwaltung",
       hidden:
         !session ||
+        !Array.isArray(session.user.roleIds) ||
         !session.user.roleIds.includes(
           roles?.find((r) => r.name === "Einsatzverwaltung")?.id || ""
         ),
