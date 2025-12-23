@@ -249,16 +249,26 @@ export function FileUpload({
     );
 
     try {
+      console.log(
+        "before optimize:",
+        file.size / 1024 / 1024,
+        "targetSizeMB:",
+        targetSizeMB
+      );
       const optimized = await optimizeImage(file);
-      if (
-        optimized.size < file.size &&
-        optimized.size / 1024 / 1024 <= targetSizeMB
-      ) {
-        const uploadedPath = await onUpload(optimized);
+      const fileToUpload = optimized.size < file.size ? optimized : file;
+
+      if (fileToUpload.size / 1024 / 1024 <= targetSizeMB) {
+        const uploadedPath = await onUpload(fileToUpload);
         lastUploadKeyRef.current = fileKey;
         lastUploadValueRef.current = uploadedPath;
         return uploadedPath;
       } else {
+        toast.info(
+          `Die Datei ist noch immer zu groß. Bitte erneut versuchen. ${
+            fileToUpload.size / 1024 / 1024
+          } MB, Ziel: ${targetSizeMB} MB`
+        );
         throw new Error(
           "Optimized image not smaller than original or exceeds target size"
         );

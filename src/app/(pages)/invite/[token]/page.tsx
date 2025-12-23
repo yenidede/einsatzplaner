@@ -10,13 +10,12 @@ import {
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useState } from "react";
 import SignUpForm, {
   AvailableTab,
 } from "@/features/auth/components/acceptAndRegister-Form";
-import { ChevronLeft } from "lucide-react";
 
 interface Role {
   id: string;

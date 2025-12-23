@@ -73,7 +73,10 @@ export function SignUpForm({
     optimizedFile: File
   ): Promise<string> => {
     const loadingToastId = toast.loading("Profilbild wird hochgeladen...");
-    const { uploadUrl, path } = await createAvatarUploadUrl(userId);
+    const { uploadUrl, path } = await createAvatarUploadUrl(
+      userId,
+      invitationId
+    );
 
     const res = await fetch(uploadUrl, {
       method: "PUT",
@@ -271,6 +274,7 @@ export function SignUpForm({
                   id="email"
                   name="email"
                   type="email"
+                  disabled
                   aria-invalid={fieldState.invalid}
                   placeholder="max.mustermann@example.com"
                   autoComplete="username"
@@ -392,7 +396,7 @@ export function SignUpForm({
                       <Button
                         id="anredeId"
                         variant="outline"
-                        type="submit"
+                        type="button"
                         role="combobox"
                         className={cn(
                           "justify-between active:scale-100 bg-transparent"

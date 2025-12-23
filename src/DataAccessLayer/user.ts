@@ -193,6 +193,8 @@ export async function createUserWithOrgAndRoles(data: {
   roleNames?: string[];
   roleIds?: string[];
   profilePictureUrl?: string;
+  salutationId?: string;
+  userId?: string;
 }) {
   try {
     // Ein User kann mehrere Rollen pro Organisation haben
@@ -205,6 +207,7 @@ export async function createUserWithOrgAndRoles(data: {
 
     return prisma.user.create({
       data: {
+        id: data.userId,
         email: data.email,
         firstname: data.firstname,
         lastname: data.lastname,
@@ -223,6 +226,7 @@ export async function createUserWithOrgAndRoles(data: {
             },
           })),
         },
+        salutationId: data.salutationId,
       },
       include: {
         user_organization_role: {

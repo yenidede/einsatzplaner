@@ -212,7 +212,6 @@ export const useFileUpload = (
       maxFiles,
       multiple,
       maxSize,
-      // validateFile,
       createPreview,
       generateUniqueId,
       clearFiles,
