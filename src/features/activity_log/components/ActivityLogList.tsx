@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { getFormattedMessage } from "../utils";
 import { Button } from "@/components/ui/button";
+import { motion } from "motion/react";
 
 interface ActivityLogListProps {
   activities: ChangeLogEntry[];
@@ -57,13 +58,6 @@ function groupActivitiesByTime(
   return grouped;
 }
 
-function formatTime(date: Date): string {
-  return new Date(date).toLocaleTimeString("de-DE", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function formatDate(date: Date): string {
   return new Date(date).toLocaleDateString("de-DE", {
     day: "numeric",
@@ -76,27 +70,30 @@ function formatDate(date: Date): string {
 
 function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
   return (
-    <div className="flex justify-between items-center gap-3 py-2">
-      <div
-        className="rounded-full w-8 h-8 flex justify-center items-center relative"
-        style={{ backgroundColor: activity.change_type.change_color }}
-      >
-        <Image
-          src={activity.change_type.change_icon_url}
-          alt={activity.change_type.name}
-          unoptimized
-          width={16}
-          height={16}
-          className="text-foreground"
-        ></Image>
+    <>
+      <div className="flex justify-between items-center gap-3">
+        <div
+          className="rounded-full w-8 h-8 flex justify-center items-center relative"
+          style={{ backgroundColor: activity.change_type.change_color }}
+        >
+          <Image
+            src={activity.change_type.change_icon_url}
+            alt={activity.change_type.name}
+            unoptimized
+            width={16}
+            height={16}
+            className="text-foreground w-4 h-4"
+          ></Image>
+        </div>
+        <div className="grow">{getFormattedMessage(activity)}</div>
+        <time className="text-sm text-muted-foreground whitespace-nowrap">
+          {formatDate(activity.created_at)}
+        </time>
       </div>
-      <div className="grow">{getFormattedMessage(activity)}</div>
-      <time className="text-sm text-muted-foreground whitespace-nowrap">
-        {formatDate(activity.created_at) +
-          " " +
-          formatTime(activity.created_at)}
-      </time>
-    </div>
+      <div className="w-8 h-6 flex justify-center items-center">
+        <div className="h-3 bg-border w-0.5"></div>
+      </div>
+    </>
   );
 }
 
@@ -112,7 +109,7 @@ function ActivityGroup({
   if (activities.length === 0) return null;
 
   return (
-    <div className="space-y-1">
+    <div className="[&>div:last-child]:hidden pb-4">
       <div className="flex justify-between">
         <h4 className="text-base font-semibold mb-3">{title}</h4>
         {button}
@@ -153,6 +150,7 @@ export function ActivityLogList({
       variant={"link"}
       onClick={handleLoadAll}
       disabled={isRemainingLoading}
+      className="p-0"
     >
       {isRemainingLoading
         ? "Lade..."
@@ -164,7 +162,13 @@ export function ActivityLogList({
 
   return (
     <>
-      <div className={cn("space-y-6", className)}>
+      <motion.div
+        className={cn("space-y-6", className)}
+        initial={{ height: 212, opacity: 0 }}
+        animate={{ height: "auto", opacity: 1, originY: 0 }}
+        exit={{ height: 212, opacity: 0 }}
+        style={{ overflow: "hidden" }}
+      >
         <ActivityGroup
           title="Heute"
           activities={groupedActivities.heute}
@@ -188,7 +192,7 @@ export function ActivityLogList({
               : undefined
           }
         />
-      </div>
+      </motion.div>
     </>
   );
 }
