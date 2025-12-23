@@ -16,6 +16,9 @@ export default function TooltipCustom({
   text,
   asChild = true,
 }: TooltipCustomProps) {
+  if (text.trim() === "") {
+    return <>{children}</>;
+  }
   return (
     <Tooltip>
       <TooltipTrigger asChild={asChild}>{children}</TooltipTrigger>

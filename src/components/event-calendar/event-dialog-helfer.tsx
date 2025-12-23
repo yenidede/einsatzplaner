@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { JSX, ReactNode } from "react";
 import { FileDown } from "lucide-react";
 
 import { getBadgeColorClassByStatus, handlePdfGenerate } from "./utils";
@@ -21,6 +21,7 @@ import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
 import { queryKeys as TemplateQueryKeys } from "@/features/einsatztemplate/queryKeys";
 import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
 import { queryKeys as StatusQueryKeys } from "@/features/einsatz_status/queryKeys";
+import { queryKeys as ActivityLogQueryKeys } from "@/features/activity_log/queryKeys";
 import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
@@ -35,6 +36,10 @@ import { toast } from "sonner";
 
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { cn } from "@/lib/utils";
+import { getActivitiesForEinsatzAction } from "@/features/activity_log/activity_log-actions";
+import { ActivityLogList } from "@/features/activity_log/components/ActivityLogList";
+import { is } from "date-fns/locale";
+import { ActivityLogListSkeleton } from "@/features/activity_log/components/ActivityLogListSkeleton";
 
 interface EventDialogProps {
   einsatz: string | null;
@@ -49,6 +54,8 @@ export function EventDialogHelfer({
   onClose,
   onAssignToggleEvent,
 }: EventDialogProps) {
+  const [showAllActivities, setShowAllActivities] = useState(false);
+
   const { data: session } = useSession();
 
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -93,6 +100,45 @@ export function EventDialogHelfer({
     queryFn: () => GetStatuses(),
   });
 
+  const { data: activities, isLoading: activitiesLoading } = useQuery({
+    queryKey: ActivityLogQueryKeys.einsatz(einsatz ?? "", 3),
+    queryFn: () => getActivitiesForEinsatzAction(einsatz ?? "", 3),
+    enabled: !!einsatz && !showAllActivities,
+  });
+
+  const { data: allActivities, isLoading: isAllActivitiesLoading } = useQuery({
+    queryKey: ActivityLogQueryKeys.einsatz(einsatz ?? "", 9999),
+    queryFn: () => getActivitiesForEinsatzAction(einsatz ?? "", 9999),
+    enabled: !!einsatz && showAllActivities,
+  });
+
+  const resolvedActivities = useMemo(() => {
+    const limited = activities?.data?.activities;
+    const all = allActivities?.data?.activities;
+
+    // Prefer based on state, fallback to the other
+    const preferred = showAllActivities ? all : limited;
+    const fallback = showAllActivities ? limited : all;
+
+    return preferred ?? fallback ?? null;
+  }, [
+    showAllActivities,
+    activities?.data?.activities,
+    allActivities?.data?.activities,
+  ]);
+
+  useEffect(() => {
+    if (
+      activities?.success === false ||
+      allActivities?.success === false ||
+      (resolvedActivities === null && isOpen)
+    ) {
+      toast.error("Aktivitäten konnten nicht geladen werden", {
+        id: "activity-load-error",
+      });
+    }
+  }, [activities?.success, allActivities?.success, resolvedActivities]);
+
   const einsatz_singular =
     organizations?.find((org) => org.id === activeOrgId)
       ?.einsatz_name_singular ?? "Einsatz";
@@ -114,7 +160,12 @@ export function EventDialogHelfer({
     ) : null;
   }
 
-  // normally should open the create dialog, in helper just return
+  const handleClose = () => {
+    setShowAllActivities(false);
+    onClose();
+  };
+
+  // normally should open the create dialog, in helferansicht just return
   if (isOpen && !einsatz) return;
 
   const assigned_count = detailedEinsatz?.assigned_users?.length ?? 0;
@@ -124,7 +175,7 @@ export function EventDialogHelfer({
     : statuses?.find((s) => s.id === detailedEinsatz?.status_id);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
         <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>
@@ -244,6 +295,51 @@ export function EventDialogHelfer({
               </div>
               <div>{creator?.email}</div>
             </DefinitionItem>
+            {!!detailedEinsatz && detailedEinsatz.einsatz_fields.length > 0 && (
+              <>
+                <SectionDivider text="Eigene Felder" />
+                {/* TODO: display group names */}
+                {detailedEinsatz?.einsatz_fields
+                  .filter((field) => field.field_type.datatype !== "fieldgroup")
+                  .sort((a, b) =>
+                    (a.group_name || "").localeCompare(b.group_name || "")
+                  )
+                  .map((field) => {
+                    return (
+                      <DefinitionItem
+                        key={field.id}
+                        label={field.field_name || "Kein Feldname verfügbar"}
+                      >
+                        {field.value ?? "-"}
+                      </DefinitionItem>
+                    );
+                  })}
+              </>
+            )}
+            {activities?.success === false ? (
+              <div>Aktivitäten konnten nicht geladen werden.</div>
+            ) : (
+              <div className="col-span-full pt-4 border-t">
+                {activitiesLoading || !activities?.data ? (
+                  <ActivityLogListSkeleton className="max-h-64 overflow-auto" />
+                ) : (
+                  <ActivityLogList
+                    activities={
+                      showAllActivities
+                        ? allActivities?.data?.activities ??
+                          activities.data.activities
+                        : activities.data.activities ??
+                          allActivities?.data?.activities ??
+                          []
+                    }
+                    showAll={showAllActivities}
+                    setShowAll={setShowAllActivities}
+                    isRemainingLoading={isAllActivitiesLoading}
+                  />
+                )}
+              </div>
+            )}
+            {}
           </DefinitionList>
         </div>
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
@@ -270,7 +366,7 @@ export function EventDialogHelfer({
             </Button>
           </TooltipCustom>
           <div className="flex flex-1 justify-end gap-2">
-            <Button variant="outline" onClick={onClose} autoFocus={isOpen}>
+            <Button variant="outline" onClick={handleClose} autoFocus={isOpen}>
               Schließen
             </Button>
             {!detailedEinsatz?.assigned_users?.includes(currentUserId) ? (
@@ -318,6 +414,34 @@ interface DefinitionListProps {
   className?: string;
 }
 
+function SectionDivider({
+  text,
+  isLeft = false,
+}: {
+  text?: string;
+  isLeft?: boolean;
+}): JSX.Element {
+  return (
+    <>
+      <div
+        className={cn(
+          isLeft ? "text-left" : "text-right",
+          "pt-4 font-bold flex items-center grow"
+        )}
+      >
+        <div
+          className={cn(isLeft && "hidden", "bg-border h-[0.0625em] grow pr-4")}
+        ></div>
+        {text && <div className="shrink-0">{text}</div>}
+      </div>
+      <div className="pt-4 flex items-center">
+        <div className="bg-border h-[0.0625em] w-full"></div>
+      </div>
+    </>
+  );
+}
+{
+}
 export function DefinitionList({ children, className }: DefinitionListProps) {
   return (
     <dl

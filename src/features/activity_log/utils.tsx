@@ -1,3 +1,60 @@
+import { JSX } from "react";
+import { ChangeLogEntry } from "./types";
+import { divide } from "lodash";
+import { Einsatz } from "../einsatz/types";
+import TooltipCustom from "@/components/tooltip-custom";
+
+type smallActivity = Pick<
+  ChangeLogEntry,
+  "change_type" | "user" | "affected_user_data"
+> & { einsatz: Pick<Einsatz, "title"> };
+
+export function getFormattedMessage(activity: smallActivity): JSX.Element {
+  const actorName = getFullName(activity.user);
+  const affectedName = getFullName(
+    activity.affected_user_data ?? { firstname: "", lastname: "" }
+  );
+
+  const message = activity.change_type.message.replace(
+    "Einsatz",
+    `'${activity.einsatz.title}'`
+  );
+
+  return (
+    <>
+      {/* In database dynamic values are typed as static: 'Username' => user.name */}
+      {message.split(/\b(Username|AffectedUsername)\b/).map((part, index) => {
+        if (part === "Username") {
+          return (
+            <TooltipCustom text={activity.user.email} key={activity.user.email}>
+              <span key={index} style={{ textDecoration: "underline" }}>
+                {actorName}
+              </span>
+            </TooltipCustom>
+          );
+        }
+        if (part === "AffectedUsername") {
+          return (
+            <TooltipCustom
+              text={activity.affected_user_data?.email || ""}
+              key={index}
+            >
+              <span key={index} style={{ textDecoration: "underline" }}>
+                {affectedName}
+              </span>
+            </TooltipCustom>
+          );
+        }
+        return part;
+      })}
+    </>
+  );
+}
+
+const getFullName = (user: { firstname: string; lastname: string }) => {
+  return `${user.firstname} ${user.lastname}`;
+};
+
 export function detectChangeType(
   isNew: boolean,
   previousAssignedUsers: string[],

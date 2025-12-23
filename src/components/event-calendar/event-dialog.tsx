@@ -886,6 +886,7 @@ export function EventDialogVerwaltung({
               errors={errors.fieldErrors}
               onFormDataChange={handleDynamicFormDataChange}
             />
+            {/* Activities */}
           </div>
         </div>
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
