@@ -8,12 +8,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { getActivityLogs } from "@/features/activity_log/activity_log-dal";
+import {
+  getActivityLogs,
+  getOrganizationActivityLogs,
+} from "@/features/activity_log/activity_log-dal";
 import type { ChangeLogEntry } from "@/features/activity_log/types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { activityLogQueryKeys } from "@/features/activity_log/queryKeys";
+import { getEinsatzNamesByOrgId } from "@/features/settings/organization-action";
+import { useSession } from "next-auth/react";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -77,6 +82,14 @@ export default function NotificationMenu() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
+  const session = useSession();
+  const activeOrgId = session.data?.user.activeOrganization?.id || null;
+
+  const { data: organizationData } = useQuery({
+    queryKey: ["organization", activeOrgId],
+    queryFn: () => getEinsatzNamesByOrgId(activeOrgId || ""),
+    enabled: isOpen && !!activeOrgId,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: activityLogQueryKeys.list({ limit: 10, offset: 0 }),
@@ -131,10 +144,14 @@ export default function NotificationMenu() {
 
   const formatMessage = (activity: ChangeLogEntry) => {
     const userName = `${activity.user.firstname} ${activity.user.lastname}`;
+
+    const einsatz_name_singular =
+      organizationData?.einsatz_name_singular || "Einsatz";
     let message = activity.change_type.message;
 
-    if (userName) {
+    if (userName || einsatz_name_singular) {
       message = message.replace("Username", "");
+      message = message.replace("Einsatz", einsatz_name_singular.toString());
     }
 
     if (activity.affected_user_data && activity.user) {

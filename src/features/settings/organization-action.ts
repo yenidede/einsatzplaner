@@ -74,6 +74,8 @@ export async function getOrganizationById(orgId: string) {
     created_at: org.created_at.toISOString(),
   };
 }
+
+
 export async function getEinsatzNamesByOrgId(orgId: string) {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
