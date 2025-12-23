@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { getActivitiesForEinsatzAction } from "@/features/activity_log/activity_log-actions";
 import { ActivityLogList } from "@/features/activity_log/components/ActivityLogList";
 import { is } from "date-fns/locale";
+import { ActivityLogListSkeleton } from "@/features/activity_log/components/ActivityLogListSkeleton";
 
 interface EventDialogProps {
   einsatz: string | null;
@@ -97,7 +98,7 @@ export function EventDialogHelfer({
     queryFn: () => GetStatuses(),
   });
 
-  const { data: activities } = useQuery({
+  const { data: activities, isLoading: activitiesLoading } = useQuery({
     queryKey: ActivityLogQueryKeys.einsatz(einsatz ?? ""),
     queryFn: () => getActivitiesForEinsatzAction(einsatz ?? ""),
     enabled: !!einsatz,
@@ -286,19 +287,26 @@ export function EventDialogHelfer({
                   })}
               </>
             )}
-            {activities?.success &&
-              activities.data &&
-              activities.data.total > 0 && (
-                <>
-                  <SectionDivider text="Aktivitäten" isLeft />
-                  <div className="col-span-full">
+            {activities?.success === false ? (
+              <div>Aktivitäten konnten nicht geladen werden.</div>
+            ) : (
+              <>
+                {/* Kein Datenfehler (noch am Laden oder ) */}
+                <SectionDivider text="Aktivitäten" isLeft />
+                <div className="col-span-full">
+                  {/*  */}
+                  {activitiesLoading || !activities?.data ? (
+                    <ActivityLogListSkeleton className="max-h-64 overflow-auto" />
+                  ) : (
                     <ActivityLogList
                       activities={activities.data.activities}
                       className="max-h-64 overflow-auto"
                     />
-                  </div>
-                </>
-              )}
+                  )}
+                </div>
+              </>
+            )}
+            {}
           </DefinitionList>
         </div>
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
