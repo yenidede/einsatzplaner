@@ -69,9 +69,6 @@ export default function SettingsPage() {
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const staleTime = 5 * 60 * 1000; // 5 Minuten
-  const gcTime = 10 * 60 * 1000; // 10 Minuten
-
   const queryClient = useQueryClient();
 
   useSessionValidation({
@@ -104,8 +101,6 @@ export default function SettingsPage() {
       if (!res) throw new Error("Fehler beim Laden");
       return res;
     },
-    staleTime: staleTime,
-    gcTime: gcTime,
   });
 
   const { data: salutations = [] } = useQuery({
@@ -114,8 +109,6 @@ export default function SettingsPage() {
       const res = await getSalutationsAction();
       return res;
     },
-    staleTime: staleTime,
-    gcTime: gcTime,
   });
 
   useEffect(() => {

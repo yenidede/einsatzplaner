@@ -40,7 +40,7 @@ export default async function RootLayout({
               <AlertDialogContextProvider>
                 <Navbar />
                 {children}
-                <Toaster position="bottom-left" />
+                <Toaster position="bottom-left" richColors />
               </AlertDialogContextProvider>
             </NextAuthSessionProvider>
           </QueryProvider>
