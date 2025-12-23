@@ -190,35 +190,43 @@ export async function createUserWithOrgAndRoles(data: {
   password: string;
   phone?: string;
   orgId: string;
-  roleNames: string[];
+  roleNames?: string[];
+  roleIds?: string[];
+  profilePictureUrl?: string;
+  salutationId?: string;
+  userId?: string;
 }) {
   try {
     // Ein User kann mehrere Rollen pro Organisation haben
-    if (!data.roleNames || data.roleNames.length === 0) {
+    if ((!data.roleNames || data.roleNames.length === 0) && (!data.roleIds || data.roleIds.length === 0)) {
       throw new Error("Mindestens eine Rolle muss zugewiesen werden.");
     }
 
     const roleRecords = await cachedRoleRecords();
+    const assignRoleIds = data.roleIds ? data.roleIds : data.roleNames?.map((roleName) => roleRecords.find((role) => role.name === roleName)?.id).filter((id): id is string => !!id) || [];
 
     return prisma.user.create({
       data: {
+        id: data.userId,
         email: data.email,
         firstname: data.firstname,
         lastname: data.lastname,
         password: data.password,
         phone: data.phone,
+        picture_url: data.profilePictureUrl,
         user_organization_role: {
-          create: data.roleNames.map((roleName) => ({
+          create: assignRoleIds.map((roleId) => ({
             organization: {
               connect: { id: data.orgId },
             },
             role: {
               connect: {
-                id: roleRecords.find((role) => role.name === roleName)?.id,
+                id: roleId,
               },
             },
           })),
         },
+        salutationId: data.salutationId,
       },
       include: {
         user_organization_role: {
