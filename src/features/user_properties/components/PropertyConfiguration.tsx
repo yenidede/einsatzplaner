@@ -67,7 +67,7 @@ export function PropertyConfiguration({
     <div className="self-stretch flex flex-col justify-start items-start gap-2">
       <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
         <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">
-          Eigenschaft konfigurieren
+          Neue Eigenschaft konfigurieren
         </div>
       </div>
 

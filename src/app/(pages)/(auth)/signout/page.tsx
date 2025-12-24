@@ -3,8 +3,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function SignOutPage() {
+function SignOutContent() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/helferansicht";
@@ -24,4 +25,12 @@ export default function SignOutPage() {
 
   handleSignOut();
   return <div>Abmeldung läuft...</div>;
+}
+
+export default function SignOutPage() {
+  return (
+    <Suspense fallback={<div>Abmeldung läuft...</div>}>
+      <SignOutContent />
+    </Suspense>
+  );
 }
