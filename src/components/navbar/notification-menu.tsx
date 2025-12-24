@@ -14,6 +14,8 @@ import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/activity_log/queryKeys";
+import { getFormattedMessage } from "@/features/activity_log/utils";
+import { useEventDialog } from "@/hooks/use-event-dialog";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -76,6 +78,7 @@ const markAllActivitiesAsRead = (activityIds: string[]) => {
 export default function NotificationMenu() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [isOpen, setIsOpen] = useState(false);
+  const { openDialog } = useEventDialog();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -87,10 +90,8 @@ export default function NotificationMenu() {
       });
       return result.activities;
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 1 * 60 * 1000, // revalidate every minute
     refetchOnWindowFocus: true,
-    refetchOnMount: false,
   });
 
   const activities = data || [];
@@ -225,32 +226,18 @@ export default function NotificationMenu() {
                       )}
                     </div>
 
-                    <div className="flex-1 space-y-1">
-                      <button
-                        className="text-foreground/80 text-left after:absolute after:inset-0"
-                        onClick={() => handleNotificationClick(activity.id)}
-                      >
-                        <span className="text-foreground font-medium hover:underline">
-                          {userName}
-                        </span>{" "}
-                        {message}
-                        {activity.einsatz.title && (
-                          <>
-                            {" "}
-                            <span className="text-foreground font-medium hover:underline">
-                              {activity.einsatz.title}
-                            </span>
-                          </>
-                        )}
-                        .
-                      </button>
+                    <button
+                      className="flex-1 space-y-1 flex flex-col items-start text-left"
+                      onClick={() => handleNotificationClick(activity.id)}
+                    >
+                      <div>{getFormattedMessage(activity, openDialog)}</div>
                       <div className="text-muted-foreground text-xs">
                         {formatDistanceToNow(new Date(activity.created_at), {
                           addSuffix: true,
                           locale: de,
                         })}
                       </div>
-                    </div>
+                    </button>
                     {isUnread && (
                       <div className="absolute end-0 self-center">
                         <span className="sr-only">Ungelesen</span>
@@ -272,12 +259,9 @@ export default function NotificationMenu() {
               className="bg-border -mx-1 my-1 h-px"
             ></div>
             <div className="px-3 py-2 text-center">
-              <button
-                onClick={handleViewAll}
-                className="text-xs font-medium hover:underline"
-              >
+              <Button onClick={handleViewAll} variant={"link"} size={"sm"}>
                 Alle Aktivitäten anzeigen
-              </button>
+              </Button>
             </div>
           </>
         )}
