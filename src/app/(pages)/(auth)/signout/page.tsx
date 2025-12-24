@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
-function SignOutPage() {
+async function SignOutPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/helferansicht";
@@ -24,7 +24,7 @@ function SignOutPage() {
     }
   };
 
-  handleSignOut();
+  await handleSignOut();
   return (
     <div className="bg-secondary flex grow flex-col p-6 md:p-10">
       <h1>Abmeldung fehlgeschlagen</h1>
