@@ -15,6 +15,7 @@ import { de } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/activity_log/queryKeys";
 import { getFormattedMessage } from "@/features/activity_log/utils";
+import { useEventDialog } from "@/hooks/use-event-dialog";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -77,6 +78,7 @@ const markAllActivitiesAsRead = (activityIds: string[]) => {
 export default function NotificationMenu() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [isOpen, setIsOpen] = useState(false);
+  const { openDialog } = useEventDialog();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -88,10 +90,8 @@ export default function NotificationMenu() {
       });
       return result.activities;
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 1 * 60 * 1000, // revalidate every minute
     refetchOnWindowFocus: true,
-    refetchOnMount: false,
   });
 
   const activities = data || [];
@@ -230,7 +230,7 @@ export default function NotificationMenu() {
                       className="flex-1 space-y-1 flex flex-col items-start text-left"
                       onClick={() => handleNotificationClick(activity.id)}
                     >
-                      <div> {getFormattedMessage(activity)}</div>
+                      <div> {getFormattedMessage(activity, openDialog)}</div>
                       <div className="text-muted-foreground text-xs">
                         {formatDistanceToNow(new Date(activity.created_at), {
                           addSuffix: true,

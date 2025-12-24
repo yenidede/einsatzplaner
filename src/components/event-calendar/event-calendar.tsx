@@ -53,6 +53,7 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/features/organization/queryKeys";
 import { toast } from "sonner";
+import { useEventDialog } from "@/hooks/use-event-dialog";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -82,10 +83,12 @@ export function EventCalendar({
   activeOrgId,
 }: EventCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<
-    EinsatzCreate | string | null
-  >(null);
+  const {
+    isOpen: isEventDialogOpen,
+    selectedEvent,
+    openDialog,
+    closeDialog,
+  } = useEventDialog();
 
   const [view, setView] = useQueryState<CalendarView>(
     "view",
@@ -193,8 +196,7 @@ export function EventCalendar({
   };
 
   const handleEventSelect = (event: CalendarEvent | string) => {
-    setSelectedEvent(typeof event === "string" ? event : event.id);
-    setIsEventDialogOpen(true);
+    openDialog(typeof event === "string" ? event : event.id);
   };
 
   const handleEventCreate = (startTime: Date) => {
@@ -236,8 +238,7 @@ export function EventCalendar({
       categories: [],
       einsatz_fields: [],
     };
-    setSelectedEvent(newEvent);
-    setIsEventDialogOpen(true);
+    openDialog(newEvent);
   };
 
   const handleEventSave = (event: EinsatzCreate | CalendarEvent) => {
@@ -254,27 +255,23 @@ export function EventCalendar({
       onEventTimeUpdate?.(event);
     }
 
-    setIsEventDialogOpen(false);
-    setSelectedEvent(null);
+    closeDialog();
   };
 
   const handleAssignToggleEvent = (eventId: string) => {
     onAssignToggleEvent(eventId);
 
-    setIsEventDialogOpen(false);
-    setSelectedEvent(null);
+    closeDialog();
   };
 
   const handleEventDelete = (eventId: string, eventTitle: string) => {
     onEventDelete?.(eventId, eventTitle);
-    setIsEventDialogOpen(false);
-    setSelectedEvent(null);
+    closeDialog();
   };
 
   const handleMultiEventDelete = (eventIds: string[]) => {
     onMultiEventDelete?.(eventIds);
-    setIsEventDialogOpen(false);
-    setSelectedEvent(null);
+    closeDialog();
   };
 
   const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
@@ -432,8 +429,7 @@ export function EventCalendar({
               <Button
                 className="max-[479px]:aspect-square max-[479px]:p-0!"
                 onClick={() => {
-                  setSelectedEvent(null); // Ensure we're creating a new event
-                  setIsEventDialogOpen(true);
+                  openDialog(null); // Ensure we're creating a new event
                 }}
               >
                 <PlusIcon
@@ -505,10 +501,7 @@ export function EventCalendar({
           <EventDialogVerwaltung
             einsatz={selectedEvent}
             isOpen={isEventDialogOpen}
-            onClose={() => {
-              setIsEventDialogOpen(false);
-              setSelectedEvent(null);
-            }}
+            onClose={closeDialog}
             onSave={handleEventSave}
             onDelete={handleEventDelete}
           />
@@ -520,10 +513,7 @@ export function EventCalendar({
                 : selectedEvent?.id || null
             }
             isOpen={isEventDialogOpen}
-            onClose={() => {
-              setIsEventDialogOpen(false);
-              setSelectedEvent(null);
-            }}
+            onClose={closeDialog}
             onAssignToggleEvent={handleAssignToggleEvent}
           />
         ) : null}
