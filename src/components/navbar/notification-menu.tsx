@@ -14,6 +14,7 @@ import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/activity_log/queryKeys";
+import { getFormattedMessage } from "@/features/activity_log/utils";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -225,32 +226,18 @@ export default function NotificationMenu() {
                       )}
                     </div>
 
-                    <div className="flex-1 space-y-1">
-                      <button
-                        className="text-foreground/80 text-left after:absolute after:inset-0"
-                        onClick={() => handleNotificationClick(activity.id)}
-                      >
-                        <span className="text-foreground font-medium hover:underline">
-                          {userName}
-                        </span>{" "}
-                        {message}
-                        {activity.einsatz.title && (
-                          <>
-                            {" "}
-                            <span className="text-foreground font-medium hover:underline">
-                              {activity.einsatz.title}
-                            </span>
-                          </>
-                        )}
-                        .
-                      </button>
+                    <button
+                      className="flex-1 space-y-1 flex flex-col items-start text-left"
+                      onClick={() => handleNotificationClick(activity.id)}
+                    >
+                      <div> {getFormattedMessage(activity)}</div>
                       <div className="text-muted-foreground text-xs">
                         {formatDistanceToNow(new Date(activity.created_at), {
                           addSuffix: true,
                           locale: de,
                         })}
                       </div>
-                    </div>
+                    </button>
                     {isUnread && (
                       <div className="absolute end-0 self-center">
                         <span className="sr-only">Ungelesen</span>
@@ -272,12 +259,9 @@ export default function NotificationMenu() {
               className="bg-border -mx-1 my-1 h-px"
             ></div>
             <div className="px-3 py-2 text-center">
-              <button
-                onClick={handleViewAll}
-                className="text-xs font-medium hover:underline"
-              >
+              <Button onClick={handleViewAll} variant={"link"} size={"sm"}>
                 Alle Aktivitäten anzeigen
-              </button>
+              </Button>
             </div>
           </>
         )}
