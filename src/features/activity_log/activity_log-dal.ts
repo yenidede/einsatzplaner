@@ -7,6 +7,7 @@ import type {
   ActivityLogFilters,
   ActivityLogResult,
 } from "./types";
+import { Prisma } from "@/generated/prisma";
 
 export async function createChangeLogAuto({
   einsatzId,
@@ -221,8 +222,9 @@ export async function getActivityLogs(
     offset = 0,
   } = filters;
 
-  const where: any = {};
-
+  const where: Prisma.change_logWhereInput = {
+    AND: [],
+  };
   if (einsatzId) {
     where.einsatz_id = einsatzId;
   }

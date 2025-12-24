@@ -30,6 +30,21 @@ export async function getActivitiesAction() {
   }
 }
 
+export async function getActivitiesForEinsatzAction(einsatzId: string, limit?: number) {
+  try {
+    await requireAuth();
+
+    const activities = await getEinsatzActivityLogs(einsatzId, limit);
+
+    return { success: true, data: activities };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unbekannter Fehler",
+    };
+  }
+}
+
 export async function getActivityLogsAction(filters?: ActivityLogFilters) {
   try {
     await requireAuth();
