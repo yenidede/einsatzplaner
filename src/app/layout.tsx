@@ -7,6 +7,7 @@ import "@/styles/globals.css";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { AlertDialogContextProvider } from "@/contexts/AlertDialogContext";
+import { EventDialogProvider } from "@/contexts/EventDialogContext";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -38,9 +39,11 @@ export default async function RootLayout({
           <QueryProvider>
             <NextAuthSessionProvider>
               <AlertDialogContextProvider>
-                <Navbar />
-                {children}
-                <Toaster position="bottom-left" richColors />
+                <EventDialogProvider>
+                  <Navbar />
+                  {children}
+                  <Toaster position="bottom-left" richColors />
+                </EventDialogProvider>
               </AlertDialogContextProvider>
             </NextAuthSessionProvider>
           </QueryProvider>
