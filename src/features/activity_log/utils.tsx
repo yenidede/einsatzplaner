@@ -2,7 +2,6 @@ import { JSX } from "react";
 import { ChangeLogEntry } from "./types";
 import { Einsatz } from "../einsatz/types";
 import TooltipCustom from "@/components/tooltip-custom";
-import { useEventDialog } from "@/hooks/use-event-dialog";
 
 type smallActivity = Pick<
   ChangeLogEntry,
@@ -11,7 +10,7 @@ type smallActivity = Pick<
 
 export function getFormattedMessage(
   activity: smallActivity,
-  openDialog: (id: string) => void
+  openDialog?: (id: string) => void
 ): JSX.Element {
   const actorName = getFullName(activity.user);
   const affectedName = getFullName(
@@ -54,7 +53,7 @@ export function getFormattedMessage(
             return (
               <span
                 className="underline cursor-pointer"
-                onClick={() => openDialog(activity.einsatz.id)}
+                onClick={() => openDialog && openDialog(activity.einsatz.id)}
                 key={index}
               >
                 {activity.einsatz.title}

@@ -230,7 +230,7 @@ export default function NotificationMenu() {
                       className="flex-1 space-y-1 flex flex-col items-start text-left"
                       onClick={() => handleNotificationClick(activity.id)}
                     >
-                      <div> {getFormattedMessage(activity, openDialog)}</div>
+                      <div>{getFormattedMessage(activity, openDialog)}</div>
                       <div className="text-muted-foreground text-xs">
                         {formatDistanceToNow(new Date(activity.created_at), {
                           addSuffix: true,

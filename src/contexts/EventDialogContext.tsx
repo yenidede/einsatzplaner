@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useMemo,
+} from "react";
 import { EinsatzCreate } from "@/features/einsatz/types";
 
 interface EventDialogContextValue {
@@ -44,12 +50,15 @@ export function EventDialogProvider({ children }: EventDialogProviderProps) {
     setSelectedEvent(null);
   };
 
-  const contextValue: EventDialogContextValue = {
-    isOpen,
-    selectedEvent,
-    openDialog,
-    closeDialog,
-  };
+  const contextValue: EventDialogContextValue = useMemo(
+    () => ({
+      isOpen,
+      selectedEvent,
+      openDialog,
+      closeDialog,
+    }),
+    [isOpen, selectedEvent]
+  );
 
   return (
     <EventDialogContext.Provider value={contextValue}>

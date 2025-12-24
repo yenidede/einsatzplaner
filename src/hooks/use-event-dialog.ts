@@ -1,1 +1,1 @@
-export { useEventDialogFromContext as useEventDialog} from "@/contexts/EventDialogContext";
+export { useEventDialogFromContext as useEventDialog } from "@/contexts/EventDialogContext";

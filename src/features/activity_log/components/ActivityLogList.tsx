@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { getFormattedMessage } from "../utils";
 import { Button } from "@/components/ui/button";
 import { motion } from "motion/react";
+import { useEventDialog } from "@/hooks/use-event-dialog";
 
 interface ActivityLogListProps {
   activities: ChangeLogEntry[];
@@ -68,6 +69,7 @@ function formatDate(date: Date): string {
 }
 
 function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
+  const { openDialog } = useEventDialog();
   return (
     <>
       <div className="flex justify-between items-center gap-3">
