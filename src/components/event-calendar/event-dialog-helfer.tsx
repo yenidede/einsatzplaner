@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { FileDown } from "lucide-react";
 
 import { getBadgeColorClassByStatus, handlePdfGenerate } from "./utils";
@@ -18,13 +18,10 @@ import {
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
-import { queryKeys as TemplateQueryKeys } from "@/features/einsatztemplate/queryKeys";
 import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
 import { queryKeys as StatusQueryKeys } from "@/features/einsatz_status/queryKeys";
 import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
-import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
-import { useAlertDialog } from "@/contexts/AlertDialogContext";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import TooltipCustom from "../tooltip-custom";
 
@@ -35,6 +32,8 @@ import { toast } from "sonner";
 
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { cn } from "@/lib/utils";
+import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
+import { motion } from "motion/react";
 
 import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
 
@@ -56,6 +55,8 @@ export function EventDialogHelfer({
   onClose,
   onAssignToggleEvent,
 }: EventDialogProps) {
+  const [showAllActivities, setShowAllActivities] = useState(false);
+
   const { data: session } = useSession();
 
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -121,7 +122,7 @@ export function EventDialogHelfer({
     ) : null;
   }
 
-  // normally should open the create dialog, in helper just return
+  // normally should open the create dialog, in helferansicht just return
   if (isOpen && !einsatz) return;
 
   const assigned_count = detailedEinsatz?.assigned_users?.length ?? 0;
@@ -251,6 +252,31 @@ export function EventDialogHelfer({
               </div>
               <div>{creator?.email}</div>
             </DefinitionItem>
+            {!!detailedEinsatz && detailedEinsatz.einsatz_fields.length > 0 && (
+              <>
+                <SectionDivider text="Eigene Felder" />
+                {detailedEinsatz.einsatz_fields
+                  .filter((field) => field.field_type.datatype !== "fieldgroup")
+                  .sort((a, b) =>
+                    (a.group_name || "").localeCompare(b.group_name || "")
+                  )
+                  .map((field) => {
+                    return (
+                      <DefinitionItem
+                        key={field.id}
+                        label={field.field_name || "Kein Feldname verfügbar"}
+                      >
+                        {field.value ?? "-"}
+                      </DefinitionItem>
+                    );
+                  })}
+              </>
+            )}
+            <div className="col-span-full pt-4 border-t">
+              {einsatz && (
+                <EinsatzActivityLog einsatzId={einsatz} initialLimit={3} />
+              )}
+            </div>
           </DefinitionList>
         </div>
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
@@ -325,13 +351,41 @@ interface DefinitionListProps {
   className?: string;
 }
 
+function SectionDivider({
+  text,
+  isLeft = false,
+}: {
+  text?: string;
+  isLeft?: boolean;
+}): JSX.Element {
+  return (
+    <>
+      <div
+        className={cn(
+          isLeft ? "text-left" : "text-right",
+          "pt-4 font-bold flex items-center grow"
+        )}
+      >
+        <div
+          className={cn(isLeft && "hidden", "bg-border h-[0.0625em] grow pr-4")}
+        ></div>
+        {text && <div className="shrink-0">{text}</div>}
+      </div>
+      <div className="pt-4 flex items-center">
+        <div className="bg-border h-[0.0625em] w-full"></div>
+      </div>
+    </>
+  );
+}
+{
+}
 export function DefinitionList({ children, className }: DefinitionListProps) {
   return (
-    <dl
+    <motion.dl
       className={`grid grid-cols-[auto_1fr] gap-x-6 gap-y-4 ${className ?? ""}`}
     >
       {children}
-    </dl>
+    </motion.dl>
   );
 }
 

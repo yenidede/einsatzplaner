@@ -64,6 +64,7 @@ import {
 } from "@/features/activity_log/utils";
 import { Select, SelectContent, SelectItem } from "../ui/select";
 import { SelectTrigger } from "@radix-ui/react-select";
+import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -886,6 +887,7 @@ export function EventDialogVerwaltung({
               errors={errors.fieldErrors}
               onFormDataChange={handleDynamicFormDataChange}
             />
+            <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
           </div>
         </div>
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
