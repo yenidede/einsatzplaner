@@ -100,7 +100,7 @@ export default function NotificationMenu() {
   const orgIds = session?.user.orgIds;
   const { data: orgsData } = useQuery({
     queryKey: orgQueryKeys.organizations(orgIds ?? []),
-    enabled: !!orgIds,
+    enabled: !!orgIds && orgIds.length > 1,
     queryFn: () => getOrganizationsByIds(orgIds ?? []),
   });
 
@@ -239,7 +239,7 @@ export default function NotificationMenu() {
 
                         {orgsData && orgsData.length > 1 && (
                           <span className="ms-2 min-w-0 truncate">
-                            {activeOrg?.name}
+                            {activeOrg?.name ?? "Ladefehler"}
                           </span>
                         )}
                       </div>
