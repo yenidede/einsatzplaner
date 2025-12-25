@@ -123,6 +123,7 @@ model organization {
   phone                        String?
   helferansicht_description    String?
   verwalteransicht_description String?
+  abbreviation                 String?
   calendar_subscription        calendar_subscription[]
   einsatz                      einsatz[]
   einsatz_category             einsatz_category[]
