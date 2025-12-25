@@ -17,7 +17,12 @@ export function getFormattedMessage(
     activity.affected_user_data ?? { firstname: "", lastname: "" }
   );
 
-  const message = activity.change_type.message;
+  const message = openDialog
+    ? activity.change_type.message
+    : activity.change_type.message.replace(
+        /Einsatz/g,
+        `'${activity.einsatz.title}'`
+      );
 
   return (
     <>
@@ -56,7 +61,7 @@ export function getFormattedMessage(
                 onClick={() => openDialog && openDialog(activity.einsatz.id)}
                 key={index}
               >
-                {activity.einsatz.title}
+                '{activity.einsatz.title}'
               </span>
             );
           }
