@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { BellIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,13 +9,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getActivityLogs } from "@/features/activity_log/activity_log-dal";
-import type { ChangeLogEntry } from "@/features/activity_log/types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { activityLogQueryKeys } from "@/features/activity_log/queryKeys";
+import { queryKeys as orgQueryKeys } from "@/features/organization/queryKeys";
 import { getFormattedMessage } from "@/features/activity_log/utils";
 import { useEventDialog } from "@/hooks/use-event-dialog";
+import { useSession } from "next-auth/react";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -81,6 +83,8 @@ export default function NotificationMenu() {
   const { openDialog } = useEventDialog();
   const queryClient = useQueryClient();
 
+  const { data: session } = useSession();
+
   const { data, isLoading } = useQuery({
     queryKey: activityLogQueryKeys.list({ limit: 10, offset: 0 }),
     queryFn: async () => {
@@ -90,9 +94,21 @@ export default function NotificationMenu() {
       });
       return result.activities;
     },
-    staleTime: 1 * 60 * 1000, // revalidate every minute
-    refetchOnWindowFocus: true,
+    staleTime: 1 * 60 * 1000, // check for new notifications every minute
   });
+
+  const orgIds = session?.user.orgIds;
+  const { data: orgsData } = useQuery({
+    queryKey: orgQueryKeys.organizations(orgIds ?? []),
+    enabled: !!orgIds && orgIds.length > 1,
+    queryFn: () => getOrganizationsByIds(orgIds ?? []),
+  });
+
+  const activeOrg = useMemo(() => {
+    return orgsData?.find(
+      (org) => org.id === session?.user.activeOrganization?.id
+    );
+  }, [orgsData, session?.user.activeOrganization?.id]);
 
   const activities = data || [];
 
@@ -130,24 +146,6 @@ export default function NotificationMenu() {
     setReadIds((prev) => new Set([...prev, id]));
   };
 
-  const formatMessage = (activity: ChangeLogEntry) => {
-    const userName = `${activity.user.firstname} ${activity.user.lastname}`;
-    let message = activity.change_type.message;
-
-    if (userName) {
-      message = message.replace("Username", "");
-    }
-
-    if (activity.affected_user_data && activity.user) {
-      message = message.replace(
-        "AffectedUsername",
-        `${activity.affected_user_data.firstname} ${activity.affected_user_data.lastname}`
-      );
-    }
-
-    return { userName, message };
-  };
-
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -171,7 +169,7 @@ export default function NotificationMenu() {
           <div className="text-sm font-semibold">Aktivitäten</div>
           {unreadCount > 0 && (
             <button
-              className="text-xs font-medium hover:underline"
+              className="text-xs font-medium hover:underline cursor-pointer"
               onClick={handleMarkAllAsRead}
             >
               Alle als gelesen markieren
@@ -195,15 +193,14 @@ export default function NotificationMenu() {
             </div>
           ) : (
             activities.map((activity) => {
-              const { userName, message } = formatMessage(activity);
               const isUnread = !readIds.has(activity.id);
 
               return (
                 <div
                   key={activity.id}
-                  className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors"
+                  className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors flex"
                 >
-                  <div className="relative flex items-start gap-3 pe-3">
+                  <div className="relative flex items-start gap-3 w-full min-w-0">
                     <div
                       className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                       style={{
@@ -227,15 +224,24 @@ export default function NotificationMenu() {
                     </div>
 
                     <button
-                      className="flex-1 space-y-1 flex flex-col items-start text-left"
+                      className="flex-1 min-w-0 space-y-1 flex flex-col items-start text-left"
                       onClick={() => handleNotificationClick(activity.id)}
                     >
                       <div>{getFormattedMessage(activity, openDialog)}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {formatDistanceToNow(new Date(activity.created_at), {
-                          addSuffix: true,
-                          locale: de,
-                        })}
+
+                      <div className="text-muted-foreground text-xs flex justify-between w-full min-w-0">
+                        <span className="shrink-0">
+                          {formatDistanceToNow(new Date(activity.created_at), {
+                            addSuffix: true,
+                            locale: de,
+                          })}
+                        </span>
+
+                        {orgsData && orgsData.length > 1 && (
+                          <span className="ms-2 min-w-0 truncate">
+                            {activeOrg?.name ?? "Ladefehler"}
+                          </span>
+                        )}
                       </div>
                     </button>
                     {isUnread && (

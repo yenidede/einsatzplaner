@@ -13,6 +13,7 @@ export type CalendarSubscription = {
   is_active: boolean;
   token: string;
   webcalUrl: string;
+  httpUrl: string;
   last_accessed: string | null;
 };
 
@@ -32,22 +33,23 @@ export function useCalendarSubscription(orgId: string) {
   const rotate = useMutation({
     mutationFn: (id: string) => rotateSubscriptionAction(id),
     onSuccess: (data) => {
-      queryClient.setQueryData<CalendarSubscription>(
-        key(orgId),
-        (prev) =>
-          prev
-            ? { ...prev, token: data.token, webcalUrl: data.webcalUrl }
-            : prev
+      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+        prev
+          ? {
+              ...prev,
+              token: data.token,
+              webcalUrl: data.webcalUrl,
+              httpUrl: data.httpUrl,
+            }
+          : prev
       );
     },
   });
-
   const deactivate = useMutation({
     mutationFn: (id: string) => deactivateSubscriptionAction(id),
     onSuccess: () => {
-      queryClient.setQueryData<CalendarSubscription>(
-        key(orgId),
-        (prev) => (prev ? { ...prev, is_active: false } : prev)
+      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+        prev ? { ...prev, is_active: false } : prev
       );
     },
   });
