@@ -317,7 +317,7 @@ export function WeekView({
   );
 
   return (
-    <div data-slot="week-view" className="flex h-full flex-col">
+    <div data-slot="week-view" className="flex h-full flex-col pt-2">
       <div className="bg-background/80 border-border/70 sticky top-0 z-30 grid grid-cols-8 border-b backdrop-blur-md">
         <div className="text-muted-foreground/70 px-2 py-2 text-left text-sm">
           <span className="max-[479px]:sr-only">MEZ (AT)</span>

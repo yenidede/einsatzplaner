@@ -357,8 +357,6 @@ export function ListView({
     setIsTableReady(true);
   }, [rowModelRows]);
 
-  console.log("Data in ListView:", data);
-
   if (data instanceof Response) {
     console.log("Error Response in ListView:", data);
     return (
