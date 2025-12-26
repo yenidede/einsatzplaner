@@ -35,13 +35,6 @@ import { cn } from "@/lib/utils";
 import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
 import { motion } from "motion/react";
 
-import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
-
-import {
-  detectChangeTypes,
-  getAffectedUserId,
-} from "@/features/activity_log/utils";
-
 interface EventDialogProps {
   einsatz: string | null;
   isOpen: boolean;
