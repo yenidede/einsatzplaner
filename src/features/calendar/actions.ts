@@ -9,7 +9,6 @@ import {
   buildCalendarSubscriptionUrl,
   buildWebcalUrl,
 } from "./calendarSubscription";
-import { httpUrl } from "zod";
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
