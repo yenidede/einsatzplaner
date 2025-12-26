@@ -393,6 +393,11 @@ export const authOptions: NextAuthOptions = {
       if (token.error === "RefreshAccessTokenError") {
         return {
           ...session,
+          user: {
+            ...session.user,
+            orgIds: [],
+            roleIds: [],
+          },
           error: "RefreshAccessTokenError",
           expires: new Date(0).toISOString(),
         } as Session;

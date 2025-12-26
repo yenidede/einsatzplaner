@@ -112,7 +112,6 @@ export function SelectFieldSettings({
           </Button>
         </div>
 
-        {/* ✅ Error Display */}
         {errors.length > 0 && (
           <div className="flex flex-col gap-1">
             {errors.map((error, index) => (

@@ -12,11 +12,7 @@ import {
   promoteToSuperadminAction,
   demoteFromSuperadminAction,
 } from "@/features/settings/users-action";
-import {
-  userProfileQueryKeys,
-  organizationUsersQueryKeys,
-} from "../queryKeys/userProfile-QueryKeys";
-import { organizationManageQueryKeys } from "../queryKeys/manage-QueryKeys";
+import { settingsQueryKeys } from "../queryKeys/queryKey";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import { UserProfileHeader } from "./UserProfile/UserProfileHeader";
 import { UserContactInfo } from "./UserProfile/UserContactInfo";
@@ -75,7 +71,7 @@ export function UserProfileDialog({
     isLoading: profileLoading,
     error,
   } = useQuery({
-    queryKey: userProfileQueryKeys.profile(userId, organizationId),
+    queryKey: settingsQueryKeys.userProfile(userId, organizationId),
     queryFn: async () => await getUserProfileAction(userId, organizationId),
     enabled: isOpen && !!userId && !!organizationId,
     staleTime: 30000,
@@ -83,7 +79,7 @@ export function UserProfileDialog({
   });
 
   const { data: userOrgRoles = [] } = useQuery<UserRole[]>({
-    queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+    queryKey: settingsQueryKeys.userOrgRoles(userId, organizationId),
     queryFn: async () => await getUserOrgRolesAction(organizationId, userId),
     enabled: isOpen && !!userId && !!organizationId,
     staleTime: 30000,
@@ -91,7 +87,7 @@ export function UserProfileDialog({
   });
 
   const { data: currentUserOrgRoles = [] } = useQuery<UserRole[]>({
-    queryKey: userProfileQueryKeys.orgRoles(
+    queryKey: settingsQueryKeys.userOrgRoles(
       currentUserId || "",
       organizationId
     ),
@@ -269,20 +265,19 @@ export function UserProfileDialog({
 
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: userProfileQueryKeys.profile(userId, organizationId),
+          queryKey: settingsQueryKeys.userProfile(userId, organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
+          queryKey: settingsQueryKeys.allOrgRoles(organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+          queryKey: settingsQueryKeys.userOrgRoles(userId, organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+          queryKey: settingsQueryKeys.organizationUsers(organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey:
-            organizationManageQueryKeys.userOrganizations(organizationId),
+          queryKey: settingsQueryKeys.userOrganizations(organizationId),
         }),
       ]);
 
@@ -315,11 +310,10 @@ export function UserProfileDialog({
     onSuccess: async (data, variables, context) => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+          queryKey: settingsQueryKeys.organizationUsers(organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey:
-            organizationManageQueryKeys.userOrganizations(organizationId),
+          queryKey: settingsQueryKeys.userOrganizations(organizationId),
         }),
       ]);
 
@@ -343,20 +337,19 @@ export function UserProfileDialog({
     onSuccess: async (data, variables, context) => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: userProfileQueryKeys.profile(userId, organizationId),
+          queryKey: settingsQueryKeys.userProfile(userId, organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
+          queryKey: settingsQueryKeys.allOrgRoles(organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+          queryKey: settingsQueryKeys.userOrgRoles(userId, organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+          queryKey: settingsQueryKeys.organizationUsers(organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey:
-            organizationManageQueryKeys.userOrganizations(organizationId),
+          queryKey: settingsQueryKeys.userOrganizations(organizationId),
         }),
       ]);
 
@@ -387,20 +380,19 @@ export function UserProfileDialog({
     onSuccess: async (data, variables, context) => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: userProfileQueryKeys.profile(userId, organizationId),
+          queryKey: settingsQueryKeys.userProfile(userId, organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: userProfileQueryKeys.allOrgRoles(organizationId),
+          queryKey: settingsQueryKeys.allOrgRoles(organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: userProfileQueryKeys.orgRoles(userId, organizationId),
+          queryKey: settingsQueryKeys.userOrgRoles(userId, organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: organizationUsersQueryKeys.byOrg(organizationId),
+          queryKey: settingsQueryKeys.organizationUsers(organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey:
-            organizationManageQueryKeys.userOrganizations(organizationId),
+          queryKey: settingsQueryKeys.userOrganizations(organizationId),
         }),
       ]);
 
