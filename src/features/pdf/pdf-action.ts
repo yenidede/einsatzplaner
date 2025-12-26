@@ -9,10 +9,11 @@ import { validatePdfAccess } from "./lib/utils/authorization";
 import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
 import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
 import { getOrganizationForPDF } from "@/features/settings/organization-action";
-import type { Einsatz } from "@/features/einsatz/types";
+import type { Einsatz, EinsatzDetailed } from "@/features/einsatz/types";
 import type { PDFActionResult } from "./types/types";
 import { getEinsatzCategoriesForPDF } from "./category-action";
 import prisma from "@/lib/prisma";
+import { ForbiddenError, NotFoundError } from "@/lib/errors";
 
 interface EinsatzCategory {
   id: string;
@@ -188,20 +189,47 @@ export async function generateEinsatzPDF(
         : "Unknown"
     ); */
 
-    //console.log("Loading Einsatz data...");
-    const einsatz = await getEinsatzWithDetailsById(einsatzId);
-    if (!einsatz) {
-      console.error("Einsatz not found");
+    //console.log("Lade den Einsatz (DAL wirft bei Berechtigungsproblemen)");
+    let einsatz: EinsatzDetailed | null;
+    try {
+      const result = await getEinsatzWithDetailsById(einsatzId);
+
+      // Handle Response object
+      if (result && typeof result === "object" && "status" in result) {
+        return {
+          success: false,
+          error: "Fehler beim Laden des Einsatzes",
+        };
+      }
+
+      einsatz = result;
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        return {
+          success: false,
+          error: "Nicht autorisiert",
+        };
+      }
+      if (err instanceof NotFoundError) {
+        return {
+          success: false,
+          error: "Einsatz nicht gefunden",
+        };
+      }
+      console.error("Error while loading Einsatz:", err);
       return {
         success: false,
-        error: "Einsatz not found",
+        error:
+          err instanceof Error
+            ? err.message
+            : "Fehler beim Laden des Einsatzes",
       };
     }
-    if (einsatz instanceof Response) {
-      console.error("Einsatz returned Response object");
+
+    if (!einsatz) {
       return {
         success: false,
-        error: "Einsatz not found",
+        error: "Einsatz nicht gefunden",
       };
     }
     /*     console.log("Einsatz loaded:", {

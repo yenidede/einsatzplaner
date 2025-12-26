@@ -13,12 +13,12 @@ import type {
   ETV,
 } from "@/features/einsatz/types";
 import { hasPermissionFromSession, requireAuth } from "@/lib/auth/authGuard";
-import { redirect } from "next/navigation";
 
 import { ValidateEinsatzCreate } from "./validation-service";
 import z from "zod";
 import { detectChangeTypes, getAffectedUserIds } from "../activity_log/utils";
 import { createChangeLogAuto } from "../activity_log/activity_log-dal";
+import { BadRequestError, ForbiddenError } from "@/lib/errors";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(
@@ -26,7 +26,7 @@ export async function getEinsatzWithDetailsById(
 ): Promise<EinsatzDetailed | null | Response> {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
-    return new Response("Invalid ID", { status: 400 });
+    throw new BadRequestError("Invalid ID");
   }
 
   const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
@@ -263,9 +263,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
     org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new Error(
-      "Organisation muss angegeben werden oder User muss genau einer Organisation angehören"
-    );
+    throw new BadRequestError("Organisation muss angegeben werden");
   }
 
   // Prüfe ob User Zugriff auf diese Organisation hat
@@ -313,7 +311,7 @@ export async function createEinsatz({
   const { session, userIds } = await requireAuth();
 
   if (!hasPermissionFromSession(session, "einsaetze:create")) {
-    redirect("/unauthorized");
+    throw new ForbiddenError("Fehlende Berechtigungen");
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
@@ -321,11 +319,11 @@ export async function createEinsatz({
     data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new Error("Organisation muss angegeben werden");
+    throw new BadRequestError("Organisation muss angegeben werden");
   }
 
   if (!userOrgIds.includes(useOrgId)) {
-    redirect("/unauthorized");
+    throw new ForbiddenError("Fehlende Berechtigungen für diese Organisation");
   }
 
   const einsatzWithAuth = {
@@ -373,7 +371,7 @@ export async function updateEinsatzTime(data: {
 }): Promise<Einsatz> {
   const { session } = await requireAuth();
   if (!hasPermissionFromSession(session, "einsaetze:update")) {
-    redirect("/unauthorized");
+    throw new ForbiddenError("Fehlende Berechtigungen");
   }
 
   const dataSchema = z.object({
@@ -515,7 +513,7 @@ export async function updateEinsatz({
   const { session, userIds } = await requireAuth();
 
   if (!hasPermissionFromSession(session, "einsaetze:update")) {
-    redirect("/unauthorized");
+    throw new ForbiddenError("Fehlende Berechtigungen");
   }
 
   if (data.template_id && false) {
@@ -534,7 +532,7 @@ export async function updateEinsatz({
   } = data;
 
   if (!id) {
-    throw new Error("Einsatz must have an id for update");
+    throw new BadRequestError("Einsatz must have an id for update");
   }
 
   // Prüfe ob Einsatz existiert und User Zugriff hat
@@ -549,7 +547,7 @@ export async function updateEinsatz({
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    throw new Error("Unauthorized");
+    throw new ForbiddenError("Fehlende Berechtigungen für diese Organisation");
   }
 
   try {
@@ -635,7 +633,7 @@ export async function deleteEinsaetzeByIds(
     where: { id: { in: einsatzIds } },
   });
   if (!einsatz || einsatz.length === 0) {
-    throw new Error(`No Einsaetze found: ${einsatzIds.join(", ")}`);
+    throw new BadRequestError(`No Einsaetze found: ${einsatzIds.join(", ")}`);
   }
 
   try {
@@ -645,7 +643,7 @@ export async function deleteEinsaetzeByIds(
       },
     });
   } catch (error) {
-    throw new Error(
+    throw new BadRequestError(
       `Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`
     );
   }
