@@ -65,6 +65,11 @@ import {
 import { Select, SelectContent, SelectItem } from "../ui/select";
 import { SelectTrigger } from "@radix-ui/react-select";
 import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
+import {
+  getUserPropertiesByOrgId,
+  UserPropertyValue,
+} from "@/features/user_properties/user_property-dal";
+import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -79,6 +84,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   totalPrice: 0,
   helpersNeeded: 1,
   assignedUsers: [],
+  requiredUserProperties: [],
 };
 
 export const ZodEinsatzFormData = z
@@ -107,6 +113,7 @@ export const ZodEinsatzFormData = z
     totalPrice: z.number().min(0, "Gesamtpreis darf nicht negativ sein"),
     helpersNeeded: z.number().min(-1, "Helfer-Anzahl muss 0 oder größer sein"),
     assignedUsers: z.array(z.uuid()),
+    requiredUserProperties: z.array(z.uuid()).optional(),
   })
   .refine(
     (data) => {
@@ -205,6 +212,11 @@ export function EventDialogVerwaltung({
   const [dynamicFormData, setDynamicFormData] = useState<Record<string, any>>(
     {}
   );
+  const { data: availableProps } = useQuery({
+    queryKey: userPropertyQueryKeys.byOrg(activeOrgId ?? ""),
+    queryFn: () => getUserPropertiesByOrgId(activeOrgId ?? ""),
+    enabled: !!activeOrgId,
+  });
 
   const [errors, setErrors] = useState<{
     fieldErrors: Record<string, string[]>;
@@ -239,11 +251,17 @@ export function EventDialogVerwaltung({
   });
 
   const usersQuery = useQuery({
-    queryKey: UserQueryKeys.users(activeOrgId ?? ""),
+    queryKey: UserQueryKeys.user(activeOrgId ?? ""),
     queryFn: () => {
       return getAllUsersWithRolesByOrgId(activeOrgId ?? "");
     },
     enabled: !!activeOrgId,
+    select: (data) => {
+      return data.map((user) => ({
+        ...user,
+        user_property_value: (user as any).user_property_value || [],
+      }));
+    },
   });
 
   const { data: organizations } = useQuery({
@@ -613,7 +631,6 @@ export function EventDialogVerwaltung({
   const handleSave = async () => {
     // Full validation before saving
     const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
-    //const parsedDataDynamic = dynamicSchema?.safeParse(dynamicFormData);
 
     if (!parsedDataStatic.success) {
       const flattenedErrors = z.flattenError(parsedDataStatic.error);
@@ -629,6 +646,55 @@ export function EventDialogVerwaltung({
       fieldErrors: {},
       formErrors: [],
     });
+
+    if (
+      parsedDataStatic.data.requiredUserProperties &&
+      parsedDataStatic.data.requiredUserProperties.length > 0 &&
+      parsedDataStatic.data.assignedUsers.length > 0
+    ) {
+      const warnings: string[] = [];
+
+      const assignedUserDetails = usersQuery.data?.filter((user) =>
+        parsedDataStatic.data.assignedUsers.includes(user.id)
+      );
+
+      for (const propId of parsedDataStatic.data.requiredUserProperties) {
+        const property = availableProps?.find((p) => p.id === propId);
+        if (!property) continue;
+
+        const usersWithProperty = assignedUserDetails?.filter((user) => {
+          const userPropValue = user.user_property_value?.find(
+            (upv: UserPropertyValue) => upv.user_property_id === propId
+          );
+
+          if (property.field.type?.datatype === "boolean") {
+            return userPropValue?.value === "true";
+          }
+
+          return userPropValue?.value && userPropValue.value.trim() !== "";
+        });
+
+        if (!usersWithProperty || usersWithProperty.length === 0) {
+          warnings.push(
+            `Keine(r) der ausgewählten Helfer hat die benötigte Eigenschaft "${property.field.name}"`
+          );
+        }
+      }
+
+      // Warning zeigen ob trotzdem gespeichert werden soll bei fehlenden Eigenschaften
+      if (warnings.length > 0) {
+        const confirmed = await showDialog({
+          title: "Fehler",
+          description: warnings.join("\n\n") + "\n\nTrotzdem speichern?",
+          confirmText: "OK",
+          variant: "destructive",
+        });
+
+        if (confirmed !== "success") {
+          return;
+        }
+      }
+    }
 
     const startDateFull = new Date(staticFormData.startDate);
     const endDateFull = new Date(staticFormData.endDate);
@@ -880,7 +946,13 @@ export function EventDialogVerwaltung({
               activeOrg={
                 organizations?.find((org) => org.id === activeOrgId) ?? null
               }
+              availableProps={
+                availableProps?.filter((prop) => prop.field.name !== null) as
+                  | { id: string; field: { name: string } }[]
+                  | undefined
+              }
             />
+
             <DynamicFormFields
               fields={dynamicFormFields}
               formData={dynamicFormData}
@@ -890,6 +962,7 @@ export function EventDialogVerwaltung({
             <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
           </div>
         </div>
+
         <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
           {
             <TooltipCustom text={einsatz_singular + " löschen"}>

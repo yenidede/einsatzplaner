@@ -30,6 +30,7 @@ import MultiSelectFormField from "../form/multiSelectFormField";
 import FormInputFieldCustom from "../form/formInputFieldCustom";
 import type { EinsatzFormData } from "@/components/event-calendar/event-dialog";
 import { calcTotal, calcPricePerPersonFromTotal } from "../form/utils";
+import { MultiSelect } from "../form/multi-select";
 
 interface DefaultFormFieldsProps {
   formData: EinsatzFormData;
@@ -41,6 +42,7 @@ interface DefaultFormFieldsProps {
   categoriesOptions: Array<{ value: string; label: string }>;
   usersOptions: Array<{ value: string; label: string }>;
   activeOrg: Organization | null;
+  availableProps?: Array<{ id: string; field: { name: string } }>;
 }
 
 export function DefaultFormFields({
@@ -50,9 +52,38 @@ export function DefaultFormFields({
   categoriesOptions,
   usersOptions,
   activeOrg,
+  availableProps,
 }: DefaultFormFieldsProps) {
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
+  const [selectedProperties, setSelectedProperties] = useState<string[]>(
+    formData.requiredUserProperties ?? []
+  );
+
+  // Sync with formData ONLY when it changes from outside
+  const prevPropsRef = useRef<string>("");
+  useEffect(() => {
+    const currentPropsStr = JSON.stringify(
+      formData.requiredUserProperties ?? []
+    );
+
+    // Only update if the value changed from outside (not from our own handlePropertyChange)
+    if (prevPropsRef.current !== currentPropsStr) {
+      const currentProps = formData.requiredUserProperties ?? [];
+      const selectedPropsStr = JSON.stringify(selectedProperties);
+
+      if (currentPropsStr !== selectedPropsStr) {
+        setSelectedProperties(currentProps);
+      }
+    }
+    prevPropsRef.current = currentPropsStr;
+  }, [formData.requiredUserProperties]); // selectedProperties NICHT hier!
+
+  // Propagate changes to parent
+  const handlePropertyChange = (newProperties: string[]) => {
+    setSelectedProperties(newProperties);
+    onFormDataChange({ requiredUserProperties: newProperties });
+  };
   const isEndDateEdited = useRef(
     formData.endDate &&
       formData.startDate &&
@@ -381,6 +412,21 @@ export function DefaultFormFields({
           }}
         />
       </FormGroup>
+
+      {/* Benötigte Personeneigenschaften */}
+      <FormInputFieldCustom name="Benötigte Personeneigenschaften" errors={[]}>
+        <MultiSelect
+          options={
+            availableProps?.map((prop) => ({
+              value: prop.id,
+              label: String(prop.field.name),
+            })) ?? []
+          }
+          value={selectedProperties}
+          onValueChange={handlePropertyChange}
+          placeholder="Eigenschaften auswählen..."
+        />
+      </FormInputFieldCustom>
     </>
   );
 }
