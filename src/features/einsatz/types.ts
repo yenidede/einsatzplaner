@@ -50,7 +50,11 @@ export type EinsatzCreate = {
   // TODO:
   // change_log aktualisieren
 };
-
+export type EinsatzUserProperty = {
+  user_property_id: string;
+  is_required: boolean;
+  min_matching_users?: number | null;
+};
 export type EinsatzDetailed = EinsatzRawDb & {
   einsatz_status: EinsatzStatus;
   assigned_users?: string[];
@@ -66,16 +70,7 @@ export type EinsatzDetailed = EinsatzRawDb & {
   change_log: (ChangeLogRawDb & {
     user: { id: string; firstname: string | null; lastname: string | null };
   })[];
-  user_properties: Array<{
-    user_property_id: string;
-    is_required: boolean;
-    min_matching_users?: number | null;
-  }>;
-  einsatz_user_property: {
-    user_property_id: string;
-    is_required: boolean;
-    min_matching_users?: number | null;
-  }[];
+  user_properties: EinsatzUserProperty[];
 };
 
 export type ETV = Einsatz & {

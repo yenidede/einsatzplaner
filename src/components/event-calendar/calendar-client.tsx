@@ -378,6 +378,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         return acc;
       }, {} as Record<string, string>);
 
+      const propTypeMap = (props || []).reduce((acc: any, p: any) => {
+        acc[p.id] = p.field?.type?.datatype ?? null;
+        return acc;
+      }, {} as Record<string, string | null>);
+
       const assignedAfterAdd = Array.from(
         new Set([...(event?.assignedUsers || []), userId])
       );
@@ -397,7 +402,14 @@ export default function Component({ mode }: { mode: CalendarMode }) {
               (v: any) => v.user_property_id === propId
             );
             if (!upv || upv.value == null) return false;
-            if (String(upv.value).toLowerCase() === "true") return true;
+
+            const datatype = propTypeMap[propId];
+
+            if (datatype === "boolean") {
+              const val = String(upv.value).toLowerCase().trim();
+              return val === "true" || val === "1";
+            }
+
             return String(upv.value).trim() !== "";
           }).length;
 

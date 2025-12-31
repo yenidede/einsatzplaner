@@ -71,11 +71,6 @@ export async function getEinsatzWithDetailsById(
       is_required: prop.is_required,
       min_matching_users: prop.min_matching_users,
     })),
-    einsatz_user_property: einsatz_user_property.map((prop) => ({
-      user_property_id: prop.user_property_id,
-      is_required: prop.is_required,
-      min_matching_users: prop.min_matching_users,
-    })),
     comments: einsatz_comment.map((comment) => ({
       id: comment.id,
       einsatz_id: comment.einsatz_id,
