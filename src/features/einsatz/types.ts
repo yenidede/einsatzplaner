@@ -42,14 +42,27 @@ export type EinsatzCreate = {
   status_id?: string; // newly created einsatz doesnt need status. Only when saving to db.
   template_id?: string;
 
+  userProperties?: Array<{
+    user_property_id: string;
+    is_required: boolean;
+    min_matching_users?: number | null;
+  }>;
   // TODO:
   // change_log aktualisieren
 };
-
+export type EinsatzUserProperty = {
+  user_property_id: string;
+  is_required: boolean;
+  min_matching_users?: number | null;
+};
 export type EinsatzDetailed = EinsatzRawDb & {
   einsatz_status: EinsatzStatus;
   assigned_users?: string[];
-  einsatz_fields: (EinsatzField & { field_name: string | null, group_name: string | null, field_type: { datatype: string | null } })[];
+  einsatz_fields: (EinsatzField & {
+    field_name: string | null;
+    group_name: string | null;
+    field_type: { datatype: string | null };
+  })[];
   categories: string[];
   comments: (CommentRawDb & {
     user: { id: string; firstname: string | null; lastname: string | null };
@@ -57,6 +70,7 @@ export type EinsatzDetailed = EinsatzRawDb & {
   change_log: (ChangeLogRawDb & {
     user: { id: string; firstname: string | null; lastname: string | null };
   })[];
+  user_properties: EinsatzUserProperty[];
 };
 
 export type ETV = Einsatz & {

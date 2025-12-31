@@ -101,7 +101,7 @@ export const useAlertDialog = () => {
             >
               {state.options.title}
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="whitespace-pre-line">
               {state.options.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
