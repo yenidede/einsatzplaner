@@ -307,7 +307,9 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       return;
     }
 
-    const event = events?.find((e) => e.id === eventId);
+    const event = Array.isArray(events)
+      ? events.find((e) => e.id === eventId)
+      : undefined;
     const isCurrentlyAssigned = !!event?.assignedUsers?.includes(userId);
 
     if (isCurrentlyAssigned) {
