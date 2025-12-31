@@ -69,16 +69,16 @@ export function DefaultFormFields({
       min_matching_users: number | null;
     }>
   >(() => {
-    const v = (formData.requiredUserProperties ?? []) as unknown[];
+    const v = formData.requiredUserProperties ?? [];
     if (v.length === 0) return [];
     if (typeof v[0] === "string") {
-      return (v as string[]).map((id) => ({
+      return (v as unknown as string[]).map((id) => ({
         user_property_id: id,
         is_required: true,
         min_matching_users: 1,
       }));
     }
-    return ((v as typeof formData.requiredUserProperties) ?? []).map((p) => ({
+    return (v as any[]).map((p) => ({
       user_property_id: p.user_property_id,
       is_required: p.is_required ?? true,
       min_matching_users:
@@ -97,12 +97,12 @@ export function DefaultFormFields({
     );
 
     if (prevPropsRef.current !== currentPropsStr) {
-      const incoming = (formData.requiredUserProperties ?? []) as unknown[];
+      const incoming = formData.requiredUserProperties ?? [];
       let normalized: typeof propertyConfigs = [];
 
       if (incoming.length > 0) {
         if (typeof incoming[0] === "string") {
-          normalized = (incoming as string[]).map((id) => ({
+          normalized = (incoming as unknown as string[]).map((id) => ({
             user_property_id: id,
             is_required: true,
             min_matching_users: 1,
@@ -452,7 +452,7 @@ export function DefaultFormFields({
           />
         </div>
       </FormGroup>
-
+      {/* Helpers and User Selection */}
       <FormGroup>
         <FormField
           name={"Anzahl " + (activeOrg?.helper_name_plural ?? "Helfer")}
@@ -480,6 +480,7 @@ export function DefaultFormFields({
           }}
         />
       </FormGroup>
+
       {/* Helpers and User Selection */}
       <div className="space-y-3">
         <FormInputFieldCustom
