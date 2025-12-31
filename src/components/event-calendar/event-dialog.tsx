@@ -45,7 +45,7 @@ import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
-import { useAlertDialog } from "@/contexts/AlertDialogContext";
+import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import { CustomFormField, SupportedDataTypes } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
@@ -70,6 +70,7 @@ import {
   UserPropertyValue,
 } from "@/features/user_properties/user_property-dal";
 import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";
+import { Istok_Web } from "next/font/google";
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -113,7 +114,15 @@ export const ZodEinsatzFormData = z
     totalPrice: z.number().min(0, "Gesamtpreis darf nicht negativ sein"),
     helpersNeeded: z.number().min(-1, "Helfer-Anzahl muss 0 oder größer sein"),
     assignedUsers: z.array(z.uuid()),
-    requiredUserProperties: z.array(z.uuid()).optional(),
+    requiredUserProperties: z
+      .array(
+        z.object({
+          user_property_id: z.string().uuid(),
+          is_required: z.boolean(),
+          min_matching_users: z.number().int().min(0).nullable(),
+        })
+      )
+      .optional(),
   })
   .refine(
     (data) => {
@@ -487,8 +496,13 @@ export function EventDialogVerwaltung({
           helpersNeeded: einsatzDetailed.helpers_needed || 0,
           assignedUsers: einsatzDetailed.assigned_users || [],
           einsatzCategoriesIds: einsatzDetailed.categories || [],
+          requiredUserProperties:
+            einsatzDetailed.einsatz_user_property?.map((prop) => ({
+              user_property_id: prop.user_property_id,
+              is_required: prop.is_required,
+              min_matching_users: prop.min_matching_users ?? null,
+            })) || [],
         });
-
         // Reset errors when opening dialog
         setErrors({
           fieldErrors: {},
@@ -658,13 +672,18 @@ export function EventDialogVerwaltung({
         parsedDataStatic.data.assignedUsers.includes(user.id)
       );
 
-      for (const propId of parsedDataStatic.data.requiredUserProperties) {
-        const property = availableProps?.find((p) => p.id === propId);
+      for (const propConfig of parsedDataStatic.data.requiredUserProperties) {
+        if (!propConfig.is_required) continue;
+
+        const property = availableProps?.find(
+          (p) => p.id === propConfig.user_property_id
+        );
         if (!property) continue;
 
         const usersWithProperty = assignedUserDetails?.filter((user) => {
           const userPropValue = user.user_property_value?.find(
-            (upv: UserPropertyValue) => upv.user_property_id === propId
+            (upv: UserPropertyValue) =>
+              upv.user_property_id === propConfig.user_property_id
           );
 
           if (property.field.type?.datatype === "boolean") {
@@ -674,19 +693,28 @@ export function EventDialogVerwaltung({
           return userPropValue?.value && userPropValue.value.trim() !== "";
         });
 
-        if (!usersWithProperty || usersWithProperty.length === 0) {
-          warnings.push(
-            `Keine(r) der ausgewählten Helfer hat die benötigte Eigenschaft "${property.field.name}"`
-          );
+        const matchingCount = usersWithProperty?.length || 0;
+        const minRequired = propConfig.min_matching_users ?? 1;
+
+        if (matchingCount < minRequired) {
+          if (minRequired === 1) {
+            warnings.push(
+              `Mindestens ein Helfer benötigt die Eigenschaft "${property.field.name}" (aktuell: ${matchingCount})`
+            );
+          } else {
+            warnings.push(
+              `Mindestens ${minRequired} Helfer benötigen die Eigenschaft "${property.field.name}" (aktuell: ${matchingCount})`
+            );
+          }
         }
       }
 
       // Warning zeigen ob trotzdem gespeichert werden soll bei fehlenden Eigenschaften
       if (warnings.length > 0) {
         const confirmed = await showDialog({
-          title: "Fehler",
+          title: "Warnung: Fehlende Eigenschaften",
           description: warnings.join("\n\n") + "\n\nTrotzdem speichern?",
-          confirmText: "OK",
+          confirmText: "Trotzdem speichern",
           variant: "destructive",
         });
 
@@ -822,6 +850,7 @@ export function EventDialogVerwaltung({
       categories: parsedDataStatic.data.einsatzCategoriesIds ?? [],
       assignedUsers: parsedDataStatic.data.assignedUsers,
       einsatz_fields: einsatzFields,
+      userProperties: parsedDataStatic.data.requiredUserProperties ?? [],
     });
   };
 

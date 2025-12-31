@@ -48,6 +48,7 @@ export async function getEinsatzWithDetailsById(
     einsatz_comment,
     change_log,
     einsatz_field,
+    einsatz_user_property,
     ...rest
   } = einsaetzeFromDb;
 
@@ -65,6 +66,16 @@ export async function getEinsatzWithDetailsById(
       field_type: { datatype: field.field.type?.datatype ?? null },
     })),
     categories: einsatz_to_category.map((cat) => cat.einsatz_category.id),
+    user_properties: einsatz_user_property.map((prop) => ({
+      user_property_id: prop.user_property_id,
+      is_required: prop.is_required,
+      min_matching_users: prop.min_matching_users,
+    })),
+    einsatz_user_property: einsatz_user_property.map((prop) => ({
+      user_property_id: prop.user_property_id,
+      is_required: prop.is_required,
+      min_matching_users: prop.min_matching_users,
+    })),
     comments: einsatz_comment.map((comment) => ({
       id: comment.id,
       einsatz_id: comment.einsatz_id,
@@ -528,6 +539,7 @@ export async function updateEinsatz({
     einsatz_fields,
     assignedUsers,
     org_id,
+    userProperties,
     ...updateData
   } = data;
 
@@ -580,6 +592,16 @@ export async function updateEinsatz({
             deleteMany: {},
             create: (assignedUsers ?? []).map((userId) => ({
               user: { connect: { id: userId } },
+            })),
+          }),
+        },
+        einsatz_user_property: {
+          ...(userProperties && {
+            deleteMany: {},
+            create: userProperties.map((propId) => ({
+              user_property: { connect: { id: propId.user_property_id } },
+              is_required: propId.is_required,
+              min_matching_users: propId.min_matching_users || null,
             })),
           }),
         },
@@ -664,6 +686,7 @@ async function createEinsatzInDb({
     categories,
     einsatz_fields,
     assignedUsers = [],
+    userProperties,
     status_id = "offen",
     template_id = null,
     all_day = false,
@@ -696,6 +719,14 @@ async function createEinsatzInDb({
         create: assignedUsers.map((userId) => ({
           user: { connect: { id: userId } },
         })),
+      },
+      einsatz_user_property: {
+        create:
+          userProperties?.map((propId) => ({
+            user_property: { connect: { id: propId.user_property_id } },
+            is_required: propId.is_required,
+            min_matching_users: propId.min_matching_users || null,
+          })) || [],
       },
       status_id,
       template_id,
@@ -901,6 +932,13 @@ async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
         },
       },
       einsatz_status: true,
+      einsatz_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
+        },
+      },
       change_log: {
         select: {
           id: true,
