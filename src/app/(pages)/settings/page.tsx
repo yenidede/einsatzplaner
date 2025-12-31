@@ -15,7 +15,7 @@ import OrganisationIcon from "@/features/settings/components/ui/OrganisationIcon
 import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadProfilePictureIcon";
 import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
 import OrganizationCard from "@/features/settings/components/OrganizationCard";
-import CalendarSubscription from "@/features/calendar/components/CalendarSubscriptionClient";
+import CalendarSubscription from "@/features/calendar-subscription/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 import { settingsQueryKeys } from "@/features/settings/queryKeys/queryKey";
 import {

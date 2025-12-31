@@ -69,7 +69,7 @@ export function DefaultFormFields({
       min_matching_users: number | null;
     }>
   >(() => {
-    const v = formData.requiredUserProperties ?? [];
+    const v = (formData.requiredUserProperties ?? []) as unknown[];
     if (v.length === 0) return [];
     if (typeof v[0] === "string") {
       return (v as string[]).map((id) => ({
@@ -78,7 +78,7 @@ export function DefaultFormFields({
         min_matching_users: 1,
       }));
     }
-    return (v as any[]).map((p) => ({
+    return ((v as typeof formData.requiredUserProperties) ?? []).map((p) => ({
       user_property_id: p.user_property_id,
       is_required: p.is_required ?? true,
       min_matching_users:
@@ -97,7 +97,7 @@ export function DefaultFormFields({
     );
 
     if (prevPropsRef.current !== currentPropsStr) {
-      const incoming = formData.requiredUserProperties ?? [];
+      const incoming = (formData.requiredUserProperties ?? []) as unknown[];
       let normalized: typeof propertyConfigs = [];
 
       if (incoming.length > 0) {
@@ -453,6 +453,33 @@ export function DefaultFormFields({
         </div>
       </FormGroup>
 
+      <FormGroup>
+        <FormField
+          name={"Anzahl " + (activeOrg?.helper_name_plural ?? "Helfer")}
+          type="number"
+          min={0}
+          value={formData.helpersNeeded >= 0 ? formData.helpersNeeded : ""}
+          placeholder=""
+          errors={errors.fieldErrors["helpersNeeded"] || []}
+          onChange={(e) =>
+            handleChange("helpersNeeded", Number(e.target.value) || -1)
+          }
+        />
+        <MultiSelectFormField
+          name="Ausgewählte Personen"
+          options={usersOptions}
+          value={formData.assignedUsers}
+          placeholder="Personen auswählen"
+          animation={1}
+          errors={errors.fieldErrors["assignedUsers"] || []}
+          allowedActiveItems={
+            formData.helpersNeeded > 0 ? formData.helpersNeeded : undefined
+          }
+          onValueChange={(selectedValues) => {
+            handleChange("assignedUsers", selectedValues);
+          }}
+        />
+      </FormGroup>
       {/* Helpers and User Selection */}
       <div className="space-y-3">
         <FormInputFieldCustom
