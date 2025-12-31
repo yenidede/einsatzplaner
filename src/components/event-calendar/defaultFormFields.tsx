@@ -121,11 +121,14 @@ export function DefaultFormFields({
         }
       }
 
-      const localPropsStr = JSON.stringify(propertyConfigs);
-      if (JSON.stringify(normalized) !== localPropsStr) {
-        setPropertyConfigs(normalized);
-      }
+      setPropertyConfigs((prev) => {
+        const prevStr = JSON.stringify(prev);
+        const normalizedStr = JSON.stringify(normalized);
+        if (prevStr === normalizedStr) return prev;
+        return normalized;
+      });
     }
+
     prevPropsRef.current = currentPropsStr;
   }, [formData.requiredUserProperties]);
 
@@ -551,7 +554,7 @@ export function DefaultFormFields({
                         className="w-16 h-8 px-2 text-sm border rounded-md"
                         value={config.min_matching_users ?? 1}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 1;
+                          const value = parseInt(e.target.value);
                           handlePropertyConfigChange(config.user_property_id, {
                             min_matching_users: value,
                           });

@@ -70,7 +70,6 @@ import {
   UserPropertyValue,
 } from "@/features/user_properties/user_property-dal";
 import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";
-import { Istok_Web } from "next/font/google";
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -497,7 +496,7 @@ export function EventDialogVerwaltung({
           assignedUsers: einsatzDetailed.assigned_users || [],
           einsatzCategoriesIds: einsatzDetailed.categories || [],
           requiredUserProperties:
-            einsatzDetailed.einsatz_user_property?.map((prop) => ({
+            einsatzDetailed.user_properties?.map((prop) => ({
               user_property_id: prop.user_property_id,
               is_required: prop.is_required,
               min_matching_users: prop.min_matching_users ?? null,
@@ -687,10 +686,15 @@ export function EventDialogVerwaltung({
           );
 
           if (property.field.type?.datatype === "boolean") {
-            return userPropValue?.value === "true";
+            const val = String(userPropValue?.value ?? "")
+              .toLowerCase()
+              .trim();
+            return val === "true" || val === "1";
           }
 
-          return userPropValue?.value && userPropValue.value.trim() !== "";
+          return (
+            userPropValue?.value && String(userPropValue.value).trim() !== ""
+          );
         });
 
         const matchingCount = usersWithProperty?.length || 0;
