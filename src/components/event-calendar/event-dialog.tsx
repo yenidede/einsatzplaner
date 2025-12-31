@@ -199,7 +199,7 @@ export function EventDialogVerwaltung({
   onSave,
   onDelete,
 }: EventDialogProps) {
-  const { showDialog } = useAlertDialog();
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
   const { data: session } = useSession();
 
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -697,15 +697,7 @@ export function EventDialogVerwaltung({
         const minRequired = propConfig.min_matching_users ?? 1;
 
         if (matchingCount < minRequired) {
-          if (minRequired === 1) {
-            warnings.push(
-              `Mindestens ein Helfer benötigt die Eigenschaft "${property.field.name}" (aktuell: ${matchingCount})`
-            );
-          } else {
-            warnings.push(
-              `Mindestens ${minRequired} Helfer benötigen die Eigenschaft "${property.field.name}" (aktuell: ${matchingCount})`
-            );
-          }
+          warnings.push(property.field.name || "Unbekannte Eigenschaft");
         }
       }
 
@@ -713,7 +705,10 @@ export function EventDialogVerwaltung({
       if (warnings.length > 0) {
         const confirmed = await showDialog({
           title: "Warnung: Fehlende Eigenschaften",
-          description: warnings.join("\n\n") + "\n\nTrotzdem speichern?",
+          description:
+            "Folgende Eigenschaften sind nicht (oder nicht ausreichend) erfüllt:\n" +
+            warnings.map((w) => `• ${w}`).join("\n") +
+            "\n\nTrotzdem speichern?",
           confirmText: "Trotzdem speichern",
           variant: "destructive",
         });
@@ -830,7 +825,18 @@ export function EventDialogVerwaltung({
         });
       }
     }
-
+    const outgoingUserProperties = (
+      parsedDataStatic.data.requiredUserProperties ?? []
+    ).map((p) => ({
+      user_property_id: String(p.user_property_id),
+      is_required: !!p.is_required,
+      min_matching_users:
+        typeof p.min_matching_users === "number"
+          ? p.min_matching_users
+          : p.min_matching_users == null
+          ? null
+          : Number(p.min_matching_users),
+    }));
     //endregion
 
     onSave({
@@ -850,7 +856,7 @@ export function EventDialogVerwaltung({
       categories: parsedDataStatic.data.einsatzCategoriesIds ?? [],
       assignedUsers: parsedDataStatic.data.assignedUsers,
       einsatz_fields: einsatzFields,
-      userProperties: parsedDataStatic.data.requiredUserProperties ?? [],
+      userProperties: outgoingUserProperties,
     });
   };
 
@@ -868,183 +874,186 @@ export function EventDialogVerwaltung({
   // };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
-        <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
-          <DialogTitle>
-            {isLoading
-              ? "Laden..."
-              : currentEinsatz?.id
-              ? `Bearbeite '${staticFormData.title}'`
-              : staticFormData.title
-              ? `Erstelle '${staticFormData.title}'`
-              : `Erstelle ${einsatz_singular}`}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            {currentEinsatz?.id
-              ? einsatz_singular + " bearbeiten"
-              : einsatz_singular + " anlegen"}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      {AlertDialogComponent}
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
+          <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
+            <DialogTitle>
+              {isLoading
+                ? "Laden..."
+                : currentEinsatz?.id
+                ? `Bearbeite '${staticFormData.title}'`
+                : staticFormData.title
+                ? `Erstelle '${staticFormData.title}'`
+                : `Erstelle ${einsatz_singular}`}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {currentEinsatz?.id
+                ? einsatz_singular + " bearbeiten"
+                : einsatz_singular + " anlegen"}
+            </DialogDescription>
+          </DialogHeader>
 
-        {/* Display form-level errors */}
-        {errors.formErrors.length > 0 && (
-          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm shrink-0">
-            <ul className="list-disc list-inside">
-              {errors.formErrors.map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+          {/* Display form-level errors */}
+          {errors.formErrors.length > 0 && (
+            <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm shrink-0">
+              <ul className="list-disc list-inside">
+                {errors.formErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid gap-8 py-4">
-            <FormGroup>
-              {templatesQuery.isLoading ? (
-                <div>Lade Vorlagen ...</div>
-              ) : !activeTemplateId ? (
-                // template not yet set, show options
-                <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
-                  <div className="flex flex-wrap gap-4 mt-1.5">
-                    {templatesQuery.data?.map((t) => (
-                      <ToggleItemBig
-                        key={t.id}
-                        text={t.name ?? "Vorlage"}
-                        description={t.description ?? ""}
-                        iconUrl={t.template_icon.icon_url.trim()}
-                        onClick={() => {
-                          handleTemplateSelect(t.id);
-                        }}
-                        className="w-full sm:w-auto"
-                      />
-                    ))}
-                  </div>
-                </FormInputFieldCustom>
-              ) : (
-                <div className="flex justify-between">
-                  <div>
-                    Aktive Vorlage:{" "}
-                    {
-                      templatesQuery.data?.find(
-                        (t) => t.id === activeTemplateId
-                      )?.name
-                    }
-                  </div>
-                  <Select
-                    value={activeTemplateId}
-                    onValueChange={handleTemplateSelect}
-                  >
-                    <SelectTrigger>
-                      <Button asChild variant="outline">
-                        <div>Aktive Vorlage ändern</div>
-                      </Button>
-                    </SelectTrigger>
-                    <SelectContent>
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid gap-8 py-4">
+              <FormGroup>
+                {templatesQuery.isLoading ? (
+                  <div>Lade Vorlagen ...</div>
+                ) : !activeTemplateId ? (
+                  // template not yet set, show options
+                  <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
+                    <div className="flex flex-wrap gap-4 mt-1.5">
                       {templatesQuery.data?.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
+                        <ToggleItemBig
+                          key={t.id}
+                          text={t.name ?? "Vorlage"}
+                          description={t.description ?? ""}
+                          iconUrl={t.template_icon.icon_url.trim()}
+                          onClick={() => {
+                            handleTemplateSelect(t.id);
+                          }}
+                          className="w-full sm:w-auto"
+                        />
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </FormGroup>
-            {/* Form Fields */}
-            <DefaultFormFields
-              formData={staticFormData}
-              onFormDataChange={handleFormDataChange}
-              errors={errors}
-              categoriesOptions={
-                categoriesQuery?.data
-                  ? categoriesQuery?.data?.map((cat) => ({
-                      value: cat.id,
-                      label: cat.value,
-                    }))
-                  : []
-              }
-              usersOptions={
-                usersQuery?.data
-                  ? usersQuery.data.map((user) => ({
-                      value: user.id,
-                      label: user.firstname + " " + user.lastname,
-                    }))
-                  : []
-              }
-              activeOrg={
-                organizations?.find((org) => org.id === activeOrgId) ?? null
-              }
-              availableProps={
-                availableProps?.filter((prop) => prop.field.name !== null) as
-                  | { id: string; field: { name: string } }[]
-                  | undefined
-              }
-            />
+                    </div>
+                  </FormInputFieldCustom>
+                ) : (
+                  <div className="flex justify-between">
+                    <div>
+                      Aktive Vorlage:{" "}
+                      {
+                        templatesQuery.data?.find(
+                          (t) => t.id === activeTemplateId
+                        )?.name
+                      }
+                    </div>
+                    <Select
+                      value={activeTemplateId}
+                      onValueChange={handleTemplateSelect}
+                    >
+                      <SelectTrigger>
+                        <Button asChild variant="outline">
+                          <div>Aktive Vorlage ändern</div>
+                        </Button>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templatesQuery.data?.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </FormGroup>
+              {/* Form Fields */}
+              <DefaultFormFields
+                formData={staticFormData}
+                onFormDataChange={handleFormDataChange}
+                errors={errors}
+                categoriesOptions={
+                  categoriesQuery?.data
+                    ? categoriesQuery?.data?.map((cat) => ({
+                        value: cat.id,
+                        label: cat.value,
+                      }))
+                    : []
+                }
+                usersOptions={
+                  usersQuery?.data
+                    ? usersQuery.data.map((user) => ({
+                        value: user.id,
+                        label: user.firstname + " " + user.lastname,
+                      }))
+                    : []
+                }
+                activeOrg={
+                  organizations?.find((org) => org.id === activeOrgId) ?? null
+                }
+                availableProps={
+                  availableProps?.filter((prop) => prop.field.name !== null) as
+                    | { id: string; field: { name: string } }[]
+                    | undefined
+                }
+              />
 
-            <DynamicFormFields
-              fields={dynamicFormFields}
-              formData={dynamicFormData}
-              errors={errors.fieldErrors}
-              onFormDataChange={handleDynamicFormDataChange}
-            />
-            <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
+              <DynamicFormFields
+                fields={dynamicFormFields}
+                formData={dynamicFormData}
+                errors={errors.fieldErrors}
+                onFormDataChange={handleDynamicFormDataChange}
+              />
+              <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
+            </div>
           </div>
-        </div>
 
-        <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
-          {
-            <TooltipCustom text={einsatz_singular + " löschen"}>
+          <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
+            {
+              <TooltipCustom text={einsatz_singular + " löschen"}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    handleDelete(
+                      einsatz_singular,
+                      {
+                        id: currentEinsatz?.id,
+                        title:
+                          currentEinsatz?.title ??
+                          staticFormData.title ??
+                          einsatz_singular,
+                      },
+                      showDialog,
+                      onDelete
+                    )
+                  }
+                  aria-label={einsatz_singular + " löschen"}
+                >
+                  <RiDeleteBinLine size={16} aria-hidden="true" />
+                </Button>
+              </TooltipCustom>
+            }
+            <TooltipCustom text="PDF-Bestätigung drucken">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() =>
-                  handleDelete(
+                  handlePdfGenerate(
                     einsatz_singular,
                     {
                       id: currentEinsatz?.id,
-                      title:
-                        currentEinsatz?.title ??
-                        staticFormData.title ??
-                        einsatz_singular,
+                      title: currentEinsatz?.title ?? staticFormData.title,
                     },
-                    showDialog,
-                    onDelete
+                    generatePdf
                   )
                 }
-                aria-label={einsatz_singular + " löschen"}
+                aria-label="PDF-Bestätigung drucken"
               >
-                <RiDeleteBinLine size={16} aria-hidden="true" />
+                <FileDown size={16} aria-hidden="true" />
               </Button>
             </TooltipCustom>
-          }
-          <TooltipCustom text="PDF-Bestätigung drucken">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                handlePdfGenerate(
-                  einsatz_singular,
-                  {
-                    id: currentEinsatz?.id,
-                    title: currentEinsatz?.title ?? staticFormData.title,
-                  },
-                  generatePdf
-                )
-              }
-              aria-label="PDF-Bestätigung drucken"
-            >
-              <FileDown size={16} aria-hidden="true" />
-            </Button>
-          </TooltipCustom>
-          <div className="flex flex-1 justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleSave}>Speichern</Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <div className="flex flex-1 justify-end gap-2">
+              <Button variant="outline" onClick={onClose}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleSave}>Speichern</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
