@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import ical, {ICalEventStatus, ICalCalendarMethod} from "ical-generator";
+import ical, { ICalEventStatus, ICalCalendarMethod } from "ical-generator";
 
 type RouteContext = {
   params: Promise<{ token: string }>;
@@ -61,38 +61,37 @@ export async function GET(request: NextRequest, context: RouteContext) {
       (field.field.name ?? "").toLowerCase().match("/^(ort|location)$/")
     );
 
-    const urlToHelferansichtPage = `${process.env.NEXTAUTH_URL}/helferansicht`;
+    const urlToHelferansichtPage = `${process.env.NEXTAUTH_URL}helferansicht`;
 
-        const start = einsatz.start;
-        let end = einsatz.end;
-        if (isAllDay){
-            end = new Date(einsatz.end);
-            end.setDate(end.getDate()+1);
-        }
-
-        const event = calendar.createEvent({
-            start,end,
-            allDay: isAllDay,
-            summary: einsatz.title,
-            description: `Details und weitere Informationen unter: ${urlToHelferansichtPage}`,
-            /* url: urlToEinsatzPage, */
-            categories: categories.map(name => ({name})),
-            location: ortField?.value,
-            status: ICalEventStatus.CONFIRMED,
-        });
-        event.uid(`${einsatz.id}@${host}`)
-        if(categories.length){
-            event.categories(categories.map(name => ({name})));
-        }
-        if(phone || subscription.organization.email){
-            event.organizer({name: einsatz.organization?.name,
-                email: subscription.organization.email || undefined,
-            });
-        }
-
-        
+    const start = einsatz.start;
+    let end = einsatz.end;
+    if (isAllDay) {
+      end = new Date(einsatz.end);
+      end.setDate(end.getDate() + 1);
     }
 
+    const event = calendar.createEvent({
+      start,
+      end,
+      allDay: isAllDay,
+      summary: einsatz.title,
+      description: `Details und weitere Informationen unter: ${urlToHelferansichtPage}`,
+      /* url: urlToEinsatzPage, */
+      categories: categories.map((name) => ({ name })),
+      location: ortField?.value,
+      status: ICalEventStatus.CONFIRMED,
+    });
+    event.uid(`${einsatz.id}@${host}`);
+    if (categories.length) {
+      event.categories(categories.map((name) => ({ name })));
+    }
+    if (phone || subscription.organization.email) {
+      event.organizer({
+        name: einsatz.organization?.name,
+        email: subscription.organization.email || undefined,
+      });
+    }
+  }
 
   await prisma.calendar_subscription.update({
     where: { token },
