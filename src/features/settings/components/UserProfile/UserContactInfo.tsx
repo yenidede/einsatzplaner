@@ -1,5 +1,7 @@
 "use client";
 
+import { Mail, Phone } from "lucide-react";
+
 interface UserContactInfoProps {
   email: string;
   phone: string | null;
@@ -15,19 +17,16 @@ export function UserContactInfo({ email, phone }: UserContactInfoProps) {
       </div>
       <div className="inline-flex justify-center items-center gap-4">
         <div className="flex justify-start items-center gap-2">
-          <div className="w-4 h-4 relative overflow-hidden">
-            <div className="w-3.5 h-2.5 left-[1.33px] top-[2.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
-            <div className="w-3.5 h-1 left-[1.33px] top-[4.67px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
-          </div>
+          {/* Email Icon */}
+          <Mail className="w-4 h-4 text-slate-600" />
           <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
             {email}
           </div>
         </div>
         {phone && (
           <div className="flex justify-start items-center gap-2">
-            <div className="w-4 h-4 relative overflow-hidden">
-              <div className="w-3.5 h-3.5 left-[1.41px] top-[1.33px] absolute outline outline-[1.33px] outline-offset-[-0.67px] outline-slate-800" />
-            </div>
+            {/* Phone Icon */}
+            <Phone className="w-4 h-4 text-slate-600" />
             <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
               {phone}
             </div>
