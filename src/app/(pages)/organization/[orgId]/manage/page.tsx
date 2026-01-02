@@ -27,6 +27,8 @@ import { OrganizationDetailsForm } from "@/features/settings/components/manage/O
 import { OrganizationPreferences } from "@/features/settings/components/manage/OrganizationPreferences";
 import { UsersManagementSection } from "@/features/settings/components/manage/UserManagement";
 import { UserProperties } from "@/features/user_properties/components/UserProperties";
+import { OrganizationAddresses } from "@/features/settings/components/manage/OrganizationAddresses";
+import { OrganizationBankAccounts } from "@/features/settings/components/manage/OrganizationBankAccounts";
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -43,6 +45,8 @@ export default function OrganizationManagePage() {
   const [description, setDescription] = useState("");
   const [helperSingular, setHelperSingular] = useState("");
   const [helperPlural, setHelperPlural] = useState("");
+  const [einsatzSingular, setEinsatzSingular] = useState("");
+  const [einsatzPlural, setEinsatzPlural] = useState("");
   const [logoUrl, setLogoUrl] = useState<string>("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -91,6 +95,8 @@ export default function OrganizationManagePage() {
       setPhone(orgData.phone ?? "");
       setHelperSingular(orgData.helper_name_singular ?? "Helfer:in");
       setHelperPlural(orgData.helper_name_plural ?? "Helfer:innen");
+      setEinsatzSingular(orgData.einsatz_name_singular ?? "Einsatz");
+      setEinsatzPlural(orgData.einsatz_name_plural ?? "Einsätze");
     }
   }, [orgData]);
 
@@ -184,6 +190,8 @@ export default function OrganizationManagePage() {
       phone?: string;
       helper_name_singular?: string;
       helper_name_plural?: string;
+      einsatz_name_singular?: string;
+      einsatz_name_plural?: string;
       logoFile?: File | null;
     }) => {
       const updateData: any = {
@@ -194,6 +202,8 @@ export default function OrganizationManagePage() {
         phone: data.phone,
         helper_name_singular: data.helper_name_singular,
         helper_name_plural: data.helper_name_plural,
+        einsatz_name_singular: data.einsatz_name_singular,
+        einsatz_name_plural: data.einsatz_name_plural,
       };
 
       const res = await updateOrganizationAction(updateData);
@@ -231,7 +241,9 @@ export default function OrganizationManagePage() {
       phone,
       helper_name_singular: helperSingular,
       helper_name_plural: helperPlural,
-      logoFile,
+      einsatz_name_singular: einsatzSingular,
+      einsatz_name_plural: einsatzPlural,
+      logoFile: logoFile,
     });
   };
 
@@ -319,9 +331,15 @@ export default function OrganizationManagePage() {
               helperPlural={helperPlural}
               onHelperSingularChange={setHelperSingular}
               onHelperPluralChange={setHelperPlural}
+              einsatzSingular={einsatzSingular}
+              einsatzPlural={einsatzPlural}
+              onEinsatzSingularChange={setEinsatzSingular}
+              onEinsatzPluralChange={setEinsatzPlural}
             />
           </div>
+          <OrganizationAddresses organizationId={orgId} />
 
+          <OrganizationBankAccounts organizationId={orgId} />
           <UserProperties organizationId={orgId} />
 
           <UsersManagementSection

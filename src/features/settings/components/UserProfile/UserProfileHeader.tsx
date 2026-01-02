@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface UserProfileHeaderProps {
   firstname: string;
@@ -21,6 +21,30 @@ export function UserProfileHeader({
   const [imageError, setImageError] = useState(false);
   const initials =
     `${firstname?.[0] || ""}${lastname?.[0] || ""}`.toUpperCase() || "U";
+
+  // Die Rollen Absteigend nach Wichtigkeit sortieren
+  const sortedRoles = useMemo(() => {
+    const roleOrder = {
+      Helfer: 1,
+      "Helfer:in": 1,
+      Einsatzverwaltung: 2,
+      EV: 2,
+      Organisationsverwaltung: 3,
+      OV: 3,
+      Superadmin: 4,
+      SA: 4,
+    };
+
+    return [...userOrgRoles].sort((a, b) => {
+      const roleNameA = a.role?.name || a.role?.abbreviation || "";
+      const roleNameB = b.role?.name || b.role?.abbreviation || "";
+
+      const orderA = roleOrder[roleNameA as keyof typeof roleOrder] || 0;
+      const orderB = roleOrder[roleNameB as keyof typeof roleOrder] || 0;
+
+      return orderB - orderA;
+    });
+  }, [userOrgRoles]);
 
   return (
     <div className="px-4 flex flex-col justify-start items-start gap-4">
@@ -44,7 +68,7 @@ export function UserProfileHeader({
           {firstname} {lastname}
         </div>
         <div className="inline-flex justify-start items-start gap-1 flex-wrap">
-          {userOrgRoles.map((userRole, index) => (
+          {sortedRoles.map((userRole, index) => (
             <div
               key={index}
               className={`px-2 py-1 ${getRoleColor(
