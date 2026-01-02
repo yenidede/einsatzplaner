@@ -1,12 +1,13 @@
 "use client";
 
-import { RiDeleteBinLine } from "@remixicon/react";
-import { Crown } from "lucide-react";
+import { Crown, Trash } from "lucide-react";
 
 interface UserDangerZoneProps {
   organizationName: string;
   isSuperadmin: boolean;
   isCurrentUserSuperadmin: boolean;
+  isCurrentUserOV: boolean;
+  isTargetUserOV: boolean;
   isRemovingUser: boolean;
   isDemoting: boolean;
   isPromoting: boolean;
@@ -19,6 +20,8 @@ export function UserDangerZone({
   organizationName,
   isSuperadmin,
   isCurrentUserSuperadmin,
+  isCurrentUserOV,
+  isTargetUserOV,
   isRemovingUser,
   isDemoting,
   isPromoting,
@@ -28,45 +31,53 @@ export function UserDangerZone({
 }: UserDangerZoneProps) {
   const isLoading = isDemoting || isPromoting;
 
+  // Kann der aktuelle User den Ziel-User entfernen?
+  // - Superadmin kann alle entfernen
+  // - OV kann nur EV und Helfer entfernen (nicht Superadmin oder andere OV)
+  // - Andere können niemanden entfernen
+  const canRemoveUser =
+    isCurrentUserSuperadmin ||
+    (isCurrentUserOV && !isSuperadmin && !isTargetUserOV);
+
   return (
     <div className="self-stretch flex flex-col justify-center items-start">
-      <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-        <div className="flex-1 flex justify-start items-center gap-2">
-          <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+      <div className="self-stretch px-4 py-2 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div className="flex justify-start items-center gap-2 flex-wrap">
+          <div className="text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
             Gefahrenzone!
           </div>
-          <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
+          <div className="text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
             {organizationName}
           </div>
         </div>
       </div>
       <div className="self-stretch flex flex-col justify-center items-start">
-        <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-          <div className="px-4 pt-2 flex justify-start items-start gap-2">
-            <button
-              onClick={onRemoveUser}
-              disabled={isRemovingUser}
-              className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
-            >
-              <RiDeleteBinLine
-                size={24}
-                aria-hidden="true"
-                className="text-white"
-              />
-              <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                {isRemovingUser ? "Entfernt..." : "Aus Organisation Entfernen"}
-              </div>
-            </button>
+        <div className="self-stretch py-2 flex flex-col sm:flex-row justify-start items-start gap-2 sm:gap-4">
+          <div className="w-full px-4 pt-2 flex flex-col sm:flex-row justify-start items-stretch sm:items-start gap-2">
+            {canRemoveUser && (
+              <button
+                onClick={onRemoveUser}
+                disabled={isRemovingUser}
+                className="w-full sm:w-auto px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                <Trash className="text-white shrink-0" size={20} />
+                <div className="text-white text-sm font-medium font-['Inter'] leading-normal whitespace-nowrap">
+                  {isRemovingUser
+                    ? "Entfernt..."
+                    : "Aus Organisation Entfernen"}
+                </div>
+              </button>
+            )}
             {isCurrentUserSuperadmin && (
               <button
                 onClick={
                   isSuperadmin ? onDemoteFromSuperadmin : onPromoteToSuperadmin
                 }
                 disabled={isLoading}
-                className="px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
               >
-                <Crown className="text-white" />
-                <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
+                <Crown className="text-white shrink-0" size={20} />
+                <div className="text-white text-sm font-medium font-['Inter'] leading-normal whitespace-nowrap">
                   {isLoading
                     ? isSuperadmin
                       ? "Wird degradiert..."
@@ -76,6 +87,11 @@ export function UserDangerZone({
                     : "Zu Superadmin Ernennen"}
                 </div>
               </button>
+            )}
+            {!canRemoveUser && !isCurrentUserSuperadmin && (
+              <div className="text-slate-500 text-sm italic px-4 py-2">
+                Sie haben keine Berechtigung, diesen Benutzer zu entfernen.
+              </div>
             )}
           </div>
         </div>

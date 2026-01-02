@@ -122,15 +122,12 @@ export function UserProfileDialog({
     if (!isOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const preventTouch = (e: Event) => e.preventDefault();
-    document.addEventListener("touchmove", preventTouch, { passive: false });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prevOverflow || "";
-      document.removeEventListener("touchmove", preventTouch);
       document.removeEventListener("keydown", onKey);
     };
   }, [isOpen, onClose]);
@@ -231,6 +228,17 @@ export function UserProfileDialog({
     (userRole) =>
       userRole.role?.name === "Superadmin" ||
       userRole.role?.abbreviation === "SA"
+  );
+  const isCurrentUserOV = currentUserOrgRoles.some(
+    (userRole) =>
+      userRole.role?.name === "Organisationsverwaltung" ||
+      userRole.role?.abbreviation === "OV"
+  );
+
+  const isTargetUserOV = userOrgRoles.some(
+    (userRole) =>
+      userRole.role?.name === "Organisationsverwaltung" ||
+      userRole.role?.abbreviation === "OV"
   );
 
   const saveChangesMutation = useMutation({
@@ -532,7 +540,7 @@ export function UserProfileDialog({
 
   if (isLoading) {
     return createPortal(
-      <div className="fixed inset-0 z-40 flex items-center justify-center">
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
         <div className="fixed inset-0 bg-white/20 backdrop-blur-sm" />
         <div className="relative bg-white rounded-xl shadow-2xl p-8 border border-gray-200">
           <div className="flex items-center gap-3">
@@ -549,7 +557,7 @@ export function UserProfileDialog({
 
   if (error) {
     return createPortal(
-      <div className="fixed inset-0 z-40 flex items-center justify-center">
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
         <div
           className="fixed inset-0 bg-white/20 backdrop-blur-sm"
           onClick={onClose}
@@ -576,88 +584,95 @@ export function UserProfileDialog({
     <>
       {AlertDialogComponent}
       <div
-        className="fixed inset-0 z-40 flex items-center justify-center"
+        className="fixed inset-0 z-40 flex items-center justify-center p-4"
         aria-modal="true"
         role="dialog"
       >
         <div
           className="fixed inset-0 bg-white/20 backdrop-blur-md transition-opacity"
-          onClick={onClose}
+          onClick={handleClose}
         />
         <div
           ref={dialogRef}
           onClick={(e) => e.stopPropagation()}
-          className="w-[656px] h-[1024px] px-4 relative bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] inline-flex justify-start items-center gap-2.5 rounded-lg overflow-hidden"
+          className="w-full max-w-[90vw] lg:max-w-[900px] xl:max-w-[1024px] h-[90vh] relative bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] rounded-lg flex flex-col"
         >
-          <div className="flex-1 h-[740px] flex justify-start items-start gap-2 overflow-y-auto">
-            <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
-              <UserProfileHeader
-                firstname={userProfile.firstname}
-                lastname={userProfile.lastname}
-                pictureUrl={userProfile.picture_url}
-                userOrgRoles={userOrgRoles}
-                getRoleColor={getRoleColor}
-                getRoleDisplayName={getRoleDisplayName}
-              />
-              <UserContactInfo
-                email={userProfile.email}
-                phone={userProfile.phone}
-              />
-              <UserPersonalProperties
-                organizationName={userProfile.organization?.name || ""}
-                hasKey={hasKey}
-                onToggleKey={() => setHasKey(!hasKey)}
-                description={userProfile.description}
-                userProperties={userProperties}
-                propertyValues={propertyValues}
-                onPropertyValueChange={handlePropertyValueChange}
-              />
-              <UserRoleManagement
-                organizationName={userProfile.organization?.name || ""}
-                userRoles={userRoles}
-                saving={saving}
-                onToggleRole={toggleRole}
-              />
-              <UserDangerZone
-                organizationName={userProfile.organization?.name || ""}
-                isSuperadmin={isSuperadmin}
-                isCurrentUserSuperadmin={isCurrentUserSuperadmin}
-                isRemovingUser={removeUserMutation.isPending}
-                isDemoting={demoteFromSuperadminMutation.isPending}
-                isPromoting={promoteToSuperadminMutation.isPending}
-                onRemoveUser={handleRemoveUser}
-                onDemoteFromSuperadmin={handleDemoteFromSuperadmin}
-                onPromoteToSuperadmin={handlePromoteToSuperadmin}
-              />
-            </div>
-          </div>
-          <div className="w-[592px] left-[32px] top-[28px] absolute flex justify-end items-center gap-10">
+          {/* Fixed Header with Buttons */}
+          <div className="shrink-0 bg-white border-b border-slate-200 px-4 py-3 md:px-6 md:py-4">
             <div className="flex justify-end items-center gap-2">
               <button
                 onClick={handleClose}
-                className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-gray-50 transition-colors"
+                className="px-3 py-1.5 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2 hover:bg-gray-50 transition-colors text-sm"
               >
-                <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-normal">
-                  {hasChanges ? "Abbrechen (ESC)" : "Schließen (ESC)"}
-                </div>
+                <span className="text-slate-800 font-medium font-['Inter']">
+                  {hasChanges ? "Abbrechen" : "Schließen"}
+                </span>
               </button>
               <button
                 onClick={handleSaveAndClose}
                 disabled={saving}
-                className={`px-3 py-1 rounded-md flex justify-center items-center gap-2.5 disabled:opacity-50 transition-colors ${
+                className={`px-3 py-1.5 rounded-md flex justify-center items-center gap-2 disabled:opacity-50 transition-colors text-sm ${
                   hasChanges
                     ? "bg-blue-600 hover:bg-blue-700"
                     : "bg-slate-900 hover:bg-slate-800"
                 }`}
               >
-                <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
+                <span className="text-white font-medium font-['Inter']">
                   {saving
                     ? "Speichert..."
                     : hasChanges
                     ? "Änderungen Speichern"
                     : "Schließen"}
-                </div>
+                </span>
               </button>
+            </div>
+          </div>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8">
+              <div className="flex flex-col gap-6 md:gap-8">
+                <UserProfileHeader
+                  firstname={userProfile.firstname}
+                  lastname={userProfile.lastname}
+                  pictureUrl={userProfile.picture_url}
+                  userOrgRoles={userOrgRoles}
+                  getRoleColor={getRoleColor}
+                  getRoleDisplayName={getRoleDisplayName}
+                />
+                <UserContactInfo
+                  email={userProfile.email}
+                  phone={userProfile.phone}
+                />
+                <UserPersonalProperties
+                  organizationName={userProfile.organization?.name || ""}
+                  hasKey={hasKey}
+                  onToggleKey={() => setHasKey(!hasKey)}
+                  description={userProfile.description}
+                  userProperties={userProperties}
+                  propertyValues={propertyValues}
+                  onPropertyValueChange={handlePropertyValueChange}
+                />
+                <UserRoleManagement
+                  organizationName={userProfile.organization?.name || ""}
+                  userRoles={userRoles}
+                  saving={saving}
+                  onToggleRole={toggleRole}
+                />
+                <UserDangerZone
+                  organizationName={userProfile.organization?.name || ""}
+                  isSuperadmin={isSuperadmin}
+                  isCurrentUserSuperadmin={isCurrentUserSuperadmin}
+                  isCurrentUserOV={isCurrentUserOV}
+                  isTargetUserOV={isTargetUserOV}
+                  isRemovingUser={removeUserMutation.isPending}
+                  isDemoting={demoteFromSuperadminMutation.isPending}
+                  isPromoting={promoteToSuperadminMutation.isPending}
+                  onRemoveUser={handleRemoveUser}
+                  onDemoteFromSuperadmin={handleDemoteFromSuperadmin}
+                  onPromoteToSuperadmin={handlePromoteToSuperadmin}
+                />
+              </div>
             </div>
           </div>
         </div>
