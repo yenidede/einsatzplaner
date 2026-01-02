@@ -1,8 +1,5 @@
 "use client";
-import TooltipCustom from "@/components/tooltip-custom";
-import { Button } from "@/features/auth/components/ui/FormComponents";
-import { RiDeleteBinLine } from "@remixicon/react";
-import { Bitcoin, Trash } from "lucide-react";
+import { Trash } from "lucide-react";
 import React from "react";
 
 interface RoleType {

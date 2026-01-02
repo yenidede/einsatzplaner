@@ -274,7 +274,7 @@ export function OrganizationBankAccounts({
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => handleEdit(account)}
-                          className="p-1.5 text-slate-600  hover:bg-slate-100  rounded transition-colors"
+                          className="p-1.5 text-slate-600 hover:bg-slate-100 rounded transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -289,7 +289,7 @@ export function OrganizationBankAccounts({
                           onClick={() => handleDelete(account.id)}
                           className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                         >
-                          <Trash2 className="w-4 h-4  text-red-600" />
+                          <Trash2 className="w-4 h-4 text-red-600" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>

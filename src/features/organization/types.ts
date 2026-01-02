@@ -40,7 +40,7 @@ export type OrganizationForPDF = {
   addresses: {
     label: string | null;
     street: string;
-    postal_code: bigint;
+    postal_code: string;
     city: string;
     country: string;
   }[];
