@@ -75,7 +75,6 @@ export async function getOrganizationById(orgId: string) {
   };
 }
 
-
 export async function getEinsatzNamesByOrgId(orgId: string) {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -177,6 +176,8 @@ export async function getUserOrganizationByIdAction(orgId: string) {
     phone: org.phone ?? "",
     helper_name_singular: org.helper_name_singular ?? "Helfer:in",
     helper_name_plural: org.helper_name_plural ?? "Helfer:innen",
+    einsatz_name_singular: org.einsatz_name_singular ?? "Einsatz",
+    einsatz_name_plural: org.einsatz_name_plural ?? "Einsätze",
     created_at: org.created_at.toISOString(),
     members: org.user_organization_role.map((uor) => ({
       user: {
@@ -196,6 +197,8 @@ export type OrganizationUpdateData = {
   phone?: string;
   helper_name_singular?: string;
   helper_name_plural?: string;
+  einsatz_name_singular?: string;
+  einsatz_name_plural?: string;
   logo_url?: string;
 };
 
@@ -228,6 +231,10 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     dataToUpdate.helper_name_plural = data.helper_name_plural;
   if (data.email !== undefined) dataToUpdate.email = data.email;
   if (data.phone !== undefined) dataToUpdate.phone = data.phone;
+  if (data.einsatz_name_singular !== undefined)
+    dataToUpdate.einsatz_name_singular = data.einsatz_name_singular;
+  if (data.einsatz_name_plural !== undefined)
+    dataToUpdate.einsatz_name_plural = data.einsatz_name_plural;
 
   const updated = await prisma.organization.update({
     where: { id: data.id },
@@ -241,6 +248,8 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
       logo_url: true,
       helper_name_singular: true,
       helper_name_plural: true,
+      einsatz_name_singular: true,
+      einsatz_name_plural: true,
     },
   });
 
@@ -503,3 +512,174 @@ export async function getOrganizationForPDF(
       : null,
   };
 }
+
+//#region ADRESSEN
+
+export async function getOrganizationAddressesAction(orgId: string) {
+  try {
+    const addresses = await prisma.organization_address.findMany({
+      where: { org_id: orgId },
+      orderBy: { created_at: "desc" },
+    });
+    return addresses;
+  } catch (error) {
+    console.error("Error fetching addresses:", error);
+    throw new Error("Fehler beim Laden der Adressen");
+  }
+}
+
+export async function createOrganizationAddressAction(data: {
+  orgId: string;
+  label?: string;
+  street: string;
+  postal_code: string;
+  city: string;
+  country: string;
+}) {
+  try {
+    const address = await prisma.organization_address.create({
+      data: {
+        org_id: data.orgId,
+        label: data.label,
+        street: data.street,
+        postal_code: BigInt(data.postal_code),
+        city: data.city,
+        country: data.country,
+      },
+    });
+
+    revalidatePath(`/organization/${data.orgId}/manage`);
+    return { success: true, address };
+  } catch (error) {
+    console.error("Error creating address:", error);
+    throw new Error("Fehler beim Erstellen der Adresse");
+  }
+}
+
+export async function updateOrganizationAddressAction(data: {
+  id: string;
+  orgId: string;
+  label?: string;
+  street: string;
+  postal_code: string;
+  city: string;
+  country: string;
+}) {
+  try {
+    const address = await prisma.organization_address.update({
+      where: { id: data.id },
+      data: {
+        label: data.label,
+        street: data.street,
+        postal_code: BigInt(data.postal_code),
+        city: data.city,
+        country: data.country,
+      },
+    });
+
+    revalidatePath(`/organization/${data.orgId}/manage`);
+    return { success: true, address };
+  } catch (error) {
+    console.error("Error updating address:", error);
+    throw new Error("Fehler beim Aktualisieren der Adresse");
+  }
+}
+
+export async function deleteOrganizationAddressAction(
+  id: string,
+  orgId: string
+) {
+  try {
+    await prisma.organization_address.delete({
+      where: { id },
+    });
+
+    revalidatePath(`/organization/${orgId}/manage`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting address:", error);
+    throw new Error("Fehler beim Löschen der Adresse");
+  }
+}
+//#endregion
+//#region BANKKONTEN
+
+export async function getOrganizationBankAccountsAction(orgId: string) {
+  try {
+    const accounts = await prisma.organization_bank_account.findMany({
+      where: { org_id: orgId },
+      orderBy: { created_at: "desc" },
+    });
+    return accounts;
+  } catch (error) {
+    console.error("Error fetching bank accounts:", error);
+    throw new Error("Fehler beim Laden der Bankkonten");
+  }
+}
+
+export async function createOrganizationBankAccountAction(data: {
+  orgId: string;
+  bank_name: string;
+  iban: string;
+  bic: string;
+}) {
+  try {
+    const account = await prisma.organization_bank_account.create({
+      data: {
+        org_id: data.orgId,
+        bank_name: data.bank_name,
+        iban: data.iban,
+        bic: data.bic,
+      },
+    });
+
+    revalidatePath(`/organization/${data.orgId}/manage`);
+    return { success: true, account };
+  } catch (error) {
+    console.error("Error creating bank account:", error);
+    throw new Error("Fehler beim Erstellen des Bankkontos");
+  }
+}
+
+export async function updateOrganizationBankAccountAction(data: {
+  id: string;
+  orgId: string;
+  bank_name: string;
+  iban: string;
+  bic: string;
+}) {
+  try {
+    const account = await prisma.organization_bank_account.update({
+      where: { id: data.id },
+      data: {
+        bank_name: data.bank_name,
+        iban: data.iban,
+        bic: data.bic,
+      },
+    });
+
+    revalidatePath(`/organization/${data.orgId}/manage`);
+    return { success: true, account };
+  } catch (error) {
+    console.error("Error updating bank account:", error);
+    throw new Error("Fehler beim Aktualisieren des Bankkontos");
+  }
+}
+
+export async function deleteOrganizationBankAccountAction(
+  id: string,
+  orgId: string
+) {
+  try {
+    await prisma.organization_bank_account.delete({
+      where: { id },
+    });
+
+    revalidatePath(`/organization/${orgId}/manage`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting bank account:", error);
+    throw new Error("Fehler beim Löschen des Bankkontos");
+  }
+}
+//#endregion
