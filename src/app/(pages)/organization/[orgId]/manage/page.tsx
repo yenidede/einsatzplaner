@@ -296,7 +296,7 @@ export default function OrganizationManagePage() {
     );
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-lg outline-1 -outline-offset-1 outline-slate-200 flex flex-col">
       <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
         <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
           <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
@@ -306,7 +306,7 @@ export default function OrganizationManagePage() {
         <div className="flex justify-end items-center gap-2">
           <Link
             href="/settings"
-            className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-slate-50 transition-colors"
+            className="px-3 py-1 bg-white rounded-md outline-1 -outline-offset-1 outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-slate-50 transition-colors"
           >
             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
               Abbrechen (ESC)
