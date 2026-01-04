@@ -31,6 +31,7 @@ import { UserProperties } from "@/features/user_properties/components/UserProper
 import { OrganizationAddresses } from "@/features/settings/components/manage/OrganizationAddresses";
 import { OrganizationBankAccounts } from "@/features/settings/components/manage/OrganizationBankAccounts";
 import { OrganizationDetails } from "@/features/settings/components/manage/OrganizationDetails";
+import { SettingsHeader } from "@/features/settings/components/SettingsHeader";
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -297,32 +298,11 @@ export default function OrganizationManagePage() {
 
   return (
     <div className="w-full max-w-7xl mx-auto bg-white rounded-lg outline-1 -outline-offset-1 outline-slate-200 flex flex-col">
-      <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
-        <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
-          <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
-            Einstellungen
-          </div>
-        </div>
-        <div className="flex justify-end items-center gap-2">
-          <Link
-            href="/settings"
-            className="px-3 py-1 bg-white rounded-md outline-1 -outline-offset-1 outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-slate-50 transition-colors"
-          >
-            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-              Abbrechen (ESC)
-            </div>
-          </Link>
-          <button
-            onClick={handleSave}
-            className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5 hover:bg-slate-800 transition-colors"
-          >
-            <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-              Speichern
-            </div>
-          </button>
-        </div>
-      </div>
-
+      <SettingsHeader
+        onSave={handleSave}
+        isSaving={updateMutation.isPending}
+        onCancel={() => router.push("/")}
+      />
       <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
         <OrganizationSidebar user={user} onSignOut={handleSignOut} />
 

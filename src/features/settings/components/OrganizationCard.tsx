@@ -42,7 +42,7 @@ export const OrganizationRoleBadge: React.FC<OrganizationRoleBadgeProps> = ({
 
 interface OrganizationCardProps {
   name: string;
-  roles?: RoleType[] | string[]; // safe: could be strings or objects
+  roles?: RoleType[] | string[];
   logo?: React.ReactNode;
   onLeave?: () => void;
 }
@@ -54,9 +54,29 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
   onLeave,
 }) => {
   // normalize roles to array of RoleType objects
-  const normalizedRoles: RoleType[] = Array.isArray(roles)
-    ? (roles as any[]).map((r) => (typeof r === "string" ? { name: r } : r))
-    : [{ name: String(roles) }];
+  const normalizedRoles: RoleType[] = (() => {
+    const base: RoleType[] = Array.isArray(roles)
+      ? (roles as any[]).map((r) => (typeof r === "string" ? { name: r } : r))
+      : [{ name: String(roles) }];
+
+    // sort the roles by priority
+    const priority = (role: RoleType) => {
+      const n = (role.name ?? "").toLowerCase();
+      if (n === "superadmin") return 4;
+      if (n === "ov" || n === "organisationsverwaltung") return 3;
+      if (n === "ev" || n === "einsatzverwaltung") return 2;
+      if (n === "helfer:in" || n === "helfer") return 1;
+      return 0;
+    };
+
+    return base
+      .map((r, i) => ({ r, i }))
+      .sort((a, b) => {
+        const p = priority(b.r) - priority(a.r);
+        return p !== 0 ? p : a.i - b.i; // tie-break by original order
+      })
+      .map((x) => x.r);
+  })();
 
   return (
     <div className="self-stretch px-4 py-6 inline-flex flex-col justify-start items-start gap-4">
