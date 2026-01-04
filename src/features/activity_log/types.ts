@@ -37,6 +37,7 @@ export interface ChangeLogEntry {
     start: Date;
     end: Date;
     all_day: boolean;
+    org_id: string;
     einsatz_to_category: Array<{
       id: string;
       category_id: string;
