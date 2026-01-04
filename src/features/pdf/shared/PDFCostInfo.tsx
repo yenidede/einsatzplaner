@@ -1,25 +1,25 @@
 import React from "react";
 import { View, Text } from "@react-pdf/renderer";
 import { commonStyles } from "../styles/common-styles";
+import { Decimal } from "@/generated/prisma/runtime/library";
 
 type PDFCostInfoProps = {
-  pricePerPerson: string;
-  pauschale: string;
-  minParticipants?: number;
+  pricePerPerson: Decimal;
+  participants: number;
 };
 
 export const PDFCostInfo: React.FC<PDFCostInfoProps> = ({
   pricePerPerson,
-  pauschale,
-  minParticipants = 10,
+  participants,
 }) => {
   return (
     <View style={commonStyles.infoRow}>
       <Text style={commonStyles.label}>Kosten:</Text>
       <View style={commonStyles.value}>
         <Text style={commonStyles.bold}>
-          € {pricePerPerson}/Person bzw. € {pauschale} Pauschale bei weniger als{" "}
-          {minParticipants} Teilnehmer:innen
+          € {pricePerPerson.toString().replace(".", ",")}/Person bzw. €{" "}
+          {pricePerPerson.mul(participants).toString()} bei {participants}{" "}
+          Teilnehmer:innen
         </Text>
 
         <View style={commonStyles.costInfo}>

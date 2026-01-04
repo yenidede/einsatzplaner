@@ -14,11 +14,11 @@ import {
 } from "@/features/settings/users-action";
 import { settingsQueryKeys } from "../queryKeys/queryKey";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
-import { UserProfileHeader } from "./UserProfile/UserProfileHeader";
-import { UserContactInfo } from "./UserProfile/UserContactInfo";
-import { UserPersonalProperties } from "./UserProfile/UserPersonalProperties";
-import { UserRoleManagement } from "./UserProfile/UserRoleManagement";
-import { UserDangerZone } from "./UserProfile/UserDangerZone";
+import { UserProfileHeader } from "./userProfile/UserProfileHeader";
+import { UserContactInfo } from "./userProfile/UserContactInfo";
+import { UserPersonalProperties } from "./userProfile/UserPersonalProperties";
+import { UserRoleManagement } from "./userProfile/UserRoleManagement";
+import { UserDangerZone } from "./userProfile/UserDangerZone";
 import {
   getUserPropertiesAction,
   getUserPropertyValuesAction,
@@ -622,7 +622,7 @@ export function UserProfileDialog({
                     ? "Speichert..."
                     : hasChanges
                     ? "Änderungen Speichern"
-                    : "Schließen"}
+                    : "Speichern"}
                 </span>
               </button>
             </div>

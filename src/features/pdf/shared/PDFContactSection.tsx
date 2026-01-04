@@ -13,16 +13,27 @@ export const PDFContactSection: React.FC<PDFContactSectionProps> = ({
   return (
     <View style={commonStyles.contactSection}>
       <Text style={commonStyles.bold}>{organization.name}</Text>
-      <Text>Schweizer Straße 5</Text>
-      <Text>6845 Hohenems</Text>
-      <Text>+43 (0)5576 73989</Text>
+      {organization.addresses[0] && (
+        <Text>
+          {organization.addresses[0].street &&
+            organization.addresses[0].street + "\n"}
+          {(organization.addresses[0].postal_code ||
+            organization.addresses[0].city) &&
+            `${organization.addresses[0].postal_code ?? ""} ${
+              organization.addresses[0].city ?? ""
+            }\n`}
+        </Text>
+      )}
+      {organization.phone && <Text>Tel: {organization.phone}</Text>}
       {organization.email && (
         <Text style={commonStyles.link}>{organization.email}</Text>
       )}
       {organization.details?.website && (
         <Text style={commonStyles.link}>{organization.details.website}</Text>
       )}
-      <Text>UID: ATU 37926303</Text>
+      {organization.details?.vat && (
+        <Text>UID: {organization.details.vat}</Text>
+      )}
 
       <Text style={{ marginTop: 10, fontWeight: "bold" }}>Öffnungszeiten</Text>
       <Text>Museum und Café: Di bis SO und an Feiertagen 10-17 Uhr</Text>

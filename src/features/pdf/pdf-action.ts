@@ -45,7 +45,8 @@ async function determinePDFTemplate(
     (cat) => cat.value?.toLowerCase() || ""
   );
 
-  // Prüfe ob Template-Feld "Schulstufe" existiert
+  const hasTitleSchule = einsatz.title.toLowerCase().includes("schule");
+
   let hasSchulstufeField = false;
 
   if (
@@ -67,64 +68,30 @@ async function determinePDFTemplate(
         },
       });
 
-      /*       console.log(
-        "Loaded field names:",
-        fields.map((f) => f.name)
-      ); */
-
-      hasSchulstufeField = fields.some((f) =>
-        f.name?.toLowerCase().includes("schulstufe")
+      hasSchulstufeField = fields.some(
+        (f) =>
+          f.name?.toLowerCase().includes("schulstufe") ||
+          f.name?.toLowerCase().includes("schule")
       );
     }
   }
 
-  // Prüfe auf Fluchtweg-Kategorie
   const hasFluchtwegCategory = categoryValues.some(
     (val) => val.includes("fluchtweg") || val.includes("fluchtwege")
   );
 
-  /*   console.log("PDF Template Detection - Start:", {
-    einsatzId: einsatz.id,
-    einsatzTitle: einsatz.title,
-    categories: categories.map((c) => c.value),
-    categoryValues,
-    fields: (einsatz as any).einsatz_fields,
-    checks: {
-      hasSchulstufeField,
-      hasFluchtwegCategory,
-    },
-  }); */
-
   let templateType: PDFTemplateType;
-  /* let reason: string; */
 
-  // 1. Kategorie "Fluchtwege" + Feld "Schulstufe" → Fluchtwege-Schule-PDF
-  if (hasFluchtwegCategory && hasSchulstufeField) {
+  if (hasFluchtwegCategory && (hasSchulstufeField || hasTitleSchule)) {
     templateType = "fluchtwege";
-    /* reason = 'Hat Kategorie "Fluchtwege" UND Template-Feld "Schulstufe"'; */
-  }
-  // 2. Nur Feld "Schulstufe" → Standard-Schul-PDF
-  else if (hasSchulstufeField) {
+  } else if (hasSchulstufeField || hasTitleSchule) {
     templateType = "schule";
-    /* reason = 'Hat Template-Feld "Schulstufe" (ohne Fluchtweg-Kategorie)'; */
-  }
-  // 3. Standard → Gruppen-PDF
-  else {
+  } else {
     templateType = "gruppe";
-    /* reason = "Standard (keine Schulstufe, keine Fluchtwege)"; */
   }
 
-  /*   console.log("PDF Template Selection:", {
-    templateType,
-    reason,
-    pdfComponent: {
-      fluchtwege: "BookingConfirmationPDF_Fluchtwege_School",
-      schule: "BookingConfirmationPDF_School",
-      gruppe: "BookingConfirmationPDF_Group",
-    }[templateType],
-    filename: `${templateType}_template`,
-  });
- */
+  console.log("Selected template:", templateType);
+
   return templateType;
 }
 
@@ -154,9 +121,6 @@ export async function generateEinsatzPDF(
   einsatzId: string,
   options?: PDFOptions
 ): Promise<PDFActionResult> {
-  /*   console.log("\nPDF GENERATION STARTED ================");
-  console.log("Input:", { einsatzId, options });
- */
   try {
     if (!einsatzId) {
       console.error("Missing einsatzId");
@@ -175,21 +139,11 @@ export async function generateEinsatzPDF(
         error: authResult.error || "Nicht autorisiert",
       };
     }
-    //console.log("Access granted");
 
-    // Lade den aktuellen User (der das PDF erstellt)
-    //console.log("Loading current user...");
     const currentUser = authResult.userId
       ? await getUserByIdWithOrgAndRole(authResult.userId)
       : null;
-    /*     console.log(
-      "Current user:",
-      currentUser
-        ? `${currentUser.firstname} ${currentUser.lastname}`
-        : "Unknown"
-    ); */
 
-    //console.log("Lade den Einsatz (DAL wirft bei Berechtigungsproblemen)");
     let einsatz: EinsatzDetailed | null;
     try {
       const result = await getEinsatzWithDetailsById(einsatzId);
@@ -232,21 +186,9 @@ export async function generateEinsatzPDF(
         error: "Einsatz nicht gefunden",
       };
     }
-    /*     console.log("Einsatz loaded:", {
-      id: einsatz.id,
-      title: einsatz.title,
-      start: einsatz.start,
-    }); */
 
-    //console.log("Processing categories...");
     const einsatzCategories = await getEinsatzCategoriesForPDF(einsatzId);
 
-    /*     console.log(
-      "Categories:",
-      einsatzCategories.map((c) => `${c.value} (${c.id})`)
-    ); */
-
-    //console.log("👥 Loading assigned users...");
     const assignedUsersRaw = await Promise.all(
       einsatz.assigned_users?.map((userId: string) =>
         getUserByIdWithOrgAndRole(userId)
@@ -266,14 +208,9 @@ export async function generateEinsatzPDF(
             }
           : null,
       }));
-    /*     console.log(
-      "Assigned users:",
-      assignedUsers.map((u) => `${u.firstname} ${u.lastname}`)
-    ); */
 
-    //console.log("Loading organization...");
     const organization = await getOrganizationForPDF(einsatz.org_id);
-    //console.log("Organization:", organization?.name);
+
     const templateType = await determinePDFTemplate(einsatz, einsatzCategories);
 
     const PDFComponent = {
@@ -282,7 +219,6 @@ export async function generateEinsatzPDF(
       gruppe: BookingConfirmationPDF_Group,
     }[templateType];
 
-    //console.log("Rendering PDF component...");
     const { Document } = await import("@react-pdf/renderer");
     const pdfBuffer = await renderToBuffer(
       React.createElement(
@@ -310,15 +246,9 @@ export async function generateEinsatzPDF(
         })
       )
     );
-    //console.log("PDF rendered, buffer size:", pdfBuffer.length, "bytes");
 
     const base64 = Buffer.from(pdfBuffer).toString("base64");
     const filename = generateFilename(einsatz, templateType);
-
-    /*     console.log("PDF Generation Success!");
-    console.log("Filename:", filename);
-    console.log("Base64 size:", base64.length, "characters");
-    console.log("========== PDF GENERATION END ==========\n"); */
 
     return {
       success: true,

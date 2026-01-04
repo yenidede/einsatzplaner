@@ -22,6 +22,7 @@ import {
   formatCurrentUserName,
   getSchulstufe,
 } from "../utils/pdf-helpers";
+import { Decimal } from "@/generated/prisma/runtime/library";
 
 type BookingConfirmationPDFProps = {
   einsatz: Einsatz;
@@ -47,7 +48,10 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
   const schulstufe = getSchulstufe(einsatz);
   const assignedUserNames = formatAssignedUserNames(assignedUsers);
   const currentUserName = formatCurrentUserName(currentUser);
-  const pricePerPerson = einsatz.price_per_person?.toFixed(2) ?? "3,50";
+  const pricePerPerson =
+    einsatz.price_per_person != null
+      ? new Decimal(einsatz.price_per_person)
+      : new Decimal(3.5);
   const orgName = organization?.name ?? "Jüdisches Museum Hohenems";
 
   const isFluchtwege = einsatzCategories.some((cat) =>
@@ -63,18 +67,18 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
         gerne bestätigen wir Ihnen die Buchung einer Führung im {orgName}:
       </Text>
 
-      <View style={commonStyles.infoBox}>
-        <View style={commonStyles.infoRow}>
+      <View style={commonStyles.infoBox} wrap={false}>
+        <View style={commonStyles.infoRow} wrap={false}>
           <Text style={commonStyles.label}>Gruppe:</Text>
           <View style={commonStyles.value}>
             <Text style={commonStyles.bold}>{einsatz.title}</Text>
-            <Text style={commonStyles.paragraph}>
+            <Text style={commonStyles.paragraph} wrap={false}>
               {participantCount} Schüler*innen, {schulstufe}. Schulstufe
             </Text>
           </View>
         </View>
 
-        <View style={commonStyles.infoRow}>
+        <View style={commonStyles.infoRow} wrap={false}>
           <Text style={commonStyles.label}>Zeit:</Text>
           <View style={commonStyles.value}>
             <Text style={commonStyles.bold}>{formatDate(einsatz.start)}</Text>
@@ -84,16 +88,16 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
           </View>
         </View>
 
-        <View style={commonStyles.infoRow}>
+        <View style={commonStyles.infoRow} wrap={false}>
           <Text style={commonStyles.label}>Programm:</Text>
           <View style={commonStyles.value}>
             <Text style={[commonStyles.bold, { marginBottom: 6 }]}>
-              {isFluchtwege ? "Fluchtwege" : einsatz.title}
+              {isFluchtwege ? "Fluchtwege" : "Wird noch bekanntgegeben"}
             </Text>
 
             {isFluchtwege && (
               <>
-                <Text style={commonStyles.paragraph}>
+                <Text style={commonStyles.paragraph} wrap={false}>
                   Die Exkursion startet beim Jüdischen Museum Hohenems und führt
                   über gut drei Kilometer in zwei Stunden bis zur Schweizer
                   Grenze. Das Ende des Programms ist beim Zollamt Hohenems. Bei
@@ -102,14 +106,14 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
                   verpflichtend.
                 </Text>
 
-                <Text style={commonStyles.paragraph}>
+                <Text style={commonStyles.paragraph} wrap={false}>
                   Der Rückweg zum Museum kann in ca. 30 Minuten zurückgelegt
                   werden. Alternativ fährt die Linie RTB 303 stündlich vom
                   Zollamt nach Hohenems Zentrum, auch mit einem Halt beim
                   Bahnhof Hohenems.
                 </Text>
 
-                <Text style={commonStyles.paragraph}>
+                <Text style={commonStyles.paragraph} wrap={false}>
                   Die Exkursion wird in der Regel bei jedem Wetter durchgeführt.
                   Bei sehr schlechtem Wetter wie beispielsweise Gewitter oder
                   starkem Schneefall wird vor Ort über eine Durchführung bzw.
@@ -124,7 +128,7 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
           </View>
         </View>
 
-        <View style={commonStyles.infoRow}>
+        <View style={commonStyles.infoRow} wrap={false}>
           <Text style={commonStyles.label}>Vermittlung:</Text>
           <Text style={[commonStyles.value, commonStyles.bold]}>
             {assignedUserNames}
@@ -133,15 +137,23 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
 
         <PDFCostInfo
           pricePerPerson={pricePerPerson}
-          pauschale="30,00"
-          minParticipants={10}
+          participants={participantCount}
         />
       </View>
 
-      <PDFAnreiseInfo />
-      <PDFCancellationText />
-      <PDFSignature userName={currentUserName} />
-      <PDFContactSection organization={organization} />
+      <View wrap={false}>
+        <PDFAnreiseInfo />
+      </View>
+      <View wrap={false}>
+        <PDFCancellationText />
+      </View>
+      <View wrap={false}>
+        <PDFSignature userName={currentUserName} />
+      </View>
+      <View wrap={false}>
+        <PDFContactSection organization={organization} />
+      </View>
+
       <BookingFooter organization={organization} />
     </Page>
   );

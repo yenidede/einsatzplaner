@@ -22,6 +22,7 @@ import {
   formatCurrentUserName,
   getSchulstufe,
 } from "../utils/pdf-helpers";
+import { Decimal } from "@/generated/prisma/runtime/library";
 
 type BookingConfirmationPDFProps = {
   einsatz: Einsatz;
@@ -47,7 +48,10 @@ export const BookingConfirmationPDF_School: React.FC<
   const schulstufe = getSchulstufe(einsatz);
   const assignedUserNames = formatAssignedUserNames(assignedUsers);
   const currentUserName = formatCurrentUserName(currentUser);
-  const pricePerPerson = einsatz.price_per_person?.toFixed(2) ?? "3,50";
+  const pricePerPerson =
+    einsatz.price_per_person != null
+      ? new Decimal(einsatz.price_per_person)
+      : new Decimal(3.5);
   const orgName = organization?.name ?? "Jüdisches Museum Hohenems";
 
   const programDisplay =
@@ -56,7 +60,7 @@ export const BookingConfirmationPDF_School: React.FC<
           .map((cat) => cat.abbreviation)
           .filter(Boolean)
           .join("/") || einsatz.title
-      : einsatzCategories[0]?.value || einsatz.title;
+      : einsatzCategories[0]?.value || "Wird noch bekanntgegeben";
 
   return (
     <Page size="A4" style={commonStyles.page}>
@@ -67,18 +71,18 @@ export const BookingConfirmationPDF_School: React.FC<
         gerne bestätigen wir Ihnen die Buchung einer Führung im {orgName}:
       </Text>
 
-      <View style={commonStyles.infoBox}>
-        <View style={commonStyles.infoRow}>
+      <View style={commonStyles.infoBox} wrap={false}>
+        <View style={commonStyles.infoRow} wrap={false}>
           <Text style={commonStyles.label}>Gruppe:</Text>
           <View style={commonStyles.value}>
-            <Text style={commonStyles.bold}>Schule</Text>
+            <Text style={commonStyles.bold}>{einsatz.title}</Text>
             <Text style={commonStyles.paragraph}>
               {participantCount} Schüler*innen, {schulstufe}. Schulstufe
             </Text>
           </View>
         </View>
 
-        <View style={commonStyles.infoRow}>
+        <View style={commonStyles.infoRow} wrap={false}>
           <Text style={commonStyles.label}>Zeit:</Text>
           <View style={commonStyles.value}>
             <Text style={commonStyles.bold}>{formatDate(einsatz.start)}</Text>
@@ -88,14 +92,14 @@ export const BookingConfirmationPDF_School: React.FC<
           </View>
         </View>
 
-        <View style={commonStyles.infoRow}>
+        <View style={commonStyles.infoRow} wrap={false}>
           <Text style={commonStyles.label}>Programm:</Text>
           <Text style={[commonStyles.value, commonStyles.bold]}>
             {programDisplay}
           </Text>
         </View>
 
-        <View style={commonStyles.infoRow}>
+        <View style={commonStyles.infoRow} wrap={false}>
           <Text style={commonStyles.label}>Vermittlung:</Text>
           <Text style={[commonStyles.value, commonStyles.bold]}>
             {assignedUserNames}
@@ -104,15 +108,22 @@ export const BookingConfirmationPDF_School: React.FC<
 
         <PDFCostInfo
           pricePerPerson={pricePerPerson}
-          pauschale="35,00"
-          minParticipants={10}
+          participants={participantCount}
         />
       </View>
 
-      <PDFAnreiseInfo />
-      <PDFCancellationText />
-      <PDFSignature userName={currentUserName} />
-      <PDFContactSection organization={organization} />
+      <View wrap={false}>
+        <PDFAnreiseInfo />
+      </View>
+      <View wrap={false}>
+        <PDFCancellationText />
+      </View>
+      <View wrap={false}>
+        <PDFSignature userName={currentUserName} />
+      </View>
+      <View wrap={false}>
+        <PDFContactSection organization={organization} />
+      </View>
       <BookingFooter organization={organization} />
     </Page>
   );

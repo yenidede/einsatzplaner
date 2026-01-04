@@ -106,9 +106,13 @@ export async function getUserCountByOrgId(orgId: string): Promise<number> {
     throw new Error("Unauthorized to access this organization");
   }
 
-  const count = await prisma.user_organization_role.count({
+  const uniqueUsers = await prisma.user_organization_role.findMany({
     where: { org_id: orgId },
+    select: { user_id: true },
+    distinct: ["user_id"],
   });
+
+  const count = uniqueUsers.length;
 
   return count;
 }
