@@ -45,7 +45,7 @@ export function SettingsHeader({
         {onCancel ? (
           <button
             onClick={handleCancel}
-            className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-slate-50 transition-colors"
+            className="px-3 py-1 bg-white rounded-md outline outline-offset-1 outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-slate-50 transition-colors"
           >
             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
               Abbrechen (ESC)
@@ -54,7 +54,7 @@ export function SettingsHeader({
         ) : (
           <Link
             href={cancelHref}
-            className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-slate-50 transition-colors"
+            className="px-3 py-1 bg-white rounded-md outline outline-offset-1 outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-slate-50 transition-colors"
           >
             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
               Abbrechen (ESC)

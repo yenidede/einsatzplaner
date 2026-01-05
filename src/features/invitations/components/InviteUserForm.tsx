@@ -137,7 +137,7 @@ export function InviteUserForm({
   const getSelectedRoleNames = () => {
     const names: string[] = [];
     if (helferRole) names.push("Helfer");
-    if (evRole) names.push(`${einsatzNamePlural}verwaltung`);
+    if (evRole) names.push(`Einsatzverwaltung`);
     if (ovRole) names.push("Organisationsverwaltung");
     return names;
   };
