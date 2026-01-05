@@ -39,7 +39,7 @@ export function UserPersonalProperties({
                 onPropertyValueChange(property.id, e.target.value)
               }
               placeholder={property.field.placeholder || ""}
-              className="w-full min-h-[80px] px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 resize-none"
+              className="w-full min-h-20 px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 resize-none"
               maxLength={property.field.max || undefined}
             />
           );
@@ -50,7 +50,7 @@ export function UserPersonalProperties({
             value={value}
             onChange={(e) => onPropertyValueChange(property.id, e.target.value)}
             placeholder={property.field.placeholder || ""}
-            className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300"
+            className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300"
             maxLength={property.field.max || undefined}
           />
         );
@@ -62,7 +62,7 @@ export function UserPersonalProperties({
             value={value}
             onChange={(e) => onPropertyValueChange(property.id, e.target.value)}
             placeholder={property.field.placeholder || ""}
-            className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300"
+            className="w-full px-3 py-2 bg-white rounded-md outline  outline-offset-1 outline-slate-300"
             min={property.field.min || undefined}
             max={property.field.max || undefined}
           />
@@ -86,7 +86,7 @@ export function UserPersonalProperties({
           <select
             value={value}
             onChange={(e) => onPropertyValueChange(property.id, e.target.value)}
-            className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300"
+            className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300"
           >
             <option value="">Bitte wählen...</option>
             {property.field.allowed_values.map((option, index) => (

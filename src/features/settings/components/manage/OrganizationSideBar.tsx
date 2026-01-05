@@ -80,7 +80,7 @@ export function OrganizationSidebar({
       </div>
       <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
         <div
-          className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors"
+          className="self-stretch px-4 py-2 rounded-md outline outline-offset-1 outline-slate-200 inline-flex justify-center items-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors"
           onClick={onSignOut}
         >
           <LogoutIcon className="w-4 h-4 relative overflow-hidden" />

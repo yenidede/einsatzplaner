@@ -321,7 +321,7 @@ export default function SettingsPage() {
   return (
     <>
       {AlertDialogComponent}
-      <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
+      <div className="w-full max-w-7xl mx-auto bg-white rounded-lg outline outline-offset-1 outline-slate-200 flex flex-col">
         <SettingsHeader
           onSave={handleSave}
           isSaving={mutation.isPending}
