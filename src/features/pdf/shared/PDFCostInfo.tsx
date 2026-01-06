@@ -18,8 +18,8 @@ export const PDFCostInfo: React.FC<PDFCostInfoProps> = ({
       <View style={commonStyles.value}>
         <Text style={commonStyles.bold}>
           € {pricePerPerson.toString().replace(".", ",")}/Person bzw. €{" "}
-          {pricePerPerson.mul(participants).toString()} bei {participants}{" "}
-          Teilnehmer:innen
+          {pricePerPerson.mul(participants).toString().replace(".", ",")} bei{" "}
+          {participants} Teilnehmer:innen
         </Text>
 
         <View style={commonStyles.costInfo}>

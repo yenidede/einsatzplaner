@@ -558,8 +558,7 @@ export function DefaultFormFields({
                           const finalValue =
                             isNaN(value) || value < 1 ? 1 : value;
                           handlePropertyConfigChange(config.user_property_id, {
-                            min_matching_users:
-                              isNaN(value) || value < 1 ? 1 : value,
+                            min_matching_users: finalValue,
                           });
                           e.target.value = String(finalValue);
                         }}
