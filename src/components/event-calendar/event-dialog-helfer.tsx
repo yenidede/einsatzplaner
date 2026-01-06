@@ -44,6 +44,12 @@ interface EventDialogProps {
   onAssignToggleEvent: (einsatzId: string) => void;
 }
 
+type UserPropertyWithField = {
+  id: string;
+  field?: {
+    name?: string | null;
+  };
+};
 export function EventDialogHelfer({
   einsatz,
   isOpen,
@@ -86,7 +92,7 @@ export function EventDialogHelfer({
     enabled: !!activeOrgId,
   });
 
-  const { data: userProperties } = useQuery({
+  const { data: userProperties } = useQuery<UserPropertyWithField[]>({
     queryKey: userPropertyQueryKeys.byOrg(activeOrgId ?? ""),
     queryFn: () => getUserPropertiesByOrgId(activeOrgId ?? ""),
     enabled: !!activeOrgId,
@@ -156,12 +162,11 @@ export function EventDialogHelfer({
           : 1;
 
       const usersWithProp = assignedDetails.filter((user) => {
-        const upv = (user as any).user_property_value?.find(
-          (v: any) => v.user_property_id === propConfig.user_property_id
+        const upv = user.user_property_value?.find(
+          (pv) => pv.user_property_id === propConfig.user_property_id
         );
-        const val = String(upv?.value ?? "")
-          .toLowerCase()
-          .trim();
+        const raw = upv?.value ?? "";
+        const val = String(raw).toLowerCase().trim();
         if (val === "true" || val === "1") return true;
         return val !== "";
       });
@@ -394,18 +399,13 @@ export function EventDialogHelfer({
               </Button>
             ) : (
               <Button
-                onClick={async () => {
+                onClick={() => {
                   if (!detailedEinsatz?.id || !session?.user?.id) {
                     toast.error(
-                      "Austragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen."
+                      "Eintragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen."
                     );
                     return;
                   }
-                  const assigning = !(
-                    detailedEinsatz.assigned_users ?? []
-                  ).includes(currentUserId ?? "");
-                  const ok = await validateAssignment(assigning);
-                  if (!ok) return;
                   onAssignToggleEvent(detailedEinsatz.id);
                 }}
               >

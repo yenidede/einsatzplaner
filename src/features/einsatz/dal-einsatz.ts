@@ -19,7 +19,6 @@ import z from "zod";
 import { detectChangeTypes, getAffectedUserIds } from "../activity_log/utils";
 import { createChangeLogAuto } from "../activity_log/activity_log-dal";
 import { BadRequestError, ForbiddenError } from "@/lib/errors";
-import { permission } from "@/lib/auth/permissions";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(
