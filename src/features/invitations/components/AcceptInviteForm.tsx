@@ -70,7 +70,7 @@ export default function AcceptInvitationClient({
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Rolle:</span>
-            <span className="font-medium">{invitation.role.name}</span>
+            <span className="font-medium">{invitation.organization.name}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Eingeladen von:</span>

@@ -32,7 +32,7 @@ export function OrganizationDetailsForm({
             type="text"
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
-            className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 focus:outline-blue-500"
+            className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
             placeholder="Organisationsname"
           />
         </div>
@@ -47,7 +47,7 @@ export function OrganizationDetailsForm({
             type="email"
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
-            className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 focus:outline-blue-500"
+            className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
             placeholder="organisation@example.com"
           />
         </div>
@@ -59,7 +59,7 @@ export function OrganizationDetailsForm({
             type="tel"
             value={phone}
             onChange={(e) => onPhoneChange(e.target.value)}
-            className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 focus:outline-blue-500"
+            className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
             placeholder="+43 123 456789"
           />
         </div>
@@ -73,7 +73,7 @@ export function OrganizationDetailsForm({
           <textarea
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
-            className="w-full h-20 px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 resize-none focus:outline-blue-500"
+            className="w-full h-20 px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 resize-none focus:outline-blue-500"
             placeholder="Beschreibung der Organisation"
           />
         </div>

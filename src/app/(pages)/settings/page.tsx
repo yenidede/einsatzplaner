@@ -1,21 +1,10 @@
 "use client";
 
-import { useEffect, useId, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import LogoutIcon from "@/components/icon/LogoutIcon";
-import { Switch } from "@/features/settings/components/ui/switch";
-import { Label } from "@/features/settings/components/ui/label";
-import { LabelSettings } from "@/features/settings/components/ui/LabelSettings";
-import { InputSettings } from "@/features/settings/components/ui/InputSettings";
-import SettingsIcon from "@/components/icon/SettingsIcon";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import OrganisationIcon from "@/features/settings/components/ui/OrganisationIcon";
-import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadProfilePictureIcon";
-import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
-import OrganizationCard from "@/features/settings/components/OrganizationCard";
-import CalendarSubscription from "@/features/calendar-subscription/components/CalendarSubscriptionClient";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 import { settingsQueryKeys } from "@/features/settings/queryKeys/queryKey";
 import {
@@ -30,28 +19,15 @@ import {
 } from "@/features/settings/settings-action";
 import { toast } from "sonner";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
-import Link from "next/link";
-
-type Organization = {
-  id: string;
-  name: string;
-  helper_name_singular?: string;
-  helper_name_plural?: string;
-  hasGetMailNotification: boolean;
-  roles: Array<{
-    id: string;
-    name: string;
-    abbreviation: string | null;
-  }>;
-};
-
-type Salutation = {
-  id: string;
-  salutation: string;
-};
+import { OrganizationSidebar } from "@/features/settings/components/manage/OrganizationSideBar";
+import { AccountSection } from "@/features/settings/components/allgemein/AccountSection";
+import { PersonalPreferencesSection } from "@/features/settings/components/allgemein/PersonalPreferencesSection";
+import { NotificationsSection } from "@/features/settings/components/allgemein/NotificationsSection";
+import { OrganizationsSection } from "@/features/settings/components/allgemein/OrganizationsSection";
+import { Organization } from "@/features/settings/types";
+import { SettingsHeader } from "@/features/settings/components/SettingsHeader";
 
 export default function SettingsPage() {
-  const id = useId();
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const { data: session, status, update } = useSession();
   const router = useRouter();
@@ -66,7 +42,6 @@ export default function SettingsPage() {
     null
   );
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
@@ -322,20 +297,12 @@ export default function SettingsPage() {
     }
   }
 
-  const hasManagePermission = (org: Organization): boolean => {
-    if (!org.roles || !Array.isArray(org.roles)) return false;
-
-    return org.roles.some((role) => {
-      const roleName = role?.name?.toLowerCase() || "";
-      const roleAbbr = role?.abbreviation?.toLowerCase() || "";
-
-      return (
-        roleName.includes("organisationsverwaltung") ||
-        roleName.includes("superadmin") ||
-        roleAbbr === "ov" ||
-        roleName === "ov"
-      );
-    });
+  const handleNotificationChange = (orgId: string, checked: boolean) => {
+    setOrganizations((prev) =>
+      prev.map((o) =>
+        o.id === orgId ? { ...o, hasGetMailNotification: checked } : o
+      )
+    );
   };
 
   if (status === "unauthenticated") {
@@ -351,378 +318,51 @@ export default function SettingsPage() {
     return <div>Keine Benutzerdaten gefunden.</div>;
   }
 
-  const initials = `${firstname?.[0] || ""}${
-    lastname?.[0] || ""
-  }`.toUpperCase();
-
-  const manageableOrganizations = organizations.filter(hasManagePermission);
-
   return (
     <>
       {AlertDialogComponent}
-      <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
-        <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
-          <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
-            <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
-              Einstellungen
-            </div>
-          </div>
-          <div className="flex justify-end items-center gap-2">
-            <button
-              className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
-              onClick={() => router.back()}
-            >
-              <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-                Abbrechen (ESC)
-              </div>
-            </button>
-            <button
-              className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5"
-              onClick={handleSave}
-            >
-              <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-                Speichern
-              </div>
-            </button>
-          </div>
-        </div>
-
+      <div className="w-full max-w-7xl mx-auto bg-white rounded-lg outline outline-offset-1 outline-slate-200 flex flex-col">
+        <SettingsHeader
+          onSave={handleSave}
+          isSaving={mutation.isPending}
+          onCancel={() => router.push("/")}
+        />
         <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
-          <div className="self-stretch inline-flex flex-col justify-between items-start">
-            <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
-              <div className="self-stretch px-2 py-1.5 bg-slate-100 rounded-md inline-flex justify-start items-center gap-2">
-                <div className="w-4 h-4 relative overflow-hidden">
-                  <SettingsIcon className="w-4 h-4 relative overflow-hidden" />
-                </div>
-                <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
-                  Allgemein
-                </div>
-              </div>
-
-              <div className="self-stretch h-px bg-slate-200" />
-
-              <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">
-                Organisationsverwaltung
-              </div>
-
-              {manageableOrganizations.length > 0 ? (
-                manageableOrganizations.map((org) => (
-                  <Link
-                    key={org.id}
-                    href={`/organization/${org.id}/manage`}
-                    className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
-                  >
-                    <OrganisationIcon />
-                    <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
-                      {org.name}
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="px-2 py-1.5 text-xs text-gray-400">
-                  Keine Berechtigung
-                </div>
-              )}
-            </div>
-
-            <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
-              <button
-                className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2"
-                onClick={() => signOut()}
-              >
-                <LogoutIcon className="w-4 h-4 relative overflow-hidden" />
-                <span className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-                  Ausloggen
-                </span>
-              </button>
-            </div>
-          </div>
+          <OrganizationSidebar user={userData} onSignOut={signOut} />
 
           <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
-            <div className="self-stretch flex flex-col justify-center items-start gap-4">
-              <div className="self-stretch flex flex-col justify-start items-start gap-2">
-                <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
-                  <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">
-                    Mein Account
-                  </div>
-                </div>
+            <AccountSection
+              firstname={firstname}
+              lastname={lastname}
+              email={email}
+              phone={phone}
+              pictureUrl={pictureUrl}
+              previewUrl={previewUrl}
+              onFirstnameChange={setFirstname}
+              onLastnameChange={setLastname}
+              onEmailChange={setEmail}
+              onPhoneChange={setPhone}
+              onProfilePictureUpload={handleProfilePictureUpload}
+              onRemoveProfilePicture={handleRemoveProfilePicture}
+            />
 
-                <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
-                  <div className="self-stretch px-4 flex flex-col justify-start items-start gap-2">
-                    <div className="inline-flex justify-start items-center gap-2">
-                      {previewUrl || pictureUrl ? (
-                        <img
-                          src={previewUrl || pictureUrl || ""}
-                          alt={
-                            previewUrl ? "Profilbild Vorschau" : "Profilbild"
-                          }
-                          className="w-10 h-10 rounded-full object-cover border"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 px-2 py-1.5 bg-slate-200 rounded-[20px] inline-flex flex-col justify-center items-center gap-2.5">
-                          <div className="justify-start text-slate-900 text-base font-normal font-['Inter'] leading-7">
-                            {initials}
-                          </div>
-                        </div>
-                      )}
-                      <div className="inline-flex flex-col justify-center items-start">
-                        <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-normal">
-                          {firstname} {lastname}
-                        </div>
-                      </div>
-                    </div>
+            <PersonalPreferencesSection
+              showLogos={showLogos}
+              salutationId={salutationId}
+              salutations={salutations}
+              onShowLogosChange={setShowLogos}
+              onSalutationChange={setSalutationId}
+            />
 
-                    <div className="inline-flex justify-start items-start gap-2">
-                      <button
-                        type="button"
-                        className="px-4 py-2 bg-slate-900 text-white rounded-md inline-flex justify-center items-center gap-2"
-                        onClick={() =>
-                          (
-                            document.querySelector(
-                              "input[type=file]"
-                            ) as HTMLInputElement | null
-                          )?.click()
-                        }
-                      >
-                        <UploadProfilePictureIcon />
-                        <span>Profilbild hochladen</span>
-                      </button>
-                      <ProfilePictureUpload
-                        onUpload={handleProfilePictureUpload}
-                      />
+            <NotificationsSection
+              organizations={organizations}
+              onNotificationChange={handleNotificationChange}
+            />
 
-                      <button
-                        type="button"
-                        className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
-                        onClick={handleRemoveProfilePicture}
-                      >
-                        <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-                          Profilbild entfernen
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                    <div className="grid w-full max-w-sm items-center gap-3">
-                      <LabelSettings
-                        htmlFor="firstname"
-                        className="text-sm font-medium"
-                      >
-                        Vorname
-                      </LabelSettings>
-                      <InputSettings
-                        id="firstname"
-                        value={firstname}
-                        className="w-full"
-                        onChange={(e) => setFirstname(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid w-full max-w-sm items-center gap-3">
-                      <LabelSettings
-                        htmlFor="lastname"
-                        className="text-sm font-medium"
-                      >
-                        Nachname
-                      </LabelSettings>
-                      <InputSettings
-                        id="lastname"
-                        value={lastname}
-                        className="w-full"
-                        onChange={(e) => setLastname(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-                    <div className="grid w-full max-w-sm items-center gap-3">
-                      <LabelSettings
-                        htmlFor={id}
-                        className="text-sm font-medium"
-                      >
-                        E-Mail
-                      </LabelSettings>
-                      <InputSettings
-                        id={id}
-                        value={email}
-                        className="w-full"
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid w-full max-w-sm items-center gap-3">
-                      <LabelSettings
-                        htmlFor="phone"
-                        className="text-sm font-medium"
-                      >
-                        Telefon
-                      </LabelSettings>
-                      <InputSettings
-                        id="phone"
-                        value={phone}
-                        className="w-full"
-                        onChange={(e) => setPhone(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="self-stretch flex flex-col justify-center items-start">
-              <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-                <div className="flex-1 flex justify-start items-center gap-2">
-                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                    Persönliche Präferenzen
-                  </div>
-                </div>
-              </div>
-
-              <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-                <div className="flex-1 px-4 flex justify-start items-start gap-4">
-                  <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                    <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
-                      Zeige Logos in Kalenderansicht
-                    </div>
-                    <div className="inline-flex items-center gap-2">
-                      <Switch
-                        id="logo-switch"
-                        checked={showLogos}
-                        onCheckedChange={setShowLogos}
-                        aria-label="Toggle switch"
-                      />
-                      <Label
-                        htmlFor="logo-switch"
-                        className="text-sm font-medium"
-                      >
-                        {showLogos ? "On" : "Off"}
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-                <div className="flex-1 px-4 flex justify-start items-start gap-4">
-                  <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-                    <LabelSettings
-                      htmlFor="salutation"
-                      className="text-sm font-medium"
-                    >
-                      Anrede
-                    </LabelSettings>
-                    <select
-                      id="salutation"
-                      value={salutationId || ""}
-                      onChange={(e) => setSalutationId(e.target.value)}
-                      className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-400 w-full"
-                    >
-                      <option value="">Bitte wählen</option>
-                      {salutations.map((sal: Salutation) => (
-                        <option key={sal.id} value={sal.id}>
-                          {sal.salutation}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="self-stretch flex flex-col justify-center items-start">
-              <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-                <div className="flex-1 flex justify-start items-center gap-2">
-                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                    Benachrichtigungen
-                  </div>
-                </div>
-              </div>
-
-              <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-                <div className="flex-1 px-4 flex flex-col gap-2">
-                  {organizations.length > 0 ? (
-                    organizations.map((org) => {
-                      const isOn = org.hasGetMailNotification ?? true;
-
-                      return (
-                        <div
-                          key={org.id}
-                          className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5"
-                        >
-                          <Label
-                            htmlFor={`org-switch-${org.id}`}
-                            className="text-sm font-medium"
-                          >
-                            Emails von{" "}
-                            <span className="font-bold">{org.name}</span>{" "}
-                            erhalten
-                          </Label>
-
-                          <div className="inline-flex items-center gap-2">
-                            <Switch
-                              id={`org-switch-${org.id}`}
-                              checked={isOn}
-                              onCheckedChange={(checked) => {
-                                setOrganizations((prev) =>
-                                  prev.map((o) =>
-                                    o.id === org.id
-                                      ? {
-                                          ...o,
-                                          hasGetMailNotification: checked,
-                                        }
-                                      : o
-                                  )
-                                );
-                              }}
-                              aria-label={`Toggle switch for ${org.name}`}
-                            />
-                            <Label
-                              htmlFor={`org-switch-${org.id}`}
-                              className="text-sm font-medium"
-                            >
-                              {isOn ? "On" : "Off"}
-                            </Label>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-slate-500">
-                      Keine Organisationen für Benachrichtigungen.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="self-stretch flex flex-col justify-center items-start">
-              <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-                <div className="flex-1 flex justify-start items-center gap-2">
-                  <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
-                    Meine Organisationen
-                  </div>
-                </div>
-              </div>
-
-              {organizations.length > 0 ? (
-                organizations.map((org) => (
-                  <div key={org.id}>
-                    <OrganizationCard
-                      name={org.name}
-                      roles={org.roles || []}
-                      onLeave={() => handleOrganizationLeave(org.id)}
-                    />
-                    <CalendarSubscription
-                      orgId={org.id}
-                      orgName={org.name}
-                      variant="card"
-                    />
-                  </div>
-                ))
-              ) : (
-                <div className="text-slate-500">
-                  Du bist in keiner Organisation.
-                </div>
-              )}
-            </div>
+            <OrganizationsSection
+              organizations={organizations}
+              onOrganizationLeave={handleOrganizationLeave}
+            />
           </div>
         </div>
       </div>

@@ -217,7 +217,7 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
       variant: "destructive",
     });
 
-    if (confirmed) {
+    if (confirmed === "success") {
       deleteMutation.mutate(propertyId);
     }
   };
