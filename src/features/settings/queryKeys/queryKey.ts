@@ -41,6 +41,9 @@ export const settingsQueryKeys = {
 
   orgDetails: (orgId: string) =>
     [...settingsQueryKeys.all, "orgDetails", orgId] as const,
+
+  userPropertyValues: (userId: string, orgId: string) =>
+    [...settingsQueryKeys.all, "userPropertyValues", userId, orgId] as const,
 } as const;
 
 export type SettingsQueryKeys = typeof settingsQueryKeys;

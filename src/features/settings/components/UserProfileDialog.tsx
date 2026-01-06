@@ -25,6 +25,7 @@ import {
   upsertUserPropertyValueAction,
 } from "@/features/user_properties/user_property-actions";
 import type { UserPropertyWithField } from "@/features/user_properties/user_property-dal";
+import { queryKeys } from "@/features/user/queryKeys";
 
 interface UserProfileDialogProps {
   isOpen: boolean;
@@ -112,7 +113,7 @@ export function UserProfileDialog({
   });
 
   const { data: userPropertyValues = [] } = useQuery({
-    queryKey: ["userPropertyValues", userId, organizationId],
+    queryKey: settingsQueryKeys.userPropertyValues(userId, organizationId),
     queryFn: () => getUserPropertyValuesAction(userId, organizationId),
     enabled: isOpen && !!userId && !!organizationId,
     staleTime: 30000,
@@ -459,9 +460,30 @@ export function UserProfileDialog({
       }
       await Promise.all(promises);
 
-      await queryClient.invalidateQueries({
-        queryKey: ["userPropertyValues", userId, organizationId],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.userProfile(userId, organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.userPropertyValues(
+            userId,
+            organizationId
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.organizationUsers(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.userOrganizations(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.user(organizationId),
+        }),
+        queryClient.refetchQueries({
+          queryKey: queryKeys.user(organizationId),
+          exact: true,
+        }),
+      ]);
 
       setOriginalPropertyValues({ ...propertyValues });
       setHasChanges(false);
