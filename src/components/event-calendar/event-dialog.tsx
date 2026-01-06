@@ -70,6 +70,7 @@ import {
   UserPropertyValue,
 } from "@/features/user_properties/user_property-dal";
 import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";
+
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -642,7 +643,6 @@ export function EventDialogVerwaltung({
   };
 
   const handleSave = async () => {
-    // Full validation before saving
     const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
 
     if (!parsedDataStatic.success) {
@@ -654,19 +654,36 @@ export function EventDialogVerwaltung({
       return;
     }
 
-    // Clear errors if validation passes
     setErrors({
       fieldErrors: {},
       formErrors: [],
     });
 
+    const warnings: string[] = [];
+
+    // Warning 1: Max 20 participants per helper
+    if (
+      parsedDataStatic.data.helpersNeeded > 0 &&
+      parsedDataStatic.data.participantCount > 0
+    ) {
+      const ratio =
+        parsedDataStatic.data.participantCount /
+        parsedDataStatic.data.helpersNeeded;
+      if (ratio > 20) {
+        warnings.push(
+          `Allgemein: Anzahl Teilnehmer:innen pro Helfer maximal 20 (aktuell: ${Math.round(
+            ratio
+          )})`
+        );
+      }
+    }
+
+    // Warning 2: Required user properties check
     if (
       parsedDataStatic.data.requiredUserProperties &&
       parsedDataStatic.data.requiredUserProperties.length > 0 &&
       parsedDataStatic.data.assignedUsers.length > 0
     ) {
-      const warnings: string[] = [];
-
       const assignedUserDetails = usersQuery.data?.filter((user) =>
         parsedDataStatic.data.assignedUsers.includes(user.id)
       );
@@ -701,25 +718,29 @@ export function EventDialogVerwaltung({
         const minRequired = propConfig.min_matching_users ?? 1;
 
         if (matchingCount < minRequired) {
-          warnings.push(property.field.name || "Unbekannte Eigenschaft");
+          const propName = property.field.name || "Unbekannte Eigenschaft";
+          warnings.push(
+            `Personeneigenschaften: mind. ${minRequired} Helfer mit '${propName}' benötigt (aktuell: ${matchingCount})`
+          );
         }
       }
+    }
 
-      // Warning zeigen ob trotzdem gespeichert werden soll bei fehlenden Eigenschaften
-      if (warnings.length > 0) {
-        const confirmed = await showDialog({
-          title: "Warnung: Fehlende Eigenschaften",
-          description:
-            "Folgende Eigenschaften sind nicht (oder nicht ausreichend) erfüllt:\n" +
-            warnings.map((w) => `• ${w}`).join("\n") +
-            "\n\nTrotzdem speichern?",
-          confirmText: "Trotzdem speichern",
-          variant: "destructive",
-        });
+    // Show warning dialog if there are any warnings
+    if (warnings.length > 0) {
+      const confirmed = await showDialog({
+        title: "Warnung: Kriterien nicht erfüllt",
+        description:
+          "Folgende Kriterien sind nicht erfüllt:\n\n" +
+          warnings.map((w) => `• ${w}`).join("\n") +
+          "\n\nTrotzdem speichern?",
+        confirmText: "Trotzdem speichern",
+        cancelText: "Abbrechen",
+        variant: "destructive",
+      });
 
-        if (confirmed !== "success") {
-          return;
-        }
+      if (confirmed !== "success") {
+        return;
       }
     }
 

@@ -38,6 +38,9 @@ export const settingsQueryKeys = {
     [...settingsQueryKeys.all, "calendar", orgId, userId] as const,
 
   salutation: () => [...settingsQueryKeys.all, "salutations"] as const,
+
+  orgDetails: (orgId: string) =>
+    [...settingsQueryKeys.all, "orgDetails", orgId] as const,
 } as const;
 
 export type SettingsQueryKeys = typeof settingsQueryKeys;

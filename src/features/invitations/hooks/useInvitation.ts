@@ -13,6 +13,10 @@ import {
   createInvitationAction,
 } from "../invitation-action";
 import { invitationQueryKeys } from "../queryKeys";
+import {
+  getActiveInvitationsByOrgId,
+  getInvitationByToken,
+} from "../invitation-dal";
 
 export interface UseInvitationReturn {
   loading: boolean;
@@ -61,7 +65,9 @@ export function useInvitation(): UseInvitationReturn {
         return result;
       } catch (err) {
         const errorMessage =
-          err instanceof Error ? err.message : "Fehler beim Senden der Einladung";
+          err instanceof Error
+            ? err.message
+            : "Fehler beim Senden der Einladung";
         setError(errorMessage);
         throw err;
       } finally {
@@ -137,22 +143,29 @@ export function useAcceptInvitation(): UseAcceptInvitationReturn {
 }
 
 export function useInvitations(organizationId: string) {
-  return useQuery<Invitation[]>({
+  return useQuery({
     queryKey: invitationQueryKeys.invitations(organizationId),
-    queryFn: async () => {
-      const response = await fetch(`/api/invitations?orgId=${organizationId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch invitations");
-      }
-      return response.json();
-    },
+    queryFn: () => getActiveInvitationsByOrgId(organizationId),
     enabled: !!organizationId,
   });
 }
+export interface InvitationDTO {
+  id: string;
+  email: string;
+  organization_id: string;
+  organizationName: string;
 
+  roleName: string;
+  roles: { id: string; name: string }[];
+
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+  inviterName: string;
+}
 interface InvitationValidation {
   valid: boolean;
-  invitation?: Invitation;
+  invitation?: InvitationDTO;
   error?: string;
 }
 
@@ -160,11 +173,8 @@ export function useInvitationValidation(token: string) {
   return useQuery<InvitationValidation>({
     queryKey: [invitationQueryKeys.invitation, token],
     queryFn: async () => {
-      const response = await fetch(`/api/invitations/${token}`);
-      if (!response.ok) {
-        throw new Error("Failed to validate invitation");
-      }
-      return response.json();
+      const response = await getInvitationByToken(token);
+      return response;
     },
     enabled: !!token,
     retry: false,
