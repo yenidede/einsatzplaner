@@ -19,6 +19,7 @@ import z from "zod";
 import { detectChangeTypes, getAffectedUserIds } from "../activity_log/utils";
 import { createChangeLogAuto } from "../activity_log/activity_log-dal";
 import { BadRequestError, ForbiddenError } from "@/lib/errors";
+import { permission } from "@/lib/auth/permissions";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(
@@ -259,7 +260,7 @@ export async function getEinsaetzeForTableView(
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "read:templates")) {
+  if (!hasPermissionFromSession(session, "templates:read")) {
     return new Response("Unauthorized", { status: 403 });
   }
 
