@@ -43,7 +43,7 @@ export function OrganizationDetails({
       onZvrChange(details.zvr || "");
       onAuthorityChange(details.authority || "");
     }
-  }, [details, onWebsiteChange, onVatChange, onZvrChange, onAuthorityChange]);
+  }, [details]);
 
   return (
     <div className="self-stretch flex flex-col justify-center items-start">

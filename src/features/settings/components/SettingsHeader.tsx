@@ -32,7 +32,7 @@ export function SettingsHeader({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onCancel]);
+  }, [handleCancel]);
 
   return (
     <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">

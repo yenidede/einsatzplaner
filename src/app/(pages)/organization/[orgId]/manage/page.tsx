@@ -297,7 +297,7 @@ export default function OrganizationManagePage() {
     );
 
   return (
-    <div className="w-full max-w-7xl mx-auto bg-white rounded-lg outline-1 -outline-offset-1 outline-slate-200 flex flex-col">
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-lg outline -outline-offset-1 outline-slate-200 flex flex-col">
       <SettingsHeader
         onSave={handleSave}
         isSaving={updateMutation.isPending}

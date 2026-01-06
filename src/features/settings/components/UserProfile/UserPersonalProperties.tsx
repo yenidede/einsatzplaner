@@ -62,7 +62,7 @@ export function UserPersonalProperties({
             value={value}
             onChange={(e) => onPropertyValueChange(property.id, e.target.value)}
             placeholder={property.field.placeholder || ""}
-            className="w-full px-3 py-2 bg-white rounded-md outline  outline-offset-1 outline-slate-300"
+            className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300"
             min={property.field.min || undefined}
             max={property.field.max || undefined}
           />
