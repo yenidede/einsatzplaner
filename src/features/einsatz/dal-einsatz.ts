@@ -259,7 +259,7 @@ export async function getEinsaetzeForTableView(
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "read:templates")) {
+  if (!hasPermissionFromSession(session, "templates:read")) {
     return new Response("Unauthorized", { status: 403 });
   }
 
