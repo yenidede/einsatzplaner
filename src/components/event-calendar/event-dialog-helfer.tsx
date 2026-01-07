@@ -37,6 +37,8 @@ import { motion } from "motion/react";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import { getUserPropertiesByOrgId } from "@/features/user_properties/user_property-dal";
 import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";
+import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
+
 interface EventDialogProps {
   einsatz: string | null;
   isOpen: boolean;
@@ -108,13 +110,10 @@ export function EventDialogHelfer({
     queryFn: () => GetStatuses(),
   });
 
-  const einsatz_singular =
-    organizations?.find((org) => org.id === activeOrgId)
-      ?.einsatz_name_singular ?? "Einsatz";
-
-  const helper_plural =
-    organizations?.find((org) => org.id === activeOrgId)?.helper_name_plural ??
-    "Helfer:innen";
+  const { einsatz_singular, helper_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   const creator = usersQuery.data?.find(
     (user) => user.id === detailedEinsatz?.created_by

@@ -69,21 +69,20 @@ function formatDate(date: Date): string {
 }
 
 function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
-  const { openDialog } = useEventDialog();
   return (
     <>
       <div className="flex justify-between items-center gap-3">
         <div
-          className="rounded-full w-8 h-8 flex justify-center items-center relative"
+          className="rounded-full w-6 h-6 flex justify-center items-center relative"
           style={{ backgroundColor: activity.change_type.change_color }}
         >
           <Image
             src={activity.change_type.change_icon_url}
             alt={activity.change_type.name}
-            width={16}
-            height={16}
+            width={14}
+            height={14}
             unoptimized
-            className="text-foreground w-4 h-4"
+            className="text-foreground w-3 h-3"
           ></Image>
         </div>
         <div className="grow">{getFormattedMessage(activity)}</div>
@@ -91,8 +90,8 @@ function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
           {formatDate(activity.created_at)}
         </time>
       </div>
-      <div className="w-8 h-6 flex justify-center items-center">
-        <div className="h-3 bg-border w-0.5"></div>
+      <div className="w-6 h-4 flex justify-center items-center">
+        <div className="h-3 border-l"></div>
       </div>
     </>
   );
@@ -112,7 +111,7 @@ function ActivityGroup({
   return (
     <div className="[&>div:last-child]:hidden pb-4">
       <div className="flex justify-between">
-        <h4 className="text-base font-semibold mb-3">{title}</h4>
+        <h4 className="font-semibold mb-3">{title}</h4>
         {button}
       </div>
       {activities.map((activity) => (
@@ -164,7 +163,7 @@ export function ActivityLogList({
   return (
     <>
       <motion.div
-        className={cn("space-y-6", className)}
+        className={cn("space-y-6 text-sm", className)}
         initial={{ height: 212, opacity: 0 }}
         animate={{ height: "auto", opacity: 1, originY: 0 }}
         exit={{ height: 212, opacity: 0 }}
