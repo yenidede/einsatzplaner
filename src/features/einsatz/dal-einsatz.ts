@@ -26,7 +26,7 @@ export async function getEinsatzWithDetailsById(
 ): Promise<EinsatzDetailed | null | Response> {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
-    throw new BadRequestError("Invalid ID");
+    return new Response("Invalid ID", { status: 400 });
   }
 
   const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
@@ -48,7 +48,6 @@ export async function getEinsatzWithDetailsById(
     einsatz_comment,
     change_log,
     einsatz_field,
-    einsatz_user_property,
     ...rest
   } = einsaetzeFromDb;
 
@@ -58,19 +57,11 @@ export async function getEinsatzWithDetailsById(
     assigned_users: einsatz_helper.map((helper) => helper.user_id),
     einsatz_fields: einsatz_field.map((field) => ({
       id: field.id,
-      field_name: field.field.name,
       einsatz_id: field.einsatz_id,
       field_id: field.field_id,
       value: field.value,
-      group_name: field.field.group_name,
-      field_type: { datatype: field.field.type?.datatype ?? null },
     })),
     categories: einsatz_to_category.map((cat) => cat.einsatz_category.id),
-    user_properties: einsatz_user_property.map((prop) => ({
-      user_property_id: prop.user_property_id,
-      is_required: prop.is_required,
-      min_matching_users: prop.min_matching_users,
-    })),
     comments: einsatz_comment.map((comment) => ({
       id: comment.id,
       einsatz_id: comment.einsatz_id,
@@ -114,7 +105,7 @@ export async function getAllEinsaetze(org_ids: string[]) {
 
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
-  if (!hasPermissionFromSession(session, "einsaetze:read")) {
+  if (!hasPermissionFromSession(session, "einsaetze:create")) {
     return new Response("Unauthorized", { status: 403 });
   }
 
@@ -269,7 +260,9 @@ export async function getAllTemplatesWithFields(org_id?: string) {
     org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new BadRequestError("Organisation muss angegeben werden");
+    throw new Error(
+      "Organisation muss angegeben werden oder User muss genau einer Organisation angehören"
+    );
   }
 
   // Prüfe ob User Zugriff auf diese Organisation hat
@@ -316,8 +309,8 @@ export async function createEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "einsaetze:create")) {
-    throw new ForbiddenError("Fehlende Berechtigungen");
+  if (!hasPermissionFromSession(session, "create:einsaetze")) {
+    redirect("/unauthorized");
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
@@ -325,11 +318,11 @@ export async function createEinsatz({
     data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new BadRequestError("Organisation muss angegeben werden");
+    throw new Error("Organisation muss angegeben werden");
   }
 
   if (!userOrgIds.includes(useOrgId)) {
-    throw new ForbiddenError("Fehlende Berechtigungen für diese Organisation");
+    redirect("/unauthorized");
   }
 
   const einsatzWithAuth = {
@@ -377,7 +370,7 @@ export async function updateEinsatzTime(data: {
 }): Promise<Einsatz> {
   const { session } = await requireAuth();
   if (!hasPermissionFromSession(session, "einsaetze:update")) {
-    throw new ForbiddenError("Fehlende Berechtigungen");
+    redirect("/unauthorized");
   }
 
   const dataSchema = z.object({
@@ -519,7 +512,7 @@ export async function updateEinsatz({
   const { session, userIds } = await requireAuth();
 
   if (!hasPermissionFromSession(session, "einsaetze:update")) {
-    throw new ForbiddenError("Fehlende Berechtigungen");
+    redirect("/unauthorized");
   }
 
   if (data.template_id && false) {
@@ -534,12 +527,11 @@ export async function updateEinsatz({
     einsatz_fields,
     assignedUsers,
     org_id,
-    userProperties,
     ...updateData
   } = data;
 
   if (!id) {
-    throw new BadRequestError("Einsatz must have an id for update");
+    throw new Error("Einsatz must have an id for update");
   }
 
   // Prüfe ob Einsatz existiert und User Zugriff hat
@@ -554,7 +546,7 @@ export async function updateEinsatz({
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    throw new ForbiddenError("Fehlende Berechtigungen für diese Organisation");
+    throw new Error("Unauthorized");
   }
 
   try {
@@ -587,16 +579,6 @@ export async function updateEinsatz({
             deleteMany: {},
             create: (assignedUsers ?? []).map((userId) => ({
               user: { connect: { id: userId } },
-            })),
-          }),
-        },
-        einsatz_user_property: {
-          ...(userProperties && {
-            deleteMany: {},
-            create: userProperties.map((propId) => ({
-              user_property: { connect: { id: propId.user_property_id } },
-              is_required: propId.is_required,
-              min_matching_users: propId.min_matching_users || null,
             })),
           }),
         },
@@ -650,7 +632,7 @@ export async function deleteEinsaetzeByIds(
     where: { id: { in: einsatzIds } },
   });
   if (!einsatz || einsatz.length === 0) {
-    throw new BadRequestError(`No Einsaetze found: ${einsatzIds.join(", ")}`);
+    throw new Error(`No Einsaetze found: ${einsatzIds.join(", ")}`);
   }
 
   try {
@@ -660,7 +642,7 @@ export async function deleteEinsaetzeByIds(
       },
     });
   } catch (error) {
-    throw new BadRequestError(
+    throw new Error(
       `Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`
     );
   }
@@ -681,7 +663,6 @@ async function createEinsatzInDb({
     categories,
     einsatz_fields,
     assignedUsers = [],
-    userProperties,
     status_id = "offen",
     template_id = null,
     all_day = false,
@@ -714,14 +695,6 @@ async function createEinsatzInDb({
         create: assignedUsers.map((userId) => ({
           user: { connect: { id: userId } },
         })),
-      },
-      einsatz_user_property: {
-        create:
-          userProperties?.map((propId) => ({
-            user_property: { connect: { id: propId.user_property_id } },
-            is_required: propId.is_required,
-            min_matching_users: propId.min_matching_users || null,
-          })) || [],
       },
       status_id,
       template_id,
@@ -927,13 +900,6 @@ async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
         },
       },
       einsatz_status: true,
-      einsatz_user_property: {
-        select: {
-          user_property_id: true,
-          is_required: true,
-          min_matching_users: true,
-        },
-      },
       change_log: {
         select: {
           id: true,
@@ -973,7 +939,6 @@ async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
               type: {
                 select: {
                   name: true,
-                  datatype: true,
                 },
               },
             },
