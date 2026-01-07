@@ -30,6 +30,7 @@ import MultiSelectFormField from "../form/multiSelectFormField";
 import FormInputFieldCustom from "../form/formInputFieldCustom";
 import type { EinsatzFormData } from "@/components/event-calendar/event-dialog";
 import { calcTotal, calcPricePerPersonFromTotal } from "../form/utils";
+import { MultiSelect } from "../form/multi-select";
 
 interface DefaultFormFieldsProps {
   formData: EinsatzFormData;
@@ -41,6 +42,13 @@ interface DefaultFormFieldsProps {
   categoriesOptions: Array<{ value: string; label: string }>;
   usersOptions: Array<{ value: string; label: string }>;
   activeOrg: Organization | null;
+  availableProps?: Array<{
+    id: string;
+    field: {
+      name: string;
+      type?: { datatype: string | null };
+    };
+  }>;
 }
 
 export function DefaultFormFields({
@@ -50,9 +58,109 @@ export function DefaultFormFields({
   categoriesOptions,
   usersOptions,
   activeOrg,
+  availableProps,
 }: DefaultFormFieldsProps) {
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
+  const [propertyConfigs, setPropertyConfigs] = useState<
+    Array<{
+      user_property_id: string;
+      is_required: boolean;
+      min_matching_users: number | null;
+    }>
+  >(() => {
+    const v = formData.requiredUserProperties ?? [];
+    if (v.length === 0) return [];
+    if (typeof v[0] === "string") {
+      return (v as unknown as string[]).map((id) => ({
+        user_property_id: id,
+        is_required: true,
+        min_matching_users: 1,
+      }));
+    }
+    return (v as any[]).map((p) => ({
+      user_property_id: p.user_property_id,
+      is_required: p.is_required ?? true,
+      min_matching_users:
+        typeof p.min_matching_users === "number"
+          ? p.min_matching_users
+          : p.min_matching_users == null
+          ? 1
+          : null,
+    }));
+  });
+
+  const prevPropsRef = useRef<string>("");
+  useEffect(() => {
+    const currentPropsStr = JSON.stringify(
+      formData.requiredUserProperties ?? []
+    );
+
+    if (prevPropsRef.current !== currentPropsStr) {
+      const incoming = formData.requiredUserProperties ?? [];
+      let normalized: typeof propertyConfigs = [];
+
+      if (incoming.length > 0) {
+        if (typeof incoming[0] === "string") {
+          normalized = (incoming as unknown as string[]).map((id) => ({
+            user_property_id: id,
+            is_required: true,
+            min_matching_users: 1,
+          }));
+        } else {
+          normalized = (incoming as any[]).map((p) => ({
+            user_property_id: p.user_property_id,
+            is_required: p.is_required ?? true,
+            min_matching_users:
+              typeof p.min_matching_users === "number"
+                ? p.min_matching_users
+                : p.min_matching_users == null
+                ? 1
+                : null,
+          }));
+        }
+      }
+
+      setPropertyConfigs((prev) => {
+        const prevStr = JSON.stringify(prev);
+        const normalizedStr = JSON.stringify(normalized);
+        if (prevStr === normalizedStr) return prev;
+        return normalized;
+      });
+    }
+
+    prevPropsRef.current = currentPropsStr;
+  }, [formData.requiredUserProperties]);
+
+  const handlePropertySelectionChange = (selectedIds: string[]) => {
+    const newConfigs = selectedIds.map((id) => {
+      const existing = propertyConfigs.find((c) => c.user_property_id === id);
+      return (
+        existing ?? {
+          user_property_id: id,
+          is_required: true,
+          min_matching_users: 1,
+        }
+      );
+    });
+
+    setPropertyConfigs(newConfigs);
+    onFormDataChange({ requiredUserProperties: newConfigs });
+  };
+
+  const handlePropertyConfigChange = (
+    propertyId: string,
+    updates: { is_required?: boolean; min_matching_users?: number | null }
+  ) => {
+    const newConfigs = propertyConfigs.map((config) =>
+      config.user_property_id === propertyId
+        ? { ...config, ...updates }
+        : config
+    );
+
+    setPropertyConfigs(newConfigs);
+    onFormDataChange({ requiredUserProperties: newConfigs });
+  };
   const isEndDateEdited = useRef(
     formData.endDate &&
       formData.startDate &&
@@ -60,7 +168,6 @@ export function DefaultFormFields({
         format(formData.startDate, "yyyy-MM-dd")
   );
 
-  // Keep ref in sync when form data changes from outside
   useEffect(() => {
     isEndDateEdited.current = !!(
       formData.endDate &&
@@ -70,7 +177,6 @@ export function DefaultFormFields({
     );
   }, [formData.startDate, formData.endDate]);
 
-  // Memoize time options so they're only calculated once
   const timeOptions = useMemo(() => {
     const options = [];
     for (let hour = StartHour; hour <= EndHour - 1; hour++) {
@@ -91,14 +197,12 @@ export function DefaultFormFields({
 
   return (
     <>
-      {/* Title and Categories - CORRECT */}
       <FormGroup className="grid grid-cols-[repeat(auto-fit,minmax(17rem,1fr))]">
         <FormField
           name={"Name " + (activeOrg?.einsatz_name_singular ?? "Einsatz")}
           placeholder="Name eingeben..."
           value={formData.title}
           onChange={(e) => handleChange("title", e.target.value)}
-          // errors are always accessed through handleChange name. Here "title"
           errors={errors.fieldErrors["title"] || []}
         />
         <MultiSelectFormField
@@ -114,7 +218,6 @@ export function DefaultFormFields({
         />
       </FormGroup>
 
-      {/* Date and Time Fields - CORRECT */}
       <div className="flex flex-col gap-4">
         <FormGroup className="flex flex-row">
           <FormInputFieldCustom
@@ -352,7 +455,6 @@ export function DefaultFormFields({
           />
         </div>
       </FormGroup>
-
       {/* Helpers and User Selection */}
       <FormGroup>
         <FormField
@@ -381,6 +483,94 @@ export function DefaultFormFields({
           }}
         />
       </FormGroup>
+
+      {/* Helpers and User Selection */}
+      <div className="space-y-3">
+        <FormInputFieldCustom
+          name="Benötigte Personeneigenschaften"
+          errors={[]}
+        >
+          <MultiSelect
+            options={
+              availableProps?.map((prop) => ({
+                value: prop.id,
+                label: String(prop.field.name),
+              })) ?? []
+            }
+            value={propertyConfigs.map((c) => c.user_property_id)}
+            onValueChange={handlePropertySelectionChange}
+            placeholder="Eigenschaften auswählen..."
+          />
+        </FormInputFieldCustom>
+
+        {/* Per-property configuration */}
+        {propertyConfigs.length > 0 && (
+          <div className="space-y-2 pl-4 border-l-2 border-muted">
+            {propertyConfigs.map((config) => {
+              const property = availableProps?.find(
+                (p) => p.id === config.user_property_id
+              );
+              if (!property) return null;
+
+              return (
+                <div
+                  key={config.user_property_id}
+                  className="flex items-center gap-3 p-2 rounded-md bg-muted/50"
+                >
+                  <div className="flex-1 font-medium text-sm">
+                    {property.field.name}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`required-${config.user_property_id}`}
+                      checked={config.is_required}
+                      onCheckedChange={(checked) =>
+                        handlePropertyConfigChange(config.user_property_id, {
+                          is_required: checked === true,
+                        })
+                      }
+                    />
+                    <Label
+                      htmlFor={`required-${config.user_property_id}`}
+                      className="text-xs cursor-pointer"
+                    >
+                      Erforderlich
+                    </Label>
+                  </div>
+
+                  {config.is_required && (
+                    <div className="flex items-center gap-2">
+                      <Label
+                        htmlFor={`min-${config.user_property_id}`}
+                        className="text-xs whitespace-nowrap"
+                      >
+                        Min:
+                      </Label>
+                      <input
+                        id={`min-${config.user_property_id}`}
+                        type="number"
+                        min={1}
+                        className="w-16 h-8 px-2 text-sm border rounded-md"
+                        defaultValue={config.min_matching_users ?? 1}
+                        onBlur={(e) => {
+                          const value = parseInt(e.target.value);
+                          const finalValue =
+                            isNaN(value) || value < 1 ? 1 : value;
+                          handlePropertyConfigChange(config.user_property_id, {
+                            min_matching_users: finalValue,
+                          });
+                          e.target.value = String(finalValue);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </>
   );
 }

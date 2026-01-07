@@ -1,9 +1,12 @@
-"use server"
+"use server";
 
 import prisma from "@/lib/prisma";
 import { createClient } from "@supabase/supabase-js";
 
-export async function getAllUsersWithRolesByOrgIds(org_ids: string[], role: string | null = null) {
+export async function getAllUsersWithRolesByOrgIds(
+  org_ids: string[],
+  role: string | null = null
+) {
   const roleFilter = role ? { role: { name: role } } : {};
 
   const users = await prisma.user.findMany({
@@ -12,7 +15,7 @@ export async function getAllUsersWithRolesByOrgIds(org_ids: string[], role: stri
         some: {
           org_id: { in: org_ids },
           ...roleFilter,
-        }
+        },
       },
     },
     select: {
@@ -32,18 +35,31 @@ export async function getAllUsersWithRolesByOrgIds(org_ids: string[], role: stri
               id: true,
               name: true,
               abbreviation: true,
-            }
+            },
           },
         },
       },
-    }
+      user_property_value: {
+        where: {
+          user_property: {
+            org_id: { in: org_ids },
+          },
+        },
+        select: {
+          id: true,
+          user_property_id: true,
+          value: true,
+        },
+      },
+    },
   });
   return users;
 }
 
-export async function getAllUsersWithRolesByOrgId(org_id: string, role: string | null = null) {
-
-
+export async function getAllUsersWithRolesByOrgId(
+  org_id: string,
+  role: string | null = null
+) {
   const roleFilter = role ? { role: { name: role } } : {};
 
   const users = await prisma.user.findMany({
@@ -52,7 +68,7 @@ export async function getAllUsersWithRolesByOrgId(org_id: string, role: string |
         some: {
           org_id: org_id,
           ...roleFilter,
-        }
+        },
       },
     },
     select: {
@@ -72,11 +88,23 @@ export async function getAllUsersWithRolesByOrgId(org_id: string, role: string |
               id: true,
               name: true,
               abbreviation: true,
-            }
+            },
           },
         },
       },
-    }
+      user_property_value: {
+        where: {
+          user_property: {
+            org_id: org_id,
+          },
+        },
+        select: {
+          id: true,
+          user_property_id: true,
+          value: true,
+        },
+      },
+    },
   });
   return users;
 }
@@ -97,7 +125,10 @@ export async function setUserActiveOrganization(userId: string, orgId: string) {
   }
 }
 
-export async function createAvatarUploadUrl(userId: string, invitationId: string) {
+export async function createAvatarUploadUrl(
+  userId: string,
+  invitationId: string
+) {
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY! // ✅ SERVER ONLY
@@ -114,7 +145,7 @@ export async function createAvatarUploadUrl(userId: string, invitationId: string
     select: {
       new_user_id: true,
     },
-  })
+  });
 
   if (!invitationUser) {
     throw new Error("either UserID or Invitation is invalid");
@@ -143,7 +174,5 @@ export async function deleteAvatarFromStorage(userId: string) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  await supabaseAdmin.storage
-    .from("avatars")
-    .remove([`${userId}/avatar.webp`]);
+  await supabaseAdmin.storage.from("avatars").remove([`${userId}/avatar.webp`]);
 }

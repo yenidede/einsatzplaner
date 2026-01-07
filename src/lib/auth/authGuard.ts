@@ -1,12 +1,10 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import {
-  getUserByIdWithOrgAndRole,
-  getUserRolesInOrganization,
-} from "@/DataAccessLayer/user";
+import { getUserRolesInOrganization } from "@/DataAccessLayer/user";
 import { authOptions } from "@/lib/auth.config";
 import { Session } from "next-auth";
+import { permission, PermissionType } from "./permissions";
 
 export const ROLE_NAME_MAP = {
   Superadmin: "559ed0cd-2644-47dd-9fb8-c6e333589e05",
@@ -18,89 +16,88 @@ export const ROLE_NAME_MAP = {
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Superadmin: [
     // Einsätze
-    "einsaetze:read",
-    "einsaetze:create",
-    "einsaetze:update",
-    "einsaetze:delete",
-    "einsaetze:join",
-    "einsaetze:leave",
-    "einsaetze:manage_assignments",
+    permission("einsaetze", "read"),
+    permission("einsaetze", "create"),
+    permission("einsaetze", "update"),
+    permission("einsaetze", "delete"),
+    permission("einsaetze", "join"),
+    permission("einsaetze", "leave"),
+    permission("einsaetze", "manage_assignments"),
     // Users
-    "users:read",
-    "users:create",
-    "users:update",
-    "users:delete",
-    "users:manage",
-    "users:invite",
+    permission("users", "read"),
+    permission("users", "create"),
+    permission("users", "update"),
+    permission("users", "delete"),
+    permission("users", "manage"),
+    permission("users", "invite"),
     // Organization
-    "organization:read",
-    "organization:update",
-    "organization:delete",
-    "organization:manage",
+    permission("organization", "read"),
+    permission("organization", "update"),
+    permission("organization", "delete"),
+    permission("organization", "manage"),
     // Roles
-    "roles:read",
-    "roles:create",
-    "roles:update",
-    "roles:delete",
-    "roles:assign",
+    permission("roles", "read"),
+    permission("roles", "create"),
+    permission("roles", "update"),
+    permission("roles", "delete"),
+    permission("roles", "assign"),
     // Settings
-    "settings:read",
-    "settings:update",
+    permission("settings", "read"),
+    permission("settings", "update"),
     // Dashboard
-    "dashboard:read",
-    "analytics:read",
+    permission("dashboard", "read"),
+    permission("analytics", "read"),
   ],
 
   Organisationsverwaltung: [
     // Einsätze (nur lesen)
-    "einsaetze:read",
+    permission("einsaetze", "read"),
 
     // Users
-    "users:read",
-    "users:create",
-    "users:update",
-    "users:invite",
-    "users:manage",
+    permission("users", "read"),
+    permission("users", "create"),
+    permission("users", "update"),
+    permission("users", "invite"),
+    permission("users", "manage"),
 
     // Organization
-    "organization:read",
-    "organization:update",
-
+    permission("organization", "read"),
+    permission("organization", "update"),
     // Roles
-    "roles:read",
-    "roles:assign",
+    permission("roles", "read"),
+    permission("roles", "assign"),
 
     // Settings
-    "settings:read",
-    "settings:update",
+    permission("settings", "read"),
+    permission("settings", "update"),
 
     // Dashboard
-    "dashboard:read",
+    permission("dashboard", "read"),
   ],
 
   Einsatzverwaltung: [
     // Einsätze
-    "einsaetze:read",
-    "einsaetze:create",
-    "einsaetze:update",
-    "einsaetze:delete",
-    "einsaetze:manage_assignments",
-
+    permission("einsaetze", "read"),
+    permission("einsaetze", "create"),
+    permission("einsaetze", "update"),
+    permission("einsaetze", "delete"),
+    permission("einsaetze", "manage_assignments"),
     // Users (read-only)
-    "users:read",
+    permission("users", "read"),
+    permission("templates", "read"),
 
     // Dashboard
-    "dashboard:read",
+    permission("dashboard", "read"),
   ],
 
   Helfer: [
     // Einsätze
-    "einsaetze:read",
-    "einsaetze:join",
-    "einsaetze:leave",
+    permission("einsaetze", "read"),
+    permission("einsaetze", "join"),
+    permission("einsaetze", "leave"),
 
     // Dashboard
-    "dashboard:read",
+    permission("dashboard", "read"),
   ],
 };
 
@@ -112,23 +109,6 @@ export type ExtendedSession = Session & {
     orgId?: string;
   };
 };
-export function getRolePermissions(roleName: string): string[] {
-  return ROLE_PERMISSION_MAP[roleName] || [];
-}
-
-export function roleHasPermission(
-  roleName: string,
-  permission: string
-): boolean {
-  const permissions = ROLE_PERMISSION_MAP[roleName] || [];
-  return permissions.includes(permission);
-}
-
-export function getRolesWithPermission(permission: string): string[] {
-  return Object.entries(ROLE_PERMISSION_MAP)
-    .filter(([permissions]) => permissions.includes(permission))
-    .map(([roleName]) => roleName);
-}
 
 // Auth Guard für Server Components
 export async function requireAuth() {
@@ -174,68 +154,9 @@ export async function requireAuth() {
   };
 }
 
-// Auth Guard mit Rollenprüfung
-export async function requireRole(requiredRoles: string | string[]) {
-  const { session, userIds } = await requireAuth();
-
-  const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
-  const userRoles = userIds.roles || [];
-
-  const hasRequiredRole = roles.some((role) => userRoles.includes(role));
-
-  if (!hasRequiredRole) {
-    redirect("/unauthorized");
-  }
-
-  return session;
-}
-
-// Auth Guard mit Organisationsprüfung
-export async function requireOrganization(orgId?: string) {
-  const { session, userIds } = await requireAuth();
-
-  const userOrgIds = userIds.orgIds || [];
-
-  if (orgId && !userOrgIds.includes(orgId)) {
-    redirect("/unauthorized");
-  }
-
-  return session;
-}
-
-// Vollständige User-Daten mit aktuellen Rollen laden
-export async function getAuthenticatedUser() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    redirect("/signin");
-  }
-
-  try {
-    const user = await getUserByIdWithOrgAndRole(session.user.id);
-
-    if (!user) {
-      redirect("/signin");
-    }
-
-    return {
-      session,
-      user,
-      userIds: {
-        userId: user.id,
-        orgId: user.user_organization_role[0]?.org_id || null,
-        roleId: user.user_organization_role[0]?.role_id || null,
-      },
-    };
-  } catch (error) {
-    console.error("Error loading user data:", error);
-    redirect("/signin");
-  }
-}
-
 export async function hasPermission(
   session: Session,
-  permission: string,
+  permission: PermissionType,
   orgId?: string
 ): Promise<boolean> {
   if (!session?.user?.id) return false;
@@ -261,7 +182,7 @@ export async function hasPermission(
 
 export function hasPermissionFromSession(
   session: ExtendedSession,
-  permission: string
+  permission: PermissionType
 ): boolean {
   if (!session?.user?.id) {
     return false;
@@ -277,7 +198,7 @@ export function hasPermissionFromSession(
 
 export async function hasAllPermissions(
   session: Session,
-  permissions: string[],
+  permissions: PermissionType[],
   orgId?: string
 ): Promise<boolean> {
   for (const permission of permissions) {
@@ -285,102 +206,4 @@ export async function hasAllPermissions(
     if (!result) return false;
   }
   return true;
-}
-
-export async function hasAnyPermission(
-  session: Session,
-  permissions: string[],
-  orgId?: string
-): Promise<boolean> {
-  for (const permission of permissions) {
-    const result = await hasPermission(session, permission, orgId);
-    if (result) return true;
-  }
-  return false;
-}
-
-// API Route Auth Helper
-export async function validateApiAuth() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    return { error: "Nicht authentifiziert", status: 401 };
-  }
-
-  return { session, user: session.user };
-}
-
-export async function validateApiAuthWithPermission(
-  request: Request,
-  permission: string,
-  orgId?: string
-) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    return { error: "Nicht authentifiziert", status: 401 };
-  }
-
-  const hasPermissionResult = await hasPermission(session, permission, orgId);
-
-  if (!hasPermissionResult) {
-    return { error: "Keine Berechtigung", status: 403 };
-  }
-
-  return { session, user: session.user };
-}
-
-export async function validateApiAuthWithAllPermissions(
-  request: Request,
-  permissions: string[],
-  orgId?: string
-) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    return { error: "Nicht authentifiziert", status: 401 };
-  }
-
-  const result = await hasAllPermissions(session, permissions, orgId);
-
-  if (!result) {
-    return { error: "Keine Berechtigung", status: 403 };
-  }
-
-  return { session, user: session.user };
-}
-
-export async function requirePermission(permission: string, orgId?: string) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    redirect("/signin");
-  }
-
-  const hasPermissionResult = await hasPermission(session, permission, orgId);
-
-  if (!hasPermissionResult) {
-    redirect("/unauthorized");
-  }
-
-  return session;
-}
-
-export async function requireAllPermissions(
-  permissions: string[],
-  orgId?: string
-) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    redirect("/signin");
-  }
-
-  const result = await hasAllPermissions(session, permissions, orgId);
-
-  if (!result) {
-    redirect("/unauthorized");
-  }
-
-  return session;
 }

@@ -1,23 +1,24 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import type { einsatz as Einsatz, einsatz_field, einsatz_status } from "@/generated/prisma";
+import type {
+  einsatz as Einsatz,
+  einsatz_field,
+  einsatz_status,
+} from "@/generated/prisma";
 import type {
   EinsatzForCalendar,
   EinsatzCreate,
   EinsatzDetailed,
   ETV,
 } from "@/features/einsatz/types";
-import {
-  hasPermissionFromSession,
-  requireAuth,
-} from "@/lib/auth/authGuard";
-import { redirect } from "next/navigation";
+import { hasPermissionFromSession, requireAuth } from "@/lib/auth/authGuard";
 
 import { ValidateEinsatzCreate } from "./validation-service";
 import z from "zod";
 import { detectChangeTypes, getAffectedUserIds } from "../activity_log/utils";
 import { createChangeLogAuto } from "../activity_log/activity_log-dal";
+import { BadRequestError, ForbiddenError } from "@/lib/errors";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(
@@ -25,7 +26,7 @@ export async function getEinsatzWithDetailsById(
 ): Promise<EinsatzDetailed | null | Response> {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
-    return new Response("Invalid ID", { status: 400 });
+    throw new BadRequestError("Invalid ID");
   }
 
   const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
@@ -47,6 +48,7 @@ export async function getEinsatzWithDetailsById(
     einsatz_comment,
     change_log,
     einsatz_field,
+    einsatz_user_property,
     ...rest
   } = einsaetzeFromDb;
 
@@ -64,6 +66,11 @@ export async function getEinsatzWithDetailsById(
       field_type: { datatype: field.field.type?.datatype ?? null },
     })),
     categories: einsatz_to_category.map((cat) => cat.einsatz_category.id),
+    user_properties: einsatz_user_property.map((prop) => ({
+      user_property_id: prop.user_property_id,
+      is_required: prop.is_required,
+      min_matching_users: prop.min_matching_users,
+    })),
     comments: einsatz_comment.map((comment) => ({
       id: comment.id,
       einsatz_id: comment.einsatz_id,
@@ -107,7 +114,6 @@ export async function getAllEinsaetze(org_ids: string[]) {
 
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
-
   if (!hasPermissionFromSession(session, "einsaetze:read")) {
     return new Response("Unauthorized", { status: 403 });
   }
@@ -223,26 +229,26 @@ export async function getEinsaetzeForTableView(
     ),
     einsatz_fields: einsatz.einsatz_field.map(
       (f) =>
-      ({
-        id: f.id,
-        einsatz_id: f.einsatz_id,
-        value: f.value,
-        field_id: f.field_id,
-        datatype: f.field.type?.datatype ?? null,
-      } as einsatz_field & { datatype: string | null })
+        ({
+          id: f.id,
+          einsatz_id: f.einsatz_id,
+          value: f.value,
+          field_id: f.field_id,
+          datatype: f.field.type?.datatype ?? null,
+        } as einsatz_field & { datatype: string | null })
     ),
     user: einsatz.user
       ? {
-        id: einsatz.user.id,
-        firstname: einsatz.user.firstname ?? null,
-        lastname: einsatz.user.lastname ?? null,
-      }
+          id: einsatz.user.id,
+          firstname: einsatz.user.firstname ?? null,
+          lastname: einsatz.user.lastname ?? null,
+        }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-        id: einsatz.einsatz_template.id,
-        name: einsatz.einsatz_template.name ?? null,
-      }
+          id: einsatz.einsatz_template.id,
+          name: einsatz.einsatz_template.name ?? null,
+        }
       : null,
     _count: einsatz._count,
   }));
@@ -253,7 +259,7 @@ export async function getEinsaetzeForTableView(
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "read:templates")) {
+  if (!hasPermissionFromSession(session, "templates:read")) {
     return new Response("Unauthorized", { status: 403 });
   }
 
@@ -263,16 +269,17 @@ export async function getAllTemplatesWithFields(org_id?: string) {
     org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new Error(
-      "Organisation muss angegeben werden oder User muss genau einer Organisation angehören"
-    );
+    throw new BadRequestError("Organisation muss angegeben werden");
   }
 
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!userOrgIds.includes(useOrgId)) {
-    return new Response(`Unauthorized to access templates for org ${useOrgId}`, {
-      status: 403,
-    });
+    return new Response(
+      `Unauthorized to access templates for org ${useOrgId}`,
+      {
+        status: 403,
+      }
+    );
   }
 
   return prisma.einsatz_template.findMany({
@@ -309,8 +316,8 @@ export async function createEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "create:einsaetze")) {
-    redirect("/unauthorized");
+  if (!hasPermissionFromSession(session, "einsaetze:create")) {
+    throw new ForbiddenError("Fehlende Berechtigungen");
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
@@ -318,11 +325,11 @@ export async function createEinsatz({
     data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new Error("Organisation muss angegeben werden");
+    throw new BadRequestError("Organisation muss angegeben werden");
   }
 
   if (!userOrgIds.includes(useOrgId)) {
-    redirect("/unauthorized");
+    throw new ForbiddenError("Fehlende Berechtigungen für diese Organisation");
   }
 
   const einsatzWithAuth = {
@@ -370,7 +377,7 @@ export async function updateEinsatzTime(data: {
 }): Promise<Einsatz> {
   const { session } = await requireAuth();
   if (!hasPermissionFromSession(session, "einsaetze:update")) {
-    redirect("/unauthorized");
+    throw new ForbiddenError("Fehlende Berechtigungen");
   }
 
   const dataSchema = z.object({
@@ -391,7 +398,9 @@ export async function updateEinsatzTime(data: {
   });
 }
 
-export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<Einsatz | { id: string, title: string, deleted: true }> {
+export async function toggleUserAssignmentToEinsatz(
+  einsatzId: string
+): Promise<Einsatz | { id: string; title: string; deleted: true }> {
   // Adds the user if he isnt already assigned, removes him otherwise
   const { session } = await requireAuth();
 
@@ -401,7 +410,13 @@ export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<
 
   const existingEinsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
-    select: { id: true, title: true, org_id: true, einsatz_helper: { select: { user_id: true } }, helpers_needed: true },
+    select: {
+      id: true,
+      title: true,
+      org_id: true,
+      einsatz_helper: { select: { user_id: true } },
+      helpers_needed: true,
+    },
   });
 
   if (!existingEinsatz) {
@@ -418,13 +433,15 @@ export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-      existingEinsatz.einsatz_helper.length + addOrRemoveOne
-      ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
-      : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
+    existingEinsatz.einsatz_helper.length + addOrRemoveOne
+      ? "bb169357-920b-4b49-9e3d-1cf489409370" // offen
+      : "15512bc7-fc64-4966-961f-c506a084a274"; // vergeben
+
+  let result: Einsatz;
 
   if (isSignedInUserAssigned) {
     // USER IS ALREADY ASSIGNED → REMOVE THEM
-    return prisma.einsatz.update({
+    result = await prisma.einsatz.update({
       where: {
         id: einsatzId,
         organization: {
@@ -444,9 +461,20 @@ export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<
         status_id: newStatusId,
       },
     });
+
+    try {
+      await createChangeLogAuto({
+        einsatzId: einsatzId,
+        userId: session.user.id,
+        typeName: "cancel",
+        affectedUserId: session.user.id,
+      });
+    } catch (error) {
+      console.error("Failed to create activity log for unassignment:", error);
+    }
   } else {
     // USER IS NOT ASSIGNED → ADD THEM
-    return prisma.einsatz.update({
+    result = await prisma.einsatz.update({
       where: {
         id: einsatzId,
         organization: {
@@ -466,7 +494,21 @@ export async function toggleUserAssignmentToEinsatz(einsatzId: string): Promise<
         status_id: newStatusId,
       },
     });
+
+    // **NEU: Activity Log für Eintragen erstellen**
+    try {
+      await createChangeLogAuto({
+        einsatzId: einsatzId,
+        userId: session.user.id,
+        typeName: "takeover",
+        affectedUserId: session.user.id, // as the user is assigning themselves they are also the affected user
+      });
+    } catch (error) {
+      console.error("Failed to create activity log for assignment:", error);
+    }
   }
+
+  return result;
 }
 
 export async function updateEinsatz({
@@ -477,7 +519,7 @@ export async function updateEinsatz({
   const { session, userIds } = await requireAuth();
 
   if (!hasPermissionFromSession(session, "einsaetze:update")) {
-    redirect("/unauthorized");
+    throw new ForbiddenError("Fehlende Berechtigungen");
   }
 
   if (data.template_id && false) {
@@ -492,11 +534,12 @@ export async function updateEinsatz({
     einsatz_fields,
     assignedUsers,
     org_id,
+    userProperties,
     ...updateData
   } = data;
 
   if (!id) {
-    throw new Error("Einsatz must have an id for update");
+    throw new BadRequestError("Einsatz must have an id for update");
   }
 
   // Prüfe ob Einsatz existiert und User Zugriff hat
@@ -511,7 +554,7 @@ export async function updateEinsatz({
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    throw new Error("Unauthorized");
+    throw new ForbiddenError("Fehlende Berechtigungen für diese Organisation");
   }
 
   try {
@@ -544,6 +587,16 @@ export async function updateEinsatz({
             deleteMany: {},
             create: (assignedUsers ?? []).map((userId) => ({
               user: { connect: { id: userId } },
+            })),
+          }),
+        },
+        einsatz_user_property: {
+          ...(userProperties && {
+            deleteMany: {},
+            create: userProperties.map((propId) => ({
+              user_property: { connect: { id: propId.user_property_id } },
+              is_required: propId.is_required,
+              min_matching_users: propId.min_matching_users || null,
             })),
           }),
         },
@@ -597,7 +650,7 @@ export async function deleteEinsaetzeByIds(
     where: { id: { in: einsatzIds } },
   });
   if (!einsatz || einsatz.length === 0) {
-    throw new Error(`No Einsaetze found: ${einsatzIds.join(", ")}`);
+    throw new BadRequestError(`No Einsaetze found: ${einsatzIds.join(", ")}`);
   }
 
   try {
@@ -607,7 +660,7 @@ export async function deleteEinsaetzeByIds(
       },
     });
   } catch (error) {
-    throw new Error(
+    throw new BadRequestError(
       `Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`
     );
   }
@@ -628,6 +681,7 @@ async function createEinsatzInDb({
     categories,
     einsatz_fields,
     assignedUsers = [],
+    userProperties,
     status_id = "offen",
     template_id = null,
     all_day = false,
@@ -660,6 +714,14 @@ async function createEinsatzInDb({
         create: assignedUsers.map((userId) => ({
           user: { connect: { id: userId } },
         })),
+      },
+      einsatz_user_property: {
+        create:
+          userProperties?.map((propId) => ({
+            user_property: { connect: { id: propId.user_property_id } },
+            is_required: propId.is_required,
+            min_matching_users: propId.min_matching_users || null,
+          })) || [],
       },
       status_id,
       template_id,
@@ -865,6 +927,13 @@ async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
         },
       },
       einsatz_status: true,
+      einsatz_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
+        },
+      },
       change_log: {
         select: {
           id: true,

@@ -32,30 +32,31 @@ model change_type {
 }
 
 model einsatz {
-  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title               String
-  created_at          DateTime              @default(now())
-  updated_at          DateTime?
-  start               DateTime              @db.Timestamp(6)
-  participant_count   Int?
-  price_per_person    Float?
-  total_price         Float?
-  org_id              String                @db.Uuid
-  created_by          String?               @db.Uuid
-  template_id         String?               @db.Uuid
-  all_day             Boolean               @default(false)
-  end                 DateTime              @db.Timestamp(6)
-  helpers_needed      Int                   @default(1) @db.SmallInt
-  status_id           String                @default(dbgenerated("'bb169357-920b-4b49-9e3d-1cf489409370'::uuid")) @db.Uuid
-  change_log          change_log[]
-  user                user?                 @relation(fields: [created_by], references: [id])
-  organization        organization          @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  einsatz_status      einsatz_status        @relation(fields: [status_id], references: [id], onDelete: NoAction)
-  einsatz_template    einsatz_template?     @relation(fields: [template_id], references: [id])
-  einsatz_comment     einsatz_comment[]
-  einsatz_field       einsatz_field[]
-  einsatz_helper      einsatz_helper[]
-  einsatz_to_category einsatz_to_category[]
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title                 String
+  created_at            DateTime                @default(now())
+  updated_at            DateTime?
+  start                 DateTime                @db.Timestamp(6)
+  participant_count     Int?
+  price_per_person      Float?
+  total_price           Float?
+  org_id                String                  @db.Uuid
+  created_by            String?                 @db.Uuid
+  template_id           String?                 @db.Uuid
+  all_day               Boolean                 @default(false)
+  end                   DateTime                @db.Timestamp(6)
+  helpers_needed        Int                     @default(1) @db.SmallInt
+  status_id             String                  @default(dbgenerated("'bb169357-920b-4b49-9e3d-1cf489409370'::uuid")) @db.Uuid
+  change_log            change_log[]
+  user                  user?                   @relation(fields: [created_by], references: [id])
+  organization          organization            @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  einsatz_status        einsatz_status          @relation(fields: [status_id], references: [id], onDelete: NoAction)
+  einsatz_template      einsatz_template?       @relation(fields: [template_id], references: [id])
+  einsatz_comment       einsatz_comment[]
+  einsatz_field         einsatz_field[]
+  einsatz_helper        einsatz_helper[]
+  einsatz_to_category   einsatz_to_category[]
+  einsatz_user_property einsatz_user_property[]
 }
 
 model einsatz_category {
@@ -193,12 +194,13 @@ model user_organization_role {
 }
 
 model user_property {
-  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  field_id            String                @db.Uuid
-  org_id              String                @db.Uuid
-  field               field                 @relation(fields: [field_id], references: [id], onDelete: Cascade)
-  organization        organization          @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  user_property_value user_property_value[]
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  field_id              String                  @db.Uuid
+  org_id                String                  @db.Uuid
+  einsatz_user_property einsatz_user_property[]
+  field                 field                   @relation(fields: [field_id], references: [id], onDelete: Cascade)
+  organization          organization            @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  user_property_value   user_property_value[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -341,7 +343,7 @@ model organization_address {
   created_at   DateTime     @default(now()) @db.Timestamptz(6)
   label        String?
   street       String
-  postal_code  BigInt
+  postal_code  String
   city         String
   country      String
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
@@ -368,4 +370,16 @@ model organization_details {
   zvr          String?
   authority    String?
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model einsatz_user_property {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  einsatz_id         String        @db.Uuid
+  user_property_id   String        @db.Uuid
+  is_required        Boolean       @default(false)
+  min_matching_users Int?          @db.SmallInt
+  einsatz            einsatz       @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
+  user_property      user_property @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
 }

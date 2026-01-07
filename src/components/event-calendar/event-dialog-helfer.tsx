@@ -34,7 +34,9 @@ import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { cn } from "@/lib/utils";
 import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
 import { motion } from "motion/react";
-import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
+import { useAlertDialog } from "@/hooks/use-alert-dialog";
+import { getUserPropertiesByOrgId } from "@/features/user_properties/user_property-dal";
+import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
 
 interface EventDialogProps {
   einsatz: string | null;
@@ -43,6 +45,12 @@ interface EventDialogProps {
   onAssignToggleEvent: (einsatzId: string) => void;
 }
 
+type UserPropertyWithField = {
+  id: string;
+  field?: {
+    name?: string | null;
+  };
+};
 export function EventDialogHelfer({
   einsatz,
   isOpen,
@@ -50,6 +58,7 @@ export function EventDialogHelfer({
   onAssignToggleEvent,
 }: EventDialogProps) {
   const [showAllActivities, setShowAllActivities] = useState(false);
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
 
   const { data: session } = useSession();
 
@@ -84,6 +93,11 @@ export function EventDialogHelfer({
     enabled: !!activeOrgId,
   });
 
+  const { data: userProperties } = useQuery<UserPropertyWithField[]>({
+    queryKey: userPropertyQueryKeys.byOrg(activeOrgId ?? ""),
+    queryFn: () => getUserPropertiesByOrgId(activeOrgId ?? ""),
+    enabled: !!activeOrgId,
+  });
   const { data: organizations } = useQuery({
     queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
     queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
@@ -122,8 +136,69 @@ export function EventDialogHelfer({
     ? "eigene"
     : statuses?.find((s) => s.id === detailedEinsatz?.status_id);
 
+  // Personeneigenschaft Validation
+  const validateAssignment = async (assigning: boolean) => {
+    if (!detailedEinsatz || !usersQuery?.data) return true;
+
+    const assigned = detailedEinsatz.assigned_users ?? [];
+    const currentAssignedSet = new Set<string>(
+      assigning
+        ? [...assigned, currentUserId ?? ""]
+        : assigned.filter((id) => id !== currentUserId)
+    );
+
+    const assignedDetails =
+      usersQuery.data?.filter((u) => currentAssignedSet.has(u.id)) ?? [];
+
+    const warnings: string[] = [];
+
+    for (const propConfig of detailedEinsatz.user_properties ?? []) {
+      if (!propConfig.is_required) continue;
+      const minRequired =
+        typeof propConfig.min_matching_users === "number"
+          ? propConfig.min_matching_users
+          : 1;
+
+      const usersWithProp = assignedDetails.filter((user) => {
+        const upv = user.user_property_value?.find(
+          (pv) => pv.user_property_id === propConfig.user_property_id
+        );
+        const raw = upv?.value ?? "";
+        const val = String(raw).toLowerCase().trim();
+        if (val === "true" || val === "1") return true;
+        return val !== "";
+      });
+
+      const propertyName =
+        userProperties?.find((p) => p.id === propConfig.user_property_id)?.field
+          ?.name ?? propConfig.user_property_id;
+
+      if ((usersWithProp?.length ?? 0) < minRequired) {
+        warnings.push(
+          `Personeneigenschaft '${propertyName}': mind. ${minRequired} benötigte (aktuell: ${
+            usersWithProp?.length ?? 0
+          })`
+        );
+      }
+    }
+
+    if (warnings.length === 0) return true;
+
+    await showDialog({
+      title: "Eintragen nicht möglich",
+      description:
+        "Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n" +
+        warnings.map((w) => `• ${w}`).join("\n") +
+        "\n\nBitte wenden Sie sich an die Einsatzverwaltung, um die erforderlichen Personeneigenschaften zu klären.",
+      confirmText: "OK",
+    });
+
+    return false;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      {AlertDialogComponent}
       <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
         <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>
@@ -303,13 +378,18 @@ export function EventDialogHelfer({
                   max_assigned_count !== 0 &&
                   max_assigned_count <= assigned_count
                 }
-                onClick={() => {
+                onClick={async () => {
                   if (!detailedEinsatz?.id || !session?.user?.id) {
                     toast.error(
                       "Eintragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen."
                     );
                     return;
                   }
+                  const assigning = !(
+                    detailedEinsatz.assigned_users ?? []
+                  ).includes(currentUserId ?? "");
+                  const ok = await validateAssignment(assigning);
+                  if (!ok) return;
                   onAssignToggleEvent(detailedEinsatz.id);
                 }}
               >

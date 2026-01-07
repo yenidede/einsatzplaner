@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { ActivityLogList } from "./ActivityLogList";
 import { ActivityLogListSkeleton } from "./ActivityLogListSkeleton";
-import { queryKeys as ActivityLogQueryKeys } from "../queryKeys";
+import { activityLogQueryKeys as ActivityLogQueryKeys } from "../queryKeys";
 import { getActivitiesForEinsatzAction } from "../activity_log-actions";
 
 interface EinsatzActivityLogProps {

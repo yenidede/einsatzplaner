@@ -45,7 +45,7 @@ import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
 import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
-import { useAlertDialog } from "@/contexts/AlertDialogContext";
+import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import { CustomFormField, SupportedDataTypes } from "./types";
 import DynamicFormFields from "./dynamicFormfields";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
@@ -66,6 +66,12 @@ import {
 import { Select, SelectContent, SelectItem } from "../ui/select";
 import { SelectTrigger } from "@radix-ui/react-select";
 import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
+import {
+  getUserPropertiesByOrgId,
+  UserPropertyValue,
+} from "@/features/user_properties/user_property-dal";
+import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";
+
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
   title: "",
@@ -80,6 +86,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   totalPrice: 0,
   helpersNeeded: 1,
   assignedUsers: [],
+  requiredUserProperties: [],
 };
 
 export const ZodEinsatzFormData = z
@@ -108,6 +115,15 @@ export const ZodEinsatzFormData = z
     totalPrice: z.number().min(0, "Gesamtpreis darf nicht negativ sein"),
     helpersNeeded: z.number().min(-1, "Helfer-Anzahl muss 0 oder größer sein"),
     assignedUsers: z.array(z.uuid()),
+    requiredUserProperties: z
+      .array(
+        z.object({
+          user_property_id: z.string().uuid(),
+          is_required: z.boolean(),
+          min_matching_users: z.number().int().min(0).nullable(),
+        })
+      )
+      .optional(),
   })
   .refine(
     (data) => {
@@ -184,7 +200,7 @@ export function EventDialogVerwaltung({
   onSave,
   onDelete,
 }: EventDialogProps) {
-  const { showDialog } = useAlertDialog();
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
   const { data: session } = useSession();
 
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -206,6 +222,11 @@ export function EventDialogVerwaltung({
   const [dynamicFormData, setDynamicFormData] = useState<Record<string, any>>(
     {}
   );
+  const { data: availableProps } = useQuery({
+    queryKey: userPropertyQueryKeys.byOrg(activeOrgId ?? ""),
+    queryFn: () => getUserPropertiesByOrgId(activeOrgId ?? ""),
+    enabled: !!activeOrgId,
+  });
 
   const [errors, setErrors] = useState<{
     fieldErrors: Record<string, string[]>;
@@ -240,11 +261,17 @@ export function EventDialogVerwaltung({
   });
 
   const usersQuery = useQuery({
-    queryKey: UserQueryKeys.users(activeOrgId ?? ""),
+    queryKey: UserQueryKeys.user(activeOrgId ?? ""),
     queryFn: () => {
       return getAllUsersWithRolesByOrgId(activeOrgId ?? "");
     },
     enabled: !!activeOrgId,
+    select: (data) => {
+      return data.map((user) => ({
+        ...user,
+        user_property_value: (user as any).user_property_value || [],
+      }));
+    },
   });
 
   const { data: organizations } = useQuery({
@@ -471,8 +498,13 @@ export function EventDialogVerwaltung({
           helpersNeeded: einsatzDetailed.helpers_needed || 0,
           assignedUsers: einsatzDetailed.assigned_users || [],
           einsatzCategoriesIds: einsatzDetailed.categories || [],
+          requiredUserProperties:
+            einsatzDetailed.user_properties?.map((prop) => ({
+              user_property_id: prop.user_property_id,
+              is_required: prop.is_required,
+              min_matching_users: prop.min_matching_users ?? null,
+            })) || [],
         });
-
         // Reset errors when opening dialog
         setErrors({
           fieldErrors: {},
@@ -613,9 +645,7 @@ export function EventDialogVerwaltung({
   };
 
   const handleSave = async () => {
-    // Full validation before saving
     const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
-    //const parsedDataDynamic = dynamicSchema?.safeParse(dynamicFormData);
 
     if (!parsedDataStatic.success) {
       const flattenedErrors = z.flattenError(parsedDataStatic.error);
@@ -626,11 +656,95 @@ export function EventDialogVerwaltung({
       return;
     }
 
-    // Clear errors if validation passes
     setErrors({
       fieldErrors: {},
       formErrors: [],
     });
+
+    const warnings: string[] = [];
+
+    // Warning 1: Max 20 participants per helper
+    if (
+      parsedDataStatic.data.helpersNeeded > 0 &&
+      parsedDataStatic.data.participantCount > 0
+    ) {
+      const ratio =
+        parsedDataStatic.data.participantCount /
+        parsedDataStatic.data.helpersNeeded;
+      if (ratio > 20) {
+        warnings.push(
+          `Allgemein: Anzahl Teilnehmer:innen pro Helfer maximal 20 (aktuell: ${Math.round(
+            ratio
+          )})`
+        );
+      }
+    }
+
+    // Warning 2: Required user properties check
+    if (
+      parsedDataStatic.data.requiredUserProperties &&
+      parsedDataStatic.data.requiredUserProperties.length > 0 &&
+      parsedDataStatic.data.assignedUsers.length > 0
+    ) {
+      const assignedUserDetails = usersQuery.data?.filter((user) =>
+        parsedDataStatic.data.assignedUsers.includes(user.id)
+      );
+
+      for (const propConfig of parsedDataStatic.data.requiredUserProperties) {
+        if (!propConfig.is_required) continue;
+
+        const property = availableProps?.find(
+          (p) => p.id === propConfig.user_property_id
+        );
+        if (!property) continue;
+
+        const usersWithProperty = assignedUserDetails?.filter((user) => {
+          const userPropValue = user.user_property_value?.find(
+            (upv: UserPropertyValue) =>
+              upv.user_property_id === propConfig.user_property_id
+          );
+
+          if (property.field.type?.datatype === "boolean") {
+            const val = String(userPropValue?.value ?? "")
+              .toLowerCase()
+              .trim();
+            return val === "true" || val === "1";
+          }
+
+          return (
+            userPropValue?.value && String(userPropValue.value).trim() !== ""
+          );
+        });
+
+        const matchingCount = usersWithProperty?.length || 0;
+        const minRequired = propConfig.min_matching_users ?? 1;
+
+        if (matchingCount < minRequired) {
+          const propName = property.field.name || "Unbekannte Eigenschaft";
+          warnings.push(
+            `Personeneigenschaften: mind. ${minRequired} Helfer mit '${propName}' benötigt (aktuell: ${matchingCount})`
+          );
+        }
+      }
+    }
+
+    // Show warning dialog if there are any warnings
+    if (warnings.length > 0) {
+      const confirmed = await showDialog({
+        title: "Warnung: Kriterien nicht erfüllt",
+        description:
+          "Folgende Kriterien sind nicht erfüllt:\n\n" +
+          warnings.map((w) => `• ${w}`).join("\n") +
+          "\n\nTrotzdem speichern?",
+        confirmText: "Trotzdem speichern",
+        cancelText: "Abbrechen",
+        variant: "destructive",
+      });
+
+      if (confirmed !== "success") {
+        return;
+      }
+    }
 
     const startDateFull = new Date(staticFormData.startDate);
     const endDateFull = new Date(staticFormData.endDate);
@@ -738,7 +852,18 @@ export function EventDialogVerwaltung({
         });
       }
     }
-
+    const outgoingUserProperties = (
+      parsedDataStatic.data.requiredUserProperties ?? []
+    ).map((p) => ({
+      user_property_id: String(p.user_property_id),
+      is_required: !!p.is_required,
+      min_matching_users:
+        typeof p.min_matching_users === "number"
+          ? p.min_matching_users
+          : p.min_matching_users == null
+          ? null
+          : Number(p.min_matching_users),
+    }));
     //endregion
 
     onSave({
@@ -758,6 +883,7 @@ export function EventDialogVerwaltung({
       categories: parsedDataStatic.data.einsatzCategoriesIds ?? [],
       assignedUsers: parsedDataStatic.data.assignedUsers,
       einsatz_fields: einsatzFields,
+      userProperties: outgoingUserProperties,
     });
   };
 
@@ -775,176 +901,186 @@ export function EventDialogVerwaltung({
   // };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
-        <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
-          <DialogTitle>
-            {isLoading
-              ? "Laden..."
-              : currentEinsatz?.id
-              ? `Bearbeite '${staticFormData.title}'`
-              : staticFormData.title
-              ? `Erstelle '${staticFormData.title}'`
-              : `Erstelle ${einsatz_singular}`}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            {currentEinsatz?.id
-              ? einsatz_singular + " bearbeiten"
-              : einsatz_singular + " anlegen"}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      {AlertDialogComponent}
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
+          <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
+            <DialogTitle>
+              {isLoading
+                ? "Laden..."
+                : currentEinsatz?.id
+                ? `Bearbeite '${staticFormData.title}'`
+                : staticFormData.title
+                ? `Erstelle '${staticFormData.title}'`
+                : `Erstelle ${einsatz_singular}`}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {currentEinsatz?.id
+                ? einsatz_singular + " bearbeiten"
+                : einsatz_singular + " anlegen"}
+            </DialogDescription>
+          </DialogHeader>
 
-        {/* Display form-level errors */}
-        {errors.formErrors.length > 0 && (
-          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm shrink-0">
-            <ul className="list-disc list-inside">
-              {errors.formErrors.map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+          {/* Display form-level errors */}
+          {errors.formErrors.length > 0 && (
+            <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm shrink-0">
+              <ul className="list-disc list-inside">
+                {errors.formErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid gap-8 py-4">
-            <FormGroup>
-              {templatesQuery.isLoading ? (
-                <div>Lade Vorlagen ...</div>
-              ) : !activeTemplateId ? (
-                // template not yet set, show options
-                <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
-                  <div className="flex flex-wrap gap-4 mt-1.5">
-                    {templatesQuery.data?.map((t) => (
-                      <ToggleItemBig
-                        key={t.id}
-                        text={t.name ?? "Vorlage"}
-                        description={t.description ?? ""}
-                        iconUrl={t.template_icon.icon_url.trim()}
-                        onClick={() => {
-                          handleTemplateSelect(t.id);
-                        }}
-                        className="w-full sm:w-auto"
-                      />
-                    ))}
-                  </div>
-                </FormInputFieldCustom>
-              ) : (
-                <div className="flex justify-between">
-                  <div>
-                    Aktive Vorlage:{" "}
-                    {
-                      templatesQuery.data?.find(
-                        (t) => t.id === activeTemplateId
-                      )?.name
-                    }
-                  </div>
-                  <Select
-                    value={activeTemplateId}
-                    onValueChange={handleTemplateSelect}
-                  >
-                    <SelectTrigger>
-                      <Button asChild variant="outline">
-                        <div>Aktive Vorlage ändern</div>
-                      </Button>
-                    </SelectTrigger>
-                    <SelectContent>
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid gap-8 py-4">
+              <FormGroup>
+                {templatesQuery.isLoading ? (
+                  <div>Lade Vorlagen ...</div>
+                ) : !activeTemplateId ? (
+                  // template not yet set, show options
+                  <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
+                    <div className="flex flex-wrap gap-4 mt-1.5">
                       {templatesQuery.data?.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
+                        <ToggleItemBig
+                          key={t.id}
+                          text={t.name ?? "Vorlage"}
+                          description={t.description ?? ""}
+                          iconUrl={t.template_icon.icon_url.trim()}
+                          onClick={() => {
+                            handleTemplateSelect(t.id);
+                          }}
+                          className="w-full sm:w-auto"
+                        />
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </FormGroup>
-            {/* Form Fields */}
-            <DefaultFormFields
-              formData={staticFormData}
-              onFormDataChange={handleFormDataChange}
-              errors={errors}
-              categoriesOptions={
-                categoriesQuery?.data
-                  ? categoriesQuery?.data?.map((cat) => ({
-                      value: cat.id,
-                      label: cat.value,
-                    }))
-                  : []
-              }
-              usersOptions={
-                usersQuery?.data
-                  ? usersQuery.data.map((user) => ({
-                      value: user.id,
-                      label: user.firstname + " " + user.lastname,
-                    }))
-                  : []
-              }
-              activeOrg={
-                organizations?.find((org) => org.id === activeOrgId) ?? null
-              }
-            />
-            <DynamicFormFields
-              fields={dynamicFormFields}
-              formData={dynamicFormData}
-              errors={errors.fieldErrors}
-              onFormDataChange={handleDynamicFormDataChange}
-            />
-            <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
+                    </div>
+                  </FormInputFieldCustom>
+                ) : (
+                  <div className="flex justify-between">
+                    <div>
+                      Aktive Vorlage:{" "}
+                      {
+                        templatesQuery.data?.find(
+                          (t) => t.id === activeTemplateId
+                        )?.name
+                      }
+                    </div>
+                    <Select
+                      value={activeTemplateId}
+                      onValueChange={handleTemplateSelect}
+                    >
+                      <SelectTrigger>
+                        <Button asChild variant="outline">
+                          <div>Aktive Vorlage ändern</div>
+                        </Button>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templatesQuery.data?.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </FormGroup>
+              {/* Form Fields */}
+              <DefaultFormFields
+                formData={staticFormData}
+                onFormDataChange={handleFormDataChange}
+                errors={errors}
+                categoriesOptions={
+                  categoriesQuery?.data
+                    ? categoriesQuery?.data?.map((cat) => ({
+                        value: cat.id,
+                        label: cat.value,
+                      }))
+                    : []
+                }
+                usersOptions={
+                  usersQuery?.data
+                    ? usersQuery.data.map((user) => ({
+                        value: user.id,
+                        label: user.firstname + " " + user.lastname,
+                      }))
+                    : []
+                }
+                activeOrg={
+                  organizations?.find((org) => org.id === activeOrgId) ?? null
+                }
+                availableProps={
+                  availableProps?.filter((prop) => prop.field.name !== null) as
+                    | { id: string; field: { name: string } }[]
+                    | undefined
+                }
+              />
+
+              <DynamicFormFields
+                fields={dynamicFormFields}
+                formData={dynamicFormData}
+                errors={errors.fieldErrors}
+                onFormDataChange={handleDynamicFormDataChange}
+              />
+              <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
+            </div>
           </div>
-        </div>
-        <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
-          {
-            <TooltipCustom text={einsatz_singular + " löschen"}>
+
+          <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
+            {
+              <TooltipCustom text={einsatz_singular + " löschen"}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    handleDelete(
+                      einsatz_singular,
+                      {
+                        id: currentEinsatz?.id,
+                        title:
+                          currentEinsatz?.title ??
+                          staticFormData.title ??
+                          einsatz_singular,
+                      },
+                      showDialog,
+                      onDelete
+                    )
+                  }
+                  aria-label={einsatz_singular + " löschen"}
+                >
+                  <RiDeleteBinLine size={16} aria-hidden="true" />
+                </Button>
+              </TooltipCustom>
+            }
+            <TooltipCustom text="PDF-Bestätigung drucken">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() =>
-                  handleDelete(
+                  handlePdfGenerate(
                     einsatz_singular,
                     {
                       id: currentEinsatz?.id,
-                      title:
-                        currentEinsatz?.title ??
-                        staticFormData.title ??
-                        einsatz_singular,
+                      title: currentEinsatz?.title ?? staticFormData.title,
                     },
-                    showDialog,
-                    onDelete
+                    generatePdf
                   )
                 }
-                aria-label={einsatz_singular + " löschen"}
+                aria-label="PDF-Bestätigung drucken"
               >
-                <RiDeleteBinLine size={16} aria-hidden="true" />
+                <FileDown size={16} aria-hidden="true" />
               </Button>
             </TooltipCustom>
-          }
-          <TooltipCustom text="PDF-Bestätigung drucken">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                handlePdfGenerate(
-                  einsatz_singular,
-                  {
-                    id: currentEinsatz?.id,
-                    title: currentEinsatz?.title ?? staticFormData.title,
-                  },
-                  generatePdf
-                )
-              }
-              aria-label="PDF-Bestätigung drucken"
-            >
-              <FileDown size={16} aria-hidden="true" />
-            </Button>
-          </TooltipCustom>
-          <div className="flex flex-1 justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleSave}>Speichern</Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <div className="flex flex-1 justify-end gap-2">
+              <Button variant="outline" onClick={onClose}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleSave}>Speichern</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

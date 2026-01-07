@@ -211,7 +211,11 @@ export async function acceptInvitationAction(token: string) {
     }
 
     if (firstInvitation.email !== session.user.email) {
-      throw new Error("E-Mail-Adresse stimmt nicht überein. Einladung ist gültig für " + firstInvitation.email.substring(0, 3) + "****");
+      throw new Error(
+        "E-Mail-Adresse stimmt nicht überein. Einladung ist gültig für " +
+          firstInvitation.email.substring(0, 3) +
+          "****"
+      );
     }
 
     await Promise.all(
@@ -351,13 +355,16 @@ export async function verifyInvitationAction(token: string) {
 
     const firstInvitation = invitations[0];
 
-    const [inviter, existingUser] = await Promise.all([prisma.user.findUnique({
-      where: { id: firstInvitation.invited_by },
-      select: { firstname: true, lastname: true, email: true },
-    }), prisma.user.findUnique({
-      where: { email: firstInvitation.email },
-      select: { id: true },
-    })]);
+    const [inviter, existingUser] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: firstInvitation.invited_by },
+        select: { firstname: true, lastname: true, email: true },
+      }),
+      prisma.user.findUnique({
+        where: { email: firstInvitation.email },
+        select: { id: true },
+      }),
+    ]);
 
     const inviterName =
       inviter?.firstname && inviter?.lastname
