@@ -4,7 +4,6 @@ import prisma from "@/lib/prisma";
 import type {
   einsatz as Einsatz,
   einsatz_field,
-  einsatz_status,
 } from "@/generated/prisma";
 import type {
   EinsatzForCalendar,
@@ -19,6 +18,7 @@ import z from "zod";
 import { detectChangeTypes, getAffectedUserIds } from "../activity_log/utils";
 import { createChangeLogAuto } from "../activity_log/activity_log-dal";
 import { BadRequestError, ForbiddenError } from "@/lib/errors";
+import { redirect } from "next/navigation";
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(
@@ -60,6 +60,11 @@ export async function getEinsatzWithDetailsById(
       einsatz_id: field.einsatz_id,
       field_id: field.field_id,
       value: field.value,
+      field_name: field.field.name,
+      group_name: field.field.group_name,
+      field_type: {
+        datatype: field.field.type?.name || null,
+      },
     })),
     categories: einsatz_to_category.map((cat) => cat.einsatz_category.id),
     comments: einsatz_comment.map((comment) => ({
@@ -87,6 +92,7 @@ export async function getEinsatzWithDetailsById(
         lastname: log.user.lastname,
       },
     })),
+    user_properties: [], // TODO: implement user_properties fetching
   };
 }
 
@@ -309,7 +315,7 @@ export async function createEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "create:einsaetze")) {
+  if (!hasPermissionFromSession(session, "einsaetze:create")) {
     redirect("/unauthorized");
   }
 
