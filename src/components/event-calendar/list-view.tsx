@@ -114,13 +114,22 @@ export function ListView({
 
   // Ensure data is defined before accessing its elements
 
-  const isSomeQueryLoading =
-    isLoading ||
-    isStatusLoading ||
-    areTemplatesLoading ||
-    isUsersLoading ||
-    // isOrganizationsLoading ||
-    isCategoriesLoading;
+  const isSomeQueryLoading = useMemo(() => {
+    return (
+      isLoading ||
+      isStatusLoading ||
+      areTemplatesLoading ||
+      isUsersLoading ||
+      isCategoriesLoading
+    );
+  }, [
+    isLoading,
+    isStatusLoading,
+    areTemplatesLoading,
+    isUsersLoading,
+    isCategoriesLoading,
+  ]);
+  
   const columnHelper = createColumnHelper<ETV>();
 
   // Note: Don't constrain ColumnDef's value generic to unknown; let each accessor infer (string, boolean, etc.).
@@ -159,7 +168,7 @@ export function ListView({
         meta: {
           label: "Titel",
           variant: "text",
-          placeholder: "Einsatz suchen...",
+          placeholder: `Nach ${einsatz_singular} suchen...`,
         },
       }),
       columnHelper.accessor(
@@ -267,12 +276,12 @@ export function ListView({
       ),
       columnHelper.accessor((row) => `${row.einsatz_helper.length}`, {
         id: "helper_count",
-        header: "Anzahl Helfer",
+        header: `Anzahl ${helper_plural}`,
         cell: (props) => props.getValue(),
         enableColumnFilter: true,
         filterFn: byOperator,
         meta: {
-          label: "Anzahl Helfer",
+          label: `Anzahl ${helper_plural}`,
           variant: "range",
         },
       }),
@@ -307,14 +316,14 @@ export function ListView({
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
+                    <span className="sr-only">Aktionsmenü öffnen</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={() => onEventEdit(props.row.original.id)}
                   >
-                    Edit
+                    Bearbeiten
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     variant="destructive"
@@ -325,7 +334,7 @@ export function ListView({
                       )
                     }
                   >
-                    Delete
+                    Löschen
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -373,7 +382,7 @@ export function ListView({
   }, [rowModelRows]);
 
   if (data instanceof Response) {
-    console.log("Error Response in ListView:", data);
+    console.error("Error Response in ListView:", data);
     return (
       <div className="flex flex-col gap-4 justify-start items-baseline px-4 py-6">
         <div>

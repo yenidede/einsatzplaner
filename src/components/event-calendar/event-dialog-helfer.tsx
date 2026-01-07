@@ -36,7 +36,8 @@ import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityL
 import { motion } from "motion/react";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import { getUserPropertiesByOrgId } from "@/features/user_properties/user_property-dal";
-import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
+import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";
+import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
 
 interface EventDialogProps {
   einsatz: string | null;
