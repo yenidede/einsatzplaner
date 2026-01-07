@@ -77,6 +77,7 @@ export async function createChangeLog(
           start: true,
           end: true,
           all_day: true,
+          org_id: true,
           einsatz_to_category: {
             include: {
               einsatz_category: {
@@ -109,6 +110,7 @@ export async function createChangeLog(
       start: changeLog.einsatz.start,
       end: changeLog.einsatz.end,
       all_day: changeLog.einsatz.all_day,
+      org_id: changeLog.einsatz.org_id,
       einsatz_to_category: changeLog.einsatz.einsatz_to_category.map((etc) => ({
         id: etc.id,
         category_id: etc.category_id,
@@ -158,6 +160,7 @@ export async function getActivities(
           start: true,
           end: true,
           all_day: true,
+          org_id: true,
           einsatz_to_category: {
             include: {
               einsatz_category: {
@@ -195,6 +198,7 @@ export async function getActivities(
       start: log.einsatz.start,
       end: log.einsatz.end,
       all_day: log.einsatz.all_day,
+      org_id: log.einsatz.org_id,
       einsatz_to_category: log.einsatz.einsatz_to_category.map((etc) => ({
         id: etc.id,
         category_id: etc.category_id,
@@ -281,6 +285,7 @@ export async function getActivityLogs(
             start: true,
             end: true,
             all_day: true,
+            org_id: true,
             einsatz_to_category: {
               include: {
                 einsatz_category: {
@@ -321,6 +326,7 @@ export async function getActivityLogs(
         start: activity.einsatz.start,
         end: activity.einsatz.end,
         all_day: activity.einsatz.all_day,
+        org_id: activity.einsatz.org_id,
         einsatz_to_category: activity.einsatz.einsatz_to_category.map(
           (etc) => ({
             id: etc.id,

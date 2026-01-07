@@ -14,17 +14,18 @@ import {
 } from "@/features/settings/users-action";
 import { settingsQueryKeys } from "../queryKeys/queryKey";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
-import { UserProfileHeader } from "./UserProfile/UserProfileHeader";
-import { UserContactInfo } from "./UserProfile/UserContactInfo";
-import { UserPersonalProperties } from "./UserProfile/UserPersonalProperties";
-import { UserRoleManagement } from "./UserProfile/UserRoleManagement";
-import { UserDangerZone } from "./UserProfile/UserDangerZone";
+import { UserProfileHeader } from "./userProfile/UserProfileHeader";
+import { UserContactInfo } from "./userProfile/UserContactInfo";
+import { UserPersonalProperties } from "./userProfile/UserPersonalProperties";
+import { UserRoleManagement } from "./userProfile/UserRoleManagement";
+import { UserDangerZone } from "./userProfile/UserDangerZone";
 import {
   getUserPropertiesAction,
   getUserPropertyValuesAction,
   upsertUserPropertyValueAction,
 } from "@/features/user_properties/user_property-actions";
 import type { UserPropertyWithField } from "@/features/user_properties/user_property-dal";
+import { queryKeys } from "@/features/user/queryKeys";
 
 interface UserProfileDialogProps {
   isOpen: boolean;
@@ -112,7 +113,7 @@ export function UserProfileDialog({
   });
 
   const { data: userPropertyValues = [] } = useQuery({
-    queryKey: ["userPropertyValues", userId, organizationId],
+    queryKey: settingsQueryKeys.userPropertyValues(userId, organizationId),
     queryFn: () => getUserPropertyValuesAction(userId, organizationId),
     enabled: isOpen && !!userId && !!organizationId,
     staleTime: 30000,
@@ -459,9 +460,30 @@ export function UserProfileDialog({
       }
       await Promise.all(promises);
 
-      await queryClient.invalidateQueries({
-        queryKey: ["userPropertyValues", userId, organizationId],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.userProfile(userId, organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.userPropertyValues(
+            userId,
+            organizationId
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.organizationUsers(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.userOrganizations(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.user(organizationId),
+        }),
+        queryClient.refetchQueries({
+          queryKey: queryKeys.user(organizationId),
+          exact: true,
+        }),
+      ]);
 
       setOriginalPropertyValues({ ...propertyValues });
       setHasChanges(false);
@@ -595,14 +617,14 @@ export function UserProfileDialog({
         <div
           ref={dialogRef}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-[90vw] lg:max-w-[900px] xl:max-w-[1024px] h-[90vh] relative bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] rounded-lg flex flex-col"
+          className="w-full max-w-[90vw] lg:max-w-[900px] xl:max-w-5xl h-[90vh] relative bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] rounded-lg flex flex-col"
         >
           {/* Fixed Header with Buttons */}
           <div className="shrink-0 bg-white border-b border-slate-200 px-4 py-3 md:px-6 md:py-4">
             <div className="flex justify-end items-center gap-2">
               <button
                 onClick={handleClose}
-                className="px-3 py-1.5 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2 hover:bg-gray-50 transition-colors text-sm"
+                className="px-3 py-1.5 bg-white rounded-md outline outline-offset-1 outline-slate-200 flex justify-center items-center gap-2 hover:bg-gray-50 transition-colors text-sm"
               >
                 <span className="text-slate-800 font-medium font-['Inter']">
                   {hasChanges ? "Abbrechen" : "Schließen"}
@@ -622,7 +644,7 @@ export function UserProfileDialog({
                     ? "Speichert..."
                     : hasChanges
                     ? "Änderungen Speichern"
-                    : "Schließen"}
+                    : "Speichern"}
                 </span>
               </button>
             </div>
@@ -644,15 +666,18 @@ export function UserProfileDialog({
                   email={userProfile.email}
                   phone={userProfile.phone}
                 />
-                <UserPersonalProperties
-                  organizationName={userProfile.organization?.name || ""}
-                  hasKey={hasKey}
-                  onToggleKey={() => setHasKey(!hasKey)}
-                  description={userProfile.description}
-                  userProperties={userProperties}
-                  propertyValues={propertyValues}
-                  onPropertyValueChange={handlePropertyValueChange}
-                />
+                {userProperties.length > 0 && (
+                  <UserPersonalProperties
+                    organizationName={userProfile.organization?.name || ""}
+                    hasKey={hasKey}
+                    onToggleKey={() => setHasKey(!hasKey)}
+                    description={userProfile.description}
+                    userProperties={userProperties}
+                    propertyValues={propertyValues}
+                    onPropertyValueChange={handlePropertyValueChange}
+                  />
+                )}
+
                 <UserRoleManagement
                   organizationName={userProfile.organization?.name || ""}
                   userRoles={userRoles}
