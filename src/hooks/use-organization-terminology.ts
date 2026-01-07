@@ -19,8 +19,8 @@ export function useOrganizationTerminology(
         return {
             einsatz_singular: activeOrg?.einsatz_name_singular ?? "Einsatz",
             einsatz_plural: activeOrg?.einsatz_name_plural ?? "Einsätze",
-            helper_singular: activeOrg?.helper_name_singular ?? "Helfer",
-            helper_plural: activeOrg?.helper_name_plural ?? "Helfer",
+            helper_singular: activeOrg?.helper_name_singular ?? "Helfer:in",
+            helper_plural: activeOrg?.helper_name_plural ?? "Helfer:innen",
         };
     }, [organizations, activeOrgId])
 };
