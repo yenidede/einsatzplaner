@@ -21,6 +21,7 @@ import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
 import { useSession } from "next-auth/react";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
 
 export default function Component({ mode }: { mode: CalendarMode }) {
   const { data: session } = useSession();
@@ -41,12 +42,10 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     enabled: !!session?.user.orgIds?.length,
   });
 
-  const einsatz_singular =
-    organizations?.find((org) => org.id === activeOrgId)
-      ?.einsatz_name_singular ?? "Einsatz";
-  const einsatz_plural =
-    organizations?.find((org) => org.id === activeOrgId)?.einsatz_name_plural ??
-    "Einsätze";
+  const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   // Mutations with optimistic update
   const createMutation = useMutation({

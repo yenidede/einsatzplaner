@@ -34,6 +34,7 @@ import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { cn } from "@/lib/utils";
 import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
 import { motion } from "motion/react";
+import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
 
 interface EventDialogProps {
   einsatz: string | null;
@@ -94,13 +95,10 @@ export function EventDialogHelfer({
     queryFn: () => GetStatuses(),
   });
 
-  const einsatz_singular =
-    organizations?.find((org) => org.id === activeOrgId)
-      ?.einsatz_name_singular ?? "Einsatz";
-
-  const helper_plural =
-    organizations?.find((org) => org.id === activeOrgId)?.helper_name_plural ??
-    "Helfer:innen";
+  const { einsatz_singular, helper_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   const creator = usersQuery.data?.find(
     (user) => user.id === detailedEinsatz?.created_by
