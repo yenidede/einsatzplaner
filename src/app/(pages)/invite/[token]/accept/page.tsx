@@ -145,11 +145,9 @@ export default function AcceptPage() {
     );
   }
 
-  const organizationName = invitation.organization?.name || "Unbekannt";
-  const roleName = invitation.role?.name || "Helfer";
-  const inviterName = invitation.inviter
-    ? `${invitation.inviter.firstname} ${invitation.inviter.lastname}`.trim()
-    : null;
+  const organizationName = invitation.organizationName || "Unbekannt";
+  const roleName = invitation.roleName || "Helfer";
+  const inviterName = invitation.inviterName || null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

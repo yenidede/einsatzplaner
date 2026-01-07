@@ -122,7 +122,7 @@ export function FieldTypeSelector({
         <div className="self-stretch px-4 pt-2 inline-flex justify-end items-start gap-2">
           <Button
             onClick={onBack}
-            className="px-4 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5"
+            className="px-4 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-200 flex justify-center items-center gap-2.5"
           >
             <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
               Zurück

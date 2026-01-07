@@ -46,14 +46,15 @@ export function OrganizationSidebar({
   return (
     <div className="self-stretch inline-flex flex-col justify-between items-start">
       <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
-        <div className="self-stretch px-2 py-1.5 rounded-md inline-flex justify-start items-center gap-2">
-          <div className="w-4 h-4 relative overflow-hidden">
-            <SettingsIcon className="w-4 h-4 relative overflow-hidden" />
+        <Link
+          href={`/settings`}
+          className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
+        >
+          <SettingsIcon />
+          <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
+            Allgemein
           </div>
-          <div className="flex-1 justify-start text-base font-medium font-['Inter'] leading-normal">
-            <button onClick={() => router.push(`/settings`)}>Allgemein</button>
-          </div>
-        </div>
+        </Link>
         <div className="self-stretch h-px bg-slate-200" />
         <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">
           Organisationsverwaltung
@@ -79,7 +80,7 @@ export function OrganizationSidebar({
       </div>
       <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
         <div
-          className="self-stretch px-4 py-2 rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 inline-flex justify-center items-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors"
+          className="self-stretch px-4 py-2 rounded-md outline outline-offset-1 outline-slate-200 inline-flex justify-center items-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors"
           onClick={onSignOut}
         >
           <LogoutIcon className="w-4 h-4 relative overflow-hidden" />

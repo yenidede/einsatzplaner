@@ -7,6 +7,7 @@ import {
   rotateCalendarSubscription,
   deactivateCalendarSubscription,
   buildCalendarSubscriptionUrl,
+  buildWebcalUrl,
 } from "./calendarSubscription";
 
 async function checkUserSession() {
@@ -30,7 +31,8 @@ export async function getSubscriptionAction(orgId: string) {
     name: response.name ?? "",
     is_active: response.is_active,
     token: response.token,
-    webcalUrl: buildCalendarSubscriptionUrl(response.token),
+    webcalUrl: buildWebcalUrl(response.token),
+    httpUrl: buildCalendarSubscriptionUrl(response.token),
     last_accessed: response.last_accessed?.toString() ?? null,
   };
 }
@@ -43,7 +45,8 @@ export async function rotateSubscriptionAction(id: string) {
   return {
     id: response.id,
     token: response.token,
-    webcalUrl: buildCalendarSubscriptionUrl(response.token),
+    webcalUrl: buildWebcalUrl(response.token),
+    httpUrl: buildCalendarSubscriptionUrl(response.token),
   };
 }
 

@@ -152,7 +152,7 @@ export function PropertyOverview({
                 </div>
               </Button>
               <Button
-                onClick={onCancel}
+                onClick={onCreateNew}
                 className="px-4 py-2 bg-slate-900 rounded-md flex justify-center items-center gap-2.5"
               >
                 <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">

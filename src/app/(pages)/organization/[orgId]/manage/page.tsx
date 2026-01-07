@@ -9,12 +9,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useSessionValidation } from "@/hooks/useSessionValidation";
-import { organizationManageQueryKeys } from "@/features/settings/queryKeys/manage-QueryKeys";
+import { settingsQueryKeys } from "@/features/settings/queryKeys/queryKey";
 import {
   getUserOrganizationByIdAction,
   updateOrganizationAction,
   uploadOrganizationLogoAction,
   removeOrganizationLogoAction,
+  saveOrganizationDetailsAction,
 } from "@/features/settings/organization-action";
 import { getUserProfileAction } from "@/features/settings/settings-action";
 import { getAllUserOrgRolesAction } from "@/features/settings/users-action";
@@ -27,6 +28,10 @@ import { OrganizationDetailsForm } from "@/features/settings/components/manage/O
 import { OrganizationPreferences } from "@/features/settings/components/manage/OrganizationPreferences";
 import { UsersManagementSection } from "@/features/settings/components/manage/UserManagement";
 import { UserProperties } from "@/features/user_properties/components/UserProperties";
+import { OrganizationAddresses } from "@/features/settings/components/manage/OrganizationAddresses";
+import { OrganizationBankAccounts } from "@/features/settings/components/manage/OrganizationBankAccounts";
+import { OrganizationDetails } from "@/features/settings/components/manage/OrganizationDetails";
+import { SettingsHeader } from "@/features/settings/components/SettingsHeader";
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -43,10 +48,18 @@ export default function OrganizationManagePage() {
   const [description, setDescription] = useState("");
   const [helperSingular, setHelperSingular] = useState("");
   const [helperPlural, setHelperPlural] = useState("");
+  const [einsatzSingular, setEinsatzSingular] = useState("");
+  const [einsatzPlural, setEinsatzPlural] = useState("");
   const [logoUrl, setLogoUrl] = useState<string>("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+
+  // Organization Details States
+  const [website, setWebsite] = useState("");
+  const [vat, setVat] = useState("");
+  const [zvr, setZvr] = useState("");
+  const [authority, setAuthority] = useState("");
 
   const staleTime = 5 * 60 * 1000;
   const gcTime = 10 * 60 * 1000;
@@ -59,7 +72,7 @@ export default function OrganizationManagePage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: organizationManageQueryKeys.userSettings(session?.user?.id || ""),
+    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
     enabled: !!session?.user?.id,
     queryFn: () => getUserProfileAction(),
     staleTime,
@@ -75,7 +88,7 @@ export default function OrganizationManagePage() {
     isLoading: orgLoading,
     error: orgError,
   } = useQuery({
-    queryKey: organizationManageQueryKeys.organization(orgId),
+    queryKey: settingsQueryKeys.organization(orgId),
     enabled: !!orgId,
     queryFn: () => getUserOrganizationByIdAction(orgId || ""),
     staleTime,
@@ -91,11 +104,13 @@ export default function OrganizationManagePage() {
       setPhone(orgData.phone ?? "");
       setHelperSingular(orgData.helper_name_singular ?? "Helfer:in");
       setHelperPlural(orgData.helper_name_plural ?? "Helfer:innen");
+      setEinsatzSingular(orgData.einsatz_name_singular ?? "Einsatz");
+      setEinsatzPlural(orgData.einsatz_name_plural ?? "Einsätze");
     }
   }, [orgData]);
 
   const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: organizationManageQueryKeys.userOrganizations(orgId),
+    queryKey: settingsQueryKeys.userOrganizations(orgId),
     enabled: !!orgId,
     queryFn: () => getAllUserOrgRolesAction(orgId),
     staleTime,
@@ -142,7 +157,7 @@ export default function OrganizationManagePage() {
       setLogoFile(null);
 
       queryClient.invalidateQueries({
-        queryKey: organizationManageQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.organization(orgId),
       });
 
       toast.success("Logo erfolgreich hochgeladen!", { id: toastId });
@@ -166,7 +181,7 @@ export default function OrganizationManagePage() {
       if (fileInput) fileInput.value = "";
 
       queryClient.invalidateQueries({
-        queryKey: organizationManageQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.organization(orgId),
       });
 
       toast.success("Logo erfolgreich entfernt!", { id: toastId });
@@ -184,8 +199,15 @@ export default function OrganizationManagePage() {
       phone?: string;
       helper_name_singular?: string;
       helper_name_plural?: string;
+      einsatz_name_singular?: string;
+      einsatz_name_plural?: string;
       logoFile?: File | null;
+      website?: string;
+      vat?: string;
+      zvr?: string;
+      authority?: string;
     }) => {
+      // Update Organization
       const updateData: any = {
         id: orgId,
         name: data.name,
@@ -194,10 +216,22 @@ export default function OrganizationManagePage() {
         phone: data.phone,
         helper_name_singular: data.helper_name_singular,
         helper_name_plural: data.helper_name_plural,
+        einsatz_name_singular: data.einsatz_name_singular,
+        einsatz_name_plural: data.einsatz_name_plural,
       };
 
       const res = await updateOrganizationAction(updateData);
       if (!res) throw new Error("Fehler beim Speichern");
+
+      // Update Organization Details
+      await saveOrganizationDetailsAction({
+        orgId,
+        website: data.website,
+        vat: data.vat,
+        zvr: data.zvr,
+        authority: data.authority,
+      });
+
       return res;
     },
     onMutate: () => {
@@ -205,7 +239,10 @@ export default function OrganizationManagePage() {
     },
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
-        queryKey: organizationManageQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.organization(orgId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.orgDetails(orgId),
       });
       setLogoFile(null);
       toast.success("Organisation erfolgreich aktualisiert!", {
@@ -231,7 +268,13 @@ export default function OrganizationManagePage() {
       phone,
       helper_name_singular: helperSingular,
       helper_name_plural: helperPlural,
-      logoFile,
+      einsatz_name_singular: einsatzSingular,
+      einsatz_name_plural: einsatzPlural,
+      logoFile: logoFile,
+      website,
+      vat,
+      zvr,
+      authority,
     });
   };
 
@@ -254,33 +297,12 @@ export default function OrganizationManagePage() {
     );
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
-      <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
-        <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
-          <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
-            Einstellungen
-          </div>
-        </div>
-        <div className="flex justify-end items-center gap-2">
-          <Link
-            href="/settings"
-            className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-slate-50 transition-colors"
-          >
-            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-              Abbrechen (ESC)
-            </div>
-          </Link>
-          <button
-            onClick={handleSave}
-            className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5 hover:bg-slate-800 transition-colors"
-          >
-            <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-              Speichern
-            </div>
-          </button>
-        </div>
-      </div>
-
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-lg outline -outline-offset-1 outline-slate-200 flex flex-col">
+      <SettingsHeader
+        onSave={handleSave}
+        isSaving={updateMutation.isPending}
+        onCancel={() => router.push("/")}
+      />
       <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
         <OrganizationSidebar user={user} onSignOut={handleSignOut} />
 
@@ -310,6 +332,18 @@ export default function OrganizationManagePage() {
                   onDescriptionChange={setDescription}
                 />
               </div>
+
+              <OrganizationDetails
+                organizationId={orgId}
+                website={website}
+                vat={vat}
+                zvr={zvr}
+                authority={authority}
+                onWebsiteChange={setWebsite}
+                onVatChange={setVat}
+                onZvrChange={setZvr}
+                onAuthorityChange={setAuthority}
+              />
             </div>
           </div>
 
@@ -319,9 +353,15 @@ export default function OrganizationManagePage() {
               helperPlural={helperPlural}
               onHelperSingularChange={setHelperSingular}
               onHelperPluralChange={setHelperPlural}
+              einsatzSingular={einsatzSingular}
+              einsatzPlural={einsatzPlural}
+              onEinsatzSingularChange={setEinsatzSingular}
+              onEinsatzPluralChange={setEinsatzPlural}
             />
           </div>
+          <OrganizationAddresses organizationId={orgId} />
 
+          <OrganizationBankAccounts organizationId={orgId} />
           <UserProperties organizationId={orgId} />
 
           <UsersManagementSection
