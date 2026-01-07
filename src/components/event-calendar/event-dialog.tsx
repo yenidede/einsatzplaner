@@ -1023,6 +1023,7 @@ export function EventDialogVerwaltung({
                 errors={errors.fieldErrors}
                 onFormDataChange={handleDynamicFormDataChange}
               />
+              <div className="border-b"></div>
               <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
             </div>
           </div>
