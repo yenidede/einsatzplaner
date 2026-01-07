@@ -20,10 +20,9 @@ import {
 import { toast } from "sonner";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
-import { queryKeys as StatusQueryKeys } from "@/features/einsatz_status/queryKeys";
 import { useSession } from "next-auth/react";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
-import { GetStatuses } from "@/features/einsatz_status/status-dal";
+import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
 import { useAlertDialog } from "@/hooks/use-alert-dialog";
 import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
 import { getUserPropertiesByOrgId } from "@/features/user_properties/user_property-dal";
@@ -49,17 +48,10 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     enabled: !!session?.user.orgIds?.length,
   });
 
-  const { data: statuses } = useQuery({
-    queryKey: StatusQueryKeys.statuses(),
-    queryFn: () => GetStatuses(),
-  });
-
-  const einsatz_singular =
-    organizations?.find((org) => org.id === activeOrgId)
-      ?.einsatz_name_singular ?? "Einsatz";
-  const einsatz_plural =
-    organizations?.find((org) => org.id === activeOrgId)?.einsatz_name_plural ??
-    "Einsätze";
+  const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   // Mutations with optimistic update
   const createMutation = useMutation({

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { DataTable } from "@/components/data-table/components/data-table";
 import { DataTableAdvancedToolbar } from "@/components/data-table/components/data-table-advanced-toolbar";
@@ -19,6 +19,7 @@ import { getEinsaetzeForTableView } from "@/features/einsatz/dal-einsatz";
 import type { ETV } from "@/features/einsatz/types";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { queryKeys as statusQueryKeys } from "@/features/einsatz_status/queryKeys";
+import { queryKeys as orgaQueryKeys } from "@/features/organization/queryKeys";
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { queryKeys as templatesQueryKeys } from "@/features/einsatztemplate/queryKeys";
 import { getAllTemplatesByOrgIds } from "@/features/template/template-dal";
@@ -40,6 +41,8 @@ import { formatDate } from "../data-table/lib/format";
 import { Button } from "../ui/button";
 import { MoreHorizontal } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -60,6 +63,7 @@ export function ListView({
   const [isTableReady, setIsTableReady] = useState(false);
 
   const { data: userSession } = useSession();
+  const activeOrgId = userSession?.user?.activeOrganization?.id;
   const userOrgIds = userSession?.user?.orgIds ?? [];
 
   const { data, isLoading } = useQuery<ETV[]>({
@@ -73,6 +77,17 @@ export function ListView({
     queryKey: statusQueryKeys.statuses(),
     queryFn: GetStatuses,
   });
+
+  const { data: organizations } = useQuery({
+    queryKey: orgaQueryKeys.organizations(userOrgIds),
+    queryFn: () => getOrganizationsByIds(userOrgIds),
+    enabled: !!userOrgIds.length,
+  });
+
+  const { einsatz_singular, helper_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   // const { data: organizationsData, isLoading: isOrganizationsLoading } =
   //   useQuery({
@@ -101,13 +116,22 @@ export function ListView({
 
   // Ensure data is defined before accessing its elements
 
-  const isSomeQueryLoading =
-    isLoading ||
-    isStatusLoading ||
-    areTemplatesLoading ||
-    isUsersLoading ||
-    // isOrganizationsLoading ||
-    isCategoriesLoading;
+  const isSomeQueryLoading = useMemo(() => {
+    return (
+      isLoading ||
+      isStatusLoading ||
+      areTemplatesLoading ||
+      isUsersLoading ||
+      isCategoriesLoading
+    );
+  }, [
+    isLoading,
+    isStatusLoading,
+    areTemplatesLoading,
+    isUsersLoading,
+    isCategoriesLoading,
+  ]);
+
   const columnHelper = createColumnHelper<ETV>();
 
   // Note: Don't constrain ColumnDef's value generic to unknown; let each accessor infer (string, boolean, etc.).
@@ -115,6 +139,7 @@ export function ListView({
     () => [
       columnHelper.display({
         id: "select",
+        size: 40,
         header: ({ table }) => (
           <Checkbox
             checked={
@@ -145,7 +170,7 @@ export function ListView({
         meta: {
           label: "Titel",
           variant: "text",
-          placeholder: "Einsatz suchen...",
+          placeholder: `Nach ${einsatz_singular} suchen...`,
         },
       }),
       columnHelper.accessor(
@@ -253,12 +278,12 @@ export function ListView({
       ),
       columnHelper.accessor((row) => `${row.einsatz_helper.length}`, {
         id: "helper_count",
-        header: "Anzahl Helfer",
+        header: `Anzahl ${helper_plural}`,
         cell: (props) => props.getValue(),
         enableColumnFilter: true,
         filterFn: byOperator,
         meta: {
-          label: "Anzahl Helfer",
+          label: `Anzahl ${helper_plural}`,
           variant: "range",
         },
       }),
@@ -285,21 +310,22 @@ export function ListView({
       }),
       columnHelper.display({
         id: "actions",
+        size: 40,
         cell: function Cell(props) {
           return (
-            <div className="bg-background">
+            <div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
+                    <span className="sr-only">Aktionsmenü öffnen</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={() => onEventEdit(props.row.original.id)}
                   >
-                    Edit
+                    Bearbeiten
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     variant="destructive"
@@ -310,7 +336,7 @@ export function ListView({
                       )
                     }
                   >
-                    Delete
+                    Löschen
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -357,10 +383,8 @@ export function ListView({
     setIsTableReady(true);
   }, [rowModelRows]);
 
-  console.log("Data in ListView:", data);
-
   if (data instanceof Response) {
-    console.log("Error Response in ListView:", data);
+    console.error("Error Response in ListView:", data);
     return (
       <div className="flex flex-col gap-4 justify-start items-baseline px-4 py-6">
         <div>
