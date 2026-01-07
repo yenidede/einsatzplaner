@@ -84,8 +84,10 @@ export function ListView({
     enabled: !!userOrgIds.length,
   });
 
-  const { einsatz_singular, einsatz_plural, helper_singular, helper_plural } =
-    useOrganizationTerminology(organizations, activeOrgId);
+  const { einsatz_singular, helper_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   // const { data: organizationsData, isLoading: isOrganizationsLoading } =
   //   useQuery({
@@ -129,7 +131,7 @@ export function ListView({
     isUsersLoading,
     isCategoriesLoading,
   ]);
-  
+
   const columnHelper = createColumnHelper<ETV>();
 
   // Note: Don't constrain ColumnDef's value generic to unknown; let each accessor infer (string, boolean, etc.).
