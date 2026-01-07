@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { DataTable } from "@/components/data-table/components/data-table";
 import { DataTableAdvancedToolbar } from "@/components/data-table/components/data-table-advanced-toolbar";
@@ -19,6 +19,7 @@ import { getEinsaetzeForTableView } from "@/features/einsatz/dal-einsatz";
 import type { ETV } from "@/features/einsatz/types";
 import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
 import { queryKeys as statusQueryKeys } from "@/features/einsatz_status/queryKeys";
+import { queryKeys as orgaQueryKeys } from "@/features/organization/queryKeys";
 import { GetStatuses } from "@/features/einsatz_status/status-dal";
 import { queryKeys as templatesQueryKeys } from "@/features/einsatztemplate/queryKeys";
 import { getAllTemplatesByOrgIds } from "@/features/template/template-dal";
@@ -40,6 +41,8 @@ import { formatDate } from "../data-table/lib/format";
 import { Button } from "../ui/button";
 import { MoreHorizontal } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -60,6 +63,7 @@ export function ListView({
   const [isTableReady, setIsTableReady] = useState(false);
 
   const { data: userSession } = useSession();
+  const activeOrgId = userSession?.user?.activeOrganization?.id;
   const userOrgIds = userSession?.user?.orgIds ?? [];
 
   const { data, isLoading } = useQuery<ETV[]>({
@@ -73,6 +77,15 @@ export function ListView({
     queryKey: statusQueryKeys.statuses(),
     queryFn: GetStatuses,
   });
+
+  const { data: organizations } = useQuery({
+    queryKey: orgaQueryKeys.organizations(userOrgIds),
+    queryFn: () => getOrganizationsByIds(userOrgIds),
+    enabled: !!userOrgIds.length,
+  });
+
+  const { einsatz_singular, einsatz_plural, helper_singular, helper_plural } =
+    useOrganizationTerminology(organizations, activeOrgId);
 
   // const { data: organizationsData, isLoading: isOrganizationsLoading } =
   //   useQuery({
@@ -115,6 +128,7 @@ export function ListView({
     () => [
       columnHelper.display({
         id: "select",
+        size: 40,
         header: ({ table }) => (
           <Checkbox
             checked={
@@ -285,9 +299,10 @@ export function ListView({
       }),
       columnHelper.display({
         id: "actions",
+        size: 40,
         cell: function Cell(props) {
           return (
-            <div className="bg-background">
+            <div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">

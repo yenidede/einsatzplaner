@@ -55,6 +55,7 @@ import TooltipCustom from "../tooltip-custom";
 import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
 import { useSession } from "next-auth/react";
 import { getOrganizationsByIds } from "@/features/organization/org-dal";
+import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
 import { toast } from "sonner";
 import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
 
@@ -252,9 +253,10 @@ export function EventDialogVerwaltung({
     enabled: !!session?.user.orgIds?.length,
   });
 
-  const einsatz_singular =
-    organizations?.find((org) => org.id === activeOrgId)
-      ?.einsatz_name_singular ?? "Einsatz";
+  const { einsatz_singular } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =

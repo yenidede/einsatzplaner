@@ -54,6 +54,7 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/features/organization/queryKeys";
 import { toast } from "sonner";
 import { useEventDialog } from "@/hooks/use-event-dialog";
+import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -118,12 +119,10 @@ export function EventCalendar({
     enabled: !!orgIds?.length,
   });
 
-  const einsatz_singular =
-    organizations?.find((org) => org.id === activeOrgId)
-      ?.einsatz_name_singular ?? "Einsatz";
-  const einsatz_plural =
-    organizations?.find((org) => org.id === activeOrgId)?.einsatz_name_plural ??
-    "Einsätze";
+  const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   // Add keyboard shortcuts for view switching
   useEffect(() => {
