@@ -38,7 +38,7 @@ export function OrganizationPreferences({
               type="text"
               value={helperSingular}
               onChange={(e) => onHelperSingularChange(e.target.value)}
-              className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 focus:outline-blue-500"
+              className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
               placeholder="z.B. Vermittler:in, Helfer:in"
             />
           </div>
@@ -50,7 +50,7 @@ export function OrganizationPreferences({
               type="text"
               value={helperPlural}
               onChange={(e) => onHelperPluralChange(e.target.value)}
-              className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 focus:outline-blue-500"
+              className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
               placeholder="z.B. Vermittler:innen, Helfer:innen"
             />
           </div>
@@ -64,7 +64,7 @@ export function OrganizationPreferences({
               type="text"
               value={einsatzSingular}
               onChange={(e) => onEinsatzSingularChange(e.target.value)}
-              className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 focus:outline-blue-500"
+              className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
               placeholder="z.B. Einsatz, Schicht"
             />
           </div>
@@ -76,7 +76,7 @@ export function OrganizationPreferences({
               type="text"
               value={einsatzPlural}
               onChange={(e) => onEinsatzPluralChange(e.target.value)}
-              className="w-full px-3 py-2 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-300 focus:outline-blue-500"
+              className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
               placeholder="z.B. Einsätze, Schichten"
             />
           </div>

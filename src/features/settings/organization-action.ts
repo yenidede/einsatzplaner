@@ -542,7 +542,7 @@ export async function createOrganizationAddressAction(data: {
         org_id: data.orgId,
         label: data.label,
         street: data.street,
-        postal_code: BigInt(data.postal_code),
+        postal_code: data.postal_code,
         city: data.city,
         country: data.country,
       },
@@ -571,7 +571,7 @@ export async function updateOrganizationAddressAction(data: {
       data: {
         label: data.label,
         street: data.street,
-        postal_code: BigInt(data.postal_code),
+        postal_code: data.postal_code,
         city: data.city,
         country: data.country,
       },
@@ -680,6 +680,64 @@ export async function deleteOrganizationBankAccountAction(
   } catch (error) {
     console.error("Error deleting bank account:", error);
     throw new Error("Fehler beim Löschen des Bankkontos");
+  }
+}
+//#endregion
+//#region ORGANIZATION DETAILS
+
+export async function getOrganizationDetailsAction(orgId: string) {
+  try {
+    // Hole den ersten (und einzigen) Eintrag für diese Organisation
+    const details = await prisma.organization_details.findFirst({
+      where: { org_id: orgId },
+    });
+    return details;
+  } catch (error) {
+    console.error("Error fetching organization details:", error);
+    throw new Error("Fehler beim Laden der Organisationsdetails");
+  }
+}
+
+export async function saveOrganizationDetailsAction(data: {
+  orgId: string;
+  website?: string;
+  vat?: string;
+  zvr?: string;
+  authority?: string;
+}) {
+  try {
+    const existing = await prisma.organization_details.findFirst({
+      where: { org_id: data.orgId },
+    });
+
+    let details;
+    if (existing) {
+      details = await prisma.organization_details.update({
+        where: { id: existing.id },
+        data: {
+          website: data.website || null,
+          vat: data.vat || null,
+          zvr: data.zvr || null,
+          authority: data.authority || null,
+        },
+      });
+    } else {
+      details = await prisma.organization_details.create({
+        data: {
+          org_id: data.orgId,
+          website: data.website || null,
+          vat: data.vat || null,
+          zvr: data.zvr || null,
+          authority: data.authority || null,
+        },
+      });
+    }
+
+    revalidatePath(`/organization/${data.orgId}/manage`);
+    return { success: true, details };
+  } catch (error) {
+    console.error("Error saving organization details:", error);
+    throw new Error("Fehler beim Speichern der Organisationsdetails");
   }
 }
 //#endregion

@@ -15,6 +15,7 @@ import {
   updateOrganizationAction,
   uploadOrganizationLogoAction,
   removeOrganizationLogoAction,
+  saveOrganizationDetailsAction,
 } from "@/features/settings/organization-action";
 import { getUserProfileAction } from "@/features/settings/settings-action";
 import { getAllUserOrgRolesAction } from "@/features/settings/users-action";
@@ -29,6 +30,8 @@ import { UsersManagementSection } from "@/features/settings/components/manage/Us
 import { UserProperties } from "@/features/user_properties/components/UserProperties";
 import { OrganizationAddresses } from "@/features/settings/components/manage/OrganizationAddresses";
 import { OrganizationBankAccounts } from "@/features/settings/components/manage/OrganizationBankAccounts";
+import { OrganizationDetails } from "@/features/settings/components/manage/OrganizationDetails";
+import { SettingsHeader } from "@/features/settings/components/SettingsHeader";
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -51,6 +54,12 @@ export default function OrganizationManagePage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+
+  // Organization Details States
+  const [website, setWebsite] = useState("");
+  const [vat, setVat] = useState("");
+  const [zvr, setZvr] = useState("");
+  const [authority, setAuthority] = useState("");
 
   const staleTime = 5 * 60 * 1000;
   const gcTime = 10 * 60 * 1000;
@@ -193,7 +202,12 @@ export default function OrganizationManagePage() {
       einsatz_name_singular?: string;
       einsatz_name_plural?: string;
       logoFile?: File | null;
+      website?: string;
+      vat?: string;
+      zvr?: string;
+      authority?: string;
     }) => {
+      // Update Organization
       const updateData: any = {
         id: orgId,
         name: data.name,
@@ -208,6 +222,16 @@ export default function OrganizationManagePage() {
 
       const res = await updateOrganizationAction(updateData);
       if (!res) throw new Error("Fehler beim Speichern");
+
+      // Update Organization Details
+      await saveOrganizationDetailsAction({
+        orgId,
+        website: data.website,
+        vat: data.vat,
+        zvr: data.zvr,
+        authority: data.authority,
+      });
+
       return res;
     },
     onMutate: () => {
@@ -216,6 +240,9 @@ export default function OrganizationManagePage() {
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.organization(orgId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.orgDetails(orgId),
       });
       setLogoFile(null);
       toast.success("Organisation erfolgreich aktualisiert!", {
@@ -244,6 +271,10 @@ export default function OrganizationManagePage() {
       einsatz_name_singular: einsatzSingular,
       einsatz_name_plural: einsatzPlural,
       logoFile: logoFile,
+      website,
+      vat,
+      zvr,
+      authority,
     });
   };
 
@@ -266,33 +297,12 @@ export default function OrganizationManagePage() {
     );
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto bg-white rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
-      <div className="w-full p-4 border-b border-slate-200 flex justify-between items-center gap-8">
-        <div className="flex-1 h-8 flex justify-center items-center gap-2.5">
-          <div className="flex-1 justify-start text-slate-800 text-2xl font-semibold font-['Poppins'] leading-loose">
-            Einstellungen
-          </div>
-        </div>
-        <div className="flex justify-end items-center gap-2">
-          <Link
-            href="/settings"
-            className="px-3 py-1 bg-white rounded-md outline outline-1 outline-offset-[-1px] outline-slate-200 flex justify-center items-center gap-2.5 hover:bg-slate-50 transition-colors"
-          >
-            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
-              Abbrechen (ESC)
-            </div>
-          </Link>
-          <button
-            onClick={handleSave}
-            className="px-3 py-1 bg-slate-900 rounded-md flex justify-center items-center gap-2.5 hover:bg-slate-800 transition-colors"
-          >
-            <div className="justify-start text-white text-sm font-medium font-['Inter'] leading-normal">
-              Speichern
-            </div>
-          </button>
-        </div>
-      </div>
-
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-lg outline -outline-offset-1 outline-slate-200 flex flex-col">
+      <SettingsHeader
+        onSave={handleSave}
+        isSaving={updateMutation.isPending}
+        onCancel={() => router.push("/")}
+      />
       <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
         <OrganizationSidebar user={user} onSignOut={handleSignOut} />
 
@@ -322,6 +332,18 @@ export default function OrganizationManagePage() {
                   onDescriptionChange={setDescription}
                 />
               </div>
+
+              <OrganizationDetails
+                organizationId={orgId}
+                website={website}
+                vat={vat}
+                zvr={zvr}
+                authority={authority}
+                onWebsiteChange={setWebsite}
+                onVatChange={setVat}
+                onZvrChange={setZvr}
+                onAuthorityChange={setAuthority}
+              />
             </div>
           </div>
 

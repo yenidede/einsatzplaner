@@ -61,7 +61,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
       (field.field.name ?? "").toLowerCase().match("/^(ort|location)$/")
     );
 
-    const urlToHelferansichtPage = `${process.env.NEXTAUTH_URL}helferansicht`;
+    const urlToHelferansichtPage = new URL(
+      "/helferansicht",
+      baseUrl
+    ).toString();
 
     const start = einsatz.start;
     let end = einsatz.end;
