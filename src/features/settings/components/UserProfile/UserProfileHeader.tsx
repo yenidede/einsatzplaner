@@ -1,5 +1,5 @@
-"use client";
-import { useState, useMemo } from "react";
+'use client';
+import { useState, useMemo } from 'react';
 
 interface UserProfileHeaderProps {
   firstname: string;
@@ -20,13 +20,13 @@ export function UserProfileHeader({
 }: UserProfileHeaderProps) {
   const [imageError, setImageError] = useState(false);
   const initials =
-    `${firstname?.[0] || ""}${lastname?.[0] || ""}`.toUpperCase() || "U";
+    `${firstname?.[0] || ''}${lastname?.[0] || ''}`.toUpperCase() || 'U';
 
   // Die Rollen Absteigend nach Wichtigkeit sortieren
   const sortedRoles = useMemo(() => {
     const roleOrder = {
       Helfer: 1,
-      "Helfer:in": 1,
+      'Helfer:in': 1,
       Einsatzverwaltung: 2,
       EV: 2,
       Organisationsverwaltung: 3,
@@ -36,8 +36,8 @@ export function UserProfileHeader({
     };
 
     return [...userOrgRoles].sort((a, b) => {
-      const roleNameA = a.role?.name || a.role?.abbreviation || "";
-      const roleNameB = b.role?.name || b.role?.abbreviation || "";
+      const roleNameA = a.role?.name || a.role?.abbreviation || '';
+      const roleNameB = b.role?.name || b.role?.abbreviation || '';
 
       const orderA = roleOrder[roleNameA as keyof typeof roleOrder] || 0;
       const orderB = roleOrder[roleNameB as keyof typeof roleOrder] || 0;
@@ -47,42 +47,42 @@ export function UserProfileHeader({
   }, [userOrgRoles]);
 
   return (
-    <div className="px-4 flex flex-col justify-start items-start gap-4">
-      <div className="w-20 h-20 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center">
+    <div className="flex flex-col items-start justify-start gap-4 px-4">
+      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-slate-200">
         {pictureUrl && !imageError ? (
           <img
             src={pictureUrl}
             alt={`${firstname} ${lastname}`}
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
             loading="lazy"
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="text-slate-900 text-2xl font-semibold">
+          <div className="text-2xl font-semibold text-slate-900">
             {initials}
           </div>
         )}
       </div>
-      <div className="flex flex-col justify-center items-start gap-1">
-        <div className="text-slate-800 text-2xl font-semibold font-['Inter'] leading-loose">
+      <div className="flex flex-col items-start justify-center gap-1">
+        <div className="font-['Inter'] text-2xl leading-loose font-semibold text-slate-800">
           {firstname} {lastname}
         </div>
-        <div className="inline-flex justify-start items-start gap-1 flex-wrap">
+        <div className="inline-flex flex-wrap items-start justify-start gap-1">
           {sortedRoles.map((userRole, index) => (
             <div
               key={index}
               className={`px-2 py-1 ${getRoleColor(
                 userRole.role
-              )} rounded-md flex justify-center items-center`}
+              )} flex items-center justify-center rounded-md`}
             >
-              <div className="text-slate-700 text-sm font-medium font-['Inter']">
+              <div className="font-['Inter'] text-sm font-medium text-slate-700">
                 {getRoleDisplayName(userRole.role)}
               </div>
             </div>
           ))}
           {userOrgRoles.length === 0 && (
-            <div className="px-2 py-1 bg-gray-200 rounded-md flex justify-center items-center">
-              <div className="text-slate-700 text-sm font-medium font-['Inter']">
+            <div className="flex items-center justify-center rounded-md bg-gray-200 px-2 py-1">
+              <div className="font-['Inter'] text-sm font-medium text-slate-700">
                 Keine Rollen zugewiesen
               </div>
             </div>

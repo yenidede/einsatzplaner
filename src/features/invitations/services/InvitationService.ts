@@ -1,6 +1,6 @@
-import prisma from "@/lib/prisma";
-import { emailService } from "@/lib/email/EmailService";
-import { randomBytes } from "crypto";
+import prisma from '@/lib/prisma';
+import { emailService } from '@/lib/email/EmailService';
+import { randomBytes } from 'crypto';
 
 export class InvitationService {
   static async createInvitation(
@@ -21,7 +21,7 @@ export class InvitationService {
       });
 
       if (user_in_org) {
-        throw new Error("Benutzer ist bereits Mitglied dieser Organisation");
+        throw new Error('Benutzer ist bereits Mitglied dieser Organisation');
       }
     }
 
@@ -38,11 +38,11 @@ export class InvitationService {
 
     if (existingInvitation) {
       throw new Error(
-        "Es existiert bereits eine aktive Einladung für diese E-Mail-Adresse"
+        'Es existiert bereits eine aktive Einladung für diese E-Mail-Adresse'
       );
     }
 
-    const token = randomBytes(32).toString("hex");
+    const token = randomBytes(32).toString('hex');
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -59,14 +59,14 @@ export class InvitationService {
     ]);
 
     if (!organization || !inviter) {
-      throw new Error("Organisation oder Einlader nicht gefunden");
+      throw new Error('Organisation oder Einlader nicht gefunden');
     }
 
     const invitationRole = await prisma.role.findFirst({
-      where: { name: "Helfer" },
+      where: { name: 'Helfer' },
     });
     if (!invitationRole) {
-      throw new Error("Standard-Rolle für Einladungen nicht gefunden");
+      throw new Error('Standard-Rolle für Einladungen nicht gefunden');
     }
 
     const invitation = await prisma.invitation.create({
@@ -123,17 +123,17 @@ export class InvitationService {
     });
 
     if (!invitations || invitations.length === 0) {
-      throw new Error("Einladung nicht gefunden");
+      throw new Error('Einladung nicht gefunden');
     }
 
     const firstInvitation = invitations[0];
 
     if (firstInvitation.accepted) {
-      throw new Error("Diese Einladung wurde bereits angenommen");
+      throw new Error('Diese Einladung wurde bereits angenommen');
     }
 
     if (new Date() > firstInvitation.expires_at) {
-      throw new Error("Diese Einladung ist abgelaufen");
+      throw new Error('Diese Einladung ist abgelaufen');
     }
 
     return {
@@ -145,8 +145,8 @@ export class InvitationService {
       inviter: firstInvitation.user,
       role: firstInvitation.role,
       roles: invitations.map((inv) => ({
-        id: inv.role?.id || "",
-        name: inv.role?.name || "Unbekannt",
+        id: inv.role?.id || '',
+        name: inv.role?.name || 'Unbekannt',
       })),
     };
   }
@@ -176,13 +176,13 @@ export class InvitationService {
     });
 
     if (!invitations || invitations.length === 0) {
-      throw new Error("Einladung nicht gefunden");
+      throw new Error('Einladung nicht gefunden');
     }
 
     const firstInvitation = invitations[0];
 
     if (new Date() > firstInvitation.expires_at) {
-      throw new Error("Diese Einladung ist abgelaufen");
+      throw new Error('Diese Einladung ist abgelaufen');
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -191,7 +191,7 @@ export class InvitationService {
 
     if (existingUser) {
       throw new Error(
-        "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits"
+        'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits'
       );
     }
 
@@ -274,7 +274,7 @@ export class InvitationService {
           select: { firstname: true, lastname: true },
         },
       },
-      distinct: ["token"],
+      distinct: ['token'],
     });
 
     let sentCount = 0;
@@ -283,7 +283,7 @@ export class InvitationService {
       try {
         const inviterName = invitation.user
           ? `${invitation.user.firstname} ${invitation.user.lastname}`
-          : "einem Teammitglied";
+          : 'einem Teammitglied';
 
         await emailService.sendInvitationReminderEmail(
           invitation.email,

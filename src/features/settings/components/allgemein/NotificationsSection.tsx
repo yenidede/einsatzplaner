@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { Switch } from "@/features/settings/components/ui/switch";
-import { Label } from "@/features/settings/components/ui/label";
-import { Organization } from "../../types";
+import { Switch } from '@/features/settings/components/ui/switch';
+import { Label } from '@/features/settings/components/ui/label';
+import { Organization } from '../../types';
 
 interface NotificationsSectionProps {
   organizations: Organization[];
@@ -14,17 +14,17 @@ export function NotificationsSection({
   onNotificationChange,
 }: NotificationsSectionProps) {
   return (
-    <div className="self-stretch flex flex-col justify-center items-start">
-      <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-        <div className="flex-1 flex justify-start items-center gap-2">
-          <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+    <div className="flex flex-col items-start justify-center self-stretch">
+      <div className="inline-flex items-center justify-between self-stretch border-b border-slate-200 px-4 py-2">
+        <div className="flex flex-1 items-center justify-start gap-2">
+          <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
             Benachrichtigungen
           </div>
         </div>
       </div>
 
-      <div className="self-stretch py-2 inline-flex justify-start items-start gap-4">
-        <div className="flex-1 px-4 flex flex-col gap-2">
+      <div className="inline-flex items-start justify-start gap-4 self-stretch py-2">
+        <div className="flex flex-1 flex-col gap-2 px-4">
           {organizations.length > 0 ? (
             organizations.map((org) => {
               const isOn = org.hasGetMailNotification ?? true;
@@ -32,13 +32,13 @@ export function NotificationsSection({
               return (
                 <div
                   key={org.id}
-                  className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5"
+                  className="inline-flex min-w-72 flex-1 flex-col items-start justify-start gap-1.5"
                 >
                   <Label
                     htmlFor={`org-switch-${org.id}`}
                     className="text-sm font-medium"
                   >
-                    Emails von <span className="font-bold">{org.name}</span>{" "}
+                    Emails von <span className="font-bold">{org.name}</span>{' '}
                     erhalten
                   </Label>
 
@@ -55,7 +55,7 @@ export function NotificationsSection({
                       htmlFor={`org-switch-${org.id}`}
                       className="text-sm font-medium"
                     >
-                      {isOn ? "On" : "Off"}
+                      {isOn ? 'On' : 'Off'}
                     </Label>
                   </div>
                 </div>

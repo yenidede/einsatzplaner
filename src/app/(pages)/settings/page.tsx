@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSessionValidation } from "@/hooks/useSessionValidation";
-import { settingsQueryKeys } from "@/features/settings/queryKeys/queryKey";
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSessionValidation } from '@/hooks/useSessionValidation';
+import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
   getUserProfileAction,
   updateUserProfileAction,
@@ -16,28 +16,28 @@ import {
   UserUpdateData,
   removeUserFromOrganizationAction,
   removeProfilePictureAction,
-} from "@/features/settings/settings-action";
-import { toast } from "sonner";
-import { useAlertDialog } from "@/hooks/use-alert-dialog";
-import { OrganizationSidebar } from "@/features/settings/components/manage/OrganizationSideBar";
-import { AccountSection } from "@/features/settings/components/allgemein/AccountSection";
-import { PersonalPreferencesSection } from "@/features/settings/components/allgemein/PersonalPreferencesSection";
-import { NotificationsSection } from "@/features/settings/components/allgemein/NotificationsSection";
-import { OrganizationsSection } from "@/features/settings/components/allgemein/OrganizationsSection";
-import { Organization } from "@/features/settings/types";
-import { SettingsHeader } from "@/features/settings/components/SettingsHeader";
+} from '@/features/settings/settings-action';
+import { toast } from 'sonner';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { OrganizationSidebar } from '@/features/settings/components/manage/OrganizationSideBar';
+import { AccountSection } from '@/features/settings/components/allgemein/AccountSection';
+import { PersonalPreferencesSection } from '@/features/settings/components/allgemein/PersonalPreferencesSection';
+import { NotificationsSection } from '@/features/settings/components/allgemein/NotificationsSection';
+import { OrganizationsSection } from '@/features/settings/components/allgemein/OrganizationsSection';
+import { Organization } from '@/features/settings/types';
+import { SettingsHeader } from '@/features/settings/components/SettingsHeader';
 
 export default function SettingsPage() {
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const { data: session, status, update } = useSession();
   const router = useRouter();
   const { showDialog, AlertDialogComponent } = useAlertDialog();
-  const [email, setEmail] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
-  const [firstname, setFirstname] = useState<string>("");
-  const [lastname, setLastname] = useState<string>("");
+  const [email, setEmail] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
+  const [firstname, setFirstname] = useState<string>('');
+  const [lastname, setLastname] = useState<string>('');
   const [pictureUrl, setPictureUrl] = useState<string | null>(null);
-  const [salutationId, setSalutationId] = useState<string>("");
+  const [salutationId, setSalutationId] = useState<string>('');
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(
     null
   );
@@ -49,8 +49,8 @@ export default function SettingsPage() {
   useSessionValidation({
     debug: false,
     onTokenExpired: () => {
-      console.log("Token abgelaufen - leite zu Login weiter");
-      router.push("/signin");
+      console.log('Token abgelaufen - leite zu Login weiter');
+      router.push('/signin');
     },
   });
 
@@ -69,11 +69,11 @@ export default function SettingsPage() {
   }, [profilePictureFile]);
 
   const { data: userData, isLoading: isLoadingUser } = useQuery({
-    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
+    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
     enabled: !!session?.user?.id,
     queryFn: async () => {
       const res = await getUserProfileAction();
-      if (!res) throw new Error("Fehler beim Laden");
+      if (!res) throw new Error('Fehler beim Laden');
       return res;
     },
   });
@@ -88,10 +88,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (userData) {
-      setEmail(userData.email ?? "");
-      setPhone(userData.phone ?? "");
-      setFirstname(userData.firstname ?? "");
-      setLastname(userData.lastname ?? "");
+      setEmail(userData.email ?? '');
+      setPhone(userData.phone ?? '');
+      setFirstname(userData.firstname ?? '');
+      setLastname(userData.lastname ?? '');
       setPictureUrl(userData.picture_url);
       setSalutationId(userData.salutationId);
       setShowLogos(userData.hasLogoinCalendar ?? true);
@@ -103,28 +103,28 @@ export default function SettingsPage() {
   }, [userData]);
 
   const mutation = useMutation({
-    mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
+    mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
     mutationFn: async (newSettings: UserUpdateData) => {
       const res = await updateUserProfileAction(newSettings);
-      if (!res) throw new Error("Fehler beim Speichern");
+      if (!res) throw new Error('Fehler beim Speichern');
       return res;
     },
     onMutate: () => {
-      return { toastId: toast.loading("Speichert...") };
+      return { toastId: toast.loading('Speichert...') };
     },
     onSuccess: (data, variables, context) => {
-      toast.success("Einstellungen erfolgreich gespeichert!", {
+      toast.success('Einstellungen erfolgreich gespeichert!', {
         id: context.toastId,
       });
       queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
+        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
       });
     },
     onError: (error, variables, context) => {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Fehler beim Speichern der Einstellungen",
+          : 'Fehler beim Speichern der Einstellungen',
         { id: context?.toastId }
       );
     },
@@ -142,12 +142,12 @@ export default function SettingsPage() {
         userId,
         organizationId
       );
-      if (!res) throw new Error("Failed to leave organization");
+      if (!res) throw new Error('Failed to leave organization');
       return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ""),
+        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
       });
     },
   });
@@ -159,18 +159,18 @@ export default function SettingsPage() {
       let finalPictureUrl = pictureUrl;
 
       if (profilePictureFile) {
-        const toastId = toast.loading("Profilbild wird hochgeladen...");
+        const toastId = toast.loading('Profilbild wird hochgeladen...');
         try {
           const formData = new FormData();
-          formData.append("file", profilePictureFile);
+          formData.append('file', profilePictureFile);
           const res = await uploadProfilePictureAction(formData);
           if (!res) {
             throw new Error(`Upload fehlgeschlagen`);
           }
           finalPictureUrl = res.picture_url;
-          toast.success("Profilbild erfolgreich hochgeladen!", { id: toastId });
+          toast.success('Profilbild erfolgreich hochgeladen!', { id: toastId });
         } catch (error) {
-          toast.error("Fehler beim Hochladen des Profilbilds", { id: toastId });
+          toast.error('Fehler beim Hochladen des Profilbilds', { id: toastId });
           throw error;
         }
       }
@@ -215,11 +215,11 @@ export default function SettingsPage() {
       }
 
       await queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user.id || ""),
+        queryKey: settingsQueryKeys.userSettings(session?.user.id || ''),
       });
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unbekannter Fehler"
+        error instanceof Error ? error.message : 'Unbekannter Fehler'
       );
     }
   };
@@ -231,7 +231,7 @@ export default function SettingsPage() {
   const handleRemoveProfilePicture = async () => {
     if (!session?.user?.id) return;
 
-    const toastId = toast.loading("Profilbild wird entfernt...");
+    const toastId = toast.loading('Profilbild wird entfernt...');
 
     try {
       await removeProfilePictureAction();
@@ -251,11 +251,11 @@ export default function SettingsPage() {
         queryKey: settingsQueryKeys.userSettings(session.user.id),
       });
 
-      toast.success("Profilbild erfolgreich entfernt!", { id: toastId });
+      toast.success('Profilbild erfolgreich entfernt!', { id: toastId });
     } catch (error) {
       toast.error(
         `Fehler beim Entfernen des Profilbilds${
-          error instanceof Error ? ": " + error.message : ""
+          error instanceof Error ? ': ' + error.message : ''
         }`,
         { id: toastId }
       );
@@ -267,19 +267,19 @@ export default function SettingsPage() {
 
     const orgName =
       organizations.find((org) => org.id === organizationId)?.name ||
-      "Organisation";
+      'Organisation';
 
     const result = await showDialog({
-      title: "Organisation verlassen",
+      title: 'Organisation verlassen',
       description: `Möchten Sie wirklich ${orgName} verlassen? Sie verlieren den Zugriff auf alle Daten dieser Organisation.`,
-      confirmText: "Verlassen",
-      cancelText: "Abbrechen",
-      variant: "destructive",
+      confirmText: 'Verlassen',
+      cancelText: 'Abbrechen',
+      variant: 'destructive',
     });
 
-    if (result !== "success") return;
+    if (result !== 'success') return;
 
-    const toastId = toast.loading("Organisation wird verlassen...");
+    const toastId = toast.loading('Organisation wird verlassen...');
 
     try {
       await leaveOrgMutation.mutateAsync({
@@ -290,7 +290,7 @@ export default function SettingsPage() {
     } catch (err) {
       toast.error(
         `Fehler beim Verlassen der Organisation.${
-          err instanceof Error ? " " + err.message : ""
+          err instanceof Error ? ' ' + err.message : ''
         }`,
         { id: toastId }
       );
@@ -305,8 +305,8 @@ export default function SettingsPage() {
     );
   };
 
-  if (status === "unauthenticated") {
-    signOut({ callbackUrl: "/signin" });
+  if (status === 'unauthenticated') {
+    signOut({ callbackUrl: '/signin' });
     return <div>Leite weiter…</div>;
   }
 
@@ -321,16 +321,16 @@ export default function SettingsPage() {
   return (
     <>
       {AlertDialogComponent}
-      <div className="w-full max-w-7xl mx-auto bg-white rounded-lg outline outline-offset-1 outline-slate-200 flex flex-col">
+      <div className="mx-auto flex w-full max-w-7xl flex-col rounded-lg bg-white outline outline-offset-1 outline-slate-200">
         <SettingsHeader
           onSave={handleSave}
           isSaving={mutation.isPending}
-          onCancel={() => router.push("/")}
+          onCancel={() => router.push('/')}
         />
-        <div className="self-stretch pl-2 py-4 inline-flex justify-start items-start gap-4 overflow-hidden">
+        <div className="inline-flex items-start justify-start gap-4 self-stretch overflow-hidden py-4 pl-2">
           <OrganizationSidebar user={userData} onSignOut={signOut} />
 
-          <div className="flex-1 inline-flex flex-col justify-start items-start gap-8">
+          <div className="inline-flex flex-1 flex-col items-start justify-start gap-8">
             <AccountSection
               firstname={firstname}
               lastname={lastname}

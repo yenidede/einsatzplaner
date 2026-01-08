@@ -1,26 +1,26 @@
-import InfoMenu from "@/components/navbar/info-menu";
-import Logo from "@/components/logo";
-import NotificationMenu from "@/components/navbar/notification-menu";
-import UserMenu from "@/components/navbar/user-menu";
-import { Button } from "@/components/ui/button";
+import InfoMenu from '@/components/navbar/info-menu';
+import Logo from '@/components/logo';
+import NotificationMenu from '@/components/navbar/notification-menu';
+import UserMenu from '@/components/navbar/user-menu';
+import { Button } from '@/components/ui/button';
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-} from "@/components/ui/navigation-menu";
+} from '@/components/ui/navigation-menu';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/popover';
 
 // Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
-  { href: "#", label: "Home" },
-  { href: "#", label: "Features" },
-  { href: "#", label: "Pricing" },
-  { href: "#", label: "About" },
+  { href: '#', label: 'Home' },
+  { href: '#', label: 'Features' },
+  { href: '#', label: 'Pricing' },
+  { href: '#', label: 'About' },
 ];
 
 export default function Component() {

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import FormInputFieldCustom from "@/components/form/formInputFieldCustom";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import FormInputFieldCustom from '@/components/form/formInputFieldCustom';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface TextFieldSettingsProps {
   placeholder: string;
@@ -51,7 +51,7 @@ export function TextFieldSettings({
       <FormInputFieldCustom name="Maximale Länge (optional)" errors={[]}>
         <Input
           type="number"
-          value={maxLength || ""}
+          value={maxLength || ''}
           onChange={(e) =>
             onChange({
               maxLength: e.target.value
@@ -65,7 +65,7 @@ export function TextFieldSettings({
 
       <FormInputFieldCustom name="Standardwert (optional)" errors={[]}>
         <Input
-          value={defaultValue || ""}
+          value={defaultValue || ''}
           onChange={(e) => onChange({ defaultValue: e.target.value })}
           placeholder="Wird vorausgefüllt, falls leer"
         />

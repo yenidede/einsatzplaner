@@ -1,29 +1,29 @@
-"use server";
+'use server';
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth.config";
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth.config';
 
-import prisma from "@/lib/prisma";
-import { hash, compare } from "bcrypt";
-import { revalidatePath } from "next/cache";
-import { OrganizationRole } from "@/types/next-auth";
-import { createClient } from "@supabase/supabase-js";
+import prisma from '@/lib/prisma';
+import { hash, compare } from 'bcrypt';
+import { revalidatePath } from 'next/cache';
+import { OrganizationRole } from '@/types/next-auth';
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl) {
   throw new Error(
-    "Environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY is not set."
+    'Environment variable NEXT_PUBLIC_SUPABASE_ANON_KEY is not set.'
   );
 }
 if (!supabaseServiceRoleKey) {
-  throw new Error("Environment variable SUPABASE_SERVICE_ROLE_KEY is not set.");
+  throw new Error('Environment variable SUPABASE_SERVICE_ROLE_KEY is not set.');
 }
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) throw new Error('Unauthorized');
   return session;
 }
 
@@ -48,11 +48,11 @@ export async function getSalutationsAction() {
         id: true,
         salutation: true,
       },
-      orderBy: { salutation: "asc" },
+      orderBy: { salutation: 'asc' },
     });
     return salutations;
   } catch (error) {
-    throw new Error("Fehler beim Laden der Anreden", { cause: error });
+    throw new Error('Fehler beim Laden der Anreden', { cause: error });
   }
 }
 
@@ -65,10 +65,10 @@ export async function getOneSalutationAction(salutationId: string) {
         salutation: true,
       },
     });
-    if (!salutation) throw new Error("Anrede nicht gefunden");
+    if (!salutation) throw new Error('Anrede nicht gefunden');
     return salutation;
   } catch (error) {
-    throw new Error("Fehler beim Laden der Anrede", { cause: error });
+    throw new Error('Fehler beim Laden der Anrede', { cause: error });
   }
 }
 
@@ -109,7 +109,7 @@ export async function getUserProfileAction() {
     },
   });
 
-  if (!user) throw new Error("User not found");
+  if (!user) throw new Error('User not found');
 
   const organizationsMap = new Map();
   user.user_organization_role.forEach((uor) => {
@@ -137,10 +137,10 @@ export async function getUserProfileAction() {
   return {
     id: user.id,
     email: user.email,
-    firstname: user.firstname ?? "",
-    lastname: user.lastname ?? "",
+    firstname: user.firstname ?? '',
+    lastname: user.lastname ?? '',
     picture_url: user.picture_url,
-    salutationId: user.salutationId ?? "",
+    salutationId: user.salutationId ?? '',
     orgIds: Array.from(organizationsMap.keys()),
     roleIds: user.user_organization_role.map((uor) => uor.role.id),
     activeOrganization: activeOrgData
@@ -150,7 +150,7 @@ export async function getUserProfileAction() {
           logo_url: activeOrgData.logo_url,
         }
       : null,
-    phone: user.phone ?? "",
+    phone: user.phone ?? '',
     hasLogoinCalendar: user.hasLogoinCalendar ?? true,
     created_at: user.created_at.toISOString(),
     organizations: Array.from(organizationsMap.values()),
@@ -170,12 +170,12 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     });
 
     if (!user?.password) {
-      throw new Error("Current password is required");
+      throw new Error('Current password is required');
     }
 
     const isValid = await compare(data.currentPassword, user.password);
     if (!isValid) {
-      throw new Error("Current password is incorrect");
+      throw new Error('Current password is incorrect');
     }
   }
 
@@ -183,11 +183,11 @@ export async function updateUserProfileAction(data: UserUpdateData) {
 
   if (data.salutationId !== undefined) {
     cleanedData.salutationId =
-      data.salutationId === "" ? "" : data.salutationId;
+      data.salutationId === '' ? '' : data.salutationId;
   }
 
   if (data.picture_url !== undefined) {
-    cleanedData.picture_url = data.picture_url === "" ? null : data.picture_url;
+    cleanedData.picture_url = data.picture_url === '' ? null : data.picture_url;
   }
 
   if (data.email !== undefined) cleanedData.email = data.email;
@@ -215,16 +215,16 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     },
   });
 
-  revalidatePath("/settings");
+  revalidatePath('/settings');
 
   return {
     id: updatedUser.id,
     email: updatedUser.email,
-    firstname: updatedUser.firstname ?? "",
-    lastname: updatedUser.lastname ?? "",
+    firstname: updatedUser.firstname ?? '',
+    lastname: updatedUser.lastname ?? '',
     picture_url: updatedUser.picture_url,
-    phone: updatedUser.phone ?? "",
-    salutationId: updatedUser.salutationId ?? "",
+    phone: updatedUser.phone ?? '',
+    salutationId: updatedUser.salutationId ?? '',
     hasLogoinCalendar: updatedUser.hasLogoinCalendar ?? true,
   };
 }
@@ -244,21 +244,21 @@ export async function updateOrgMailNotificationAction(
     },
   });
 
-  revalidatePath("/settings");
+  revalidatePath('/settings');
 
   return { success: true };
 }
 export async function uploadProfilePictureAction(formData: FormData) {
   const session = await checkUserSession();
 
-  const file = formData.get("file") as File | null;
-  if (!file) throw new Error("No file provided");
+  const file = formData.get('file') as File | null;
+  if (!file) throw new Error('No file provided');
 
-  if (!file.type.startsWith("image/")) {
-    throw new Error("File must be an image");
+  if (!file.type.startsWith('image/')) {
+    throw new Error('File must be an image');
   }
   if (file.size > 5 * 1024 * 1024) {
-    throw new Error("File size must be less than 5MB");
+    throw new Error('File size must be less than 5MB');
   }
 
   const oldUser = await prisma.user.findUnique({
@@ -268,25 +268,25 @@ export async function uploadProfilePictureAction(formData: FormData) {
 
   const bytes = await file.arrayBuffer();
   const buffer = new Uint8Array(bytes);
-  const extension = file.name.split(".").pop() || "jpg";
+  const extension = file.name.split('.').pop() || 'jpg';
   const timestamp = Date.now();
   const fileName = `${session.user.id}.${extension}`;
   const filePath = `users/${session.user.id}/${fileName}`;
 
   const { error } = await supabase.storage
-    .from("logos")
+    .from('logos')
     .upload(filePath, buffer, {
       contentType: file.type,
-      cacheControl: "3600",
+      cacheControl: '3600',
       upsert: true,
     });
 
   if (error) {
-    throw new Error("Failed to upload image: " + error.message);
+    throw new Error('Failed to upload image: ' + error.message);
   }
 
   const { data: urlData } = supabase.storage
-    .from("logos")
+    .from('logos')
     .getPublicUrl(filePath);
 
   const publicUrl = `${urlData.publicUrl}?t=${timestamp}`;
@@ -296,32 +296,32 @@ export async function uploadProfilePictureAction(formData: FormData) {
     data: { picture_url: publicUrl },
   });
 
-  if (oldUser?.picture_url && oldUser.picture_url.includes("supabase")) {
+  if (oldUser?.picture_url && oldUser.picture_url.includes('supabase')) {
     try {
-      const urlParts = oldUser.picture_url.split("/logos/");
+      const urlParts = oldUser.picture_url.split('/logos/');
       if (urlParts[1]) {
         const oldPathWithParams = urlParts[1];
-        const oldPath = oldPathWithParams.split("?")[0];
+        const oldPath = oldPathWithParams.split('?')[0];
 
         if (
           oldPath !== filePath &&
           oldPath.startsWith(`users/${session.user.id}/`)
         ) {
           const { error: deleteError } = await supabase.storage
-            .from("logos")
+            .from('logos')
             .remove([oldPath]);
 
           if (deleteError) {
-            console.warn("Failed to delete old picture:", deleteError);
+            console.warn('Failed to delete old picture:', deleteError);
           }
         }
       }
     } catch (error) {
-      console.warn("Error while deleting old picture:", error);
+      console.warn('Error while deleting old picture:', error);
     }
   }
 
-  revalidatePath("/settings");
+  revalidatePath('/settings');
 
   return { picture_url: publicUrl };
 }
@@ -332,19 +332,19 @@ export async function removeProfilePictureAction() {
     select: { picture_url: true },
   });
 
-  if (user?.picture_url && user.picture_url.includes("supabase")) {
+  if (user?.picture_url && user.picture_url.includes('supabase')) {
     try {
-      const urlParts = user.picture_url.split("/logos/");
+      const urlParts = user.picture_url.split('/logos/');
       if (urlParts[1]) {
         const pathWithParams = urlParts[1];
-        const path = pathWithParams.split("?")[0];
-        const { error } = await supabase.storage.from("logos").remove([path]);
+        const path = pathWithParams.split('?')[0];
+        const { error } = await supabase.storage.from('logos').remove([path]);
         if (error) {
-          console.warn("Failed to delete picture from storage:", error);
+          console.warn('Failed to delete picture from storage:', error);
         }
       }
     } catch (error) {
-      console.warn("Error while deleting profile picture:", error);
+      console.warn('Error while deleting profile picture:', error);
     }
   }
 
@@ -352,7 +352,7 @@ export async function removeProfilePictureAction() {
     where: { id: session.user.id },
     data: { picture_url: null },
   });
-  revalidatePath("/settings");
+  revalidatePath('/settings');
 
   return { success: true };
 }
@@ -388,7 +388,7 @@ export async function updateActiveOrganizationAction(
     });
 
     if (!hasAccess) {
-      return { success: false, error: "Kein Zugriff auf diese Organisation" };
+      return { success: false, error: 'Kein Zugriff auf diese Organisation' };
     }
 
     await prisma.user.update({
@@ -396,7 +396,7 @@ export async function updateActiveOrganizationAction(
       data: { active_org: organizationId },
     });
 
-    revalidatePath("/");
+    revalidatePath('/');
 
     return {
       success: true,
@@ -407,8 +407,8 @@ export async function updateActiveOrganizationAction(
       },
     };
   } catch (error) {
-    console.error("Failed to update active organization:", error);
-    return { success: false, error: "Fehler beim Aktualisieren" };
+    console.error('Failed to update active organization:', error);
+    return { success: false, error: 'Fehler beim Aktualisieren' };
   }
 }
 
@@ -420,7 +420,7 @@ export async function removeUserFromOrganizationAction(
     const session = await checkUserSession();
 
     if (session.user.id !== userId) {
-      return { success: false, error: "Unauthorized" };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const userOrgRoles = await prisma.user_organization_role.findMany({
@@ -433,7 +433,7 @@ export async function removeUserFromOrganizationAction(
     if (userOrgRoles.length === 0) {
       return {
         success: false,
-        error: "Benutzer ist nicht Mitglied dieser Organisation",
+        error: 'Benutzer ist nicht Mitglied dieser Organisation',
       };
     }
 
@@ -463,15 +463,15 @@ export async function removeUserFromOrganizationAction(
       });
     }
 
-    revalidatePath("/settings");
-    revalidatePath("/");
+    revalidatePath('/settings');
+    revalidatePath('/');
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to remove user from organization:", error);
+    console.error('Failed to remove user from organization:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unbekannter Fehler",
+      error: error instanceof Error ? error.message : 'Unbekannter Fehler',
     };
   }
 }

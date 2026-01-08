@@ -1,33 +1,33 @@
-"use client";
+'use client';
 
-import { useRef } from "react";
-import { AlertCircleIcon, XIcon, CloudUpload, File } from "lucide-react";
+import { useRef } from 'react';
+import { AlertCircleIcon, XIcon, CloudUpload, File } from 'lucide-react';
 import {
   FileMetadata,
   formatBytes,
   useFileUpload,
   type FileWithPreview,
-} from "@/hooks/use-file-upload";
-import { Button } from "@/components/ui/button";
-import { optimizeImage } from "@/lib/utils";
-import { toast } from "sonner";
-import { getPublicStorageUrlFromPath } from "@/lib/supabase-client";
+} from '@/hooks/use-file-upload';
+import { Button } from '@/components/ui/button';
+import { optimizeImage } from '@/lib/utils';
+import { toast } from 'sonner';
+import { getPublicStorageUrlFromPath } from '@/lib/supabase-client';
 
 const getFileIcon = (file: { file: File | { type: string; name: string } }) => {
   const fileType = file.file.type;
-  if (fileType.startsWith("image/")) {
+  if (fileType.startsWith('image/')) {
     // return preview
     return (
       <div className="aspect-square size-10 overflow-hidden rounded-md">
         <img
           src={URL.createObjectURL(file.file as Blob)}
-          className="object-cover h-full w-full"
+          className="h-full w-full object-cover"
         />
       </div>
     );
   }
   return (
-    <div className="aspect-square size-10 flex items-center justify-center overflow-hidden rounded-full">
+    <div className="flex aspect-square size-10 items-center justify-center overflow-hidden rounded-full">
       <File className="size-5 opacity-60" />
     </div>
   );
@@ -114,7 +114,7 @@ export function FileUpload({
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           data-dragging={isDragging || undefined}
-          className="border-input hover:bg-accent/50 data-[dragging=true]:bg-accent/50 has-[input:focus]:border-ring has-[input:focus]:ring-ring/50 flex min-h-32 flex-col items-center justify-center rounded-md border border-dashed p-4 transition-colors has-disabled:pointer-events-none has-disabled:opacity-50 has-[input:focus]:ring-[3px] hover:cursor-pointer"
+          className="border-input hover:bg-accent/50 data-[dragging=true]:bg-accent/50 has-[input:focus]:border-ring has-[input:focus]:ring-ring/50 flex min-h-32 flex-col items-center justify-center rounded-md border border-dashed p-4 transition-colors hover:cursor-pointer has-disabled:pointer-events-none has-disabled:opacity-50 has-[input:focus]:ring-[3px]"
         >
           <input
             {...getInputProps()}
@@ -134,8 +134,8 @@ export function FileUpload({
             {/* <p className="mb-1.5 text-sm font-medium">
             Upload
           </p> */}
-            <p className="text-foreground font-medium text-sm mb-2">
-              Datei{maxFiles > 1 ? "en" : ""} hierher ziehen oder auswählen{" "}
+            <p className="text-foreground mb-2 text-sm font-medium">
+              Datei{maxFiles > 1 ? 'en' : ''} hierher ziehen oder auswählen{' '}
             </p>
             <div className="text-muted-foreground/70 flex flex-wrap justify-center gap-1 text-xs">
               {placeholder}
@@ -165,7 +165,7 @@ export function FileUpload({
               <div className="flex items-center gap-1.5 overflow-hidden">
                 {getFileIcon(file)}
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <p className="truncate text-[11px] font-medium max-w-[200px]">
+                  <p className="max-w-[200px] truncate text-[11px] font-medium">
                     {file.file.name}
                   </p>
                   <p className="text-muted-foreground text-xs">
@@ -204,7 +204,7 @@ export function FileUpload({
 
   function isFileMetadata(value: unknown): value is FileMetadata {
     return (
-      typeof File !== "undefined" && Object.hasOwn(value as object, "path")
+      typeof File !== 'undefined' && Object.hasOwn(value as object, 'path')
     );
   }
 
@@ -239,8 +239,8 @@ export function FileUpload({
       return lastUploadValueRef.current;
     }
 
-    if (!file.type.startsWith("image/")) {
-      throw new Error("Only image files are supported for upload.");
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Only image files are supported for upload.');
     }
 
     const targetSizeMB = Math.max(
@@ -250,9 +250,9 @@ export function FileUpload({
 
     try {
       console.log(
-        "before optimize:",
+        'before optimize:',
         file.size / 1024 / 1024,
-        "targetSizeMB:",
+        'targetSizeMB:',
         targetSizeMB
       );
       const optimized = await optimizeImage(file);
@@ -270,12 +270,12 @@ export function FileUpload({
           } MB, Ziel: ${targetSizeMB} MB`
         );
         throw new Error(
-          "Optimized image not smaller than original or exceeds target size"
+          'Optimized image not smaller than original or exceeds target size'
         );
       }
     } catch (error: unknown) {
       toast.error(`Image optimization failed ${error}`, {
-        id: "file-upload-optimize-error",
+        id: 'file-upload-optimize-error',
       });
       throw error;
     }

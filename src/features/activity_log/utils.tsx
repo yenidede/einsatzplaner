@@ -1,12 +1,12 @@
-import { JSX } from "react";
-import { ChangeLogEntry } from "./types";
-import { Einsatz } from "../einsatz/types";
-import TooltipCustom from "@/components/tooltip-custom";
+import { JSX } from 'react';
+import { ChangeLogEntry } from './types';
+import { Einsatz } from '../einsatz/types';
+import TooltipCustom from '@/components/tooltip-custom';
 
 type smallActivity = Pick<
   ChangeLogEntry,
-  "change_type" | "user" | "affected_user_data"
-> & { einsatz: Pick<Einsatz, "title" | "id"> };
+  'change_type' | 'user' | 'affected_user_data'
+> & { einsatz: Pick<Einsatz, 'title' | 'id'> };
 
 export function getFormattedMessage(
   activity: smallActivity,
@@ -14,7 +14,7 @@ export function getFormattedMessage(
 ): JSX.Element {
   const actorName = getFullName(activity.user);
   const affectedName = getFullName(
-    activity.affected_user_data ?? { firstname: "", lastname: "" }
+    activity.affected_user_data ?? { firstname: '', lastname: '' }
   );
 
   const message = openDialog
@@ -30,34 +30,34 @@ export function getFormattedMessage(
       {message
         .split(/\b(Username|AffectedUsername|Einsatz)\b/)
         .map((part, index) => {
-          if (part === "Username") {
+          if (part === 'Username') {
             return (
               <TooltipCustom
                 text={activity.user.email}
                 key={activity.user.email}
               >
-                <span key={index} style={{ textDecoration: "underline" }}>
+                <span key={index} style={{ textDecoration: 'underline' }}>
                   {actorName}
                 </span>
               </TooltipCustom>
             );
           }
-          if (part === "AffectedUsername") {
+          if (part === 'AffectedUsername') {
             return (
               <TooltipCustom
-                text={activity.affected_user_data?.email || ""}
+                text={activity.affected_user_data?.email || ''}
                 key={index}
               >
-                <span key={index} style={{ textDecoration: "underline" }}>
+                <span key={index} style={{ textDecoration: 'underline' }}>
                   {affectedName}
                 </span>
               </TooltipCustom>
             );
           }
-          if (part === "Einsatz") {
+          if (part === 'Einsatz') {
             return (
               <span
-                className="underline cursor-pointer"
+                className="cursor-pointer underline"
                 onClick={() => openDialog && openDialog(activity.einsatz.id)}
                 key={index}
               >
@@ -82,14 +82,14 @@ export function detectChangeType(
   currentUserId?: string
 ): string {
   if (isNew) {
-    return "create";
+    return 'create';
   }
 
   if (previousAssignedUsers.length === 0 && currentAssignedUsers.length > 0) {
-    return "assign";
+    return 'assign';
   }
   if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
-    return "cancel";
+    return 'cancel';
   }
   // takeover after the first assignment of a potential einsatz
   if (
@@ -97,17 +97,17 @@ export function detectChangeType(
     !previousAssignedUsers.includes(currentUserId) &&
     currentAssignedUsers.includes(currentUserId)
   ) {
-    return "takeover";
+    return 'takeover';
   }
   if (currentAssignedUsers.length > previousAssignedUsers.length) {
-    return "assign";
+    return 'assign';
   }
 
   if (currentAssignedUsers.length < previousAssignedUsers.length) {
-    return "cancel";
+    return 'cancel';
   }
 
-  return "edit";
+  return 'edit';
 }
 
 export function getAffectedUserId(
@@ -139,22 +139,22 @@ export function detectChangeTypes(
 ): string[] {
   const changeTypes: string[] = [];
   if (isNew) {
-    changeTypes.push("create");
+    changeTypes.push('create');
 
     if (currentAssignedUsers.length > 0) {
-      changeTypes.push("assign");
+      changeTypes.push('assign');
     }
 
     return changeTypes;
   }
 
   if (previousAssignedUsers.length === 0 && currentAssignedUsers.length > 0) {
-    changeTypes.push("assign");
+    changeTypes.push('assign');
     return changeTypes;
   }
 
   if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
-    changeTypes.push("cancel");
+    changeTypes.push('cancel');
     return changeTypes;
   }
 
@@ -164,20 +164,20 @@ export function detectChangeTypes(
     !previousAssignedUsers.includes(currentUserId) &&
     currentAssignedUsers.includes(currentUserId)
   ) {
-    changeTypes.push("takeover");
+    changeTypes.push('takeover');
     return changeTypes;
   }
 
   if (currentAssignedUsers.length > previousAssignedUsers.length) {
-    changeTypes.push("assign");
+    changeTypes.push('assign');
     return changeTypes;
   }
 
   if (currentAssignedUsers.length < previousAssignedUsers.length) {
-    changeTypes.push("cancel");
+    changeTypes.push('cancel');
     return changeTypes;
   }
-  changeTypes.push("edit");
+  changeTypes.push('edit');
   return changeTypes;
 }
 

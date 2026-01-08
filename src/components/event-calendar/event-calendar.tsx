@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { parseAsStringEnum, useQueryState } from "nuqs";
-import { RiCalendarCheckLine } from "@remixicon/react";
+import { useEffect, useMemo, useState } from 'react';
+import { parseAsStringEnum, useQueryState } from 'nuqs';
+import { RiCalendarCheckLine } from '@remixicon/react';
 import {
   addDays,
   addHours,
@@ -14,23 +14,23 @@ import {
   startOfWeek,
   subMonths,
   subWeeks,
-} from "date-fns";
-import { de } from "date-fns/locale"; // Add German locale import
+} from 'date-fns';
+import { de } from 'date-fns/locale'; // Add German locale import
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   PlusIcon,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   AgendaDaysToShow,
   AgendaView,
@@ -45,16 +45,16 @@ import {
   WeekCellsHeight,
   WeekView,
   ListView,
-} from "@/components/event-calendar";
-import { CalendarEvent, CalendarMode } from "./types";
-import { EinsatzCreate } from "@/features/einsatz/types";
-import { getOrganizationsByIds } from "@/features/organization/org-dal";
-import { useSession } from "next-auth/react";
-import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/features/organization/queryKeys";
-import { toast } from "sonner";
-import { useEventDialog } from "@/hooks/use-event-dialog";
-import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
+} from '@/components/event-calendar';
+import { CalendarEvent, CalendarMode } from './types';
+import { EinsatzCreate } from '@/features/einsatz/types';
+import { getOrganizationsByIds } from '@/features/organization/org-dal';
+import { useSession } from 'next-auth/react';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/features/organization/queryKeys';
+import { toast } from 'sonner';
+import { useEventDialog } from '@/hooks/use-event-dialog';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -79,7 +79,7 @@ export function EventCalendar({
   onEventDelete,
   onMultiEventDelete,
   className,
-  initialView = "month",
+  initialView = 'month',
   mode,
   activeOrgId,
 }: EventCalendarProps) {
@@ -92,23 +92,23 @@ export function EventCalendar({
   } = useEventDialog();
 
   const [view, setView] = useQueryState<CalendarView>(
-    "view",
+    'view',
     parseAsStringEnum<CalendarView>([
-      "month",
-      "week",
-      "day",
-      "agenda",
-      "list",
+      'month',
+      'week',
+      'day',
+      'agenda',
+      'list',
     ]).withDefault(initialView)
   );
 
   // German view names mapping
   const viewLabels = {
-    month: "Monat",
-    week: "Woche",
-    day: "Tag",
-    agenda: "Agenda",
-    list: "Liste",
+    month: 'Monat',
+    week: 'Woche',
+    day: 'Tag',
+    agenda: 'Agenda',
+    list: 'Liste',
   } as const;
 
   const { data: sessionData } = useSession();
@@ -139,53 +139,53 @@ export function EventCalendar({
       }
 
       switch (e.key.toLowerCase()) {
-        case "m":
-          setView("month");
+        case 'm':
+          setView('month');
           break;
-        case "w":
-          setView("week");
+        case 'w':
+          setView('week');
           break;
-        case "t":
-          setView("day");
+        case 't':
+          setView('day');
           break;
-        case "a":
-          setView("agenda");
+        case 'a':
+          setView('agenda');
           break;
-        case "l":
-          setView("list");
+        case 'l':
+          setView('list');
           break;
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isEventDialogOpen, setView]);
 
   const handlePrevious = () => {
-    if (view === "month") {
+    if (view === 'month') {
       setCurrentDate(subMonths(currentDate, 1));
-    } else if (view === "week") {
+    } else if (view === 'week') {
       setCurrentDate(subWeeks(currentDate, 1));
-    } else if (view === "day") {
+    } else if (view === 'day') {
       setCurrentDate(addDays(currentDate, -1));
-    } else if (view === "agenda") {
+    } else if (view === 'agenda') {
       setCurrentDate(addDays(currentDate, -AgendaDaysToShow));
-    } else if (view === "list") {
+    } else if (view === 'list') {
       setCurrentDate(addDays(currentDate, -AgendaDaysToShow));
     }
   };
 
   const handleNext = () => {
-    if (view === "month") {
+    if (view === 'month') {
       setCurrentDate(addMonths(currentDate, 1));
-    } else if (view === "week") {
+    } else if (view === 'week') {
       setCurrentDate(addWeeks(currentDate, 1));
-    } else if (view === "day") {
+    } else if (view === 'day') {
       setCurrentDate(addDays(currentDate, 1));
-    } else if (view === "agenda") {
+    } else if (view === 'agenda') {
       setCurrentDate(addDays(currentDate, AgendaDaysToShow));
     }
   };
@@ -195,11 +195,11 @@ export function EventCalendar({
   };
 
   const handleEventSelect = (event: CalendarEvent | string) => {
-    openDialog(typeof event === "string" ? event : event.id);
+    openDialog(typeof event === 'string' ? event : event.id);
   };
 
   const handleEventCreate = (startTime: Date) => {
-    console.log("Creating new event at:", startTime); // Debug log
+    console.log('Creating new event at:', startTime); // Debug log
 
     // Snap to 15-minute intervals
     const minutes = startTime.getMinutes();
@@ -217,18 +217,18 @@ export function EventCalendar({
     }
 
     if (!activeOrgId) {
-      console.error("No organization selected or available");
+      console.error('No organization selected or available');
       return;
     }
 
     const userId = sessionData?.user?.id;
     if (!userId) {
-      toast.error("Keine Benutzerdaten gefunden.");
+      toast.error('Keine Benutzerdaten gefunden.');
       return;
     }
 
     const newEvent: EinsatzCreate = {
-      title: "",
+      title: '',
       start: startTime,
       end: addHours(startTime, 1),
       org_id: activeOrgId,
@@ -242,7 +242,7 @@ export function EventCalendar({
 
   const handleEventSave = (event: EinsatzCreate | CalendarEvent) => {
     // Type guard to determine which type we're dealing with
-    if ("org_id" in event) {
+    if ('org_id' in event) {
       // This is an EinsatzCreate
       if (event.id) {
         onEventUpdate?.(event);
@@ -275,7 +275,7 @@ export function EventCalendar({
 
   const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
     // Type guard to handle both types
-    if ("org_id" in updatedEvent) {
+    if ('org_id' in updatedEvent) {
       onEventUpdate?.(updatedEvent);
     } else {
       onEventTimeUpdate?.(updatedEvent);
@@ -283,50 +283,50 @@ export function EventCalendar({
   };
 
   const viewTitle = useMemo(() => {
-    if (view === "month") {
-      return format(currentDate, "MMMM yyyy", { locale: de });
-    } else if (view === "week") {
+    if (view === 'month') {
+      return format(currentDate, 'MMMM yyyy', { locale: de });
+    } else if (view === 'week') {
       const start = startOfWeek(currentDate, { weekStartsOn: 1 });
       const end = endOfWeek(currentDate, { weekStartsOn: 1 });
       if (isSameMonth(start, end)) {
-        return format(start, "MMMM yyyy", { locale: de });
+        return format(start, 'MMMM yyyy', { locale: de });
       } else {
-        return `${format(start, "MMM", { locale: de })} - ${format(
+        return `${format(start, 'MMM', { locale: de })} - ${format(
           end,
-          "MMM yyyy",
+          'MMM yyyy',
           { locale: de }
         )}`;
       }
-    } else if (view === "day") {
+    } else if (view === 'day') {
       return (
         <>
           <span className="min-[480px]:hidden" aria-hidden="true">
-            {format(currentDate, "MMM d, yyyy", { locale: de })}
+            {format(currentDate, 'MMM d, yyyy', { locale: de })}
           </span>
           <span className="max-[479px]:hidden md:hidden" aria-hidden="true">
-            {format(currentDate, "MMMM d, yyyy", { locale: de })}
+            {format(currentDate, 'MMMM d, yyyy', { locale: de })}
           </span>
           <span className="max-md:hidden">
-            {format(currentDate, "EEE MMMM d, yyyy", { locale: de })}
+            {format(currentDate, 'EEE MMMM d, yyyy', { locale: de })}
           </span>
         </>
       );
-    } else if (view === "agenda") {
+    } else if (view === 'agenda') {
       // Show the month range for agenda view
       const start = currentDate;
       const end = addDays(currentDate, AgendaDaysToShow - 1);
 
       if (isSameMonth(start, end)) {
-        return format(start, "MMMM yyyy", { locale: de });
+        return format(start, 'MMMM yyyy', { locale: de });
       } else {
-        return `${format(start, "MMM", { locale: de })} - ${format(
+        return `${format(start, 'MMM', { locale: de })} - ${format(
           end,
-          "MMM yyyy",
+          'MMM yyyy',
           { locale: de }
         )}`;
       }
     } else {
-      return format(currentDate, "MMMM yyyy", { locale: de });
+      return format(currentDate, 'MMMM yyyy', { locale: de });
     }
   }, [currentDate, view]);
 
@@ -335,24 +335,24 @@ export function EventCalendar({
       className="flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
       style={
         {
-          "--event-height": `${EventHeight}px`,
-          "--event-gap": `${EventGap}px`,
-          "--week-cells-height": `${WeekCellsHeight}px`,
+          '--event-height': `${EventHeight}px`,
+          '--event-gap': `${EventGap}px`,
+          '--week-cells-height': `${WeekCellsHeight}px`,
         } as React.CSSProperties
       }
     >
       <CalendarDndProvider
         onEventUpdate={handleEventUpdate}
         mode={mode}
-        disableDragAndDrop={mode !== "verwaltung"}
+        disableDragAndDrop={mode !== 'verwaltung'}
       >
         <div
           className={cn(
-            "flex items-center justify-between px-1 py-2",
+            'flex items-center justify-between px-1 py-2',
             className
           )}
         >
-          {view !== "list" && (
+          {view !== 'list' && (
             <div className="flex items-center gap-1 sm:gap-4">
               <Button
                 variant="outline"
@@ -389,7 +389,7 @@ export function EventCalendar({
               </h2>
             </div>
           )}
-          {view === "list" && <h2>Tabellenansicht</h2>}
+          {view === 'list' && <h2>Tabellenansicht</h2>}
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -410,24 +410,24 @@ export function EventCalendar({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-32">
-                <DropdownMenuItem onClick={() => setView("month")}>
+                <DropdownMenuItem onClick={() => setView('month')}>
                   Monat <DropdownMenuShortcut>M</DropdownMenuShortcut>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView("week")}>
+                <DropdownMenuItem onClick={() => setView('week')}>
                   Woche <DropdownMenuShortcut>W</DropdownMenuShortcut>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView("day")}>
+                <DropdownMenuItem onClick={() => setView('day')}>
                   Tag <DropdownMenuShortcut>T</DropdownMenuShortcut>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView("agenda")}>
+                <DropdownMenuItem onClick={() => setView('agenda')}>
                   Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
-                </DropdownMenuItem>{" "}
-                <DropdownMenuItem onClick={() => setView("list")}>
+                </DropdownMenuItem>{' '}
+                <DropdownMenuItem onClick={() => setView('list')}>
                   Liste <DropdownMenuShortcut>L</DropdownMenuShortcut>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            {mode === "verwaltung" && (
+            {mode === 'verwaltung' && (
               <Button
                 className="max-[479px]:aspect-square max-[479px]:p-0!"
                 onClick={() => {
@@ -453,7 +453,7 @@ export function EventCalendar({
               Noch keine {einsatz_plural} vorhanden.
             </div>
           )}
-          {view === "month" && (
+          {view === 'month' && (
             <MonthView
               currentDate={currentDate}
               events={events}
@@ -462,7 +462,7 @@ export function EventCalendar({
               mode={mode}
             />
           )}
-          {view === "week" && (
+          {view === 'week' && (
             <WeekView
               currentDate={currentDate}
               events={events}
@@ -471,7 +471,7 @@ export function EventCalendar({
               mode={mode}
             />
           )}
-          {view === "day" && (
+          {view === 'day' && (
             <DayView
               currentDate={currentDate}
               events={events}
@@ -480,7 +480,7 @@ export function EventCalendar({
               mode={mode}
             />
           )}
-          {view === "agenda" && (
+          {view === 'agenda' && (
             <AgendaView
               currentDate={currentDate}
               events={events}
@@ -488,7 +488,7 @@ export function EventCalendar({
               mode={mode}
             />
           )}
-          {view === "list" && (
+          {view === 'list' && (
             <ListView
               onEventEdit={handleEventSelect}
               onEventCreate={handleEventCreate}
@@ -499,7 +499,7 @@ export function EventCalendar({
           )}
         </div>
 
-        {mode === "verwaltung" ? (
+        {mode === 'verwaltung' ? (
           <EventDialogVerwaltung
             einsatz={selectedEvent}
             isOpen={isEventDialogOpen}
@@ -507,10 +507,10 @@ export function EventCalendar({
             onSave={handleEventSave}
             onDelete={handleEventDelete}
           />
-        ) : mode === "helper" ? (
+        ) : mode === 'helper' ? (
           <EventDialogHelfer
             einsatz={
-              typeof selectedEvent === "string"
+              typeof selectedEvent === 'string'
                 ? selectedEvent
                 : selectedEvent?.id || null
             }

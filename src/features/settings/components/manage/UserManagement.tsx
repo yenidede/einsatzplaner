@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { UserListItem } from "./UserListItem";
+import { UserListItem } from './UserListItem';
 
 interface UsersManagementSectionProps {
   usersData: any[];
@@ -38,7 +38,7 @@ export function UsersManagementSection({
           Einsatzverwaltung: 2,
           EV: 2,
           Helfer: 1,
-          "Helfer:in": 1,
+          'Helfer:in': 1,
         };
         return Math.max(
           ...roles.map(
@@ -65,21 +65,21 @@ export function UsersManagementSection({
     ) || [];
 
   const canInviteUsers =
-    roleNames.includes("Organisationsverwaltung") ||
-    roleNames.includes("OV") ||
-    roleNames.includes("Superadmin");
+    roleNames.includes('Organisationsverwaltung') ||
+    roleNames.includes('OV') ||
+    roleNames.includes('Superadmin');
 
   return (
-    <div className="self-stretch flex flex-col justify-center items-start gap-4">
-      <div className="self-stretch flex flex-col justify-start items-start gap-2">
-        <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
-          <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">
+    <div className="flex flex-col items-start justify-center gap-4 self-stretch">
+      <div className="flex flex-col items-start justify-start gap-2 self-stretch">
+        <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
+          <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
             Personen verwalten
           </div>
         </div>
-        <div className="self-stretch py-2 border-t border-slate-200 flex flex-col justify-start items-start gap-5">
+        <div className="flex flex-col items-start justify-start gap-5 self-stretch border-t border-slate-200 py-2">
           {usersLoading ? (
-            <div className="self-stretch px-4 text-center py-4 text-gray-500">
+            <div className="self-stretch px-4 py-4 text-center text-gray-500">
               Lädt User...
             </div>
           ) : sortedUsers && sortedUsers.length > 0 ? (
@@ -92,7 +92,7 @@ export function UsersManagementSection({
               />
             ))
           ) : (
-            <div className="self-stretch px-4 text-center py-4 text-gray-500">
+            <div className="self-stretch px-4 py-4 text-center text-gray-500">
               Keine User gefunden
             </div>
           )}
@@ -100,13 +100,13 @@ export function UsersManagementSection({
       </div>
 
       {canInviteUsers && (
-        <div className="self-stretch px-4 py-4 border-t border-slate-200 flex flex-col gap-4">
+        <div className="flex flex-col gap-4 self-stretch border-t border-slate-200 px-4 py-4">
           <button
             onClick={onInviteClick}
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+            className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
           >
             <svg
-              className="w-4 h-4 mr-2"
+              className="mr-2 h-4 w-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

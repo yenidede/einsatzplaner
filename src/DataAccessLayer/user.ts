@@ -1,5 +1,5 @@
-import { unstable_cache as cache } from "next/cache";
-import prisma from "@/lib/prisma";
+import { unstable_cache as cache } from 'next/cache';
+import prisma from '@/lib/prisma';
 
 type UserSettingsUpdate = {
   email?: string;
@@ -145,7 +145,7 @@ export async function getUserForAuth(email: string) {
 
 export async function getUserForSession(userId: string) {
   try {
-    console.log("getUserForSession called with userId:", userId);
+    console.log('getUserForSession called with userId:', userId);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -161,7 +161,7 @@ export async function getUserForSession(userId: string) {
       },
     });
 
-    console.log("getUserForSession result:", {
+    console.log('getUserForSession result:', {
       found: !!user,
       picture_url: user?.picture_url,
       email: user?.email,
@@ -169,7 +169,7 @@ export async function getUserForSession(userId: string) {
 
     return user;
   } catch (error: any) {
-    console.error("getUserForSession error:", error);
+    console.error('getUserForSession error:', error);
     throw new Error(`Failed to retrieve user for session: ${error.message}`);
   }
 }
@@ -181,7 +181,7 @@ const cachedRoleRecords = cache(async () => {
     select: { id: true, name: true },
   });
   return records;
-}, ["role"]);
+}, ['role']);
 
 export async function createUserWithOrgAndRoles(data: {
   email: string;
@@ -198,12 +198,21 @@ export async function createUserWithOrgAndRoles(data: {
 }) {
   try {
     // Ein User kann mehrere Rollen pro Organisation haben
-    if ((!data.roleNames || data.roleNames.length === 0) && (!data.roleIds || data.roleIds.length === 0)) {
-      throw new Error("Mindestens eine Rolle muss zugewiesen werden.");
+    if (
+      (!data.roleNames || data.roleNames.length === 0) &&
+      (!data.roleIds || data.roleIds.length === 0)
+    ) {
+      throw new Error('Mindestens eine Rolle muss zugewiesen werden.');
     }
 
     const roleRecords = await cachedRoleRecords();
-    const assignRoleIds = data.roleIds ? data.roleIds : data.roleNames?.map((roleName) => roleRecords.find((role) => role.name === roleName)?.id).filter((id): id is string => !!id) || [];
+    const assignRoleIds = data.roleIds
+      ? data.roleIds
+      : data.roleNames
+          ?.map(
+            (roleName) => roleRecords.find((role) => role.name === roleName)?.id
+          )
+          .filter((id): id is string => !!id) || [];
 
     return prisma.user.create({
       data: {
@@ -314,7 +323,7 @@ export async function getUsersWithRolesByOrgId(orgId: string) {
     });
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
       `Failed to retrieve users by organization ID: ${errorMessage}`
     );
@@ -404,7 +413,7 @@ export async function updateUserSettings(
     });
 
     if (!currentUser) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
 
     const updateData = {
@@ -423,7 +432,7 @@ export async function updateUserSettings(
     });
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Failed to update user settings: ${errorMessage}`);
   }
 }
@@ -438,19 +447,19 @@ export async function updateUserOrgSettings(
     });
 
     if (!currentUserOrg) {
-      throw new Error("UserOrg not found");
+      throw new Error('UserOrg not found');
     }
 
     // Note: hasGetMailNotification field does not exist in current schema
     // This function is kept for future extensions
     console.warn(
-      "updateUserOrgSettings called but no updatable fields exist in current schema"
+      'updateUserOrgSettings called but no updatable fields exist in current schema'
     );
 
     return currentUserOrg;
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
       `Failed to update user organization settings: ${errorMessage}`
     );
@@ -483,7 +492,7 @@ export async function addUserRolesToOrganization(
 
     if (newRoleIds.length === 0) {
       return {
-        message: "User already has all specified roles in this organization",
+        message: 'User already has all specified roles in this organization',
       };
     }
 
@@ -499,7 +508,7 @@ export async function addUserRolesToOrganization(
     return newRoles;
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
       `Failed to add user roles to organization: ${errorMessage}`
     );
@@ -526,7 +535,7 @@ export async function removeUserRolesFromOrganization(
     return deletedRoles;
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
       `Failed to remove user roles from organization: ${errorMessage}`
     );
@@ -564,7 +573,7 @@ export async function getUserRolesInOrganization(
     });
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
       `Failed to get user roles in organization: ${errorMessage}`
     );
@@ -618,7 +627,7 @@ export async function getUserOrganizationsWithRoles(userId: string) {
     return Array.from(organizationsMap.values());
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
       `Failed to get user organizations with roles: ${errorMessage}`
     );
@@ -643,7 +652,7 @@ export async function removeUserFromOrganization(
     return deletedRoles;
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Failed to remove user from organization: ${errorMessage}`);
   }
 }
@@ -668,7 +677,7 @@ export async function userHasRoleInOrganization(
     return !!userOrgRole;
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
       `Failed to check user role in organization: ${errorMessage}`
     );
@@ -721,7 +730,7 @@ export async function getUsersWithRolesByOrgIdOptimized(orgId: string) {
     return Array.from(usersMap.values());
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
       `Failed to get users with roles by org ID: ${errorMessage}`
     );

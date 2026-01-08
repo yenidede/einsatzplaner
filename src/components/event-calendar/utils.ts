@@ -1,21 +1,21 @@
-import { isSameDay } from "date-fns";
+import { isSameDay } from 'date-fns';
 
 import {
   einsatz_status,
   einsatz_status as EinsatzStatus,
-} from "@/generated/prisma";
-import { CalendarEvent, CalendarMode, FormFieldType } from "./types";
-import { z } from "zod";
+} from '@/generated/prisma';
+import { CalendarEvent, CalendarMode, FormFieldType } from './types';
+import { z } from 'zod';
 import {
   EinsatzCustomizable,
   EinsatzForCalendar,
-} from "@/features/einsatz/types";
-import React from "react";
-import { getAllEinsaetzeForCalendar } from "@/features/einsatz/dal-einsatz";
-import { ShowDialogFn } from "@/contexts/AlertDialogContext";
-import { toast } from "sonner";
-import { PdfGenerationRequest } from "@/features/pdf/types/types";
-import { UsePdfGeneratorReturn } from "@/features/pdf/hooks/usePdfGenerator";
+} from '@/features/einsatz/types';
+import React from 'react';
+import { getAllEinsaetzeForCalendar } from '@/features/einsatz/dal-einsatz';
+import { ShowDialogFn } from '@/contexts/AlertDialogContext';
+import { toast } from 'sonner';
+import { PdfGenerationRequest } from '@/features/pdf/types/types';
+import { UsePdfGeneratorReturn } from '@/features/pdf/hooks/usePdfGenerator';
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -40,11 +40,11 @@ export const handleDelete = async (
 ) => {
   if (einsatz?.id) {
     const result = await showDialog({
-      title: einsatz_singular + " löschen",
+      title: einsatz_singular + ' löschen',
       description: `Sind Sie sicher, dass Sie "${einsatz.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
     });
 
-    if (result === "success") {
+    if (result === 'success') {
       onDelete(einsatz.id, einsatz.title);
     }
   }
@@ -53,14 +53,14 @@ export const handleDelete = async (
 export const handlePdfGenerate = async (
   einsatz_singular: string,
   einsatz: { id: string | undefined; title: string },
-  generatePdf: UsePdfGeneratorReturn["generatePdf"]
+  generatePdf: UsePdfGeneratorReturn['generatePdf']
 ) => {
   if (!einsatz?.id) {
     toast.error(`${einsatz_singular} nicht gefunden für PDF-Generierung.`);
     return;
   }
   const request: PdfGenerationRequest = {
-    type: "booking-confirmation",
+    type: 'booking-confirmation',
     einsatzId: einsatz.id,
   };
   const t = toast.loading(
@@ -93,49 +93,49 @@ export function generateDynamicSchema(
     const { fieldId, type, options } = field;
 
     if (!type) {
-      console.log("no type specified:", field);
+      console.log('no type specified:', field);
       return;
     }
 
     let fieldSchema;
 
     switch (type) {
-      case "text":
-        fieldSchema = z.string().min(1, "Text darf nicht leer sein");
+      case 'text':
+        fieldSchema = z.string().min(1, 'Text darf nicht leer sein');
         if (options.min) fieldSchema = fieldSchema.min(options.min);
         if (options.max) fieldSchema = fieldSchema.max(options.max);
         break;
-      case "number":
+      case 'number':
         fieldSchema = z.int();
         if (options.min) fieldSchema = fieldSchema.gte(options.min);
         if (options.max) fieldSchema = fieldSchema.lte(options.max);
         break;
-      case "currency":
+      case 'currency':
         fieldSchema = z.float64();
         if (options.min) fieldSchema = fieldSchema.gte(options.min);
         if (options.max) fieldSchema = fieldSchema.lte(options.max);
         break;
-      case "boolean":
+      case 'boolean':
         fieldSchema = z.boolean();
         break;
-      case "phone":
+      case 'phone':
         fieldSchema = z
           .string()
           .regex(
             /^\+[1-9]\d{1,14}$/,
-            "Invalid phone number. Example: +1234567890"
+            'Invalid phone number. Example: +1234567890'
           );
         break;
-      case "mail":
-        fieldSchema = z.email("Invalid email address");
+      case 'mail':
+        fieldSchema = z.email('Invalid email address');
         break;
-      case "select":
+      case 'select':
         if (!options.allowedValues)
-          throw new Error("Select field requires allowedValues");
+          throw new Error('Select field requires allowedValues');
         fieldSchema = z.enum(options.allowedValues as [string, ...string[]]);
         break;
       default:
-        throw new Error("Field Type " + type + " unsupported");
+        throw new Error('Field Type ' + type + ' unsupported');
     }
     if (options.isRequired !== true) fieldSchema = fieldSchema?.optional();
 
@@ -181,8 +181,8 @@ export const mapEinsatzToCalendarEvent = (
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-        .map((c) => c.einsatz_category.abbreviation)
-        .join(", ")})`
+          .map((c) => c.einsatz_category.abbreviation)
+          .join(', ')})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
@@ -199,22 +199,22 @@ export function mapStringValueToType(
   if (value === null || value === undefined) return null;
   if (!fieldType) return value; // return as is (text)
   switch (fieldType) {
-    case "text":
-    case "phone":
-    case "mail":
+    case 'text':
+    case 'phone':
+    case 'mail':
       return value;
-    case "number":
-      console.log("Mapping number value:", value);
+    case 'number':
+      console.log('Mapping number value:', value);
       return parseInt(value, 10);
-    case "currency":
+    case 'currency':
       return parseFloat(value);
-    case "boolean":
-      console.log("Mapping boolean value:", value);
-      return value === "TRUE";
-    case "select":
-      return value.split(",");
+    case 'boolean':
+      console.log('Mapping boolean value:', value);
+      return value === 'TRUE';
+    case 'select':
+      return value.split(',');
     default:
-      throw new Error("Unsupported type for mapping: " + fieldType);
+      throw new Error('Unsupported type for mapping: ' + fieldType);
   }
 }
 
@@ -222,10 +222,10 @@ export function mapTypeToStringValue(value: any): string | null {
   if (value === null || value === undefined) return null;
   if (value instanceof Date) {
     if (isNaN(value.getTime()))
-      throw new Error("Invalid date object: " + value);
+      throw new Error('Invalid date object: ' + value);
     return value.toISOString();
   }
-  if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
   if (Number.isNaN(value) || value === Infinity || value === -Infinity) {
     return null;
   }
@@ -269,28 +269,28 @@ export function mapFieldsForSchema(fields: fieldsForSchema) {
 export function mapDbDataTypeToFormFieldType(
   datatype: string | null | undefined
 ): FormFieldType {
-  const defaultTypes = ["text", "number", "currency", "phone", "mail"];
+  const defaultTypes = ['text', 'number', 'currency', 'phone', 'mail'];
   if (datatype) {
-    if (defaultTypes.includes(datatype)) return "default";
-    if (datatype === "boolean") return "checkbox";
-    if (datatype === "select") return "select";
+    if (defaultTypes.includes(datatype)) return 'default';
+    if (datatype === 'boolean') return 'checkbox';
+    if (datatype === 'select') return 'select';
   }
-  throw new Error("Can't map datatype: " + datatype + " to its FormField.");
+  throw new Error("Can't map datatype: " + datatype + ' to its FormField.');
 }
 
 export function mapDbDataTypeToInputProps(
   datatype: string | null | undefined
-): React.ComponentProps<"input"> | null {
-  const defaultTypes = ["text", "number", "currency", "phone", "mail"];
+): React.ComponentProps<'input'> | null {
+  const defaultTypes = ['text', 'number', 'currency', 'phone', 'mail'];
   if (datatype) {
     if (!defaultTypes.includes(datatype)) return null;
-    if (datatype === "text") return { type: "text" };
-    if (datatype === "phone") return { type: "tel" };
-    if (datatype === "mail") return { type: "email" };
-    if (datatype === "number") return { type: "number" };
-    if (datatype === "currency") return { type: "number", step: "0.10" };
+    if (datatype === 'text') return { type: 'text' };
+    if (datatype === 'phone') return { type: 'tel' };
+    if (datatype === 'mail') return { type: 'email' };
+    if (datatype === 'number') return { type: 'number' };
+    if (datatype === 'currency') return { type: 'number', step: '0.10' };
   }
-  throw new Error("Can't map datatype: " + datatype + " to its FormField.");
+  throw new Error("Can't map datatype: " + datatype + ' to its FormField.');
 }
 
 export const roundDownTo10Minutes = (date: Date): Date => {
@@ -324,7 +324,7 @@ export function mapStatusIdsToLabels(
         .map((statusId) => {
           const status = statusData.find((s) => s.id === statusId);
           if (!status) return null;
-          return mode === "helper" ? status.helper_text : status.verwalter_text;
+          return mode === 'helper' ? status.helper_text : status.verwalter_text;
         })
         .filter((label): label is string => label !== null)
     )
@@ -339,37 +339,37 @@ export function getEventColorClasses(
   status: EinsatzStatus | string,
   mode: CalendarMode
 ): string {
-  if (typeof status === "string") {
+  if (typeof status === 'string') {
     switch (status) {
-      case "eigene":
-        return "bg-blue-200/50 hover:bg-blue-200/40 text-blue-950/80 dark:bg-blue-400/25 dark:hover:bg-blue-400/20 dark:text-blue-200 shadow-blue-700/8";
+      case 'eigene':
+        return 'bg-blue-200/50 hover:bg-blue-200/40 text-blue-950/80 dark:bg-blue-400/25 dark:hover:bg-blue-400/20 dark:text-blue-200 shadow-blue-700/8';
       default:
-        return "bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8";
+        return 'bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8';
     }
   }
-  if (mode === "helper") {
+  if (mode === 'helper') {
     switch (status.helper_text) {
-      case "vergeben":
-        return "bg-red-200/50 hover:bg-red-200/40 text-red-950/80 dark:bg-red-400/25 dark:hover:bg-red-400/20 dark:text-red-200 shadow-red-700/8";
-      case "offen":
-        return "bg-lime-200/50 hover:bg-lime-200/40 text-lime-950/80 dark:bg-lime-400/25 dark:hover:bg-lime-400/20 dark:text-lime-200 shadow-lime-700/8";
+      case 'vergeben':
+        return 'bg-red-200/50 hover:bg-red-200/40 text-red-950/80 dark:bg-red-400/25 dark:hover:bg-red-400/20 dark:text-red-200 shadow-red-700/8';
+      case 'offen':
+        return 'bg-lime-200/50 hover:bg-lime-200/40 text-lime-950/80 dark:bg-lime-400/25 dark:hover:bg-lime-400/20 dark:text-lime-200 shadow-lime-700/8';
       default:
-        return "bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8";
+        return 'bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8';
     }
-  } else if (mode === "verwaltung") {
+  } else if (mode === 'verwaltung') {
     switch (status.verwalter_text) {
-      case "offen":
-        return "bg-red-200/50 hover:bg-red-200/40 text-red-950/80 dark:bg-red-400/25 dark:hover:bg-red-400/20 dark:text-red-200 shadow-red-700/8";
-      case "vergeben":
-        return "bg-orange-200/50 hover:bg-orange-200/40 text-orange-950/80 dark:bg-orange-400/25 dark:hover:bg-orange-400/20 dark:text-orange-200 shadow-orange-700/8";
-      case "bestätigt":
-        return "bg-green-200/50 hover:bg-green-200/40 text-green-950/80 dark:bg-green-400/25 dark:hover:bg-green-400/20 dark:text-green-200 shadow-green-700/8";
+      case 'offen':
+        return 'bg-red-200/50 hover:bg-red-200/40 text-red-950/80 dark:bg-red-400/25 dark:hover:bg-red-400/20 dark:text-red-200 shadow-red-700/8';
+      case 'vergeben':
+        return 'bg-orange-200/50 hover:bg-orange-200/40 text-orange-950/80 dark:bg-orange-400/25 dark:hover:bg-orange-400/20 dark:text-orange-200 shadow-orange-700/8';
+      case 'bestätigt':
+        return 'bg-green-200/50 hover:bg-green-200/40 text-green-950/80 dark:bg-green-400/25 dark:hover:bg-green-400/20 dark:text-green-200 shadow-green-700/8';
       default:
-        return "bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8";
+        return 'bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8';
     }
   } else {
-    console.warn("Unknown mode:", mode);
-    return "bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8";
+    console.warn('Unknown mode:', mode);
+    return 'bg-slate-200/50 hover:bg-slate-200/40 text-slate-950/80 dark:bg-slate-400/25 dark:hover:bg-slate-400/20 dark:text-slate-200 shadow-slate-700/8';
   }
 }
 
@@ -381,26 +381,26 @@ export function getStatusByMode(
 ): reducedStatus | undefined {
   let statusObject: einsatz_status | undefined;
 
-  if (typeof status === "string") {
+  if (typeof status === 'string') {
     statusObject = staticStatusList.find((s) =>
-      mode === "helper" ? s.helper_text === status : s.verwalter_text === status
+      mode === 'helper' ? s.helper_text === status : s.verwalter_text === status
     );
   } else {
     statusObject = status;
   }
 
   if (!statusObject) {
-    console.warn("Unknown status:", status);
+    console.warn('Unknown status:', status);
     return undefined;
   }
 
-  if (mode === "helper") {
+  if (mode === 'helper') {
     return {
       id: statusObject.id,
       text: statusObject.helper_text,
       color: statusObject.helper_color,
     };
-  } else if (mode === "verwaltung") {
+  } else if (mode === 'verwaltung') {
     return {
       id: statusObject.id,
       text: statusObject.verwalter_text,
@@ -412,25 +412,25 @@ export function getStatusByMode(
 
 export const staticStatusList = [
   {
-    id: "15512bc7-fc64-4966-961f-c506a084a274",
-    helper_color: "red",
-    verwalter_color: "orange",
-    helper_text: "vergeben",
-    verwalter_text: "vergeben",
+    id: '15512bc7-fc64-4966-961f-c506a084a274',
+    helper_color: 'red',
+    verwalter_color: 'orange',
+    helper_text: 'vergeben',
+    verwalter_text: 'vergeben',
   },
   {
-    id: "46cee187-d109-4dea-b886-240cf923b8e6",
-    helper_color: "red",
-    verwalter_color: "green",
-    helper_text: "vergeben",
-    verwalter_text: "bestätigt",
+    id: '46cee187-d109-4dea-b886-240cf923b8e6',
+    helper_color: 'red',
+    verwalter_color: 'green',
+    helper_text: 'vergeben',
+    verwalter_text: 'bestätigt',
   },
   {
-    id: "bb169357-920b-4b49-9e3d-1cf489409370",
-    helper_color: "lime",
-    verwalter_color: "red",
-    helper_text: "offen",
-    verwalter_text: "offen",
+    id: 'bb169357-920b-4b49-9e3d-1cf489409370',
+    helper_color: 'lime',
+    verwalter_color: 'red',
+    helper_text: 'offen',
+    verwalter_text: 'offen',
   },
 ] as readonly einsatz_status[];
 
@@ -439,41 +439,42 @@ export function getBadgeColorClassByStatus(
   mode: CalendarMode
 ): string {
   let badgeColor: string;
-  if (status === "eigene") return "bg-blue-400 text-blue-900 dark:bg-blue-800 dark:text-blue-200";
+  if (status === 'eigene')
+    return 'bg-blue-400 text-blue-900 dark:bg-blue-800 dark:text-blue-200';
 
   const statusObject = getStatusByMode(status, mode);
 
-  if (mode === "helper") {
+  if (mode === 'helper') {
     switch (statusObject?.color) {
-      case "red":
+      case 'red':
         badgeColor =
-          "bg-red-400 text-red-900 dark:bg-red-800 dark:text-red-200";
+          'bg-red-400 text-red-900 dark:bg-red-800 dark:text-red-200';
         break;
-      case "lime":
+      case 'lime':
         badgeColor =
-          "bg-lime-400 text-lime-900 dark:bg-lime-800 dark:text-lime-200";
+          'bg-lime-400 text-lime-900 dark:bg-lime-800 dark:text-lime-200';
         break;
       default:
         badgeColor =
-          "bg-slate-400 text-slate-900 dark:bg-slate-800 dark:text-slate-200";
+          'bg-slate-400 text-slate-900 dark:bg-slate-800 dark:text-slate-200';
     }
   } else {
     switch (statusObject?.color) {
-      case "red":
+      case 'red':
         badgeColor =
-          "bg-red-400 text-red-900 dark:bg-red-800 dark:text-red-200";
+          'bg-red-400 text-red-900 dark:bg-red-800 dark:text-red-200';
         break;
-      case "orange":
+      case 'orange':
         badgeColor =
-          "bg-orange-400 text-orange-900 dark:bg-orange-800 dark:text-orange-200";
+          'bg-orange-400 text-orange-900 dark:bg-orange-800 dark:text-orange-200';
         break;
-      case "green":
+      case 'green':
         badgeColor =
-          "bg-green-400 text-green-900 dark:bg-green-800 dark:text-green-200";
+          'bg-green-400 text-green-900 dark:bg-green-800 dark:text-green-200';
         break;
       default:
         badgeColor =
-          "bg-slate-400 text-slate-900 dark:bg-slate-800 dark:text-slate-200";
+          'bg-slate-400 text-slate-900 dark:bg-slate-800 dark:text-slate-200';
     }
   }
   return badgeColor;
@@ -487,13 +488,13 @@ export function getBorderRadiusClasses(
   isLastDay: boolean
 ): string {
   if (isFirstDay && isLastDay) {
-    return "rounded"; // Both ends rounded
+    return 'rounded'; // Both ends rounded
   } else if (isFirstDay) {
-    return "rounded-l rounded-r-none"; // Only left end rounded
+    return 'rounded-l rounded-r-none'; // Only left end rounded
   } else if (isLastDay) {
-    return "rounded-r rounded-l-none"; // Only right end rounded
+    return 'rounded-r rounded-l-none'; // Only right end rounded
   } else {
-    return "rounded-none"; // No rounded corners
+    return 'rounded-none'; // No rounded corners
   }
 }
 

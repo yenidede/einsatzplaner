@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/SimpleFormComponents";
-import type { FieldType } from "../types";
+import { Button } from '@/components/SimpleFormComponents';
+import type { FieldType } from '../types';
 
 interface FieldTypeSelectorProps {
   onSelectType: (type: FieldType) => void;
@@ -13,38 +13,38 @@ export function FieldTypeSelector({
   onBack,
 }: FieldTypeSelectorProps) {
   return (
-    <div className="self-stretch flex flex-col justify-start items-start gap-2">
-      <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
-        <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">
+    <div className="flex flex-col items-start justify-start gap-2 self-stretch">
+      <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
+        <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
           Feldtyp auswählen
         </div>
       </div>
-      <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
-        <div className="self-stretch px-4 flex flex-col justify-start items-start gap-4">
-          <div className="self-stretch grid grid-cols-2 gap-4">
+      <div className="flex flex-col items-start justify-start gap-4 self-stretch border-t border-slate-200 py-4">
+        <div className="flex flex-col items-start justify-start gap-4 self-stretch px-4">
+          <div className="grid grid-cols-2 gap-4 self-stretch">
             <div
-              onClick={() => onSelectType("text")}
-              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-slate-50 flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
+              onClick={() => onSelectType('text')}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-8 transition-all hover:border-slate-300"
             >
               <div className="text-4xl font-semibold text-slate-900">T</div>
-              <div className="text-slate-900 text-base font-medium text-center">
+              <div className="text-center text-base font-medium text-slate-900">
                 Text
               </div>
             </div>
 
             <div
-              onClick={() => onSelectType("number")}
-              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-slate-50 flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
+              onClick={() => onSelectType('number')}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-8 transition-all hover:border-slate-300"
             >
               <div className="text-4xl font-semibold text-slate-900">#</div>
-              <div className="text-slate-900 text-base font-medium text-center">
+              <div className="text-center text-base font-medium text-slate-900">
                 Zahl
               </div>
             </div>
 
             <div
-              onClick={() => onSelectType("boolean")}
-              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-slate-50 flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
+              onClick={() => onSelectType('boolean')}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-8 transition-all hover:border-slate-300"
             >
               <div className="flex items-center justify-center">
                 <svg
@@ -66,14 +66,14 @@ export function FieldTypeSelector({
                   <circle cx="15" cy="12" r="2" fill="currentColor" />
                 </svg>
               </div>
-              <div className="text-slate-900 text-base font-medium text-center">
+              <div className="text-center text-base font-medium text-slate-900">
                 Ja/Nein
               </div>
             </div>
 
             <div
-              onClick={() => onSelectType("select")}
-              className="px-6 py-8 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-slate-50 flex flex-col justify-center items-center gap-3 cursor-pointer transition-all"
+              onClick={() => onSelectType('select')}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-8 transition-all hover:border-slate-300"
             >
               <div className="flex items-center justify-center">
                 <svg
@@ -109,22 +109,22 @@ export function FieldTypeSelector({
                   />
                 </svg>
               </div>
-              <div className="text-slate-900 text-base font-medium text-center">
+              <div className="text-center text-base font-medium text-slate-900">
                 Auswahl
               </div>
-              <div className="text-slate-500 text-xs text-center">
+              <div className="text-center text-xs text-slate-500">
                 Dropdown mit Auswahlmöglichkeiten
               </div>
             </div>
           </div>
         </div>
 
-        <div className="self-stretch px-4 pt-2 inline-flex justify-end items-start gap-2">
+        <div className="inline-flex items-start justify-end gap-2 self-stretch px-4 pt-2">
           <Button
             onClick={onBack}
-            className="px-4 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-200 flex justify-center items-center gap-2.5"
+            className="flex items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2 outline outline-offset-1 outline-slate-200"
           >
-            <div className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
+            <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-900">
               Zurück
             </div>
           </Button>

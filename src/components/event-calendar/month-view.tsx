@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   addDays,
   eachDayOfInterval,
@@ -12,14 +12,14 @@ import {
   isToday,
   startOfMonth,
   startOfWeek,
-} from "date-fns";
-import { de } from "date-fns/locale";
+} from 'date-fns';
+import { de } from 'date-fns/locale';
 
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/popover';
 import {
   DraggableEvent,
   DroppableCell,
@@ -29,12 +29,12 @@ import {
   isMultiDayEvent,
   sortEvents,
   type CalendarEvent,
-} from "@/components/event-calendar";
+} from '@/components/event-calendar';
 import {
   DefaultStartHour,
   MaxEventsPerCellInMonthView,
-} from "@/components/event-calendar/constants";
-import { CalendarMode } from "./types";
+} from '@/components/event-calendar/constants';
+import { CalendarMode } from './types';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -63,7 +63,7 @@ export function MonthView({
   const weekdays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => {
       const date = addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), i);
-      return format(date, "EEE", { locale: de });
+      return format(date, 'EEE', { locale: de });
     });
   }, []);
 
@@ -186,7 +186,7 @@ export function MonthView({
                     }}
                   >
                     <div className="group-data-today:bg-primary group-data-today:text-primary-foreground mt-1 inline-flex size-6 items-center justify-center rounded-full text-sm">
-                      {format(day, "d")}
+                      {format(day, 'd')}
                     </div>
                     <div>
                       {sortEvents(allDayEventsForDay).map((event, index) => {
@@ -207,7 +207,7 @@ export function MonthView({
                                 .toISOString()
                                 .slice(0, 10)}`}
                               className="aria-hidden:hidden"
-                              aria-hidden={isHidden ? "true" : undefined}
+                              aria-hidden={isHidden ? 'true' : undefined}
                             >
                               <EventItem
                                 onClick={(e) => handleEventClick(event, e)}
@@ -225,7 +225,7 @@ export function MonthView({
                           <div
                             key={event.id}
                             className="aria-hidden:hidden"
-                            aria-hidden={isHidden ? "true" : undefined}
+                            aria-hidden={isHidden ? 'true' : undefined}
                           >
                             <DraggableEvent
                               event={event}
@@ -247,7 +247,7 @@ export function MonthView({
                               onClick={(e) => e.stopPropagation()}
                             >
                               <span>
-                                + {remainingCount}{" "}
+                                + {remainingCount}{' '}
                                 <span className="max-sm:sr-only">more</span>
                               </span>
                             </button>
@@ -257,13 +257,13 @@ export function MonthView({
                             className="max-w-52 p-3"
                             style={
                               {
-                                "--event-height": `${EventHeight}px`,
+                                '--event-height': `${EventHeight}px`,
                               } as React.CSSProperties
                             }
                           >
                             <div className="space-y-2">
                               <div className="text-sm font-medium">
-                                {format(day, "EEE d", { locale: de })}
+                                {format(day, 'EEE d', { locale: de })}
                               </div>
                               <div className="space-y-1">
                                 {sortEvents(allEvents).map((event) => {

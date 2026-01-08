@@ -1,9 +1,9 @@
-import Image from "next/image";
+import Image from 'next/image';
 
 export default function SignupPage() {
   return (
     <div className="bg-secondary flex grow flex-col justify-end p-6 md:p-10">
-      <div className="w-full max-w-sm md:max-w-4xl mb-8">
+      <div className="mb-8 w-full max-w-sm md:max-w-4xl">
         <h1>Registrieren nur noch via persönlichen Einladungslink!</h1>
         <p>
           Bitte wenden Sie sich an einen Administrator, um einen Einladungslink
@@ -15,7 +15,7 @@ export default function SignupPage() {
         alt="Sehr schönes Museum mit altem Gemälde"
         width={3840}
         height={2418}
-        className="aspect-video object-cover shrink rounded-lg"
+        className="aspect-video shrink rounded-lg object-cover"
       />
     </div>
   );

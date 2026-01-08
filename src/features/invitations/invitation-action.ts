@@ -1,17 +1,17 @@
-"use server";
+'use server';
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth.config";
-import prisma from "@/lib/prisma";
-import crypto from "crypto";
-import { emailService } from "@/lib/email/EmailService";
-import { hasPermission } from "@/lib/auth/authGuard";
-import { revalidatePath } from "next/cache";
-import bcrypt from "bcrypt";
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth.config';
+import prisma from '@/lib/prisma';
+import crypto from 'crypto';
+import { emailService } from '@/lib/email/EmailService';
+import { hasPermission } from '@/lib/auth/authGuard';
+import { revalidatePath } from 'next/cache';
+import bcrypt from 'bcrypt';
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error("Nicht authentifiziert");
+  if (!session?.user?.id) throw new Error('Nicht authentifiziert');
   return session;
 }
 
@@ -29,12 +29,12 @@ export async function createInvitationAction(data: {
       !data.roleIds ||
       data.roleIds.length === 0
     ) {
-      throw new Error("Ungültige Eingabedaten");
+      throw new Error('Ungültige Eingabedaten');
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(data.email)) {
-      throw new Error("Ungültige E-Mail-Adresse");
+      throw new Error('Ungültige E-Mail-Adresse');
     }
 
     const inviter = await prisma.user.findUnique({
@@ -48,18 +48,18 @@ export async function createInvitationAction(data: {
     });
 
     if (!inviter) {
-      throw new Error("Benutzer nicht gefunden");
+      throw new Error('Benutzer nicht gefunden');
     }
 
-    const canInvite = await hasPermission(session, "users:invite");
+    const canInvite = await hasPermission(session, 'users:invite');
 
     if (!canInvite) {
       const roleNames = inviter.user_organization_role.map(
-        (uor) => uor.role?.name || ""
+        (uor) => uor.role?.name || ''
       );
       throw new Error(
         `Keine Berechtigung zum Einladen von Benutzern. Ihre Rollen: ${roleNames.join(
-          ", "
+          ', '
         )}`
       );
     }
@@ -70,7 +70,7 @@ export async function createInvitationAction(data: {
     });
 
     if (!organization) {
-      throw new Error("Organisation nicht gefunden");
+      throw new Error('Organisation nicht gefunden');
     }
 
     // Prüfen ob User bereits in Organisation
@@ -84,7 +84,7 @@ export async function createInvitationAction(data: {
     });
 
     if (existingUser && existingUser.user_organization_role.length > 0) {
-      throw new Error("Benutzer ist bereits Mitglied dieser Organisation");
+      throw new Error('Benutzer ist bereits Mitglied dieser Organisation');
     }
 
     // Prüfen ob bereits eine offene Einladung existiert
@@ -98,11 +98,11 @@ export async function createInvitationAction(data: {
 
     if (existingInvitation) {
       throw new Error(
-        "Es existiert bereits eine offene Einladung für diese E-Mail-Adresse"
+        'Es existiert bereits eine offene Einladung für diese E-Mail-Adresse'
       );
     }
 
-    const token = crypto.randomBytes(32).toString("hex");
+    const token = crypto.randomBytes(32).toString('hex');
 
     // Einladungen für alle ausgewählten Rollen erstellen
     // Wir erstellen mehrere invitation records, eine pro Rolle
@@ -135,7 +135,7 @@ export async function createInvitationAction(data: {
 
       await emailService.sendInvitationEmail(
         data.email,
-        inviterName || "Unbekannt",
+        inviterName || 'Unbekannt',
         organization.name,
         token
       );
@@ -144,7 +144,7 @@ export async function createInvitationAction(data: {
         where: { token: token },
       });
       throw new Error(
-        "Einladung erstellt, aber E-Mail konnte nicht gesendet werden. Einladung wurde zurückgezogen."
+        'Einladung erstellt, aber E-Mail konnte nicht gesendet werden. Einladung wurde zurückgezogen.'
       );
     }
 
@@ -153,7 +153,7 @@ export async function createInvitationAction(data: {
 
     return {
       success: true,
-      message: "Einladung erfolgreich erstellt",
+      message: 'Einladung erfolgreich erstellt',
       invitation: {
         id: invitations[0].id,
         email: invitations[0].email,
@@ -164,7 +164,7 @@ export async function createInvitationAction(data: {
   } catch (error) {
     throw error instanceof Error
       ? error
-      : new Error("Fehler beim Erstellen der Einladung");
+      : new Error('Fehler beim Erstellen der Einladung');
   }
 }
 
@@ -173,7 +173,7 @@ export async function acceptInvitationAction(token: string) {
     const session = await checkUserSession();
 
     if (!token) {
-      throw new Error("Token ist erforderlich");
+      throw new Error('Token ist erforderlich');
     }
 
     const invitations = await prisma.invitation.findMany({
@@ -196,25 +196,25 @@ export async function acceptInvitationAction(token: string) {
     });
 
     if (!invitations || invitations.length === 0) {
-      throw new Error("Ungültiger Einladungstoken");
+      throw new Error('Ungültiger Einladungstoken');
     }
 
     const firstInvitation = invitations[0];
 
     // Validierungen
     if (firstInvitation.expires_at < new Date()) {
-      throw new Error("Die Einladung ist abgelaufen");
+      throw new Error('Die Einladung ist abgelaufen');
     }
 
     if (firstInvitation.accepted) {
-      throw new Error("Die Einladung wurde bereits angenommen");
+      throw new Error('Die Einladung wurde bereits angenommen');
     }
 
     if (firstInvitation.email !== session.user.email) {
       throw new Error(
-        "E-Mail-Adresse stimmt nicht überein. Einladung ist gültig für " +
+        'E-Mail-Adresse stimmt nicht überein. Einladung ist gültig für ' +
           firstInvitation.email.substring(0, 3) +
-          "****"
+          '****'
       );
     }
 
@@ -287,12 +287,12 @@ export async function acceptInvitationAction(token: string) {
     }
 
     // Revalidate wichtige Pfade
-    revalidatePath("/");
+    revalidatePath('/');
     revalidatePath(`/organization/${firstInvitation.org_id}`);
 
     return {
       success: true,
-      message: "Einladung erfolgreich angenommen",
+      message: 'Einladung erfolgreich angenommen',
       sessionUpdate: {
         user: {
           ...session.user,
@@ -306,14 +306,14 @@ export async function acceptInvitationAction(token: string) {
   } catch (error) {
     throw error instanceof Error
       ? error
-      : new Error("Fehler beim Annehmen der Einladung");
+      : new Error('Fehler beim Annehmen der Einladung');
   }
 }
 
 export async function verifyInvitationAction(token: string) {
   try {
     if (!token) {
-      throw new Error("Token ist erforderlich");
+      throw new Error('Token ist erforderlich');
     }
 
     const invitations = await prisma.invitation.findMany({
@@ -346,11 +346,11 @@ export async function verifyInvitationAction(token: string) {
 
       if (anyInvitation) {
         if (anyInvitation.expires_at < new Date()) {
-          throw new Error("Einladung ist abgelaufen");
+          throw new Error('Einladung ist abgelaufen');
         }
       }
 
-      throw new Error("Einladung nicht gefunden oder wurde bereits angenommen");
+      throw new Error('Einladung nicht gefunden oder wurde bereits angenommen');
     }
 
     const firstInvitation = invitations[0];
@@ -369,30 +369,30 @@ export async function verifyInvitationAction(token: string) {
     const inviterName =
       inviter?.firstname && inviter?.lastname
         ? `${inviter.firstname} ${inviter.lastname}`
-        : inviter?.email || "Unbekannt";
+        : inviter?.email || 'Unbekannt';
 
     const helperNameSingular =
-      firstInvitation.organization?.helper_name_singular ?? "Helfer";
+      firstInvitation.organization?.helper_name_singular ?? 'Helfer';
     const helperNamePlural =
       firstInvitation.organization?.helper_name_plural ?? helperNameSingular;
 
     const formatRoleName = (name?: string | null) => {
       if (!name) return helperNameSingular;
-      if (name === "Helfer") return helperNameSingular;
+      if (name === 'Helfer') return helperNameSingular;
       return name;
     };
 
     const roleNames = invitations
       .map((inv) => formatRoleName(inv.role?.name))
       .filter(Boolean)
-      .join(", ");
+      .join(', ');
 
     return {
       id: firstInvitation.id,
       email: firstInvitation.email,
-      organizationName: firstInvitation.organization?.name || "Organisation",
+      organizationName: firstInvitation.organization?.name || 'Organisation',
       orgId: firstInvitation.org_id,
-      roleName: roleNames || "Helfer",
+      roleName: roleNames || 'Helfer',
       helperNameSingular,
       helperNamePlural,
       roles: invitations.map((inv) => ({
@@ -407,7 +407,7 @@ export async function verifyInvitationAction(token: string) {
   } catch (error) {
     throw error instanceof Error
       ? error
-      : new Error("Fehler bei der Überprüfung der Einladung");
+      : new Error('Fehler bei der Überprüfung der Einladung');
   }
 }
 
@@ -419,11 +419,11 @@ export async function createAccountFromInvitationAction(data: {
 }) {
   try {
     if (!data.token || !data.firstname || !data.lastname || !data.password) {
-      throw new Error("Alle Felder sind erforderlich");
+      throw new Error('Alle Felder sind erforderlich');
     }
 
     if (data.password.length < 8) {
-      throw new Error("Das Passwort muss mindestens 8 Zeichen lang sein");
+      throw new Error('Das Passwort muss mindestens 8 Zeichen lang sein');
     }
 
     const invitations = await prisma.invitation.findMany({
@@ -439,7 +439,7 @@ export async function createAccountFromInvitationAction(data: {
     });
 
     if (!invitations || invitations.length === 0) {
-      throw new Error("Ungültige oder abgelaufene Einladung");
+      throw new Error('Ungültige oder abgelaufene Einladung');
     }
 
     const firstInvitation = invitations[0];
@@ -450,7 +450,7 @@ export async function createAccountFromInvitationAction(data: {
 
     if (existingUser) {
       throw new Error(
-        "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an."
+        'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
       );
     }
 
@@ -490,18 +490,18 @@ export async function createAccountFromInvitationAction(data: {
       };
     });
 
-    revalidatePath("/");
+    revalidatePath('/');
     revalidatePath(`/organization/${firstInvitation.org_id}`);
 
     return {
       success: true,
-      message: "Account erfolgreich erstellt",
+      message: 'Account erfolgreich erstellt',
       email: result.email,
       addedRoles: result.addedRoles,
     };
   } catch (error) {
     throw error instanceof Error
       ? error
-      : new Error("Fehler beim Erstellen des Accounts");
+      : new Error('Fehler beim Erstellen des Accounts');
   }
 }

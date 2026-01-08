@@ -1,9 +1,9 @@
-import React from "react";
+import React from 'react';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
 
 interface TooltipCustomProps {
   text: string;
@@ -16,7 +16,7 @@ export default function TooltipCustom({
   text,
   asChild = true,
 }: TooltipCustomProps) {
-  if (text.trim() === "") {
+  if (text.trim() === '') {
     return <>{children}</>;
   }
   return (

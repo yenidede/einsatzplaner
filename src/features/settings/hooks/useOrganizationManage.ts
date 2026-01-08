@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getUserOrganizationByIdAction,
   updateOrganizationAction,
   uploadOrganizationLogoAction,
   type OrganizationUpdateData,
-} from "../organization-action";
-import { settingsQueryKeys } from "../queryKeys/queryKey";
+} from '../organization-action';
+import { settingsQueryKeys } from '../queryKeys/queryKey';
 
 export function useOrganizationManage(orgId: string) {
   const queryClient = useQueryClient();
@@ -22,7 +22,7 @@ export function useOrganizationManage(orgId: string) {
 
   // Organization members (from organization data)
   const membersQuery = useQuery({
-    queryKey: ["organization-members", orgId],
+    queryKey: ['organization-members', orgId],
     queryFn: () => getUserOrganizationByIdAction(orgId),
     enabled: !!orgId,
     select: (data) => data.members || [],
@@ -38,7 +38,7 @@ export function useOrganizationManage(orgId: string) {
         queryKey: settingsQueryKeys.organization(orgId),
       });
       queryClient.invalidateQueries({
-        queryKey: ["organization-members", orgId],
+        queryKey: ['organization-members', orgId],
       });
     },
   });

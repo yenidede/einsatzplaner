@@ -1,28 +1,28 @@
-import React from "react";
-import { Page, Text, View } from "@react-pdf/renderer";
-import { BookingFooter } from "../shared/PDFBookingFooter";
-import { PDFHeader } from "../shared/PDFHeader";
-import { PDFContactSection } from "../shared/PDFContactSection";
-import { PDFCostInfo } from "../shared/PDFCostInfo";
-import { PDFCancellationText } from "../shared/PDFCancellationText";
-import { PDFSignature } from "../shared/PDFSignature";
-import { PDFAnreiseInfo } from "../shared/PDFAnreiseInfo";
-import type { Einsatz } from "@/features/einsatz/types";
-import { OrganizationForPDF } from "@/features/organization/types";
-import { commonStyles } from "../styles/common-styles";
+import React from 'react';
+import { Page, Text, View } from '@react-pdf/renderer';
+import { BookingFooter } from '../shared/PDFBookingFooter';
+import { PDFHeader } from '../shared/PDFHeader';
+import { PDFContactSection } from '../shared/PDFContactSection';
+import { PDFCostInfo } from '../shared/PDFCostInfo';
+import { PDFCancellationText } from '../shared/PDFCancellationText';
+import { PDFSignature } from '../shared/PDFSignature';
+import { PDFAnreiseInfo } from '../shared/PDFAnreiseInfo';
+import type { Einsatz } from '@/features/einsatz/types';
+import { OrganizationForPDF } from '@/features/organization/types';
+import { commonStyles } from '../styles/common-styles';
 import type {
   AssignedUser,
   EinsatzCategory,
   PDFDisplayOptions,
-} from "../types/types";
+} from '../types/types';
 import {
   formatDate,
   formatTime,
   formatAssignedUserNames,
   formatCurrentUserName,
   getSchulstufe,
-} from "../utils/pdf-helpers";
-import { Decimal } from "@/generated/prisma/runtime/library";
+} from '../utils/pdf-helpers';
+import { Decimal } from '@/generated/prisma/runtime/library';
 
 type BookingConfirmationPDFProps = {
   einsatz: Einsatz;
@@ -52,10 +52,10 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
     einsatz.price_per_person != null
       ? new Decimal(einsatz.price_per_person)
       : new Decimal(3.5);
-  const orgName = organization?.name ?? "Jüdisches Museum Hohenems";
+  const orgName = organization?.name ?? 'Jüdisches Museum Hohenems';
 
   const isFluchtwege = einsatzCategories.some((cat) =>
-    (cat.value ?? "").toLowerCase().includes("fluchtweg")
+    (cat.value ?? '').toLowerCase().includes('fluchtweg')
   );
 
   return (
@@ -92,7 +92,7 @@ export const BookingConfirmationPDF_Fluchtwege_School: React.FC<
           <Text style={commonStyles.label}>Programm:</Text>
           <View style={commonStyles.value}>
             <Text style={[commonStyles.bold, { marginBottom: 6 }]}>
-              {isFluchtwege ? "Fluchtwege" : "Wird noch bekanntgegeben"}
+              {isFluchtwege ? 'Fluchtwege' : 'Wird noch bekanntgegeben'}
             </Text>
 
             {isFluchtwege && (
