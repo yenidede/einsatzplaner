@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer from 'nodemailer';
 
 export class EmailService {
   private transporter: nodemailer.Transporter | null;
@@ -6,15 +6,15 @@ export class EmailService {
   constructor() {
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
       console.warn(
-        "E-Mail-Service ist nicht konfiguriert. E-Mails werden in der Konsole ausgegeben."
+        'E-Mail-Service ist nicht konfiguriert. E-Mails werden in der Konsole ausgegeben.'
       );
       this.transporter = null;
       return;
     }
 
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.SMTP_PORT || "587"),
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
       secure: false,
       auth: {
         user: process.env.SMTP_USER,
@@ -35,7 +35,7 @@ export class EmailService {
     const mailOptions = {
       from: `"Einsatzplaner" <${process.env.SMTP_USER}>`,
       to: email,
-      subject: "Passwort zurücksetzen - Einsatzplaner",
+      subject: 'Passwort zurücksetzen - Einsatzplaner',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333; text-align: center;">Passwort zurücksetzen</h2>
@@ -165,10 +165,10 @@ export class EmailService {
 
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error("❌ Fehler beim Senden der Einladungs-E-Mail:", error);
+      console.error('❌ Fehler beim Senden der Einladungs-E-Mail:', error);
       throw new Error(
         `E-Mail-Versand fehlgeschlagen: ${
-          error instanceof Error ? error.message : "Unbekannter Fehler"
+          error instanceof Error ? error.message : 'Unbekannter Fehler'
         }`
       );
     }
@@ -184,11 +184,11 @@ export class EmailService {
   ) {
     const acceptUrl = `${process.env.NEXTAUTH_URL}/invite/${token}`;
 
-    const expiryDate = expiresAt.toLocaleDateString("de-DE", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+    const expiryDate = expiresAt.toLocaleDateString('de-DE', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
 
     if (!this.transporter) {
@@ -288,10 +288,10 @@ export class EmailService {
       const info = await this.transporter.sendMail(mailOptions);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error("Failed to send invitation reminder:", error);
+      console.error('Failed to send invitation reminder:', error);
       throw new Error(
         `Failed to send invitation reminder email: ${
-          error instanceof Error ? error.message : "Unknown error"
+          error instanceof Error ? error.message : 'Unknown error'
         }`
       );
     }

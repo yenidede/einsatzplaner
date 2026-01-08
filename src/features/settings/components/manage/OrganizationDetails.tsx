@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { FileText } from "lucide-react";
-import { getOrganizationDetailsAction } from "../../organization-action";
-import { settingsQueryKeys } from "../../queryKeys/queryKey";
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { FileText } from 'lucide-react';
+import { getOrganizationDetailsAction } from '../../organization-action';
+import { settingsQueryKeys } from '../../queryKeys/queryKey';
 
 interface OrganizationDetailsProps {
   organizationId: string;
@@ -38,29 +38,29 @@ export function OrganizationDetails({
   // Formular mit geladenen Daten befüllen
   useEffect(() => {
     if (details) {
-      onWebsiteChange(details.website || "");
-      onVatChange(details.vat || "");
-      onZvrChange(details.zvr || "");
-      onAuthorityChange(details.authority || "");
+      onWebsiteChange(details.website || '');
+      onVatChange(details.vat || '');
+      onZvrChange(details.zvr || '');
+      onAuthorityChange(details.authority || '');
     }
   }, [details]);
 
   return (
-    <div className="self-stretch flex flex-col justify-center items-start">
-      <div className="self-stretch px-4 py-2 flex justify-between items-center">
+    <div className="flex flex-col items-start justify-center self-stretch">
+      <div className="flex items-center justify-between self-stretch px-4 py-2">
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-slate-700" />
-          <div className="text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+          <FileText className="h-4 w-4 text-slate-700" />
+          <div className="font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
             Weitere Details
           </div>
         </div>
       </div>
 
-      <div className="self-stretch px-4 py-2 flex flex-col gap-3">
+      <div className="flex flex-col gap-3 self-stretch px-4 py-2">
         {isLoading ? (
           <div className="text-sm text-slate-500">Lädt Details...</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-slate-700">
                 Website
@@ -70,7 +70,7 @@ export function OrganizationDetails({
                 value={website}
                 onChange={(e) => onWebsiteChange(e.target.value)}
                 placeholder="https://www.beispiel.at"
-                className="px-3 py-2 border border-slate-300 rounded-md text-sm"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
             </div>
 
@@ -83,7 +83,7 @@ export function OrganizationDetails({
                 value={vat}
                 onChange={(e) => onVatChange(e.target.value)}
                 placeholder="ATU12345678"
-                className="px-3 py-2 border border-slate-300 rounded-md text-sm"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
             </div>
 
@@ -96,7 +96,7 @@ export function OrganizationDetails({
                 value={zvr}
                 onChange={(e) => onZvrChange(e.target.value)}
                 placeholder="123456789"
-                className="px-3 py-2 border border-slate-300 rounded-md text-sm"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
             </div>
 
@@ -109,7 +109,7 @@ export function OrganizationDetails({
                 value={authority}
                 onChange={(e) => onAuthorityChange(e.target.value)}
                 placeholder="Magistrat der Stadt Wien"
-                className="px-3 py-2 border border-slate-300 rounded-md text-sm"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
             </div>
           </div>

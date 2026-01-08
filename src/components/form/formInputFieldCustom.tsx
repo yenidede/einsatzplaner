@@ -1,6 +1,6 @@
-import React, { ReactNode } from "react";
-import { Label } from "@/components/ui/label";
-import ErrorDisplay from "./errorDisplay";
+import React, { ReactNode } from 'react';
+import { Label } from '@/components/ui/label';
+import ErrorDisplay from './errorDisplay';
 
 type FormFieldProps = {
   name: string;
@@ -15,7 +15,7 @@ export default function FormField({
   errors,
   children,
 }: FormFieldProps) {
-  const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
+  const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
   return (
     <div className={className}>
       <Label htmlFor={sanitizedId}>

@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { useInvitationValidation } from "@/features/invitations/hooks/useInvitation";
-import { acceptInvitationAction } from "@/features/invitations/invitation-action";
+import { useEffect, useState, useRef } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useInvitationValidation } from '@/features/invitations/hooks/useInvitation';
+import { acceptInvitationAction } from '@/features/invitations/invitation-action';
 
 export default function AcceptPage() {
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function AcceptPage() {
   const invitation = validationData?.invitation;
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") {
+    if (sessionStatus === 'unauthenticated') {
       router.push(
         `/signin?callbackUrl=${encodeURIComponent(`/invite/${token}`)}`
       );
@@ -46,7 +46,7 @@ export default function AcceptPage() {
     if (!invitation || !session?.user?.email || accepting) return;
 
     if (session.user.email !== invitation.email) {
-      setAcceptError("E-Mail-Adressen stimmen nicht überein");
+      setAcceptError('E-Mail-Adressen stimmen nicht überein');
       return;
     }
 
@@ -58,27 +58,27 @@ export default function AcceptPage() {
 
       if (!response || !response.success) {
         throw new Error(
-          response.message || "Fehler beim Annehmen der Einladung"
+          response.message || 'Fehler beim Annehmen der Einladung'
         );
       }
 
       setSuccess(true);
 
       timeoutRef.current = setTimeout(() => {
-        router.push("/helferansicht");
+        router.push('/helferansicht');
       }, 2000);
     } catch (err) {
-      setAcceptError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      setAcceptError(err instanceof Error ? err.message : 'Unbekannter Fehler');
       setAccepting(false);
     }
   };
 
-  if (isLoading || sessionStatus === "loading") {
+  if (isLoading || sessionStatus === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Lädt...</h1>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-b-2 border-blue-600"></div>
+          <h1 className="mb-4 text-2xl font-bold text-gray-900">Lädt...</h1>
         </div>
       </div>
     );
@@ -86,19 +86,19 @@ export default function AcceptPage() {
 
   if (error || !validationData?.valid || !invitation) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
+          <h1 className="mb-4 text-2xl font-bold text-red-600">
             Einladung nicht gefunden
           </h1>
-          <p className="text-gray-600 mb-6">
+          <p className="mb-6 text-gray-600">
             {validationData?.error ||
               error?.message ||
-              "Die Einladung ist ungültig, bereits akzeptiert oder abgelaufen."}
+              'Die Einladung ist ungültig, bereits akzeptiert oder abgelaufen.'}
           </p>
           <button
-            onClick={() => router.push("/helferansicht")}
-            className="inline-block bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+            onClick={() => router.push('/helferansicht')}
+            className="inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Zur Helferansicht
           </button>
@@ -109,20 +109,20 @@ export default function AcceptPage() {
 
   if (session?.user?.email && session.user.email !== invitation.email) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
+          <h1 className="mb-4 text-2xl font-bold text-red-600">
             Falsche E-Mail-Adresse
           </h1>
-          <p className="text-gray-600 mb-4">
+          <p className="mb-4 text-gray-600">
             Sie sind als <strong>{session.user.email}</strong> angemeldet.
           </p>
-          <p className="text-gray-600 mb-6">
+          <p className="mb-6 text-gray-600">
             Diese Einladung ist für <strong>{invitation.email}</strong>.
           </p>
           <button
-            onClick={() => router.push("/helferansicht")}
-            className="inline-block bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+            onClick={() => router.push('/helferansicht')}
+            className="inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Zur Helferansicht
           </button>
@@ -133,54 +133,54 @@ export default function AcceptPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center">
-          <div className="text-green-600 text-6xl mb-4">✓</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
+          <div className="mb-4 text-6xl text-green-600">✓</div>
+          <h1 className="mb-4 text-2xl font-bold text-gray-900">
             Erfolgreich beigetreten!
           </h1>
-          <p className="text-gray-600 mb-6">Sie werden weitergeleitet...</p>
+          <p className="mb-6 text-gray-600">Sie werden weitergeleitet...</p>
         </div>
       </div>
     );
   }
 
-  const organizationName = invitation.organizationName || "Unbekannt";
-  const roleName = invitation.roleName || "Helfer";
+  const organizationName = invitation.organizationName || 'Unbekannt';
+  const roleName = invitation.roleName || 'Helfer';
   const inviterName = invitation.inviterName || null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
+        <div className="mb-6 text-center">
+          <h1 className="mb-2 text-3xl font-bold text-gray-900">
             Einladung annehmen
           </h1>
           <p className="text-gray-600">
-            Möchten Sie der Organisation <strong>{organizationName}</strong>{" "}
+            Möchten Sie der Organisation <strong>{organizationName}</strong>{' '}
             beitreten?
           </p>
         </div>
 
-        <div className="bg-blue-50 p-4 rounded-lg mb-6">
+        <div className="mb-6 rounded-lg bg-blue-50 p-4">
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-start">
-              <span className="text-gray-600 font-medium">E-Mail:</span>
+            <div className="flex items-start justify-between">
+              <span className="font-medium text-gray-600">E-Mail:</span>
               <span className="text-gray-900">{invitation.email}</span>
             </div>
-            <div className="flex justify-between items-start">
-              <span className="text-gray-600 font-medium">Organisation:</span>
+            <div className="flex items-start justify-between">
+              <span className="font-medium text-gray-600">Organisation:</span>
               <span className="text-gray-900">{organizationName}</span>
             </div>
-            <div className="flex justify-between items-start">
-              <span className="text-gray-600 font-medium">Rolle:</span>
-              <span className="text-sm bg-blue-100 text-blue-900 px-2 py-0.5 rounded font-medium">
+            <div className="flex items-start justify-between">
+              <span className="font-medium text-gray-600">Rolle:</span>
+              <span className="rounded bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-900">
                 {roleName}
               </span>
             </div>
             {inviterName && (
-              <div className="flex justify-between items-start">
-                <span className="text-gray-600 font-medium">
+              <div className="flex items-start justify-between">
+                <span className="font-medium text-gray-600">
                   Eingeladen von:
                 </span>
                 <span className="text-gray-900">{inviterName}</span>
@@ -190,7 +190,7 @@ export default function AcceptPage() {
         </div>
 
         {acceptError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-600">
             {acceptError}
           </div>
         )}
@@ -199,22 +199,22 @@ export default function AcceptPage() {
           <button
             onClick={handleAcceptClick}
             disabled={accepting}
-            className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+            className="w-full rounded-lg bg-green-600 px-4 py-3 font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {accepting ? (
               <div className="flex items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                 Wird angenommen...
               </div>
             ) : (
-              "Einladung annehmen"
+              'Einladung annehmen'
             )}
           </button>
 
           <button
-            onClick={() => router.push("/helferansicht")}
+            onClick={() => router.push('/helferansicht')}
             disabled={accepting}
-            className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+            className="w-full rounded-lg bg-gray-100 px-4 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Abbrechen
           </button>

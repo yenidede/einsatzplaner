@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getUserProfileAction,
   updateUserProfileAction,
   uploadProfilePictureAction,
   type UserUpdateData,
-} from "../settings-action";
-import { useState } from "react";
+} from '../settings-action';
+import { useState } from 'react';
 
-const userProfileKey = ["userProfile"];
+const userProfileKey = ['userProfile'];
 
 export function useUserSettings() {
   const queryClient = useQueryClient();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState<string>("");
+  const [message, setMessage] = useState<string>('');
 
   const query = useQuery({
     queryKey: userProfileKey,
@@ -27,16 +27,16 @@ export function useUserSettings() {
     onSuccess: (data) => {
       queryClient.setQueryData(userProfileKey, data);
       setFieldErrors({});
-      setMessage("Änderungen erfolgreich gespeichert");
-      setTimeout(() => setMessage(""), 3000);
+      setMessage('Änderungen erfolgreich gespeichert');
+      setTimeout(() => setMessage(''), 3000);
     },
     onError: (error: Error) => {
-      if (error.message.includes("password")) {
+      if (error.message.includes('password')) {
         setFieldErrors({ currentPassword: error.message });
       } else {
         setFieldErrors({ general: error.message });
       }
-      setMessage("");
+      setMessage('');
     },
   });
 
@@ -47,18 +47,18 @@ export function useUserSettings() {
         ...prev,
         picture_url: data.picture_url,
       }));
-      setMessage("Profilbild erfolgreich hochgeladen");
-      setTimeout(() => setMessage(""), 3000);
+      setMessage('Profilbild erfolgreich hochgeladen');
+      setTimeout(() => setMessage(''), 3000);
     },
     onError: (error: Error) => {
       setFieldErrors({ picture: error.message });
-      setMessage("");
+      setMessage('');
     },
   });
 
   const resetForm = () => {
     setFieldErrors({});
-    setMessage("");
+    setMessage('');
     queryClient.invalidateQueries({ queryKey: userProfileKey });
   };
 

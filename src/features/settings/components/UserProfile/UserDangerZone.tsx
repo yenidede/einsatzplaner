@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { Crown, Trash } from "lucide-react";
+import { Crown, Trash } from 'lucide-react';
 
 interface UserDangerZoneProps {
   organizationName: string;
@@ -40,31 +40,31 @@ export function UserDangerZone({
     (isCurrentUserOV && !isSuperadmin && !isTargetUserOV);
 
   return (
-    <div className="self-stretch flex flex-col justify-center items-start">
-      <div className="self-stretch px-4 py-2 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <div className="flex justify-start items-center gap-2 flex-wrap">
-          <div className="text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+    <div className="flex flex-col items-start justify-center self-stretch">
+      <div className="flex flex-col items-start justify-between gap-2 self-stretch border-b border-slate-200 px-4 py-2 sm:flex-row sm:items-center">
+        <div className="flex flex-wrap items-center justify-start gap-2">
+          <div className="font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
             Gefahrenzone!
           </div>
-          <div className="text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
+          <div className="font-['Inter'] text-sm leading-tight font-normal text-slate-600">
             {organizationName}
           </div>
         </div>
       </div>
-      <div className="self-stretch flex flex-col justify-center items-start">
-        <div className="self-stretch py-2 flex flex-col sm:flex-row justify-start items-start gap-2 sm:gap-4">
-          <div className="w-full px-4 pt-2 flex flex-col sm:flex-row justify-start items-stretch sm:items-start gap-2">
+      <div className="flex flex-col items-start justify-center self-stretch">
+        <div className="flex flex-col items-start justify-start gap-2 self-stretch py-2 sm:flex-row sm:gap-4">
+          <div className="flex w-full flex-col items-stretch justify-start gap-2 px-4 pt-2 sm:flex-row sm:items-start">
             {canRemoveUser && (
               <button
                 onClick={onRemoveUser}
                 disabled={isRemovingUser}
-                className="w-full sm:w-auto px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-red-500 px-4 py-2 transition-colors hover:bg-red-600 disabled:opacity-50 sm:w-auto"
               >
-                <Trash className="text-white shrink-0" size={20} />
-                <div className="text-white text-sm font-medium font-['Inter'] leading-normal whitespace-nowrap">
+                <Trash className="shrink-0 text-white" size={20} />
+                <div className="font-['Inter'] text-sm leading-normal font-medium whitespace-nowrap text-white">
                   {isRemovingUser
-                    ? "Entfernt..."
-                    : "Aus Organisation Entfernen"}
+                    ? 'Entfernt...'
+                    : 'Aus Organisation Entfernen'}
                 </div>
               </button>
             )}
@@ -74,22 +74,22 @@ export function UserDangerZone({
                   isSuperadmin ? onDemoteFromSuperadmin : onPromoteToSuperadmin
                 }
                 disabled={isLoading}
-                className="w-full sm:w-auto px-4 py-2 bg-red-500 rounded-md flex justify-center items-center gap-2 hover:bg-red-600 transition-colors disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-red-500 px-4 py-2 transition-colors hover:bg-red-600 disabled:opacity-50 sm:w-auto"
               >
-                <Crown className="text-white shrink-0" size={20} />
-                <div className="text-white text-sm font-medium font-['Inter'] leading-normal whitespace-nowrap">
+                <Crown className="shrink-0 text-white" size={20} />
+                <div className="font-['Inter'] text-sm leading-normal font-medium whitespace-nowrap text-white">
                   {isLoading
                     ? isSuperadmin
-                      ? "Wird degradiert..."
-                      : "Wird ernannt..."
+                      ? 'Wird degradiert...'
+                      : 'Wird ernannt...'
                     : isSuperadmin
-                    ? "Superadmin-Rolle entfernen"
-                    : "Zu Superadmin Ernennen"}
+                      ? 'Superadmin-Rolle entfernen'
+                      : 'Zu Superadmin Ernennen'}
                 </div>
               </button>
             )}
             {!canRemoveUser && !isCurrentUserSuperadmin && (
-              <div className="text-slate-500 text-sm italic px-4 py-2">
+              <div className="px-4 py-2 text-sm text-slate-500 italic">
                 Sie haben keine Berechtigung, diesen Benutzer zu entfernen.
               </div>
             )}

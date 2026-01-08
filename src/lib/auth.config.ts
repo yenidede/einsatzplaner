@@ -1,17 +1,17 @@
-import { NextAuthOptions, Session, User } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
-import { updateLastLogin } from "@/DataAccessLayer/user";
-import crypto from "crypto";
-import prisma from "@/lib/prisma";
-import { SignJWT } from "jose";
-import { JWT } from "next-auth/jwt";
+import { NextAuthOptions, Session, User } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { compare } from 'bcryptjs';
+import { updateLastLogin } from '@/DataAccessLayer/user';
+import crypto from 'crypto';
+import prisma from '@/lib/prisma';
+import { SignJWT } from 'jose';
+import { JWT } from 'next-auth/jwt';
 
 const ACCESS_TOKEN_LIFETIME = 15 * 60; // 15 minutes
 const REFRESH_TOKEN_LIFETIME = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.NEXTAUTH_SECRET || "fallback-secret-as-backup"
+  process.env.NEXTAUTH_SECRET || 'fallback-secret-as-backup'
 );
 
 async function generateAccessToken(userData: {
@@ -31,11 +31,11 @@ async function generateAccessToken(userData: {
     lastname: userData.lastname,
     picture_url: userData.picture_url,
     activeOrgId: userData.activeOrgId || null,
-    type: "access",
-    aud: "einsatzplaner-api",
-    iss: "einsatzplaner-auth",
+    type: 'access',
+    aud: 'einsatzplaner-api',
+    iss: 'einsatzplaner-auth',
   })
-    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setIssuedAt(now)
     .setExpirationTime(now + ACCESS_TOKEN_LIFETIME)
     .setJti(crypto.randomUUID())
@@ -45,13 +45,13 @@ async function generateAccessToken(userData: {
 }
 
 async function generateRefreshToken(userId: string): Promise<string> {
-  const refreshToken = crypto.randomBytes(32).toString("hex");
+  const refreshToken = crypto.randomBytes(32).toString('hex');
 
   await prisma.user_session
     .deleteMany({
       where: { user_id: userId, expires_at: { lt: new Date() } },
     })
-    .catch((err) => console.error("Cleanup error:", err));
+    .catch((err) => console.error('Cleanup error:', err));
 
   await prisma.user_session.create({
     data: {
@@ -67,7 +67,7 @@ async function generateRefreshToken(userId: string): Promise<string> {
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
     if (!token.refreshToken) {
-      throw new Error("No refresh token available");
+      throw new Error('No refresh token available');
     }
 
     const session = await prisma.user_session.findFirst({
@@ -94,7 +94,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     });
 
     if (!session?.user || !session.expires_at) {
-      throw new Error("Invalid or expired refresh token");
+      throw new Error('Invalid or expired refresh token');
     }
 
     const user_organization_role = await prisma.user_organization_role.findMany(
@@ -167,8 +167,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       orgIds,
       roleIds,
       activeOrganization: activeOrganization ?? {
-        id: "",
-        name: "",
+        id: '',
+        name: '',
         logo_url: null,
       },
       accessToken: newAccessToken,
@@ -178,19 +178,19 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       error: undefined,
     };
   } catch (error) {
-    console.error("Error refreshing access token:", error);
+    console.error('Error refreshing access token:', error);
 
     if (token.id) {
       await prisma.user_session
         .deleteMany({
           where: { user_id: token.id as string },
         })
-        .catch((err) => console.error("Cleanup error:", err));
+        .catch((err) => console.error('Cleanup error:', err));
     }
 
     return {
       ...token,
-      error: "RefreshAccessTokenError",
+      error: 'RefreshAccessTokenError',
     };
   }
 }
@@ -198,10 +198,10 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: 'credentials',
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Passwort", type: "password" },
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Passwort', type: 'password' },
       },
       async authorize(credentials): Promise<User | null> {
         if (!credentials?.email || !credentials?.password) {
@@ -295,8 +295,8 @@ export const authOptions: NextAuthOptions = {
           const returnUser: User = {
             id: user.id,
             email: user.email,
-            firstname: user.firstname ?? "",
-            lastname: user.lastname ?? "",
+            firstname: user.firstname ?? '',
+            lastname: user.lastname ?? '',
             picture_url: user.picture_url,
             phone: user.phone,
             salutationId: user.salutationId,
@@ -310,7 +310,7 @@ export const authOptions: NextAuthOptions = {
 
           return returnUser;
         } catch (error) {
-          console.error("Authentication error:", error);
+          console.error('Authentication error:', error);
           return null;
         }
       },
@@ -341,16 +341,16 @@ export const authOptions: NextAuthOptions = {
         return newToken;
       }
 
-      if (trigger === "update" && session?.user) {
+      if (trigger === 'update' && session?.user) {
         const userData = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: { active_org: true },
         });
         const activeOrgData = userData?.active_org
           ? await prisma.organization.findUnique({
-            where: { id: userData.active_org },
-            select: { id: true, name: true, logo_url: true },
-          })
+              where: { id: userData.active_org },
+              select: { id: true, name: true, logo_url: true },
+            })
           : null;
         if (!activeOrgData) {
           throw new Response(
@@ -375,7 +375,7 @@ export const authOptions: NextAuthOptions = {
         return newToken;
       }
 
-      if (token.error === "RefreshAccessTokenError") {
+      if (token.error === 'RefreshAccessTokenError') {
         return token;
       }
 
@@ -390,7 +390,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }): Promise<Session> {
-      if (token.error === "RefreshAccessTokenError") {
+      if (token.error === 'RefreshAccessTokenError') {
         return {
           ...session,
           user: {
@@ -398,7 +398,7 @@ export const authOptions: NextAuthOptions = {
             orgIds: [],
             roleIds: [],
           },
-          error: "RefreshAccessTokenError",
+          error: 'RefreshAccessTokenError',
           expires: new Date(0).toISOString(),
         } as Session;
       }
@@ -435,7 +435,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
     maxAge: REFRESH_TOKEN_LIFETIME / 1000,
     updateAge: 15 * 60,
   },
@@ -445,10 +445,10 @@ export const authOptions: NextAuthOptions = {
   },
 
   pages: {
-    signIn: "/signin",
-    error: "/signin",
+    signIn: '/signin',
+    error: '/signin',
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
+  debug: process.env.NODE_ENV === 'development',
 };

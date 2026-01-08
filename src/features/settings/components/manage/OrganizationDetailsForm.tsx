@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 interface OrganizationDetailsFormProps {
   name: string;
@@ -23,57 +23,57 @@ export function OrganizationDetailsForm({
 }: OrganizationDetailsFormProps) {
   return (
     <>
-      <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-        <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
-          <label className="text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+      <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
+        <div className="inline-flex flex-1 flex-col items-start justify-start gap-1.5">
+          <label className="font-['Inter'] text-sm leading-tight font-medium text-slate-800">
             Name
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
-            className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
+            className="w-full rounded-md bg-white px-3 py-2 outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
             placeholder="Organisationsname"
           />
         </div>
       </div>
 
-      <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-        <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
-          <label className="text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+      <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
+        <div className="inline-flex flex-1 flex-col items-start justify-start gap-1.5">
+          <label className="font-['Inter'] text-sm leading-tight font-medium text-slate-800">
             E-Mail
           </label>
           <input
             type="email"
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
-            className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
+            className="w-full rounded-md bg-white px-3 py-2 outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
             placeholder="organisation@example.com"
           />
         </div>
-        <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
-          <label className="text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+        <div className="inline-flex flex-1 flex-col items-start justify-start gap-1.5">
+          <label className="font-['Inter'] text-sm leading-tight font-medium text-slate-800">
             Telefon
           </label>
           <input
             type="tel"
             value={phone}
             onChange={(e) => onPhoneChange(e.target.value)}
-            className="w-full px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
+            className="w-full rounded-md bg-white px-3 py-2 outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
             placeholder="+43 123 456789"
           />
         </div>
       </div>
 
-      <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-        <div className="flex-1 inline-flex flex-col justify-start items-start gap-1.5">
-          <label className="text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+      <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
+        <div className="inline-flex flex-1 flex-col items-start justify-start gap-1.5">
+          <label className="font-['Inter'] text-sm leading-tight font-medium text-slate-800">
             Beschreibung
           </label>
           <textarea
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
-            className="w-full h-20 px-3 py-2 bg-white rounded-md outline outline-offset-1 outline-slate-300 resize-none focus:outline-blue-500"
+            className="h-20 w-full resize-none rounded-md bg-white px-3 py-2 outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
             placeholder="Beschreibung der Organisation"
           />
         </div>

@@ -1,7 +1,7 @@
-"use server";
+'use server';
 
-import prisma from "@/lib/prisma";
-import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
+import prisma from '@/lib/prisma';
+import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
 
 interface EinsatzCategory {
   id: string;
@@ -35,7 +35,7 @@ export async function getEinsatzCategoriesForPDF(
       abbreviation: cat.abbreviation,
     }));
   } catch (error) {
-    console.error("Error loading categories for PDF:", error);
+    console.error('Error loading categories for PDF:', error);
     return [];
   }
 }

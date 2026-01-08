@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import FormInputFieldCustom from "@/components/form/formInputFieldCustom";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import FormInputFieldCustom from '@/components/form/formInputFieldCustom';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface NumberFieldSettingsProps {
   isDecimal: boolean;
@@ -40,8 +40,8 @@ export function NumberFieldSettings({
       <FormInputFieldCustom name="Minimalwert (optional)" errors={[]}>
         <Input
           type="number"
-          step={isDecimal ? "0.01" : "1"}
-          value={minValue ?? ""}
+          step={isDecimal ? '0.01' : '1'}
+          value={minValue ?? ''}
           onChange={(e) =>
             onChange({
               minValue: e.target.value ? parseFloat(e.target.value) : undefined,
@@ -54,8 +54,8 @@ export function NumberFieldSettings({
       <FormInputFieldCustom name="Maximalwert (optional)" errors={[]}>
         <Input
           type="number"
-          step={isDecimal ? "0.01" : "1"}
-          value={maxValue ?? ""}
+          step={isDecimal ? '0.01' : '1'}
+          value={maxValue ?? ''}
           onChange={(e) =>
             onChange({
               maxValue: e.target.value ? parseFloat(e.target.value) : undefined,

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { AlertCircle } from "lucide-react";
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { AlertCircle } from 'lucide-react';
 
 interface UsageSettingsProps {
   isRequired: boolean;
@@ -16,7 +16,7 @@ export function UsageSettings({
   warningMessage,
 }: UsageSettingsProps) {
   return (
-    <div className="self-stretch px-4 flex flex-col gap-4">
+    <div className="flex flex-col gap-4 self-stretch px-4">
       <h3 className="text-sm font-semibold text-slate-700">
         Eingabe-Regeln für Personen
       </h3>
@@ -36,13 +36,13 @@ export function UsageSettings({
         </div>
 
         {warningMessage && (
-          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
-            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
             <p className="text-sm text-amber-800">{warningMessage}</p>
           </div>
         )}
 
-        <div className="p-3 bg-slate-50 border border-slate-200 rounded-md">
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
           <p className="text-xs text-slate-600">
             Diese Eigenschaft beschreibt Personen und kann später in anderen
             Modulen (z. B. Filtersuche) genutzt werden.

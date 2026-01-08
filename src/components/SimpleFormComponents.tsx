@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
-import { useId } from "react";
+import { cn } from '@/lib/utils';
+import { useId } from 'react';
 
 interface FormFieldProps {
   label: string;
@@ -28,15 +28,15 @@ export function FormField({
 }: FormFieldProps) {
   const generatedId = useId();
   const inputId = id || generatedId;
-  const inputName = name || label.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  const inputName = name || label.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
   return (
-    <div className={cn("mb-4", className)}>
+    <div className={cn('mb-4', className)}>
       <label
         htmlFor={inputId}
-        className="block text-sm font-medium text-gray-700 mb-2"
+        className="mb-2 block text-sm font-medium text-gray-700"
       >
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="ml-1 text-red-500">*</span>}
       </label>
       <input
         id={inputId}
@@ -48,7 +48,7 @@ export function FormField({
         autoComplete={autoComplete || undefined}
         placeholder={placeholder}
         aria-label={label}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
       />
     </div>
   );
@@ -59,19 +59,19 @@ export function Alert({
   message,
   onClose,
 }: {
-  type: "error" | "success";
+  type: 'error' | 'success';
   message: string;
   onClose: () => void;
 }) {
   return (
     <div
-      className={`mb-4 p-3 border rounded ${
-        type === "error"
-          ? "bg-red-100 border-red-400 text-red-700"
-          : "bg-green-100 border-green-400 text-green-700"
+      className={`mb-4 rounded border p-3 ${
+        type === 'error'
+          ? 'border-red-400 bg-red-100 text-red-700'
+          : 'border-green-400 bg-green-100 text-green-700'
       }`}
     >
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <span>{message}</span>
         <button onClick={onClose} className="text-sm font-bold">
           ×
@@ -83,17 +83,17 @@ export function Alert({
 
 export function Button({
   children,
-  type = "button",
+  type = 'button',
   onClick,
   disabled = false,
-  className = "",
+  className = '',
 }: any) {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 ${className}`}
+      className={`rounded px-4 py-2 focus:ring-2 focus:ring-offset-2 focus:outline-none ${className}`}
     >
       {children}
     </button>
@@ -109,7 +109,7 @@ export function FormSection({
 }) {
   return (
     <div className="mb-6">
-      <h3 className="text-lg font-medium mb-4">{title}</h3>
+      <h3 className="mb-4 text-lg font-medium">{title}</h3>
       {children}
     </div>
   );

@@ -1,12 +1,12 @@
-"use server";
+'use server';
 
-import prisma from "@/lib/prisma";
+import prisma from '@/lib/prisma';
 import type {
   field,
   type as FieldType,
   user_property,
-} from "@/generated/prisma";
-import { requireAuth } from "@/lib/auth/authGuard";
+} from '@/generated/prisma';
+import { requireAuth } from '@/lib/auth/authGuard';
 
 export interface UserPropertyWithField {
   id: string;
@@ -39,7 +39,7 @@ export async function getUserPropertiesByOrgId(
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error("Unauthorized to access this organization");
+    throw new Error('Unauthorized to access this organization');
   }
 
   const properties = await prisma.user_property.findMany({
@@ -79,7 +79,7 @@ export async function getExistingPropertyNames(
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error("Unauthorized to access this organization");
+    throw new Error('Unauthorized to access this organization');
   }
 
   const properties = await prisma.user_property.findMany({
@@ -103,13 +103,13 @@ export async function getUserCountByOrgId(orgId: string): Promise<number> {
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error("Unauthorized to access this organization");
+    throw new Error('Unauthorized to access this organization');
   }
 
   const uniqueUsers = await prisma.user_organization_role.findMany({
     where: { org_id: orgId },
     select: { user_id: true },
-    distinct: ["user_id"],
+    distinct: ['user_id'],
   });
 
   const count = uniqueUsers.length;
@@ -146,7 +146,7 @@ async function ensureTypeExists(datatype: string): Promise<string> {
 export interface CreateUserPropertyInput {
   name: string;
   description?: string;
-  datatype: "text" | "number" | "boolean" | "select";
+  datatype: 'text' | 'number' | 'boolean' | 'select';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -163,7 +163,7 @@ export async function createUserProperty(
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(input.orgId)) {
-    throw new Error("Unauthorized to access this organization");
+    throw new Error('Unauthorized to access this organization');
   }
 
   const typeId = await ensureTypeExists(input.datatype);
@@ -235,11 +235,11 @@ export async function updateUserProperty(
   });
 
   if (!userProperty) {
-    throw new Error("User Property not found");
+    throw new Error('User Property not found');
   }
 
   if (!session.user.orgIds.includes(userProperty.org_id)) {
-    throw new Error("Unauthorized to update this property");
+    throw new Error('Unauthorized to update this property');
   }
 
   await prisma.field.update({
@@ -279,7 +279,7 @@ export async function updateUserProperty(
   });
 
   if (!updated) {
-    throw new Error("Failed to fetch updated property");
+    throw new Error('Failed to fetch updated property');
   }
 
   return {
@@ -299,11 +299,11 @@ export async function deleteUserProperty(id: string): Promise<void> {
   });
 
   if (!userProperty) {
-    throw new Error("User Property not found");
+    throw new Error('User Property not found');
   }
 
   if (!session.user.orgIds.includes(userProperty.org_id)) {
-    throw new Error("Unauthorized to delete this property");
+    throw new Error('Unauthorized to delete this property');
   }
 
   const fieldId = userProperty.field_id;
@@ -332,7 +332,7 @@ export async function getUserPropertyValues(
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error("Unauthorized to access this organization");
+    throw new Error('Unauthorized to access this organization');
   }
 
   const values = await prisma.user_property_value.findMany({
@@ -395,17 +395,17 @@ export async function upsertUserPropertyValue(
   });
 
   if (!userProperty) {
-    throw new Error("User property not found");
+    throw new Error('User property not found');
   }
 
   if (!session.user.orgIds.includes(userProperty.org_id)) {
-    throw new Error("Unauthorized");
+    throw new Error('Unauthorized');
   }
 
-  if (userProperty.field.is_required && (!value || value.trim() === "")) {
+  if (userProperty.field.is_required && (!value || value.trim() === '')) {
     throw new Error(
       `Das Feld "${
-        userProperty.field.name || "Unbekannt"
+        userProperty.field.name || 'Unbekannt'
       }" ist ein Pflichtfeld und darf nicht leer sein.`
     );
   }
@@ -444,11 +444,11 @@ export async function deleteUserPropertyValue(
   });
 
   if (!userProperty) {
-    throw new Error("User property not found");
+    throw new Error('User property not found');
   }
 
   if (!session.user.orgIds.includes(userProperty.org_id)) {
-    throw new Error("Unauthorized");
+    throw new Error('Unauthorized');
   }
 
   await prisma.user_property_value.deleteMany({
