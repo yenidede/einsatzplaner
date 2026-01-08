@@ -28,7 +28,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "src/app/(pages)/(main)/helferansicht/einsaetze.js"
+    "src/app/(pages)/(main)/helferansicht/einsaetze.js",
+    "prettier.config.js"
   ],
   "exclude": ["node_modules", "src/generated"]
 }
