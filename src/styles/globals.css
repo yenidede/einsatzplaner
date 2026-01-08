@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 /* Fluid Responsive see more: https://finsweet.com/client-first/docs/fluid-responsive */
 /* this makes sizes scale automatically if the screen gets bigger */
@@ -23,11 +23,11 @@ html {
 }
 
 h1 {
-  @apply text-2xl font-semibold leading-loose;
+  @apply text-2xl leading-loose font-semibold;
 }
 
 body {
-  @apply text-slate-800 bg-slate-50;
+  @apply bg-slate-50 text-slate-800;
 }
 
 @custom-variant dark (&:is(.dark *));

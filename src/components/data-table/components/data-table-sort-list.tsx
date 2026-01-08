@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import type { ColumnSort, SortDirection, Table } from "@tanstack/react-table";
+import type { ColumnSort, SortDirection, Table } from '@tanstack/react-table';
 import {
   ArrowDownUp,
   ChevronsUpDown,
   GripVertical,
   Trash2,
-} from "lucide-react";
-import * as React from "react";
+} from 'lucide-react';
+import * as React from 'react';
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -18,34 +18,35 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from '@/components/ui/command';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Sortable,
   SortableContent,
   SortableItem,
   SortableItemHandle,
   SortableOverlay,
-} from "@/components/ui/sortable";
-import { dataTableConfig } from "@/config/data-table";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/sortable';
+import { dataTableConfig } from '@/config/data-table';
+import { cn } from '@/lib/utils';
 
-const OPEN_MENU_SHORTCUT = "s";
-const REMOVE_SORT_SHORTCUTS = ["backspace", "delete"];
+const OPEN_MENU_SHORTCUT = 's';
+const REMOVE_SORT_SHORTCUTS = ['backspace', 'delete'];
 
-interface DataTableSortListProps<TData>
-  extends React.ComponentProps<typeof PopoverContent> {
+interface DataTableSortListProps<TData> extends React.ComponentProps<
+  typeof PopoverContent
+> {
   table: Table<TData>;
 }
 
@@ -149,8 +150,8 @@ export function DataTableSortList<TData>({
       }
     }
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [sorting.length, onSortingReset]);
 
   const onTriggerKeyDown = React.useCallback(
@@ -180,7 +181,7 @@ export function DataTableSortList<TData>({
             {sorting.length > 0 && (
               <Badge
                 variant="secondary"
-                className="h-[18.24px] rounded-[3.2px] px-[5.12px] font-mono font-normal text-[10.4px]"
+                className="h-[18.24px] rounded-[3.2px] px-[5.12px] font-mono text-[10.4px] font-normal"
               >
                 {sorting.length}
               </Badge>
@@ -194,21 +195,21 @@ export function DataTableSortList<TData>({
           {...props}
         >
           <div className="flex flex-col gap-1">
-            <h4 id={labelId} className="font-medium leading-none">
+            <h4 id={labelId} className="leading-none font-medium">
               {sorting.length > 0
-                ? "Sortieren nach"
-                : "Keine Regel hinzugefügt"}
+                ? 'Sortieren nach'
+                : 'Keine Regel hinzugefügt'}
             </h4>
             <p
               id={descriptionId}
               className={cn(
-                "text-muted-foreground text-sm",
-                sorting.length > 0 && "sr-only"
+                'text-muted-foreground text-sm',
+                sorting.length > 0 && 'sr-only'
               )}
             >
               {sorting.length > 0
-                ? "Sortierung anpassen, um Daten neu zu organisieren."
-                : "Sortierung hinzufügen, um Zeilen zu organisieren."}
+                ? 'Sortierung anpassen, um Daten neu zu organisieren.'
+                : 'Sortierung hinzufügen, um Zeilen zu organisieren.'}
             </p>
           </div>
           {sorting.length > 0 && (
@@ -253,10 +254,10 @@ export function DataTableSortList<TData>({
       </Popover>
       <SortableOverlay>
         <div className="flex items-center gap-2">
-          <div className="h-8 w-[180px] rounded-sm bg-primary/10" />
-          <div className="h-8 w-24 rounded-sm bg-primary/10" />
-          <div className="size-8 shrink-0 rounded-sm bg-primary/10" />
-          <div className="size-8 shrink-0 rounded-sm bg-primary/10" />
+          <div className="bg-primary/10 h-8 w-[180px] rounded-sm" />
+          <div className="bg-primary/10 h-8 w-24 rounded-sm" />
+          <div className="bg-primary/10 size-8 shrink-0 rounded-sm" />
+          <div className="bg-primary/10 size-8 shrink-0 rounded-sm" />
         </div>
       </SortableOverlay>
     </Sortable>
@@ -356,9 +357,9 @@ function DataTableSortItem({
         <Select
           open={showDirectionSelector}
           onOpenChange={setShowDirectionSelector}
-          value={sort.desc ? "desc" : "asc"}
+          value={sort.desc ? 'desc' : 'asc'}
           onValueChange={(value: SortDirection) =>
-            onSortUpdate(sort.id, { desc: value === "desc" })
+            onSortUpdate(sort.id, { desc: value === 'desc' })
           }
         >
           <SelectTrigger

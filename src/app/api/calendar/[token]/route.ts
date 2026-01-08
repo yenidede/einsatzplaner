@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import ical, { ICalEventStatus, ICalCalendarMethod } from "ical-generator";
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import ical, { ICalEventStatus, ICalCalendarMethod } from 'ical-generator';
 
 type RouteContext = {
   params: Promise<{ token: string }>;
@@ -20,28 +20,28 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const phone = subscription?.organization.phone;
 
   if (!subscription || !subscription.is_active)
-    return new NextResponse("Not found", { status: 404 });
+    return new NextResponse('Not found', { status: 404 });
 
   const einsaetze = await prisma.einsatz.findMany({
     where: { org_id: subscription.org_id },
-    orderBy: { start: "asc" },
+    orderBy: { start: 'asc' },
     include: {
       organization: { select: { name: true } },
       einsatz_to_category: { include: { einsatz_category: true } },
       einsatz_field: { include: { field: true } },
     },
   });
-  const baseUrl = process.env.NEXTAUTH_URL ?? "https://localhost:3000";
+  const baseUrl = process.env.NEXTAUTH_URL ?? 'https://localhost:3000';
   const host = new URL(baseUrl).hostname;
   const calendar = ical({
-    name: subscription.organization.name ?? "Einsatzplaner - Kalender",
-    timezone: "Europe/Vienna",
+    name: subscription.organization.name ?? 'Einsatzplaner - Kalender',
+    timezone: 'Europe/Vienna',
     method: ICalCalendarMethod.PUBLISH,
     ttl: 60 * 60 * 2,
     prodId: {
-      company: "Einsatzplaner",
-      product: "Calendar",
-      language: "DE",
+      company: 'Einsatzplaner',
+      product: 'Calendar',
+      language: 'DE',
     },
   });
 
@@ -58,11 +58,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .filter(Boolean) ?? [];
 
     const ortField = einsatz.einsatz_field.find((field) =>
-      (field.field.name ?? "").toLowerCase().match("/^(ort|location)$/")
+      (field.field.name ?? '').toLowerCase().match('/^(ort|location)$/')
     );
 
     const urlToHelferansichtPage = new URL(
-      "/helferansicht",
+      '/helferansicht',
       baseUrl
     ).toString();
 
@@ -104,13 +104,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
   return new NextResponse(calendar.toString(), {
     status: 200,
     headers: {
-      "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `inline; filename="${(
-        subscription.organization.name ?? "einsatzplaner"
+      'Content-Type': 'text/calendar; charset=utf-8',
+      'Content-Disposition': `inline; filename="${(
+        subscription.organization.name ?? 'einsatzplaner'
       )
-        .replace(/\s+/g, "-")
+        .replace(/\s+/g, '-')
         .toLowerCase()}.ics"`,
-      "Cache-Control": "public, max-age=300",
+      'Cache-Control': 'public, max-age=300',
     },
   });
 }

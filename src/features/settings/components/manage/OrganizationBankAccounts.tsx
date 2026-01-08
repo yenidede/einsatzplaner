@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Landmark } from "lucide-react";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Plus, Pencil, Trash2, Landmark } from 'lucide-react';
 import {
   getOrganizationBankAccountsAction,
   createOrganizationBankAccountAction,
   updateOrganizationBankAccountAction,
   deleteOrganizationBankAccountAction,
-} from "../../organization-action";
-import { useAlertDialog } from "@/hooks/use-alert-dialog";
+} from '../../organization-action';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
 
 interface OrganizationBankAccountsProps {
   organizationId: string;
@@ -35,13 +35,13 @@ export function OrganizationBankAccounts({
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<BankAccountFormData>({
-    bank_name: "",
-    iban: "",
-    bic: "",
+    bank_name: '',
+    iban: '',
+    bic: '',
   });
 
   const { data: accounts = [], isLoading } = useQuery({
-    queryKey: ["org-bank-accounts", organizationId],
+    queryKey: ['org-bank-accounts', organizationId],
     queryFn: () => getOrganizationBankAccountsAction(organizationId),
     enabled: !!organizationId,
   });
@@ -50,13 +50,13 @@ export function OrganizationBankAccounts({
     mutationFn: createOrganizationBankAccountAction,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["org-bank-accounts", organizationId],
+        queryKey: ['org-bank-accounts', organizationId],
       });
-      toast.success("Bankkonto erfolgreich hinzugefügt!");
+      toast.success('Bankkonto erfolgreich hinzugefügt!');
       resetForm();
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Fehler beim Hinzufügen des Bankkontos");
+      toast.error(error.message || 'Fehler beim Hinzufügen des Bankkontos');
     },
   });
 
@@ -64,13 +64,13 @@ export function OrganizationBankAccounts({
     mutationFn: updateOrganizationBankAccountAction,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["org-bank-accounts", organizationId],
+        queryKey: ['org-bank-accounts', organizationId],
       });
-      toast.success("Bankkonto erfolgreich aktualisiert!");
+      toast.success('Bankkonto erfolgreich aktualisiert!');
       resetForm();
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Fehler beim Aktualisieren des Bankkontos");
+      toast.error(error.message || 'Fehler beim Aktualisieren des Bankkontos');
     },
   });
 
@@ -79,20 +79,20 @@ export function OrganizationBankAccounts({
       deleteOrganizationBankAccountAction(id, organizationId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["org-bank-accounts", organizationId],
+        queryKey: ['org-bank-accounts', organizationId],
       });
-      toast.success("Bankkonto erfolgreich gelöscht!");
+      toast.success('Bankkonto erfolgreich gelöscht!');
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Fehler beim Löschen des Bankkontos");
+      toast.error(error.message || 'Fehler beim Löschen des Bankkontos');
     },
   });
 
   const resetForm = () => {
     setFormData({
-      bank_name: "",
-      iban: "",
-      bic: "",
+      bank_name: '',
+      iban: '',
+      bic: '',
     });
     setIsAdding(false);
     setEditingId(null);
@@ -102,7 +102,7 @@ export function OrganizationBankAccounts({
     e.preventDefault();
 
     if (!formData.bank_name || !formData.iban || !formData.bic) {
-      toast.error("Bitte alle Felder ausfüllen");
+      toast.error('Bitte alle Felder ausfüllen');
       return;
     }
 
@@ -132,14 +132,14 @@ export function OrganizationBankAccounts({
 
   const handleDelete = async (id: string) => {
     const result = await showDialog({
-      title: "Bankkonto löschen",
-      description: "Möchten Sie dieses Bankkonto wirklich löschen?",
-      confirmText: "Löschen",
-      cancelText: "Abbrechen",
-      variant: "destructive",
+      title: 'Bankkonto löschen',
+      description: 'Möchten Sie dieses Bankkonto wirklich löschen?',
+      confirmText: 'Löschen',
+      cancelText: 'Abbrechen',
+      variant: 'destructive',
     });
 
-    if (result === "success") {
+    if (result === 'success') {
       deleteMutation.mutate({ id });
     }
   };
@@ -147,28 +147,28 @@ export function OrganizationBankAccounts({
   return (
     <>
       {AlertDialogComponent}
-      <div className="self-stretch flex flex-col justify-center items-start">
-        <div className="self-stretch px-4 py-2 border-b border-slate-200 flex justify-between items-center">
+      <div className="flex flex-col items-start justify-center self-stretch">
+        <div className="flex items-center justify-between self-stretch border-b border-slate-200 px-4 py-2">
           <div className="flex items-center gap-2">
-            <Landmark className="w-4 h-4 text-slate-700" />
-            <div className="text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+            <Landmark className="h-4 w-4 text-slate-700" />
+            <div className="font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
               Bankkonten
             </div>
           </div>
           <button
             onClick={() => setIsAdding(!isAdding)}
-            className="px-3 py-1.5 bg-slate-900 text-white rounded-md flex items-center gap-2 hover:bg-slate-800 transition-colors text-sm"
+            className="flex items-center gap-2 rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white transition-colors hover:bg-slate-800"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
             <span>Hinzufügen</span>
           </button>
         </div>
 
-        <div className="self-stretch px-4 py-2 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 self-stretch px-4 py-2">
           {isAdding && (
             <form
               onSubmit={handleSubmit}
-              className="p-4 bg-slate-50 rounded-md border border-slate-200 flex flex-col gap-3"
+              className="flex flex-col gap-3 rounded-md border border-slate-200 bg-slate-50 p-4"
             >
               <div className="grid grid-cols-1 gap-3">
                 <div className="flex flex-col gap-1.5">
@@ -182,7 +182,7 @@ export function OrganizationBankAccounts({
                       setFormData({ ...formData, bank_name: e.target.value })
                     }
                     placeholder="Erste Bank"
-                    className="px-3 py-2 border border-slate-300 rounded-md text-sm"
+                    className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                     required
                   />
                 </div>
@@ -200,7 +200,7 @@ export function OrganizationBankAccounts({
                       })
                     }
                     placeholder="AT12 3456 7890 1234 5678"
-                    className="px-3 py-2 border border-slate-300 rounded-md text-sm font-mono"
+                    className="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
                     required
                   />
                 </div>
@@ -218,7 +218,7 @@ export function OrganizationBankAccounts({
                       })
                     }
                     placeholder="GIBAATWWXXX"
-                    className="px-3 py-2 border border-slate-300 rounded-md text-sm font-mono"
+                    className="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
                     required
                   />
                 </div>
@@ -230,14 +230,14 @@ export function OrganizationBankAccounts({
                   disabled={
                     createMutation.isPending || updateMutation.isPending
                   }
-                  className="px-4 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-700 transition-colors text-sm disabled:opacity-50"
+                  className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white transition-colors hover:bg-slate-700 disabled:opacity-50"
                 >
-                  {editingId ? "Aktualisieren" : "Hinzufügen"}
+                  {editingId ? 'Aktualisieren' : 'Hinzufügen'}
                 </button>
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-4 py-2 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors text-sm"
+                  className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
                 >
                   Abbrechen
                 </button>
@@ -256,16 +256,16 @@ export function OrganizationBankAccounts({
               {accounts.map((account: any) => (
                 <div
                   key={account.id}
-                  className="p-3 bg-white border border-slate-200 rounded-md flex justify-between items-start hover:bg-slate-50 transition-colors"
+                  className="flex items-start justify-between rounded-md border border-slate-200 bg-white p-3 transition-colors hover:bg-slate-50"
                 >
                   <div className="flex flex-col gap-1">
                     <div className="text-sm font-semibold text-slate-800">
                       {account.bank_name}
                     </div>
-                    <div className="text-sm text-slate-700 font-mono">
+                    <div className="font-mono text-sm text-slate-700">
                       IBAN: {account.iban}
                     </div>
-                    <div className="text-sm text-slate-600 font-mono">
+                    <div className="font-mono text-sm text-slate-600">
                       BIC: {account.bic}
                     </div>
                   </div>
@@ -274,9 +274,9 @@ export function OrganizationBankAccounts({
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => handleEdit(account)}
-                          className="p-1.5 text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                          className="rounded p-1.5 text-slate-600 transition-colors hover:bg-slate-100"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="h-4 w-4" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -287,9 +287,9 @@ export function OrganizationBankAccounts({
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => handleDelete(account.id)}
-                          className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          className="rounded p-1.5 text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
                         >
-                          <Trash2 className="w-4 h-4 text-red-600" />
+                          <Trash2 className="h-4 w-4 text-red-600" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>

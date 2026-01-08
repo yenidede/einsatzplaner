@@ -3,15 +3,15 @@ import type {
   einsatz_comment as CommentRawDb,
   change_log as ChangeLogRawDb,
   einsatz_category,
-} from "@/generated/prisma";
+} from '@/generated/prisma';
 export type Einsatz = EinsatzRawDb;
 import type {
   einsatz_status as EinsatzStatus,
   einsatz_field as EinsatzField,
   einsatz_category as EinsatzCategory,
-} from "@/generated/prisma";
+} from '@/generated/prisma';
 
-export type { CalendarEvent } from "@/components/event-calendar/types";
+export type { CalendarEvent } from '@/components/event-calendar/types';
 
 export type EinsatzFieldCreate = {
   field_id: string;

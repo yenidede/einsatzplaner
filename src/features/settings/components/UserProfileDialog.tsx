@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   getUserProfileAction,
   updateUserRoleAction,
@@ -11,21 +11,21 @@ import {
   getUserOrgRolesAction,
   promoteToSuperadminAction,
   demoteFromSuperadminAction,
-} from "@/features/settings/users-action";
-import { settingsQueryKeys } from "../queryKeys/queryKey";
-import { useAlertDialog } from "@/hooks/use-alert-dialog";
-import { UserProfileHeader } from "./userProfile/UserProfileHeader";
-import { UserContactInfo } from "./userProfile/UserContactInfo";
-import { UserPersonalProperties } from "./userProfile/UserPersonalProperties";
-import { UserRoleManagement } from "./userProfile/UserRoleManagement";
-import { UserDangerZone } from "./userProfile/UserDangerZone";
+} from '@/features/settings/users-action';
+import { settingsQueryKeys } from '../queryKeys/queryKey';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { UserProfileHeader } from './userProfile/UserProfileHeader';
+import { UserContactInfo } from './userProfile/UserContactInfo';
+import { UserPersonalProperties } from './userProfile/UserPersonalProperties';
+import { UserRoleManagement } from './userProfile/UserRoleManagement';
+import { UserDangerZone } from './userProfile/UserDangerZone';
 import {
   getUserPropertiesAction,
   getUserPropertyValuesAction,
   upsertUserPropertyValueAction,
-} from "@/features/user_properties/user_property-actions";
-import type { UserPropertyWithField } from "@/features/user_properties/user_property-dal";
-import { queryKeys } from "@/features/user/queryKeys";
+} from '@/features/user_properties/user_property-actions';
+import type { UserPropertyWithField } from '@/features/user_properties/user_property-dal';
+import { queryKeys } from '@/features/user/queryKeys';
 
 interface UserProfileDialogProps {
   isOpen: boolean;
@@ -89,11 +89,11 @@ export function UserProfileDialog({
 
   const { data: currentUserOrgRoles = [] } = useQuery<UserRole[]>({
     queryKey: settingsQueryKeys.userOrgRoles(
-      currentUserId || "",
+      currentUserId || '',
       organizationId
     ),
     queryFn: async () =>
-      await getUserOrgRolesAction(organizationId, currentUserId || ""),
+      await getUserOrgRolesAction(organizationId, currentUserId || ''),
     enabled: isOpen && !!currentUserId && !!organizationId,
     staleTime: 30000,
     gcTime: 5 * 60 * 1000,
@@ -101,12 +101,12 @@ export function UserProfileDialog({
 
   const isCurrentUserSuperadmin = currentUserOrgRoles.some(
     (userRole) =>
-      userRole.role?.name === "Superadmin" ||
-      userRole.role?.abbreviation === "SA"
+      userRole.role?.name === 'Superadmin' ||
+      userRole.role?.abbreviation === 'SA'
   );
 
   const { data: userProperties = [] } = useQuery<UserPropertyWithField[]>({
-    queryKey: ["userProperties", organizationId],
+    queryKey: ['userProperties', organizationId],
     queryFn: () => getUserPropertiesAction(organizationId),
     enabled: isOpen && !!organizationId,
     staleTime: 5 * 60 * 1000,
@@ -122,14 +122,14 @@ export function UserProfileDialog({
   useEffect(() => {
     if (!isOpen) return;
     const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) onClose();
+      if (e.key === 'Escape' && isOpen) onClose();
     };
-    document.addEventListener("keydown", onKey);
+    document.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.overflow = prevOverflow || "";
-      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow || '';
+      document.removeEventListener('keydown', onKey);
     };
   }, [isOpen, onClose]);
 
@@ -154,31 +154,31 @@ export function UserProfileDialog({
       const roles: string[] = [];
       userOrgRoles.forEach((userRole) => {
         const roleAbbr =
-          userRole.role?.abbreviation || userRole.role?.name || "";
+          userRole.role?.abbreviation || userRole.role?.name || '';
         if (
-          roleAbbr === "OV" ||
-          userRole.role?.name === "Organisationsverwaltung"
+          roleAbbr === 'OV' ||
+          userRole.role?.name === 'Organisationsverwaltung'
         ) {
-          if (!roles.includes("OV")) roles.push("OV");
+          if (!roles.includes('OV')) roles.push('OV');
         } else if (
-          roleAbbr === "EV" ||
-          userRole.role?.name === "Einsatzverwaltung"
+          roleAbbr === 'EV' ||
+          userRole.role?.name === 'Einsatzverwaltung'
         ) {
-          if (!roles.includes("EV")) roles.push("EV");
+          if (!roles.includes('EV')) roles.push('EV');
         } else if (
-          roleAbbr === "Helfer" ||
-          userRole.role?.name === "Helfer:in" ||
-          userRole.role?.name === "Helfer"
+          roleAbbr === 'Helfer' ||
+          userRole.role?.name === 'Helfer:in' ||
+          userRole.role?.name === 'Helfer'
         ) {
-          if (!roles.includes("Helfer")) roles.push("Helfer");
+          if (!roles.includes('Helfer')) roles.push('Helfer');
         }
         if (
-          userRole.role?.name === "Superadmin" ||
-          userRole.role?.abbreviation === "SA"
+          userRole.role?.name === 'Superadmin' ||
+          userRole.role?.abbreviation === 'SA'
         ) {
-          if (!roles.includes("OV")) roles.push("OV");
-          if (!roles.includes("EV")) roles.push("EV");
-          if (!roles.includes("Helfer")) roles.push("Helfer");
+          if (!roles.includes('OV')) roles.push('OV');
+          if (!roles.includes('EV')) roles.push('EV');
+          if (!roles.includes('Helfer')) roles.push('Helfer');
         }
       });
       setUserRoles(roles);
@@ -205,41 +205,41 @@ export function UserProfileDialog({
   }, [userPropertyValues]);
 
   const getRoleColor = (role: any) => {
-    const roleName = role.name || "";
-    const roleAbbr = role.abbreviation || "";
-    if (roleName === "Superadmin" || roleAbbr === "SA") return "bg-rose-400";
-    if (roleName === "Organisationsverwaltung" || roleAbbr === "OV")
-      return "bg-red-300";
-    if (roleName === "Einsatzverwaltung" || roleAbbr === "EV")
-      return "bg-orange-300";
+    const roleName = role.name || '';
+    const roleAbbr = role.abbreviation || '';
+    if (roleName === 'Superadmin' || roleAbbr === 'SA') return 'bg-rose-400';
+    if (roleName === 'Organisationsverwaltung' || roleAbbr === 'OV')
+      return 'bg-red-300';
+    if (roleName === 'Einsatzverwaltung' || roleAbbr === 'EV')
+      return 'bg-orange-300';
     if (
-      roleName === "Helfer:in" ||
-      roleName === "Helfer" ||
-      roleAbbr === "Helfer"
+      roleName === 'Helfer:in' ||
+      roleName === 'Helfer' ||
+      roleAbbr === 'Helfer'
     )
-      return "bg-cyan-200";
-    return "bg-gray-300";
+      return 'bg-cyan-200';
+    return 'bg-gray-300';
   };
 
   const getRoleDisplayName = (role: any) => {
-    return role.name || role.abbreviation || "Unbekannt";
+    return role.name || role.abbreviation || 'Unbekannt';
   };
 
   const isSuperadmin = userOrgRoles.some(
     (userRole) =>
-      userRole.role?.name === "Superadmin" ||
-      userRole.role?.abbreviation === "SA"
+      userRole.role?.name === 'Superadmin' ||
+      userRole.role?.abbreviation === 'SA'
   );
   const isCurrentUserOV = currentUserOrgRoles.some(
     (userRole) =>
-      userRole.role?.name === "Organisationsverwaltung" ||
-      userRole.role?.abbreviation === "OV"
+      userRole.role?.name === 'Organisationsverwaltung' ||
+      userRole.role?.abbreviation === 'OV'
   );
 
   const isTargetUserOV = userOrgRoles.some(
     (userRole) =>
-      userRole.role?.name === "Organisationsverwaltung" ||
-      userRole.role?.abbreviation === "OV"
+      userRole.role?.name === 'Organisationsverwaltung' ||
+      userRole.role?.abbreviation === 'OV'
   );
 
   const saveChangesMutation = useMutation({
@@ -255,19 +255,19 @@ export function UserProfileDialog({
       const promises: Promise<any>[] = [];
       rolesToAdd.forEach((role) => {
         promises.push(
-          updateUserRoleAction(userId, organizationId, role, "add")
+          updateUserRoleAction(userId, organizationId, role, 'add')
         );
       });
       rolesToRemove.forEach((role) => {
         promises.push(
-          updateUserRoleAction(userId, organizationId, role, "remove")
+          updateUserRoleAction(userId, organizationId, role, 'remove')
         );
       });
       await Promise.all(promises);
       return { rolesToAdd, rolesToRemove };
     },
     onMutate: () => {
-      return { toastId: toast.loading("Profil wird gespeichert...") };
+      return { toastId: toast.loading('Profil wird gespeichert...') };
     },
     onSuccess: async (data, variables, context) => {
       setOriginalRoles([...userRoles]);
@@ -290,23 +290,23 @@ export function UserProfileDialog({
         }),
       ]);
 
-      toast.success("Rollen erfolgreich aktualisiert", {
+      toast.success('Rollen erfolgreich aktualisiert', {
         id: context.toastId,
       });
     },
     onError: async (error, variables, context) => {
-      console.error("Error saving role changes:", error);
+      console.error('Error saving role changes:', error);
       setUserRoles([...originalRoles]);
 
-      toast.error("Fehler beim Speichern der Rollenänderungen", {
+      toast.error('Fehler beim Speichern der Rollenänderungen', {
         id: context?.toastId,
       });
 
       await showDialog({
-        title: "Fehler",
-        description: "Fehler beim Speichern der Rollenänderungen",
-        confirmText: "OK",
-        variant: "destructive",
+        title: 'Fehler',
+        description: 'Fehler beim Speichern der Rollenänderungen',
+        confirmText: 'OK',
+        variant: 'destructive',
       });
     },
   });
@@ -314,7 +314,7 @@ export function UserProfileDialog({
   const removeUserMutation = useMutation({
     mutationFn: () => removeUserFromOrganizationAction(userId, organizationId),
     onMutate: () => {
-      return { toastId: toast.loading("Benutzer wird entfernt...") };
+      return { toastId: toast.loading('Benutzer wird entfernt...') };
     },
     onSuccess: async (data, variables, context) => {
       await Promise.all([
@@ -326,13 +326,13 @@ export function UserProfileDialog({
         }),
       ]);
 
-      toast.success("Benutzer erfolgreich entfernt", {
+      toast.success('Benutzer erfolgreich entfernt', {
         id: context.toastId,
       });
       onClose();
     },
     onError: (error, variables, context) => {
-      toast.error("Fehler beim Entfernen des Benutzers", {
+      toast.error('Fehler beim Entfernen des Benutzers', {
         id: context?.toastId,
       });
     },
@@ -341,7 +341,7 @@ export function UserProfileDialog({
   const promoteToSuperadminMutation = useMutation({
     mutationFn: () => promoteToSuperadminAction(userId, organizationId),
     onMutate: () => {
-      return { toastId: toast.loading("Wird zum Superadmin ernannt...") };
+      return { toastId: toast.loading('Wird zum Superadmin ernannt...') };
     },
     onSuccess: async (data, variables, context) => {
       await Promise.all([
@@ -362,21 +362,21 @@ export function UserProfileDialog({
         }),
       ]);
 
-      toast.success("Erfolgreich zum Superadmin ernannt", {
+      toast.success('Erfolgreich zum Superadmin ernannt', {
         id: context.toastId,
       });
       onClose();
     },
     onError: async (error: Error, variables, context) => {
-      toast.error(error.message || "Fehler beim Ernennen zum Superadmin", {
+      toast.error(error.message || 'Fehler beim Ernennen zum Superadmin', {
         id: context?.toastId,
       });
 
       await showDialog({
-        title: "Fehler",
-        description: error.message || "Fehler beim Ernennen zum Superadmin",
-        confirmText: "OK",
-        variant: "destructive",
+        title: 'Fehler',
+        description: error.message || 'Fehler beim Ernennen zum Superadmin',
+        confirmText: 'OK',
+        variant: 'destructive',
       });
     },
   });
@@ -384,7 +384,7 @@ export function UserProfileDialog({
   const demoteFromSuperadminMutation = useMutation({
     mutationFn: () => demoteFromSuperadminAction(userId, organizationId),
     onMutate: () => {
-      return { toastId: toast.loading("Superadmin-Rolle wird entfernt...") };
+      return { toastId: toast.loading('Superadmin-Rolle wird entfernt...') };
     },
     onSuccess: async (data, variables, context) => {
       await Promise.all([
@@ -405,25 +405,25 @@ export function UserProfileDialog({
         }),
       ]);
 
-      toast.success("Superadmin-Rolle erfolgreich entfernt", {
+      toast.success('Superadmin-Rolle erfolgreich entfernt', {
         id: context.toastId,
       });
       onClose();
     },
     onError: async (error: Error, variables, context) => {
       toast.error(
-        error.message || "Fehler beim Entfernen der Superadmin-Rolle",
+        error.message || 'Fehler beim Entfernen der Superadmin-Rolle',
         {
           id: context?.toastId,
         }
       );
 
       await showDialog({
-        title: "Fehler",
+        title: 'Fehler',
         description:
-          error.message || "Fehler beim Entfernen der Superadmin-Rolle",
-        confirmText: "OK",
-        variant: "destructive",
+          error.message || 'Fehler beim Entfernen der Superadmin-Rolle',
+        confirmText: 'OK',
+        variant: 'destructive',
       });
     },
   });
@@ -488,11 +488,11 @@ export function UserProfileDialog({
       setOriginalPropertyValues({ ...propertyValues });
       setHasChanges(false);
 
-      toast.success("Änderungen erfolgreich gespeichert!");
+      toast.success('Änderungen erfolgreich gespeichert!');
       onClose();
     } catch (error) {
-      console.error("Error saving changes:", error);
-      toast.error("Fehler beim Speichern der Änderungen");
+      console.error('Error saving changes:', error);
+      toast.error('Fehler beim Speichern der Änderungen');
     } finally {
       setSaving(false);
     }
@@ -501,14 +501,14 @@ export function UserProfileDialog({
   const handleClose = async () => {
     if (hasChanges) {
       const result = await showDialog({
-        title: "Ungespeicherte Änderungen",
+        title: 'Ungespeicherte Änderungen',
         description:
-          "Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?",
-        confirmText: "Schließen",
-        cancelText: "Abbrechen",
-        variant: "destructive",
+          'Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?',
+        confirmText: 'Schließen',
+        cancelText: 'Abbrechen',
+        variant: 'destructive',
       });
-      if (result === "success") {
+      if (result === 'success') {
         setUserRoles([...originalRoles]);
         setPropertyValues({ ...originalPropertyValues });
         setHasChanges(false);
@@ -521,38 +521,38 @@ export function UserProfileDialog({
 
   const handleRemoveUser = async () => {
     const result = await showDialog({
-      title: "Benutzer entfernen",
+      title: 'Benutzer entfernen',
       description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich aus der Organisation entfernen?`,
-      confirmText: "Entfernen",
-      cancelText: "Abbrechen",
-      variant: "destructive",
+      confirmText: 'Entfernen',
+      cancelText: 'Abbrechen',
+      variant: 'destructive',
     });
-    if (result === "success") {
+    if (result === 'success') {
       removeUserMutation.mutate();
     }
   };
 
   const handlePromoteToSuperadmin = async () => {
     const result = await showDialog({
-      title: "Zum Superadmin ernennen",
+      title: 'Zum Superadmin ernennen',
       description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen? Diese Person erhält dann alle Berechtigungen.`,
-      confirmText: "Ernennen",
-      cancelText: "Abbrechen",
+      confirmText: 'Ernennen',
+      cancelText: 'Abbrechen',
     });
-    if (result === "success") {
+    if (result === 'success') {
       promoteToSuperadminMutation.mutate();
     }
   };
 
   const handleDemoteFromSuperadmin = async () => {
     const result = await showDialog({
-      title: "Superadmin-Rolle entfernen",
+      title: 'Superadmin-Rolle entfernen',
       description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich die Superadmin-Rolle entziehen? Die Person behält alle anderen Rollen.`,
-      confirmText: "Degradieren",
-      cancelText: "Abbrechen",
-      variant: "destructive",
+      confirmText: 'Degradieren',
+      cancelText: 'Abbrechen',
+      variant: 'destructive',
     });
-    if (result === "success") {
+    if (result === 'success') {
       demoteFromSuperadminMutation.mutate();
     }
   };
@@ -564,10 +564,10 @@ export function UserProfileDialog({
     return createPortal(
       <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
         <div className="fixed inset-0 bg-white/20 backdrop-blur-sm" />
-        <div className="relative bg-white rounded-xl shadow-2xl p-8 border border-gray-200">
+        <div className="relative rounded-xl border border-gray-200 bg-white p-8 shadow-2xl">
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-gray-700 font-medium">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+            <span className="font-medium text-gray-700">
               Lädt Benutzerdaten...
             </span>
           </div>
@@ -584,13 +584,13 @@ export function UserProfileDialog({
           className="fixed inset-0 bg-white/20 backdrop-blur-sm"
           onClick={onClose}
         />
-        <div className="relative bg-white rounded-xl shadow-2xl p-8 border border-red-200">
-          <div className="text-red-600 font-medium">
+        <div className="relative rounded-xl border border-red-200 bg-white p-8 shadow-2xl">
+          <div className="font-medium text-red-600">
             Fehler beim Laden der Benutzerdaten
           </div>
           <button
             onClick={onClose}
-            className="mt-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md"
+            className="mt-4 rounded-md bg-gray-100 px-4 py-2 hover:bg-gray-200"
           >
             Schließen
           </button>
@@ -617,34 +617,34 @@ export function UserProfileDialog({
         <div
           ref={dialogRef}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-[90vw] lg:max-w-[900px] xl:max-w-5xl h-[90vh] relative bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] rounded-lg flex flex-col"
+          className="relative flex h-[90vh] w-full max-w-[90vw] flex-col rounded-lg bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] lg:max-w-[900px] xl:max-w-5xl"
         >
           {/* Fixed Header with Buttons */}
-          <div className="shrink-0 bg-white border-b border-slate-200 px-4 py-3 md:px-6 md:py-4">
-            <div className="flex justify-end items-center gap-2">
+          <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3 md:px-6 md:py-4">
+            <div className="flex items-center justify-end gap-2">
               <button
                 onClick={handleClose}
-                className="px-3 py-1.5 bg-white rounded-md outline outline-offset-1 outline-slate-200 flex justify-center items-center gap-2 hover:bg-gray-50 transition-colors text-sm"
+                className="flex items-center justify-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm outline outline-offset-1 outline-slate-200 transition-colors hover:bg-gray-50"
               >
-                <span className="text-slate-800 font-medium font-['Inter']">
-                  {hasChanges ? "Abbrechen" : "Schließen"}
+                <span className="font-['Inter'] font-medium text-slate-800">
+                  {hasChanges ? 'Abbrechen' : 'Schließen'}
                 </span>
               </button>
               <button
                 onClick={handleSaveAndClose}
                 disabled={saving}
-                className={`px-3 py-1.5 rounded-md flex justify-center items-center gap-2 disabled:opacity-50 transition-colors text-sm ${
+                className={`flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors disabled:opacity-50 ${
                   hasChanges
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-slate-900 hover:bg-slate-800"
+                    ? 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-slate-900 hover:bg-slate-800'
                 }`}
               >
-                <span className="text-white font-medium font-['Inter']">
+                <span className="font-['Inter'] font-medium text-white">
                   {saving
-                    ? "Speichert..."
+                    ? 'Speichert...'
                     : hasChanges
-                    ? "Änderungen Speichern"
-                    : "Speichern"}
+                      ? 'Änderungen Speichern'
+                      : 'Speichern'}
                 </span>
               </button>
             </div>
@@ -668,7 +668,7 @@ export function UserProfileDialog({
                 />
                 {userProperties.length > 0 && (
                   <UserPersonalProperties
-                    organizationName={userProfile.organization?.name || ""}
+                    organizationName={userProfile.organization?.name || ''}
                     hasKey={hasKey}
                     onToggleKey={() => setHasKey(!hasKey)}
                     description={userProfile.description}
@@ -679,13 +679,13 @@ export function UserProfileDialog({
                 )}
 
                 <UserRoleManagement
-                  organizationName={userProfile.organization?.name || ""}
+                  organizationName={userProfile.organization?.name || ''}
                   userRoles={userRoles}
                   saving={saving}
                   onToggleRole={toggleRole}
                 />
                 <UserDangerZone
-                  organizationName={userProfile.organization?.name || ""}
+                  organizationName={userProfile.organization?.name || ''}
                   isSuperadmin={isSuperadmin}
                   isCurrentUserSuperadmin={isCurrentUserSuperadmin}
                   isCurrentUserOV={isCurrentUserOV}

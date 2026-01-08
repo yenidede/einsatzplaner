@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
-import { generateEinsatzPDF } from "../pdf-action";
-import { toast } from "sonner";
-import type { PDFActionResult, PdfGenerationRequest } from "../types/types";
+import { useCallback, useState } from 'react';
+import { generateEinsatzPDF } from '../pdf-action';
+import { toast } from 'sonner';
+import type { PDFActionResult, PdfGenerationRequest } from '../types/types';
 
 interface PdfGenerationResult {
   success: boolean;
@@ -22,14 +22,14 @@ const base64ToBlob = (base64: string, mimeType: string): Blob => {
 };
 
 const downloadBlob = (blob: Blob, filename: string): void => {
-  const link = document.createElement("a");
+  const link = document.createElement('a');
   const blobUrl = URL.createObjectURL(blob);
 
   link.href = blobUrl;
   link.download = filename;
 
-  if (typeof link.download === "undefined") {
-    link.setAttribute("target", "_blank");
+  if (typeof link.download === 'undefined') {
+    link.setAttribute('target', '_blank');
   }
 
   document.body.appendChild(link);
@@ -47,7 +47,7 @@ const generatePdfAction = async (
     const result = await generateEinsatzPDF(request.einsatzId);
 
     if (!result.success || !result.data) {
-      throw new Error(result.error || "PDF Generierung fehlgeschlagen");
+      throw new Error(result.error || 'PDF Generierung fehlgeschlagen');
     }
 
     const blob = base64ToBlob(result.data.pdf, result.data.mimeType);
@@ -59,11 +59,11 @@ const generatePdfAction = async (
       filename: result.data.filename,
     };
   } catch (error) {
-    console.error("PDF generation error:", error);
+    console.error('PDF generation error:', error);
 
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unbekannter Fehler",
+      error: error instanceof Error ? error.message : 'Unbekannter Fehler',
     };
   }
 };
@@ -83,18 +83,18 @@ export function usePdfGenerator() {
         const result = await generatePdfAction(request);
 
         if (!result.success) {
-          setError(result.error || "PDF Generierung fehlgeschlagen");
+          setError(result.error || 'PDF Generierung fehlgeschlagen');
           return null;
         }
 
-        console.log("PDF generated successfully:", result.filename);
+        console.log('PDF generated successfully:', result.filename);
         return result;
       } catch (error) {
         const errorMessage =
-          error instanceof Error ? error.message : "Unbekannter Fehler";
+          error instanceof Error ? error.message : 'Unbekannter Fehler';
         setError(errorMessage);
         toast.error(errorMessage);
-        console.error("Error in generatePdf:", error);
+        console.error('Error in generatePdf:', error);
         return null;
       } finally {
         setIsGenerating(false);

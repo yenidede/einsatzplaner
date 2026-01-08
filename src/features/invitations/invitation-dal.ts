@@ -1,13 +1,13 @@
-"use server";
+'use server';
 
-import { requireAuth } from "@/lib/auth/authGuard";
-import prisma from "@/lib/prisma";
+import { requireAuth } from '@/lib/auth/authGuard';
+import prisma from '@/lib/prisma';
 
 export async function getActiveInvitationsByOrgId(orgId: string) {
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error("Unauthorized");
+    throw new Error('Unauthorized');
   }
 
   const invitations = await prisma.invitation.findMany({
@@ -26,7 +26,7 @@ export async function getActiveInvitationsByOrgId(orgId: string) {
         select: { name: true },
       },
     },
-    orderBy: { created_at: "desc" },
+    orderBy: { created_at: 'desc' },
   });
 
   return invitations;
@@ -34,7 +34,7 @@ export async function getActiveInvitationsByOrgId(orgId: string) {
 
 export async function verifyInvitationToken(token: string) {
   if (!token) {
-    throw new Error("Token ist erforderlich");
+    throw new Error('Token ist erforderlich');
   }
 
   const invitations = await prisma.invitation.findMany({
@@ -46,17 +46,17 @@ export async function verifyInvitationToken(token: string) {
   });
 
   if (!invitations || invitations.length === 0) {
-    throw new Error("Einladung nicht gefunden");
+    throw new Error('Einladung nicht gefunden');
   }
 
   const firstInvitation = invitations[0];
 
   if (firstInvitation.expires_at < new Date()) {
-    throw new Error("Einladung ist abgelaufen");
+    throw new Error('Einladung ist abgelaufen');
   }
 
   if (firstInvitation.accepted) {
-    throw new Error("Einladung wurde bereits angenommen");
+    throw new Error('Einladung wurde bereits angenommen');
   }
 
   const inviter = await prisma.user.findUnique({
@@ -67,21 +67,21 @@ export async function verifyInvitationToken(token: string) {
   const inviterName =
     inviter?.firstname && inviter?.lastname
       ? `${inviter.firstname} ${inviter.lastname}`
-      : inviter?.email || "Unbekannt";
+      : inviter?.email || 'Unbekannt';
 
   const roleNames = invitations
     .map((inv) => inv.role?.name)
     .filter(Boolean)
-    .join(", ");
+    .join(', ');
 
   return {
     id: firstInvitation.id,
     email: firstInvitation.email,
-    organizationName: firstInvitation.organization?.name || "Organisation",
-    roleName: roleNames || "Helfer",
+    organizationName: firstInvitation.organization?.name || 'Organisation',
+    roleName: roleNames || 'Helfer',
     roles: invitations.map((inv) => ({
       id: inv.role_id,
-      name: inv.role?.name || "Unbekannt",
+      name: inv.role?.name || 'Unbekannt',
     })),
     inviterName,
     expiresAt: firstInvitation.expires_at.toISOString(),
@@ -90,7 +90,7 @@ export async function verifyInvitationToken(token: string) {
 
 export async function getInvitationByToken(token: string) {
   if (!token) {
-    return { valid: false, error: "Token ist erforderlich" };
+    return { valid: false, error: 'Token ist erforderlich' };
   }
 
   const invitations = await prisma.invitation.findMany({
@@ -103,7 +103,7 @@ export async function getInvitationByToken(token: string) {
   });
 
   if (!invitations || invitations.length === 0) {
-    return { valid: false, error: "Einladung nicht gefunden" };
+    return { valid: false, error: 'Einladung nicht gefunden' };
   }
 
   const validInvitations = invitations.filter(
@@ -111,7 +111,7 @@ export async function getInvitationByToken(token: string) {
   );
 
   if (validInvitations.length === 0) {
-    return { valid: false, error: "Keine gültigen Einladungen gefunden" };
+    return { valid: false, error: 'Keine gültigen Einladungen gefunden' };
   }
 
   const firstInvitation = validInvitations[0];
@@ -122,14 +122,14 @@ export async function getInvitationByToken(token: string) {
       id: firstInvitation.id,
       email: firstInvitation.email,
       organization_id: firstInvitation.org_id,
-      organizationName: firstInvitation.organization?.name || "Organisation",
+      organizationName: firstInvitation.organization?.name || 'Organisation',
       roleName: validInvitations
         .map((inv) => inv.role?.name)
         .filter(Boolean)
-        .join(", "),
+        .join(', '),
       roles: validInvitations.map((inv) => ({
         id: inv.role_id,
-        name: inv.role?.name || "Unbekannt",
+        name: inv.role?.name || 'Unbekannt',
       })),
       token: firstInvitation.token,
       expiresAt: firstInvitation.expires_at.toISOString(),
@@ -137,7 +137,7 @@ export async function getInvitationByToken(token: string) {
       inviterName:
         firstInvitation.user?.firstname && firstInvitation.user?.lastname
           ? `${firstInvitation.user.firstname} ${firstInvitation.user.lastname}`
-          : "Unbekannt",
+          : 'Unbekannt',
     },
   };
 }

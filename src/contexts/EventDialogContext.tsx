@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, {
   createContext,
@@ -6,8 +6,8 @@ import React, {
   useState,
   ReactNode,
   useMemo,
-} from "react";
-import { EinsatzCreate } from "@/features/einsatz/types";
+} from 'react';
+import { EinsatzCreate } from '@/features/einsatz/types';
 
 interface EventDialogContextValue {
   isOpen: boolean;
@@ -24,7 +24,7 @@ export function useEventDialogFromContext() {
   const context = useContext(EventDialogContext);
   if (!context) {
     throw new Error(
-      "useEventDialog must be used within an EventDialogProvider"
+      'useEventDialog must be used within an EventDialogProvider'
     );
   }
   return context;
