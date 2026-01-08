@@ -23,7 +23,7 @@ export const DefaultStartHour = 9; // 9 AM
 export const DefaultEndHour = 10; // 10 AM
 
 export const StatusValuePairs = {
-    vergeben: "15512bc7-fc64-4966-961f-c506a084a274",
-    vergeben_bestaetigt: "46cee187-d109-4dea-b886-240cf923b8e6",
-    offen: "bb169357-920b-4b49-9e3d-1cf489409370",
-}
+  vergeben: '15512bc7-fc64-4966-961f-c506a084a274',
+  vergeben_bestaetigt: '46cee187-d109-4dea-b886-240cf923b8e6',
+  offen: 'bb169357-920b-4b49-9e3d-1cf489409370',
+};

@@ -1,3 +1,3 @@
 export const queryKeys = {
-  roles: () => ["roles"] as const,
+  roles: () => ['roles'] as const,
 };

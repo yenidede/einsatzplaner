@@ -1,13 +1,13 @@
-"use server";
+'use server';
 
-import prisma from "@/lib/prisma";
+import prisma from '@/lib/prisma';
 import type {
   ChangeLogEntry,
   CreateChangeLogInput,
   ActivityLogFilters,
   ActivityLogResult,
-} from "./types";
-import { Prisma } from "@/generated/prisma";
+} from './types';
+import { Prisma } from '@/generated/prisma';
 
 export async function createChangeLogAuto({
   einsatzId,
@@ -37,7 +37,7 @@ export async function createChangeLogAuto({
       affectedUserId,
     });
   } catch (error) {
-    console.error("Failed to create change log:", error);
+    console.error('Failed to create change log:', error);
     return null;
   }
 }
@@ -176,7 +176,7 @@ export async function getActivities(
       },
     },
     orderBy: {
-      created_at: "desc",
+      created_at: 'desc',
     },
     take: limit,
     skip: offset,
@@ -301,7 +301,7 @@ export async function getActivityLogs(
         },
       },
       orderBy: {
-        created_at: "desc",
+        created_at: 'desc',
       },
       take: limit,
       skip: offset,
@@ -348,7 +348,7 @@ export async function getActivityLogs(
 export async function getChangeTypes() {
   return await prisma.change_type.findMany({
     orderBy: {
-      name: "asc",
+      name: 'asc',
     },
   });
 }

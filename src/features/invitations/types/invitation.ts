@@ -3,15 +3,16 @@ import { z } from 'zod';
 export const InvitationStatus = {
   PENDING: 'pending',
   ACCEPTED: 'accepted',
-  EXPIRED: 'expired'
+  EXPIRED: 'expired',
 } as const;
 
-export type InvitationStatus = typeof InvitationStatus[keyof typeof InvitationStatus];
+export type InvitationStatus =
+  (typeof InvitationStatus)[keyof typeof InvitationStatus];
 
 export interface Invitation {
   id: string;
   email: string;
-  organization_id: string; 
+  organization_id: string;
   role_id: string;
   token: string;
   expires_at: string;
@@ -73,8 +74,10 @@ export const InviteUserSchema = z.object({
   email: z.string().email('Ungültige E-Mail-Adresse'),
   firstname: z.string().min(2, 'Vorname muss mindestens 2 Zeichen haben'),
   lastname: z.string().min(2, 'Nachname muss mindestens 2 Zeichen haben'),
-  organizationName: z.string().min(2, 'Organisationsname muss mindestens 2 Zeichen haben'),
-  message: z.string().optional()
+  organizationName: z
+    .string()
+    .min(2, 'Organisationsname muss mindestens 2 Zeichen haben'),
+  message: z.string().optional(),
 });
 
 export type InviteUserData = z.infer<typeof InviteUserSchema>;

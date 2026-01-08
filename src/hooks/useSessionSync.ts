@@ -1,5 +1,5 @@
-import { useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { useSession } from 'next-auth/react';
+import { useEffect } from 'react';
 
 export function useSessionSync() {
   const { update } = useSession();
@@ -9,10 +9,10 @@ export function useSessionSync() {
       update();
     };
 
-    window.addEventListener("session-update", handleSessionUpdate);
+    window.addEventListener('session-update', handleSessionUpdate);
 
     return () => {
-      window.removeEventListener("session-update", handleSessionUpdate);
+      window.removeEventListener('session-update', handleSessionUpdate);
     };
   }, [update]);
 }

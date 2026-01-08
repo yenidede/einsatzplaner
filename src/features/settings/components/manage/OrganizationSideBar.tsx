@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import LogoutIcon from "@/components/icon/LogoutIcon";
-import SettingsIcon from "@/components/icon/SettingsIcon";
-import OrganisationIcon from "@/features/settings/components/ui/OrganisationIcon";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import LogoutIcon from '@/components/icon/LogoutIcon';
+import SettingsIcon from '@/components/icon/SettingsIcon';
+import OrganisationIcon from '@/features/settings/components/ui/OrganisationIcon';
 
 interface Organization {
   id: string;
@@ -30,33 +30,33 @@ export function OrganizationSidebar({
   const managedOrgs = allOrgs.filter((org: any) => {
     if (!Array.isArray(org.roles)) return false;
     return org.roles.some((role: any) => {
-      const roleName = typeof role === "string" ? role : role?.name || "";
-      const roleAbbr = typeof role === "string" ? "" : role?.abbreviation || "";
+      const roleName = typeof role === 'string' ? role : role?.name || '';
+      const roleAbbr = typeof role === 'string' ? '' : role?.abbreviation || '';
       const nameLower = roleName.toLowerCase();
       const abbrLower = roleAbbr.toLowerCase();
       return (
-        nameLower.includes("organisationsverwaltung") ||
-        nameLower.includes("superadmin") ||
-        abbrLower === "ov" ||
-        nameLower === "ov"
+        nameLower.includes('organisationsverwaltung') ||
+        nameLower.includes('superadmin') ||
+        abbrLower === 'ov' ||
+        nameLower === 'ov'
       );
     });
   });
 
   return (
-    <div className="self-stretch inline-flex flex-col justify-between items-start">
-      <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
+    <div className="inline-flex flex-col items-start justify-between self-stretch">
+      <div className="flex w-64 flex-col items-start justify-start gap-2 rounded-br-lg rounded-bl-lg px-2 py-1.5">
         <Link
           href={`/settings`}
-          className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
+          className="inline-flex w-full items-center justify-start gap-2 rounded-md bg-white px-2 py-1.5 text-left transition-colors hover:bg-slate-50"
         >
           <SettingsIcon />
-          <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
+          <div className="flex-1 justify-start font-['Inter'] text-base leading-normal font-medium text-slate-700">
             Allgemein
           </div>
         </Link>
-        <div className="self-stretch h-px bg-slate-200" />
-        <div className="justify-start text-slate-700 text-sm font-semibold font-['Inter'] leading-tight">
+        <div className="h-px self-stretch bg-slate-200" />
+        <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-700">
           Organisationsverwaltung
         </div>
         {managedOrgs.length > 0 ? (
@@ -64,10 +64,10 @@ export function OrganizationSidebar({
             <Link
               key={org.id}
               href={`/organization/${org.id}/manage`}
-              className="w-full text-left px-2 py-1.5 bg-white hover:bg-slate-50 rounded-md inline-flex justify-start items-center gap-2 transition-colors"
+              className="inline-flex w-full items-center justify-start gap-2 rounded-md bg-white px-2 py-1.5 text-left transition-colors hover:bg-slate-50"
             >
               <OrganisationIcon />
-              <div className="flex-1 justify-start text-slate-700 text-base font-medium font-['Inter'] leading-normal">
+              <div className="flex-1 justify-start font-['Inter'] text-base leading-normal font-medium text-slate-700">
                 {org.name}
               </div>
             </Link>
@@ -78,13 +78,13 @@ export function OrganizationSidebar({
           </div>
         )}
       </div>
-      <div className="w-64 px-2 py-1.5 rounded-bl-lg rounded-br-lg flex flex-col justify-start items-start gap-2">
+      <div className="flex w-64 flex-col items-start justify-start gap-2 rounded-br-lg rounded-bl-lg px-2 py-1.5">
         <div
-          className="self-stretch px-4 py-2 rounded-md outline outline-offset-1 outline-slate-200 inline-flex justify-center items-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors"
+          className="inline-flex cursor-pointer items-center justify-center gap-2 self-stretch rounded-md px-4 py-2 outline outline-offset-1 outline-slate-200 transition-colors hover:bg-slate-50"
           onClick={onSignOut}
         >
-          <LogoutIcon className="w-4 h-4 relative overflow-hidden" />
-          <span className="justify-start text-slate-900 text-sm font-medium font-['Inter'] leading-normal">
+          <LogoutIcon className="relative h-4 w-4 overflow-hidden" />
+          <span className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-900">
             Ausloggen
           </span>
         </div>

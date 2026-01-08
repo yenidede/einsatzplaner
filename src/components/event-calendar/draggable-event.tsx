@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import { useRef, useState } from "react";
-import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
-import { differenceInDays } from "date-fns";
-import { CalendarMode } from "./types";
+import { useRef, useState } from 'react';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { differenceInDays } from 'date-fns';
+import { CalendarMode } from './types';
 
 import {
   CalendarEvent,
   EventItem,
   useCalendarDnd,
-} from "@/components/event-calendar";
+} from '@/components/event-calendar';
 
 interface DraggableEventProps {
   event: CalendarEvent;
-  view: "month" | "week" | "day";
+  view: 'month' | 'week' | 'day';
   showTime?: boolean;
   onClick?: (e: React.MouseEvent) => void;
   height?: number;
@@ -22,7 +22,7 @@ interface DraggableEventProps {
   multiDayWidth?: number;
   isFirstDay?: boolean;
   isLastDay?: boolean;
-  "aria-hidden"?: boolean | "true" | "false";
+  'aria-hidden'?: boolean | 'true' | 'false';
   mode: CalendarMode;
   onDelete?: (eventId: string, eventTitle: string) => void;
 }
@@ -37,7 +37,7 @@ export function DraggableEvent({
   multiDayWidth,
   isFirstDay = true,
   isLastDay = true,
-  "aria-hidden": ariaHidden,
+  'aria-hidden': ariaHidden,
   mode,
   onDelete,
 }: DraggableEventProps) {
@@ -86,7 +86,7 @@ export function DraggableEvent({
       <div
         ref={setNodeRef}
         className="opacity-0"
-        style={{ height: height || "auto" }}
+        style={{ height: height || 'auto' }}
       />
     );
   }
@@ -94,12 +94,12 @@ export function DraggableEvent({
   const style = transform
     ? {
         transform: CSS.Translate.toString(transform),
-        height: height || "auto",
+        height: height || 'auto',
         width:
           isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
       }
     : {
-        height: height || "auto",
+        height: height || 'auto',
         width:
           isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
       };

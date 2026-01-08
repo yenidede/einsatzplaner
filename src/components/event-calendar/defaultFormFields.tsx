@@ -1,36 +1,36 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { RiCalendarLine } from "@remixicon/react";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { RiCalendarLine } from '@remixicon/react';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { EndHour, StartHour } from "@/components/event-calendar/constants";
-import type { organization as Organization } from "@/generated/prisma";
-import FormGroup from "../form/formGroup";
-import FormField from "../form/formInputField";
-import MultiSelectFormField from "../form/multiSelectFormField";
-import FormInputFieldCustom from "../form/formInputFieldCustom";
-import type { EinsatzFormData } from "@/components/event-calendar/event-dialog";
-import { calcTotal, calcPricePerPersonFromTotal } from "../form/utils";
-import { MultiSelect } from "../form/multi-select";
+} from '@/components/ui/select';
+import { EndHour, StartHour } from '@/components/event-calendar/constants';
+import type { organization as Organization } from '@/generated/prisma';
+import FormGroup from '../form/formGroup';
+import FormField from '../form/formInputField';
+import MultiSelectFormField from '../form/multiSelectFormField';
+import FormInputFieldCustom from '../form/formInputFieldCustom';
+import type { EinsatzFormData } from '@/components/event-calendar/event-dialog';
+import { calcTotal, calcPricePerPersonFromTotal } from '../form/utils';
+import { MultiSelect } from '../form/multi-select';
 
 interface DefaultFormFieldsProps {
   formData: EinsatzFormData;
@@ -71,7 +71,7 @@ export function DefaultFormFields({
   >(() => {
     const v = formData.requiredUserProperties ?? [];
     if (v.length === 0) return [];
-    if (typeof v[0] === "string") {
+    if (typeof v[0] === 'string') {
       return (v as unknown as string[]).map((id) => ({
         user_property_id: id,
         is_required: true,
@@ -82,15 +82,15 @@ export function DefaultFormFields({
       user_property_id: p.user_property_id,
       is_required: p.is_required ?? true,
       min_matching_users:
-        typeof p.min_matching_users === "number"
+        typeof p.min_matching_users === 'number'
           ? p.min_matching_users
           : p.min_matching_users == null
-          ? 1
-          : null,
+            ? 1
+            : null,
     }));
   });
 
-  const prevPropsRef = useRef<string>("");
+  const prevPropsRef = useRef<string>('');
   useEffect(() => {
     const currentPropsStr = JSON.stringify(
       formData.requiredUserProperties ?? []
@@ -101,7 +101,7 @@ export function DefaultFormFields({
       let normalized: typeof propertyConfigs = [];
 
       if (incoming.length > 0) {
-        if (typeof incoming[0] === "string") {
+        if (typeof incoming[0] === 'string') {
           normalized = (incoming as unknown as string[]).map((id) => ({
             user_property_id: id,
             is_required: true,
@@ -112,11 +112,11 @@ export function DefaultFormFields({
             user_property_id: p.user_property_id,
             is_required: p.is_required ?? true,
             min_matching_users:
-              typeof p.min_matching_users === "number"
+              typeof p.min_matching_users === 'number'
                 ? p.min_matching_users
                 : p.min_matching_users == null
-                ? 1
-                : null,
+                  ? 1
+                  : null,
           }));
         }
       }
@@ -164,16 +164,16 @@ export function DefaultFormFields({
   const isEndDateEdited = useRef(
     formData.endDate &&
       formData.startDate &&
-      format(formData.endDate, "yyyy-MM-dd") !==
-        format(formData.startDate, "yyyy-MM-dd")
+      format(formData.endDate, 'yyyy-MM-dd') !==
+        format(formData.startDate, 'yyyy-MM-dd')
   );
 
   useEffect(() => {
     isEndDateEdited.current = !!(
       formData.endDate &&
       formData.startDate &&
-      format(formData.endDate, "yyyy-MM-dd") !==
-        format(formData.startDate, "yyyy-MM-dd")
+      format(formData.endDate, 'yyyy-MM-dd') !==
+        format(formData.startDate, 'yyyy-MM-dd')
     );
   }, [formData.startDate, formData.endDate]);
 
@@ -181,8 +181,8 @@ export function DefaultFormFields({
     const options = [];
     for (let hour = StartHour; hour <= EndHour - 1; hour++) {
       for (let minute = 0; minute < 60; minute += 15) {
-        const formattedHour = hour.toString().padStart(2, "0");
-        const formattedMinute = minute.toString().padStart(2, "0");
+        const formattedHour = hour.toString().padStart(2, '0');
+        const formattedMinute = minute.toString().padStart(2, '0');
         const value = `${formattedHour}:${formattedMinute}`;
         const label = `${formattedHour}:${formattedMinute}`;
         options.push({ value, label });
@@ -199,11 +199,11 @@ export function DefaultFormFields({
     <>
       <FormGroup className="grid grid-cols-[repeat(auto-fit,minmax(17rem,1fr))]">
         <FormField
-          name={"Name " + (activeOrg?.einsatz_name_singular ?? "Einsatz")}
+          name={'Name ' + (activeOrg?.einsatz_name_singular ?? 'Einsatz')}
           placeholder="Name eingeben..."
           value={formData.title}
-          onChange={(e) => handleChange("title", e.target.value)}
-          errors={errors.fieldErrors["title"] || []}
+          onChange={(e) => handleChange('title', e.target.value)}
+          errors={errors.fieldErrors['title'] || []}
         />
         <MultiSelectFormField
           name="Kategorien"
@@ -212,9 +212,9 @@ export function DefaultFormFields({
           placeholder="Kategorien auswählen"
           animation={1}
           onValueChange={(selectedValues) => {
-            handleChange("einsatzCategoriesIds", selectedValues);
+            handleChange('einsatzCategoriesIds', selectedValues);
           }}
-          errors={errors.fieldErrors["einsatzCategoriesIds"] || []}
+          errors={errors.fieldErrors['einsatzCategoriesIds'] || []}
         />
       </FormGroup>
 
@@ -223,27 +223,27 @@ export function DefaultFormFields({
           <FormInputFieldCustom
             className="flex-1"
             name="Start Datum"
-            errors={errors.fieldErrors["startDate"] || []}
+            errors={errors.fieldErrors['startDate'] || []}
           >
             <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
               <PopoverTrigger asChild>
                 <Button
                   id="start_datum"
-                  variant={"outline"}
+                  variant={'outline'}
                   className={cn(
-                    "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
-                    !formData.startDate && "text-muted-foreground"
+                    'group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]',
+                    !formData.startDate && 'text-muted-foreground'
                   )}
                 >
                   <span
                     className={cn(
-                      "truncate",
-                      !formData.startDate && "text-muted-foreground"
+                      'truncate',
+                      !formData.startDate && 'text-muted-foreground'
                     )}
                   >
                     {formData.startDate
-                      ? format(formData.startDate, "PPP", { locale: de })
-                      : "Datum auswählen"}
+                      ? format(formData.startDate, 'PPP', { locale: de })
+                      : 'Datum auswählen'}
                   </span>
                   <RiCalendarLine
                     size={16}
@@ -268,7 +268,7 @@ export function DefaultFormFields({
                         };
                         onFormDataChange(updates);
                       } else {
-                        handleChange("startDate", date);
+                        handleChange('startDate', date);
                       }
                       setStartDateOpen(false);
                     }
@@ -281,11 +281,11 @@ export function DefaultFormFields({
             <div className="min-w-28 *:not-first:mt-1.5">
               <FormInputFieldCustom
                 name="Start Zeit"
-                errors={errors.fieldErrors["startTime"] || []}
+                errors={errors.fieldErrors['startTime'] || []}
               >
                 <Select
                   value={formData.startTime}
-                  onValueChange={(value) => handleChange("startTime", value)}
+                  onValueChange={(value) => handleChange('startTime', value)}
                 >
                   <SelectTrigger id="start_time">
                     <SelectValue placeholder="Select time" />
@@ -306,27 +306,27 @@ export function DefaultFormFields({
           <FormInputFieldCustom
             className="flex-1"
             name="Ende Datum"
-            errors={errors.fieldErrors["endDate"] || []}
+            errors={errors.fieldErrors['endDate'] || []}
           >
             <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
               <PopoverTrigger asChild>
                 <Button
                   id="ende_datum"
-                  variant={"outline"}
+                  variant={'outline'}
                   className={cn(
-                    "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
-                    !formData.endDate && "text-muted-foreground"
+                    'group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]',
+                    !formData.endDate && 'text-muted-foreground'
                   )}
                 >
                   <span
                     className={cn(
-                      "truncate",
-                      !formData.endDate && "text-muted-foreground"
+                      'truncate',
+                      !formData.endDate && 'text-muted-foreground'
                     )}
                   >
                     {formData.endDate
-                      ? format(formData.endDate, "PPP", { locale: de })
-                      : "Datum auswählen"}
+                      ? format(formData.endDate, 'PPP', { locale: de })
+                      : 'Datum auswählen'}
                   </span>
                   <RiCalendarLine
                     size={16}
@@ -345,7 +345,7 @@ export function DefaultFormFields({
                     if (date) {
                       // Mark as edited when user picks an explicit end date
                       isEndDateEdited.current = true;
-                      handleChange("endDate", date);
+                      handleChange('endDate', date);
                       setEndDateOpen(false);
                     }
                   }}
@@ -357,11 +357,11 @@ export function DefaultFormFields({
             <div className="min-w-28">
               <FormInputFieldCustom
                 name="Ende Zeit"
-                errors={errors.fieldErrors["endTime"] || []}
+                errors={errors.fieldErrors['endTime'] || []}
               >
                 <Select
                   value={formData.endTime}
-                  onValueChange={(value) => handleChange("endTime", value)}
+                  onValueChange={(value) => handleChange('endTime', value)}
                 >
                   <SelectTrigger id="end_time">
                     <SelectValue placeholder="Zeit auswählen" />
@@ -383,7 +383,7 @@ export function DefaultFormFields({
             id="all-day"
             checked={formData.all_day}
             onCheckedChange={(checked) =>
-              handleChange("all_day", checked === true)
+              handleChange('all_day', checked === true)
             }
           />
           <Label htmlFor="all-day">Ganztägig</Label>
@@ -396,9 +396,9 @@ export function DefaultFormFields({
           <FormField
             name="Teilnehmeranzahl"
             type="number"
-            value={formData.participantCount || ""}
+            value={formData.participantCount || ''}
             placeholder=""
-            errors={errors.fieldErrors["participantCount"] || []}
+            errors={errors.fieldErrors['participantCount'] || []}
             onChange={(e) => {
               const participantCount = Number(e.target.value) || 0;
               onFormDataChange({
@@ -417,8 +417,8 @@ export function DefaultFormFields({
             name="Preis p. Person (€)"
             type="number"
             min={0}
-            value={formData.pricePerPerson ?? ""}
-            errors={errors.fieldErrors["pricePerPerson"] || []}
+            value={formData.pricePerPerson ?? ''}
+            errors={errors.fieldErrors['pricePerPerson'] || []}
             className="grow"
             onChange={(e) => {
               const pricePerPerson = Number(e.target.value) || 0;
@@ -438,8 +438,8 @@ export function DefaultFormFields({
             name="Gesamtpreis (€)"
             type="number"
             min={0}
-            value={formData.totalPrice ?? ""}
-            errors={errors.fieldErrors["totalPrice"] || []}
+            value={formData.totalPrice ?? ''}
+            errors={errors.fieldErrors['totalPrice'] || []}
             className="shrink-20"
             onChange={(e) => {
               const totalPrice = Number(e.target.value) || 0;
@@ -458,14 +458,14 @@ export function DefaultFormFields({
       {/* Helpers and User Selection */}
       <FormGroup>
         <FormField
-          name={"Anzahl " + (activeOrg?.helper_name_plural ?? "Helfer")}
+          name={'Anzahl ' + (activeOrg?.helper_name_plural ?? 'Helfer')}
           type="number"
           min={0}
-          value={formData.helpersNeeded >= 0 ? formData.helpersNeeded : ""}
+          value={formData.helpersNeeded >= 0 ? formData.helpersNeeded : ''}
           placeholder=""
-          errors={errors.fieldErrors["helpersNeeded"] || []}
+          errors={errors.fieldErrors['helpersNeeded'] || []}
           onChange={(e) =>
-            handleChange("helpersNeeded", Number(e.target.value) || -1)
+            handleChange('helpersNeeded', Number(e.target.value) || -1)
           }
         />
         <MultiSelectFormField
@@ -474,12 +474,12 @@ export function DefaultFormFields({
           value={formData.assignedUsers}
           placeholder="Personen auswählen"
           animation={1}
-          errors={errors.fieldErrors["assignedUsers"] || []}
+          errors={errors.fieldErrors['assignedUsers'] || []}
           allowedActiveItems={
             formData.helpersNeeded > 0 ? formData.helpersNeeded : undefined
           }
           onValueChange={(selectedValues) => {
-            handleChange("assignedUsers", selectedValues);
+            handleChange('assignedUsers', selectedValues);
           }}
         />
       </FormGroup>
@@ -505,7 +505,7 @@ export function DefaultFormFields({
 
         {/* Per-property configuration */}
         {propertyConfigs.length > 0 && (
-          <div className="space-y-2 pl-4 border-l-2 border-muted">
+          <div className="border-muted space-y-2 border-l-2 pl-4">
             {propertyConfigs.map((config) => {
               const property = availableProps?.find(
                 (p) => p.id === config.user_property_id
@@ -515,9 +515,9 @@ export function DefaultFormFields({
               return (
                 <div
                   key={config.user_property_id}
-                  className="flex items-center gap-3 p-2 rounded-md bg-muted/50"
+                  className="bg-muted/50 flex items-center gap-3 rounded-md p-2"
                 >
-                  <div className="flex-1 font-medium text-sm">
+                  <div className="flex-1 text-sm font-medium">
                     {property.field.name}
                   </div>
 
@@ -533,7 +533,7 @@ export function DefaultFormFields({
                     />
                     <Label
                       htmlFor={`required-${config.user_property_id}`}
-                      className="text-xs cursor-pointer"
+                      className="cursor-pointer text-xs"
                     >
                       Erforderlich
                     </Label>
@@ -551,7 +551,7 @@ export function DefaultFormFields({
                         id={`min-${config.user_property_id}`}
                         type="number"
                         min={1}
-                        className="w-16 h-8 px-2 text-sm border rounded-md"
+                        className="h-8 w-16 rounded-md border px-2 text-sm"
                         defaultValue={config.min_matching_users ?? 1}
                         onBlur={(e) => {
                           const value = parseInt(e.target.value);

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,16 +10,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../components/ui/alert-dialog";
+} from '../components/ui/alert-dialog';
 
-export type AlertDialogResult = "success" | "cancel";
+export type AlertDialogResult = 'success' | 'cancel';
 
 export interface AlertDialogOptions {
   title: string;
   description: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: "default" | "destructive";
+  variant?: 'default' | 'destructive';
 }
 
 interface AlertDialogState {
@@ -74,7 +74,7 @@ export const useAlertDialog = () => {
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (!open) {
-        handleClose("cancel");
+        handleClose('cancel');
       }
     },
     [handleClose]
@@ -84,7 +84,7 @@ export const useAlertDialog = () => {
   useEffect(() => {
     return () => {
       if (state.resolve) {
-        state.resolve("cancel");
+        state.resolve('cancel');
       }
     };
   }, [state.resolve]);
@@ -96,7 +96,7 @@ export const useAlertDialog = () => {
           <AlertDialogHeader>
             <AlertDialogTitle
               className={
-                state.options.variant === "destructive" ? "text-red-600" : ""
+                state.options.variant === 'destructive' ? 'text-red-600' : ''
               }
             >
               {state.options.title}
@@ -106,18 +106,18 @@ export const useAlertDialog = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => handleClose("cancel")}>
-              {state.options.cancelText || "Abbrechen"}
+            <AlertDialogCancel onClick={() => handleClose('cancel')}>
+              {state.options.cancelText || 'Abbrechen'}
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => handleClose("success")}
+              onClick={() => handleClose('success')}
               className={
-                state.options.variant === "destructive"
-                  ? "bg-red-600 hover:bg-red-700"
-                  : ""
+                state.options.variant === 'destructive'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : ''
               }
             >
-              {state.options.confirmText || "Bestätigen"}
+              {state.options.confirmText || 'Bestätigen'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -138,15 +138,15 @@ export const useConfirmDialog = () => {
     (
       title: string,
       description: string,
-      confirmText = "Bestätigen",
-      cancelText = "Abbrechen"
+      confirmText = 'Bestätigen',
+      cancelText = 'Abbrechen'
     ) => {
       return showDialog({
         title,
         description,
         confirmText,
         cancelText,
-        variant: "default",
+        variant: 'default',
       });
     },
     [showDialog]
@@ -156,15 +156,15 @@ export const useConfirmDialog = () => {
     (
       title: string,
       description: string,
-      confirmText = "Löschen",
-      cancelText = "Abbrechen"
+      confirmText = 'Löschen',
+      cancelText = 'Abbrechen'
     ) => {
       return showDialog({
         title,
         description,
         confirmText,
         cancelText,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
     [showDialog]
@@ -203,7 +203,7 @@ export const useGlobalAlertDialog = () => {
   const context = React.useContext(AlertDialogContext);
   if (!context) {
     throw new Error(
-      "useGlobalAlertDialog must be used within an AlertDialogProvider"
+      'useGlobalAlertDialog must be used within an AlertDialogProvider'
     );
   }
   return context;
@@ -217,15 +217,15 @@ export const useGlobalConfirmDialog = () => {
     (
       title: string,
       description: string,
-      confirmText = "Bestätigen",
-      cancelText = "Abbrechen"
+      confirmText = 'Bestätigen',
+      cancelText = 'Abbrechen'
     ) => {
       return showDialog({
         title,
         description,
         confirmText,
         cancelText,
-        variant: "default",
+        variant: 'default',
       });
     },
     [showDialog]
@@ -235,15 +235,15 @@ export const useGlobalConfirmDialog = () => {
     (
       title: string,
       description: string,
-      confirmText = "Löschen",
-      cancelText = "Abbrechen"
+      confirmText = 'Löschen',
+      cancelText = 'Abbrechen'
     ) => {
       return showDialog({
         title,
         description,
         confirmText,
         cancelText,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
     [showDialog]

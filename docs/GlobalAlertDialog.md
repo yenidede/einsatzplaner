@@ -15,7 +15,7 @@ The AlertDialog has been implemented at the layout level using React Context, al
 ### 1. Import the hook
 
 ```tsx
-import { useAlertDialog } from "@/contexts/AlertDialogContext";
+import { useAlertDialog } from '@/contexts/AlertDialogContext';
 ```
 
 ### 2. Use in any component
@@ -26,16 +26,16 @@ function MyComponent() {
 
   const handleDelete = async () => {
     const result = await showDialog({
-      title: "Einsatz löschen",
-      description: "Sind Sie sicher, dass Sie diesen Einsatz löschen möchten?",
+      title: 'Einsatz löschen',
+      description: 'Sind Sie sicher, dass Sie diesen Einsatz löschen möchten?',
     });
 
-    if (result === "success") {
+    if (result === 'success') {
       // User clicked "Bestätigen"
-      console.log("User confirmed");
+      console.log('User confirmed');
     } else {
       // User clicked "Abbrechen" or closed the dialog
-      console.log("User cancelled");
+      console.log('User cancelled');
     }
   };
 
@@ -63,8 +63,8 @@ type AlertDialogOptions = {
 
 ```tsx
 const result = await showDialog({
-  title: "Einsatz löschen",
-  description: "Diese Aktion kann nicht rückgängig gemacht werden.",
+  title: 'Einsatz löschen',
+  description: 'Diese Aktion kann nicht rückgängig gemacht werden.',
 });
 ```
 
@@ -72,8 +72,8 @@ const result = await showDialog({
 
 ```tsx
 const result = await showDialog({
-  title: "Änderungen speichern",
-  description: "Möchten Sie die Änderungen speichern?",
+  title: 'Änderungen speichern',
+  description: 'Möchten Sie die Änderungen speichern?',
 });
 ```
 
@@ -81,8 +81,8 @@ const result = await showDialog({
 
 ```tsx
 const result = await showDialog({
-  title: "Aktion bestätigen",
-  description: "Sind Sie sicher, dass Sie fortfahren möchten?",
+  title: 'Aktion bestätigen',
+  description: 'Sind Sie sicher, dass Sie fortfahren möchten?',
 });
 ```
 

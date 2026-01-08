@@ -1,108 +1,108 @@
-import { getServerSession } from "next-auth/next";
-import { redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
-import { getUserRolesInOrganization } from "@/DataAccessLayer/user";
-import { authOptions } from "@/lib/auth.config";
-import { Session } from "next-auth";
-import { permission, PermissionType } from "./permissions";
+import { getServerSession } from 'next-auth/next';
+import { redirect } from 'next/navigation';
+import prisma from '@/lib/prisma';
+import { getUserRolesInOrganization } from '@/DataAccessLayer/user';
+import { authOptions } from '@/lib/auth.config';
+import { Session } from 'next-auth';
+import { permission, PermissionType } from './permissions';
 
 export const ROLE_NAME_MAP = {
-  Superadmin: "559ed0cd-2644-47dd-9fb8-c6e333589e05",
-  Helfer: "90f7c6ce-f696-419c-9a29-4c70c3ab4cef",
-  Einsatzverwaltung: "d54836b9-a1ff-4dd8-8633-20c98378aa87",
-  Organisationsverwaltung: "d8c4c6ad-10bc-4947-bf16-1652f55298cc",
+  Superadmin: '559ed0cd-2644-47dd-9fb8-c6e333589e05',
+  Helfer: '90f7c6ce-f696-419c-9a29-4c70c3ab4cef',
+  Einsatzverwaltung: 'd54836b9-a1ff-4dd8-8633-20c98378aa87',
+  Organisationsverwaltung: 'd8c4c6ad-10bc-4947-bf16-1652f55298cc',
 };
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Superadmin: [
     // Einsätze
-    permission("einsaetze", "read"),
-    permission("einsaetze", "create"),
-    permission("einsaetze", "update"),
-    permission("einsaetze", "delete"),
-    permission("einsaetze", "join"),
-    permission("einsaetze", "leave"),
-    permission("einsaetze", "manage_assignments"),
+    permission('einsaetze', 'read'),
+    permission('einsaetze', 'create'),
+    permission('einsaetze', 'update'),
+    permission('einsaetze', 'delete'),
+    permission('einsaetze', 'join'),
+    permission('einsaetze', 'leave'),
+    permission('einsaetze', 'manage_assignments'),
     // Users
-    permission("users", "read"),
-    permission("users", "create"),
-    permission("users", "update"),
-    permission("users", "delete"),
-    permission("users", "manage"),
-    permission("users", "invite"),
+    permission('users', 'read'),
+    permission('users', 'create'),
+    permission('users', 'update'),
+    permission('users', 'delete'),
+    permission('users', 'manage'),
+    permission('users', 'invite'),
     // Organization
-    permission("organization", "read"),
-    permission("organization", "update"),
-    permission("organization", "delete"),
-    permission("organization", "manage"),
+    permission('organization', 'read'),
+    permission('organization', 'update'),
+    permission('organization', 'delete'),
+    permission('organization', 'manage'),
     // Roles
-    permission("roles", "read"),
-    permission("roles", "create"),
-    permission("roles", "update"),
-    permission("roles", "delete"),
-    permission("roles", "assign"),
+    permission('roles', 'read'),
+    permission('roles', 'create'),
+    permission('roles', 'update'),
+    permission('roles', 'delete'),
+    permission('roles', 'assign'),
     // Settings
-    permission("settings", "read"),
-    permission("settings", "update"),
+    permission('settings', 'read'),
+    permission('settings', 'update'),
     // Dashboard
-    permission("dashboard", "read"),
-    permission("analytics", "read"),
+    permission('dashboard', 'read'),
+    permission('analytics', 'read'),
   ],
 
   Organisationsverwaltung: [
     // Einsätze (nur lesen)
-    permission("einsaetze", "read"),
+    permission('einsaetze', 'read'),
 
     // Users
-    permission("users", "read"),
-    permission("users", "create"),
-    permission("users", "update"),
-    permission("users", "invite"),
-    permission("users", "manage"),
+    permission('users', 'read'),
+    permission('users', 'create'),
+    permission('users', 'update'),
+    permission('users', 'invite'),
+    permission('users', 'manage'),
 
     // Organization
-    permission("organization", "read"),
-    permission("organization", "update"),
+    permission('organization', 'read'),
+    permission('organization', 'update'),
     // Roles
-    permission("roles", "read"),
-    permission("roles", "assign"),
+    permission('roles', 'read'),
+    permission('roles', 'assign'),
 
     // Settings
-    permission("settings", "read"),
-    permission("settings", "update"),
+    permission('settings', 'read'),
+    permission('settings', 'update'),
 
     // Dashboard
-    permission("dashboard", "read"),
+    permission('dashboard', 'read'),
   ],
 
   Einsatzverwaltung: [
     // Einsätze
-    permission("einsaetze", "read"),
-    permission("einsaetze", "create"),
-    permission("einsaetze", "update"),
-    permission("einsaetze", "delete"),
-    permission("einsaetze", "manage_assignments"),
+    permission('einsaetze', 'read'),
+    permission('einsaetze', 'create'),
+    permission('einsaetze', 'update'),
+    permission('einsaetze', 'delete'),
+    permission('einsaetze', 'manage_assignments'),
     // Users (read-only)
-    permission("users", "read"),
-    permission("templates", "read"),
+    permission('users', 'read'),
+    permission('templates', 'read'),
 
     // Dashboard
-    permission("dashboard", "read"),
+    permission('dashboard', 'read'),
   ],
 
   Helfer: [
     // Einsätze
-    permission("einsaetze", "read"),
-    permission("einsaetze", "join"),
-    permission("einsaetze", "leave"),
+    permission('einsaetze', 'read'),
+    permission('einsaetze', 'join'),
+    permission('einsaetze', 'leave'),
 
     // Dashboard
-    permission("dashboard", "read"),
+    permission('dashboard', 'read'),
   ],
 };
 
 export type ExtendedSession = Session & {
-  user: Session["user"] & {
+  user: Session['user'] & {
     roles?: string[];
     roleIds?: string[];
     orgIds?: string[];
@@ -115,7 +115,7 @@ export async function requireAuth() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    redirect("/signin");
+    redirect('/signin');
   }
 
   const userId = session.user.id as string;
@@ -164,7 +164,7 @@ export async function hasPermission(
   const targetOrgId = orgId || session.user.activeOrganization?.id;
 
   if (!targetOrgId) {
-    console.warn("No organization ID available");
+    console.warn('No organization ID available');
     return false;
   }
 

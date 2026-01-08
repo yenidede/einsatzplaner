@@ -1,18 +1,18 @@
-"use server";
+'use server';
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth.config";
-import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { createClient } from "@supabase/supabase-js";
-import type { OrganizationForPDF } from "@/features/organization/types";
-import { hasPermission } from "@/lib/auth/authGuard";
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth.config';
+import prisma from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { createClient } from '@supabase/supabase-js';
+import type { OrganizationForPDF } from '@/features/organization/types';
+import { hasPermission } from '@/lib/auth/authGuard';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("Supabase environment variables are not set");
+  throw new Error('Supabase environment variables are not set');
 }
 
 const supabaseServer = createClient(supabaseUrl, supabaseServiceKey, {
@@ -24,7 +24,7 @@ const supabaseServer = createClient(supabaseUrl, supabaseServiceKey, {
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) throw new Error('Unauthorized');
   return session;
 }
 export async function getAllRolesExceptSuperAdmin() {
@@ -35,10 +35,10 @@ export async function getAllRolesExceptSuperAdmin() {
       abbreviation: true,
     },
     orderBy: {
-      name: "asc",
+      name: 'asc',
     },
     where: {
-      name: { not: "Superadmin" },
+      name: { not: 'Superadmin' },
     },
   });
 
@@ -60,17 +60,17 @@ export async function getOrganizationById(orgId: string) {
     },
   });
 
-  if (!org) throw new Error("Organization not found");
+  if (!org) throw new Error('Organization not found');
 
   return {
     id: org.id,
     name: org.name,
-    description: org.description ?? "",
-    logo_url: org.logo_url ?? "",
-    email: org.email ?? "",
-    phone: org.phone ?? "",
-    helper_name_singular: org.helper_name_singular ?? "Helfer:in",
-    helper_name_plural: org.helper_name_plural ?? "Helfer:innen",
+    description: org.description ?? '',
+    logo_url: org.logo_url ?? '',
+    email: org.email ?? '',
+    phone: org.phone ?? '',
+    helper_name_singular: org.helper_name_singular ?? 'Helfer:in',
+    helper_name_plural: org.helper_name_plural ?? 'Helfer:innen',
     created_at: org.created_at.toISOString(),
   };
 }
@@ -83,11 +83,11 @@ export async function getEinsatzNamesByOrgId(orgId: string) {
       einsatz_name_plural: true,
     },
   });
-  if (!org) throw new Error("Organization not found");
+  if (!org) throw new Error('Organization not found');
 
   return {
-    einsatz_name_singular: org.einsatz_name_singular ?? "Einsatz",
-    einsatz_name_plural: org.einsatz_name_plural ?? "Einsätze",
+    einsatz_name_singular: org.einsatz_name_singular ?? 'Einsatz',
+    einsatz_name_plural: org.einsatz_name_plural ?? 'Einsätze',
   };
 }
 export async function getUserOrganizationsAction() {
@@ -115,12 +115,12 @@ export async function getUserOrganizationsAction() {
   return orgs.map((org) => ({
     id: org.id,
     name: org.name,
-    description: org.description ?? "",
-    logo_url: org.logo_url ?? "",
-    email: org.email ?? "",
-    phone: org.phone ?? "",
-    helper_name_singular: org.helper_name_singular ?? "Helfer:in",
-    helper_name_plural: org.helper_name_plural ?? "Helfer:innen",
+    description: org.description ?? '',
+    logo_url: org.logo_url ?? '',
+    email: org.email ?? '',
+    phone: org.phone ?? '',
+    helper_name_singular: org.helper_name_singular ?? 'Helfer:in',
+    helper_name_plural: org.helper_name_plural ?? 'Helfer:innen',
     created_at: org.created_at.toISOString(),
   }));
 }
@@ -136,7 +136,7 @@ export async function getUserOrganizationByIdAction(orgId: string) {
   });
 
   if (!membership) {
-    throw new Error("Forbidden - No access to this organization");
+    throw new Error('Forbidden - No access to this organization');
   }
 
   const org = await prisma.organization.findUnique({
@@ -165,19 +165,19 @@ export async function getUserOrganizationByIdAction(orgId: string) {
     },
   });
 
-  if (!org) throw new Error("Organization not found");
+  if (!org) throw new Error('Organization not found');
 
   return {
     id: org.id,
     name: org.name,
-    description: org.description ?? "",
-    logo_url: org.logo_url ?? "",
-    email: org.email ?? "",
-    phone: org.phone ?? "",
-    helper_name_singular: org.helper_name_singular ?? "Helfer:in",
-    helper_name_plural: org.helper_name_plural ?? "Helfer:innen",
-    einsatz_name_singular: org.einsatz_name_singular ?? "Einsatz",
-    einsatz_name_plural: org.einsatz_name_plural ?? "Einsätze",
+    description: org.description ?? '',
+    logo_url: org.logo_url ?? '',
+    email: org.email ?? '',
+    phone: org.phone ?? '',
+    helper_name_singular: org.helper_name_singular ?? 'Helfer:in',
+    helper_name_plural: org.helper_name_plural ?? 'Helfer:innen',
+    einsatz_name_singular: org.einsatz_name_singular ?? 'Einsatz',
+    einsatz_name_plural: org.einsatz_name_plural ?? 'Einsätze',
     created_at: org.created_at.toISOString(),
     members: org.user_organization_role.map((uor) => ({
       user: {
@@ -215,10 +215,10 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     },
   });
 
-  if (!userOrgRole) throw new Error("Forbidden");
+  if (!userOrgRole) throw new Error('Forbidden');
 
-  if (!(await hasPermission(session, "organization:update")))
-    throw new Error("Insufficient permissions");
+  if (!(await hasPermission(session, 'organization:update')))
+    throw new Error('Insufficient permissions');
 
   const dataToUpdate: Partial<OrganizationUpdateData> = {};
   if (data.name !== undefined) dataToUpdate.name = data.name;
@@ -259,12 +259,12 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
   return {
     id: updated.id,
     name: updated.name,
-    description: updated.description ?? "",
-    email: updated.email ?? "",
-    phone: updated.phone ?? "",
-    logo_url: updated.logo_url ?? "",
-    helper_name_singular: updated.helper_name_singular ?? "Helfer:in",
-    helper_name_plural: updated.helper_name_plural ?? "Helfer:innen",
+    description: updated.description ?? '',
+    email: updated.email ?? '',
+    phone: updated.phone ?? '',
+    logo_url: updated.logo_url ?? '',
+    helper_name_singular: updated.helper_name_singular ?? 'Helfer:in',
+    helper_name_plural: updated.helper_name_plural ?? 'Helfer:innen',
   };
 }
 
@@ -281,14 +281,14 @@ export async function deleteOrganizationAction(orgId: string) {
     },
   });
 
-  if (!userOrgRole) throw new Error("Forbidden");
+  if (!userOrgRole) throw new Error('Forbidden');
 
   const isOV =
-    userOrgRole.role?.name === "Organisationsverwaltung" ||
-    userOrgRole.role?.abbreviation === "OV" ||
-    userOrgRole.role?.name === "Superadmin";
+    userOrgRole.role?.name === 'Organisationsverwaltung' ||
+    userOrgRole.role?.abbreviation === 'OV' ||
+    userOrgRole.role?.name === 'Superadmin';
 
-  if (!isOV) throw new Error("Insufficient permissions");
+  if (!isOV) throw new Error('Insufficient permissions');
 
   await prisma.user_organization_role.deleteMany({
     where: { org_id: orgId },
@@ -298,10 +298,10 @@ export async function deleteOrganizationAction(orgId: string) {
     where: { id: orgId },
   });
 
-  revalidatePath("/");
+  revalidatePath('/');
 
   return {
-    message: "Organisation erfolgreich gelöscht",
+    message: 'Organisation erfolgreich gelöscht',
     organization: deletedOrg,
   };
 }
@@ -310,10 +310,10 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
   try {
     const session = await checkUserSession();
 
-    const orgId = formData.get("orgId") as string;
-    const file = formData.get("logo") as File;
+    const orgId = formData.get('orgId') as string;
+    const file = formData.get('logo') as File;
 
-    if (!file || !orgId) throw new Error("Missing file or orgId");
+    if (!file || !orgId) throw new Error('Missing file or orgId');
 
     const userOrgRole = await prisma.user_organization_role.findFirst({
       where: {
@@ -323,17 +323,17 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       include: { role: true },
     });
 
-    if (!userOrgRole) throw new Error("Forbidden");
+    if (!userOrgRole) throw new Error('Forbidden');
 
-    if (!(await hasPermission(session, "organization:update")))
-      throw new Error("Insufficient permissions");
+    if (!(await hasPermission(session, 'organization:update')))
+      throw new Error('Insufficient permissions');
 
-    if (!file.type.startsWith("image/")) {
-      throw new Error("File must be an image");
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File must be an image');
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      throw new Error("File size must be less than 5MB");
+      throw new Error('File size must be less than 5MB');
     }
 
     const oldOrg = await prisma.organization.findUnique({
@@ -341,7 +341,7 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       select: { logo_url: true },
     });
 
-    const fileExt = file.name.split(".").pop() || "jpg";
+    const fileExt = file.name.split('.').pop() || 'jpg';
     const timestamp = Date.now();
     const fileName = `${orgId}.${fileExt}`;
     const filePath = `organizations/${orgId}/${fileName}`;
@@ -349,20 +349,20 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
     const buffer = await file.arrayBuffer();
 
     const { error: uploadError } = await supabaseServer.storage
-      .from("logos")
+      .from('logos')
       .upload(filePath, buffer, {
         contentType: file.type,
-        cacheControl: "3600",
+        cacheControl: '3600',
         upsert: true,
       });
 
     if (uploadError) {
-      console.error("Supabase upload error:", uploadError);
+      console.error('Supabase upload error:', uploadError);
       throw new Error(`Failed to upload image: ${uploadError.message}`);
     }
 
     const { data: urlData } = supabaseServer.storage
-      .from("logos")
+      .from('logos')
       .getPublicUrl(filePath);
 
     const publicUrl = `${urlData.publicUrl}?t=${timestamp}`;
@@ -372,28 +372,28 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       data: { logo_url: publicUrl },
     });
 
-    if (oldOrg?.logo_url && oldOrg.logo_url.includes("supabase")) {
+    if (oldOrg?.logo_url && oldOrg.logo_url.includes('supabase')) {
       try {
-        const urlParts = oldOrg.logo_url.split("/logos/");
+        const urlParts = oldOrg.logo_url.split('/logos/');
         if (urlParts[1]) {
           const oldPathWithParams = urlParts[1];
-          const oldPath = oldPathWithParams.split("?")[0];
+          const oldPath = oldPathWithParams.split('?')[0];
 
           if (
             oldPath !== filePath &&
             oldPath.startsWith(`organizations/${orgId}/`)
           ) {
             const { error: deleteError } = await supabaseServer.storage
-              .from("logos")
+              .from('logos')
               .remove([oldPath]);
 
             if (deleteError) {
-              console.warn("Failed to delete old logo:", deleteError);
+              console.warn('Failed to delete old logo:', deleteError);
             }
           }
         }
       } catch (error) {
-        console.warn("Error while deleting old logo:", error);
+        console.warn('Error while deleting old logo:', error);
       }
     }
 
@@ -401,7 +401,7 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
 
     return { url: publicUrl };
   } catch (error) {
-    console.error("uploadOrganizationLogoAction error:", error);
+    console.error('uploadOrganizationLogoAction error:', error);
     throw error;
   }
 }
@@ -415,31 +415,31 @@ export async function removeOrganizationLogoAction(orgId: string) {
     },
     include: { role: true },
   });
-  if (!userOrgRole) throw new Error("Forbidden");
+  if (!userOrgRole) throw new Error('Forbidden');
 
-  if (!(await hasPermission(session, "organization:update")))
-    throw new Error("Insufficient permissions");
+  if (!(await hasPermission(session, 'organization:update')))
+    throw new Error('Insufficient permissions');
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
     select: { logo_url: true },
   });
-  if (!org) throw new Error("Organization not found");
+  if (!org) throw new Error('Organization not found');
 
-  if (org.logo_url && org.logo_url.includes("supabase")) {
+  if (org.logo_url && org.logo_url.includes('supabase')) {
     try {
-      const urlParts = org.logo_url.split("/logos/");
+      const urlParts = org.logo_url.split('/logos/');
       if (urlParts[1]) {
         const pathWithParams = urlParts[1];
-        const path = pathWithParams.split("?")[0];
+        const path = pathWithParams.split('?')[0];
         const { error: deleteError } = await supabaseServer.storage
-          .from("logos")
+          .from('logos')
           .remove([path]);
         if (deleteError) {
-          console.warn("Failed to delete logo from storage:", deleteError);
+          console.warn('Failed to delete logo from storage:', deleteError);
         }
       }
     } catch (error) {
-      console.warn("Error while deleting logo from storage:", error);
+      console.warn('Error while deleting logo from storage:', error);
     }
   }
 
@@ -448,7 +448,7 @@ export async function removeOrganizationLogoAction(orgId: string) {
     data: { logo_url: null },
   });
   revalidatePath(`/organization/${orgId}/manage`);
-  return { message: "Logo erfolgreich entfernt" };
+  return { message: 'Logo erfolgreich entfernt' };
 }
 
 export async function getOrganizationWithRelations(orgId: string) {
@@ -456,18 +456,18 @@ export async function getOrganizationWithRelations(orgId: string) {
     where: { id: orgId },
     include: {
       organization_address: {
-        orderBy: { created_at: "desc" },
+        orderBy: { created_at: 'desc' },
       },
       organization_bank_account: {
-        orderBy: { created_at: "desc" },
+        orderBy: { created_at: 'desc' },
       },
       organization_details: {
-        orderBy: { created_at: "desc" },
+        orderBy: { created_at: 'desc' },
       },
     },
   });
 
-  if (!org) throw new Error("Organization not found");
+  if (!org) throw new Error('Organization not found');
 
   return org;
 }
@@ -519,12 +519,12 @@ export async function getOrganizationAddressesAction(orgId: string) {
   try {
     const addresses = await prisma.organization_address.findMany({
       where: { org_id: orgId },
-      orderBy: { created_at: "desc" },
+      orderBy: { created_at: 'desc' },
     });
     return addresses;
   } catch (error) {
-    console.error("Error fetching addresses:", error);
-    throw new Error("Fehler beim Laden der Adressen");
+    console.error('Error fetching addresses:', error);
+    throw new Error('Fehler beim Laden der Adressen');
   }
 }
 
@@ -551,8 +551,8 @@ export async function createOrganizationAddressAction(data: {
     revalidatePath(`/organization/${data.orgId}/manage`);
     return { success: true, address };
   } catch (error) {
-    console.error("Error creating address:", error);
-    throw new Error("Fehler beim Erstellen der Adresse");
+    console.error('Error creating address:', error);
+    throw new Error('Fehler beim Erstellen der Adresse');
   }
 }
 
@@ -580,8 +580,8 @@ export async function updateOrganizationAddressAction(data: {
     revalidatePath(`/organization/${data.orgId}/manage`);
     return { success: true, address };
   } catch (error) {
-    console.error("Error updating address:", error);
-    throw new Error("Fehler beim Aktualisieren der Adresse");
+    console.error('Error updating address:', error);
+    throw new Error('Fehler beim Aktualisieren der Adresse');
   }
 }
 
@@ -597,8 +597,8 @@ export async function deleteOrganizationAddressAction(
     revalidatePath(`/organization/${orgId}/manage`);
     return { success: true };
   } catch (error) {
-    console.error("Error deleting address:", error);
-    throw new Error("Fehler beim Löschen der Adresse");
+    console.error('Error deleting address:', error);
+    throw new Error('Fehler beim Löschen der Adresse');
   }
 }
 //#endregion
@@ -608,12 +608,12 @@ export async function getOrganizationBankAccountsAction(orgId: string) {
   try {
     const accounts = await prisma.organization_bank_account.findMany({
       where: { org_id: orgId },
-      orderBy: { created_at: "desc" },
+      orderBy: { created_at: 'desc' },
     });
     return accounts;
   } catch (error) {
-    console.error("Error fetching bank accounts:", error);
-    throw new Error("Fehler beim Laden der Bankkonten");
+    console.error('Error fetching bank accounts:', error);
+    throw new Error('Fehler beim Laden der Bankkonten');
   }
 }
 
@@ -636,8 +636,8 @@ export async function createOrganizationBankAccountAction(data: {
     revalidatePath(`/organization/${data.orgId}/manage`);
     return { success: true, account };
   } catch (error) {
-    console.error("Error creating bank account:", error);
-    throw new Error("Fehler beim Erstellen des Bankkontos");
+    console.error('Error creating bank account:', error);
+    throw new Error('Fehler beim Erstellen des Bankkontos');
   }
 }
 
@@ -661,8 +661,8 @@ export async function updateOrganizationBankAccountAction(data: {
     revalidatePath(`/organization/${data.orgId}/manage`);
     return { success: true, account };
   } catch (error) {
-    console.error("Error updating bank account:", error);
-    throw new Error("Fehler beim Aktualisieren des Bankkontos");
+    console.error('Error updating bank account:', error);
+    throw new Error('Fehler beim Aktualisieren des Bankkontos');
   }
 }
 
@@ -678,8 +678,8 @@ export async function deleteOrganizationBankAccountAction(
     revalidatePath(`/organization/${orgId}/manage`);
     return { success: true };
   } catch (error) {
-    console.error("Error deleting bank account:", error);
-    throw new Error("Fehler beim Löschen des Bankkontos");
+    console.error('Error deleting bank account:', error);
+    throw new Error('Fehler beim Löschen des Bankkontos');
   }
 }
 //#endregion
@@ -693,8 +693,8 @@ export async function getOrganizationDetailsAction(orgId: string) {
     });
     return details;
   } catch (error) {
-    console.error("Error fetching organization details:", error);
-    throw new Error("Fehler beim Laden der Organisationsdetails");
+    console.error('Error fetching organization details:', error);
+    throw new Error('Fehler beim Laden der Organisationsdetails');
   }
 }
 
@@ -736,8 +736,8 @@ export async function saveOrganizationDetailsAction(data: {
     revalidatePath(`/organization/${data.orgId}/manage`);
     return { success: true, details };
   } catch (error) {
-    console.error("Error saving organization details:", error);
-    throw new Error("Fehler beim Speichern der Organisationsdetails");
+    console.error('Error saving organization details:', error);
+    throw new Error('Fehler beim Speichern der Organisationsdetails');
   }
 }
 //#endregion

@@ -1,7 +1,7 @@
-import React from "react";
-import { Toggle } from "@/components/ui/toggle";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
+import React from 'react';
+import { Toggle } from '@/components/ui/toggle';
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 type ToggleItemBigProps = {
   text: string;
@@ -24,7 +24,7 @@ export default function ToggleItemBig({
       variant="outline"
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center justify-center gap-0",
+        'flex flex-col items-center justify-center gap-0',
         className
       )}
     >
@@ -40,7 +40,7 @@ export default function ToggleItemBig({
         />
       )}
       <div className="font-medium">{text}</div>
-      <div className="text-slate-600 text-xs">{description}</div>
+      <div className="text-xs text-slate-600">{description}</div>
     </Toggle>
   );
 }

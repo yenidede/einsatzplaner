@@ -1,11 +1,11 @@
-"use client";
-import * as z from "zod";
-import { formSchema } from "@/features/auth/register-schema";
-import { acceptInviteAndCreateNewAccount as serverAction } from "@/features/auth/actions";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
-import { useAction } from "next-safe-action/hooks";
-import { motion } from "motion/react";
+'use client';
+import * as z from 'zod';
+import { formSchema } from '@/features/auth/register-schema';
+import { acceptInviteAndCreateNewAccount as serverAction } from '@/features/auth/actions';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, Controller } from 'react-hook-form';
+import { useAction } from 'next-safe-action/hooks';
+import { motion } from 'motion/react';
 import {
   Field,
   FieldGroup,
@@ -13,11 +13,11 @@ import {
   FieldLabel,
   FieldDescription,
   FieldError,
-} from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Password } from "@/components/password";
-import { Check, ChevronLeft, ChevronsUpDown } from "lucide-react";
+} from '@/components/ui/field';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Password } from '@/components/password';
+import { Check, ChevronLeft, ChevronsUpDown } from 'lucide-react';
 import {
   Command,
   CommandEmpty,
@@ -25,28 +25,28 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from '@/components/ui/command';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { FileUpload } from "@/components/form/file-upload";
-import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
-import { settingsQueryKeys } from "@/features/settings/queryKeys/queryKey";
-import { getSalutationsAction } from "@/features/settings/settings-action";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { TabsContent } from "@/components/ui/tabs";
+} from '@/components/ui/popover';
+import { FileUpload } from '@/components/form/file-upload';
+import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
+import { getSalutationsAction } from '@/features/settings/settings-action';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { TabsContent } from '@/components/ui/tabs';
 import {
   createAvatarUploadUrl,
   deleteAvatarFromStorage,
-} from "@/features/user/user-dal";
-import { signIn } from "next-auth/react";
+} from '@/features/user/user-dal';
+import { signIn } from 'next-auth/react';
 
 type Schema = z.infer<typeof formSchema>;
-export type AvailableTab = "accept" | "register1" | "register2" | "other";
+export type AvailableTab = 'accept' | 'register1' | 'register2' | 'other';
 
 export function SignUpForm({
   email,
@@ -72,24 +72,24 @@ export function SignUpForm({
   const profilePictureUploadFromClient = async (
     optimizedFile: File
   ): Promise<string> => {
-    const loadingToastId = toast.loading("Profilbild wird hochgeladen...");
+    const loadingToastId = toast.loading('Profilbild wird hochgeladen...');
     const { uploadUrl, path } = await createAvatarUploadUrl(
       userId,
       invitationId
     );
 
     const res = await fetch(uploadUrl, {
-      method: "PUT",
+      method: 'PUT',
       body: optimizedFile,
       headers: {
-        "Content-Type": optimizedFile.type,
+        'Content-Type': optimizedFile.type,
       },
     });
 
     toast.dismiss(loadingToastId);
     if (!res.ok) {
-      toast.error("Failed to upload profile picture.", { id: "upload-failed" });
-    } else toast.success("Profilbild erfolgreich hochgeladen!");
+      toast.error('Failed to upload profile picture.', { id: 'upload-failed' });
+    } else toast.success('Profilbild erfolgreich hochgeladen!');
 
     return path;
   };
@@ -97,40 +97,40 @@ export function SignUpForm({
   const form = useForm<Schema>({
     resolver: zodResolver(formSchema as any),
     defaultValues: {
-      vorname: "",
-      nachname: "",
+      vorname: '',
+      nachname: '',
       email,
-      passwort: "",
-      passwort2: "",
+      passwort: '',
+      passwort2: '',
       anredeId: undefined,
-      telefon: "",
-      pictureUrl: "",
+      telefon: '',
+      pictureUrl: '',
     },
   });
   const formAction = useAction(serverAction, {
     onSuccess: (res) => {
       if (res.data?.success !== true) {
         toast.error(
-          "Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator."
+          'Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator.'
         );
-        setTab("register1");
+        setTab('register1');
         return;
       }
       toast.success(res.data?.message);
-      signIn("credentials", {
-        email: form.getValues("email"),
-        password: form.getValues("passwort"),
+      signIn('credentials', {
+        email: form.getValues('email'),
+        password: form.getValues('passwort'),
         redirect: true,
-        callbackUrl: "/",
+        callbackUrl: '/',
       });
     },
     onError: (error) => {
       // TODO: show error message
       toast.error(
-        "Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator. \nError:" +
+        'Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator. \nError:' +
           error.error
       );
-      setTab("register1");
+      setTab('register1');
     },
   });
   const handleSubmit = form.handleSubmit(async (data: Schema) =>
@@ -144,44 +144,44 @@ export function SignUpForm({
 
   // email field comes from invite link
   useEffect(() => {
-    form.setValue("email", email);
-    form.setValue("userId", userId);
-    form.setValue("invitationId", invitationId);
+    form.setValue('email', email);
+    form.setValue('userId', userId);
+    form.setValue('invitationId', invitationId);
   }, [form, email, userId, invitationId]);
 
   useEffect(() => {
     if (hasSucceeded) {
-      setTab("other");
+      setTab('other');
     }
   }, [hasSucceeded, setTab]);
 
   if (hasSucceeded) {
     return (
       <TabsContent value="other">
-        <div className="p-2 sm:p-5 md:p-8 w-full rounded-md gap-2 border">
+        <div className="w-full gap-2 rounded-md border p-2 sm:p-5 md:p-8">
           <motion.div
             initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, stiffness: 300, damping: 25 }}
-            className="h-full py-6 px-3"
+            className="h-full px-3 py-6"
           >
             <motion.div
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
               transition={{
                 delay: 0.3,
-                type: "spring",
+                type: 'spring',
                 stiffness: 500,
                 damping: 15,
               }}
-              className="mb-4 flex justify-center border rounded-full w-fit mx-auto p-2"
+              className="mx-auto mb-4 flex w-fit justify-center rounded-full border p-2"
             >
               <Check className="size-8" />
             </motion.div>
-            <h2 className="text-center text-2xl text-pretty font-bold mb-2">
+            <h2 className="mb-2 text-center text-2xl font-bold text-pretty">
               Danke
             </h2>
-            <p className="text-center text-lg text-pretty text-muted-foreground">
+            <p className="text-muted-foreground text-center text-lg text-pretty">
               Account erfolgreich erstellt! Sie werden gleich weitergeleitet...
             </p>
           </motion.div>
@@ -193,13 +193,13 @@ export function SignUpForm({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "p-2 sm:p-5 md:p-8 w-full rounded-md gap-2 border max-w-3xl mx-auto",
-        tab === "accept" ? "hidden" : ""
+        'mx-auto w-full max-w-3xl gap-2 rounded-md border p-2 sm:p-5 md:p-8',
+        tab === 'accept' ? 'hidden' : ''
       )}
     >
       <TabsContent value="register1">
-        <FieldGroup className="grid md:grid-cols-6 gap-4 mb-6">
-          <h2 className="mb-1 font-semibold text-xl tracking-tight col-span-full">
+        <FieldGroup className="mb-6 grid gap-4 md:grid-cols-6">
+          <h2 className="col-span-full mb-1 text-xl font-semibold tracking-tight">
             Pflichtfelder
           </h2>
           <Controller
@@ -264,7 +264,7 @@ export function SignUpForm({
             render={({ field, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid}
-                className="gap-1 col-span-full"
+                className="col-span-full gap-1"
               >
                 <FieldLabel htmlFor="email">
                   Zugewiesene Email-Adresse
@@ -344,8 +344,8 @@ export function SignUpForm({
               </Field>
             )}
           />
-          <div className="flex justify-end items-center col-span-full mt-4">
-            <Button variant="link" onClick={() => setTab("accept")}>
+          <div className="col-span-full mt-4 flex items-center justify-end">
+            <Button variant="link" onClick={() => setTab('accept')}>
               <ChevronLeft />
               Zurück
             </Button>
@@ -355,13 +355,13 @@ export function SignUpForm({
                 e.preventDefault();
                 const valid = await form.trigger();
                 console.log(
-                  "Form valid:",
+                  'Form valid:',
                   valid,
                   form.formState.errors,
-                  form.getValues("userId")
+                  form.getValues('userId')
                 );
                 if (valid) {
-                  setTab("register2");
+                  setTab('register2');
                 }
               }}
             >
@@ -371,8 +371,8 @@ export function SignUpForm({
         </FieldGroup>
       </TabsContent>
       <TabsContent value="register2">
-        <FieldGroup className="grid md:grid-cols-6 gap-4 mb-6">
-          <h3 className="mb-1 font-semibold text-xl tracking-tight col-span-full">
+        <FieldGroup className="mb-6 grid gap-4 md:grid-cols-6">
+          <h3 className="col-span-full mb-1 text-xl font-semibold tracking-tight">
             Optionaler Bereich
           </h3>
 
@@ -384,7 +384,7 @@ export function SignUpForm({
               return (
                 <Field
                   data-invalid={fieldState.invalid}
-                  className="gap-2 col-span-full"
+                  className="col-span-full gap-2"
                 >
                   <FieldLabel htmlFor="anredeId">Anrede </FieldLabel>
 
@@ -399,18 +399,18 @@ export function SignUpForm({
                         type="button"
                         role="combobox"
                         className={cn(
-                          "justify-between active:scale-100 bg-transparent"
+                          'justify-between bg-transparent active:scale-100'
                         )}
                       >
                         {field.value
                           ? salutations.find((s) => s.id === field.value)
                               ?.salutation
-                          : "Bitte Anrede auswählen"}
+                          : 'Bitte Anrede auswählen'}
                         <ChevronsUpDown className="opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="p-0 min-w-(--radix-popper-anchor-width) w-full"
+                      className="w-full min-w-(--radix-popper-anchor-width) p-0"
                       align="start"
                     >
                       <Command>
@@ -428,17 +428,17 @@ export function SignUpForm({
                                 value={id}
                                 key={id}
                                 onSelect={() => {
-                                  form.setValue("anredeId", id);
+                                  form.setValue('anredeId', id);
                                   setAnredePopoverOpen(false);
                                 }}
                               >
                                 {salutation}
                                 <Check
                                   className={cn(
-                                    "ml-auto",
+                                    'ml-auto',
                                     id === field.value
-                                      ? "opacity-100"
-                                      : "opacity-0"
+                                      ? 'opacity-100'
+                                      : 'opacity-0'
                                   )}
                                 />
                               </CommandItem>
@@ -463,7 +463,7 @@ export function SignUpForm({
             render={({ field, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid}
-                className="gap-1 col-span-full"
+                className="col-span-full gap-1"
               >
                 <FieldLabel htmlFor="telefon">Telefon </FieldLabel>
                 <Input
@@ -495,7 +495,7 @@ export function SignUpForm({
                 <Field data-invalid={fieldState.invalid}>
                   <div>
                     <FieldLabel htmlFor="pictureUrl">
-                      Profilbild hinzufügen{" "}
+                      Profilbild hinzufügen{' '}
                     </FieldLabel>
                     <FieldDescription>
                       Wählen Sie eine Datei von Ihrem Gerät aus
@@ -542,13 +542,13 @@ export function SignUpForm({
               </div>
             )}
           />
-          <div className="flex justify-end items-center col-span-full mt-4">
-            <Button variant="link" onClick={() => setTab("register1")}>
+          <div className="col-span-full mt-4 flex items-center justify-end">
+            <Button variant="link" onClick={() => setTab('register1')}>
               <ChevronLeft />
               Zurück
             </Button>
             <Button type="submit">
-              {isExecuting ? "Account wird erstellt..." : "Account erstellen"}
+              {isExecuting ? 'Account wird erstellt...' : 'Account erstellen'}
             </Button>
           </div>
         </FieldGroup>
