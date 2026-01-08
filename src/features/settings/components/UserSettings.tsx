@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useUserSettings } from "../hooks/useUserSettings";
-import { useSession } from "next-auth/react";
+import { useState, useEffect } from 'react';
+import { useUserSettings } from '../hooks/useUserSettings';
+import { useSession } from 'next-auth/react';
 import {
   FormField,
   Alert,
   Button,
   FormSection,
-} from "../../auth/components/ui/FormComponents";
-import { useAlertDialog } from "@/hooks/use-alert-dialog";
+} from '../../auth/components/ui/FormComponents';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
 
 interface UserSettingsProps {
   isModal?: boolean;
@@ -30,12 +30,12 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
   } = useUserSettings();
 
   const [formData, setFormData] = useState({
-    email: "",
-    firstname: "",
-    lastname: "",
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+    email: '',
+    firstname: '',
+    lastname: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
   // Update form when profile loads
@@ -59,11 +59,11 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
       formData.newPassword !== formData.confirmPassword
     ) {
       await showDialog({
-        title: "Passwörter stimmen nicht überein",
+        title: 'Passwörter stimmen nicht überein',
         description:
-          "Bitte stellen Sie sicher, dass beide Passwörter identisch sind.",
-        confirmText: "OK",
-        variant: "destructive",
+          'Bitte stellen Sie sicher, dass beide Passwörter identisch sind.',
+        confirmText: 'OK',
+        variant: 'destructive',
       });
       return;
     }
@@ -84,15 +84,15 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
       // Clear password fields on success
       setFormData((prev) => ({
         ...prev,
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
       }));
 
       // Update NextAuth session
       updateSession();
     } catch (error) {
-      console.error("Update failed:", error);
+      console.error('Update failed:', error);
     }
   };
 
@@ -103,9 +103,9 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
         email: profile.email,
         firstname: profile.firstname,
         lastname: profile.lastname,
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
       });
     }
   };
@@ -118,8 +118,8 @@ export default function UserSettings({ isModal = false }: UserSettingsProps) {
     <>
       {AlertDialogComponent}
       <div
-        className={`${isModal ? "p-6" : "max-w-2xl mx-auto p-6"} bg-white ${
-          isModal ? "" : "rounded-lg shadow-md"
+        className={`${isModal ? 'p-6' : 'mx-auto max-w-2xl p-6'} bg-white ${
+          isModal ? '' : 'rounded-lg shadow-md'
         }`}
       >
         <div className="mb-6">

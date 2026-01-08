@@ -1,19 +1,19 @@
-"use server";
+'use server';
 
-import React from "react";
-import { renderToBuffer } from "@react-pdf/renderer";
-import { BookingConfirmationPDF_Group } from "./components/PDF_BookingConfirmation_Group";
-import { BookingConfirmationPDF_School } from "./components/PDF_BookingConfirmation_School";
-import { BookingConfirmationPDF_Fluchtwege_School } from "./components/PDF_BookingConfirmation_Fluchtwege_School";
-import { validatePdfAccess } from "./lib/utils/authorization";
-import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
-import { getUserByIdWithOrgAndRole } from "@/DataAccessLayer/user";
-import { getOrganizationForPDF } from "@/features/settings/organization-action";
-import type { Einsatz, EinsatzDetailed } from "@/features/einsatz/types";
-import type { PDFActionResult } from "./types/types";
-import { getEinsatzCategoriesForPDF } from "./category-action";
-import prisma from "@/lib/prisma";
-import { ForbiddenError, NotFoundError } from "@/lib/errors";
+import React from 'react';
+import { renderToBuffer } from '@react-pdf/renderer';
+import { BookingConfirmationPDF_Group } from './components/PDF_BookingConfirmation_Group';
+import { BookingConfirmationPDF_School } from './components/PDF_BookingConfirmation_School';
+import { BookingConfirmationPDF_Fluchtwege_School } from './components/PDF_BookingConfirmation_Fluchtwege_School';
+import { validatePdfAccess } from './lib/utils/authorization';
+import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
+import { getUserByIdWithOrgAndRole } from '@/DataAccessLayer/user';
+import { getOrganizationForPDF } from '@/features/settings/organization-action';
+import type { Einsatz, EinsatzDetailed } from '@/features/einsatz/types';
+import type { PDFActionResult } from './types/types';
+import { getEinsatzCategoriesForPDF } from './category-action';
+import prisma from '@/lib/prisma';
+import { ForbiddenError, NotFoundError } from '@/lib/errors';
 
 interface EinsatzCategory {
   id: string;
@@ -35,17 +35,17 @@ interface PDFOptions {
   showLogos?: boolean;
 }
 
-type PDFTemplateType = "gruppe" | "schule" | "fluchtwege";
+type PDFTemplateType = 'gruppe' | 'schule' | 'fluchtwege';
 
 async function determinePDFTemplate(
   einsatz: Einsatz,
   categories: EinsatzCategory[]
 ): Promise<PDFTemplateType> {
   const categoryValues = categories.map(
-    (cat) => cat.value?.toLowerCase() || ""
+    (cat) => cat.value?.toLowerCase() || ''
   );
 
-  const hasTitleSchule = einsatz.title.toLowerCase().includes("schule");
+  const hasTitleSchule = einsatz.title.toLowerCase().includes('schule');
 
   let hasSchulstufeField = false;
 
@@ -70,27 +70,27 @@ async function determinePDFTemplate(
 
       hasSchulstufeField = fields.some(
         (f) =>
-          f.name?.toLowerCase().includes("schulstufe") ||
-          f.name?.toLowerCase().includes("schule")
+          f.name?.toLowerCase().includes('schulstufe') ||
+          f.name?.toLowerCase().includes('schule')
       );
     }
   }
 
   const hasFluchtwegCategory = categoryValues.some(
-    (val) => val.includes("fluchtweg") || val.includes("fluchtwege")
+    (val) => val.includes('fluchtweg') || val.includes('fluchtwege')
   );
 
   let templateType: PDFTemplateType;
 
   if (hasFluchtwegCategory && (hasSchulstufeField || hasTitleSchule)) {
-    templateType = "fluchtwege";
+    templateType = 'fluchtwege';
   } else if (hasSchulstufeField || hasTitleSchule) {
-    templateType = "schule";
+    templateType = 'schule';
   } else {
-    templateType = "gruppe";
+    templateType = 'gruppe';
   }
 
-  console.log("Selected template:", templateType);
+  console.log('Selected template:', templateType);
 
   return templateType;
 }
@@ -99,19 +99,19 @@ function generateFilename(
   einsatz: Einsatz,
   templateType: PDFTemplateType
 ): string {
-  const date = new Date(einsatz.start).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
+  const date = new Date(einsatz.start).toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
   });
   const startTime = new Date(einsatz.start)
-    .toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
-    .replace(":", "-");
+    .toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+    .replace(':', '-');
 
   const prefix = {
-    fluchtwege: "Fuehrungsbestaetigung_Fluchtwege_Schule",
-    schule: "Fuehrungsbestaetigung_Schule_Vlbg",
-    gruppe: "Fuehrungsbestaetigung_Gruppe",
+    fluchtwege: 'Fuehrungsbestaetigung_Fluchtwege_Schule',
+    schule: 'Fuehrungsbestaetigung_Schule_Vlbg',
+    gruppe: 'Fuehrungsbestaetigung_Gruppe',
   }[templateType];
 
   return `${prefix}-${date}-${startTime}.pdf`;
@@ -123,20 +123,20 @@ export async function generateEinsatzPDF(
 ): Promise<PDFActionResult> {
   try {
     if (!einsatzId) {
-      console.error("Missing einsatzId");
+      console.error('Missing einsatzId');
       return {
         success: false,
-        error: "einsatzId is required",
+        error: 'einsatzId is required',
       };
     }
 
     //console.log("Validating access...");
     const authResult = await validatePdfAccess(einsatzId);
     if (!authResult.authorized) {
-      console.error("Access denied:", authResult.error);
+      console.error('Access denied:', authResult.error);
       return {
         success: false,
-        error: authResult.error || "Nicht autorisiert",
+        error: authResult.error || 'Nicht autorisiert',
       };
     }
 
@@ -149,10 +149,10 @@ export async function generateEinsatzPDF(
       const result = await getEinsatzWithDetailsById(einsatzId);
 
       // Handle Response object
-      if (result && typeof result === "object" && "status" in result) {
+      if (result && typeof result === 'object' && 'status' in result) {
         return {
           success: false,
-          error: "Fehler beim Laden des Einsatzes",
+          error: 'Fehler beim Laden des Einsatzes',
         };
       }
 
@@ -161,29 +161,29 @@ export async function generateEinsatzPDF(
       if (err instanceof ForbiddenError) {
         return {
           success: false,
-          error: "Nicht autorisiert",
+          error: 'Nicht autorisiert',
         };
       }
       if (err instanceof NotFoundError) {
         return {
           success: false,
-          error: "Einsatz nicht gefunden",
+          error: 'Einsatz nicht gefunden',
         };
       }
-      console.error("Error while loading Einsatz:", err);
+      console.error('Error while loading Einsatz:', err);
       return {
         success: false,
         error:
           err instanceof Error
             ? err.message
-            : "Fehler beim Laden des Einsatzes",
+            : 'Fehler beim Laden des Einsatzes',
       };
     }
 
     if (!einsatz) {
       return {
         success: false,
-        error: "Einsatz nicht gefunden",
+        error: 'Einsatz nicht gefunden',
       };
     }
 
@@ -219,7 +219,7 @@ export async function generateEinsatzPDF(
       gruppe: BookingConfirmationPDF_Group,
     }[templateType];
 
-    const { Document } = await import("@react-pdf/renderer");
+    const { Document } = await import('@react-pdf/renderer');
     const pdfBuffer = await renderToBuffer(
       React.createElement(
         Document,
@@ -247,7 +247,7 @@ export async function generateEinsatzPDF(
       )
     );
 
-    const base64 = Buffer.from(pdfBuffer).toString("base64");
+    const base64 = Buffer.from(pdfBuffer).toString('base64');
     const filename = generateFilename(einsatz, templateType);
 
     return {
@@ -255,21 +255,21 @@ export async function generateEinsatzPDF(
       data: {
         pdf: base64,
         filename,
-        mimeType: "application/pdf",
+        mimeType: 'application/pdf',
       },
     };
   } catch (error) {
-    console.error("❌ ========== PDF GENERATION FAILED ==========");
-    console.error("Error:", error);
+    console.error('❌ ========== PDF GENERATION FAILED ==========');
+    console.error('Error:', error);
     console.error(
-      "Stack:",
-      error instanceof Error ? error.stack : "No stack trace"
+      'Stack:',
+      error instanceof Error ? error.stack : 'No stack trace'
     );
-    console.error("==============================================\n");
+    console.error('==============================================\n');
 
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to generate PDF",
+      error: error instanceof Error ? error.message : 'Failed to generate PDF',
     };
   }
 }

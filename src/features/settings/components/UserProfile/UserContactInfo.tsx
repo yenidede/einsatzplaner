@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { Mail, Phone } from "lucide-react";
+import { Mail, Phone } from 'lucide-react';
 
 interface UserContactInfoProps {
   email: string;
@@ -9,25 +9,25 @@ interface UserContactInfoProps {
 
 export function UserContactInfo({ email, phone }: UserContactInfoProps) {
   return (
-    <div className="px-4 flex flex-col justify-center items-start gap-2.5">
-      <div className="w-96 inline-flex justify-start items-center gap-2.5">
-        <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+    <div className="flex flex-col items-start justify-center gap-2.5 px-4">
+      <div className="inline-flex w-96 items-center justify-start gap-2.5">
+        <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
           Kontaktinformationen
         </div>
       </div>
-      <div className="inline-flex justify-center items-center gap-4">
-        <div className="flex justify-start items-center gap-2">
+      <div className="inline-flex items-center justify-center gap-4">
+        <div className="flex items-center justify-start gap-2">
           {/* Email Icon */}
-          <Mail className="w-4 h-4 text-slate-600" />
-          <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
+          <Mail className="h-4 w-4 text-slate-600" />
+          <div className="justify-start font-['Inter'] text-base leading-normal font-normal text-slate-800">
             {email}
           </div>
         </div>
         {phone && (
-          <div className="flex justify-start items-center gap-2">
+          <div className="flex items-center justify-start gap-2">
             {/* Phone Icon */}
-            <Phone className="w-4 h-4 text-slate-600" />
-            <div className="justify-start text-slate-800 text-base font-normal font-['Inter'] leading-normal">
+            <Phone className="h-4 w-4 text-slate-600" />
+            <div className="justify-start font-['Inter'] text-base leading-normal font-normal text-slate-800">
               {phone}
             </div>
           </div>

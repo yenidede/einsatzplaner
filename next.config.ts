@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   webpack: (config, { isServer }) => {
@@ -10,15 +10,15 @@ const nextConfig: NextConfig = {
         tls: false,
         dns: false,
         child_process: false,
-        "fs/promises": false,
-        "timers/promises": false,
+        'fs/promises': false,
+        'timers/promises': false,
       };
     }
     return config;
   },
-  serverExternalPackages: ["mongodb"],
+  serverExternalPackages: ['mongodb'],
   images: {
-    domains: ["fgxvzejucaxteqvnhojt.supabase.co"],
+    domains: ['fgxvzejucaxteqvnhojt.supabase.co'],
   },
 };
 

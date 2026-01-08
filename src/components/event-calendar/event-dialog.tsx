@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import type { InputHTMLAttributes } from "react";
-import { RiDeleteBinLine } from "@remixicon/react";
-import { FileDown } from "lucide-react";
+import { useCallback, useEffect, useState } from 'react';
+import type { InputHTMLAttributes } from 'react';
+import { RiDeleteBinLine } from '@remixicon/react';
+import { FileDown } from 'lucide-react';
 
-import z from "zod";
+import z from 'zod';
 import {
   generateDynamicSchema,
   handleDelete,
@@ -14,9 +14,9 @@ import {
   mapFieldsForSchema,
   mapStringValueToType,
   mapTypeToStringValue,
-} from "./utils";
+} from './utils';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -24,57 +24,57 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DefaultEndHour,
   DefaultStartHour,
   EndHour,
   StartHour,
   StatusValuePairs,
-} from "@/components/event-calendar/constants";
-import { getEinsatzWithDetailsById } from "@/features/einsatz/dal-einsatz";
-import { useQuery } from "@tanstack/react-query";
-import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
-import { queryKeys as TemplateQueryKeys } from "@/features/einsatztemplate/queryKeys";
-import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
-import { EinsatzCreate, EinsatzDetailed } from "@/features/einsatz/types";
-import FormGroup from "../form/formGroup";
-import FormInputFieldCustom from "../form/formInputFieldCustom";
-import ToggleItemBig from "../form/toggle-item-big";
-import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
-import { getAllTemplatesWithIconByOrgId } from "@/features/template/template-dal";
-import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
-import { DefaultFormFields } from "@/components/event-calendar/defaultFormFields";
-import { useAlertDialog } from "@/hooks/use-alert-dialog";
-import { CustomFormField, SupportedDataTypes } from "./types";
-import DynamicFormFields from "./dynamicFormfields";
-import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
-import { buildInputProps } from "../form/utils";
-import TooltipCustom from "../tooltip-custom";
+} from '@/components/event-calendar/constants';
+import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys as OrgaQueryKeys } from '@/features/organization/queryKeys';
+import { queryKeys as TemplateQueryKeys } from '@/features/einsatztemplate/queryKeys';
+import { queryKeys as UserQueryKeys } from '@/features/user/queryKeys';
+import { EinsatzCreate, EinsatzDetailed } from '@/features/einsatz/types';
+import FormGroup from '../form/formGroup';
+import FormInputFieldCustom from '../form/formInputFieldCustom';
+import ToggleItemBig from '../form/toggle-item-big';
+import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
+import { getAllTemplatesWithIconByOrgId } from '@/features/template/template-dal';
+import { getAllUsersWithRolesByOrgId } from '@/features/user/user-dal';
+import { DefaultFormFields } from '@/components/event-calendar/defaultFormFields';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { CustomFormField, SupportedDataTypes } from './types';
+import DynamicFormFields from './dynamicFormfields';
+import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
+import { buildInputProps } from '../form/utils';
+import TooltipCustom from '../tooltip-custom';
 
-import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
-import { useSession } from "next-auth/react";
-import { getOrganizationsByIds } from "@/features/organization/org-dal";
-import { useOrganizationTerminology } from "@/hooks/use-organization-terminology";
-import { toast } from "sonner";
-import { createChangeLogAuto } from "@/features/activity_log/activity_log-dal";
+import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
+import { useSession } from 'next-auth/react';
+import { getOrganizationsByIds } from '@/features/organization/org-dal';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { toast } from 'sonner';
+import { createChangeLogAuto } from '@/features/activity_log/activity_log-dal';
 
 import {
   detectChangeTypes,
   getAffectedUserId,
-} from "@/features/activity_log/utils";
-import { Select, SelectContent, SelectItem } from "../ui/select";
-import { SelectTrigger } from "@radix-ui/react-select";
-import { EinsatzActivityLog } from "@/features/activity_log/components/ActivityLogWrapperEinsatzDialog";
+} from '@/features/activity_log/utils';
+import { Select, SelectContent, SelectItem } from '../ui/select';
+import { SelectTrigger } from '@radix-ui/react-select';
+import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import {
   getUserPropertiesByOrgId,
   UserPropertyValue,
-} from "@/features/user_properties/user_property-dal";
-import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";
+} from '@/features/user_properties/user_property-dal';
+import { userPropertyQueryKeys } from '@/features/user_properties/queryKeys';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
-  title: "",
+  title: '',
   einsatzCategoriesIds: [],
   startDate: new Date(),
   endDate: new Date(),
@@ -91,7 +91,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
 
 export const ZodEinsatzFormData = z
   .object({
-    title: z.string().min(1, "Titel ist erforderlich"),
+    title: z.string().min(1, 'Titel ist erforderlich'),
     einsatzCategoriesIds: z.array(z.uuid()),
     startDate: z.date(),
     endDate: z.date(),
@@ -99,21 +99,21 @@ export const ZodEinsatzFormData = z
       .string()
       .regex(
         /^([01]\d|2[0-3]):([0-5]\d)$/,
-        "Invalid time format. Must be in HH:MM (24-hour) format."
+        'Invalid time format. Must be in HH:MM (24-hour) format.'
       ),
     endTime: z
       .string()
       .regex(
         /^([01]\d|2[0-3]):([0-5]\d)$/,
-        "Invalid time format. Must be in HH:MM (24-hour) format."
+        'Invalid time format. Must be in HH:MM (24-hour) format.'
       ),
     all_day: z.boolean(),
     participantCount: z
       .number()
-      .min(0, "Teilnehmeranzahl darf nicht negativ sein"),
-    pricePerPerson: z.number().min(0, "Preis darf nicht negativ sein"),
-    totalPrice: z.number().min(0, "Gesamtpreis darf nicht negativ sein"),
-    helpersNeeded: z.number().min(-1, "Helfer-Anzahl muss 0 oder größer sein"),
+      .min(0, 'Teilnehmeranzahl darf nicht negativ sein'),
+    pricePerPerson: z.number().min(0, 'Preis darf nicht negativ sein'),
+    totalPrice: z.number().min(0, 'Gesamtpreis darf nicht negativ sein'),
+    helpersNeeded: z.number().min(-1, 'Helfer-Anzahl muss 0 oder größer sein'),
     assignedUsers: z.array(z.uuid()),
     requiredUserProperties: z
       .array(
@@ -134,9 +134,9 @@ export const ZodEinsatzFormData = z
         const endDateTime = new Date(data.endDate);
 
         const [startHours, startMinutes] = data.startTime
-          .split(":")
+          .split(':')
           .map(Number);
-        const [endHours, endMinutes] = data.endTime.split(":").map(Number);
+        const [endHours, endMinutes] = data.endTime.split(':').map(Number);
 
         startDateTime.setHours(startHours, startMinutes, 0, 0);
         endDateTime.setHours(endHours, endMinutes, 0, 0);
@@ -150,8 +150,8 @@ export const ZodEinsatzFormData = z
       }
     },
     {
-      message: "Enddatum/zeit muss nach Startdatum/zeit liegen",
-      path: ["endDate"],
+      message: 'Enddatum/zeit muss nach Startdatum/zeit liegen',
+      path: ['endDate'],
     }
   )
   .refine(
@@ -163,8 +163,8 @@ export const ZodEinsatzFormData = z
     },
     {
       message:
-        "Gesamtpreis stimmt nicht mit Teilnehmern und Preis pro Person überein",
-      path: ["totalPrice"],
+        'Gesamtpreis stimmt nicht mit Teilnehmern und Preis pro Person überein',
+      path: ['totalPrice'],
     }
   )
   .refine(
@@ -178,8 +178,8 @@ export const ZodEinsatzFormData = z
     },
     {
       message:
-        "Anzahl zugewiesener Personen darf die benötigten Helfer nicht überschreiten",
-      path: ["assignedUsers"],
+        'Anzahl zugewiesener Personen darf die benötigten Helfer nicht überschreiten',
+      path: ['assignedUsers'],
     }
   );
 
@@ -223,8 +223,8 @@ export function EventDialogVerwaltung({
     {}
   );
   const { data: availableProps } = useQuery({
-    queryKey: userPropertyQueryKeys.byOrg(activeOrgId ?? ""),
-    queryFn: () => getUserPropertiesByOrgId(activeOrgId ?? ""),
+    queryKey: userPropertyQueryKeys.byOrg(activeOrgId ?? ''),
+    queryFn: () => getUserPropertiesByOrgId(activeOrgId ?? ''),
     enabled: !!activeOrgId,
   });
 
@@ -243,27 +243,27 @@ export function EventDialogVerwaltung({
     queryFn: async () => {
       const res = await getEinsatzWithDetailsById(einsatz as string);
       if (!(res instanceof Response)) return res;
-      toast.error("Failed to fetch einsatz details: " + res.statusText);
+      toast.error('Failed to fetch einsatz details: ' + res.statusText);
     },
-    enabled: typeof einsatz === "string" && !!einsatz && isOpen,
+    enabled: typeof einsatz === 'string' && !!einsatz && isOpen,
   });
 
   const categoriesQuery = useQuery({
-    queryKey: einsatzQueryKeys.categories(activeOrgId ?? ""),
+    queryKey: einsatzQueryKeys.categories(activeOrgId ?? ''),
     queryFn: () => getCategoriesByOrgIds(activeOrgId ? [activeOrgId] : []),
     enabled: !!activeOrgId,
   });
 
   const templatesQuery = useQuery({
     queryKey: TemplateQueryKeys.templates(activeOrgId ? [activeOrgId] : []),
-    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrgId ?? ""),
+    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrgId ?? ''),
     enabled: !!activeOrgId,
   });
 
   const usersQuery = useQuery({
-    queryKey: UserQueryKeys.user(activeOrgId ?? ""),
+    queryKey: UserQueryKeys.user(activeOrgId ?? ''),
     queryFn: () => {
-      return getAllUsersWithRolesByOrgId(activeOrgId ?? "");
+      return getAllUsersWithRolesByOrgId(activeOrgId ?? '');
     },
     enabled: !!activeOrgId,
     select: (data) => {
@@ -287,11 +287,11 @@ export function EventDialogVerwaltung({
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =
-    typeof einsatz === "string" ? detailedEinsatz : einsatz;
+    typeof einsatz === 'string' ? detailedEinsatz : einsatz;
 
   const handleDynamicFormDataChange = (updates: Record<string, any>) => {
     Object.entries(updates).forEach(([key, value]) => {
-      if (typeof value === "string") {
+      if (typeof value === 'string') {
         // Convert string values to appropriate types based on dynamic schema
         const fieldType = dynamicFormFields.find((f) => f.id === key)?.dataType;
         updates[key] = mapStringValueToType(value, fieldType);
@@ -404,7 +404,7 @@ export function EventDialogVerwaltung({
       if (!fullResult.success) {
         // Only update relationship errors (like endDate validation)
         const relationshipErrors = fullResult.error.issues.filter(
-          (issue) => issue.code === "custom" || issue.path.includes("endDate")
+          (issue) => issue.code === 'custom' || issue.path.includes('endDate')
         );
 
         if (relationshipErrors.length > 0) {
@@ -412,11 +412,14 @@ export function EventDialogVerwaltung({
             ...prevErrors,
             fieldErrors: {
               ...prevErrors.fieldErrors,
-              ...relationshipErrors.reduce((acc, error) => {
-                const field = error.path[0] as string;
-                acc[field] = [error.message];
-                return acc;
-              }, {} as Record<string, string[]>),
+              ...relationshipErrors.reduce(
+                (acc, error) => {
+                  const field = error.path[0] as string;
+                  acc[field] = [error.message];
+                  return acc;
+                },
+                {} as Record<string, string[]>
+              ),
             },
           }));
         }
@@ -427,7 +430,7 @@ export function EventDialogVerwaltung({
           // Only clear endDate errors that are relationship-based
           if (
             newErrors.fieldErrors.endDate?.some(
-              (error) => error.includes("nach") || error.includes("Enddatum")
+              (error) => error.includes('nach') || error.includes('Enddatum')
             )
           ) {
             delete newErrors.fieldErrors.endDate;
@@ -449,12 +452,12 @@ export function EventDialogVerwaltung({
   }, [handleFormDataChange]);
 
   useEffect(() => {
-    if (currentEinsatz && typeof currentEinsatz === "object") {
+    if (currentEinsatz && typeof currentEinsatz === 'object') {
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
         setActiveTemplateId(createEinsatz.template_id || null);
-        handleFormDataChange({ title: createEinsatz.title || "" });
+        handleFormDataChange({ title: createEinsatz.title || '' });
         if (createEinsatz.start) {
           const start = createEinsatz.start;
           handleFormDataChange({
@@ -470,7 +473,7 @@ export function EventDialogVerwaltung({
           });
         }
         handleFormDataChange({
-          title: createEinsatz.title || "",
+          title: createEinsatz.title || '',
           all_day: createEinsatz.all_day || false,
         });
         // Reset errors when opening dialog
@@ -483,15 +486,15 @@ export function EventDialogVerwaltung({
         // Edit existing einsatz (loaded from query)
         setActiveTemplateId(currentEinsatz.template_id || null);
         setStaticFormData({
-          title: einsatzDetailed.title || "",
+          title: einsatzDetailed.title || '',
           all_day: einsatzDetailed.all_day || false,
           startDate: einsatzDetailed.start || new Date(),
           startTime:
             formatTimeForInput(einsatzDetailed.start) ||
-            DefaultStartHour + ":00",
+            DefaultStartHour + ':00',
           endDate: einsatzDetailed.end || new Date(),
           endTime:
-            formatTimeForInput(einsatzDetailed.end) || DefaultEndHour + ":00",
+            formatTimeForInput(einsatzDetailed.end) || DefaultEndHour + ':00',
           participantCount: einsatzDetailed.participant_count || 0,
           pricePerPerson: einsatzDetailed.price_per_person || 0,
           totalPrice: einsatzDetailed.total_price || 0,
@@ -538,7 +541,7 @@ export function EventDialogVerwaltung({
             max: f.field.max,
             allowedValues: f.field.allowed_values,
             inputType: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
-            dataType: (f.field.type?.datatype as SupportedDataTypes) || "text",
+            dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
             inputProps: buildInputProps(f.field.type?.datatype, {
               placeholder: f.field.placeholder,
               min: f.field.min,
@@ -547,28 +550,31 @@ export function EventDialogVerwaltung({
           }))
         );
         setDynamicFormData(
-          fields.reduce((acc, f) => {
-            const value =
-              detailedEinsatz?.einsatz_fields?.find(
-                (ef) => ef.field_id === f.field.id // load data from einsatz_field if exists,
-              )?.value ?? f.field.default_value; //  else use default value
-            acc[f.field.id] = mapStringValueToType(
-              value,
-              f.field.type?.datatype || "string"
-            );
-            return acc;
-          }, {} as Record<string, any>)
+          fields.reduce(
+            (acc, f) => {
+              const value =
+                detailedEinsatz?.einsatz_fields?.find(
+                  (ef) => ef.field_id === f.field.id // load data from einsatz_field if exists,
+                )?.value ?? f.field.default_value; //  else use default value
+              acc[f.field.id] = mapStringValueToType(
+                value,
+                f.field.type?.datatype || 'string'
+              );
+              return acc;
+            },
+            {} as Record<string, any>
+          )
         );
       } catch (error) {
-        console.error("Error generating schema: " + error);
+        console.error('Error generating schema: ' + error);
       }
     }
   }, [activeTemplateId, templatesQuery.data, detailedEinsatz?.einsatz_fields]);
 
   const formatTimeForInput = (date: Date) => {
-    const hours = date.getHours().toString().padStart(2, "0");
+    const hours = date.getHours().toString().padStart(2, '0');
     const minutes = Math.floor(date.getMinutes() / 15) * 15;
-    return `${hours}:${minutes.toString().padStart(2, "0")}`;
+    return `${hours}:${minutes.toString().padStart(2, '0')}`;
   };
 
   const checkIfFormIsModified = (o1: EinsatzFormData, o2: EinsatzFormData) => {
@@ -595,11 +601,11 @@ export function EventDialogVerwaltung({
     // function checks if values that are set below in handleTemplateSelect have been modified - could add check if some data is undefined
     if (checkIfFormIsModified(DEFAULTFORMDATA, staticFormData)) {
       const dialogResult = await showDialog({
-        title: `${selectedTemplate?.name || "Vorlage"} laden?`,
+        title: `${selectedTemplate?.name || 'Vorlage'} laden?`,
         description: `Ausgefüllte Felder werden möglicherweise Überschrieben.`,
       });
 
-      if (dialogResult !== "success") {
+      if (dialogResult !== 'success') {
         // User cancelled, do not load template
         return;
       }
@@ -704,15 +710,15 @@ export function EventDialogVerwaltung({
               upv.user_property_id === propConfig.user_property_id
           );
 
-          if (property.field.type?.datatype === "boolean") {
-            const val = String(userPropValue?.value ?? "")
+          if (property.field.type?.datatype === 'boolean') {
+            const val = String(userPropValue?.value ?? '')
               .toLowerCase()
               .trim();
-            return val === "true" || val === "1";
+            return val === 'true' || val === '1';
           }
 
           return (
-            userPropValue?.value && String(userPropValue.value).trim() !== ""
+            userPropValue?.value && String(userPropValue.value).trim() !== ''
           );
         });
 
@@ -720,7 +726,7 @@ export function EventDialogVerwaltung({
         const minRequired = propConfig.min_matching_users ?? 1;
 
         if (matchingCount < minRequired) {
-          const propName = property.field.name || "Unbekannte Eigenschaft";
+          const propName = property.field.name || 'Unbekannte Eigenschaft';
           warnings.push(
             `Personeneigenschaften: mind. ${minRequired} Helfer mit '${propName}' benötigt (aktuell: ${matchingCount})`
           );
@@ -731,17 +737,17 @@ export function EventDialogVerwaltung({
     // Show warning dialog if there are any warnings
     if (warnings.length > 0) {
       const confirmed = await showDialog({
-        title: "Warnung: Kriterien nicht erfüllt",
+        title: 'Warnung: Kriterien nicht erfüllt',
         description:
-          "Folgende Kriterien sind nicht erfüllt:\n\n" +
-          warnings.map((w) => `• ${w}`).join("\n") +
-          "\n\nTrotzdem speichern?",
-        confirmText: "Trotzdem speichern",
-        cancelText: "Abbrechen",
-        variant: "destructive",
+          'Folgende Kriterien sind nicht erfüllt:\n\n' +
+          warnings.map((w) => `• ${w}`).join('\n') +
+          '\n\nTrotzdem speichern?',
+        confirmText: 'Trotzdem speichern',
+        cancelText: 'Abbrechen',
+        variant: 'destructive',
       });
 
-      if (confirmed !== "success") {
+      if (confirmed !== 'success') {
         return;
       }
     }
@@ -751,10 +757,10 @@ export function EventDialogVerwaltung({
 
     if (!staticFormData.all_day) {
       const [startHours = 0, startMinutes = 0] = staticFormData.startTime
-        .split(":")
+        .split(':')
         .map(Number);
       const [endHours = 0, endMinutes = 0] = staticFormData.endTime
-        .split(":")
+        .split(':')
         .map(Number);
 
       if (
@@ -802,12 +808,12 @@ export function EventDialogVerwaltung({
 
     const org_id = currentEinsatz?.org_id ?? activeOrgId;
     if (!org_id) {
-      toast.error("Organisation konnte nicht zugeordnet werden.");
+      toast.error('Organisation konnte nicht zugeordnet werden.');
       return;
     }
 
     if (!currentUserId) {
-      toast.error("Benutzerdaten konnten nicht zugeordnet werden.");
+      toast.error('Benutzerdaten konnten nicht zugeordnet werden.');
       return;
     }
 
@@ -815,7 +821,7 @@ export function EventDialogVerwaltung({
     const isNewEinsatz = !currentEinsatz?.id;
 
     const previousAssignedUsers =
-      currentEinsatz && "assigned_users" in currentEinsatz
+      currentEinsatz && 'assigned_users' in currentEinsatz
         ? currentEinsatz.assigned_users || []
         : [];
 
@@ -833,14 +839,14 @@ export function EventDialogVerwaltung({
     );
 
     console.log(
-      "Detected change types for activity log:",
+      'Detected change types for activity log:',
       changeTypeNames,
       isNewEinsatz,
       currentAssignedUsers
     );
     for (const changeTypeName of changeTypeNames) {
       const effectiveAffectedUserId =
-        changeTypeName === "create" ? null : affectedUserId;
+        changeTypeName === 'create' ? null : affectedUserId;
       if (currentEinsatz?.id && currentUserId) {
         createChangeLogAuto({
           einsatzId: currentEinsatz.id,
@@ -848,7 +854,7 @@ export function EventDialogVerwaltung({
           typeName: changeTypeName,
           affectedUserId: effectiveAffectedUserId,
         }).catch((error) => {
-          toast.error("Failed to create activity log: " + error);
+          toast.error('Failed to create activity log: ' + error);
         });
       }
     }
@@ -858,11 +864,11 @@ export function EventDialogVerwaltung({
       user_property_id: String(p.user_property_id),
       is_required: !!p.is_required,
       min_matching_users:
-        typeof p.min_matching_users === "number"
+        typeof p.min_matching_users === 'number'
           ? p.min_matching_users
           : p.min_matching_users == null
-          ? null
-          : Number(p.min_matching_users),
+            ? null
+            : Number(p.min_matching_users),
     }));
     //endregion
 
@@ -904,28 +910,28 @@ export function EventDialogVerwaltung({
     <>
       {AlertDialogComponent}
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-220 flex flex-col max-h-[90vh]">
-          <DialogHeader className="shrink-0 sticky top-0 bg-background z-10 pb-4 border-b">
+        <DialogContent className="flex max-h-[90vh] max-w-220 flex-col">
+          <DialogHeader className="bg-background sticky top-0 z-10 shrink-0 border-b pb-4">
             <DialogTitle>
               {isLoading
-                ? "Laden..."
+                ? 'Laden...'
                 : currentEinsatz?.id
-                ? `Bearbeite '${staticFormData.title}'`
-                : staticFormData.title
-                ? `Erstelle '${staticFormData.title}'`
-                : `Erstelle ${einsatz_singular}`}
+                  ? `Bearbeite '${staticFormData.title}'`
+                  : staticFormData.title
+                    ? `Erstelle '${staticFormData.title}'`
+                    : `Erstelle ${einsatz_singular}`}
             </DialogTitle>
             <DialogDescription className="sr-only">
               {currentEinsatz?.id
-                ? einsatz_singular + " bearbeiten"
-                : einsatz_singular + " anlegen"}
+                ? einsatz_singular + ' bearbeiten'
+                : einsatz_singular + ' anlegen'}
             </DialogDescription>
           </DialogHeader>
 
           {/* Display form-level errors */}
           {errors.formErrors.length > 0 && (
-            <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm shrink-0">
-              <ul className="list-disc list-inside">
+            <div className="bg-destructive/15 text-destructive shrink-0 rounded-md px-3 py-2 text-sm">
+              <ul className="list-inside list-disc">
                 {errors.formErrors.map((error, index) => (
                   <li key={index}>{error}</li>
                 ))}
@@ -941,12 +947,12 @@ export function EventDialogVerwaltung({
                 ) : !activeTemplateId ? (
                   // template not yet set, show options
                   <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
-                    <div className="flex flex-wrap gap-4 mt-1.5">
+                    <div className="mt-1.5 flex flex-wrap gap-4">
                       {templatesQuery.data?.map((t) => (
                         <ToggleItemBig
                           key={t.id}
-                          text={t.name ?? "Vorlage"}
-                          description={t.description ?? ""}
+                          text={t.name ?? 'Vorlage'}
+                          description={t.description ?? ''}
                           iconUrl={t.template_icon.icon_url.trim()}
                           onClick={() => {
                             handleTemplateSelect(t.id);
@@ -959,7 +965,7 @@ export function EventDialogVerwaltung({
                 ) : (
                   <div className="flex justify-between">
                     <div>
-                      Aktive Vorlage:{" "}
+                      Aktive Vorlage:{' '}
                       {
                         templatesQuery.data?.find(
                           (t) => t.id === activeTemplateId
@@ -1003,7 +1009,7 @@ export function EventDialogVerwaltung({
                   usersQuery?.data
                     ? usersQuery.data.map((user) => ({
                         value: user.id,
-                        label: user.firstname + " " + user.lastname,
+                        label: user.firstname + ' ' + user.lastname,
                       }))
                     : []
                 }
@@ -1028,9 +1034,9 @@ export function EventDialogVerwaltung({
             </div>
           </div>
 
-          <DialogFooter className="flex-row sm:justify-between shrink-0 sticky bottom-0 bg-background z-10 pt-4 border-t">
+          <DialogFooter className="bg-background sticky bottom-0 z-10 shrink-0 flex-row border-t pt-4 sm:justify-between">
             {
-              <TooltipCustom text={einsatz_singular + " löschen"}>
+              <TooltipCustom text={einsatz_singular + ' löschen'}>
                 <Button
                   variant="outline"
                   size="icon"
@@ -1048,7 +1054,7 @@ export function EventDialogVerwaltung({
                       onDelete
                     )
                   }
-                  aria-label={einsatz_singular + " löschen"}
+                  aria-label={einsatz_singular + ' löschen'}
                 >
                   <RiDeleteBinLine size={16} aria-hidden="true" />
                 </Button>

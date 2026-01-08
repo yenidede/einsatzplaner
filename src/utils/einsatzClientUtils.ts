@@ -1,10 +1,16 @@
 // Client-seitige Hilfsfunktionen für Einsatz-Formulare
 
-export function checkHelferWarning(anzahlHelfer: number, minimumHelfer: number = 2): boolean {
+export function checkHelferWarning(
+  anzahlHelfer: number,
+  minimumHelfer: number = 2
+): boolean {
   return anzahlHelfer < minimumHelfer;
 }
 
-export function validateTimeRange(uhrzeitVon: string, uhrzeitBis: string): boolean {
+export function validateTimeRange(
+  uhrzeitVon: string,
+  uhrzeitBis: string
+): boolean {
   const [vonHour, vonMin] = uhrzeitVon.split(':').map(Number);
   const [bisHour, bisMin] = uhrzeitBis.split(':').map(Number);
   const vonMinutes = vonHour * 60 + vonMin;
@@ -12,7 +18,10 @@ export function validateTimeRange(uhrzeitVon: string, uhrzeitBis: string): boole
   return bisMinutes > vonMinutes;
 }
 
-export function calculateDuration(uhrzeitVon: string, uhrzeitBis: string): number {
+export function calculateDuration(
+  uhrzeitVon: string,
+  uhrzeitBis: string
+): number {
   const [vonHour, vonMin] = uhrzeitVon.split(':').map(Number);
   const [bisHour, bisMin] = uhrzeitBis.split(':').map(Number);
   const vonMinutes = vonHour * 60 + vonMin;
@@ -20,6 +29,9 @@ export function calculateDuration(uhrzeitVon: string, uhrzeitBis: string): numbe
   return bisMinutes - vonMinutes;
 }
 
-export function calculateTotalPrice(anzahlTeilnehmer: number, einzelpreis: number): number {
+export function calculateTotalPrice(
+  anzahlTeilnehmer: number,
+  einzelpreis: number
+): number {
   return anzahlTeilnehmer * einzelpreis;
 }

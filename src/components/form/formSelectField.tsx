@@ -1,13 +1,13 @@
-import React from "react";
-import { Label } from "@/components/ui/label";
+import React from 'react';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import ErrorDisplay from "./errorDisplay";
+} from '@/components/ui/select';
+import ErrorDisplay from './errorDisplay';
 
 export interface Option {
   value: string;
@@ -27,19 +27,19 @@ export default function FormSelectField({
   name,
   value,
   options,
-  placeholder = "Auswählen...",
+  placeholder = 'Auswählen...',
   errors,
   onValueChange,
   ...props
 }: FormSelectFieldProps &
-  Omit<React.ComponentProps<typeof Select>, "value" | "onValueChange">) {
-  const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
+  Omit<React.ComponentProps<typeof Select>, 'value' | 'onValueChange'>) {
+  const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
 
   // Convert string array to Option array if needed
   const normalizedOptions: Option[] =
-    options.length > 0 && typeof options[0] === "string"
+    options.length > 0 && typeof options[0] === 'string'
       ? (options as string[]).map((option) => ({
-          value: option.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase(),
+          value: option.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase(),
           label: option,
         }))
       : (options as Option[]);

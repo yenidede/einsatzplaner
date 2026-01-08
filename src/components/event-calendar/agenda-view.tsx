@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { RiCalendarEventLine } from "@remixicon/react";
-import { addDays, format, isToday } from "date-fns";
-import { de } from "date-fns/locale";
+import { useMemo } from 'react';
+import { RiCalendarEventLine } from '@remixicon/react';
+import { addDays, format, isToday } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 import {
   AgendaDaysToShow,
   CalendarEvent,
   EventItem,
   getAgendaEventsForDay,
-} from "@/components/event-calendar";
-import { CalendarMode } from "./types";
+} from '@/components/event-calendar';
+import { CalendarMode } from './types';
 
 interface AgendaViewProps {
   currentDate: Date;
@@ -28,7 +28,7 @@ export function AgendaView({
 }: AgendaViewProps) {
   // Show events for the next days based on constant
   const days = useMemo(() => {
-    console.log("Agenda view updating with date:", currentDate.toISOString());
+    console.log('Agenda view updating with date:', currentDate.toISOString());
     return Array.from({ length: AgendaDaysToShow }, (_, i) =>
       addDays(new Date(currentDate), i)
     );
@@ -36,7 +36,7 @@ export function AgendaView({
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log("Agenda view event clicked:", event);
+    console.log('Agenda view event clicked:', event);
     onEventSelect(event);
   };
 
@@ -73,7 +73,7 @@ export function AgendaView({
                 className="bg-background absolute -top-3 left-0 flex h-6 items-center pe-4 text-[10px] uppercase data-today:font-medium sm:pe-4 sm:text-xs"
                 data-today={isToday(day) || undefined}
               >
-                {format(day, "d MMM, EEEE", { locale: de })}
+                {format(day, 'd MMM, EEEE', { locale: de })}
               </span>
               <div className="mt-6 space-y-2">
                 {dayEvents.map((event) => (

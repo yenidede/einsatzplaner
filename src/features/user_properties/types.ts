@@ -1,5 +1,5 @@
-export type FieldType = "text" | "number" | "boolean" | "select";
-export type Step = "overview" | "typeSelection" | "configuration";
+export type FieldType = 'text' | 'number' | 'boolean' | 'select';
+export type Step = 'overview' | 'typeSelection' | 'configuration';
 
 export interface PropertyConfig {
   name: string;
@@ -31,22 +31,22 @@ export interface PropertyConfig {
 }
 
 export const INITIAL_CONFIG: PropertyConfig = {
-  name: "",
-  description: "",
+  name: '',
+  description: '',
   fieldType: null,
-  placeholder: "",
+  placeholder: '',
   maxLength: undefined,
   isMultiline: false,
   minValue: undefined,
   maxValue: undefined,
   isDecimal: false,
-  trueLabel: "Ja",
-  falseLabel: "Nein",
+  trueLabel: 'Ja',
+  falseLabel: 'Nein',
   booleanDefaultValue: null,
   options: [],
   defaultOption: undefined,
   isRequired: false,
-  defaultValue: "",
+  defaultValue: '',
 };
 
 // Validierungsfehler

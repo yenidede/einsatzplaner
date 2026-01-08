@@ -1,26 +1,26 @@
-import React from "react";
-import { Page, Text, View } from "@react-pdf/renderer";
-import { BookingFooter } from "../shared/PDFBookingFooter";
-import { PDFHeader } from "../shared/PDFHeader";
-import { PDFContactSection } from "../shared/PDFContactSection";
-import { PDFCostInfo } from "../shared/PDFCostInfo";
-import { PDFCancellationText } from "../shared/PDFCancellationText";
-import { PDFSignature } from "../shared/PDFSignature";
-import type { Einsatz } from "@/features/einsatz/types";
-import { OrganizationForPDF } from "@/features/organization/types";
-import { commonStyles } from "../styles/common-styles";
+import React from 'react';
+import { Page, Text, View } from '@react-pdf/renderer';
+import { BookingFooter } from '../shared/PDFBookingFooter';
+import { PDFHeader } from '../shared/PDFHeader';
+import { PDFContactSection } from '../shared/PDFContactSection';
+import { PDFCostInfo } from '../shared/PDFCostInfo';
+import { PDFCancellationText } from '../shared/PDFCancellationText';
+import { PDFSignature } from '../shared/PDFSignature';
+import type { Einsatz } from '@/features/einsatz/types';
+import { OrganizationForPDF } from '@/features/organization/types';
+import { commonStyles } from '../styles/common-styles';
 import type {
   AssignedUser,
   EinsatzCategory,
   PDFDisplayOptions,
-} from "../types/types";
+} from '../types/types';
 import {
   formatDate,
   formatTime,
   formatAssignedUserNames,
   formatCurrentUserName,
-} from "../utils/pdf-helpers";
-import { Decimal } from "@/generated/prisma/runtime/library";
+} from '../utils/pdf-helpers';
+import { Decimal } from '@/generated/prisma/runtime/library';
 
 type BookingConfirmationPDFProps = {
   einsatz: Einsatz;
@@ -49,10 +49,10 @@ export const BookingConfirmationPDF_Group: React.FC<
     einsatz.price_per_person != null
       ? new Decimal(einsatz.price_per_person)
       : new Decimal(9);
-  const orgName = organization?.name ?? "Jüdisches Museum Hohenems";
+  const orgName = organization?.name ?? 'Jüdisches Museum Hohenems';
 
   const isSchule = einsatzCategories.some((category) =>
-    (category.value ?? "").toLowerCase().includes("schule")
+    (category.value ?? '').toLowerCase().includes('schule')
   );
 
   const programDisplay =
@@ -60,8 +60,8 @@ export const BookingConfirmationPDF_Group: React.FC<
       ? einsatzCategories
           .map((cat) => cat.abbreviation)
           .filter(Boolean)
-          .join("/") || einsatz.title
-      : einsatzCategories[0]?.value || "Wird noch bekanntgegeben";
+          .join('/') || einsatz.title
+      : einsatzCategories[0]?.value || 'Wird noch bekanntgegeben';
 
   return (
     <Page size="A4" style={commonStyles.page}>

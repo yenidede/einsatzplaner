@@ -1,7 +1,7 @@
-"use server";
+'use server';
 
-import prisma from "@/lib/prisma";
-import { createClient } from "@supabase/supabase-js";
+import prisma from '@/lib/prisma';
+import { createClient } from '@supabase/supabase-js';
 
 export async function getAllUsersWithRolesByOrgIds(
   org_ids: string[],
@@ -148,13 +148,13 @@ export async function createAvatarUploadUrl(
   });
 
   if (!invitationUser) {
-    throw new Error("either UserID or Invitation is invalid");
+    throw new Error('either UserID or Invitation is invalid');
   }
 
   const filePath = `${invitationUser.new_user_id}/avatar.webp`;
 
   const { data, error } = await supabaseAdmin.storage
-    .from("avatars")
+    .from('avatars')
     .createSignedUploadUrl(filePath, { upsert: true });
 
   if (error) {
@@ -174,5 +174,5 @@ export async function deleteAvatarFromStorage(userId: string) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  await supabaseAdmin.storage.from("avatars").remove([`${userId}/avatar.webp`]);
+  await supabaseAdmin.storage.from('avatars').remove([`${userId}/avatar.webp`]);
 }

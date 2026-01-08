@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 // Thin client wrapper around the calendar logic (implemented in CalendarClient).
 // Previously this file was marked with "use server" and exported an async function,
@@ -7,8 +7,8 @@
 // depending on surrounding code, cascading state updates leading to the
 // "Maximum update depth exceeded" error you observed. Making this a pure client
 // wrapper removes that mismatch.
-import CalendarClient from "./calendar-client";
-import { CalendarMode } from "./types";
+import CalendarClient from './calendar-client';
+import { CalendarMode } from './types';
 
 export default function Calendar({ mode }: { mode: CalendarMode }) {
   return <CalendarClient mode={mode} />;

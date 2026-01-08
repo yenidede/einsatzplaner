@@ -17,10 +17,10 @@ export default function SwitchIcon({
         width="44"
         height="24"
         rx="12"
-        fill={isOn ? "#0F172A" : "#D1D5DB"}
+        fill={isOn ? '#0F172A' : '#D1D5DB'}
       />
       <circle
-        cx={isOn ? "32" : "12"}
+        cx={isOn ? '32' : '12'}
         cy="12"
         r="10"
         fill="white"
