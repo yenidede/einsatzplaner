@@ -1,7 +1,7 @@
-"use server";
+'use server';
 
-import prisma from "@/lib/prisma";
-import type { einsatz_template as Template } from "@/generated/prisma";
+import prisma from '@/lib/prisma';
+import type { einsatz_template as Template } from '@/generated/prisma';
 
 export async function getAllTemplatesByIds(ids: string[]) {
   const templates = await prisma.einsatz_template.findMany({
@@ -35,7 +35,7 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
               type: {
                 select: {
                   datatype: true,
-                }
+                },
               },
               is_required: true,
               placeholder: true,
@@ -45,11 +45,11 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
               min: true,
               max: true,
               allowed_values: true,
-            }
-          }
-        }
-      }
-    }
+            },
+          },
+        },
+      },
+    },
   });
   return templates;
 }
@@ -72,7 +72,7 @@ export async function getTemplateById(id: string) {
               type: {
                 select: {
                   datatype: true,
-                }
+                },
               },
               is_required: true,
               placeholder: true,
@@ -82,11 +82,11 @@ export async function getTemplateById(id: string) {
               min: true,
               max: true,
               allowed_values: true,
-            }
-          }
-        }
-      }
-    }
+            },
+          },
+        },
+      },
+    },
   });
   return template;
 }

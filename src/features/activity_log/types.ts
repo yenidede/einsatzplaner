@@ -1,5 +1,5 @@
-export type ActivityStatus = "unread" | "read";
-export type ActivityCategory = "ungelesen" | "gelesen";
+export type ActivityStatus = 'unread' | 'read';
+export type ActivityCategory = 'ungelesen' | 'gelesen';
 
 export interface ChangeLogEntry {
   id: string;

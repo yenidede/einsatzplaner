@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
-import { ActivityLogList } from "./ActivityLogList";
-import { ActivityLogListSkeleton } from "./ActivityLogListSkeleton";
-import { activityLogQueryKeys as ActivityLogQueryKeys } from "../queryKeys";
-import { getActivitiesForEinsatzAction } from "../activity_log-actions";
+import { ActivityLogList } from './ActivityLogList';
+import { ActivityLogListSkeleton } from './ActivityLogListSkeleton';
+import { activityLogQueryKeys as ActivityLogQueryKeys } from '../queryKeys';
+import { getActivitiesForEinsatzAction } from '../activity_log-actions';
 
 interface EinsatzActivityLogProps {
   einsatzId: string | null;
@@ -24,18 +24,18 @@ export function EinsatzActivityLog({
   const [showAll, setShowAll] = useState(false);
 
   const limitedQuery = useQuery({
-    queryKey: ActivityLogQueryKeys.einsatz(einsatzId ?? "", initialLimit),
-    queryFn: () => getActivitiesForEinsatzAction(einsatzId ?? "", initialLimit),
+    queryKey: ActivityLogQueryKeys.einsatz(einsatzId ?? '', initialLimit),
+    queryFn: () => getActivitiesForEinsatzAction(einsatzId ?? '', initialLimit),
     enabled: !!einsatzId && !showAll,
   });
 
   const allQuery = useQuery({
     queryKey: ActivityLogQueryKeys.einsatz(
-      einsatzId ?? "",
+      einsatzId ?? '',
       MAX_ACTIVITIES_LIMIT
     ),
     queryFn: () =>
-      getActivitiesForEinsatzAction(einsatzId ?? "", MAX_ACTIVITIES_LIMIT),
+      getActivitiesForEinsatzAction(einsatzId ?? '', MAX_ACTIVITIES_LIMIT),
     enabled: !!einsatzId && showAll,
   });
 
@@ -58,8 +58,8 @@ export function EinsatzActivityLog({
       limitedQuery.data?.success === false ||
       allQuery.data?.success === false
     ) {
-      toast.error("Aktivitäten konnten nicht geladen werden", {
-        id: "einsatz-activity-error",
+      toast.error('Aktivitäten konnten nicht geladen werden', {
+        id: 'einsatz-activity-error',
       });
     }
   }, [limitedQuery.data?.success, allQuery.data?.success]);

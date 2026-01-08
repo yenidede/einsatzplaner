@@ -1,26 +1,26 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import type { DraggableAttributes } from "@dnd-kit/core";
-import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
-import { differenceInMinutes, format, isPast } from "date-fns";
-import { useSession } from "next-auth/react";
+import { useMemo } from 'react';
+import type { DraggableAttributes } from '@dnd-kit/core';
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
+import { differenceInMinutes, format, isPast } from 'date-fns';
+import { useSession } from 'next-auth/react';
 
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 import {
   getBorderRadiusClasses,
   getEventColorClasses,
   type CalendarEvent,
-} from "@/components/event-calendar";
-import { CalendarMode } from "./types";
-import { einsatz_status as EinsatzStatus } from "@/generated/prisma";
-import { ContextMenuEventRightClick } from "../context-menu";
+} from '@/components/event-calendar';
+import { CalendarMode } from './types';
+import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
+import { ContextMenuEventRightClick } from '../context-menu';
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
 // ':mm' - minutes with leading zero
 const formatTimeWithOptionalMinutes = (date: Date) => {
-  return format(date, "HH:mm");
+  return format(date, 'HH:mm');
 };
 
 interface EventWrapperProps {
@@ -65,17 +65,17 @@ function EventWrapper({
 
   const isEventInPast = isPast(displayEnd);
   const userId = useSession().data?.user?.id;
-  let statusForColor: EinsatzStatus | string = event.status || "fallback";
+  let statusForColor: EinsatzStatus | string = event.status || 'fallback';
 
   if (event.assignedUsers.some((assignedUserId) => assignedUserId === userId)) {
     // User is a helper for this event
-    statusForColor = "eigene";
+    statusForColor = 'eigene';
   }
   return (
     <button
       className={cn(
-        "focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2",
-        getEventColorClasses(statusForColor || "fallback", mode),
+        'focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2',
+        getEventColorClasses(statusForColor || 'fallback', mode),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
       )}
@@ -94,7 +94,7 @@ function EventWrapper({
 
 interface EventItemProps {
   event: CalendarEvent;
-  view: "month" | "week" | "day" | "agenda";
+  view: 'month' | 'week' | 'day' | 'agenda';
   isDragging?: boolean;
   onClick?: (e: React.MouseEvent) => void;
   showTime?: boolean;
@@ -131,13 +131,13 @@ export function EventItem({
 }: EventItemProps) {
   // Use the provided currentTime (for dragging) or the event's actual time
   const userId = useSession().data?.user?.id;
-  let statusForColor: EinsatzStatus | string = event.status || "fallback";
+  let statusForColor: EinsatzStatus | string = event.status || 'fallback';
 
   if (
     event.assignedUsers?.some((assignedUserId) => assignedUserId === userId)
   ) {
     // User is a helper for this event
-    statusForColor = "eigene";
+    statusForColor = 'eigene';
   }
 
   const displayStart = useMemo(() => {
@@ -159,7 +159,7 @@ export function EventItem({
   }, [displayStart, displayEnd]);
 
   const getEventTime = () => {
-    if (event.allDay) return "All day";
+    if (event.allDay) return 'All day';
 
     // Always show both start and end time for consistency
     return `${formatTimeWithOptionalMinutes(
@@ -167,7 +167,7 @@ export function EventItem({
     )} - ${formatTimeWithOptionalMinutes(displayEnd)}`;
   };
 
-  if (view === "month") {
+  if (view === 'month') {
     const eventWrapper = (
       <EventWrapper
         event={event}
@@ -176,8 +176,8 @@ export function EventItem({
         isDragging={isDragging}
         onClick={onClick}
         className={cn(
-          "mt-(--event-gap) items-center text-[0.7rem] sm:text-xs",
-          event.allDay ? "h-auto py-1" : "min-h-fit h-auto py-1",
+          'mt-(--event-gap) items-center text-[0.7rem] sm:text-xs',
+          event.allDay ? 'h-auto py-1' : 'h-auto min-h-fit py-1',
           className
         )}
         currentTime={currentTime}
@@ -188,11 +188,11 @@ export function EventItem({
         mode={mode}
       >
         {children || (
-          <div className="flex flex-col w-full">
+          <div className="flex w-full flex-col">
             {!event.allDay && (
-              <div className="font-normal opacity-70 text-[0.6875rem] sm:text-[0.6875rem] leading-tight">
+              <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
                 {formatTimeWithOptionalMinutes(displayStart)}
-                {"-"}
+                {'-'}
                 {formatTimeWithOptionalMinutes(displayEnd)}
               </div>
             )}
@@ -213,7 +213,7 @@ export function EventItem({
     );
   }
 
-  if (view === "week" || view === "day") {
+  if (view === 'week' || view === 'day') {
     const eventWrapper = (
       <EventWrapper
         event={event}
@@ -222,8 +222,8 @@ export function EventItem({
         isDragging={isDragging}
         onClick={onClick}
         className={cn(
-          "py-1 flex-col",
-          view === "week" ? "text-[10px] sm:text-xs" : "text-xs",
+          'flex-col py-1',
+          view === 'week' ? 'text-[10px] sm:text-xs' : 'text-xs',
           className
         )}
         currentTime={currentTime}
@@ -233,11 +233,11 @@ export function EventItem({
         onTouchStart={onTouchStart}
         mode={mode}
       >
-        <div className="font-medium leading-tight wrap-break-word">
+        <div className="leading-tight font-medium wrap-break-word">
           {event.title}
         </div>
         {showTime && (
-          <div className="font-normal opacity-70 text-[10px] sm:text-[11px] leading-tight wrap-break-word">
+          <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
             {getEventTime()}
           </div>
         )}
@@ -259,7 +259,7 @@ export function EventItem({
   const agendaView = (
     <button
       className={cn(
-        "focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90",
+        'focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90',
         getEventColorClasses(statusForColor, mode), // Use statusForColor instead of event.status
         className
       )}
@@ -277,7 +277,7 @@ export function EventItem({
         ) : (
           <span className="uppercase">
             {formatTimeWithOptionalMinutes(displayStart)}
-            {"-"}
+            {'-'}
             {formatTimeWithOptionalMinutes(displayEnd)}
           </span>
         )}

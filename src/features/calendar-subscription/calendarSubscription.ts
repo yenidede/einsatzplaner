@@ -1,5 +1,5 @@
-import prisma from "@/lib/prisma";
-import { generatedToken } from "@/lib/token";
+import prisma from '@/lib/prisma';
+import { generatedToken } from '@/lib/token';
 
 export async function getOrCreateCalendarSubscription(
   orgId: string,
@@ -45,17 +45,17 @@ export async function deactivateCalendarSubscription(id: string) {
 export function buildCalendarSubscriptionUrl(token: string) {
   const baseUrl = process.env.NEXTAUTH_URL;
   if (!baseUrl) {
-    throw new Error("NEXTAUTH_URL is not defined");
+    throw new Error('NEXTAUTH_URL is not defined');
   }
-  const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   return `${base}/api/calendar/${token}`;
 }
 
 export function buildWebcalUrl(token: string) {
   const baseUrl = process.env.NEXTAUTH_URL;
   if (!baseUrl) {
-    throw new Error("NEXTAUTH_URL is not defined");
+    throw new Error('NEXTAUTH_URL is not defined');
   }
-  const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-  return `webcal://${base.replace(/^https?:\/\//, "")}/api/calendar/${token}`;
+  const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  return `webcal://${base.replace(/^https?:\/\//, '')}/api/calendar/${token}`;
 }

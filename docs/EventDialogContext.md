@@ -14,22 +14,22 @@ The event dialog state is now managed globally through a React Context, allowing
 ### Opening the Dialog from Anywhere
 
 ```tsx
-import { useEventDialog } from "@/hooks/use-event-dialog";
+import { useEventDialog } from '@/hooks/use-event-dialog';
 
 function MyComponent() {
   const { openDialog } = useEventDialog();
 
   const handleClick = () => {
     // Open dialog with an event ID (string)
-    openDialog("event-uuid-here");
+    openDialog('event-uuid-here');
 
     // Or open dialog with a new event object
     openDialog({
-      title: "New Event",
+      title: 'New Event',
       start: new Date(),
       end: new Date(),
-      org_id: "org-uuid",
-      created_by: "user-uuid",
+      org_id: 'org-uuid',
+      created_by: 'user-uuid',
       // ... other fields
     });
 
@@ -55,7 +55,7 @@ interface EventDialogContextValue {
 ### Example: Opening from Notification Menu
 
 ```tsx
-import { useEventDialog } from "@/hooks/use-event-dialog";
+import { useEventDialog } from '@/hooks/use-event-dialog';
 
 function NotificationItem({ einsatzId }: { einsatzId: string }) {
   const { openDialog } = useEventDialog();

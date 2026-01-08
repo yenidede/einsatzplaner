@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import { AlertDialogProvider } from "@/components/AlertDialog";
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { AlertDialogProvider } from '@/components/AlertDialog';
 
 type AlertDialogOptions = {
   title: string;
@@ -9,13 +9,13 @@ type AlertDialogOptions = {
 };
 
 interface AlertDialogContextValue {
-  showDialog: (options: AlertDialogOptions) => Promise<"success" | "cancel">;
+  showDialog: (options: AlertDialogOptions) => Promise<'success' | 'cancel'>;
 }
 
 // Convenience exported function type for external helpers
 export type ShowDialogFn = (
   options: AlertDialogOptions
-) => Promise<"success" | "cancel">;
+) => Promise<'success' | 'cancel'>;
 
 const AlertDialogContext = createContext<AlertDialogContextValue | undefined>(
   undefined
@@ -25,7 +25,7 @@ export function useAlertDialog() {
   const context = useContext(AlertDialogContext);
   if (!context) {
     throw new Error(
-      "useAlertDialog must be used within an AlertDialogContextProvider"
+      'useAlertDialog must be used within an AlertDialogContextProvider'
     );
   }
   return context;
@@ -41,12 +41,12 @@ export function AlertDialogContextProvider({
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<AlertDialogOptions | null>(null);
   const [resolver, setResolver] = useState<
-    ((value: "success" | "cancel") => void) | null
+    ((value: 'success' | 'cancel') => void) | null
   >(null);
 
   const showDialog = (
     dialogOptions: AlertDialogOptions
-  ): Promise<"success" | "cancel"> => {
+  ): Promise<'success' | 'cancel'> => {
     setOptions(dialogOptions);
     setIsOpen(true);
 
@@ -57,13 +57,13 @@ export function AlertDialogContextProvider({
 
   const handleConfirm = () => {
     setIsOpen(false);
-    resolver?.("success");
+    resolver?.('success');
     setResolver(null);
   };
 
   const handleCancel = () => {
     setIsOpen(false);
-    resolver?.("cancel");
+    resolver?.('cancel');
     setResolver(null);
   };
 

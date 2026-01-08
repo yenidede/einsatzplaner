@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ActivityLogListSkeletonProps {
   className?: string;
@@ -10,8 +10,8 @@ interface ActivityLogListSkeletonProps {
 
 function ActivityItemSkeleton() {
   return (
-    <div className="flex justify-between items-center gap-3 py-2">
-      <Skeleton className="rounded-full w-8 h-8 shrink-0" />
+    <div className="flex items-center justify-between gap-3 py-2">
+      <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
       <div className="grow space-y-2">
         <Skeleton className="h-4 w-3/4" />
       </div>
@@ -29,7 +29,7 @@ function ActivityGroupSkeleton({
 }) {
   return (
     <div className="space-y-1">
-      <h4 className="text-base font-semibold mb-3">{title}</h4>
+      <h4 className="mb-3 text-base font-semibold">{title}</h4>
       {Array.from({ length: itemCount }).map((_, index) => (
         <ActivityItemSkeleton key={index} />
       ))}
@@ -46,7 +46,7 @@ export function ActivityLogListSkeleton({
   const earlierCount = itemCount - todayCount - yesterdayCount;
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn('space-y-6', className)}>
       {todayCount > 0 && (
         <ActivityGroupSkeleton title="Heute" itemCount={todayCount} />
       )}

@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { Label } from "@/components/ui/label";
-import { resetPasswordAction } from "@/features/auth/actions";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { Label } from '@/components/ui/label';
+import { resetPasswordAction } from '@/features/auth/actions';
 
 const resetPasswordSchema = z
   .object({
-    password: z.string().min(8, "Passwort muss mindestens 8 Zeichen lang sein"),
+    password: z.string().min(8, 'Passwort muss mindestens 8 Zeichen lang sein'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwörter stimmen nicht überein",
-    path: ["confirmPassword"],
+    message: 'Passwörter stimmen nicht überein',
+    path: ['confirmPassword'],
   });
 
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
@@ -34,14 +34,14 @@ export default function ResetPasswordClient({ token }: { token?: string }) {
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
-      password: "",
-      confirmPassword: "",
+      password: '',
+      confirmPassword: '',
     },
   });
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
     if (!token) {
-      toast.error("Kein Token vorhanden");
+      toast.error('Kein Token vorhanden');
       return;
     }
 
@@ -54,14 +54,14 @@ export default function ResetPasswordClient({ token }: { token?: string }) {
       });
 
       if (result.success) {
-        toast.success("Passwort erfolgreich zurückgesetzt");
-        router.push("/signin");
+        toast.success('Passwort erfolgreich zurückgesetzt');
+        router.push('/signin');
       } else {
-        toast.error(result.error || "Fehler beim Zurücksetzen");
+        toast.error(result.error || 'Fehler beim Zurücksetzen');
       }
     } catch (error) {
-      console.error("Reset password error:", error);
-      toast.error("Ein Fehler ist aufgetreten");
+      console.error('Reset password error:', error);
+      toast.error('Ein Fehler ist aufgetreten');
     } finally {
       setIsLoading(false);
     }
@@ -70,12 +70,12 @@ export default function ResetPasswordClient({ token }: { token?: string }) {
   if (!token) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center space-y-4">
+        <div className="space-y-4 text-center">
           <h1 className="text-2xl font-bold">Ungültiger Link</h1>
           <p className="text-muted-foreground">
             Der Reset-Link ist ungültig oder abgelaufen.
           </p>
-          <Button onClick={() => router.push("/forgot-password")}>
+          <Button onClick={() => router.push('/forgot-password')}>
             Neuen Link anfordern
           </Button>
         </div>
@@ -100,11 +100,11 @@ export default function ResetPasswordClient({ token }: { token?: string }) {
               id="password"
               type="password"
               placeholder="••••••••"
-              {...register("password")}
+              {...register('password')}
               disabled={isLoading}
             />
             {errors.password && (
-              <p className="text-sm text-destructive">
+              <p className="text-destructive text-sm">
                 {errors.password.message}
               </p>
             )}
@@ -116,18 +116,18 @@ export default function ResetPasswordClient({ token }: { token?: string }) {
               id="confirmPassword"
               type="password"
               placeholder="••••••••"
-              {...register("confirmPassword")}
+              {...register('confirmPassword')}
               disabled={isLoading}
             />
             {errors.confirmPassword && (
-              <p className="text-sm text-destructive">
+              <p className="text-destructive text-sm">
                 {errors.confirmPassword.message}
               </p>
             )}
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Wird gespeichert..." : "Passwort zurücksetzen"}
+            {isLoading ? 'Wird gespeichert...' : 'Passwort zurücksetzen'}
           </Button>
         </form>
       </div>

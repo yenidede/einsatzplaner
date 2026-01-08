@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { forgotPasswordAction } from "@/features/auth/actions";
-import Link from "next/link";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { forgotPasswordAction } from '@/features/auth/actions';
+import Link from 'next/link';
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email("Ungültige E-Mail-Adresse"),
+  email: z.string().email('Ungültige E-Mail-Adresse'),
 });
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
   } = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
-      email: "",
+      email: '',
     },
   });
 
@@ -44,11 +44,11 @@ export default function ForgotPasswordPage() {
         setEmailSent(true);
         toast.success(result.message);
       } else {
-        toast.error(result.error || "Ein Fehler ist aufgetreten");
+        toast.error(result.error || 'Ein Fehler ist aufgetreten');
       }
     } catch (error) {
-      console.error("Forgot password error:", error);
-      toast.error("Ein Fehler ist aufgetreten");
+      console.error('Forgot password error:', error);
+      toast.error('Ein Fehler ist aufgetreten');
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="w-full max-w-md space-y-8 px-4">
           <div className="text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <svg
                 className="h-6 w-6 text-green-600"
                 fill="none"
@@ -79,11 +79,11 @@ export default function ForgotPasswordPage() {
               Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde eine
               E-Mail mit weiteren Anweisungen gesendet.
             </p>
-            <p className="text-sm text-muted-foreground mt-4">
+            <p className="text-muted-foreground mt-4 text-sm">
               Überprüfen Sie auch Ihren Spam-Ordner.
             </p>
             <div className="mt-6 space-y-2">
-              <Button onClick={() => router.push("/signin")} className="w-full">
+              <Button onClick={() => router.push('/signin')} className="w-full">
                 Zurück zur Anmeldung
               </Button>
               <Button
@@ -118,16 +118,16 @@ export default function ForgotPasswordPage() {
               id="email"
               type="email"
               placeholder="name@example.com"
-              {...register("email")}
+              {...register('email')}
               disabled={isLoading}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p className="text-destructive text-sm">{errors.email.message}</p>
             )}
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Wird gesendet..." : "Reset-Link senden"}
+            {isLoading ? 'Wird gesendet...' : 'Reset-Link senden'}
           </Button>
 
           <div className="text-center text-sm">

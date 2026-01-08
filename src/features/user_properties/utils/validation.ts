@@ -1,4 +1,4 @@
-import type { PropertyConfig, ValidationError } from "../types";
+import type { PropertyConfig, ValidationError } from '../types';
 
 export function validatePropertyConfig(
   config: PropertyConfig,
@@ -8,8 +8,8 @@ export function validatePropertyConfig(
 
   if (!config.name.trim()) {
     errors.push({
-      field: "name",
-      message: "Name der Eigenschaft darf nicht leer sein",
+      field: 'name',
+      message: 'Name der Eigenschaft darf nicht leer sein',
     });
   }
   if (
@@ -17,29 +17,29 @@ export function validatePropertyConfig(
     existingNames.includes(config.name.trim().toLowerCase())
   ) {
     errors.push({
-      field: "name",
-      message: "Eine Eigenschaft mit diesem Namen existiert bereits",
+      field: 'name',
+      message: 'Eine Eigenschaft mit diesem Namen existiert bereits',
     });
   }
 
-  if (config.fieldType === "select") {
+  if (config.fieldType === 'select') {
     if (!config.options || config.options.length === 0) {
       errors.push({
-        field: "options",
-        message: "Mindestens eine Auswahloption muss angegeben werden",
+        field: 'options',
+        message: 'Mindestens eine Auswahloption muss angegeben werden',
       });
     }
   }
 
-  if (config.fieldType === "number") {
+  if (config.fieldType === 'number') {
     if (
       config.minValue !== undefined &&
       config.maxValue !== undefined &&
       config.minValue > config.maxValue
     ) {
       errors.push({
-        field: "minValue",
-        message: "Minimalwert darf nicht größer als Maximalwert sein",
+        field: 'minValue',
+        message: 'Minimalwert darf nicht größer als Maximalwert sein',
       });
     }
   }

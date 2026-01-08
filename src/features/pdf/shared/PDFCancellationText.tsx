@@ -1,6 +1,6 @@
-import React from "react";
-import { Text } from "@react-pdf/renderer";
-import { commonStyles } from "../styles/common-styles";
+import React from 'react';
+import { Text } from '@react-pdf/renderer';
+import { commonStyles } from '../styles/common-styles';
 
 export const PDFCancellationText: React.FC = () => {
   return (

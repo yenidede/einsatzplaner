@@ -4,10 +4,10 @@ import {
   ContextMenuItem,
   ContextMenuLabel,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu";
-import { handlePdfGenerate, handleDelete } from "./event-calendar/utils";
-import { useAlertDialog } from "@/contexts/AlertDialogContext";
-import { usePdfGenerator } from "@/features/pdf/hooks/usePdfGenerator";
+} from '@/components/ui/context-menu';
+import { handlePdfGenerate, handleDelete } from './event-calendar/utils';
+import { useAlertDialog } from '@/contexts/AlertDialogContext';
+import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
 
 interface ContextMenuEventRightClickProps {
   trigger: React.ReactNode;
@@ -26,7 +26,7 @@ export function ContextMenuEventRightClick({
   eventId,
   eventTitle,
   onDelete,
-  einsatzSingular = "Einsatz",
+  einsatzSingular = 'Einsatz',
 }: ContextMenuEventRightClickProps) {
   const { showDialog } = useAlertDialog();
   const { generatePdf } = usePdfGenerator();

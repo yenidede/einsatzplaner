@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useMemo } from "react";
-import { BellIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useMemo } from 'react';
+import { BellIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { getActivityLogs } from "@/features/activity_log/activity_log-dal";
-import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { activityLogQueryKeys } from "@/features/activity_log/queryKeys";
-import { queryKeys as orgQueryKeys } from "@/features/organization/queryKeys";
-import { getFormattedMessage } from "@/features/activity_log/utils";
-import { useEventDialog } from "@/hooks/use-event-dialog";
-import { useSession } from "next-auth/react";
-import { getOrganizationsByIds } from "@/features/organization/org-dal";
+} from '@/components/ui/popover';
+import { getActivityLogs } from '@/features/activity_log/activity_log-dal';
+import { formatDistanceToNow } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
+import { queryKeys as orgQueryKeys } from '@/features/organization/queryKeys';
+import { getFormattedMessage } from '@/features/activity_log/utils';
+import { useEventDialog } from '@/hooks/use-event-dialog';
+import { useSession } from 'next-auth/react';
+import { getOrganizationsByIds } from '@/features/organization/org-dal';
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -35,12 +35,12 @@ function Dot({ className }: { className?: string }) {
   );
 }
 
-const READ_ACTIVITIES_KEY = "read_activities";
+const READ_ACTIVITIES_KEY = 'read_activities';
 
 // Query Keys
 
 const getReadActivities = (): Set<string> => {
-  if (typeof window === "undefined") return new Set();
+  if (typeof window === 'undefined') return new Set();
 
   try {
     const stored = localStorage.getItem(READ_ACTIVITIES_KEY);
@@ -49,19 +49,19 @@ const getReadActivities = (): Set<string> => {
     const parsed = JSON.parse(stored) as string[];
     return new Set(parsed);
   } catch (error) {
-    console.error("Failed to parse read activities from localStorage:", error);
+    console.error('Failed to parse read activities from localStorage:', error);
     return new Set();
   }
 };
 
 const saveReadActivities = (readIds: Set<string>) => {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return;
 
   try {
     const array = Array.from(readIds);
     localStorage.setItem(READ_ACTIVITIES_KEY, JSON.stringify(array));
   } catch (error) {
-    console.error("Failed to save read activities to localStorage:", error);
+    console.error('Failed to save read activities to localStorage:', error);
   }
 };
 
@@ -169,7 +169,7 @@ export default function NotificationMenu() {
           <div className="text-sm font-semibold">Aktivitäten</div>
           {unreadCount > 0 && (
             <button
-              className="text-xs font-medium hover:underline cursor-pointer"
+              className="cursor-pointer text-xs font-medium hover:underline"
               onClick={handleMarkAllAsRead}
             >
               Alle als gelesen markieren
@@ -184,11 +184,11 @@ export default function NotificationMenu() {
 
         <div className="max-h-[400px] overflow-y-auto">
           {isLoading ? (
-            <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+            <div className="text-muted-foreground px-3 py-8 text-center text-sm">
               Lade Aktivitäten...
             </div>
           ) : activities.length === 0 ? (
-            <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+            <div className="text-muted-foreground px-3 py-8 text-center text-sm">
               Keine Aktivitäten vorhanden
             </div>
           ) : (
@@ -198,9 +198,9 @@ export default function NotificationMenu() {
               return (
                 <div
                   key={activity.id}
-                  className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors flex"
+                  className="hover:bg-accent flex rounded-md px-3 py-2 text-sm transition-colors"
                 >
-                  <div className="relative flex items-start gap-3 w-full min-w-0">
+                  <div className="relative flex w-full min-w-0 items-start gap-3">
                     <div
                       className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                       style={{
@@ -224,12 +224,12 @@ export default function NotificationMenu() {
                     </div>
 
                     <button
-                      className="flex-1 min-w-0 space-y-1 flex flex-col items-start text-left"
+                      className="flex min-w-0 flex-1 flex-col items-start space-y-1 text-left"
                       onClick={() => handleNotificationClick(activity.id)}
                     >
                       <div>{getFormattedMessage(activity, openDialog)}</div>
 
-                      <div className="text-muted-foreground text-xs flex justify-between w-full min-w-0">
+                      <div className="text-muted-foreground flex w-full min-w-0 justify-between text-xs">
                         <span className="shrink-0">
                           {formatDistanceToNow(new Date(activity.created_at), {
                             addSuffix: true,
@@ -241,7 +241,7 @@ export default function NotificationMenu() {
                           <span className="ms-2 min-w-0 truncate">
                             {orgsData.find(
                               (org) => org.id === activity.einsatz.org_id
-                            )?.name ?? "Ladefehler"}
+                            )?.name ?? 'Ladefehler'}
                           </span>
                         )}
                       </div>
@@ -267,7 +267,7 @@ export default function NotificationMenu() {
               className="bg-border -mx-1 my-1 h-px"
             ></div>
             <div className="px-3 py-2 text-center">
-              <Button onClick={handleViewAll} variant={"link"} size={"sm"}>
+              <Button onClick={handleViewAll} variant={'link'} size={'sm'}>
                 Alle Aktivitäten anzeigen
               </Button>
             </div>

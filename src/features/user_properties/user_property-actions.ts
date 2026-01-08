@@ -1,4 +1,4 @@
-"use server";
+'use server';
 
 import {
   createUserProperty,
@@ -12,8 +12,8 @@ import {
   type CreateUserPropertyInput,
   type UpdateUserPropertyInput,
   type UserPropertyWithField,
-} from "./user_property-dal";
-import type { PropertyConfig } from "./types";
+} from './user_property-dal';
+import type { PropertyConfig } from './types';
 
 export async function getUserPropertiesAction(
   orgId: string
@@ -21,7 +21,7 @@ export async function getUserPropertiesAction(
   try {
     return await getUserPropertiesByOrgId(orgId);
   } catch (error) {
-    console.error("Error loading user properties:", error);
+    console.error('Error loading user properties:', error);
     throw error;
   }
 }
@@ -32,7 +32,7 @@ export async function getExistingPropertyNamesAction(
   try {
     return await getExistingPropertyNames(orgId);
   } catch (error) {
-    console.error("Error loading property names:", error);
+    console.error('Error loading property names:', error);
     throw error;
   }
 }
@@ -41,7 +41,7 @@ export async function getUserCountAction(orgId: string): Promise<number> {
   try {
     return await getUserCountByOrgId(orgId);
   } catch (error) {
-    console.error("Error loading user count:", error);
+    console.error('Error loading user count:', error);
     throw error;
   }
 }
@@ -51,20 +51,20 @@ function configToCreateInput(
   orgId: string
 ): CreateUserPropertyInput {
   // Bestimme datatype basierend auf fieldType
-  let datatype: "text" | "number" | "boolean" | "select";
+  let datatype: 'text' | 'number' | 'boolean' | 'select';
 
   switch (config.fieldType) {
-    case "text":
-      datatype = "text";
+    case 'text':
+      datatype = 'text';
       break;
-    case "number":
-      datatype = "number";
+    case 'number':
+      datatype = 'number';
       break;
-    case "boolean":
-      datatype = "boolean";
+    case 'boolean':
+      datatype = 'boolean';
       break;
-    case "select":
-      datatype = "select";
+    case 'select':
+      datatype = 'select';
       break;
     default:
       throw new Error(`Unknown field type: ${config.fieldType}`);
@@ -72,9 +72,9 @@ function configToCreateInput(
 
   let defaultValue: string | undefined;
 
-  if (config.fieldType === "boolean" && config.booleanDefaultValue !== null) {
-    defaultValue = config.booleanDefaultValue ? "true" : "false";
-  } else if (config.fieldType === "select" && config.defaultOption) {
+  if (config.fieldType === 'boolean' && config.booleanDefaultValue !== null) {
+    defaultValue = config.booleanDefaultValue ? 'true' : 'false';
+  } else if (config.fieldType === 'select' && config.defaultOption) {
     defaultValue = config.defaultOption;
   } else if (config.defaultValue) {
     defaultValue = config.defaultValue;
@@ -103,7 +103,7 @@ export async function createUserPropertyAction(
     const input = configToCreateInput(config, orgId);
     return await createUserProperty(input);
   } catch (error) {
-    console.error("Error creating user property:", error);
+    console.error('Error creating user property:', error);
     throw error;
   }
 }
@@ -114,9 +114,9 @@ export async function updateUserPropertyAction(
 ): Promise<UserPropertyWithField> {
   try {
     let maxValue: number | undefined;
-    if (config.fieldType === "text") {
+    if (config.fieldType === 'text') {
       maxValue = config.maxLength;
-    } else if (config.fieldType === "number") {
+    } else if (config.fieldType === 'number') {
       maxValue = config.maxValue;
     }
 
@@ -134,7 +134,7 @@ export async function updateUserPropertyAction(
 
     return await updateUserProperty(input);
   } catch (error) {
-    console.error("Error updating user property:", error);
+    console.error('Error updating user property:', error);
     throw error;
   }
 }
@@ -143,7 +143,7 @@ export async function deleteUserPropertyAction(id: string): Promise<void> {
   try {
     await deleteUserProperty(id);
   } catch (error) {
-    console.error("Error deleting user property:", error);
+    console.error('Error deleting user property:', error);
     throw error;
   }
 }
@@ -155,7 +155,7 @@ export async function getUserPropertyValuesAction(
   try {
     return await getUserPropertyValues(userId, orgId);
   } catch (error) {
-    console.error("Error loading user property values:", error);
+    console.error('Error loading user property values:', error);
     throw error;
   }
 }
@@ -168,7 +168,7 @@ export async function upsertUserPropertyValueAction(
   try {
     await upsertUserPropertyValue(userId, userPropertyId, value);
   } catch (error) {
-    console.error("Error upserting user property value:", error);
+    console.error('Error upserting user property value:', error);
     throw error;
   }
 }

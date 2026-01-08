@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import { getEinsatzCategoriesForPDF } from "../category-action";
+import { useQuery } from '@tanstack/react-query';
+import { getEinsatzCategoriesForPDF } from '../category-action';
 
 interface EinsatzCategory {
   id: string;
@@ -11,7 +11,7 @@ interface EinsatzCategory {
 
 export function useEinsatzCategories(einsatzId: string | null) {
   return useQuery<EinsatzCategory[]>({
-    queryKey: ["einsatz-categories", einsatzId],
+    queryKey: ['einsatz-categories', einsatzId],
     queryFn: () => {
       if (!einsatzId) {
         return Promise.resolve([]);

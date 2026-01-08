@@ -1,7 +1,7 @@
-import React from "react";
-import { View, Text } from "@react-pdf/renderer";
-import { commonStyles } from "../styles/common-styles";
-import { Decimal } from "@/generated/prisma/runtime/library";
+import React from 'react';
+import { View, Text } from '@react-pdf/renderer';
+import { commonStyles } from '../styles/common-styles';
+import { Decimal } from '@/generated/prisma/runtime/library';
 
 type PDFCostInfoProps = {
   pricePerPerson: Decimal;
@@ -17,8 +17,8 @@ export const PDFCostInfo: React.FC<PDFCostInfoProps> = ({
       <Text style={commonStyles.label}>Kosten:</Text>
       <View style={commonStyles.value}>
         <Text style={commonStyles.bold}>
-          € {pricePerPerson.toString().replace(".", ",")}/Person bzw. €{" "}
-          {pricePerPerson.mul(participants).toString().replace(".", ",")} bei{" "}
+          € {pricePerPerson.toString().replace('.', ',')}/Person bzw. €{' '}
+          {pricePerPerson.mul(participants).toString().replace('.', ',')} bei{' '}
           {participants} Teilnehmer:innen
         </Text>
 
