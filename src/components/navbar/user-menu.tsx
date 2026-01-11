@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { SettingsIcon, LogOutIcon, PinIcon, UserPenIcon } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { SettingsIcon, LogOutIcon, PinIcon, UserPenIcon } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,13 +11,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useSession } from "next-auth/react";
-import { signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useSessionSync } from "@/hooks/useSessionSync";
-import { JSX } from "react";
-import Link from "next/link";
+} from '@/components/ui/dropdown-menu';
+import { useSession } from 'next-auth/react';
+import { signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useSessionSync } from '@/hooks/useSessionSync';
+import { JSX } from 'react';
+import Link from 'next/link';
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
@@ -25,7 +25,7 @@ export default function UserMenu(): JSX.Element | null {
 
   useSessionSync();
 
-  if (status === "loading") {
+  if (status === 'loading') {
     return (
       <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
         <Avatar>
@@ -35,7 +35,7 @@ export default function UserMenu(): JSX.Element | null {
     );
   }
 
-  if (status === "unauthenticated") {
+  if (status === 'unauthenticated') {
     return (
       <Button
         variant="ghost"
@@ -50,16 +50,16 @@ export default function UserMenu(): JSX.Element | null {
   }
 
   if (session == null || !session.user) {
-    router.push("/signin");
+    router.push('/signin');
     return null;
   }
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/signin" });
+    await signOut({ callbackUrl: '/signin' });
   };
 
-  const initials = `${session?.user?.firstname?.charAt(0) ?? ""}${
-    session?.user?.lastname?.charAt(0) ?? ""
+  const initials = `${session?.user?.firstname?.charAt(0) ?? ''}${
+    session?.user?.lastname?.charAt(0) ?? ''
   }`.toUpperCase();
 
   return (

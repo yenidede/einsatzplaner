@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import type { Step, PropertyConfig, FieldType } from "../types";
-import { INITIAL_CONFIG } from "../types";
-import { PropertyOverview } from "./PropertyOverview";
-import { FieldTypeSelector } from "./FieldTypeSelector";
-import { PropertyConfiguration } from "./PropertyConfiguration";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import type { Step, PropertyConfig, FieldType } from '../types';
+import { INITIAL_CONFIG } from '../types';
+import { PropertyOverview } from './PropertyOverview';
+import { FieldTypeSelector } from './FieldTypeSelector';
+import { PropertyConfiguration } from './PropertyConfiguration';
 import {
   getUserPropertiesAction,
   getExistingPropertyNamesAction,
@@ -15,9 +15,9 @@ import {
   createUserPropertyAction,
   deleteUserPropertyAction,
   updateUserPropertyAction,
-} from "../user_property-actions";
-import { userPropertyQueryKeys } from "../queryKeys";
-import { useAlertDialog } from "@/hooks/use-alert-dialog";
+} from '../user_property-actions';
+import { userPropertyQueryKeys } from '../queryKeys';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
 
 interface UserPropertiesProps {
   organizationId: string;
@@ -25,12 +25,12 @@ interface UserPropertiesProps {
 
 export function UserProperties({ organizationId }: UserPropertiesProps) {
   const queryClient = useQueryClient();
-  const [currentStep, setCurrentStep] = useState<Step>("overview");
+  const [currentStep, setCurrentStep] = useState<Step>('overview');
   const [config, setConfig] = useState<PropertyConfig>(INITIAL_CONFIG);
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(
     null
   );
-  const [originalPropertyName, setOriginalPropertyName] = useState<string>("");
+  const [originalPropertyName, setOriginalPropertyName] = useState<string>('');
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
   const { data: properties, isLoading: propertiesLoading } = useQuery({
@@ -52,10 +52,10 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
     mutationFn: (config: PropertyConfig) =>
       createUserPropertyAction(config, organizationId),
     onMutate: () => {
-      return { toastId: toast.loading("Eigenschaft wird erstellt...") };
+      return { toastId: toast.loading('Eigenschaft wird erstellt...') };
     },
     onSuccess: (data, variables, context) => {
-      toast.success("Eigenschaft erfolgreich erstellt!", {
+      toast.success('Eigenschaft erfolgreich erstellt!', {
         id: context.toastId,
       });
       queryClient.invalidateQueries({
@@ -70,10 +70,10 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Fehler beim Erstellen der Eigenschaft",
+          : 'Fehler beim Erstellen der Eigenschaft',
         { id: context?.toastId }
       );
-      console.error("Create property error:", error);
+      console.error('Create property error:', error);
     },
   });
 
@@ -81,10 +81,10 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
     mutationFn: ({ id, config }: { id: string; config: PropertyConfig }) =>
       updateUserPropertyAction(id, config),
     onMutate: () => {
-      return { toastId: toast.loading("Eigenschaft wird aktualisiert...") };
+      return { toastId: toast.loading('Eigenschaft wird aktualisiert...') };
     },
     onSuccess: (data, variables, context) => {
-      toast.success("Eigenschaft erfolgreich aktualisiert!", {
+      toast.success('Eigenschaft erfolgreich aktualisiert!', {
         id: context.toastId,
       });
       queryClient.invalidateQueries({
@@ -99,20 +99,20 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Fehler beim Aktualisieren der Eigenschaft",
+          : 'Fehler beim Aktualisieren der Eigenschaft',
         { id: context?.toastId }
       );
-      console.error("Update property error:", error);
+      console.error('Update property error:', error);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (propertyId: string) => deleteUserPropertyAction(propertyId),
     onMutate: () => {
-      return { toastId: toast.loading("Eigenschaft wird gelöscht...") };
+      return { toastId: toast.loading('Eigenschaft wird gelöscht...') };
     },
     onSuccess: (data, variables, context) => {
-      toast.success("Eigenschaft erfolgreich gelöscht!", {
+      toast.success('Eigenschaft erfolgreich gelöscht!', {
         id: context.toastId,
       });
       queryClient.invalidateQueries({
@@ -126,16 +126,16 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Fehler beim Löschen der Eigenschaft",
+          : 'Fehler beim Löschen der Eigenschaft',
         { id: context?.toastId }
       );
-      console.error("Delete property error:", error);
+      console.error('Delete property error:', error);
     },
   });
 
   const handleFieldTypeSelect = (type: FieldType) => {
     setConfig({ ...config, fieldType: type });
-    setCurrentStep("configuration");
+    setCurrentStep('configuration');
   };
 
   const handleConfigChange = (updates: Partial<PropertyConfig>) => {
@@ -151,10 +151,10 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
   };
 
   const handleCancel = () => {
-    setCurrentStep("overview");
+    setCurrentStep('overview');
     setConfig(INITIAL_CONFIG);
     setEditingPropertyId(null);
-    setOriginalPropertyName("");
+    setOriginalPropertyName('');
   };
 
   const handleEdit = (propertyId: string) => {
@@ -165,8 +165,8 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
 
     const isValidFieldType = (value: unknown): value is FieldType => {
       return (
-        typeof value === "string" &&
-        ["text", "number", "boolean", "select"].includes(value)
+        typeof value === 'string' &&
+        ['text', 'number', 'boolean', 'select'].includes(value)
       );
     };
 
@@ -174,35 +174,35 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
       toast.error(
         `Ungültiger Feldtyp: ${datatype}. Eigenschaft kann nicht bearbeitet werden.`
       );
-      console.error("Invalid field type:", datatype);
+      console.error('Invalid field type:', datatype);
       return;
     }
 
     const fieldType: FieldType = datatype;
 
     const editConfig: PropertyConfig = {
-      name: property.field.name || "",
-      description: "",
+      name: property.field.name || '',
+      description: '',
       fieldType,
-      placeholder: property.field.placeholder || "",
+      placeholder: property.field.placeholder || '',
       maxLength: property.field.max !== null ? property.field.max : undefined,
       isMultiline: property.field.is_multiline || false,
       minValue: property.field.min !== null ? property.field.min : undefined,
       maxValue: property.field.max !== null ? property.field.max : undefined,
       isDecimal: false,
-      trueLabel: "Ja",
-      falseLabel: "Nein",
+      trueLabel: 'Ja',
+      falseLabel: 'Nein',
       booleanDefaultValue: null,
       options: property.field.allowed_values || [],
       defaultOption: property.field.default_value || undefined,
       isRequired: property.field.is_required,
-      defaultValue: property.field.default_value || "",
+      defaultValue: property.field.default_value || '',
     };
 
     setConfig(editConfig);
     setEditingPropertyId(propertyId);
-    setOriginalPropertyName(property.field.name || "");
-    setCurrentStep("configuration");
+    setOriginalPropertyName(property.field.name || '');
+    setCurrentStep('configuration');
   };
 
   const handleDelete = async (propertyId: string) => {
@@ -210,14 +210,14 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
     if (!property) return;
 
     const confirmed = await showDialog({
-      title: "Eigenschaft löschen",
+      title: 'Eigenschaft löschen',
       description: `Möchten Sie die Eigenschaft "${property.field.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
-      confirmText: "Löschen",
-      cancelText: "Abbrechen",
-      variant: "destructive",
+      confirmText: 'Löschen',
+      cancelText: 'Abbrechen',
+      variant: 'destructive',
     });
 
-    if (confirmed === "success") {
+    if (confirmed === 'success') {
       deleteMutation.mutate(propertyId);
     }
   };
@@ -229,11 +229,11 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
     : existingNames;
 
   switch (currentStep) {
-    case "overview":
+    case 'overview':
       return (
         <>
           <PropertyOverview
-            onCreateNew={() => setCurrentStep("typeSelection")}
+            onCreateNew={() => setCurrentStep('typeSelection')}
             onCancel={handleCancel}
             properties={properties}
             isLoading={propertiesLoading}
@@ -244,11 +244,11 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
         </>
       );
 
-    case "typeSelection":
+    case 'typeSelection':
       return (
         <>
           <PropertyOverview
-            onCreateNew={() => setCurrentStep("typeSelection")}
+            onCreateNew={() => setCurrentStep('typeSelection')}
             onCancel={handleCancel}
             properties={properties}
             isLoading={propertiesLoading}
@@ -258,17 +258,17 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
           />
           <FieldTypeSelector
             onSelectType={handleFieldTypeSelect}
-            onBack={() => setCurrentStep("overview")}
+            onBack={() => setCurrentStep('overview')}
           />
           {AlertDialogComponent}
         </>
       );
 
-    case "configuration":
+    case 'configuration':
       return (
         <>
           <PropertyOverview
-            onCreateNew={() => setCurrentStep("typeSelection")}
+            onCreateNew={() => setCurrentStep('typeSelection')}
             onCancel={handleCancel}
             properties={properties}
             isLoading={propertiesLoading}

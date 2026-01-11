@@ -1,20 +1,19 @@
 import { z } from 'zod';
 
-
 // User roles enum
 export const UserRole = {
   HELFER: 'Helfer',
   EINSATZVERWALTUNG: 'Einsatzverwaltung',
-  ORGANISATIONSVERWALTUNG: 'Organisationsverwaltung'
+  ORGANISATIONSVERWALTUNG: 'Organisationsverwaltung',
 } as const;
 
-export type UserRole = typeof UserRole[keyof typeof UserRole];
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 // Validation schemas for client-side use
 export const UserRoleSchema = z.enum([
   UserRole.HELFER,
   UserRole.EINSATZVERWALTUNG,
-  UserRole.ORGANISATIONSVERWALTUNG
+  UserRole.ORGANISATIONSVERWALTUNG,
 ]);
 
 export const CreateUserSchema = z.object({
@@ -24,8 +23,9 @@ export const CreateUserSchema = z.object({
   lastname: z.string().min(2, 'Nachname muss mindestens 2 Zeichen haben'),
   role: UserRoleSchema.optional(),
   phone: z.string().optional().nullable().or(z.literal('')),
-  organizationName: z.string().min(2, 'Organisationsname muss mindestens 2 Zeichen haben'),
-
+  organizationName: z
+    .string()
+    .min(2, 'Organisationsname muss mindestens 2 Zeichen haben'),
 });
 
 export type CreateUserData = z.infer<typeof CreateUserSchema>;
@@ -50,8 +50,7 @@ export interface UserWithoutPassword {
 // Login data schema
 export const LoginSchema = z.object({
   email: z.email('Ungültige E-Mail-Adresse'),
-  password: z.string().min(1, 'Passwort ist erforderlich')
+  password: z.string().min(1, 'Passwort ist erforderlich'),
 });
 
 export type LoginData = z.infer<typeof LoginSchema>;
-

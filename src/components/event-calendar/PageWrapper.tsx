@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import React, { useEffect } from "react";
-import Calendar from "@/components/event-calendar/calendar";
-import { useSession } from "next-auth/react";
-import { queryKeys as orgsQueryKeys } from "@/features/organization/queryKeys";
-import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
-import { getOrganizationsByIds } from "@/features/organization/org-dal";
-import { useQuery } from "@tanstack/react-query";
-import { getEinsaetzeData } from "@/components/event-calendar/utils";
-import { CalendarMode } from "./types";
-import { redirect } from "next/dist/server/api-utils";
-import { useRouter } from "next/navigation";
+import React, { useEffect } from 'react';
+import Calendar from '@/components/event-calendar/calendar';
+import { useSession } from 'next-auth/react';
+import { queryKeys as orgsQueryKeys } from '@/features/organization/queryKeys';
+import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
+import { getOrganizationsByIds } from '@/features/organization/org-dal';
+import { useQuery } from '@tanstack/react-query';
+import { getEinsaetzeData } from '@/components/event-calendar/utils';
+import { CalendarMode } from './types';
+import { useRouter } from 'next/navigation';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 
 export default function CalendarPageWrapper({
   mode,
@@ -33,6 +33,11 @@ export default function CalendarPageWrapper({
   const activeOrg =
     organizations?.find((org) => org.id === activeOrgId) ?? null;
 
+  const { einsatz_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
+
   const { isError: isEventError } = useQuery({
     queryKey: einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []),
     queryFn: () => getEinsaetzeData(activeOrgId),
@@ -41,15 +46,11 @@ export default function CalendarPageWrapper({
 
   const descriptionText = description
     ? description
-    : mode === "verwaltung"
-    ? activeOrg?.verwalteransicht_description ??
-      `Hier können ${
-        activeOrg?.einsatz_name_plural ?? "Einsätze"
-      } bearbeitet, erstellt und gelöscht werden..`
-    : activeOrg?.helferansicht_description ??
-      `Hier sehen Sie alle ${
-        activeOrg?.einsatz_name_plural ?? "Einsätze"
-      }. Bitte tragen Sie sich für die Termine ein, an denen Sie verfügbar sind.`;
+    : mode === 'verwaltung'
+      ? (activeOrg?.verwalteransicht_description ??
+        `Hier können ${einsatz_plural} bearbeitet, erstellt und gelöscht werden..`)
+      : (activeOrg?.helferansicht_description ??
+        `Hier sehen Sie alle ${einsatz_plural}. Bitte tragen Sie sich für die Termine ein, an denen Sie verfügbar sind.`);
 
   if (isOrgError) {
     return <div>Fehler beim Laden der Organisationen</div>;
@@ -61,7 +62,7 @@ export default function CalendarPageWrapper({
 
   // Redirect to sign-in if not authenticated (could happen if logout on different page)
   useEffect(() => {
-    if (sessionStatus === "loading") {
+    if (sessionStatus === 'loading') {
       return;
     }
 
@@ -75,8 +76,7 @@ export default function CalendarPageWrapper({
   return (
     <>
       <h1>
-        {activeOrg?.einsatz_name_plural ?? "Einsätze"}{" "}
-        {mode === "verwaltung" ? "verwalten" : "ansehen"}
+        {einsatz_plural} {mode === 'verwaltung' ? 'verwalten' : 'ansehen'}
       </h1>
       <p className="text-muted-foreground leading-4">{descriptionText}</p>
       <div className="mt-6">

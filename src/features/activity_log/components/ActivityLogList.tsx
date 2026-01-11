@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { Dispatch, SetStateAction, useMemo } from "react";
-import type { ChangeLogEntry } from "../types";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
-import { getFormattedMessage } from "../utils";
-import { Button } from "@/components/ui/button";
-import { motion } from "motion/react";
-import { useEventDialog } from "@/hooks/use-event-dialog";
+import { Dispatch, SetStateAction, useMemo } from 'react';
+import type { ChangeLogEntry } from '../types';
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
+import { getFormattedMessage } from '../utils';
+import { Button } from '@/components/ui/button';
+import { motion } from 'motion/react';
+import { useEventDialog } from '@/hooks/use-event-dialog';
 
 interface ActivityLogListProps {
   activities: ChangeLogEntry[];
@@ -59,40 +59,39 @@ function groupActivitiesByTime(
 }
 
 function formatDate(date: Date): string {
-  return new Date(date).toLocaleDateString("de-DE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  return new Date(date).toLocaleDateString('de-DE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
 function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
-  const { openDialog } = useEventDialog();
   return (
     <>
-      <div className="flex justify-between items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div
-          className="rounded-full w-8 h-8 flex justify-center items-center relative"
+          className="relative flex h-6 w-6 items-center justify-center rounded-full"
           style={{ backgroundColor: activity.change_type.change_color }}
         >
           <Image
             src={activity.change_type.change_icon_url}
             alt={activity.change_type.name}
-            width={16}
-            height={16}
+            width={14}
+            height={14}
             unoptimized
-            className="text-foreground w-4 h-4"
+            className="text-foreground h-3 w-3"
           ></Image>
         </div>
         <div className="grow">{getFormattedMessage(activity)}</div>
-        <time className="text-sm text-muted-foreground whitespace-nowrap">
+        <time className="text-muted-foreground text-sm whitespace-nowrap">
           {formatDate(activity.created_at)}
         </time>
       </div>
-      <div className="w-8 h-6 flex justify-center items-center">
-        <div className="h-3 bg-border w-0.5"></div>
+      <div className="flex h-4 w-6 items-center justify-center">
+        <div className="h-3 border-l"></div>
       </div>
     </>
   );
@@ -110,9 +109,9 @@ function ActivityGroup({
   if (activities.length === 0) return null;
 
   return (
-    <div className="[&>div:last-child]:hidden pb-4">
+    <div className="pb-4 [&>div:last-child]:hidden">
       <div className="flex justify-between">
-        <h4 className="text-base font-semibold mb-3">{title}</h4>
+        <h4 className="mb-3 font-semibold">{title}</h4>
         {button}
       </div>
       {activities.map((activity) => (
@@ -136,7 +135,7 @@ export function ActivityLogList({
 
   if (activities.length === 0) {
     return (
-      <div className={cn("text-center py-8 text-muted-foreground", className)}>
+      <div className={cn('text-muted-foreground py-8 text-center', className)}>
         Noch keine Aktivitäten vorhanden
       </div>
     );
@@ -148,27 +147,27 @@ export function ActivityLogList({
 
   const toggleButton = (
     <Button
-      variant={"link"}
+      variant={'link'}
       onClick={handleLoadAll}
       disabled={isRemainingLoading}
       className="p-0"
     >
       {isRemainingLoading
-        ? "Lade..."
+        ? 'Lade...'
         : showAll
-        ? "Weniger anzeigen"
-        : "Alle anzeigen"}
+          ? 'Weniger anzeigen'
+          : 'Alle anzeigen'}
     </Button>
   );
 
   return (
     <>
       <motion.div
-        className={cn("space-y-6", className)}
+        className={cn('space-y-6 text-sm', className)}
         initial={{ height: 212, opacity: 0 }}
-        animate={{ height: "auto", opacity: 1, originY: 0 }}
+        animate={{ height: 'auto', opacity: 1, originY: 0 }}
         exit={{ height: 212, opacity: 0 }}
-        style={{ overflow: "hidden" }}
+        style={{ overflow: 'hidden' }}
       >
         <ActivityGroup
           title="Heute"

@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useId } from "react";
-import { LabelSettings } from "@/features/settings/components/ui/LabelSettings";
-import { InputSettings } from "@/features/settings/components/ui/InputSettings";
-import UploadProfilePictureIcon from "@/features/settings/components/ui/UploadProfilePictureIcon";
-import ProfilePictureUpload from "@/features/settings/components/ProfilePictureUpload";
+import { useId } from 'react';
+import { LabelSettings } from '@/features/settings/components/ui/LabelSettings';
+import { InputSettings } from '@/features/settings/components/ui/InputSettings';
+import UploadProfilePictureIcon from '@/features/settings/components/ui/UploadProfilePictureIcon';
+import ProfilePictureUpload from '@/features/settings/components/ProfilePictureUpload';
 
 interface AccountSectionProps {
   firstname: string;
@@ -37,52 +37,52 @@ export function AccountSection({
 }: AccountSectionProps) {
   const emailId = useId();
 
-  const initials = `${firstname?.[0] || ""}${
-    lastname?.[0] || ""
+  const initials = `${firstname?.[0] || ''}${
+    lastname?.[0] || ''
   }`.toUpperCase();
 
   return (
-    <div className="self-stretch flex flex-col justify-center items-start gap-4">
-      <div className="self-stretch flex flex-col justify-start items-start gap-2">
-        <div className="self-stretch px-4 pt-2 inline-flex justify-start items-center gap-2.5">
-          <div className="justify-start text-slate-900 text-sm font-semibold font-['Inter'] leading-tight">
+    <div className="flex flex-col items-start justify-center gap-4 self-stretch">
+      <div className="flex flex-col items-start justify-start gap-2 self-stretch">
+        <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
+          <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
             Mein Account
           </div>
         </div>
 
-        <div className="self-stretch py-4 border-t border-slate-200 flex flex-col justify-start items-start gap-4">
-          <div className="self-stretch px-4 flex flex-col justify-start items-start gap-2">
-            <div className="inline-flex justify-start items-center gap-2">
+        <div className="flex flex-col items-start justify-start gap-4 self-stretch border-t border-slate-200 py-4">
+          <div className="flex flex-col items-start justify-start gap-2 self-stretch px-4">
+            <div className="inline-flex items-center justify-start gap-2">
               {previewUrl || pictureUrl ? (
                 <img
-                  src={previewUrl || pictureUrl || ""}
-                  alt={previewUrl ? "Profilbild Vorschau" : "Profilbild"}
-                  className="w-10 h-10 rounded-full object-cover border"
+                  src={previewUrl || pictureUrl || ''}
+                  alt={previewUrl ? 'Profilbild Vorschau' : 'Profilbild'}
+                  className="h-10 w-10 rounded-full border object-cover"
                   loading="lazy"
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="w-10 h-10 px-2 py-1.5 bg-slate-200 rounded-[20px] inline-flex flex-col justify-center items-center gap-2.5">
-                  <div className="justify-start text-slate-900 text-base font-normal font-['Inter'] leading-7">
+                <div className="inline-flex h-10 w-10 flex-col items-center justify-center gap-2.5 rounded-[20px] bg-slate-200 px-2 py-1.5">
+                  <div className="justify-start font-['Inter'] text-base leading-7 font-normal text-slate-900">
                     {initials}
                   </div>
                 </div>
               )}
-              <div className="inline-flex flex-col justify-center items-start">
-                <div className="justify-start text-slate-700 text-sm font-medium font-['Inter'] leading-normal">
+              <div className="inline-flex flex-col items-start justify-center">
+                <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-700">
                   {firstname} {lastname}
                 </div>
               </div>
             </div>
 
-            <div className="inline-flex justify-start items-start gap-2">
+            <div className="inline-flex items-start justify-start gap-2">
               <button
                 type="button"
-                className="px-4 py-2 bg-slate-900 text-white rounded-md inline-flex justify-center items-center gap-2"
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-white"
                 onClick={() =>
                   (
                     document.querySelector(
-                      "input[type=file]"
+                      'input[type=file]'
                     ) as HTMLInputElement | null
                   )?.click()
                 }
@@ -94,7 +94,7 @@ export function AccountSection({
 
               <button
                 type="button"
-                className="px-4 py-2 bg-white rounded-md outline -outline-offset-1 outline-slate-200 flex justify-center items-center gap-2.5"
+                className="flex items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2 outline -outline-offset-1 outline-slate-200"
                 onClick={onRemoveProfilePicture}
               >
                 <span>Profilbild entfernen</span>
@@ -102,7 +102,7 @@ export function AccountSection({
             </div>
           </div>
 
-          <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+          <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
             <div className="grid w-full max-w-sm items-center gap-3">
               <LabelSettings
                 htmlFor="firstname"
@@ -130,7 +130,7 @@ export function AccountSection({
             </div>
           </div>
 
-          <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
+          <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
             <div className="grid w-full max-w-sm items-center gap-3">
               <LabelSettings htmlFor={emailId} className="text-sm font-medium">
                 E-Mail

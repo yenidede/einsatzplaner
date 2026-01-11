@@ -1,14 +1,14 @@
-import { useUrlFilters } from "./use-url-filters";
+import { useUrlFilters } from './use-url-filters';
 
-import { createParser } from "nuqs/server";
-import { z } from "zod";
+import { createParser } from 'nuqs/server';
+import { z } from 'zod';
 
-import { dataTableConfig } from "@/components/data-table/config/data-table";
+import { dataTableConfig } from '@/components/data-table/config/data-table';
 
 import type {
   ExtendedColumnFilter,
   ExtendedColumnSort,
-} from "@/components/data-table/types/data-table";
+} from '@/components/data-table/types/data-table';
 
 const sortingItemSchema = z.object({
   id: z.string(),
@@ -16,7 +16,7 @@ const sortingItemSchema = z.object({
 });
 
 export const getSortingStateParser = <TData>(
-  columnIds?: string[] | Set<string>,
+  columnIds?: string[] | Set<string>
 ) => {
   const validKeys = columnIds
     ? columnIds instanceof Set
@@ -46,7 +46,7 @@ export const getSortingStateParser = <TData>(
       a.length === b.length &&
       a.every(
         (item, index) =>
-          item.id === b[index]?.id && item.desc === b[index]?.desc,
+          item.id === b[index]?.id && item.desc === b[index]?.desc
       ),
   });
 };
@@ -62,7 +62,7 @@ export const filterItemSchema = z.object({
 export type FilterItemSchema = z.infer<typeof filterItemSchema>;
 
 export const getFiltersStateParser = <TData>(
-  columnIds?: string[] | Set<string>,
+  columnIds?: string[] | Set<string>
 ) => {
   const validKeys = columnIds
     ? columnIds instanceof Set
@@ -95,7 +95,7 @@ export const getFiltersStateParser = <TData>(
           filter.id === b[index]?.id &&
           filter.value === b[index]?.value &&
           filter.variant === b[index]?.variant &&
-          filter.operator === b[index]?.operator,
+          filter.operator === b[index]?.operator
       ),
   });
 };
@@ -105,13 +105,13 @@ const columnFilterSchema = z.object({
   value: z.object({
     value: z.union([z.string(), z.array(z.string())]).nullable(),
     operator: z.enum(dataTableConfig.operators),
-  })
+  }),
 });
 
 export type ColumnFilterSchema = z.infer<typeof columnFilterSchema>;
 
 export const getColumnFiltersParser = <TData>(
-  columnIds?: string[] | Set<string>,
+  columnIds?: string[] | Set<string>
 ) => {
   const validKeys = columnIds
     ? columnIds instanceof Set
@@ -126,10 +126,10 @@ export const getColumnFiltersParser = <TData>(
 
         const mapped = z.array(filterItemSchema).safeParse(parsed);
         if (!mapped.success) {
-          throw new Error("Invalid filter state", { cause: mapped.error });
+          throw new Error('Invalid filter state', { cause: mapped.error });
         }
 
-        const result = mapped.data.map(i => {
+        const result = mapped.data.map((i) => {
           return {
             id: i.id,
             value: {
@@ -139,7 +139,8 @@ export const getColumnFiltersParser = <TData>(
           };
         });
 
-        if (!result || result.length <= 0) throw new Error("couldnt map filters");
+        if (!result || result.length <= 0)
+          throw new Error('couldnt map filters');
 
         if (validKeys && result.some((item) => !validKeys.has(item.id))) {
           return null;
@@ -157,6 +158,7 @@ export const getColumnFiltersParser = <TData>(
         (filter, index) =>
           filter.id === b[index]?.id &&
           filter.value.operator === b[index]?.value.operator &&
-          filter.value.value === b[index]?.value.value),
+          filter.value.value === b[index]?.value.value
+      ),
   });
 };

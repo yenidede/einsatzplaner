@@ -1,18 +1,18 @@
-"use server";
+'use server';
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth.config";
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth.config';
 import {
   getOrCreateCalendarSubscription,
   rotateCalendarSubscription,
   deactivateCalendarSubscription,
   buildCalendarSubscriptionUrl,
   buildWebcalUrl,
-} from "./calendarSubscription";
+} from './calendarSubscription';
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) throw new Error('Unauthorized');
   return session;
 }
 
@@ -24,11 +24,11 @@ export async function getSubscriptionAction(orgId: string) {
     session.user.id
   );
   if (!response)
-    throw new Error("Failed to get or create calendar subscription");
+    throw new Error('Failed to get or create calendar subscription');
 
   return {
     id: response.id,
-    name: response.name ?? "",
+    name: response.name ?? '',
     is_active: response.is_active,
     token: response.token,
     webcalUrl: buildWebcalUrl(response.token),
@@ -40,7 +40,7 @@ export async function getSubscriptionAction(orgId: string) {
 export async function rotateSubscriptionAction(id: string) {
   const session = await checkUserSession();
   const response = await rotateCalendarSubscription(id);
-  if (!response) throw new Error("Failed to rotate calendar subscription");
+  if (!response) throw new Error('Failed to rotate calendar subscription');
 
   return {
     id: response.id,
@@ -54,7 +54,7 @@ export async function deactivateSubscriptionAction(id: string) {
   const session = await checkUserSession();
 
   const response = await deactivateCalendarSubscription(id);
-  if (!response) throw new Error("Failed to deactivate calendar subscription");
+  if (!response) throw new Error('Failed to deactivate calendar subscription');
 
   return {
     id: response.id,

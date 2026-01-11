@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { Suspense, useState, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { FormField, Alert } from "@/components/SimpleFormComponents";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Suspense, useState, useEffect } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormField, Alert } from '@/components/SimpleFormComponents';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 function SignInContent() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -19,33 +19,33 @@ function SignInContent() {
 
   useEffect(() => {
     if (session?.user?.id) {
-      router.push("/");
+      router.push('/');
     }
   }, [session?.user?.id, router]);
 
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
-      const result = await signIn("credentials", {
+      const result = await signIn('credentials', {
         email,
         password,
         redirect: false,
       });
 
       if (result?.error) {
-        setError("Ungültige Anmeldedaten");
+        setError('Ungültige Anmeldedaten');
       } else {
         router.push(callbackUrl);
       }
     } catch (err) {
       setError(
-        "Ein Fehler ist aufgetreten" +
-          (err instanceof Error && err.message ? ": " + err.message : "")
+        'Ein Fehler ist aufgetreten' +
+          (err instanceof Error && err.message ? ': ' + err.message : '')
       );
     } finally {
       setLoading(false);
@@ -53,20 +53,20 @@ function SignInContent() {
   };
 
   return (
-    <div className="bg-secondary grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="bg-secondary flex grow items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-foreground">
+          <h2 className="text-foreground mt-6 text-center text-3xl font-extrabold">
             Anmelden
           </h2>
-          <p className="text-sm pt-1">
+          <p className="pt-1 text-sm">
             Falls Sie noch kein Konto haben, bitten Sie Ihren Administrator um
             eine Einladung.
           </p>
         </div>
 
         {error && (
-          <Alert type="error" message={error} onClose={() => setError("")} />
+          <Alert type="error" message={error} onClose={() => setError('')} />
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -101,7 +101,7 @@ function SignInContent() {
           </div>
 
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Anmelden..." : "Anmelden"}
+            {loading ? 'Anmelden...' : 'Anmelden'}
           </Button>
         </form>
       </div>

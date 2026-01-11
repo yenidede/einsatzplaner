@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import OrganizationCard from "@/features/settings/components/OrganizationCard";
-import CalendarSubscription from "@/features/calendar-subscription/components/CalendarSubscriptionClient";
-import { Organization } from "../../types";
+import OrganizationCard from '@/features/settings/components/OrganizationCard';
+import CalendarSubscription from '@/features/calendar-subscription/components/CalendarSubscriptionClient';
+import { Organization } from '../../types';
 
 interface OrganizationsSectionProps {
   organizations: Organization[];
@@ -14,10 +14,10 @@ export function OrganizationsSection({
   onOrganizationLeave,
 }: OrganizationsSectionProps) {
   return (
-    <div className="self-stretch flex flex-col justify-center items-start">
-      <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-        <div className="flex-1 flex justify-start items-center gap-2">
-          <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+    <div className="flex flex-col items-start justify-center self-stretch">
+      <div className="inline-flex items-center justify-between self-stretch border-b border-slate-200 px-4 py-2">
+        <div className="flex flex-1 items-center justify-start gap-2">
+          <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
             Meine Organisationen
           </div>
         </div>
@@ -39,7 +39,7 @@ export function OrganizationsSection({
           </div>
         ))
       ) : (
-        <div className="text-slate-500 px-4 py-2">
+        <div className="px-4 py-2 text-slate-500">
           Du bist in keiner Organisation.
         </div>
       )}

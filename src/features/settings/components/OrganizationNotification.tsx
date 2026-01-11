@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 interface OrganizationNotificationProps {
   checked: boolean;
@@ -6,18 +6,22 @@ interface OrganizationNotificationProps {
   label: string;
 }
 
-export const OrganizationNotification: React.FC<OrganizationNotificationProps> = ({ checked, onChange, label }) => (
-  <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-    <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">{label}</div>
+export const OrganizationNotification: React.FC<
+  OrganizationNotificationProps
+> = ({ checked, onChange, label }) => (
+  <div className="inline-flex min-w-72 flex-1 flex-col items-start justify-start gap-1.5">
+    <div className="justify-start font-['Inter'] text-sm leading-tight font-medium text-slate-800">
+      {label}
+    </div>
     <div className="inline-flex items-center gap-2">
       <input
         type="checkbox"
         checked={checked}
-        onChange={e => onChange(e.target.checked)}
-        className="w-5 h-5 accent-slate-900 rounded focus:ring-2 focus:ring-slate-400"
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-5 w-5 rounded accent-slate-900 focus:ring-2 focus:ring-slate-400"
         aria-label={label}
       />
-      <span className="text-sm font-medium">{checked ? "On" : "Off"}</span>
+      <span className="text-sm font-medium">{checked ? 'On' : 'Off'}</span>
     </div>
   </div>
 );

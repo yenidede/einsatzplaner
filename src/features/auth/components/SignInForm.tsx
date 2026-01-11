@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { signIn } from "next-auth/react";
-import { LoginSchema, LoginData } from "@/types/user";
-import Link from "next/link";
+import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { signIn } from 'next-auth/react';
+import { LoginSchema, LoginData } from '@/types/user';
+import Link from 'next/link';
 
 export default function SignInForm() {
   const router = useRouter();
@@ -15,10 +15,10 @@ export default function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
 
   if (searchParams == null) {
-    console.error("Search parameters are null");
+    console.error('Search parameters are null');
     return <div>Error: Unable to retrieve search parameters.</div>;
   }
-  const message = searchParams.get("message");
+  const message = searchParams.get('message');
 
   const {
     register,
@@ -33,36 +33,36 @@ export default function SignInForm() {
     setIsLoading(true);
 
     try {
-      const result = await signIn("credentials", {
+      const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
         redirect: false,
-        callbackUrl: "/helferansicht",
+        callbackUrl: '/helferansicht',
       });
 
       if (result?.error) {
-        console.error("Sign in error:", result.error);
-        setError("E-Mail oder Passwort ist falsch");
+        console.error('Sign in error:', result.error);
+        setError('E-Mail oder Passwort ist falsch');
       } else if (result?.ok) {
         // Warten auf Session-Update
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         // Redirect mit Next.js Router
-        router.push("/helferansicht");
+        router.push('/helferansicht');
 
         // Fallback für schwierige Fälle
         setTimeout(() => {
-          if (window.location.pathname !== "/helferansicht") {
-            window.location.replace("/helferansicht");
+          if (window.location.pathname !== '/helferansicht') {
+            window.location.replace('/helferansicht');
           }
         }, 1000);
       } else {
-        console.warn("Unexpected sign in result:", result);
-        setError("Anmeldung fehlgeschlagen. Unerwartete Antwort.");
+        console.warn('Unexpected sign in result:', result);
+        setError('Anmeldung fehlgeschlagen. Unerwartete Antwort.');
       }
     } catch (err) {
-      console.error("Sign in exception:", err);
-      setError("Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.");
+      console.error('Sign in exception:', err);
+      setError('Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.');
     } finally {
       setIsLoading(false);
     }
@@ -75,25 +75,25 @@ export default function SignInForm() {
 
     try {
       // Direkter Redirect mit NextAuth
-      await signIn("credentials", {
+      await signIn('credentials', {
         email: data.email,
         password: data.password,
-        callbackUrl: "/helferansicht",
+        callbackUrl: '/helferansicht',
         redirect: true,
       });
     } catch (err) {
-      console.error("Sign in exception:", err);
-      setError("Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.");
+      console.error('Sign in exception:', err);
+      setError('Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.');
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-8">
+    <div className="mx-auto w-full max-w-md space-y-8">
       <div className="text-center">
         <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Anmelden</h2>
         <p className="mt-2 text-sm text-gray-600">
-          Oder{" "}
+          Oder{' '}
           <Link
             href="/signup"
             className="font-medium text-blue-600 hover:text-blue-500"
@@ -105,7 +105,7 @@ export default function SignInForm() {
 
       {message && (
         <div
-          className="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded relative"
+          className="relative rounded border border-green-400 bg-green-50 px-4 py-3 text-green-700"
           role="alert"
         >
           <span className="block sm:inline">{message}</span>
@@ -114,7 +114,7 @@ export default function SignInForm() {
 
       {error && (
         <div
-          className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          className="relative rounded border border-red-400 bg-red-50 px-4 py-3 text-red-700"
           role="alert"
         >
           <span className="block sm:inline">{error}</span>
@@ -122,11 +122,11 @@ export default function SignInForm() {
       )}
 
       <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-        <div className="rounded-md shadow-sm space-y-4">
+        <div className="space-y-4 rounded-md shadow-sm">
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="mb-1 block text-sm font-medium text-gray-700"
             >
               E-Mail-Adresse
             </label>
@@ -134,9 +134,9 @@ export default function SignInForm() {
               id="email"
               type="email"
               autoComplete="email"
-              className="appearance-none rounded relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+              className="relative block w-full appearance-none rounded border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:ring-blue-500 focus:outline-none sm:text-sm"
               placeholder="E-Mail"
-              {...register("email")}
+              {...register('email')}
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">
@@ -148,7 +148,7 @@ export default function SignInForm() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="mb-1 block text-sm font-medium text-gray-700"
             >
               Passwort
             </label>
@@ -156,9 +156,9 @@ export default function SignInForm() {
               id="password"
               type="password"
               autoComplete="current-password"
-              className="appearance-none rounded relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+              className="relative block w-full appearance-none rounded border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:ring-blue-500 focus:outline-none sm:text-sm"
               placeholder="Passwort"
-              {...register("password")}
+              {...register('password')}
             />
             {errors.password && (
               <p className="mt-1 text-sm text-red-600">
@@ -172,11 +172,11 @@ export default function SignInForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              isLoading ? "opacity-70 cursor-not-allowed" : ""
+            className={`group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none ${
+              isLoading ? 'cursor-not-allowed opacity-70' : ''
             }`}
           >
-            {isLoading ? "Wird angemeldet..." : "Anmelden"}
+            {isLoading ? 'Wird angemeldet...' : 'Anmelden'}
           </button>
         </div>
 

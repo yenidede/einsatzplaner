@@ -1,68 +1,67 @@
-import { DefaultSession } from "next-auth";
+import { DefaultSession } from 'next-auth';
 
 export type Nullable<T> = {
-    [K in keyof T]?: T[K] | null;
+  [K in keyof T]?: T[K] | null;
 };
-
 
 type Organization = {
-    id: string;
-    name: string;
-    helper_name_singular: string;
-    helper_name_plural: string;
+  id: string;
+  name: string;
+  helper_name_singular: string;
+  helper_name_plural: string;
 };
 type OrganizationRole = {
-    orgId: string;
-    roleId: string;
-    roleName: string;
-    hasGetMailNotification: boolean;
-    abbreviation: string | null;
+  orgId: string;
+  roleId: string;
+  roleName: string;
+  hasGetMailNotification: boolean;
+  abbreviation: string | null;
 };
 
 type UserBase = {
-    id: string;
-    email: string;
-    firstname: string;
-    lastname: string;
-    picture_url: string | null;
-    phone: string | null;
-    salutationId: string | null;
-    /*   description: string | null; */
-    hasLogoinCalendar: boolean;
+  id: string;
+  email: string;
+  firstname: string;
+  lastname: string;
+  picture_url: string | null;
+  phone: string | null;
+  salutationId: string | null;
+  /*   description: string | null; */
+  hasLogoinCalendar: boolean;
 
-    orgIds: string[];
-    roleIds: string[];
-    activeOrganization: {
-        id: string;
-        name: string;
-        logo_url: string | null;
-    } | null;
+  orgIds: string[];
+  roleIds: string[];
+  activeOrganization: {
+    id: string;
+    name: string;
+    logo_url: string | null;
+  } | null;
 };
 
 type TokenInfo = {
-    accessToken: string;
-    refreshToken: string;
-    accessTokenExpires: number;
-    refreshTokenExpires: number;
-    error?: "RefreshAccessTokenError";
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpires: number;
+  refreshTokenExpires: number;
+  error?: 'RefreshAccessTokenError';
 };
 
-declare module "next-auth" {
-    interface User extends UserBase {
-        accessToken: string;
-        refreshToken: string;
-    }
+declare module 'next-auth' {
+  interface User extends UserBase {
+    accessToken: string;
+    refreshToken: string;
+  }
 
-    interface Session extends DefaultSession {
-        user: UserBase;
-        token: TokenInfo;
-        error?: "RefreshAccessTokenError";
-        expires: string;
-    }
+  interface Session extends DefaultSession {
+    user: UserBase;
+    token: TokenInfo;
+    error?: 'RefreshAccessTokenError';
+    expires: string;
+  }
 }
 
-declare module "next-auth/jwt" {
-    interface JWT extends UserBase, TokenInfo {
-        error?: "RefreshAccessTokenError";
-    }
+declare module 'next-auth/jwt' {
+  interface JWT extends UserBase, TokenInfo {
+    error?: 'RefreshAccessTokenError';
+  }
 }

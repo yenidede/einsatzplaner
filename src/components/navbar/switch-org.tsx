@@ -1,6 +1,6 @@
-"use client";
-import * as React from "react";
-import type { OrganizationBasicVisualize } from "@/features/organization/types";
+'use client';
+import * as React from 'react';
+import type { OrganizationBasicVisualize } from '@/features/organization/types';
 import {
   Select,
   SelectContent,
@@ -8,10 +8,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useSession } from "next-auth/react";
-import { setUserActiveOrganization } from "@/features/user/user-dal";
-import { toast } from "sonner";
+} from '@/components/ui/select';
+import { useSession } from 'next-auth/react';
+import { setUserActiveOrganization } from '@/features/user/user-dal';
+import { toast } from 'sonner';
 
 type Props = {
   organizations: OrganizationBasicVisualize[];
@@ -19,7 +19,7 @@ type Props = {
 
 export function NavSwitchOrgSelect({ organizations }: Props) {
   const { update: updateSession, data: session } = useSession();
-  const [activeOrgId, setActiveOrgId] = React.useState<string>("");
+  const [activeOrgId, setActiveOrgId] = React.useState<string>('');
 
   React.useEffect(() => {
     const id = session?.user?.activeOrganization?.id;
@@ -33,11 +33,11 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
       setActiveOrgId(orgId);
       const newOrg = organizations.find((o) => o.id === orgId);
       if (!newOrg || !session) {
-        throw new Error("Organisation nicht gefunden");
+        throw new Error('Organisation nicht gefunden');
       }
       await Promise.all([
         // database
-        setUserActiveOrganization(session?.user.id || "", orgId),
+        setUserActiveOrganization(session?.user.id || '', orgId),
         // session updateSession
         updateSession({
           user: {
@@ -51,12 +51,12 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
         }),
       ]);
       toast.success(
-        "Organisation erfolgreich zu " +
+        'Organisation erfolgreich zu ' +
           organizations.find((o) => o.id === orgId)?.name +
-          " gewechselt."
+          ' gewechselt.'
       );
     } catch (error) {
-      toast.error("Fehler beim Wechseln der Organisation: " + error);
+      toast.error('Fehler beim Wechseln der Organisation: ' + error);
       setActiveOrgId(previousOrgId); // Rollback to previous organization
     }
   };
@@ -65,7 +65,7 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
       <SelectTrigger className="w-46">
         <SelectValue
           placeholder={
-            session?.user?.activeOrganization?.name || "Organisation wählen"
+            session?.user?.activeOrganization?.name || 'Organisation wählen'
           }
         />
       </SelectTrigger>

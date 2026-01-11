@@ -1,24 +1,24 @@
-"use server";
+'use server';
 
-import prisma from "@/lib/prisma";
+import prisma from '@/lib/prisma';
 import type {
   einsatz as Einsatz,
   einsatz_field,
   einsatz_status,
-} from "@/generated/prisma";
+} from '@/generated/prisma';
 import type {
   EinsatzForCalendar,
   EinsatzCreate,
   EinsatzDetailed,
   ETV,
-} from "@/features/einsatz/types";
-import { hasPermissionFromSession, requireAuth } from "@/lib/auth/authGuard";
+} from '@/features/einsatz/types';
+import { hasPermissionFromSession, requireAuth } from '@/lib/auth/authGuard';
 
-import { ValidateEinsatzCreate } from "./validation-service";
-import z from "zod";
-import { detectChangeTypes, getAffectedUserIds } from "../activity_log/utils";
-import { createChangeLogAuto } from "../activity_log/activity_log-dal";
-import { BadRequestError, ForbiddenError } from "@/lib/errors";
+import { ValidateEinsatzCreate } from './validation-service';
+import z from 'zod';
+import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
+import { createChangeLogAuto } from '../activity_log/activity_log-dal';
+import { BadRequestError, ForbiddenError } from '@/lib/errors';
 
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(
@@ -26,7 +26,7 @@ export async function getEinsatzWithDetailsById(
 ): Promise<EinsatzDetailed | null | Response> {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
-    throw new BadRequestError("Invalid ID");
+    throw new BadRequestError('Invalid ID');
   }
 
   const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
@@ -105,8 +105,8 @@ export async function getAllEinsaetze(org_ids: string[]) {
     return [];
   }
 
-  if (!hasPermissionFromSession(session, "einsaetze:read")) {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  if (!hasPermissionFromSession(session, 'einsaetze:read')) {
+    return Response.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
   return getAllEinsaetzeFromDb(org_ids, session.user.id);
@@ -114,8 +114,8 @@ export async function getAllEinsaetze(org_ids: string[]) {
 
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
-  if (!hasPermissionFromSession(session, "einsaetze:read")) {
-    return new Response("Unauthorized", { status: 403 });
+  if (!hasPermissionFromSession(session, 'einsaetze:read')) {
+    return new Response('Unauthorized', { status: 403 });
   }
 
   // Nutze User's orgIds als Default wenn keine org_ids übergeben
@@ -194,7 +194,7 @@ export async function getEinsaetzeForTableView(
         },
       },
     },
-    orderBy: { created_at: "asc" },
+    orderBy: { created_at: 'asc' },
   });
 
   // Map DB result to ETV type
@@ -235,7 +235,7 @@ export async function getEinsaetzeForTableView(
           value: f.value,
           field_id: f.field_id,
           datatype: f.field.type?.datatype ?? null,
-        } as einsatz_field & { datatype: string | null })
+        }) as einsatz_field & { datatype: string | null }
     ),
     user: einsatz.user
       ? {
@@ -259,8 +259,8 @@ export async function getEinsaetzeForTableView(
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "templates:read")) {
-    return new Response("Unauthorized", { status: 403 });
+  if (!hasPermissionFromSession(session, 'templates:read')) {
+    return new Response('Unauthorized', { status: 403 });
   }
 
   // Verwende org_id oder erste Organisation des Users
@@ -269,7 +269,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
     org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new BadRequestError("Organisation muss angegeben werden");
+    throw new BadRequestError('Organisation muss angegeben werden');
   }
 
   // Prüfe ob User Zugriff auf diese Organisation hat
@@ -316,8 +316,8 @@ export async function createEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "einsaetze:create")) {
-    throw new ForbiddenError("Fehlende Berechtigungen");
+  if (!hasPermissionFromSession(session, 'einsaetze:create')) {
+    throw new ForbiddenError('Fehlende Berechtigungen');
   }
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
@@ -325,11 +325,11 @@ export async function createEinsatz({
     data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
 
   if (!useOrgId) {
-    throw new BadRequestError("Organisation muss angegeben werden");
+    throw new BadRequestError('Organisation muss angegeben werden');
   }
 
   if (!userOrgIds.includes(useOrgId)) {
-    throw new ForbiddenError("Fehlende Berechtigungen für diese Organisation");
+    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
   }
 
   const einsatzWithAuth = {
@@ -353,7 +353,7 @@ export async function createEinsatz({
 
       for (const typeName of changeTypeNames) {
         const affectedUserId =
-          typeName === "create" ? null : affectedUserIds[0] || null;
+          typeName === 'create' ? null : affectedUserIds[0] || null;
 
         await createChangeLogAuto({
           einsatzId: createdEinsatz.id,
@@ -363,7 +363,7 @@ export async function createEinsatz({
         });
       }
     } catch (error) {
-      console.error("Failed to create activity logs:", error);
+      console.error('Failed to create activity logs:', error);
     }
   }
 
@@ -376,8 +376,8 @@ export async function updateEinsatzTime(data: {
   end: Date;
 }): Promise<Einsatz> {
   const { session } = await requireAuth();
-  if (!hasPermissionFromSession(session, "einsaetze:update")) {
-    throw new ForbiddenError("Fehlende Berechtigungen");
+  if (!hasPermissionFromSession(session, 'einsaetze:update')) {
+    throw new ForbiddenError('Fehlende Berechtigungen');
   }
 
   const dataSchema = z.object({
@@ -405,7 +405,7 @@ export async function toggleUserAssignmentToEinsatz(
   const { session } = await requireAuth();
 
   if (!session?.user.id) {
-    throw new Response("User ID is required", { status: 400 });
+    throw new Response('User ID is required', { status: 400 });
   }
 
   const existingEinsatz = await prisma.einsatz.findUnique({
@@ -434,8 +434,8 @@ export async function toggleUserAssignmentToEinsatz(
   const newStatusId =
     existingEinsatz.helpers_needed >
     existingEinsatz.einsatz_helper.length + addOrRemoveOne
-      ? "bb169357-920b-4b49-9e3d-1cf489409370" // offen
-      : "15512bc7-fc64-4966-961f-c506a084a274"; // vergeben
+      ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
+      : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
   let result: Einsatz;
 
@@ -466,11 +466,11 @@ export async function toggleUserAssignmentToEinsatz(
       await createChangeLogAuto({
         einsatzId: einsatzId,
         userId: session.user.id,
-        typeName: "cancel",
+        typeName: 'cancel',
         affectedUserId: session.user.id,
       });
     } catch (error) {
-      console.error("Failed to create activity log for unassignment:", error);
+      console.error('Failed to create activity log for unassignment:', error);
     }
   } else {
     // USER IS NOT ASSIGNED → ADD THEM
@@ -500,11 +500,11 @@ export async function toggleUserAssignmentToEinsatz(
       await createChangeLogAuto({
         einsatzId: einsatzId,
         userId: session.user.id,
-        typeName: "takeover",
+        typeName: 'takeover',
         affectedUserId: session.user.id, // as the user is assigning themselves they are also the affected user
       });
     } catch (error) {
-      console.error("Failed to create activity log for assignment:", error);
+      console.error('Failed to create activity log for assignment:', error);
     }
   }
 
@@ -518,8 +518,8 @@ export async function updateEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "einsaetze:update")) {
-    throw new ForbiddenError("Fehlende Berechtigungen");
+  if (!hasPermissionFromSession(session, 'einsaetze:update')) {
+    throw new ForbiddenError('Fehlende Berechtigungen');
   }
 
   if (data.template_id && false) {
@@ -539,7 +539,7 @@ export async function updateEinsatz({
   } = data;
 
   if (!id) {
-    throw new BadRequestError("Einsatz must have an id for update");
+    throw new BadRequestError('Einsatz must have an id for update');
   }
 
   // Prüfe ob Einsatz existiert und User Zugriff hat
@@ -554,7 +554,7 @@ export async function updateEinsatz({
 
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    throw new ForbiddenError("Fehlende Berechtigungen für diese Organisation");
+    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
   }
 
   try {
@@ -612,8 +612,8 @@ export async function updateEinsatz({
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   const { session } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, "einsaetze:delete")) {
-    throw new Response("Unauthorized", { status: 403 });
+  if (!hasPermissionFromSession(session, 'einsaetze:delete')) {
+    throw new Response('Unauthorized', { status: 403 });
   }
 
   const einsatz = await prisma.einsatz.findUnique({
@@ -650,7 +650,7 @@ export async function deleteEinsaetzeByIds(
     where: { id: { in: einsatzIds } },
   });
   if (!einsatz || einsatz.length === 0) {
-    throw new BadRequestError(`No Einsaetze found: ${einsatzIds.join(", ")}`);
+    throw new BadRequestError(`No Einsaetze found: ${einsatzIds.join(', ')}`);
   }
 
   try {
@@ -661,7 +661,7 @@ export async function deleteEinsaetzeByIds(
     });
   } catch (error) {
     throw new BadRequestError(
-      `Failed to delete Einsaetze with IDs ${einsatzIds.join(", ")}: ${error}`
+      `Failed to delete Einsaetze with IDs ${einsatzIds.join(', ')}: ${error}`
     );
   }
 }
@@ -682,7 +682,7 @@ async function createEinsatzInDb({
     einsatz_fields,
     assignedUsers = [],
     userProperties,
-    status_id = "offen",
+    status_id = 'offen',
     template_id = null,
     all_day = false,
   } = data;
@@ -729,7 +729,7 @@ async function createEinsatzInDb({
   });
 }
 function isValidUuid(id?: unknown): boolean {
-  if (!id || typeof id !== "string") return false;
+  if (!id || typeof id !== 'string') return false;
   return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(
     id
   );
@@ -787,7 +787,7 @@ async function getEinsatzForCalendarFromDb(
   id: string
 ): Promise<EinsatzForCalendar | Response | null> {
   if (!isValidUuid(id)) {
-    return new Response("Invalid ID", { status: 400 });
+    return new Response('Invalid ID', { status: 400 });
   }
 
   return prisma.einsatz.findUnique({

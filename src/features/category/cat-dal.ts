@@ -1,7 +1,7 @@
-"use server"
+'use server';
 
-import prisma from "@/lib/prisma";
-import type { einsatz_category as EinsatzCategory } from "@/generated/prisma";
+import prisma from '@/lib/prisma';
+import type { einsatz_category as EinsatzCategory } from '@/generated/prisma';
 
 export async function getCategoriesByOrgIds(
   org_ids: string[]
@@ -11,7 +11,7 @@ export async function getCategoriesByOrgIds(
       org_id: { in: org_ids },
     },
     orderBy: {
-      value: "asc",
+      value: 'asc',
     },
   });
 }

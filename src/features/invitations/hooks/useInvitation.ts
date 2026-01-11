@@ -1,22 +1,22 @@
-"use client";
+'use client';
 
-import { useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type {
   InviteUserFormData,
   CreateInvitationData,
   AcceptInvitationResult,
   Invitation,
-} from "@/features/invitations/types/invitation";
+} from '@/features/invitations/types/invitation';
 import {
   acceptInvitationAction,
   createInvitationAction,
-} from "../invitation-action";
-import { invitationQueryKeys } from "../queryKeys";
+} from '../invitation-action';
+import { invitationQueryKeys } from '../queryKeys';
 import {
   getActiveInvitationsByOrgId,
   getInvitationByToken,
-} from "../invitation-dal";
+} from '../invitation-dal';
 
 export interface UseInvitationReturn {
   loading: boolean;
@@ -29,14 +29,14 @@ export interface UseInvitationReturn {
 function mapToCreateInvitationData(
   data: InviteUserFormData
 ): CreateInvitationData {
-  const organizationId = data.organizationId ?? data.organization_id ?? "";
-  const roleId = data.roleId ?? data.role_id ?? "";
+  const organizationId = data.organizationId ?? data.organization_id ?? '';
+  const roleId = data.roleId ?? data.role_id ?? '';
 
   if (!organizationId) {
-    throw new Error("organizationId is required");
+    throw new Error('organizationId is required');
   }
   if (!roleId) {
-    throw new Error("roleId is required");
+    throw new Error('roleId is required');
   }
 
   return {
@@ -48,26 +48,26 @@ function mapToCreateInvitationData(
 
 export function useInvitation(): UseInvitationReturn {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const sendInvitation = useCallback(
     async (data: InviteUserFormData): Promise<AcceptInvitationResult> => {
       setLoading(true);
-      setError("");
-      setSuccess("");
+      setError('');
+      setSuccess('');
 
       try {
         const mappedData = mapToCreateInvitationData(data);
         const result = await createInvitationAction(mappedData);
 
-        setSuccess("Einladung erfolgreich versendet!");
+        setSuccess('Einladung erfolgreich versendet!');
         return result;
       } catch (err) {
         const errorMessage =
           err instanceof Error
             ? err.message
-            : "Fehler beim Senden der Einladung";
+            : 'Fehler beim Senden der Einladung';
         setError(errorMessage);
         throw err;
       } finally {
@@ -78,8 +78,8 @@ export function useInvitation(): UseInvitationReturn {
   );
 
   const clearMessages = useCallback(() => {
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
   }, []);
 
   return {
@@ -101,24 +101,24 @@ export interface UseAcceptInvitationReturn {
 
 export function useAcceptInvitation(): UseAcceptInvitationReturn {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const acceptInvitation = useCallback(
     async (token: string): Promise<AcceptInvitationResult> => {
       setLoading(true);
-      setError("");
-      setSuccess("");
+      setError('');
+      setSuccess('');
 
       try {
         const result = await acceptInvitationAction(token);
-        setSuccess("Einladung erfolgreich akzeptiert!");
+        setSuccess('Einladung erfolgreich akzeptiert!');
         return result;
       } catch (err) {
         const errorMessage =
           err instanceof Error
             ? err.message
-            : "Fehler beim Annehmen der Einladung";
+            : 'Fehler beim Annehmen der Einladung';
         setError(errorMessage);
         throw err;
       } finally {
@@ -129,8 +129,8 @@ export function useAcceptInvitation(): UseAcceptInvitationReturn {
   );
 
   const clearMessages = useCallback(() => {
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
   }, []);
 
   return {

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { Suspense } from "react";
-import ResetPasswordClient from "./ResetPasswordClient";
+import { Suspense } from 'react';
+import ResetPasswordClient from './ResetPasswordClient';
 
 interface ResetPasswordPageProps {
   token: string;
