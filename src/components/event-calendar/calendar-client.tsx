@@ -1,34 +1,33 @@
-"use client";
+'use client';
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { EventCalendar } from "@/components/event-calendar";
-import { CalendarEvent, CalendarMode } from "./types";
-import { EinsatzCreateToCalendarEvent } from "./einsatz-service";
-import { EinsatzCreate } from "@/features/einsatz/types";
+import { EventCalendar } from '@/components/event-calendar';
+import { CalendarEvent, CalendarMode } from './types';
+import { EinsatzCreateToCalendarEvent } from './einsatz-service';
+import { EinsatzCreate } from '@/features/einsatz/types';
 import {
   getEinsatzWithDetailsById,
   toggleUserAssignmentToEinsatz,
   updateEinsatzTime,
-} from "@/features/einsatz/dal-einsatz";
-import { getEinsaetzeData } from "./utils";
+} from '@/features/einsatz/dal-einsatz';
+import { getEinsaetzeData } from './utils';
 import {
   createEinsatz,
   deleteEinsatzById,
   updateEinsatz,
-} from "@/features/einsatz/dal-einsatz";
-import { toast } from "sonner";
-import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
-import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
-import { queryKeys as StatusQueryKeys } from "@/features/einsatz_status/queryKeys";
-import { useSession } from "next-auth/react";
-import { getOrganizationsByIds } from "@/features/organization/org-dal";
-import { GetStatuses } from "@/features/einsatz_status/status-dal";
-import { useAlertDialog } from "@/hooks/use-alert-dialog";
-import { getAllUsersWithRolesByOrgId } from "@/features/user/user-dal";
-import { getUserPropertiesByOrgId } from "@/features/user_properties/user_property-dal";
-import { userPropertyQueryKeys } from "@/features/user_properties/queryKeys";
-import { queryKeys as UserQueryKeys } from "@/features/user/queryKeys";
+} from '@/features/einsatz/dal-einsatz';
+import { toast } from 'sonner';
+import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
+import { queryKeys as OrgaQueryKeys } from '@/features/organization/queryKeys';
+import { useSession } from 'next-auth/react';
+import { getOrganizationsByIds } from '@/features/organization/org-dal';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { getAllUsersWithRolesByOrgId } from '@/features/user/user-dal';
+import { getUserPropertiesByOrgId } from '@/features/user_properties/user_property-dal';
+import { userPropertyQueryKeys } from '@/features/user_properties/queryKeys';
+import { queryKeys as UserQueryKeys } from '@/features/user/queryKeys';
 
 export default function Component({ mode }: { mode: CalendarMode }) {
   const { data: session } = useSession();
@@ -49,17 +48,10 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     enabled: !!session?.user.orgIds?.length,
   });
 
-  const { data: statuses } = useQuery({
-    queryKey: StatusQueryKeys.statuses(),
-    queryFn: () => GetStatuses(),
-  });
-
-  const einsatz_singular =
-    organizations?.find((org) => org.id === activeOrgId)
-      ?.einsatz_name_singular ?? "Einsatz";
-  const einsatz_plural =
-    organizations?.find((org) => org.id === activeOrgId)?.einsatz_name_plural ??
-    "Einsätze";
+  const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   // Mutations with optimistic update
   const createMutation = useMutation({
@@ -98,7 +90,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const updateMutation = useMutation({
     mutationFn: async (event: EinsatzCreate | CalendarEvent) => {
       // Check if is EinsatzCreate
-      if ("org_id" in event) {
+      if ('org_id' in event) {
         return updateEinsatz({ data: event });
       } else {
         return updateEinsatzTime({
@@ -115,7 +107,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         queryClient.getQueryData<CalendarEvent[]>(queryKey) || [];
 
       let calendarEvent: CalendarEvent | null = null;
-      if ("org_id" in updatedEvent) {
+      if ('org_id' in updatedEvent) {
         calendarEvent = await EinsatzCreateToCalendarEvent(updatedEvent);
       } else {
         calendarEvent = updatedEvent;
@@ -185,7 +177,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     },
     onSuccess: (data) => {
       // if helper was already assigned, the toggle returns with a property deleted = true
-      if (!Object.hasOwn(data, "deleted"))
+      if (!Object.hasOwn(data, 'deleted'))
         toast.success(
           `Du hast dich erfolgreich bei '${data.title}' eingetragen`
         );
@@ -234,7 +226,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       toast.error(`${einsatz_singular} konnte nicht gelöscht werden: ${error}`);
     },
     onSuccess: (_data, vars, ctx) => {
-      const title = ctx?.toDelete?.title || vars.eventTitle || "Unbenannt";
+      const title = ctx?.toDelete?.title || vars.eventTitle || 'Unbenannt';
       toast.success(`${einsatz_singular} '${title}' wurde gelöscht.`);
     },
     onSettled: (_data, _error, variables) => {
@@ -274,7 +266,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     },
     onSuccess: (_data, vars) => {
       toast.success(
-        vars.eventIds.length + " " + einsatz_plural + " wurden gelöscht."
+        vars.eventIds.length + ' ' + einsatz_plural + ' wurden gelöscht.'
       );
     },
     onSettled: (_data, _error, variables) => {
@@ -303,7 +295,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const handleAssignToggleEvent = async (eventId: string) => {
     const userId = session?.user?.id;
     if (!userId) {
-      toast.error("Benutzer nicht angemeldet");
+      toast.error('Benutzer nicht angemeldet');
       return;
     }
 
@@ -369,19 +361,25 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       }
 
       const helpersNeeded =
-        typeof einsatzDetail.helpers_needed === "number"
+        typeof einsatzDetail.helpers_needed === 'number'
           ? einsatzDetail.helpers_needed
           : -1;
 
-      const propMap = (props || []).reduce((acc: any, p: any) => {
-        acc[p.id] = p.field?.name ?? p.id;
-        return acc;
-      }, {} as Record<string, string>);
+      const propMap = (props || []).reduce(
+        (acc: any, p: any) => {
+          acc[p.id] = p.field?.name ?? p.id;
+          return acc;
+        },
+        {} as Record<string, string>
+      );
 
-      const propTypeMap = (props || []).reduce((acc: any, p: any) => {
-        acc[p.id] = p.field?.type?.datatype ?? null;
-        return acc;
-      }, {} as Record<string, string | null>);
+      const propTypeMap = (props || []).reduce(
+        (acc: any, p: any) => {
+          acc[p.id] = p.field?.type?.datatype ?? null;
+          return acc;
+        },
+        {} as Record<string, string | null>
+      );
 
       const assignedAfterAdd = Array.from(
         new Set([...(event?.assignedUsers || []), userId])
@@ -405,12 +403,12 @@ export default function Component({ mode }: { mode: CalendarMode }) {
 
             const datatype = propTypeMap[propId];
 
-            if (datatype === "boolean") {
+            if (datatype === 'boolean') {
               const val = String(upv.value).toLowerCase().trim();
-              return val === "true" || val === "1";
+              return val === 'true' || val === '1';
             }
 
-            return String(upv.value).trim() !== "";
+            return String(upv.value).trim() !== '';
           }).length;
 
         const propName = propMap[propId] ?? propId;
@@ -431,31 +429,31 @@ export default function Component({ mode }: { mode: CalendarMode }) {
 
       if (blocking.length > 0) {
         await showDialog({
-          title: "Eintragung nicht möglich",
+          title: 'Eintragung nicht möglich',
           description:
-            "Die Eintragung würde die Anforderungen nicht erfüllen:\n\n" +
-            blocking.join("\n\n") +
-            "\n\nBitte wende dich an die Einsatzleitung.",
-          confirmText: "OK",
-          variant: "destructive",
+            'Die Eintragung würde die Anforderungen nicht erfüllen:\n\n' +
+            blocking.join('\n\n') +
+            '\n\nBitte wende dich an die Einsatzleitung.',
+          confirmText: 'OK',
+          variant: 'destructive',
         });
         return;
       }
 
       if (warnings.length > 0) {
         const confirmed = await showDialog({
-          title: "Warnung: Fehlende Eigenschaften",
-          description: warnings.join("\n\n") + "\n\nTrotzdem eintragen?",
-          confirmText: "Trotzdem eintragen",
-          variant: "destructive",
+          title: 'Warnung: Fehlende Eigenschaften',
+          description: warnings.join('\n\n') + '\n\nTrotzdem eintragen?',
+          confirmText: 'Trotzdem eintragen',
+          variant: 'destructive',
         });
 
-        if (confirmed !== "success") return;
+        if (confirmed !== 'success') return;
       }
 
       toggleUserAssignToEvent.mutate(eventId);
     } catch (err) {
-      toast.error("Fehler beim Überprüfen der Anforderungen");
+      toast.error('Fehler beim Überprüfen der Anforderungen');
       toggleUserAssignToEvent.mutate(eventId);
     }
   };
@@ -495,7 +493,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
 }
 function deleteMultipleEinsaetze(eventIds: string[]): Promise<void> {
   try {
-    throw new Error("Function not implemented.");
+    throw new Error('Function not implemented.');
   } catch (error: unknown) {
     return Promise.reject(error);
   }

@@ -1,19 +1,19 @@
-import React from "react";
-import { Text, View, StyleSheet } from "@react-pdf/renderer";
-import type { OrganizationForPDF } from "@/features/organization/types";
+import React from 'react';
+import { Text, View, StyleSheet } from '@react-pdf/renderer';
+import type { OrganizationForPDF } from '@/features/organization/types';
 
 const styles = StyleSheet.create({
   footer: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 30,
     left: 40,
     right: 40,
-    borderTop: "1px solid #e0e0e0",
+    borderTop: '1px solid #e0e0e0',
     paddingTop: 8,
   },
   contact: {
     fontSize: 8,
-    color: "#666",
+    color: '#666',
     lineHeight: 1.6,
   },
 });
@@ -30,8 +30,8 @@ export const BookingFooter: React.FC<BookingFooterProps> = ({
     if (addr.label) parts.push(addr.label);
     parts.push(addr.street);
     parts.push(`${addr.postal_code.toString()} ${addr.city}`);
-    if (addr.country !== "Österreich") parts.push(addr.country);
-    return parts.join(" | ");
+    if (addr.country !== 'Österreich') parts.push(addr.country);
+    return parts.join(' | ');
   });
 
   const contactParts = [];
@@ -54,16 +54,16 @@ export const BookingFooter: React.FC<BookingFooterProps> = ({
 
   const footerText = [
     // Line 1: Organization name + Addresses
-    [organization.name, ...addressLines].join(" | "),
+    [organization.name, ...addressLines].join(' | '),
 
     // Line 2: Contact + Legal
-    [...contactParts, ...legalParts].join(" | "),
+    [...contactParts, ...legalParts].join(' | '),
 
     // Line 3+: Bank accounts (each on new line)
-    [...bankLines].join(" | "),
+    [...bankLines].join(' | '),
   ]
     .filter(Boolean)
-    .join("\n");
+    .join('\n');
 
   return (
     <View style={styles.footer} fixed>

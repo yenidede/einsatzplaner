@@ -8,12 +8,12 @@ export interface GeneratePdfError {
 }
 
 export interface PdfOptions {
-  format?: "A4" | "A3" | "Letter";
+  format?: 'A4' | 'A3' | 'Letter';
   landscape?: boolean;
 }
 
 export interface PdfGenerationRequest {
-  type: "booking-confirmation";
+  type: 'booking-confirmation';
   einsatzId: string;
 }
 

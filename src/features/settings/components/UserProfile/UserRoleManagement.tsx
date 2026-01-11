@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import SwitchIcon from "@/components/icon/SwitchIcon";
+import SwitchIcon from '@/components/icon/SwitchIcon';
 
 interface UserRoleManagementProps {
   organizationName: string;
@@ -16,68 +16,65 @@ export function UserRoleManagement({
   onToggleRole,
 }: UserRoleManagementProps) {
   return (
-    <div className="self-stretch flex flex-col justify-center items-start">
-      <div className="self-stretch px-4 py-2 border-b border-slate-200 inline-flex justify-between items-center">
-        <div className="flex-1 flex justify-start items-center gap-2">
-          <div className="justify-start text-slate-800 text-sm font-semibold font-['Inter'] leading-tight">
+    <div className="flex flex-col items-start justify-center self-stretch">
+      <div className="inline-flex items-center justify-between self-stretch border-b border-slate-200 px-4 py-2">
+        <div className="flex flex-1 items-center justify-start gap-2">
+          <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
             Rollen
           </div>
-          <div className="justify-start text-slate-600 text-sm font-normal font-['Inter'] leading-tight">
+          <div className="justify-start font-['Inter'] text-sm leading-tight font-normal text-slate-600">
             {organizationName}
           </div>
         </div>
       </div>
 
-      <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-        <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-          <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-            <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+      <div className="flex flex-col items-start justify-start gap-4 self-stretch py-2">
+        <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
+          <div className="inline-flex min-w-72 flex-1 flex-col items-start justify-start gap-1.5">
+            <div className="justify-start font-['Inter'] text-sm leading-tight font-medium text-slate-800">
               Organisationsverwaltung (OV)
             </div>
             <button
-              onClick={() => onToggleRole("OV")}
+              onClick={() => onToggleRole('OV')}
               disabled={saving}
-              className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-              border-0 p-0 outline-none focus:outline-none"
+              className="cursor-pointer border-0 bg-transparent p-0 transition-opacity outline-none focus:outline-none disabled:opacity-50"
             >
-              <SwitchIcon isOn={userRoles.includes("OV")} disabled={saving} />
+              <SwitchIcon isOn={userRoles.includes('OV')} disabled={saving} />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-        <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-          <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-            <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+      <div className="flex flex-col items-start justify-start gap-4 self-stretch py-2">
+        <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
+          <div className="inline-flex min-w-72 flex-1 flex-col items-start justify-start gap-1.5">
+            <div className="justify-start font-['Inter'] text-sm leading-tight font-medium text-slate-800">
               Einsatzverwaltung (EV)
             </div>
             <button
-              onClick={() => onToggleRole("EV")}
+              onClick={() => onToggleRole('EV')}
               disabled={saving}
-              className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-              border-0 p-0 outline-none focus:outline-none"
+              className="cursor-pointer border-0 bg-transparent p-0 transition-opacity outline-none focus:outline-none disabled:opacity-50"
             >
-              <SwitchIcon isOn={userRoles.includes("EV")} disabled={saving} />
+              <SwitchIcon isOn={userRoles.includes('EV')} disabled={saving} />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="self-stretch py-2 flex flex-col justify-start items-start gap-4">
-        <div className="self-stretch px-4 inline-flex justify-start items-start gap-4">
-          <div className="flex-1 min-w-72 inline-flex flex-col justify-start items-start gap-1.5">
-            <div className="justify-start text-slate-800 text-sm font-medium font-['Inter'] leading-tight">
+      <div className="flex flex-col items-start justify-start gap-4 self-stretch py-2">
+        <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
+          <div className="inline-flex min-w-72 flex-1 flex-col items-start justify-start gap-1.5">
+            <div className="justify-start font-['Inter'] text-sm leading-tight font-medium text-slate-800">
               Helfer:in (Helfer:in)
             </div>
             <button
-              onClick={() => onToggleRole("Helfer")}
+              onClick={() => onToggleRole('Helfer')}
               disabled={saving}
-              className="cursor-pointer disabled:opacity-50 transition-opacity bg-transparent 
-              border-0 p-0 outline-none focus:outline-none"
+              className="cursor-pointer border-0 bg-transparent p-0 transition-opacity outline-none focus:outline-none disabled:opacity-50"
             >
               <SwitchIcon
-                isOn={userRoles.includes("Helfer")}
+                isOn={userRoles.includes('Helfer')}
                 disabled={saving}
               />
             </button>

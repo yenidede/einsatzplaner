@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getSubscriptionAction,
   rotateSubscriptionAction,
   deactivateSubscriptionAction,
-} from "../actions";
+} from '../actions';
 
 export type CalendarSubscription = {
   id: string;
@@ -17,7 +17,7 @@ export type CalendarSubscription = {
   last_accessed: string | null;
 };
 
-const key = (orgId: string) => ["calendar-subscription", orgId];
+const key = (orgId: string) => ['calendar-subscription', orgId];
 
 export function useCalendarSubscription(orgId: string) {
   const queryClient = useQueryClient();

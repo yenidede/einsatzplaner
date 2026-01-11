@@ -1,29 +1,29 @@
-"use client";
+'use client';
 
-import Logo from "@/components/logo";
-import NotificationMenu from "@/components/navbar/notification-menu";
-import UserMenu from "@/components/navbar/user-menu";
-import { Button } from "@/components/ui/button";
+import Logo from '@/components/logo';
+import NotificationMenu from '@/components/navbar/notification-menu';
+import UserMenu from '@/components/navbar/user-menu';
+import { Button } from '@/components/ui/button';
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-} from "@/components/ui/navigation-menu";
+} from '@/components/ui/navigation-menu';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import Link from "next/link";
-import NavSwitchOrgSelect from "./switch-org";
-import { useSession } from "next-auth/react";
-import { useQuery } from "@tanstack/react-query";
-import { queryKeys as OrgaQueryKeys } from "@/features/organization/queryKeys";
-import { queryKeys as RolesQueryKeys } from "@/features/roles/queryKeys";
-import { getOrganizationsByIds } from "@/features/organization/org-dal";
-import { cn } from "@/lib/utils";
-import { getAllRoles } from "@/features/roles/roles-dal";
+} from '@/components/ui/popover';
+import Link from 'next/link';
+import NavSwitchOrgSelect from './switch-org';
+import { useSession } from 'next-auth/react';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys as OrgaQueryKeys } from '@/features/organization/queryKeys';
+import { queryKeys as RolesQueryKeys } from '@/features/roles/queryKeys';
+import { getOrganizationsByIds } from '@/features/organization/org-dal';
+import { cn } from '@/lib/utils';
+import { getAllRoles } from '@/features/roles/roles-dal';
 
 export default function Component() {
   const { data: session } = useSession();
@@ -42,30 +42,30 @@ export default function Component() {
   // Navigation links array to be used in both desktop and mobile menus
   const navigationLinks = [
     {
-      href: "/helferansicht",
-      label: "Helferansicht",
+      href: '/helferansicht',
+      label: 'Helferansicht',
       hidden:
         !session ||
         !Array.isArray(session.user.roleIds) ||
         !session.user.roleIds.includes(
-          roles?.find((r) => r.name === "Helfer")?.id || ""
+          roles?.find((r) => r.name === 'Helfer')?.id || ''
         ),
     },
     {
-      href: "/einsatzverwaltung",
-      label: "Einsatzverwaltung",
+      href: '/einsatzverwaltung',
+      label: 'Einsatzverwaltung',
       hidden:
         !session ||
         !Array.isArray(session.user.roleIds) ||
         !session.user.roleIds.includes(
-          roles?.find((r) => r.name === "Einsatzverwaltung")?.id || ""
+          roles?.find((r) => r.name === 'Einsatzverwaltung')?.id || ''
         ),
     },
-    { href: "/auswertungen", label: "Auswertungen", hidden: true },
+    { href: '/auswertungen', label: 'Auswertungen', hidden: true },
   ];
 
   return (
-    <header className={cn("border-b px-4 md:px-6 position-fixed top-0")}>
+    <header className={cn('position-fixed top-0 border-b px-4 md:px-6')}>
       <div className="flex h-16 items-center justify-between gap-4">
         {/* Left side */}
         <div className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export default function Component() {
                     <NavigationMenuItem key={index}>
                       <Link
                         href={link.href}
-                        className="text-muted-foreground hover:text-primary py-1.5 font-medium data-active:focus:bg-accent data-active:hover:bg-accent data-active:bg-accent data-active:text-accent-foreground hover:bg-accent focus:bg-accent focus:text-accent-foreground focus-visible:ring-ring/50 [&_svg:not([class*='text-'])]:text-muted-foreground flex flex-col gap-1 rounded-sm p-2 text-sm transition-all outline-none focus-visible:ring-[3px] focus-visible:outline-1 [&_svg:not([class*='size-'])]:size-4"
+                        className="text-muted-foreground hover:text-primary data-active:focus:bg-accent data-active:hover:bg-accent data-active:bg-accent data-active:text-accent-foreground hover:bg-accent focus:bg-accent focus:text-accent-foreground focus-visible:ring-ring/50 [&_svg:not([class*='text-'])]:text-muted-foreground flex flex-col gap-1 rounded-sm p-2 py-1.5 text-sm font-medium transition-all outline-none focus-visible:ring-[3px] focus-visible:outline-1 [&_svg:not([class*='size-'])]:size-4"
                       >
                         {link.label}
                       </Link>

@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useRef } from "react";
-import { format, isSameDay } from "date-fns";
-import { XIcon } from "lucide-react";
+import { useEffect, useMemo, useRef } from 'react';
+import { format, isSameDay } from 'date-fns';
+import { XIcon } from 'lucide-react';
 
-import { EventItem, type CalendarEvent } from "@/components/event-calendar";
-import { CalendarMode } from "./types";
+import { EventItem, type CalendarEvent } from '@/components/event-calendar';
+import { CalendarMode } from './types';
 
 interface EventsPopupProps {
   date: Date;
@@ -37,23 +37,23 @@ export function EventsPopup({
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [onClose]);
 
   // Handle escape key to close popup
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         onClose();
       }
     };
 
-    document.addEventListener("keydown", handleEscKey);
+    document.addEventListener('keydown', handleEscKey);
     return () => {
-      document.removeEventListener("keydown", handleEscKey);
+      document.removeEventListener('keydown', handleEscKey);
     };
   }, [onClose]);
 
@@ -96,7 +96,7 @@ export function EventsPopup({
       }}
     >
       <div className="bg-background sticky top-0 flex items-center justify-between border-b p-3">
-        <h3 className="font-medium">{format(date, "d MMMM yyyy")}</h3>
+        <h3 className="font-medium">{format(date, 'd MMMM yyyy')}</h3>
         <button
           onClick={onClose}
           className="hover:bg-muted rounded-full p-1"

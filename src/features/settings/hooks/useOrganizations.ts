@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getUserOrganizationByIdAction,
   updateOrganizationAction,
   deleteOrganizationAction,
   type OrganizationUpdateData,
-} from "../organization-action";
-import { settingsQueryKeys } from "../queryKeys/queryKey";
+} from '../organization-action';
+import { settingsQueryKeys } from '../queryKeys/queryKey';
 
 export function useOrganizations(orgs: string[]) {
   const queries = useQuery({
-    queryKey: settingsQueryKeys.userOrganizations(orgs.join(",")),
+    queryKey: settingsQueryKeys.userOrganizations(orgs.join(',')),
     queryFn: () =>
       Promise.all(orgs.map((orgId) => getUserOrganizationByIdAction(orgId))),
     staleTime: 60000,
@@ -42,14 +42,14 @@ export function useOrganization(orgId: string) {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.userOrganizations(orgId),
       });
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteOrganizationAction(orgId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
     },
   });
 

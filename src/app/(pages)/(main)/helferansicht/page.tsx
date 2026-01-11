@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import CalendarPageWrapper from "@/components/event-calendar/PageWrapper";
+import CalendarPageWrapper from '@/components/event-calendar/PageWrapper';
 
 export default function Helferansicht() {
-  return CalendarPageWrapper({ mode: "helper" });
+  return CalendarPageWrapper({ mode: 'helper' });
 }

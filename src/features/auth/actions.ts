@@ -1,27 +1,27 @@
-"use server";
+'use server';
 
-import { hash } from "bcryptjs";
-import { randomBytes } from "crypto";
-import { z } from "zod";
+import { hash } from 'bcryptjs';
+import { randomBytes } from 'crypto';
+import { z } from 'zod';
 import {
   getUserWithValidResetToken,
   resetUserPassword,
   getUserByEmail,
   updateUserResetToken,
   createUserWithOrgAndRoles,
-} from "@/DataAccessLayer/user";
-import { emailService } from "@/lib/email/EmailService";
-import { actionClient } from "@/lib/safe-action";
-import { formSchema as registerFormSchema } from "./register-schema";
-import prisma from "@/lib/prisma";
+} from '@/DataAccessLayer/user';
+import { emailService } from '@/lib/email/EmailService';
+import { actionClient } from '@/lib/safe-action';
+import { formSchema as registerFormSchema } from './register-schema';
+import prisma from '@/lib/prisma';
 
 const resetPasswordSchema = z.object({
-  token: z.string().min(1, "Token ist erforderlich"),
-  newPassword: z.string().min(8, "Passwort muss mindestens 8 Zeichen haben"),
+  token: z.string().min(1, 'Token ist erforderlich'),
+  newPassword: z.string().min(8, 'Passwort muss mindestens 8 Zeichen haben'),
 });
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email("Ungültige E-Mail-Adresse"),
+  email: z.string().email('Ungültige E-Mail-Adresse'),
 });
 
 export const acceptInviteAndCreateNewAccount = actionClient
@@ -34,29 +34,32 @@ export const acceptInviteAndCreateNewAccount = actionClient
           email: parsedInput.email,
           expires_at: {
             gt: new Date(),
-          }
+          },
         },
         select: {
           token: true,
           new_user_id: true,
           organization: true,
-        }
-      });
-      const [hashedPassword, invitations] = await Promise.all([hash(parsedInput.passwort, 12), prisma.invitation.findMany({
-        where: {
-          email: parsedInput.email,
-          token: firstInvitation?.token,
-          expires_at: {
-            gt: new Date(),
-          }
         },
-        select: {
-          organization: true,
-          role_id: true,
-        }
-      })]);
+      });
+      const [hashedPassword, invitations] = await Promise.all([
+        hash(parsedInput.passwort, 12),
+        prisma.invitation.findMany({
+          where: {
+            email: parsedInput.email,
+            token: firstInvitation?.token,
+            expires_at: {
+              gt: new Date(),
+            },
+          },
+          select: {
+            organization: true,
+            role_id: true,
+          },
+        }),
+      ]);
       if (invitations.length === 0 || !firstInvitation) {
-        throw new Error("Keine gültigen Einladungen gefunden");
+        throw new Error('Keine gültigen Einladungen gefunden');
       }
 
       await createUserWithOrgAndRoles({
@@ -66,7 +69,7 @@ export const acceptInviteAndCreateNewAccount = actionClient
         lastname: parsedInput.nachname,
         password: hashedPassword,
         phone: parsedInput.telefon,
-        roleIds: invitations.map(i => i.role_id),
+        roleIds: invitations.map((i) => i.role_id),
         salutationId: parsedInput.anredeId,
         userId: firstInvitation.new_user_id || undefined,
       });
@@ -74,11 +77,11 @@ export const acceptInviteAndCreateNewAccount = actionClient
         where: {
           email: parsedInput.email,
           token: firstInvitation.token,
-        }
+        },
       });
       return {
         success: true,
-        message: "Account erfolgreich erstellt. Sie werden nun eingeloggt.",
+        message: 'Account erfolgreich erstellt. Sie werden nun eingeloggt.',
       };
     } catch (error) {
       throw error;
@@ -97,7 +100,7 @@ export async function resetPasswordAction(data: {
     if (!user) {
       return {
         success: false,
-        error: "Ungültiger oder abgelaufener Token",
+        error: 'Ungültiger oder abgelaufener Token',
       };
     }
 
@@ -107,10 +110,10 @@ export async function resetPasswordAction(data: {
 
     return {
       success: true,
-      message: "Passwort erfolgreich zurückgesetzt",
+      message: 'Passwort erfolgreich zurückgesetzt',
     };
   } catch (error) {
-    console.error("Reset password error:", error);
+    console.error('Reset password error:', error);
 
     if (error instanceof z.ZodError) {
       return {
@@ -121,7 +124,7 @@ export async function resetPasswordAction(data: {
 
     return {
       success: false,
-      error: "Fehler beim Zurücksetzen des Passworts",
+      error: 'Fehler beim Zurücksetzen des Passworts',
     };
   }
 }
@@ -137,11 +140,11 @@ export async function forgotPasswordAction(data: { email: string }) {
       return {
         success: true,
         message:
-          "Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde eine E-Mail mit Anweisungen zum Zurücksetzen des Passworts gesendet.",
+          'Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde eine E-Mail mit Anweisungen zum Zurücksetzen des Passworts gesendet.',
       };
     }
 
-    const resetToken = randomBytes(32).toString("hex");
+    const resetToken = randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + hour); // 1 Stunde
 
     await updateUserResetToken(validated.email, resetToken, resetTokenExpiry);
@@ -149,16 +152,16 @@ export async function forgotPasswordAction(data: { email: string }) {
     try {
       await emailService.sendPasswordResetEmail(validated.email, resetToken);
     } catch (emailError) {
-      console.error("Error sending password reset email:", emailError);
+      console.error('Error sending password reset email:', emailError);
     }
 
     return {
       success: true,
       message:
-        "Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde eine E-Mail mit Anweisungen zum Zurücksetzen des Passworts gesendet.",
+        'Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde eine E-Mail mit Anweisungen zum Zurücksetzen des Passworts gesendet.',
     };
   } catch (error) {
-    console.error("Forgot password error:", error);
+    console.error('Forgot password error:', error);
 
     if (error instanceof z.ZodError) {
       return {
@@ -169,7 +172,7 @@ export async function forgotPasswordAction(data: { email: string }) {
 
     return {
       success: false,
-      error: "Fehler beim Verarbeiten der Anfrage",
+      error: 'Fehler beim Verarbeiten der Anfrage',
     };
   }
 }

@@ -24,9 +24,9 @@ export const exampleTemplates: EinsatzTemplate[] = [
       { name: 'Name', type: 'text', required: true },
       { name: 'Datum', type: 'date', required: true },
       { name: 'Teilnehmer', type: 'number', required: true },
-      { name: 'Beschreibung', type: 'textarea' }
+      { name: 'Beschreibung', type: 'textarea' },
     ],
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
+    updatedAt: new Date().toISOString(),
+  },
 ];

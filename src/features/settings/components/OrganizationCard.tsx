@@ -1,6 +1,6 @@
-"use client";
-import { Trash } from "lucide-react";
-import React from "react";
+'use client';
+import { Trash } from 'lucide-react';
+import React from 'react';
 
 interface RoleType {
   id?: string;
@@ -18,22 +18,22 @@ export const OrganizationRoleBadge: React.FC<OrganizationRoleBadgeProps> = ({
   const label =
     role?.abbreviation && role.abbreviation.trim().length > 0
       ? role.abbreviation
-      : role?.name ?? "";
-  let bg = "bg-slate-200";
-  const roleName = role?.name ?? "";
-  if (roleName === "Superadmin") bg = "bg-rose-400";
-  else if (roleName === "OV" || roleName === "Organisationsverwaltung")
-    bg = "bg-red-300";
-  else if (roleName === "EV" || roleName === "Einsatzverwaltung")
-    bg = "bg-orange-300";
-  else if (roleName === "Helfer:in" || roleName === "Helfer")
-    bg = "bg-cyan-200";
+      : (role?.name ?? '');
+  let bg = 'bg-slate-200';
+  const roleName = role?.name ?? '';
+  if (roleName === 'Superadmin') bg = 'bg-rose-400';
+  else if (roleName === 'OV' || roleName === 'Organisationsverwaltung')
+    bg = 'bg-red-300';
+  else if (roleName === 'EV' || roleName === 'Einsatzverwaltung')
+    bg = 'bg-orange-300';
+  else if (roleName === 'Helfer:in' || roleName === 'Helfer')
+    bg = 'bg-cyan-200';
 
   return (
     <div
-      className={`p-1 ${bg} rounded-md flex justify-center items-center gap-2.5`}
+      className={`p-1 ${bg} flex items-center justify-center gap-2.5 rounded-md`}
     >
-      <div className="text-slate-700 text-sm font-medium leading-none">
+      <div className="text-sm leading-none font-medium text-slate-700">
         {label}
       </div>
     </div>
@@ -56,16 +56,16 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
   // normalize roles to array of RoleType objects
   const normalizedRoles: RoleType[] = (() => {
     const base: RoleType[] = Array.isArray(roles)
-      ? (roles as any[]).map((r) => (typeof r === "string" ? { name: r } : r))
+      ? (roles as any[]).map((r) => (typeof r === 'string' ? { name: r } : r))
       : [{ name: String(roles) }];
 
     // sort the roles by priority
     const priority = (role: RoleType) => {
-      const n = (role.name ?? "").toLowerCase();
-      if (n === "superadmin") return 4;
-      if (n === "ov" || n === "organisationsverwaltung") return 3;
-      if (n === "ev" || n === "einsatzverwaltung") return 2;
-      if (n === "helfer:in" || n === "helfer") return 1;
+      const n = (role.name ?? '').toLowerCase();
+      if (n === 'superadmin') return 4;
+      if (n === 'ov' || n === 'organisationsverwaltung') return 3;
+      if (n === 'ev' || n === 'einsatzverwaltung') return 2;
+      if (n === 'helfer:in' || n === 'helfer') return 1;
       return 0;
     };
 
@@ -79,14 +79,14 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
   })();
 
   return (
-    <div className="self-stretch px-4 py-6 inline-flex flex-col justify-start items-start gap-4">
-      <div className="inline-flex justify-start items-center gap-4">
+    <div className="inline-flex flex-col items-start justify-start gap-4 self-stretch px-4 py-6">
+      <div className="inline-flex items-center justify-start gap-4">
         {logo}
-        <div className="inline-flex flex-col justify-center items-start gap-0.5">
-          <div className="text-slate-800 text-xl font-normal leading-7">
+        <div className="inline-flex flex-col items-start justify-center gap-0.5">
+          <div className="text-xl leading-7 font-normal text-slate-800">
             {name}
           </div>
-          <div className="inline-flex flex-wrap gap-2 mt-2">
+          <div className="mt-2 inline-flex flex-wrap gap-2">
             {normalizedRoles.map((r) => (
               <OrganizationRoleBadge key={r.id ?? r.name} role={r} />
             ))}
@@ -94,10 +94,10 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
         </div>
       </div>
 
-      <div className="self-stretch flex flex-col justify-start items-end gap-2.5">
+      <div className="flex flex-col items-end justify-start gap-2.5 self-stretch">
         <button
           type="button"
-          className="px-4 py-2 bg-red-600 text-white rounded-md inline-flex items-center gap-2"
+          className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-white"
           onClick={onLeave}
         >
           <Trash />

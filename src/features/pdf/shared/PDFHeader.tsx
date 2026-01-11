@@ -1,6 +1,6 @@
-import React from "react";
-import { View, Image } from "@react-pdf/renderer";
-import { commonStyles } from "../styles/common-styles";
+import React from 'react';
+import { View, Image } from '@react-pdf/renderer';
+import { commonStyles } from '../styles/common-styles';
 
 type PDFHeaderProps = {
   logoUrl: string | null;

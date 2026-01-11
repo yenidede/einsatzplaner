@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useParams, useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { signOut, useSession } from "next-auth/react";
+import { useParams, useRouter } from 'next/navigation';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { signOut, useSession } from 'next-auth/react';
 import {
   acceptInvitationAction,
   verifyInvitationAction,
-} from "@/features/invitations/invitation-action";
-import { useAlertDialog } from "@/hooks/use-alert-dialog";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { toast } from "sonner";
-import { useState } from "react";
+} from '@/features/invitations/invitation-action';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import { useState } from 'react';
 import SignUpForm, {
   AvailableTab,
-} from "@/features/auth/components/acceptAndRegister-Form";
+} from '@/features/auth/components/acceptAndRegister-Form';
 
 interface Role {
   id: string;
@@ -29,14 +29,14 @@ export default function InviteAcceptPage() {
   const { data: session, status: sessionStatus } = useSession();
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
-  const [tab, setTab] = useState<AvailableTab>("accept");
+  const [tab, setTab] = useState<AvailableTab>('accept');
 
   const {
     data: invitation,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["invitation", token],
+    queryKey: ['invitation', token],
     enabled: !!token,
     queryFn: async () => {
       const res = await verifyInvitationAction(token);
@@ -50,14 +50,14 @@ export default function InviteAcceptPage() {
       return await acceptInvitationAction(token);
     },
     onSuccess: () => {
-      router.push("/");
+      router.push('/');
     },
     onError: async (error: Error) => {
       await showDialog({
-        title: "Fehler",
+        title: 'Fehler',
         description: error.message,
-        confirmText: "OK",
-        variant: "destructive",
+        confirmText: 'OK',
+        variant: 'destructive',
       });
     },
   });
@@ -70,10 +70,10 @@ export default function InviteAcceptPage() {
     // Prüfen ob E-Mail übereinstimmt
     if (session.user.email !== invitation?.email) {
       await showDialog({
-        title: "E-Mail stimmt nicht überein",
+        title: 'E-Mail stimmt nicht überein',
         description: `Diese Einladung ist für ${invitation?.email}, aber Sie sind als ${session.user.email} angemeldet. Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.`,
-        confirmText: "OK",
-        variant: "destructive",
+        confirmText: 'OK',
+        variant: 'destructive',
       });
       return;
     }
@@ -81,11 +81,11 @@ export default function InviteAcceptPage() {
     acceptMutation.mutate();
   };
 
-  if (isLoading || sessionStatus === "loading") {
+  if (isLoading || sessionStatus === 'loading') {
     return (
-      <div className="grow flex items-center justify-center">
+      <div className="flex grow items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto"></div>
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2"></div>
           <p className="mt-4">Einladung wird geladen...</p>
         </div>
       </div>
@@ -94,16 +94,16 @@ export default function InviteAcceptPage() {
 
   if (error) {
     return (
-      <div className="grow flex items-center justify-center">
-        <div className="max-w-md w-full rounded-lg shadow-md p-6 text-center">
-          <h1 className="text-2xl font-bold mb-2 leading-tight!">
+      <div className="flex grow items-center justify-center">
+        <div className="w-full max-w-md rounded-lg p-6 text-center shadow-md">
+          <h1 className="mb-2 text-2xl leading-tight! font-bold">
             Einladung kann nicht angenommen werden
           </h1>
           <p className="mb-4">
             {error.message ||
-              "Diese Einladung ist ungültig, abgelaufen oder wurde bereits verwendet."}
+              'Diese Einladung ist ungültig, abgelaufen oder wurde bereits verwendet.'}
           </p>
-          <Button asChild variant={"default"}>
+          <Button asChild variant={'default'}>
             <Link href="/signin">Bei bestehendem Konto anmelden</Link>
           </Button>
         </div>
@@ -121,76 +121,76 @@ export default function InviteAcceptPage() {
     toast.error(
       <div>
         Einladung ist gültig für <b>{invitation.email}</b>.<br></br> Bitte
-        zuerst von <b>{session.user.email}</b>{" "}
+        zuerst von <b>{session.user.email}</b>{' '}
         <button
           onClick={() => signOut({ callbackUrl })}
-          className="bold underline cursor-pointer"
+          className="bold cursor-pointer underline"
         >
           abmelden
-        </button>{" "}
+        </button>{' '}
         und erneut versuchen.
       </div>,
-      { duration: Number.POSITIVE_INFINITY, id: "wrong-mail-invite-toast" }
+      { duration: Number.POSITIVE_INFINITY, id: 'wrong-mail-invite-toast' }
     );
   }
 
   return (
     <>
       {AlertDialogComponent}
-      <div className="grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
+      <div className="flex grow items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-8">
           <Tabs value={tab} className="space-y-6">
             <TabsContent value="accept">
-              <div className="p-6 rounded-lg shadow-md">
-                <div className="text-center mb-4">
+              <div className="rounded-lg p-6 shadow-md">
+                <div className="mb-4 text-center">
                   <h2 className="text-3xl font-extrabold">
                     Einladung annehmen?
                   </h2>
                   <p className="mt-2 text-sm">
-                    Möchten Sie der Organisation{" "}
+                    Möchten Sie der Organisation{' '}
                     <strong>{invitation.organizationName}</strong> beitreten?
                   </p>
                 </div>
-                <div className="mb-6 p-4 rounded-md">
-                  <h3 className="font-semibold mb-2">Einladungsdetails:</h3>
+                <div className="mb-6 rounded-md p-4">
+                  <h3 className="mb-2 font-semibold">Einladungsdetails:</h3>
                   <div className="space-y-2">
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-start justify-between">
                       <span className="text-sm font-medium">E-Mail:</span>
                       <span className="text-sm">{invitation.email}</span>
                     </div>
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-start justify-between">
                       <span className="text-sm font-medium">Organisation:</span>
                       <span className="text-sm">
                         {invitation.organizationName}
                       </span>
                     </div>
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-start justify-between">
                       <span className="text-sm font-medium">
                         {invitation.roles && invitation.roles.length > 1
-                          ? "Rollen:"
-                          : "Rolle:"}
+                          ? 'Rollen:'
+                          : 'Rolle:'}
                       </span>
                       <div className="flex flex-col items-end gap-1">
                         {invitation.roles && invitation.roles.length > 0 ? (
                           invitation.roles.map((role, index) => (
                             <span
                               key={role.id || index}
-                              className="text-sm px-2 py-0.5 rounded"
+                              className="rounded px-2 py-0.5 text-sm"
                             >
-                              {role.name === "Helfer"
-                                ? invitation.helperNameSingular ?? role.name
+                              {role.name === 'Helfer'
+                                ? (invitation.helperNameSingular ?? role.name)
                                 : role.name}
                             </span>
                           ))
                         ) : (
                           <span className="text-sm">
-                            {invitation.roleName || "Helfer"}
+                            {invitation.roleName || 'Helfer'}
                           </span>
                         )}
                       </div>
                     </div>
                     {invitation.inviterName && (
-                      <div className="flex justify-between items-start">
+                      <div className="flex items-start justify-between">
                         <span className="text-sm font-medium">
                           Eingeladen von:
                         </span>
@@ -206,23 +206,23 @@ export default function InviteAcceptPage() {
                 {session?.user ? (
                   <div className="space-y-3">
                     <Button
-                      variant={"default"}
+                      variant={'default'}
                       onClick={handleAcceptClick}
                       disabled={acceptMutation.isPending || isWrongMail}
                       className="w-full"
                     >
                       {acceptMutation.isPending ? (
                         <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
                           Wird akzeptiert...
                         </div>
                       ) : (
-                        "Einladung akzeptieren"
+                        'Einladung akzeptieren'
                       )}
                     </Button>
                   </div>
                 ) : invitation.userExists ? (
-                  <Button asChild variant={"default"} className="w-full">
+                  <Button asChild variant={'default'} className="w-full">
                     <Link
                       href={`/signin?callbackUrl=${encodeURIComponent(
                         callbackUrl
@@ -233,8 +233,8 @@ export default function InviteAcceptPage() {
                   </Button>
                 ) : (
                   <Button
-                    variant={"default"}
-                    onClick={() => setTab("register1")}
+                    variant={'default'}
+                    onClick={() => setTab('register1')}
                     className="w-full"
                   >
                     Konto erstellen und Organisation beitreten

@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { useQueryClient } from "@tanstack/react-query";
-import { signOut } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Button } from '@/components/ui/button';
+import { useQueryClient } from '@tanstack/react-query';
+import { signOut } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 async function SignOutPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/helferansicht";
+  const callbackUrl = searchParams.get('callbackUrl') || '/helferansicht';
 
   const handleSignOut = async () => {
     try {
@@ -20,7 +20,7 @@ async function SignOutPage() {
 
       queryClient.clear();
     } catch (error) {
-      console.error("Fehler beim Abmelden:", error);
+      console.error('Fehler beim Abmelden:', error);
     }
   };
 
@@ -33,7 +33,7 @@ async function SignOutPage() {
         es in einem Moment erneut oder laden Sie die Seite neu (CMD / STRG +
         SHIFT + R)
       </p>
-      <div className="flex mt-4 gap-2">
+      <div className="mt-4 flex gap-2">
         <Button variant="default" onClick={() => window.location.reload()}>
           Seite neu laden
         </Button>

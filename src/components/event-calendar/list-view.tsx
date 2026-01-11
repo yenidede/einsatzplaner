@@ -1,45 +1,48 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
 
-import { DataTable } from "@/components/data-table/components/data-table";
-import { DataTableAdvancedToolbar } from "@/components/data-table/components/data-table-advanced-toolbar";
-import { DataTableSortList } from "@/components/data-table/components/data-table-sort-list";
-import { useDataTable } from "@/components/data-table/hooks/use-data-table";
+import { DataTable } from '@/components/data-table/components/data-table';
+import { DataTableAdvancedToolbar } from '@/components/data-table/components/data-table-advanced-toolbar';
+import { DataTableSortList } from '@/components/data-table/components/data-table-sort-list';
+import { useDataTable } from '@/components/data-table/hooks/use-data-table';
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 
-import { getCategoriesByOrgIds } from "@/features/category/cat-dal";
-import { getEinsaetzeForTableView } from "@/features/einsatz/dal-einsatz";
-import type { ETV } from "@/features/einsatz/types";
-import { queryKeys as einsatzQueryKeys } from "@/features/einsatz/queryKeys";
-import { queryKeys as statusQueryKeys } from "@/features/einsatz_status/queryKeys";
-import { GetStatuses } from "@/features/einsatz_status/status-dal";
-import { queryKeys as templatesQueryKeys } from "@/features/einsatztemplate/queryKeys";
-import { getAllTemplatesByOrgIds } from "@/features/template/template-dal";
-import { queryKeys as usersQueryKeys } from "@/features/user/queryKeys";
-import { getAllUsersWithRolesByOrgIds } from "@/features/user/user-dal";
-import { useQuery } from "@tanstack/react-query";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { Checkbox } from "../ui/checkbox";
-import { CalendarMode } from "./types";
-import { getBadgeColorClassByStatus, getStatusByMode } from "./utils";
-import { Badge } from "../ui/badge";
-import { cn } from "@/lib/utils";
-import { DataTableFilterMenu } from "../data-table/components/data-table-filter-menu";
+import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
+import { getEinsaetzeForTableView } from '@/features/einsatz/dal-einsatz';
+import type { ETV } from '@/features/einsatz/types';
+import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
+import { queryKeys as statusQueryKeys } from '@/features/einsatz_status/queryKeys';
+import { queryKeys as orgaQueryKeys } from '@/features/organization/queryKeys';
+import { GetStatuses } from '@/features/einsatz_status/status-dal';
+import { queryKeys as templatesQueryKeys } from '@/features/einsatztemplate/queryKeys';
+import { getAllTemplatesByOrgIds } from '@/features/template/template-dal';
+import { queryKeys as usersQueryKeys } from '@/features/user/queryKeys';
+import { getAllUsersWithRolesByOrgIds } from '@/features/user/user-dal';
+import { useQuery } from '@tanstack/react-query';
+import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
+import { Checkbox } from '../ui/checkbox';
+import { CalendarMode } from './types';
+import { getBadgeColorClassByStatus, getStatusByMode } from './utils';
+import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
+import { DataTableFilterMenu } from '../data-table/components/data-table-filter-menu';
 import {
   byOperator,
   byOperatorUseMetaField,
-} from "../data-table/lib/filter-fns";
-import { formatDate } from "../data-table/lib/format";
-import { Button } from "../ui/button";
-import { MoreHorizontal } from "lucide-react";
-import { useSession } from "next-auth/react";
+} from '../data-table/lib/filter-fns';
+import { formatDate } from '../data-table/lib/format';
+import { Button } from '../ui/button';
+import { MoreHorizontal } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { getOrganizationsByIds } from '@/features/organization/org-dal';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -60,6 +63,7 @@ export function ListView({
   const [isTableReady, setIsTableReady] = useState(false);
 
   const { data: userSession } = useSession();
+  const activeOrgId = userSession?.user?.activeOrganization?.id;
   const userOrgIds = userSession?.user?.orgIds ?? [];
 
   const { data, isLoading } = useQuery<ETV[]>({
@@ -73,6 +77,17 @@ export function ListView({
     queryKey: statusQueryKeys.statuses(),
     queryFn: GetStatuses,
   });
+
+  const { data: organizations } = useQuery({
+    queryKey: orgaQueryKeys.organizations(userOrgIds),
+    queryFn: () => getOrganizationsByIds(userOrgIds),
+    enabled: !!userOrgIds.length,
+  });
+
+  const { einsatz_singular, helper_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   // const { data: organizationsData, isLoading: isOrganizationsLoading } =
   //   useQuery({
@@ -94,32 +109,42 @@ export function ListView({
   });
 
   const { data: categoriesData, isLoading: isCategoriesLoading } = useQuery({
-    queryKey: ["categories", userOrgIds],
+    queryKey: ['categories', userOrgIds],
     queryFn: () => getCategoriesByOrgIds(userOrgIds),
     enabled: userOrgIds.length > 0,
   });
 
   // Ensure data is defined before accessing its elements
 
-  const isSomeQueryLoading =
-    isLoading ||
-    isStatusLoading ||
-    areTemplatesLoading ||
-    isUsersLoading ||
-    // isOrganizationsLoading ||
-    isCategoriesLoading;
+  const isSomeQueryLoading = useMemo(() => {
+    return (
+      isLoading ||
+      isStatusLoading ||
+      areTemplatesLoading ||
+      isUsersLoading ||
+      isCategoriesLoading
+    );
+  }, [
+    isLoading,
+    isStatusLoading,
+    areTemplatesLoading,
+    isUsersLoading,
+    isCategoriesLoading,
+  ]);
+
   const columnHelper = createColumnHelper<ETV>();
 
   // Note: Don't constrain ColumnDef's value generic to unknown; let each accessor infer (string, boolean, etc.).
   const columns = React.useMemo<ColumnDef<ETV, any>[]>(
     () => [
       columnHelper.display({
-        id: "select",
+        id: 'select',
+        size: 40,
         header: ({ table }) => (
           <Checkbox
             checked={
               table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && "indeterminate")
+              (table.getIsSomePageRowsSelected() && 'indeterminate')
             }
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
@@ -137,83 +162,86 @@ export function ListView({
         enableColumnFilter: false,
       }),
       columnHelper.accessor((row) => row.title, {
-        id: "title",
-        header: "Titel",
+        id: 'title',
+        header: 'Titel',
         cell: (props) => props.getValue(),
         enableColumnFilter: true,
         filterFn: byOperator,
         meta: {
-          label: "Titel",
-          variant: "text",
-          placeholder: "Einsatz suchen...",
+          label: 'Titel',
+          variant: 'text',
+          placeholder: `Nach ${einsatz_singular} suchen...`,
         },
       }),
       columnHelper.accessor(
-        (row) => getStatusByMode(row.einsatz_status, mode)?.text ?? "-",
+        (row) => getStatusByMode(row.einsatz_status, mode)?.text ?? '-',
         {
-          id: "status",
-          header: "Status",
+          id: 'status',
+          header: 'Status',
           cell: (row) => (
             <Badge
               variant="default"
               className={cn(
-                "capitalize",
+                'capitalize',
                 getBadgeColorClassByStatus(row.getValue(), mode)
               )}
             >
-              {getStatusByMode(row.getValue(), mode)?.text ?? "-"}
+              {getStatusByMode(row.getValue(), mode)?.text ?? '-'}
             </Badge>
           ),
           enableColumnFilter: true,
           filterFn: byOperator,
           meta: {
-            label: "Status",
-            variant: "multiSelect",
+            label: 'Status',
+            variant: 'multiSelect',
             options:
-              statusData?.reduce((acc, status) => {
-                const label = getStatusByMode(status, mode)?.text ?? "-";
-                // labels shouldnt be duplicate, if not already exists add to list
-                if (!acc.some((item) => item.label === label)) {
-                  acc.push({
-                    label,
-                    value: label, // label cause for some modes there isnt a difference between different values
-                  });
-                }
-                return acc;
-              }, [] as { label: string; value: string }[]) ?? [],
+              statusData?.reduce(
+                (acc, status) => {
+                  const label = getStatusByMode(status, mode)?.text ?? '-';
+                  // labels shouldnt be duplicate, if not already exists add to list
+                  if (!acc.some((item) => item.label === label)) {
+                    acc.push({
+                      label,
+                      value: label, // label cause for some modes there isnt a difference between different values
+                    });
+                  }
+                  return acc;
+                },
+                [] as { label: string; value: string }[]
+              ) ?? [],
           },
         }
       ),
       columnHelper.accessor((row) => row.start, {
-        id: "start",
-        header: "Start Datum",
+        id: 'start',
+        header: 'Start Datum',
         cell: (props) => {
           const value = props.getValue();
           return value instanceof Date
-            ? formatDate(value, { hour: "2-digit", minute: "2-digit" })
-            : value ?? "-";
+            ? formatDate(value, { hour: '2-digit', minute: '2-digit' })
+            : (value ?? '-');
         },
         enableColumnFilter: true,
         filterFn: byOperatorUseMetaField,
         meta: {
-          label: "Start Datum",
-          variant: "dateRange",
-          filterField: "start",
+          label: 'Start Datum',
+          variant: 'dateRange',
+          filterField: 'start',
         },
       }),
       columnHelper.accessor(
         (row) =>
-          `${row.user?.firstname ?? ""} ${row.user?.lastname ?? ""}`.trim(),
+          `${row.user?.firstname ?? ''} ${row.user?.lastname ?? ''}`.trim(),
         {
-          id: "created_by",
-          header: "Erstellt von",
+          id: 'created_by',
+          header: 'Erstellt von',
           cell: (props) => props.getValue(),
           enableColumnFilter: true,
           filterFn: byOperatorUseMetaField,
           meta: {
-            label: "Erstellt von",
-            variant: "multiSelect",
-            filterField: "user.id",
+            label: 'Erstellt von',
+            variant: 'multiSelect',
+            filterField: 'user.id',
             options:
               usersData
                 ?.map((user) => ({
@@ -229,17 +257,17 @@ export function ListView({
         (row) =>
           `${row.einsatz_categories
             .map((cat) => cat.abbreviation)
-            .join(", ")}`.trim(),
+            .join(', ')}`.trim(),
         {
-          id: "categories",
-          header: "Kategorien",
+          id: 'categories',
+          header: 'Kategorien',
           cell: (props) => props.getValue(),
           enableColumnFilter: false,
           filterFn: byOperatorUseMetaField,
           meta: {
-            label: "Kategorien",
-            variant: "multiSelect",
-            filterField: "einsatz_categories.id",
+            label: 'Kategorien',
+            variant: 'multiSelect',
+            filterField: 'einsatz_categories.id',
             options:
               categoriesData
                 ?.map((cat) => ({
@@ -252,31 +280,31 @@ export function ListView({
         }
       ),
       columnHelper.accessor((row) => `${row.einsatz_helper.length}`, {
-        id: "helper_count",
-        header: "Anzahl Helfer",
+        id: 'helper_count',
+        header: `Anzahl ${helper_plural}`,
         cell: (props) => props.getValue(),
         enableColumnFilter: true,
         filterFn: byOperator,
         meta: {
-          label: "Anzahl Helfer",
-          variant: "range",
+          label: `Anzahl ${helper_plural}`,
+          variant: 'range',
         },
       }),
       columnHelper.accessor((row) => `${row.einsatz_template?.name}`.trim(), {
-        id: "template",
-        header: "Vorlage",
+        id: 'template',
+        header: 'Vorlage',
         cell: (props) => props.getValue(),
         enableColumnFilter: true,
         filterFn: byOperatorUseMetaField,
         meta: {
-          label: "Vorlage",
-          variant: "multiSelect",
-          filterField: "einsatz_template.id",
+          label: 'Vorlage',
+          variant: 'multiSelect',
+          filterField: 'einsatz_template.id',
           options:
             templatesData
               ?.filter((t) => t.name)
               .map((template) => ({
-                label: template.name?.trim() ?? "-",
+                label: template.name?.trim() ?? '-',
                 value: template.id,
               }))
               // sort by display name
@@ -284,22 +312,23 @@ export function ListView({
         },
       }),
       columnHelper.display({
-        id: "actions",
+        id: 'actions',
+        size: 40,
         cell: function Cell(props) {
           return (
-            <div className="bg-background">
+            <div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
+                    <span className="sr-only">Aktionsmenü öffnen</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={() => onEventEdit(props.row.original.id)}
                   >
-                    Edit
+                    Bearbeiten
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     variant="destructive"
@@ -310,7 +339,7 @@ export function ListView({
                       )
                     }
                   >
-                    Delete
+                    Löschen
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -340,13 +369,13 @@ export function ListView({
     initialState: {
       sorting: [
         {
-          id: "start",
+          id: 'start',
           desc: false,
         },
       ],
       columnPinning: {
-        left: ["select", "title"],
-        right: ["actions"],
+        left: ['select', 'title'],
+        right: ['actions'],
       },
     },
   });
@@ -357,14 +386,12 @@ export function ListView({
     setIsTableReady(true);
   }, [rowModelRows]);
 
-  console.log("Data in ListView:", data);
-
   if (data instanceof Response) {
-    console.log("Error Response in ListView:", data);
+    console.error('Error Response in ListView:', data);
     return (
-      <div className="flex flex-col gap-4 justify-start items-baseline px-4 py-6">
+      <div className="flex flex-col items-baseline justify-start gap-4 px-4 py-6">
         <div>
-          <h2 className="font-bold">{"Ein Fehler ist aufgetreten"}</h2>
+          <h2 className="font-bold">{'Ein Fehler ist aufgetreten'}</h2>
         </div>
       </div>
     );
@@ -372,7 +399,7 @@ export function ListView({
 
   if (!userOrgIds || userOrgIds.length === 0) {
     return (
-      <div className="flex flex-col gap-4 justify-start items-baseline px-4 py-6">
+      <div className="flex flex-col items-baseline justify-start gap-4 px-4 py-6">
         <div>
           <h2 className="font-bold">Keiner Organisation beigetreten.</h2>
           <p>
@@ -386,10 +413,10 @@ export function ListView({
 
   if (!isTableReady) {
     return (
-      <div className="flex flex-col gap-4 justify-start items-baseline px-4 py-6">
+      <div className="flex flex-col items-baseline justify-start gap-4 px-4 py-6">
         <div>
           <h2 className="font-bold">
-            Es wurden noch keine Datensätze angelegt.{" "}
+            Es wurden noch keine Datensätze angelegt.{' '}
           </h2>
           <p>
             Falls Sie glauben, dass ein Fehler vorliegt, wenden Sie sich bitte

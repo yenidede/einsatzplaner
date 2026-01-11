@@ -1,6 +1,6 @@
-import { Session } from "next-auth";
-import { useSession, signOut } from "next-auth/react";
-import { useEffect, useRef } from "react";
+import { Session } from 'next-auth';
+import { useSession, signOut } from 'next-auth/react';
+import { useEffect, useRef } from 'react';
 
 interface UseSessionValidationOptions {
   checkInterval?: number;
@@ -36,7 +36,7 @@ export function useSessionValidation(
       clearInterval(intervalRef.current);
     }
 
-    if (status === "authenticated" && session) {
+    if (status === 'authenticated' && session) {
       const validateSession = () => {
         try {
           const tokenInfo = (session as Session).token;
@@ -50,31 +50,31 @@ export function useSessionValidation(
               ? tokenInfo.refreshTokenExpires - now
               : 0;
 
-            console.log("🔍 Session validation check", {
+            console.log('🔍 Session validation check', {
               timestamp: new Date().toLocaleString(),
               sessionError: session?.error,
               userId: session?.user?.id,
               accessTokenExpires: tokenInfo?.accessTokenExpires
                 ? new Date(tokenInfo.accessTokenExpires).toLocaleString()
-                : "Unknown",
+                : 'Unknown',
               refreshTokenExpires: tokenInfo?.refreshTokenExpires
                 ? new Date(tokenInfo.refreshTokenExpires).toLocaleString()
-                : "Unknown",
+                : 'Unknown',
               accessTokenExpiresIn:
                 accessExpiresIn > 0
                   ? formatTimeRemaining(accessExpiresIn)
-                  : "Expired",
+                  : 'Expired',
               refreshTokenExpiresIn:
                 refreshExpiresIn > 0
                   ? formatTimeRemaining(refreshExpiresIn)
-                  : "Expired",
+                  : 'Expired',
             });
           }
 
-          if (session?.error === "RefreshAccessTokenError") {
+          if (session?.error === 'RefreshAccessTokenError') {
             if (debug) return;
             onTokenExpired?.();
-            signOut({ callbackUrl: "/signin?message=session-expired" });
+            signOut({ callbackUrl: '/signin?message=session-expired' });
             return;
           }
 
@@ -82,15 +82,15 @@ export function useSessionValidation(
             tokenInfo?.refreshTokenExpires &&
             now > tokenInfo.refreshTokenExpires
           ) {
-            if (debug) console.log("❌ Refresh token expired - logging out");
+            if (debug) console.log('❌ Refresh token expired - logging out');
             onTokenExpired?.();
-            signOut({ callbackUrl: "/signin?message=token-expired" });
+            signOut({ callbackUrl: '/signin?message=token-expired' });
             return;
           }
 
-          if (debug) console.log("✅ Session valid");
+          if (debug) console.log('✅ Session valid');
         } catch (error) {
-          console.error("🚨 Session validation error:", error);
+          console.error('🚨 Session validation error:', error);
         }
       };
 
@@ -109,8 +109,8 @@ export function useSessionValidation(
   const now = Date.now();
 
   return {
-    isValidating: status === "loading",
-    hasValidSession: status === "authenticated" && !session?.error,
+    isValidating: status === 'loading',
+    hasValidSession: status === 'authenticated' && !session?.error,
     sessionError: session?.error,
     tokenInfo: {
       accessToken: tokenInfo?.accessToken,
@@ -125,10 +125,10 @@ export function useSessionValidation(
         : 0,
       accessTokenExpiresInFormatted: tokenInfo?.accessTokenExpires
         ? formatTimeRemaining(Math.max(0, tokenInfo.accessTokenExpires - now))
-        : "0s",
+        : '0s',
       refreshTokenExpiresInFormatted: tokenInfo?.refreshTokenExpires
         ? formatTimeRemaining(Math.max(0, tokenInfo.refreshTokenExpires - now))
-        : "0s",
+        : '0s',
       isAccessTokenExpired: tokenInfo?.accessTokenExpires
         ? now > tokenInfo.accessTokenExpires
         : false,
