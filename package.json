@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
