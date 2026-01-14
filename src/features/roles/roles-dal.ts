@@ -19,5 +19,5 @@ export async function getAllRoles() {
 
 // call this after any role create/update/delete
 export async function revalidateRoles() {
-  revalidateTag('roles');
+  revalidateTag('roles', 'page');
 }
