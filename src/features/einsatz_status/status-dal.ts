@@ -21,5 +21,5 @@ export async function GetStatusById(id: string) {
 
 // call this after any status create/update/delete
 export async function revalidateStatuses() {
-  revalidateTag('status');
+  revalidateTag('status', 'page');
 }
