@@ -123,8 +123,14 @@ export async function getUserOrgRolesAction(orgId: string, userId: string) {
 }
 
 export async function getAllUserOrgRolesAction(orgId: string) {
-  await checkUserSession();
+  const session = await checkUserSession();
 
+  if (
+    !session.user.orgIds.includes(orgId) ||
+    !(await hasPermission(session, "users:read", orgId))
+  ) {
+    throw new Error("Insufficient permissions");
+  }
   const userRoles = await prisma.user_organization_role.findMany({
     where: {
       org_id: orgId,
@@ -174,6 +180,15 @@ export async function updateUserRoleAction(
   action: 'add' | 'remove'
 ) {
   const session = await checkUserSession();
+
+  const hasManagePermission = await hasPermission(
+    session,
+    "users:manage",
+    organizationId
+  );
+  if (!hasManagePermission) {
+    throw new Error("Insufficient permissions");
+  }
 
   const requestingUserRole = await prisma.user_organization_role.findMany({
     where: {
