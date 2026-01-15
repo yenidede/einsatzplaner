@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
     return config;
   },
   serverExternalPackages: ['prisma', '@prisma/client'],
+  outputFileTracingIncludes: {
+    '/prisma': ['prisma/schema.prisma'],
+    '/*': ['./src/generated/prisma/**', './src/generated/prisma/runtime/**'],
+  },
   images: {
     domains: ['fgxvzejucaxteqvnhojt.supabase.co'],
   },
