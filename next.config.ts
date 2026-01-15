@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  serverExternalPackages: ['mongodb'],
+  serverExternalPackages: ['prisma', '@prisma/client'],
   images: {
     domains: ['fgxvzejucaxteqvnhojt.supabase.co'],
   },
