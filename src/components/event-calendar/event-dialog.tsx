@@ -911,7 +911,7 @@ export function EventDialogVerwaltung({
       {AlertDialogComponent}
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="flex max-h-[90vh] max-w-220 flex-col">
-          <DialogHeader className="bg-background sticky top-0 z-10 shrink-0 border-b pb-4">
+          <DialogHeader className="sticky top-0 z-10 shrink-0 border-b pb-4">
             <DialogTitle>
               {isLoading
                 ? 'Laden...'
