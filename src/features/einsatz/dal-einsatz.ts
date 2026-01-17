@@ -12,7 +12,7 @@ import type {
   EinsatzDetailed,
   ETV,
 } from '@/features/einsatz/types';
-import { hasPermissionFromSession, requireAuth } from '@/lib/auth/authGuard';
+import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
 
 import { ValidateEinsatzCreate } from './validation-service';
 import z from 'zod';
@@ -105,7 +105,13 @@ export async function getAllEinsaetze(org_ids: string[]) {
     return [];
   }
 
-  if (!hasPermissionFromSession(session, 'einsaetze:read')) {
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:read',
+      session.user.activeOrganization?.id
+    ))
+  ) {
     return Response.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
@@ -114,7 +120,13 @@ export async function getAllEinsaetze(org_ids: string[]) {
 
 export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
   const { session, userIds } = await requireAuth();
-  if (!hasPermissionFromSession(session, 'einsaetze:read')) {
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:read',
+      session.user.activeOrganization?.id
+    ))
+  ) {
     return new Response('Unauthorized', { status: 403 });
   }
 
@@ -259,7 +271,13 @@ export async function getEinsaetzeForTableView(
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, 'templates:read')) {
+  if (
+    !(await hasPermission(
+      session,
+      'templates:read',
+      session.user.activeOrganization?.id
+    ))
+  ) {
     return new Response('Unauthorized', { status: 403 });
   }
 
@@ -316,7 +334,13 @@ export async function createEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, 'einsaetze:create')) {
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:create',
+      session.user.activeOrganization?.id
+    ))
+  ) {
     throw new ForbiddenError('Fehlende Berechtigungen');
   }
 
@@ -376,7 +400,13 @@ export async function updateEinsatzTime(data: {
   end: Date;
 }): Promise<Einsatz> {
   const { session } = await requireAuth();
-  if (!hasPermissionFromSession(session, 'einsaetze:update')) {
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:update',
+      session.user.activeOrganization?.id
+    ))
+  ) {
     throw new ForbiddenError('Fehlende Berechtigungen');
   }
 
@@ -518,7 +548,13 @@ export async function updateEinsatz({
 }): Promise<Einsatz> {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, 'einsaetze:update')) {
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:update',
+      session.user.activeOrganization?.id
+    ))
+  ) {
     throw new ForbiddenError('Fehlende Berechtigungen');
   }
 
@@ -612,7 +648,13 @@ export async function updateEinsatz({
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   const { session } = await requireAuth();
 
-  if (!hasPermissionFromSession(session, 'einsaetze:delete')) {
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:delete',
+      session.user.activeOrganization?.id
+    ))
+  ) {
     throw new Response('Unauthorized', { status: 403 });
   }
 

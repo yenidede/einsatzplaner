@@ -32,6 +32,8 @@ import { OrganizationAddresses } from '@/features/settings/components/manage/Org
 import { OrganizationBankAccounts } from '@/features/settings/components/manage/OrganizationBankAccounts';
 import { OrganizationDetails } from '@/features/settings/components/manage/OrganizationDetails';
 import { SettingsHeader } from '@/features/settings/components/SettingsHeader';
+import { max } from 'lodash';
+import { queryKeys } from '@/features/organization/queryKeys';
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -50,6 +52,7 @@ export default function OrganizationManagePage() {
   const [helperPlural, setHelperPlural] = useState('');
   const [einsatzSingular, setEinsatzSingular] = useState('');
   const [einsatzPlural, setEinsatzPlural] = useState('');
+  const [maxParticipantsPerHelper, setMaxParticipantsPerHelper] = useState('');
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -104,6 +107,9 @@ export default function OrganizationManagePage() {
       setPhone(orgData.phone ?? '');
       setHelperSingular(orgData.helper_name_singular ?? 'Helfer:in');
       setHelperPlural(orgData.helper_name_plural ?? 'Helfer:innen');
+      setMaxParticipantsPerHelper(
+        orgData.max_participants_per_helper?.toString() ?? ''
+      );
       setEinsatzSingular(orgData.einsatz_name_singular ?? 'Einsatz');
       setEinsatzPlural(orgData.einsatz_name_plural ?? 'Einsätze');
     }
@@ -201,6 +207,7 @@ export default function OrganizationManagePage() {
       helper_name_plural?: string;
       einsatz_name_singular?: string;
       einsatz_name_plural?: string;
+      max_participants_per_helper?: number;
       logoFile?: File | null;
       website?: string;
       vat?: string;
@@ -213,6 +220,7 @@ export default function OrganizationManagePage() {
         name: data.name,
         description: data.description,
         email: data.email,
+        max_participants_per_helper: data.max_participants_per_helper,
         phone: data.phone,
         helper_name_singular: data.helper_name_singular,
         helper_name_plural: data.helper_name_plural,
@@ -244,6 +252,9 @@ export default function OrganizationManagePage() {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.orgDetails(orgId),
       });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.organizations(session?.user?.orgIds || []),
+      });
       setLogoFile(null);
       toast.success('Organisation erfolgreich aktualisiert!', {
         id: context.toastId,
@@ -269,6 +280,9 @@ export default function OrganizationManagePage() {
       helper_name_singular: helperSingular,
       helper_name_plural: helperPlural,
       einsatz_name_singular: einsatzSingular,
+      max_participants_per_helper: maxParticipantsPerHelper
+        ? parseInt(maxParticipantsPerHelper)
+        : undefined,
       einsatz_name_plural: einsatzPlural,
       logoFile: logoFile,
       website,
@@ -357,6 +371,8 @@ export default function OrganizationManagePage() {
               einsatzPlural={einsatzPlural}
               onEinsatzSingularChange={setEinsatzSingular}
               onEinsatzPluralChange={setEinsatzPlural}
+              maxParticipantsPerHelper={maxParticipantsPerHelper}
+              onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
             />
           </div>
           <OrganizationAddresses organizationId={orgId} />
