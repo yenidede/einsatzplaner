@@ -20,46 +20,50 @@ import NavSwitchOrgSelect from './switch-org';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys as OrgaQueryKeys } from '@/features/organization/queryKeys';
-import { queryKeys as RolesQueryKeys } from '@/features/roles/queryKeys';
 import { getOrganizationsByIds } from '@/features/organization/org-dal';
 import { cn } from '@/lib/utils';
-import { getAllRoles } from '@/features/roles/roles-dal';
+import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
+import { getUserOrgRolesAction } from '@/features/settings/users-action';
 
 export default function Component() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const { data: organizations } = useQuery({
     queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
     queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
     enabled: !!session?.user?.orgIds?.length,
   });
-
-  const { data: roles } = useQuery({
-    queryKey: RolesQueryKeys.roles(),
-    queryFn: () => getAllRoles(),
+  const { data: userOrganization } = useQuery({
+    queryKey: settingsQueryKeys.userOrgRoles(
+      session?.user?.id || '',
+      session?.user?.activeOrganization?.id || ''
+    ),
+    queryFn: () => {
+      return getUserOrgRolesAction(
+        session?.user?.activeOrganization?.id || '',
+        session?.user?.id || ''
+      );
+    },
+    enabled: !!session?.user?.id && !!session?.user?.activeOrganization?.id,
   });
+  const hasRoleInActiveOrg = (roleName: string): boolean => {
+    if (!session || !userOrganization) {
+      return false;
+    }
+    return userOrganization.some((userRole) => userRole.role.name === roleName);
+  };
 
   // Navigation links array to be used in both desktop and mobile menus
   const navigationLinks = [
     {
       href: '/helferansicht',
       label: 'Helferansicht',
-      hidden:
-        !session ||
-        !Array.isArray(session.user.roleIds) ||
-        !session.user.roleIds.includes(
-          roles?.find((r) => r.name === 'Helfer')?.id || ''
-        ),
+      hidden: !hasRoleInActiveOrg('Helfer'),
     },
     {
       href: '/einsatzverwaltung',
       label: 'Einsatzverwaltung',
-      hidden:
-        !session ||
-        !Array.isArray(session.user.roleIds) ||
-        !session.user.roleIds.includes(
-          roles?.find((r) => r.name === 'Einsatzverwaltung')?.id || ''
-        ),
+      hidden: !hasRoleInActiveOrg('Einsatzverwaltung'),
     },
     { href: '/auswertungen', label: 'Auswertungen', hidden: true },
   ];
