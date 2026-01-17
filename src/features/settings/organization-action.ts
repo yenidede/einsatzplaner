@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import type { OrganizationForPDF } from '@/features/organization/types';
 import { hasPermission } from '@/lib/auth/authGuard';
-import { max } from 'lodash';
+import { BadRequestError } from '@/lib/errors';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -241,8 +241,15 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     dataToUpdate.einsatz_name_singular = data.einsatz_name_singular;
   if (data.einsatz_name_plural !== undefined)
     dataToUpdate.einsatz_name_plural = data.einsatz_name_plural;
-  if (data.max_participants_per_helper !== undefined)
-    dataToUpdate.max_participants_per_helper = data.max_participants_per_helper;
+  if (data.max_participants_per_helper !== undefined) {
+    const value = Number(data.max_participants_per_helper);
+    if (!Number.isInteger(value) || value < 0 || value > 32767) {
+      throw new BadRequestError(
+        `Die maximale Anzahl an Teilnehmern pro ${data.helper_name_singular ?? 'Helfer:in'} darf keine negative Zahl enthalten.`
+      );
+    }
+    dataToUpdate.max_participants_per_helper = value;
+  }
 
   const updated = await prisma.organization.update({
     where: { id: data.id },
