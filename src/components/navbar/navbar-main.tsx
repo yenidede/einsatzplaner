@@ -26,7 +26,7 @@ import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import { getUserOrgRolesAction } from '@/features/settings/users-action';
 
 export default function Component() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
 
   const { data: organizations } = useQuery({
     queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
