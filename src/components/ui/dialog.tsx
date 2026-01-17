@@ -117,7 +117,7 @@ function DialogDescription({
 }: React.ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
-      data-slot="alert-dialog-description"
+      data-slot="dialog-description"
       className={cn('text-muted-foreground text-sm', className)}
       {...props}
     />
