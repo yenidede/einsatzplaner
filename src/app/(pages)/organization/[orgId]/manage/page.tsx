@@ -32,7 +32,6 @@ import { OrganizationAddresses } from '@/features/settings/components/manage/Org
 import { OrganizationBankAccounts } from '@/features/settings/components/manage/OrganizationBankAccounts';
 import { OrganizationDetails } from '@/features/settings/components/manage/OrganizationDetails';
 import { SettingsHeader } from '@/features/settings/components/SettingsHeader';
-import { max } from 'lodash';
 import { queryKeys } from '@/features/organization/queryKeys';
 
 export default function OrganizationManagePage() {

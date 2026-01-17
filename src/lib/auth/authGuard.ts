@@ -182,8 +182,7 @@ export async function hasPermission(
 
 export function hasPermissionFromSession(
   session: ExtendedSession,
-  permission: PermissionType,
-  orgId?: string
+  permission: PermissionType
 ): boolean {
   if (!session?.user?.id) {
     return false;
