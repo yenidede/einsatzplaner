@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ignore-pattern 'src/generated/**'",
     "postinstall": "npx prisma generate"
   },
   "dependencies": {
