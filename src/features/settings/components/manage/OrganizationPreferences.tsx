@@ -1,10 +1,16 @@
 'use client';
 
+import FormField from '@/components/form/formInputField';
+import { errors } from 'jose';
+import { max } from 'lodash';
+
 interface OrganizationPreferencesProps {
   helperSingular: string;
   helperPlural: string;
   einsatzSingular: string;
   einsatzPlural: string;
+  maxParticipantsPerHelper: string;
+  onMaxParticipantsPerHelperChange: (value: string) => void;
   onEinsatzSingularChange: (value: string) => void;
   onEinsatzPluralChange: (value: string) => void;
   onHelperSingularChange: (value: string) => void;
@@ -18,8 +24,10 @@ export function OrganizationPreferences({
   onHelperPluralChange,
   einsatzSingular,
   einsatzPlural,
+  maxParticipantsPerHelper,
   onEinsatzSingularChange,
   onEinsatzPluralChange,
+  onMaxParticipantsPerHelperChange,
 }: OrganizationPreferencesProps) {
   return (
     <div className="flex flex-col items-start justify-start gap-2 self-stretch">
@@ -78,6 +86,20 @@ export function OrganizationPreferences({
               onChange={(e) => onEinsatzPluralChange(e.target.value)}
               className="w-full rounded-md bg-white px-3 py-2 outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
               placeholder="z.B. Einsätze, Schichten"
+            />
+          </div>
+        </div>
+        <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
+          <div className="inline-flex flex-1 flex-col items-start justify-start gap-1.5">
+            <label className="font-['Inter'] text-sm leading-tight font-medium text-slate-800">
+              Maximale Teilnehmende pro {helperSingular}
+            </label>
+            <input
+              type="number"
+              value={maxParticipantsPerHelper}
+              onChange={(e) => onMaxParticipantsPerHelperChange(e.target.value)}
+              className="w-full rounded-md bg-white px-3 py-2 outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
+              placeholder="z.B. 25"
             />
           </div>
         </div>
