@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
@@ -126,6 +126,7 @@ model organization {
   helferansicht_description    String?
   verwalteransicht_description String?
   abbreviation                 String?
+  max_participants_per_helper  Int?                        @default(25) @db.SmallInt
   calendar_subscription        calendar_subscription[]
   einsatz                      einsatz[]
   einsatz_category             einsatz_category[]

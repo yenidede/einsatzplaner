@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import type { OrganizationForPDF } from '@/features/organization/types';
 import { hasPermission } from '@/lib/auth/authGuard';
+import { max } from 'lodash';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -54,6 +55,7 @@ export async function getOrganizationById(orgId: string) {
       logo_url: true,
       email: true,
       phone: true,
+      max_participants_per_helper: true,
       helper_name_singular: true,
       helper_name_plural: true,
       created_at: true,
@@ -69,6 +71,7 @@ export async function getOrganizationById(orgId: string) {
     logo_url: org.logo_url ?? '',
     email: org.email ?? '',
     phone: org.phone ?? '',
+    max_participants_per_helper: org.max_participants_per_helper,
     helper_name_singular: org.helper_name_singular ?? 'Helfer:in',
     helper_name_plural: org.helper_name_plural ?? 'Helfer:innen',
     created_at: org.created_at.toISOString(),
@@ -106,6 +109,7 @@ export async function getUserOrganizationsAction() {
       logo_url: true,
       email: true,
       phone: true,
+      max_participants_per_helper: true,
       helper_name_singular: true,
       helper_name_plural: true,
       created_at: true,
@@ -119,12 +123,12 @@ export async function getUserOrganizationsAction() {
     logo_url: org.logo_url ?? '',
     email: org.email ?? '',
     phone: org.phone ?? '',
+    max_participants_per_helper: org.max_participants_per_helper,
     helper_name_singular: org.helper_name_singular ?? 'Helfer:in',
     helper_name_plural: org.helper_name_plural ?? 'Helfer:innen',
     created_at: org.created_at.toISOString(),
   }));
 }
-
 export async function getUserOrganizationByIdAction(orgId: string) {
   const session = await checkUserSession();
 
@@ -179,6 +183,7 @@ export async function getUserOrganizationByIdAction(orgId: string) {
     einsatz_name_singular: org.einsatz_name_singular ?? 'Einsatz',
     einsatz_name_plural: org.einsatz_name_plural ?? 'Einsätze',
     created_at: org.created_at.toISOString(),
+    max_participants_per_helper: org.max_participants_per_helper,
     members: org.user_organization_role.map((uor) => ({
       user: {
         ...uor.user,
@@ -195,6 +200,7 @@ export type OrganizationUpdateData = {
   description?: string;
   email?: string;
   phone?: string;
+  max_participants_per_helper?: number;
   helper_name_singular?: string;
   helper_name_plural?: string;
   einsatz_name_singular?: string;
@@ -235,6 +241,8 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     dataToUpdate.einsatz_name_singular = data.einsatz_name_singular;
   if (data.einsatz_name_plural !== undefined)
     dataToUpdate.einsatz_name_plural = data.einsatz_name_plural;
+  if (data.max_participants_per_helper !== undefined)
+    dataToUpdate.max_participants_per_helper = data.max_participants_per_helper;
 
   const updated = await prisma.organization.update({
     where: { id: data.id },
@@ -246,6 +254,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
       email: true,
       phone: true,
       logo_url: true,
+      max_participants_per_helper: true,
       helper_name_singular: true,
       helper_name_plural: true,
       einsatz_name_singular: true,
@@ -263,6 +272,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     email: updated.email ?? '',
     phone: updated.phone ?? '',
     logo_url: updated.logo_url ?? '',
+    max_participants_per_helper: updated.max_participants_per_helper,
     helper_name_singular: updated.helper_name_singular ?? 'Helfer:in',
     helper_name_plural: updated.helper_name_plural ?? 'Helfer:innen',
   };

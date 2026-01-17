@@ -182,12 +182,12 @@ export async function hasPermission(
 
 export function hasPermissionFromSession(
   session: ExtendedSession,
-  permission: PermissionType
+  permission: PermissionType,
+  orgId?: string
 ): boolean {
   if (!session?.user?.id) {
     return false;
   }
-
   const userRoles = session.user.roles || [];
 
   return userRoles.some((roleName) => {

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// User roles enum
 export const UserRole = {
   HELFER: 'Helfer',
   EINSATZVERWALTUNG: 'Einsatzverwaltung',
@@ -9,7 +8,6 @@ export const UserRole = {
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
-// Validation schemas for client-side use
 export const UserRoleSchema = z.enum([
   UserRole.HELFER,
   UserRole.EINSATZVERWALTUNG,
@@ -39,7 +37,7 @@ export interface UserWithoutPassword {
   role: UserRole;
   organizationName: string;
   phone?: string | null;
-  initials: string; // Assuming you have a way to generate initials
+  initials: string;
   picture_url?: string | null;
   description?: string | null;
   last_login?: Date | null;
