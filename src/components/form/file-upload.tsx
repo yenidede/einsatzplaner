@@ -11,7 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { optimizeImage } from '@/lib/utils';
 import { toast } from 'sonner';
-import { getPublicStorageUrlFromPath } from '@/lib/supabase-client';
 
 const getFileIcon = (file: { file: File | { type: string; name: string } }) => {
   const fileType = file.file.type;
