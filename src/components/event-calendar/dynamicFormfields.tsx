@@ -18,113 +18,99 @@ export default function DynamicFormFields({
   control,
   errors = {},
 }: DynamicFormFieldsProps) {
-  const renderField = (field: CustomFormField) => {
-    // Extract error messages from React Hook Form error structure
-    const fieldError = errors[field.id];
-    const fieldErrors = fieldError?.message ? [String(fieldError.message)] : [];
+  const getDefaultValue = (field: CustomFormField) => {
+    switch (field.inputType) {
+      case 'checkbox':
+        return false;
+      case 'multi-select':
+        return typeof field.defaultValue === 'string'
+          ? field.defaultValue.split(',').map((item) => item.trim())
+          : (field.defaultValue ?? []);
+      default:
+        return '';
+    }
+  };
+
+  const renderFieldComponent = (
+    field: CustomFormField,
+    controllerField: any,
+    fieldErrors: string[]
+  ): React.ReactElement | null => {
+    const commonProps = {
+      name: field.displayName,
+      errors: fieldErrors,
+    };
 
     switch (field.inputType) {
       case 'checkbox':
         return (
-          <Controller
-            key={field.id}
-            name={field.id}
-            control={control}
-            defaultValue={false}
-            render={({ field: controllerField }) => (
-              <FormSwitchField
-                name={field.displayName}
-                checked={controllerField.value ?? false}
-                onCheckedChange={controllerField.onChange}
-                errors={fieldErrors}
-              />
-            )}
+          <FormSwitchField
+            {...commonProps}
+            checked={controllerField.value ?? false}
+            onCheckedChange={controllerField.onChange}
           />
         );
       case 'select':
         return (
-          <Controller
-            key={field.id}
-            name={field.id}
-            control={control}
-            defaultValue=""
-            render={({ field: controllerField }) => (
-              <FormSelectField
-                name={field.displayName}
-                options={field.allowedValues ?? []}
-                value={controllerField.value ?? ''}
-                placeholder={field.placeholder ?? 'Feld auswählen...'}
-                required={field.required}
-                onValueChange={controllerField.onChange}
-                errors={fieldErrors}
-              />
-            )}
+          <FormSelectField
+            {...commonProps}
+            options={field.allowedValues ?? []}
+            value={controllerField.value ?? ''}
+            placeholder={field.placeholder ?? 'Feld auswählen...'}
+            required={field.required}
+            onValueChange={controllerField.onChange}
           />
         );
       case 'multi-select':
         return (
-          <Controller
-            key={field.id}
-            name={field.id}
-            control={control}
-            defaultValue={
-              typeof field.defaultValue === 'string'
-                ? field.defaultValue.split(',').map((item) => item.trim())
-                : field.defaultValue
-            }
-            render={({ field: controllerField }) => (
-              <FormMultiSelectField
-                name={field.displayName}
-                options={field.allowedValues ?? ['(problem loading options)']}
-                onValueChange={controllerField.onChange}
-                defaultValue={controllerField.value}
-                aria-required={field.required}
-                errors={fieldErrors}
-              />
-            )}
+          <FormMultiSelectField
+            {...commonProps}
+            options={field.allowedValues ?? ['(problem loading options)']}
+            onValueChange={controllerField.onChange}
+            defaultValue={controllerField.value}
+            aria-required={field.required}
           />
         );
       case 'textarea':
         return (
-          <Controller
-            key={field.id}
-            name={field.id}
-            control={control}
-            defaultValue=""
-            render={({ field: controllerField }) => (
-              <FormTextareaField
-                name={field.displayName}
-                placeholder={field.placeholder ?? ''}
-                value={controllerField.value ?? ''}
-                required={field.required}
-                onChange={(e) => controllerField.onChange(e.target.value)}
-                errors={fieldErrors}
-              />
-            )}
+          <FormTextareaField
+            {...commonProps}
+            placeholder={field.placeholder ?? ''}
+            value={controllerField.value ?? ''}
+            required={field.required}
+            onChange={(e) => controllerField.onChange(e.target.value)}
           />
         );
       case 'default':
         return (
-          <Controller
-            key={field.id}
-            name={field.id}
-            control={control}
-            defaultValue=""
-            render={({ field: controllerField }) => (
-              <FormInput
-                name={field.displayName}
-                placeholder={field.placeholder ?? undefined}
-                value={controllerField.value ?? ''}
-                onChange={(e) => controllerField.onChange(e.target.value)}
-                errors={fieldErrors}
-                {...field.inputProps}
-              />
-            )}
+          <FormInput
+            {...commonProps}
+            placeholder={field.placeholder ?? undefined}
+            value={controllerField.value ?? ''}
+            onChange={(e) => controllerField.onChange(e.target.value)}
+            {...field.inputProps}
           />
         );
       default:
         return null;
     }
+  };
+
+  const renderField = (field: CustomFormField) => {
+    const fieldError = errors[field.id];
+    const fieldErrors = fieldError?.message ? [String(fieldError.message)] : [];
+
+    return (
+      <Controller
+        key={field.id}
+        name={field.id}
+        control={control}
+        defaultValue={getDefaultValue(field)}
+        render={({ field: controllerField }) =>
+          renderFieldComponent(field, controllerField, fieldErrors) ?? <></>
+        }
+      />
+    );
   };
 
   // Group fields by groupName
