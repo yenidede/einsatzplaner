@@ -39,7 +39,7 @@ export default function FormSelectField({
   const normalizedOptions: Option[] =
     options.length > 0 && typeof options[0] === 'string'
       ? (options as string[]).map((option) => ({
-          value: option.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase(),
+          value: option, // Keep original value for validation
           label: option,
         }))
       : (options as Option[]);

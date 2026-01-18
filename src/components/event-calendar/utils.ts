@@ -130,8 +130,9 @@ export function generateDynamicSchema(
         fieldSchema = z.email('Ungültige E-Mail-Adresse');
         break;
       case 'select':
-        if (!options.allowedValues)
+        if (!options.allowedValues || options.allowedValues.length === 0)
           throw new Error('Auswahlfeld benötigt allowedValues');
+        // als duple (mindestens 1 Wert)
         fieldSchema = z.enum(options.allowedValues as [string, ...string[]]);
         break;
       default:
@@ -195,27 +196,39 @@ export const mapEinsatzToCalendarEvent = (
 export function mapStringValueToType(
   value: string | null | undefined,
   fieldType: string | undefined | null
-): any {
+) {
+  console.log('[mapStringValueToType] Input:', { value, fieldType });
+
   if (value === null || value === undefined) return null;
   if (!fieldType) return value; // return as is (text)
+
+  let result: unknown;
   switch (fieldType) {
     case 'text':
     case 'phone':
     case 'mail':
-      return value;
+      result = value;
+      break;
     case 'number':
-      console.log('Mapping number value:', value);
-      return parseInt(value, 10);
+      result = parseInt(value, 10);
+      break;
     case 'currency':
-      return parseFloat(value);
+      result = parseFloat(value);
+      break;
     case 'boolean':
-      console.log('Mapping boolean value:', value);
-      return value === 'TRUE';
+      result = value === 'TRUE';
+      break;
     case 'select':
-      return value.split(',');
+      result = value;
+      break;
+    case 'multiselect':
+      // Note: multiselect values are stored as comma-separated strings
+      result = value.split(',');
+      break;
     default:
       throw new Error('Nicht unterstützter Typ für Mapping: ' + fieldType);
   }
+  return result;
 }
 
 export function mapTypeToStringValue(value: any): string | null {
