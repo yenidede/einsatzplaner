@@ -1,101 +1,125 @@
-import React from 'react';
+import { Control, Controller, FieldErrors } from 'react-hook-form';
 import FormGroup from '../form/formGroup';
 import FormInput from '../form/formInputField';
 import FormSwitchField from '../form/formSwitchField';
 import FormSelectField from '../form/formSelectField';
-import { Option } from '../form/formSelectField';
 import FormMultiSelectField from '../form/multiSelectFormField';
 import { CustomFormField } from './types';
 import FormTextareaField from '../form/formTextareaField';
 
 type DynamicFormFieldsProps = {
   fields: CustomFormField[];
-  errors: Record<string, string[]>;
-  formData?: Record<string, any>;
-  onFormDataChange: (data: Record<string, any>) => void;
+  control: Control<any>;
+  errors?: FieldErrors<any>;
 };
 
 export default function DynamicFormFields({
   fields,
-  formData,
-  errors,
-  onFormDataChange,
+  control,
+  errors = {},
 }: DynamicFormFieldsProps) {
-  const handleFieldChange = (fieldId: string, value: any) => {
-    onFormDataChange({ [fieldId]: value });
-  };
-
   const renderField = (field: CustomFormField) => {
+    // Extract error messages from React Hook Form error structure
+    const fieldError = errors[field.id];
+    const fieldErrors = fieldError?.message ? [String(fieldError.message)] : [];
+
     switch (field.inputType) {
       case 'checkbox':
         return (
-          <FormSwitchField
+          <Controller
             key={field.id}
-            name={field.displayName}
-            checked={formData?.[field.id] ?? false}
-            onCheckedChange={(checked) => handleFieldChange(field.id, checked)}
-            errors={errors[field.id] || []}
+            name={field.id}
+            control={control}
+            defaultValue={false}
+            render={({ field: controllerField }) => (
+              <FormSwitchField
+                name={field.displayName}
+                checked={controllerField.value ?? false}
+                onCheckedChange={controllerField.onChange}
+                errors={fieldErrors}
+              />
+            )}
           />
         );
       case 'select':
         return (
-          <FormSelectField
+          <Controller
             key={field.id}
-            name={field.displayName}
-            options={field.allowedValues ?? []}
-            value={
-              Array.isArray(formData?.[field.id])
-                ? formData[field.id].length > 0
-                  ? formData[field.id][0]
-                  : ''
-                : (formData?.[field.id] ?? '')
-            }
-            placeholder={field.placeholder ?? 'Feld auswählen...'}
-            required={field.required}
-            onValueChange={(value) => handleFieldChange(field.id, value)}
-            errors={errors[field.id] || []}
+            name={field.id}
+            control={control}
+            defaultValue=""
+            render={({ field: controllerField }) => (
+              <FormSelectField
+                name={field.displayName}
+                options={field.allowedValues ?? []}
+                value={controllerField.value ?? ''}
+                placeholder={field.placeholder ?? 'Feld auswählen...'}
+                required={field.required}
+                onValueChange={controllerField.onChange}
+                errors={fieldErrors}
+              />
+            )}
           />
         );
       case 'multi-select':
         return (
-          <FormMultiSelectField
+          <Controller
             key={field.id}
-            name={field.displayName}
-            options={field.allowedValues ?? ['(problem loading options)']}
-            onValueChange={(val) => {
-              handleFieldChange(field.id, val);
-            }}
+            name={field.id}
+            control={control}
             defaultValue={
               typeof field.defaultValue === 'string'
                 ? field.defaultValue.split(',').map((item) => item.trim())
                 : field.defaultValue
             }
-            aria-required={field.required}
-            errors={errors[field.id] || []}
+            render={({ field: controllerField }) => (
+              <FormMultiSelectField
+                name={field.displayName}
+                options={field.allowedValues ?? ['(problem loading options)']}
+                onValueChange={controllerField.onChange}
+                defaultValue={controllerField.value}
+                aria-required={field.required}
+                errors={fieldErrors}
+              />
+            )}
           />
         );
       case 'textarea':
         return (
-          <FormTextareaField
+          <Controller
             key={field.id}
-            name={field.displayName}
-            placeholder={field.placeholder ?? ''}
-            value={formData?.[field.id] ?? ''}
-            required={field.required}
-            onChange={(e) => handleFieldChange(field.id, e.target.value)}
-            errors={errors[field.id] || []}
+            name={field.id}
+            control={control}
+            defaultValue=""
+            render={({ field: controllerField }) => (
+              <FormTextareaField
+                name={field.displayName}
+                placeholder={field.placeholder ?? ''}
+                value={controllerField.value ?? ''}
+                required={field.required}
+                onChange={(e) => controllerField.onChange(e.target.value)}
+                errors={fieldErrors}
+              />
+            )}
           />
         );
       case 'default':
         return (
-          <FormInput
+          <Controller
             key={field.id}
-            name={field.displayName}
-            placeholder={field.placeholder ?? undefined}
-            value={formData?.[field.id] ?? ''}
-            onChange={(e) => handleFieldChange(field.id, e.target.value)}
-            errors={errors[field.id] || []}
-            {...field.inputProps}
+            name={field.id}
+            control={control}
+            defaultValue=""
+            render={({ field: controllerField }) => (
+              <FormInput
+                name={field.displayName}
+                placeholder={field.placeholder ?? undefined}
+                value={controllerField.value ?? ''}
+                onChange={(e) => controllerField.onChange(e.target.value)}
+                errors={fieldErrors}
+                {...field.inputProps}
+              />
+            )}
           />
         );
       default:
