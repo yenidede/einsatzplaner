@@ -123,19 +123,19 @@ export function generateDynamicSchema(
           .string()
           .regex(
             /^\+[1-9]\d{1,14}$/,
-            'Invalid phone number. Example: +1234567890'
+            'Ungültige Telefonnummer. Beispiel: +1234567890'
           );
         break;
       case 'mail':
-        fieldSchema = z.email('Invalid email address');
+        fieldSchema = z.email('Ungültige E-Mail-Adresse');
         break;
       case 'select':
         if (!options.allowedValues)
-          throw new Error('Select field requires allowedValues');
+          throw new Error('Auswahlfeld benötigt allowedValues');
         fieldSchema = z.enum(options.allowedValues as [string, ...string[]]);
         break;
       default:
-        throw new Error('Field Type ' + type + ' unsupported');
+        throw new Error('Feldtyp ' + type + ' wird nicht unterstützt');
     }
     if (options.isRequired !== true) fieldSchema = fieldSchema?.optional();
 
@@ -181,8 +181,8 @@ export const mapEinsatzToCalendarEvent = (
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(', ')})`
+        .map((c) => c.einsatz_category.abbreviation)
+        .join(', ')})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
@@ -214,7 +214,7 @@ export function mapStringValueToType(
     case 'select':
       return value.split(',');
     default:
-      throw new Error('Unsupported type for mapping: ' + fieldType);
+      throw new Error('Nicht unterstützter Typ für Mapping: ' + fieldType);
   }
 }
 
@@ -222,7 +222,7 @@ export function mapTypeToStringValue(value: any): string | null {
   if (value === null || value === undefined) return null;
   if (value instanceof Date) {
     if (isNaN(value.getTime()))
-      throw new Error('Invalid date object: ' + value);
+      throw new Error('Ungültiges Datumsobjekt: ' + value);
     return value.toISOString();
   }
   if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
@@ -275,7 +275,7 @@ export function mapDbDataTypeToFormFieldType(
     if (datatype === 'boolean') return 'checkbox';
     if (datatype === 'select') return 'select';
   }
-  throw new Error("Can't map datatype: " + datatype + ' to its FormField.');
+  throw new Error('Datentyp kann nicht zugeordnet werden: ' + datatype + ' zu seinem FormField.');
 }
 
 export function mapDbDataTypeToInputProps(
@@ -290,7 +290,7 @@ export function mapDbDataTypeToInputProps(
     if (datatype === 'number') return { type: 'number' };
     if (datatype === 'currency') return { type: 'number', step: '0.10' };
   }
-  throw new Error("Can't map datatype: " + datatype + ' to its FormField.');
+  throw new Error('Datentyp kann nicht zugeordnet werden: ' + datatype + ' zu seinem FormField.');
 }
 
 export const roundDownTo10Minutes = (date: Date): Date => {
@@ -407,7 +407,7 @@ export function getStatusByMode(
       color: statusObject.verwalter_color,
     };
   }
-  throw new Error(`Couldnt get Status by Mode: Unknown mode: '${mode}'`);
+  throw new Error(`Status konnte nicht nach Modus abgerufen werden: Unbekannter Modus: '${mode}'`);
 }
 
 export const staticStatusList = [
