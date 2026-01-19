@@ -39,7 +39,7 @@ export default function CalendarPageWrapper({
   );
 
   const { isError: isEventError } = useQuery({
-    queryKey: einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []),
+    queryKey: einsatzQueryKeys.einsaetze(activeOrgId ?? ''),
     queryFn: () => getEinsaetzeData(activeOrgId),
     enabled: !!activeOrgId,
   });
