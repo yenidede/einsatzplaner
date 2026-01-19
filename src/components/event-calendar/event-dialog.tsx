@@ -509,7 +509,7 @@ export function EventDialogVerwaltung({
               )?.value ?? f.field.default_value;
             acc[f.field.id] = mapStringValueToType(
               value,
-              f.field.type?.datatype || 'string'
+              f.field.type?.datatype || 'text'
             );
             return acc;
           },
