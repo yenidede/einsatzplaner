@@ -187,7 +187,6 @@ export function hasPermissionFromSession(
   if (!session?.user?.id) {
     return false;
   }
-
   const userRoles = session.user.roles || [];
 
   return userRoles.some((roleName) => {
