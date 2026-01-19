@@ -7,9 +7,6 @@ import type { UserPropertyWithField } from '@/features/user_properties/user_prop
 
 interface UserPersonalPropertiesProps {
   organizationName: string;
-  hasKey: boolean;
-  onToggleKey: () => void;
-  description: string | null;
   userProperties: UserPropertyWithField[];
   propertyValues: Record<string, string>;
   onPropertyValueChange: (propertyId: string, value: string) => void;
@@ -17,9 +14,6 @@ interface UserPersonalPropertiesProps {
 
 export function UserPersonalProperties({
   organizationName,
-  hasKey,
-  onToggleKey,
-  description,
   userProperties,
   propertyValues,
   onPropertyValueChange,

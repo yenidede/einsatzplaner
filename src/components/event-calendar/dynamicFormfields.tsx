@@ -3,6 +3,7 @@ import FormGroup from '../form/formGroup';
 import FormInput from '../form/formInputField';
 import FormSwitchField from '../form/formSwitchField';
 import FormSelectField from '../form/formSelectField';
+import { Option as SelectFieldOption } from '../form/formSelectField';
 import FormMultiSelectField from '../form/multiSelectFormField';
 import { CustomFormField } from './types';
 import FormTextareaField from '../form/formTextareaField';
@@ -59,6 +60,7 @@ export default function DynamicFormFields({
             placeholder={field.placeholder ?? 'Feld auswählen...'}
             required={field.required}
             onValueChange={controllerField.onChange}
+            allowClear={!field.required}
           />
         );
       case 'multi-select':

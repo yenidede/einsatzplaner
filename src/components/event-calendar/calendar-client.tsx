@@ -34,7 +34,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const activeOrgId = session?.user?.activeOrganization?.id;
   const { showDialog, AlertDialogComponent } = useAlertDialog();
   const queryClient = useQueryClient();
-  const queryKey = einsatzQueryKeys.einsaetze(activeOrgId ? [activeOrgId] : []);
+  const queryKey = einsatzQueryKeys.einsaetze(activeOrgId ?? '');
 
   const { data: events } = useQuery({
     queryKey: queryKey,
@@ -137,7 +137,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       }
       // Keep the list in sync as well
       queryClient.invalidateQueries({
-        queryKey: einsatzQueryKeys.allEinsaetze(),
+        queryKey: einsatzQueryKeys.einsaetze(activeOrgId ?? data?.org_id ?? ''),
       });
     },
   });
@@ -193,7 +193,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       }
       // Keep the list in sync as well
       queryClient.invalidateQueries({
-        queryKey: einsatzQueryKeys.allEinsaetze(),
+        queryKey: einsatzQueryKeys.einsaetze(activeOrgId ?? ''),
       });
     },
   });
@@ -237,7 +237,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         });
       }
       queryClient.invalidateQueries({
-        queryKey: einsatzQueryKeys.allEinsaetze(),
+        queryKey: einsatzQueryKeys.einsaetze(activeOrgId ?? ''),
       });
     },
   });
@@ -279,7 +279,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         });
       }
       queryClient.invalidateQueries({
-        queryKey: einsatzQueryKeys.allEinsaetze(),
+        queryKey: einsatzQueryKeys.einsaetze(activeOrgId ?? ''),
       });
     },
   });

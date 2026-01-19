@@ -134,11 +134,18 @@ export function generateDynamicSchema(
           throw new Error('Auswahlfeld benötigt allowedValues');
         // als duple (mindestens 1 Wert)
         fieldSchema = z.enum(options.allowedValues as [string, ...string[]]);
+        // Also allow the value to remain null if not required
+        if (options.isRequired !== true) {
+          fieldSchema = z.union([fieldSchema, z.literal("_null_"), z.literal('')]).optional().transform((data) => {
+            if (data === '_null_') return null;
+            return data;
+          });
+        }
         break;
       default:
         throw new Error('Feldtyp ' + type + ' wird nicht unterstützt');
     }
-    if (options.isRequired !== true) fieldSchema = fieldSchema?.optional();
+    if (options.isRequired !== true && type !== 'select') fieldSchema = fieldSchema?.optional();
 
     if (fieldSchema) schemaShape[fieldId] = fieldSchema;
   });
@@ -199,7 +206,7 @@ export function mapStringValueToType(
 ) {
   console.log('[mapStringValueToType] Input:', { value, fieldType });
 
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined || value === '') return null;
   if (!fieldType) return value; // return as is (text)
 
   let result: unknown;
@@ -232,7 +239,7 @@ export function mapStringValueToType(
 }
 
 export function mapTypeToStringValue(value: any): string | null {
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined || value === '' || value === '_null_') return null;
   if (value instanceof Date) {
     if (isNaN(value.getTime()))
       throw new Error('Ungültiges Datumsobjekt: ' + value);
