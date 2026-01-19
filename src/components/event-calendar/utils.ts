@@ -93,7 +93,7 @@ export function generateDynamicSchema(
     const { fieldId, type, options } = field;
 
     if (!type) {
-      console.log('no type specified:', field);
+      console.warn('no type specified:', field);
       return;
     }
 
@@ -137,7 +137,7 @@ export function generateDynamicSchema(
         // Also allow the value to remain null if not required
         if (options.isRequired !== true) {
           fieldSchema = z
-            .union([fieldSchema, z.literal('_null_'), z.literal('')])
+            .union([fieldSchema, z.literal('_null_'), z.literal(''), z.null()])
             .optional()
             .transform((data) => {
               if (data === '_null_') return null;
@@ -193,8 +193,8 @@ export const mapEinsatzToCalendarEvent = (
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(', ')})`
+        .map((c) => c.einsatz_category.abbreviation)
+        .join(', ')})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
@@ -208,8 +208,6 @@ export function mapStringValueToType(
   value: string | null | undefined,
   fieldType: string | undefined | null
 ) {
-  console.log('[mapStringValueToType] Input:', { value, fieldType });
-
   if (value === null || value === undefined || value === '') return null;
   if (!fieldType) return value; // return as is (text)
 
@@ -307,8 +305,8 @@ export function mapDbDataTypeToFormFieldType(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 
@@ -326,8 +324,8 @@ export function mapDbDataTypeToInputProps(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 
