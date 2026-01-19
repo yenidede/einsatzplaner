@@ -231,6 +231,14 @@ export function EventDialogVerwaltung({
     formErrors: [],
   });
 
+  // Update form resolver when dynamicSchema changes
+  useEffect(() => {
+    if (dynamicSchema) {
+      dynamicForm.clearErrors();
+      dynamicForm.trigger();
+    }
+  }, [dynamicSchema, dynamicForm]);
+
   // Fetch detailed einsatz data when einsatz is a string (UUID)
   const { data: detailedEinsatz, isLoading } = useDetailedEinsatz(
     typeof einsatz === 'string' ? einsatz : null,
