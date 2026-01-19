@@ -9,9 +9,6 @@ interface UserPersonalPropertiesProps {
   organizationName: string;
   userProperties: UserPropertyWithField[];
   propertyValues: Record<string, string>;
-  hasKey: boolean;
-  onToggleKey: () => void;
-  description: string | null;
   onPropertyValueChange: (propertyId: string, value: string) => void;
 }
 
