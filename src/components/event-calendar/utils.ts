@@ -136,16 +136,20 @@ export function generateDynamicSchema(
         fieldSchema = z.enum(options.allowedValues as [string, ...string[]]);
         // Also allow the value to remain null if not required
         if (options.isRequired !== true) {
-          fieldSchema = z.union([fieldSchema, z.literal("_null_"), z.literal('')]).optional().transform((data) => {
-            if (data === '_null_') return null;
-            return data;
-          });
+          fieldSchema = z
+            .union([fieldSchema, z.literal('_null_'), z.literal('')])
+            .optional()
+            .transform((data) => {
+              if (data === '_null_') return null;
+              return data;
+            });
         }
         break;
       default:
         throw new Error('Feldtyp ' + type + ' wird nicht unterstützt');
     }
-    if (options.isRequired !== true && type !== 'select') fieldSchema = fieldSchema?.optional();
+    if (options.isRequired !== true && type !== 'select')
+      fieldSchema = fieldSchema?.optional();
 
     if (fieldSchema) schemaShape[fieldId] = fieldSchema;
   });
@@ -189,8 +193,8 @@ export const mapEinsatzToCalendarEvent = (
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-        .map((c) => c.einsatz_category.abbreviation)
-        .join(', ')})`
+          .map((c) => c.einsatz_category.abbreviation)
+          .join(', ')})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
@@ -239,7 +243,13 @@ export function mapStringValueToType(
 }
 
 export function mapTypeToStringValue(value: any): string | null {
-  if (value === null || value === undefined || value === '' || value === '_null_') return null;
+  if (
+    value === null ||
+    value === undefined ||
+    value === '' ||
+    value === '_null_'
+  )
+    return null;
   if (value instanceof Date) {
     if (isNaN(value.getTime()))
       throw new Error('Ungültiges Datumsobjekt: ' + value);
@@ -295,7 +305,11 @@ export function mapDbDataTypeToFormFieldType(
     if (datatype === 'boolean') return 'checkbox';
     if (datatype === 'select') return 'select';
   }
-  throw new Error('Datentyp kann nicht zugeordnet werden: ' + datatype + ' zu seinem FormField.');
+  throw new Error(
+    'Datentyp kann nicht zugeordnet werden: ' +
+      datatype +
+      ' zu seinem FormField.'
+  );
 }
 
 export function mapDbDataTypeToInputProps(
@@ -310,7 +324,11 @@ export function mapDbDataTypeToInputProps(
     if (datatype === 'number') return { type: 'number' };
     if (datatype === 'currency') return { type: 'number', step: '0.10' };
   }
-  throw new Error('Datentyp kann nicht zugeordnet werden: ' + datatype + ' zu seinem FormField.');
+  throw new Error(
+    'Datentyp kann nicht zugeordnet werden: ' +
+      datatype +
+      ' zu seinem FormField.'
+  );
 }
 
 export const roundDownTo10Minutes = (date: Date): Date => {
@@ -427,7 +445,9 @@ export function getStatusByMode(
       color: statusObject.verwalter_color,
     };
   }
-  throw new Error(`Status konnte nicht nach Modus abgerufen werden: Unbekannter Modus: '${mode}'`);
+  throw new Error(
+    `Status konnte nicht nach Modus abgerufen werden: Unbekannter Modus: '${mode}'`
+  );
 }
 
 export const staticStatusList = [
