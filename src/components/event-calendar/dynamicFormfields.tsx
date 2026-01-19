@@ -7,6 +7,7 @@ import { Option as SelectFieldOption } from '../form/formSelectField';
 import FormMultiSelectField from '../form/multiSelectFormField';
 import { CustomFormField } from './types';
 import FormTextareaField from '../form/formTextareaField';
+import { mapStringValueToType } from './utils';
 
 type DynamicFormFieldsProps = {
   fields: CustomFormField[];
@@ -80,7 +81,13 @@ export default function DynamicFormFields({
             placeholder={field.placeholder ?? ''}
             value={controllerField.value ?? ''}
             required={field.required}
-            onChange={(e) => controllerField.onChange(e.target.value)}
+            onChange={(e) => {
+              const convertedValue = mapStringValueToType(
+                e.target.value,
+                field.dataType
+              );
+              controllerField.onChange(convertedValue);
+            }}
           />
         );
       case 'default':
@@ -89,7 +96,13 @@ export default function DynamicFormFields({
             {...commonProps}
             placeholder={field.placeholder ?? undefined}
             value={controllerField.value ?? ''}
-            onChange={(e) => controllerField.onChange(e.target.value)}
+            onChange={(e) => {
+              const convertedValue = mapStringValueToType(
+                e.target.value,
+                field.dataType
+              );
+              controllerField.onChange(convertedValue);
+            }}
             {...field.inputProps}
           />
         );

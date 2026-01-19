@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint . --ignore-pattern 'src/generated/**'",
-    "postinstall": "npx prisma generate"
+    "postinstall": "npx prisma generate",
+    "prettier": "prettier . --write"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

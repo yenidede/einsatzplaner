@@ -21,7 +21,6 @@ export function UserContactInfo({ email, phone }: UserContactInfoProps) {
           <Mail className="h-4 w-4 text-slate-600" />
           <div className="justify-start font-['Inter'] text-base leading-normal font-normal text-slate-800">
             {email}
-
           </div>
         </div>
         {phone && (
