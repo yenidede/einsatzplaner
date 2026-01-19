@@ -635,7 +635,7 @@ export function EventDialogVerwaltung({
 
     const warnings: string[] = [];
 
-    // Warning 1: Max 20 participants per helper
+    // Warning 1: Max X participants per helper
     if (
       parsedDataStatic.data.helpersNeeded > 0 &&
       parsedDataStatic.data.participantCount > 0
@@ -643,11 +643,16 @@ export function EventDialogVerwaltung({
       const ratio =
         parsedDataStatic.data.participantCount /
         parsedDataStatic.data.helpersNeeded;
-      if (ratio > 20) {
+      if (
+        ratio >
+        organizations?.find((o) => o.id === activeOrgId)
+          ?.max_participants_per_helper!
+      ) {
         warnings.push(
-          `Allgemein: Anzahl Teilnehmer:innen pro Helfer maximal 20 (aktuell: ${Math.round(
-            ratio
-          )})`
+          `Allgemein: Anzahl Teilnehmer:innen pro Helfer maximal ${
+            organizations?.find((o) => o.id === activeOrgId)
+              ?.max_participants_per_helper
+          } (aktuell: ${Math.round(ratio)})`
         );
       }
     }
