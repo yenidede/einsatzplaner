@@ -7,7 +7,7 @@ import { CalendarMode } from './types';
 import { useRouter } from 'next/navigation';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
-import { useEinsaetze } from '@/features/einsatz/hooks/use-einsatz-queries';
+import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
 
 export default function CalendarPageWrapper({
   mode,

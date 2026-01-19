@@ -85,11 +85,14 @@ export function ListView({
   //     enabled: userOrgIds.length > 0,
   //   });
 
-  const { data: templatesData, isLoading: areTemplatesLoading } = useTemplatesByOrgIds(userOrgIds);
+  const { data: templatesData, isLoading: areTemplatesLoading } =
+    useTemplatesByOrgIds(userOrgIds);
 
-  const { data: usersData, isLoading: isUsersLoading } = useUsersByOrgIds(userOrgIds);
+  const { data: usersData, isLoading: isUsersLoading } =
+    useUsersByOrgIds(userOrgIds);
 
-  const { data: categoriesData, isLoading: isCategoriesLoading } = useCategoriesByOrgIds(userOrgIds);
+  const { data: categoriesData, isLoading: isCategoriesLoading } =
+    useCategoriesByOrgIds(userOrgIds);
 
   // Ensure data is defined before accessing its elements
 

@@ -38,7 +38,10 @@ import { EinsatzCreate, EinsatzDetailed } from '@/features/einsatz/types';
 import FormGroup from '../form/formGroup';
 import FormInputFieldCustom from '../form/formInputFieldCustom';
 import ToggleItemBig from '../form/toggle-item-big';
-import { useDetailedEinsatz, useCategories } from '@/features/einsatz/hooks/use-einsatz-queries';
+import {
+  useDetailedEinsatz,
+  useCategories,
+} from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useTemplates } from '@/features/template/hooks/use-template-queries';
 import { useUsers } from '@/features/user/hooks/use-user-queries';
 import { useUserProperties } from '@/features/user_properties/hooks/use-user-property-queries';
@@ -63,9 +66,7 @@ import {
 import { Select, SelectContent, SelectItem } from '../ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
-import {
-  UserPropertyValue
-} from '@/features/user_properties/user_property-dal';
+import { UserPropertyValue } from '@/features/user_properties/user_property-dal';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {

@@ -15,7 +15,14 @@ import {
   removeUserFromOrganizationAction,
   removeProfilePictureAction,
 } from '@/features/settings/settings-action';
-import { useUserProfile, useSalutations } from '@/features/settings/hooks/useUserProfile';
+import {
+  useUserProfile,
+  useSalutations,
+} from '@/features/settings/hooks/useUserProfile';
+import {
+  useUpdateUserProfile,
+  useLeaveOrganization,
+} from '@/features/settings/hooks/useSettingsMutations';
 import { toast } from 'sonner';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { OrganizationSidebar } from '@/features/settings/components/manage/OrganizationSideBar';
@@ -67,7 +74,9 @@ export default function SettingsPage() {
     };
   }, [profilePictureFile]);
 
-  const { data: userData, isLoading: isLoadingUser } = useUserProfile(session?.user?.id);
+  const { data: userData, isLoading: isLoadingUser } = useUserProfile(
+    session?.user?.id
+  );
 
   const { data: salutations = [] } = useSalutations();
 
@@ -87,55 +96,9 @@ export default function SettingsPage() {
     }
   }, [userData]);
 
-  const mutation = useMutation({
-    mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-    mutationFn: async (newSettings: UserUpdateData) => {
-      const res = await updateUserProfileAction(newSettings);
-      if (!res) throw new Error('Fehler beim Speichern');
-      return res;
-    },
-    onMutate: () => {
-      return { toastId: toast.loading('Speichert...') };
-    },
-    onSuccess: (data, variables, context) => {
-      toast.success('Einstellungen erfolgreich gespeichert!', {
-        id: context.toastId,
-      });
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-      });
-    },
-    onError: (error, variables, context) => {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Fehler beim Speichern der Einstellungen',
-        { id: context?.toastId }
-      );
-    },
-  });
+  const mutation = useUpdateUserProfile(session?.user?.id);
 
-  const leaveOrgMutation = useMutation({
-    mutationFn: async ({
-      userId,
-      organizationId,
-    }: {
-      userId: string;
-      organizationId: string;
-    }) => {
-      const res = await removeUserFromOrganizationAction(
-        userId,
-        organizationId
-      );
-      if (!res) throw new Error('Failed to leave organization');
-      return res;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-      });
-    },
-  });
+  const leaveOrgMutation = useLeaveOrganization(session?.user?.id);
 
   const handleSave = async () => {
     if (!session?.user?.id) return;

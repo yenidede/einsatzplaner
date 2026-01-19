@@ -1,9 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
 import { signOut, useSession } from 'next-auth/react';
-import { acceptInvitationAction } from '@/features/invitations/invitation-action';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -14,6 +12,7 @@ import SignUpForm, {
   AvailableTab,
 } from '@/features/auth/components/acceptAndRegister-Form';
 import { useInvitationVerify } from '@/features/invitations/hooks/useInvitationVerify';
+import { useAcceptInvitation } from '@/features/invitations/hooks/useInvitationMutations';
 
 interface Role {
   id: string;
@@ -29,27 +28,15 @@ export default function InviteAcceptPage() {
 
   const [tab, setTab] = useState<AvailableTab>('accept');
 
-  const {
-    data: invitation,
-    isLoading,
-    error,
-  } = useInvitationVerify(token);
+  const { data: invitation, isLoading, error } = useInvitationVerify(token);
 
-  const acceptMutation = useMutation({
-    mutationFn: async () => {
-      return await acceptInvitationAction(token);
-    },
-    onSuccess: () => {
-      router.push('/');
-    },
-    onError: async (error: Error) => {
-      await showDialog({
-        title: 'Fehler',
-        description: error.message,
-        confirmText: 'OK',
-        variant: 'destructive',
-      });
-    },
+  const acceptMutation = useAcceptInvitation(token, async (error: Error) => {
+    await showDialog({
+      title: 'Fehler',
+      description: error.message,
+      confirmText: 'OK',
+      variant: 'destructive',
+    });
   });
 
   const handleAcceptClick = async () => {

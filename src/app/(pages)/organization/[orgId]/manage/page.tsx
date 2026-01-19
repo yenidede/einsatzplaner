@@ -16,7 +16,12 @@ import {
   removeOrganizationLogoAction,
   saveOrganizationDetailsAction,
 } from '@/features/settings/organization-action';
-import { useUserProfile, useOrganizationById, useOrganizationUserRoles } from '@/features/settings/hooks/useUserProfile';
+import {
+  useUserProfile,
+  useOrganizationById,
+  useOrganizationUserRoles,
+} from '@/features/settings/hooks/useUserProfile';
+import { useUpdateOrganization } from '@/features/settings/hooks/useSettingsMutations';
 
 import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
@@ -61,9 +66,6 @@ export default function OrganizationManagePage() {
   const [zvr, setZvr] = useState('');
   const [authority, setAuthority] = useState('');
 
-  const staleTime = 5 * 60 * 1000;
-  const gcTime = 10 * 60 * 1000;
-
   useSessionValidation({
     debug: false,
     onTokenExpired: () => {
@@ -81,7 +83,7 @@ export default function OrganizationManagePage() {
     data: orgData,
     isLoading: orgLoading,
     error: orgError,
-  } = useOrganizationById(orgId, { staleTime, gcTime });
+  } = useOrganizationById(orgId);
 
   useEffect(() => {
     if (orgData) {
@@ -100,7 +102,8 @@ export default function OrganizationManagePage() {
     }
   }, [orgData]);
 
-  const { data: usersData, isLoading: usersLoading } = useOrganizationUserRoles(orgId, { staleTime, gcTime });
+  const { data: usersData, isLoading: usersLoading } =
+    useOrganizationUserRoles(orgId);
 
   const handleSignOut = async () => {
     const toastId = toast.loading('Wird abgemeldet...');
@@ -176,79 +179,7 @@ export default function OrganizationManagePage() {
     }
   };
 
-  const updateMutation = useMutation({
-    mutationFn: async (data: {
-      name: string;
-      description: string;
-      email?: string;
-      phone?: string;
-      helper_name_singular?: string;
-      helper_name_plural?: string;
-      einsatz_name_singular?: string;
-      einsatz_name_plural?: string;
-      max_participants_per_helper?: number;
-      logoFile?: File | null;
-      website?: string;
-      vat?: string;
-      zvr?: string;
-      authority?: string;
-    }) => {
-      // Update Organization
-      const updateData: any = {
-        id: orgId,
-        name: data.name,
-        description: data.description,
-        email: data.email,
-        max_participants_per_helper: data.max_participants_per_helper,
-        phone: data.phone,
-        helper_name_singular: data.helper_name_singular,
-        helper_name_plural: data.helper_name_plural,
-        einsatz_name_singular: data.einsatz_name_singular,
-        einsatz_name_plural: data.einsatz_name_plural,
-      };
-
-      const res = await updateOrganizationAction(updateData);
-      if (!res) throw new Error('Fehler beim Speichern');
-
-      // Update Organization Details
-      await saveOrganizationDetailsAction({
-        orgId,
-        website: data.website,
-        vat: data.vat,
-        zvr: data.zvr,
-        authority: data.authority,
-      });
-
-      return res;
-    },
-    onMutate: () => {
-      return { toastId: toast.loading('Organisation wird gespeichert...') };
-    },
-    onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.organization(orgId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.orgDetails(orgId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.organizations(session?.user?.orgIds || []),
-      });
-      setLogoFile(null);
-      toast.success('Organisation erfolgreich aktualisiert!', {
-        id: context.toastId,
-      });
-    },
-    onError: (error, variables, context) => {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Fehler beim Speichern der Organisation',
-        { id: context?.toastId }
-      );
-      console.error(error);
-    },
-  });
+  const updateMutation = useUpdateOrganization(orgId);
 
   const handleSave = () => {
     updateMutation.mutate({

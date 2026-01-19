@@ -29,7 +29,7 @@ import { useOrganizationTerminology } from '@/hooks/use-organization-terminology
 import {
   useDetailedEinsatz,
   useCategories,
-} from '@/features/einsatz/hooks/use-einsatz-queries';
+} from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useUsers } from '@/features/user/hooks/use-user-queries';
 import { useUserProperties } from '@/features/user_properties/hooks/use-user-property-queries';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
