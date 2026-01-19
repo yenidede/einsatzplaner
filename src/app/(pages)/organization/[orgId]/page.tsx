@@ -1,9 +1,8 @@
 'use client';
 
-import { getUserOrganizationByIdAction } from '@/features/settings/organization-action';
-import { useQuery } from '@tanstack/react-query';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { useOrganizationById } from '@/features/settings/hooks/useUserProfile';
 
 type PageProps = {
   params: Promise<{ orgId: string }>;
@@ -21,10 +20,7 @@ export default async function OrganizationPage({ params }: PageProps) {
 }
 
 function OrganizationPageClient({ orgId }: { orgId: string }) {
-  const { data, error } = useQuery({
-    queryKey: ['organization', orgId],
-    queryFn: () => getUserOrganizationByIdAction(orgId),
-  });
+  const { data, error } = useOrganizationById(orgId);
 
   if (error) {
     notFound();

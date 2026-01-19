@@ -8,16 +8,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { getActivityLogs } from '@/features/activity_log/activity_log-dal';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
-import { queryKeys as orgQueryKeys } from '@/features/organization/queryKeys';
 import { getFormattedMessage } from '@/features/activity_log/utils';
 import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useSession } from 'next-auth/react';
-import { getOrganizationsByIds } from '@/features/organization/org-dal';
+import { useActivityLogs } from '@/features/activity_log/hooks/useActivityLogs';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -85,24 +84,12 @@ export default function NotificationMenu() {
 
   const { data: session } = useSession();
 
-  const { data, isLoading } = useQuery({
-    queryKey: activityLogQueryKeys.list({ limit: 10, offset: 0 }),
-    queryFn: async () => {
-      const result = await getActivityLogs({
-        limit: 10,
-        offset: 0,
-      });
-      return result.activities;
-    },
-    staleTime: 1 * 60 * 1000, // check for new notifications every minute
-  });
+  const { data, isLoading } = useActivityLogs({ limit: 10, offset: 0 });
 
   const orgIds = session?.user.orgIds;
-  const { data: orgsData } = useQuery({
-    queryKey: orgQueryKeys.organizations(orgIds ?? []),
-    enabled: !!orgIds && orgIds.length > 1,
-    queryFn: () => getOrganizationsByIds(orgIds ?? []),
-  });
+  const { data: orgsData } = useOrganizations(
+    orgIds && orgIds.length > 1 ? orgIds : undefined
+  );
 
   const activeOrg = useMemo(() => {
     return orgsData?.find(

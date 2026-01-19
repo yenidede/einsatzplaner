@@ -5,20 +5,18 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { useSessionValidation } from '@/hooks/useSessionValidation';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
-  getUserOrganizationByIdAction,
   updateOrganizationAction,
   uploadOrganizationLogoAction,
   removeOrganizationLogoAction,
   saveOrganizationDetailsAction,
 } from '@/features/settings/organization-action';
-import { getUserProfileAction } from '@/features/settings/settings-action';
-import { getAllUserOrgRolesAction } from '@/features/settings/users-action';
+import { useUserProfile, useOrganizationById, useOrganizationUserRoles } from '@/features/settings/hooks/useUserProfile';
 
 import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
@@ -73,13 +71,7 @@ export default function OrganizationManagePage() {
     },
   });
 
-  const { data, isLoading } = useQuery({
-    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-    enabled: !!session?.user?.id,
-    queryFn: () => getUserProfileAction(),
-    staleTime,
-    gcTime,
-  });
+  const { data, isLoading } = useUserProfile(session?.user?.id);
 
   useEffect(() => {
     if (data) setUser(data);
@@ -89,13 +81,7 @@ export default function OrganizationManagePage() {
     data: orgData,
     isLoading: orgLoading,
     error: orgError,
-  } = useQuery({
-    queryKey: settingsQueryKeys.organization(orgId),
-    enabled: !!orgId,
-    queryFn: () => getUserOrganizationByIdAction(orgId || ''),
-    staleTime,
-    gcTime,
-  });
+  } = useOrganizationById(orgId, { staleTime, gcTime });
 
   useEffect(() => {
     if (orgData) {
@@ -114,13 +100,7 @@ export default function OrganizationManagePage() {
     }
   }, [orgData]);
 
-  const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: settingsQueryKeys.userOrganizations(orgId),
-    enabled: !!orgId,
-    queryFn: () => getAllUserOrgRolesAction(orgId),
-    staleTime,
-    gcTime,
-  });
+  const { data: usersData, isLoading: usersLoading } = useOrganizationUserRoles(orgId, { staleTime, gcTime });
 
   const handleSignOut = async () => {
     const toastId = toast.loading('Wird abgemeldet...');

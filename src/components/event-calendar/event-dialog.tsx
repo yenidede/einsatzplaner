@@ -34,29 +34,24 @@ import {
   StartHour,
   StatusValuePairs,
 } from '@/components/event-calendar/constants';
-import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys as OrgaQueryKeys } from '@/features/organization/queryKeys';
-import { queryKeys as TemplateQueryKeys } from '@/features/einsatztemplate/queryKeys';
-import { queryKeys as UserQueryKeys } from '@/features/user/queryKeys';
 import { EinsatzCreate, EinsatzDetailed } from '@/features/einsatz/types';
 import FormGroup from '../form/formGroup';
 import FormInputFieldCustom from '../form/formInputFieldCustom';
 import ToggleItemBig from '../form/toggle-item-big';
-import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
-import { getAllTemplatesWithIconByOrgId } from '@/features/template/template-dal';
-import { getAllUsersWithRolesByOrgId } from '@/features/user/user-dal';
+import { useDetailedEinsatz, useCategories } from '@/features/einsatz/hooks/use-einsatz-queries';
+import { useTemplates } from '@/features/template/hooks/use-template-queries';
+import { useUsers } from '@/features/user/hooks/use-user-queries';
+import { useUserProperties } from '@/features/user_properties/hooks/use-user-property-queries';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { DefaultFormFields } from '@/components/event-calendar/defaultFormFields';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { CustomFormField, SupportedDataTypes } from './types';
 import DynamicFormFields from './dynamicFormfields';
-import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
 import { buildInputProps } from '../form/utils';
 import TooltipCustom from '../tooltip-custom';
 
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
 import { useSession } from 'next-auth/react';
-import { getOrganizationsByIds } from '@/features/organization/org-dal';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
 import { createChangeLogAuto } from '@/features/activity_log/activity_log-dal';
@@ -69,10 +64,8 @@ import { Select, SelectContent, SelectItem } from '../ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import {
-  getUserPropertiesByOrgId,
-  UserPropertyValue,
+  UserPropertyValue
 } from '@/features/user_properties/user_property-dal';
-import { userPropertyQueryKeys } from '@/features/user_properties/queryKeys';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -227,11 +220,7 @@ export function EventDialogVerwaltung({
     mode: 'onChange',
     defaultValues: {},
   });
-  const { data: availableProps } = useQuery({
-    queryKey: userPropertyQueryKeys.byOrg(activeOrgId ?? ''),
-    queryFn: () => getUserPropertiesByOrgId(activeOrgId ?? ''),
-    enabled: !!activeOrgId,
-  });
+  const { data: availableProps } = useUserProperties(activeOrgId);
 
   const [errors, setErrors] = useState<{
     fieldErrors: Record<string, string[]>;
@@ -242,48 +231,18 @@ export function EventDialogVerwaltung({
   });
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
-  const { data: detailedEinsatz, isLoading } = useQuery({
-    // only enabled if it's a string (uuid)
-    queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
-    queryFn: async () => {
-      const res = await getEinsatzWithDetailsById(einsatz as string);
-      if (!(res instanceof Response)) return res;
-      toast.error('Failed to fetch einsatz details: ' + res.statusText);
-    },
-    enabled: typeof einsatz === 'string' && !!einsatz && isOpen,
-  });
+  const { data: detailedEinsatz, isLoading } = useDetailedEinsatz(
+    typeof einsatz === 'string' ? einsatz : null,
+    isOpen
+  );
 
-  const categoriesQuery = useQuery({
-    queryKey: einsatzQueryKeys.categories(activeOrgId ?? ''),
-    queryFn: () => getCategoriesByOrgIds(activeOrgId ? [activeOrgId] : []),
-    enabled: !!activeOrgId,
-  });
+  const categoriesQuery = useCategories(activeOrgId);
 
-  const templatesQuery = useQuery({
-    queryKey: TemplateQueryKeys.templates(activeOrgId ? [activeOrgId] : []),
-    queryFn: () => getAllTemplatesWithIconByOrgId(activeOrgId ?? ''),
-    enabled: !!activeOrgId,
-  });
+  const templatesQuery = useTemplates(activeOrgId);
 
-  const usersQuery = useQuery({
-    queryKey: UserQueryKeys.user(activeOrgId ?? ''),
-    queryFn: () => {
-      return getAllUsersWithRolesByOrgId(activeOrgId ?? '');
-    },
-    enabled: !!activeOrgId,
-    select: (data) => {
-      return data.map((user) => ({
-        ...user,
-        user_property_value: (user as any).user_property_value || [],
-      }));
-    },
-  });
+  const usersQuery = useUsers(activeOrgId);
 
-  const { data: organizations } = useQuery({
-    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
-    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
-    enabled: !!session?.user.orgIds?.length,
-  });
+  const { data: organizations } = useOrganizations(session?.user.orgIds);
 
   const { einsatz_singular } = useOrganizationTerminology(
     organizations,

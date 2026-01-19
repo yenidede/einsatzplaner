@@ -1,16 +1,13 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import Calendar from '@/components/event-calendar/calendar';
 import { useSession } from 'next-auth/react';
-import { queryKeys as orgsQueryKeys } from '@/features/organization/queryKeys';
-import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
-import { getOrganizationsByIds } from '@/features/organization/org-dal';
-import { useQuery } from '@tanstack/react-query';
-import { getEinsaetzeData } from '@/components/event-calendar/utils';
 import { CalendarMode } from './types';
 import { useRouter } from 'next/navigation';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useEinsaetze } from '@/features/einsatz/hooks/use-einsatz-queries';
 
 export default function CalendarPageWrapper({
   mode,
@@ -23,11 +20,7 @@ export default function CalendarPageWrapper({
   const router = useRouter();
   const orgIds = session?.user?.orgIds;
 
-  const { data: organizations, isError: isOrgError } = useQuery({
-    queryKey: orgsQueryKeys.organizations(orgIds ?? []),
-    queryFn: () => getOrganizationsByIds(orgIds ?? []),
-    enabled: !!orgIds?.length,
-  });
+  const { data: organizations, isError: isOrgError } = useOrganizations(orgIds);
 
   const activeOrgId = session?.user?.activeOrganization?.id;
   const activeOrg =
@@ -38,11 +31,7 @@ export default function CalendarPageWrapper({
     activeOrgId
   );
 
-  const { isError: isEventError } = useQuery({
-    queryKey: einsatzQueryKeys.einsaetze(activeOrgId ?? ''),
-    queryFn: () => getEinsaetzeData(activeOrgId),
-    enabled: !!activeOrgId,
-  });
+  const { isError: isEventError } = useEinsaetze(activeOrgId);
 
   const descriptionText = description
     ? description

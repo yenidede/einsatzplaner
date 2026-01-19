@@ -1,12 +1,9 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { signOut, useSession } from 'next-auth/react';
-import {
-  acceptInvitationAction,
-  verifyInvitationAction,
-} from '@/features/invitations/invitation-action';
+import { acceptInvitationAction } from '@/features/invitations/invitation-action';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -16,6 +13,7 @@ import { useState } from 'react';
 import SignUpForm, {
   AvailableTab,
 } from '@/features/auth/components/acceptAndRegister-Form';
+import { useInvitationVerify } from '@/features/invitations/hooks/useInvitationVerify';
 
 interface Role {
   id: string;
@@ -35,15 +33,7 @@ export default function InviteAcceptPage() {
     data: invitation,
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ['invitation', token],
-    enabled: !!token,
-    queryFn: async () => {
-      const res = await verifyInvitationAction(token);
-      return res;
-    },
-    retry: false,
-  });
+  } = useInvitationVerify(token);
 
   const acceptMutation = useMutation({
     mutationFn: async () => {

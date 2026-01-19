@@ -18,34 +18,19 @@ import {
 import Link from 'next/link';
 import NavSwitchOrgSelect from './switch-org';
 import { useSession } from 'next-auth/react';
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys as OrgaQueryKeys } from '@/features/organization/queryKeys';
-import { getOrganizationsByIds } from '@/features/organization/org-dal';
 import { cn } from '@/lib/utils';
-import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
-import { getUserOrgRolesAction } from '@/features/settings/users-action';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
 
 export default function Component() {
   const { data: session } = useSession();
 
-  const { data: organizations } = useQuery({
-    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
-    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
-    enabled: !!session?.user?.orgIds?.length,
-  });
-  const { data: userOrganization } = useQuery({
-    queryKey: settingsQueryKeys.userOrgRoles(
-      session?.user?.id || '',
-      session?.user?.activeOrganization?.id || ''
-    ),
-    queryFn: () => {
-      return getUserOrgRolesAction(
-        session?.user?.activeOrganization?.id || '',
-        session?.user?.id || ''
-      );
-    },
-    enabled: !!session?.user?.id && !!session?.user?.activeOrganization?.id,
-  });
+  const { data: organizations } = useOrganizations(session?.user.orgIds);
+  
+  const { data: userOrganization } = useUserOrgRoles(
+    session?.user?.id,
+    session?.user?.activeOrganization?.id
+  );
   const hasRoleInActiveOrg = (roleName: string): boolean => {
     if (!session || !userOrganization) {
       return false;

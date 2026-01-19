@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { EventCalendar } from '@/components/event-calendar';
 import { CalendarEvent, CalendarMode } from './types';
@@ -11,7 +11,6 @@ import {
   toggleUserAssignmentToEinsatz,
   updateEinsatzTime,
 } from '@/features/einsatz/dal-einsatz';
-import { getEinsaetzeData } from './utils';
 import {
   createEinsatz,
   deleteEinsatzById,
@@ -19,15 +18,15 @@ import {
 } from '@/features/einsatz/dal-einsatz';
 import { toast } from 'sonner';
 import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
-import { queryKeys as OrgaQueryKeys } from '@/features/organization/queryKeys';
 import { useSession } from 'next-auth/react';
-import { getOrganizationsByIds } from '@/features/organization/org-dal';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { getAllUsersWithRolesByOrgId } from '@/features/user/user-dal';
 import { getUserPropertiesByOrgId } from '@/features/user_properties/user_property-dal';
 import { userPropertyQueryKeys } from '@/features/user_properties/queryKeys';
 import { queryKeys as UserQueryKeys } from '@/features/user/queryKeys';
+import { useEinsaetze } from '@/features/einsatz/hooks/use-einsatz-queries';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 
 export default function Component({ mode }: { mode: CalendarMode }) {
   const { data: session } = useSession();
@@ -36,17 +35,9 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const queryClient = useQueryClient();
   const queryKey = einsatzQueryKeys.einsaetze(activeOrgId ?? '');
 
-  const { data: events } = useQuery({
-    queryKey: queryKey,
-    queryFn: () => getEinsaetzeData(activeOrgId),
-    enabled: !!activeOrgId,
-  });
+  const { data: events } = useEinsaetze(activeOrgId);
 
-  const { data: organizations } = useQuery({
-    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
-    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
-    enabled: !!session?.user.orgIds?.length,
-  });
+  const { data: organizations } = useOrganizations(session?.user.orgIds);
 
   const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
     organizations,

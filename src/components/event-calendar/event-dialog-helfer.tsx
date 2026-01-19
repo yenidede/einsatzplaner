@@ -15,29 +15,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys as OrgaQueryKeys } from '@/features/organization/queryKeys';
-import { queryKeys as UserQueryKeys } from '@/features/user/queryKeys';
-import { queryKeys as StatusQueryKeys } from '@/features/einsatz_status/queryKeys';
-import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
-import { getAllUsersWithRolesByOrgId } from '@/features/user/user-dal';
-import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
 import TooltipCustom from '../tooltip-custom';
 
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
 import { useSession } from 'next-auth/react';
-import { getOrganizationsByIds } from '@/features/organization/org-dal';
 import { toast } from 'sonner';
 
-import { GetStatuses } from '@/features/einsatz_status/status-dal';
 import { cn } from '@/lib/utils';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import { motion } from 'framer-motion';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
-import { getUserPropertiesByOrgId } from '@/features/user_properties/user_property-dal';
-import { userPropertyQueryKeys } from '@/features/user_properties/queryKeys';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import {
+  useDetailedEinsatz,
+  useCategories,
+} from '@/features/einsatz/hooks/use-einsatz-queries';
+import { useUsers } from '@/features/user/hooks/use-user-queries';
+import { useUserProperties } from '@/features/user_properties/hooks/use-user-property-queries';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useStatuses } from '@/features/einsatz_status/hooks/useStatuses';
 
 interface EventDialogProps {
   einsatz: string | null;
@@ -69,46 +65,20 @@ export function EventDialogHelfer({
   const { generatePdf } = usePdfGenerator();
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
-  const { data: detailedEinsatz, isLoading } = useQuery({
-    // only enabled if it's a string (uuid)
-    queryKey: einsatzQueryKeys.detailedEinsatz(einsatz as string),
-    queryFn: async () => {
-      const res = await getEinsatzWithDetailsById(einsatz as string);
-      if (!(res instanceof Response)) return res;
-      toast.error('Failed to fetch einsatz details: ' + res.statusText);
-    },
-    enabled: typeof einsatz === 'string' && isOpen,
-  });
+  const { data: detailedEinsatz, isLoading } = useDetailedEinsatz(
+    typeof einsatz === 'string' ? einsatz : null,
+    isOpen
+  );
 
-  const categoriesQuery = useQuery({
-    queryKey: einsatzQueryKeys.categories(activeOrgId ?? ''),
-    queryFn: () => getCategoriesByOrgIds(activeOrgId ? [activeOrgId] : []),
-    enabled: !!activeOrgId,
-  });
+  const categoriesQuery = useCategories(activeOrgId);
 
-  const usersQuery = useQuery({
-    queryKey: UserQueryKeys.users(activeOrgId ?? ''),
-    queryFn: () => {
-      return getAllUsersWithRolesByOrgId(activeOrgId ?? '');
-    },
-    enabled: !!activeOrgId,
-  });
+  const usersQuery = useUsers(activeOrgId);
 
-  const { data: userProperties } = useQuery<UserPropertyWithField[]>({
-    queryKey: userPropertyQueryKeys.byOrg(activeOrgId ?? ''),
-    queryFn: () => getUserPropertiesByOrgId(activeOrgId ?? ''),
-    enabled: !!activeOrgId,
-  });
-  const { data: organizations } = useQuery({
-    queryKey: OrgaQueryKeys.organizations(session?.user.orgIds ?? []),
-    queryFn: () => getOrganizationsByIds(session?.user.orgIds ?? []),
-    enabled: !!session?.user.orgIds?.length,
-  });
+  const { data: userProperties } = useUserProperties(activeOrgId);
 
-  const { data: statuses } = useQuery({
-    queryKey: StatusQueryKeys.statuses(),
-    queryFn: () => GetStatuses(),
-  });
+  const { data: organizations } = useOrganizations(session?.user.orgIds);
+
+  const { data: statuses } = useStatuses();
 
   const { einsatz_singular, helper_plural } = useOrganizationTerminology(
     organizations,
@@ -162,7 +132,8 @@ export function EventDialogHelfer({
 
       const usersWithProp = assignedDetails.filter((user) => {
         const upv = user.user_property_value?.find(
-          (pv) => pv.user_property_id === propConfig.user_property_id
+          (pv: { user_property_id: string }) =>
+            pv.user_property_id === propConfig.user_property_id
         );
         const raw = upv?.value ?? '';
         const val = String(raw).toLowerCase().trim();

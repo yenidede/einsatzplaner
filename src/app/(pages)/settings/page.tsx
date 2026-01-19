@@ -4,19 +4,18 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSessionValidation } from '@/hooks/useSessionValidation';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
-  getUserProfileAction,
   updateUserProfileAction,
   uploadProfilePictureAction,
-  getSalutationsAction,
   updateOrgMailNotificationAction,
   UserUpdateData,
   removeUserFromOrganizationAction,
   removeProfilePictureAction,
 } from '@/features/settings/settings-action';
+import { useUserProfile, useSalutations } from '@/features/settings/hooks/useUserProfile';
 import { toast } from 'sonner';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { OrganizationSidebar } from '@/features/settings/components/manage/OrganizationSideBar';
@@ -68,23 +67,9 @@ export default function SettingsPage() {
     };
   }, [profilePictureFile]);
 
-  const { data: userData, isLoading: isLoadingUser } = useQuery({
-    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-    enabled: !!session?.user?.id,
-    queryFn: async () => {
-      const res = await getUserProfileAction();
-      if (!res) throw new Error('Fehler beim Laden');
-      return res;
-    },
-  });
+  const { data: userData, isLoading: isLoadingUser } = useUserProfile(session?.user?.id);
 
-  const { data: salutations = [] } = useQuery({
-    queryKey: settingsQueryKeys.salutation(),
-    queryFn: async () => {
-      const res = await getSalutationsAction();
-      return res;
-    },
-  });
+  const { data: salutations = [] } = useSalutations();
 
   useEffect(() => {
     if (userData) {
