@@ -33,7 +33,7 @@ import { toast } from 'sonner';
 import { GetStatuses } from '@/features/einsatz_status/status-dal';
 import { cn } from '@/lib/utils';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { getUserPropertiesByOrgId } from '@/features/user_properties/user_property-dal';
 import { userPropertyQueryKeys } from '@/features/user_properties/queryKeys';
