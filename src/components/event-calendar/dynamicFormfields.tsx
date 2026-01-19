@@ -28,6 +28,9 @@ export default function DynamicFormFields({
         return typeof field.defaultValue === 'string'
           ? field.defaultValue.split(',').map((item) => item.trim())
           : (field.defaultValue ?? []);
+      case 'select':
+        // Use '_null_' for optional select fields to match the "Keine Auswahl" option value
+        return !field.required ? '_null_' : '';
       default:
         return '';
     }
@@ -57,7 +60,7 @@ export default function DynamicFormFields({
           <FormSelectField
             {...commonProps}
             options={field.allowedValues ?? []}
-            value={controllerField.value ?? ''}
+            value={controllerField.value ?? (!field.required ? '_null_' : '')}
             placeholder={field.placeholder ?? 'Feld auswählen...'}
             required={field.required}
             onValueChange={controllerField.onChange}
