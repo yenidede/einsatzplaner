@@ -94,7 +94,6 @@ export function generateDynamicSchema(
 
     if (!type) {
       console.warn('no type specified:', field);
-      console.warn('no type specified:', field);
       return;
     }
 
@@ -306,8 +305,8 @@ export function mapDbDataTypeToFormFieldType(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 
@@ -325,8 +324,8 @@ export function mapDbDataTypeToInputProps(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 
