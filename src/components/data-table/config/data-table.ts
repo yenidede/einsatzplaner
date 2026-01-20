@@ -2,7 +2,7 @@ import '@tanstack/react-table';
 
 // enables to filter by id and still eg. display the pretty fullname
 declare module '@tanstack/react-table' {
-  interface ColumnMeta<TData extends unknown, TValue> {
+  interface ColumnMeta<TData, TValue> {
     filterField?: string;
     // add other custom meta fields here
   }

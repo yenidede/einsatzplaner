@@ -122,7 +122,9 @@ export async function getUserOrgRolesAction(orgId: string, userId: string) {
   }));
 }
 
-export async function getAllUserOrgRolesAction(orgId: string) {
+export async function getAllUserOrgRolesAction(orgId: string | undefined) {
+  if (!orgId) throw new Error('Organization ID is required');
+
   const session = await checkUserSession();
 
   if (

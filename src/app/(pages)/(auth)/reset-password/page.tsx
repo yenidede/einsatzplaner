@@ -1,11 +1,6 @@
-'use client';
-
 import { Suspense } from 'react';
 import ResetPasswordClient from './ResetPasswordClient';
 
-interface ResetPasswordPageProps {
-  token: string;
-}
 type PageProps = {
   searchParams?: Promise<{ token?: string }>;
 };
@@ -18,7 +13,7 @@ export default async function ResetPasswordPage({ searchParams }: PageProps) {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center">
-          Loading...
+          Laden...
         </div>
       }
     >

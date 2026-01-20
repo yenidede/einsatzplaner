@@ -3,7 +3,6 @@ import FormGroup from '../form/formGroup';
 import FormInput from '../form/formInputField';
 import FormSwitchField from '../form/formSwitchField';
 import FormSelectField from '../form/formSelectField';
-import { Option as SelectFieldOption } from '../form/formSelectField';
 import FormMultiSelectField from '../form/multiSelectFormField';
 import { CustomFormField } from './types';
 import FormTextareaField from '../form/formTextareaField';
@@ -24,6 +23,8 @@ export default function DynamicFormFields({
     switch (field.inputType) {
       case 'checkbox':
         return false;
+      case 'select':
+        return field.defaultValue ?? null;
       case 'multi-select':
         return typeof field.defaultValue === 'string'
           ? field.defaultValue.split(',').map((item) => item.trim())

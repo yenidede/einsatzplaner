@@ -14,18 +14,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
 import { getEinsaetzeForTableView } from '@/features/einsatz/dal-einsatz';
 import type { ETV } from '@/features/einsatz/types';
 import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
-import { queryKeys as statusQueryKeys } from '@/features/einsatz_status/queryKeys';
-import { queryKeys as orgaQueryKeys } from '@/features/organization/queryKeys';
-import { GetStatuses } from '@/features/einsatz_status/status-dal';
-import { queryKeys as templatesQueryKeys } from '@/features/einsatztemplate/queryKeys';
-import { getAllTemplatesByOrgIds } from '@/features/template/template-dal';
-import { queryKeys as usersQueryKeys } from '@/features/user/queryKeys';
-import { getAllUsersWithRolesByOrgIds } from '@/features/user/user-dal';
 import { useQuery } from '@tanstack/react-query';
+import { useStatuses } from '@/features/einsatz_status/hooks/useStatuses';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useTemplatesByOrgIds } from '@/features/template/hooks/use-template-queries';
+import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
+import { useCategoriesByOrgIds } from '@/features/category/hooks/useCategories';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { Checkbox } from '../ui/checkbox';
 import { CalendarMode } from './types';
@@ -41,7 +38,6 @@ import { formatDate } from '../data-table/lib/format';
 import { Button } from '../ui/button';
 import { MoreHorizontal } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { getOrganizationsByIds } from '@/features/organization/org-dal';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 
 type ListViewProps = {
@@ -73,16 +69,9 @@ export function ListView({
     enabled: userOrgIds.length > 0,
   });
 
-  const { data: statusData, isLoading: isStatusLoading } = useQuery({
-    queryKey: statusQueryKeys.statuses(),
-    queryFn: GetStatuses,
-  });
+  const { data: statusData, isLoading: isStatusLoading } = useStatuses();
 
-  const { data: organizations } = useQuery({
-    queryKey: orgaQueryKeys.organizations(userOrgIds),
-    queryFn: () => getOrganizationsByIds(userOrgIds),
-    enabled: !!userOrgIds.length,
-  });
+  const { data: organizations } = useOrganizations(userOrgIds);
 
   const { einsatz_singular, helper_plural } = useOrganizationTerminology(
     organizations,
@@ -96,23 +85,14 @@ export function ListView({
   //     enabled: userOrgIds.length > 0,
   //   });
 
-  const { data: templatesData, isLoading: areTemplatesLoading } = useQuery({
-    queryKey: templatesQueryKeys.templates(userOrgIds),
-    queryFn: () => getAllTemplatesByOrgIds(userOrgIds),
-    enabled: userOrgIds.length > 0,
-  });
+  const { data: templatesData, isLoading: areTemplatesLoading } =
+    useTemplatesByOrgIds(userOrgIds);
 
-  const { data: usersData, isLoading: isUsersLoading } = useQuery({
-    queryKey: usersQueryKeys.users(userOrgIds),
-    queryFn: () => getAllUsersWithRolesByOrgIds(userOrgIds),
-    enabled: userOrgIds.length > 0,
-  });
+  const { data: usersData, isLoading: isUsersLoading } =
+    useUsersByOrgIds(userOrgIds);
 
-  const { data: categoriesData, isLoading: isCategoriesLoading } = useQuery({
-    queryKey: ['categories', userOrgIds],
-    queryFn: () => getCategoriesByOrgIds(userOrgIds),
-    enabled: userOrgIds.length > 0,
-  });
+  const { data: categoriesData, isLoading: isCategoriesLoading } =
+    useCategoriesByOrgIds(userOrgIds);
 
   // Ensure data is defined before accessing its elements
 

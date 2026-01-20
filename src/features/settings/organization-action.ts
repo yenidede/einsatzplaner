@@ -129,7 +129,9 @@ export async function getUserOrganizationsAction() {
     created_at: org.created_at.toISOString(),
   }));
 }
-export async function getUserOrganizationByIdAction(orgId: string) {
+export async function getUserOrganizationByIdAction(orgId: string | undefined) {
+  if (!orgId) throw new Error('Organization ID is required');
+
   const session = await checkUserSession();
 
   const membership = await prisma.user_organization_role.findFirst({

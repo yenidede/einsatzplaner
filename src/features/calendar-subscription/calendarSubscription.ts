@@ -5,7 +5,7 @@ export async function getOrCreateCalendarSubscription(
   orgId: string,
   userId: string
 ) {
-  let existingCalendarSubscription =
+  const existingCalendarSubscription =
     await prisma.calendar_subscription.findFirst({
       where: { org_id: orgId, user_id: userId, is_active: true },
     });

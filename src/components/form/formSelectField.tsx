@@ -38,7 +38,7 @@ export default function FormSelectField({
   const sanitizedId = name.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
 
   // Convert string array to Option array if needed
-  const normalizedOptions: Option[] =
+  const baseOptions: Option[] =
     options.length > 0 && typeof options[0] === 'string'
       ? (options as string[]).map((option) => ({
           value: option,
@@ -46,10 +46,10 @@ export default function FormSelectField({
         }))
       : (options as Option[]);
 
-  if (allowClear) {
-    // empty string or null not currently possible with radix select https://github.com/radix-ui/primitives/issues/2706
-    normalizedOptions.unshift({ label: 'Keine Auswahl', value: '_null_' });
-  }
+  // empty string or null not currently possible with radix select https://github.com/radix-ui/primitives/issues/2706
+  const normalizedOptions = allowClear
+    ? [{ label: 'Keine Auswahl', value: '_null_' }, ...baseOptions]
+    : baseOptions;
 
   return (
     <div>

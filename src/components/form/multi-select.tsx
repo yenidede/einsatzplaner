@@ -111,12 +111,6 @@ export interface MultiSelectProps
   modalPopover?: boolean;
 
   /**
-   * If true, renders the multi-select component as a child of another component.
-   * Optional, defaults to false.
-   */
-  asChild?: boolean;
-
-  /**
    * Additional class names to apply custom styles to the multi-select component.
    * Optional, can be used to add custom styles.
    */
@@ -140,7 +134,6 @@ export const MultiSelect = React.forwardRef<
       allowedActiveItemsReachedMessage = 'Maximale Anzahl an Elementen erreicht.',
       maxCount = 3,
       modalPopover = false,
-      asChild = false,
       className,
       ...props
     },
@@ -158,10 +151,9 @@ export const MultiSelect = React.forwardRef<
       if (!isControlled) {
         setUncontrolledSelectedValues(defaultValue ?? []);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [defaultValue, isControlled]);
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-    const [isAnimating, setIsAnimating] = React.useState(false);
+    const isAnimating = false;
 
     // Determine if the popover should be disabled
     React.useEffect(() => {
@@ -173,7 +165,12 @@ export const MultiSelect = React.forwardRef<
         toast.info(allowedActiveItemsReachedMessage);
         setIsPopoverOpen(false);
       }
-    }, [isPopoverOpen, allowedActiveItems, selectedValues.length]);
+    }, [
+      isPopoverOpen,
+      allowedActiveItems,
+      allowedActiveItemsReachedMessage,
+      selectedValues.length,
+    ]);
 
     const handleInputKeyDown = (
       event: React.KeyboardEvent<HTMLInputElement>

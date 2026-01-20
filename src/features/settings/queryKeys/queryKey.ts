@@ -1,49 +1,80 @@
 export const settingsQueryKeys = {
+  /** Base key for all settings-related queries - useful for invalidating everything */
   all: ['settings'] as const,
 
-  userSettings: (userId: string) =>
-    [...settingsQueryKeys.all, 'userSettings', userId] as const,
+  // User-related queries (primary entity: user)
+  user: {
+    /** Invalidate all queries for a specific user */
+    all: (userId: string) =>
+      [...settingsQueryKeys.all, 'user', userId] as const,
 
-  appConfigurations: () =>
-    [...settingsQueryKeys.all, 'appConfigurations'] as const,
+    /** User profile data (separate from settings) */
+    profile: (userId: string) =>
+      [...settingsQueryKeys.all, 'user', userId, 'profile'] as const,
 
-  organization: (orgId: string) =>
-    [...settingsQueryKeys.all, 'organization', orgId] as const,
+    /** User settings/preferences data - used in settings page and mutations */
+    settings: (userId: string | undefined) =>
+      [...settingsQueryKeys.all, 'user', userId, 'settings'] as const,
+  },
 
-  organizationSettings: (userId: string, orgId: string) =>
-    [...settingsQueryKeys.all, 'organizationSettings', userId, orgId] as const,
+  // Organization-related queries (primary entity: organization)
+  org: {
+    /** Invalidate all queries for a specific organization */
+    all: (orgId: string | undefined) =>
+      [...settingsQueryKeys.all, 'org', orgId] as const,
 
-  profilePicture: (userId: string) =>
-    [...settingsQueryKeys.all, 'profilePicture', userId] as const,
+    /** Organization base data (name, description, logo) - from organizations table */
+    detail: (orgId: string | undefined) =>
+      [...settingsQueryKeys.all, 'org', orgId, 'detail'] as const,
 
-  userOrgRoles: (userId: string, orgId: string) =>
-    [...settingsQueryKeys.all, 'userOrgRoles', userId, orgId] as const,
+    /** Organization extended details (website, vat, zvr, authority) - from organization_details table */
+    details: (orgId: string | undefined) =>
+      [...settingsQueryKeys.all, 'org', orgId, 'details'] as const,
 
-  userProfile: (userId: string, orgId: string) =>
-    [...settingsQueryKeys.all, 'userProfile', userId, orgId] as const,
+    /** All role definitions available in an organization */
+    roles: (orgId: string) =>
+      [...settingsQueryKeys.all, 'org', orgId, 'roles'] as const,
 
-  allOrgRoles: (orgId: string) =>
-    [...settingsQueryKeys.all, 'org', orgId, 'roles', 'all'] as const,
+    /** All users (members) within an organization */
+    users: (orgId: string) =>
+      [...settingsQueryKeys.all, 'org', orgId, 'users'] as const,
 
-  organizationUsers: (orgId: string) =>
-    [...settingsQueryKeys.all, 'org', orgId, 'users'] as const,
+    /** Specific user's assigned roles within an organization */
+    userRoles: (orgId: string, userId: string) =>
+      [
+        ...settingsQueryKeys.all,
+        'org',
+        orgId,
+        'user',
+        userId,
+        'roles',
+      ] as const,
 
-  userOrganizations: (orgId: string) =>
-    [...settingsQueryKeys.all, 'org', orgId, 'userOrganizations'] as const,
+    /** Specific user's profile data within organization context */
+    userProfile: (orgId: string, userId: string) =>
+      [
+        ...settingsQueryKeys.all,
+        'org',
+        orgId,
+        'user',
+        userId,
+        'profile',
+      ] as const,
 
-  mailNotifications: (userId: string, orgId: string) =>
-    [...settingsQueryKeys.all, 'mailNotifications', userId, orgId] as const,
+    /** Specific user's custom property values within an organization */
+    userProperties: (orgId: string, userId: string) =>
+      [
+        ...settingsQueryKeys.all,
+        'org',
+        orgId,
+        'user',
+        userId,
+        'properties',
+      ] as const,
+  },
 
-  calendarSubscription: (orgId: string, userId: string) =>
-    [...settingsQueryKeys.all, 'calendar', orgId, userId] as const,
-
+  /** Global salutation options (Herr, Frau, etc.) - static reference data */
   salutation: () => [...settingsQueryKeys.all, 'salutations'] as const,
-
-  orgDetails: (orgId: string) =>
-    [...settingsQueryKeys.all, 'orgDetails', orgId] as const,
-
-  userPropertyValues: (userId: string, orgId: string) =>
-    [...settingsQueryKeys.all, 'userPropertyValues', userId, orgId] as const,
-} as const;
+};
 
 export type SettingsQueryKeys = typeof settingsQueryKeys;

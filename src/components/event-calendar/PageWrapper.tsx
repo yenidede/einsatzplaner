@@ -1,16 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
 import Calendar from '@/components/event-calendar/calendar';
 import { useSession } from 'next-auth/react';
-import { queryKeys as orgsQueryKeys } from '@/features/organization/queryKeys';
-import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
-import { getOrganizationsByIds } from '@/features/organization/org-dal';
-import { useQuery } from '@tanstack/react-query';
-import { getEinsaetzeData } from '@/components/event-calendar/utils';
 import { CalendarMode } from './types';
-import { useRouter } from 'next/navigation';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
 
 export default function CalendarPageWrapper({
   mode,
@@ -20,14 +15,9 @@ export default function CalendarPageWrapper({
   description?: string;
 }) {
   const { data: session, status: sessionStatus } = useSession();
-  const router = useRouter();
   const orgIds = session?.user?.orgIds;
 
-  const { data: organizations, isError: isOrgError } = useQuery({
-    queryKey: orgsQueryKeys.organizations(orgIds ?? []),
-    queryFn: () => getOrganizationsByIds(orgIds ?? []),
-    enabled: !!orgIds?.length,
-  });
+  const { data: organizations, isError: isOrgError } = useOrganizations(orgIds);
 
   const activeOrgId = session?.user?.activeOrganization?.id;
   const activeOrg =
@@ -38,11 +28,12 @@ export default function CalendarPageWrapper({
     activeOrgId
   );
 
-  const { isError: isEventError } = useQuery({
-    queryKey: einsatzQueryKeys.einsaetze(activeOrgId ?? ''),
-    queryFn: () => getEinsaetzeData(activeOrgId),
-    enabled: !!activeOrgId,
-  });
+  const { isError: isEventError } = useEinsaetze(activeOrgId);
+
+  // Show loading state while session is being fetched
+  if (sessionStatus === 'loading') {
+    return <div>Lade Nutzerdaten...</div>;
+  }
 
   const descriptionText = description
     ? description
@@ -57,21 +48,8 @@ export default function CalendarPageWrapper({
   }
 
   if (isEventError) {
-    return <div>Fehler beim Laden der Einsätze. {}</div>;
+    return <div>Fehler beim Laden der Einsätze.</div>;
   }
-
-  // Redirect to sign-in if not authenticated (could happen if logout on different page)
-  useEffect(() => {
-    if (sessionStatus === 'loading') {
-      return;
-    }
-
-    if (!session) {
-      router.push(
-        `/signin?callbackUrl=${encodeURIComponent(window.location.href)}`
-      );
-    }
-  }, [router, session, sessionStatus]);
 
   return (
     <>

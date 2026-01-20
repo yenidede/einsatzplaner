@@ -48,13 +48,11 @@ import {
 } from '@/components/event-calendar';
 import { CalendarEvent, CalendarMode } from './types';
 import { EinsatzCreate } from '@/features/einsatz/types';
-import { getOrganizationsByIds } from '@/features/organization/org-dal';
 import { useSession } from 'next-auth/react';
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/features/organization/queryKeys';
 import { toast } from 'sonner';
 import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -113,11 +111,7 @@ export function EventCalendar({
 
   const { data: sessionData } = useSession();
   const orgIds = sessionData?.user.orgIds;
-  const { data: organizations } = useQuery({
-    queryKey: queryKeys.organizations(orgIds ?? []),
-    queryFn: () => getOrganizationsByIds(orgIds ?? []),
-    enabled: !!orgIds?.length,
-  });
+  const { data: organizations } = useOrganizations(orgIds);
 
   const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
     organizations,
