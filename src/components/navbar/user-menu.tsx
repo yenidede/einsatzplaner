@@ -30,7 +30,6 @@ export default function UserMenu(): JSX.Element | null {
 
   const { data: organizations } = useOrganizations(session?.user?.orgIds);
   const { data: userProfile } = useUserProfile(session?.user?.id);
-  const { data: roles } = 
 
   if (status === 'loading') {
     return (

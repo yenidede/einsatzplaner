@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, MapPin } from 'lucide-react';
 import {
@@ -10,6 +10,7 @@ import {
   updateOrganizationAddressAction,
   deleteOrganizationAddressAction,
 } from '../../organization-action';
+import { useOrganizationAddresses } from '@/features/organization/hooks/use-organization-queries';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import {
   Tooltip,
@@ -46,11 +47,8 @@ export function OrganizationAddresses({
     country: 'Österreich',
   });
 
-  const { data: addresses = [], isLoading } = useQuery({
-    queryKey: ['org-addresses', organizationId],
-    queryFn: () => getOrganizationAddressesAction(organizationId),
-    enabled: !!organizationId,
-  });
+  const { data: addresses = [], isLoading } =
+    useOrganizationAddresses(organizationId);
 
   const createMutation = useMutation({
     mutationFn: createOrganizationAddressAction,

@@ -1,10 +1,8 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
-import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
-import { getOrganizationDetailsAction } from '@/features/settings/organization-action';
+import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
 import {
   criticalFieldClass,
   criticalFieldLabel,
@@ -35,11 +33,7 @@ export function OrganizationDetails({
   onAuthorityChange,
   isSuperadmin = false,
 }: OrganizationDetailsProps) {
-  const { data: details, isLoading } = useQuery({
-    queryKey: settingsQueryKeys.org.details(organizationId),
-    queryFn: () => getOrganizationDetailsAction(organizationId),
-    enabled: !!organizationId,
-  });
+  const { data: details, isLoading } = useOrganizationDetails(organizationId);
 
   useEffect(() => {
     if (details) {

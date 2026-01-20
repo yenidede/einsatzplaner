@@ -87,8 +87,8 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
             {name}
           </div>
           <div className="mt-2 inline-flex flex-wrap gap-2">
-            {normalizedRoles.map((r) => (
-              <OrganizationRoleBadge key={r.id ?? r.name} role={r} />
+            {normalizedRoles.map((r, i) => (
+              <OrganizationRoleBadge key={i} role={r} />
             ))}
           </div>
         </div>
