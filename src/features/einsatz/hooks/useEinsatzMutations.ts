@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../queryKeys';
+import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
+
 import {
   createEinsatz,
   updateEinsatz,
@@ -106,6 +108,9 @@ export function useUpdateEinsatz(
       queryClient.invalidateQueries({
         queryKey: queryKeys.detailedEinsatz(data.id),
       });
+      queryClient.invalidateQueries({
+        queryKey: activityLogQueryKeys.allEinsatz(data.id),
+      })
     },
   });
 }
