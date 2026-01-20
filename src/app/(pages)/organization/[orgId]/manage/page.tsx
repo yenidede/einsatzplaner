@@ -18,7 +18,10 @@ import {
   saveOrganizationDetailsAction,
 } from '@/features/settings/organization-action';
 import { getUserProfileAction } from '@/features/settings/settings-action';
-import { getAllUserOrgRolesAction } from '@/features/settings/users-action';
+import {
+  getAllUserOrgRolesAction,
+  getUserOrgRolesAction,
+} from '@/features/settings/users-action';
 
 import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
@@ -117,7 +120,7 @@ export default function OrganizationManagePage() {
   const { data: currentUserRoles } = useQuery({
     queryKey: settingsQueryKeys.userOrgRoles(session?.user?.id || '', orgId),
     enabled: !!orgId && !!session?.user?.id,
-    queryFn: () => getAllUserOrgRolesAction(orgId),
+    queryFn: () => getUserOrgRolesAction(orgId, session?.user?.id || ''),
     staleTime,
     gcTime,
   });

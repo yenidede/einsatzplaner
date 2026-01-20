@@ -20,21 +20,3 @@ export const criticalFieldLabel = (
     )}
   </label>
 );
-
-export const getCriticalButtonClass = (
-  isEnabled: boolean,
-  variant: 'primary' | 'danger' = 'primary'
-) => {
-  const baseClass =
-    'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors';
-
-  if (!isEnabled) {
-    return `${baseClass} bg-slate-300 text-slate-500 cursor-not-allowed`;
-  }
-
-  if (variant === 'danger') {
-    return `${baseClass} text-red-600 hover:bg-red-50`;
-  }
-
-  return `${baseClass} bg-slate-900 text-white hover:bg-slate-800`;
-};
