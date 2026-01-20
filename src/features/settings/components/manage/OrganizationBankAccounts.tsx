@@ -181,7 +181,7 @@ export function OrganizationBankAccounts({
             </TooltipTrigger>
             {!isSuperadmin && (
               <TooltipContent>
-                Nur Superadmins können Adressen hinzufügen
+                Nur Superadmins können Bankkonten hinzufügen
               </TooltipContent>
             )}
           </Tooltip>
@@ -302,6 +302,7 @@ export function OrganizationBankAccounts({
                               ? 'text-slate-600 hover:bg-slate-100'
                               : 'cursor-not-allowed text-slate-400'
                           }`}
+                          disabled={!isSuperadmin}
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
@@ -331,7 +332,7 @@ export function OrganizationBankAccounts({
                       </TooltipTrigger>
                       {!isSuperadmin && (
                         <TooltipContent>
-                          Nur Superadmins können Adressen löschen
+                          Nur Superadmins können Bankkonten löschen
                         </TooltipContent>
                       )}
                     </Tooltip>

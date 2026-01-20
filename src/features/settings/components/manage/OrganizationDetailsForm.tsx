@@ -2,7 +2,7 @@
 import {
   criticalFieldLabel,
   criticalFieldClass,
-} from '../../utils/criticalFieldUtils';
+} from '@/features/settings/utils/criticalFieldUtils';
 
 interface OrganizationDetailsFormProps {
   name: string;

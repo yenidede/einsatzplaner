@@ -8,7 +8,7 @@ import { getOrganizationDetailsAction } from '@/features/settings/organization-a
 import {
   criticalFieldClass,
   criticalFieldLabel,
-} from '../../utils/criticalFieldUtils';
+} from '@/features/settings/utils/criticalFieldUtils';
 
 interface OrganizationDetailsProps {
   organizationId: string;
