@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 import { organization as Organization } from '@/generated/prisma';
 
-interface PartialOrganization extends Pick<
+type PartialOrganization = Pick<
   Organization,
   | 'id'
   | 'einsatz_name_singular'
   | 'einsatz_name_plural'
   | 'helper_name_singular'
   | 'helper_name_plural'
-> {}
+>;
 
 interface OrganizationTerminology {
   einsatz_singular: string;

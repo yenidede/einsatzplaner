@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileText } from 'lucide-react';
-import { getOrganizationDetailsAction } from '../../organization-action';
-import { settingsQueryKeys } from '../../queryKeys/queryKey';
+import { useEffect } from 'react';
+
+import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
+import { getOrganizationDetailsAction } from '@/features/settings/organization-action';
+import {
+  criticalFieldClass,
+  criticalFieldLabel,
+} from '@/features/settings/utils/criticalFieldUtils';
 
 interface OrganizationDetailsProps {
   organizationId: string;
@@ -16,6 +20,7 @@ interface OrganizationDetailsProps {
   onVatChange: (value: string) => void;
   onZvrChange: (value: string) => void;
   onAuthorityChange: (value: string) => void;
+  isSuperadmin?: boolean;
 }
 
 export function OrganizationDetails({
@@ -28,14 +33,14 @@ export function OrganizationDetails({
   onVatChange,
   onZvrChange,
   onAuthorityChange,
+  isSuperadmin = false,
 }: OrganizationDetailsProps) {
   const { data: details, isLoading } = useQuery({
-    queryKey: settingsQueryKeys.orgDetails(organizationId),
+    queryKey: settingsQueryKeys.org.details(organizationId),
     queryFn: () => getOrganizationDetailsAction(organizationId),
     enabled: !!organizationId,
   });
 
-  // Formular mit geladenen Daten befüllen
   useEffect(() => {
     if (details) {
       onWebsiteChange(details.website || '');
@@ -49,67 +54,84 @@ export function OrganizationDetails({
     <div className="flex flex-col items-start justify-center self-stretch">
       <div className="flex items-center justify-between self-stretch px-4 py-2">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-slate-700" />
-          <div className="font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
-            Weitere Details
+          <div className="text-sm font-semibold text-slate-900">
+            Weitere Organisationsdetails
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 self-stretch px-4 py-2">
+      <div className="flex flex-col gap-4 self-stretch border-t border-slate-200 px-4 py-4">
         {isLoading ? (
           <div className="text-sm text-slate-500">Lädt Details...</div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Website */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">
-                Website
-              </label>
+              {criticalFieldLabel('Website', isSuperadmin)}
               <input
                 type="url"
                 value={website}
                 onChange={(e) => onWebsiteChange(e.target.value)}
+                disabled={!isSuperadmin}
                 placeholder="https://www.beispiel.at"
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className={criticalFieldClass(isSuperadmin)}
+                title={
+                  !isSuperadmin
+                    ? 'Nur Superadmins können die Website ändern'
+                    : ''
+                }
               />
             </div>
 
+            {/* UID / Steuernummer */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">
-                UID / Steuernummer
-              </label>
+              {criticalFieldLabel('UID / Steuernummer', isSuperadmin)}
               <input
                 type="text"
                 value={vat}
                 onChange={(e) => onVatChange(e.target.value)}
+                disabled={!isSuperadmin}
                 placeholder="ATU12345678"
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className={criticalFieldClass(isSuperadmin)}
+                title={
+                  !isSuperadmin ? 'Nur Superadmins können die UID ändern' : ''
+                }
               />
             </div>
 
+            {/* ZVR-Nummer */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">
-                Zentrales Vereinsregister
-              </label>
+              {criticalFieldLabel('ZVR-Nummer', isSuperadmin)}
               <input
                 type="text"
                 value={zvr}
                 onChange={(e) => onZvrChange(e.target.value)}
+                disabled={!isSuperadmin}
                 placeholder="123456789"
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className={criticalFieldClass(isSuperadmin)}
+                title={
+                  !isSuperadmin
+                    ? 'Nur Superadmins können die ZVR-Nummer ändern'
+                    : ''
+                }
               />
             </div>
 
+            {/* Zuständige Behörde */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">
-                Zuständige Behörde
-              </label>
+              {criticalFieldLabel('Zuständige Behörde', isSuperadmin)}
               <input
                 type="text"
                 value={authority}
                 onChange={(e) => onAuthorityChange(e.target.value)}
-                placeholder="Magistrat der Stadt Wien"
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                disabled={!isSuperadmin}
+                placeholder="Magistrat Wien"
+                className={criticalFieldClass(isSuperadmin)}
+                title={
+                  !isSuperadmin
+                    ? 'Nur Superadmins können die Behörde ändern'
+                    : ''
+                }
               />
             </div>
           </div>

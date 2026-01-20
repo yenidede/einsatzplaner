@@ -4,15 +4,12 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSessionValidation } from '@/hooks/useSessionValidation';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
-  updateUserProfileAction,
   uploadProfilePictureAction,
   updateOrgMailNotificationAction,
-  UserUpdateData,
-  removeUserFromOrganizationAction,
   removeProfilePictureAction,
 } from '@/features/settings/settings-action';
 import {
@@ -163,7 +160,7 @@ export default function SettingsPage() {
       }
 
       await queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user.id || ''),
+        queryKey: settingsQueryKeys.user.settings(session?.user.id || ''),
       });
     } catch (error) {
       toast.error(
@@ -196,7 +193,7 @@ export default function SettingsPage() {
       });
 
       queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session.user.id),
+        queryKey: settingsQueryKeys.user.settings(session.user.id),
       });
 
       toast.success('Profilbild erfolgreich entfernt!', { id: toastId });

@@ -437,35 +437,6 @@ export async function updateUserSettings(
   }
 }
 
-export async function updateUserOrgSettings(
-  userOrgId: string,
-  body: UserOrgSettingsUpdate
-) {
-  try {
-    const currentUserOrg = await prisma.user_organization_role.findUnique({
-      where: { id: userOrgId },
-    });
-
-    if (!currentUserOrg) {
-      throw new Error('UserOrg not found');
-    }
-
-    // Note: hasGetMailNotification field does not exist in current schema
-    // This function is kept for future extensions
-    console.warn(
-      'updateUserOrgSettings called but no updatable fields exist in current schema'
-    );
-
-    return currentUserOrg;
-  } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(
-      `Failed to update user organization settings: ${errorMessage}`
-    );
-  }
-}
-
 //#region Multi-Role Support Functions
 /**
  * Fügt einem User zusätzliche Rollen in einer Organisation hinzu

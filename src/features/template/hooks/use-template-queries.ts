@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/features/einsatztemplate/queryKeys';
-import { getAllTemplatesWithIconByOrgId, getAllTemplatesByOrgIds } from '@/features/template/template-dal';
+import {
+  getAllTemplatesWithIconByOrgId,
+  getAllTemplatesByOrgIds,
+} from '@/features/template/template-dal';
 
 export function useTemplates(activeOrgId: string | null | undefined) {
   return useQuery({

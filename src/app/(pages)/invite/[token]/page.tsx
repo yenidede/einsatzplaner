@@ -14,14 +14,8 @@ import SignUpForm, {
 import { useInvitationVerify } from '@/features/invitations/hooks/useInvitationVerify';
 import { useAcceptInvitation } from '@/features/invitations/hooks/useInvitationMutations';
 
-interface Role {
-  id: string;
-  name: string;
-}
-
 export default function InviteAcceptPage() {
   const params = useParams();
-  const router = useRouter();
   const token = params?.token as string;
   const { data: session, status: sessionStatus } = useSession();
   const { showDialog, AlertDialogComponent } = useAlertDialog();

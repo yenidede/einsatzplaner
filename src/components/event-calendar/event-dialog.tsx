@@ -221,7 +221,6 @@ export function EventDialogVerwaltung({
     mode: 'onChange',
     defaultValues: {},
   });
-  const { data: availableProps } = useUserProperties(activeOrgId);
 
   const [errors, setErrors] = useState<{
     fieldErrors: Record<string, string[]>;
@@ -237,13 +236,16 @@ export function EventDialogVerwaltung({
       dynamicForm.clearErrors();
       dynamicForm.trigger();
     }
-  }, [dynamicSchema, dynamicForm]);
+  }, [dynamicSchema]);
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
-  const { data: detailedEinsatz, isLoading } = useDetailedEinsatz(
-    typeof einsatz === 'string' ? einsatz : null,
-    isOpen
-  );
+  const {
+    data: detailedEinsatz,
+    isLoading,
+    isFetching,
+  } = useDetailedEinsatz(typeof einsatz === 'string' ? einsatz : null, isOpen);
+
+  const { data: availableProps } = useUserProperties(activeOrgId);
 
   const categoriesQuery = useCategories(activeOrgId);
 
@@ -611,11 +613,10 @@ export function EventDialogVerwaltung({
       const ratio =
         parsedDataStatic.data.participantCount /
         parsedDataStatic.data.helpersNeeded;
-      if (
-        ratio >
-        organizations?.find((o) => o.id === activeOrgId)
-          ?.max_participants_per_helper!
-      ) {
+      const maxParticipants = organizations?.find(
+        (o) => o.id === activeOrgId
+      )?.max_participants_per_helper;
+      if (maxParticipants && ratio > maxParticipants) {
         warnings.push(
           `Allgemein: Anzahl Teilnehmer:innen pro Helfer maximal ${
             organizations?.find((o) => o.id === activeOrgId)
@@ -645,8 +646,7 @@ export function EventDialogVerwaltung({
 
         const usersWithProperty = assignedUserDetails?.filter((user) => {
           const userPropValue = user.user_property_value?.find(
-            (upv: UserPropertyValue) =>
-              upv.user_property_id === propConfig.user_property_id
+            (upv) => upv.user_property_id === propConfig.user_property_id
           );
 
           if (property.field.type?.datatype === 'boolean') {
@@ -856,11 +856,13 @@ export function EventDialogVerwaltung({
             <DialogTitle>
               {isLoading
                 ? 'Laden...'
-                : currentEinsatz?.id
-                  ? `Bearbeite '${staticFormData.title}'`
-                  : staticFormData.title
-                    ? `Erstelle '${staticFormData.title}'`
-                    : `Erstelle ${einsatz_singular}`}
+                : isFetching && !isLoading
+                  ? `Aktualisiere '${staticFormData.title}'...`
+                  : currentEinsatz?.id
+                    ? `Bearbeite '${staticFormData.title}'`
+                    : staticFormData.title
+                      ? `Erstelle '${staticFormData.title}'`
+                      : `Erstelle ${einsatz_singular}`}
             </DialogTitle>
             <DialogDescription className="sr-only">
               {currentEinsatz?.id

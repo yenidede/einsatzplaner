@@ -30,10 +30,8 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const activeOrgId = session?.user?.activeOrganization?.id;
   const { showDialog, AlertDialogComponent } = useAlertDialog();
   const queryClient = useQueryClient();
-  const queryKey = einsatzQueryKeys.einsaetze(activeOrgId ?? '');
 
   const { data: events } = useEinsaetze(activeOrgId);
-
   const { data: organizations } = useOrganizations(session?.user.orgIds);
 
   const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
@@ -225,7 +223,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
 
       toggleUserAssignToEvent.mutate(eventId);
     } catch (err) {
-      toast.error('Fehler beim Überprüfen der Anforderungen');
+      toast.error('Fehler beim Überprüfen der Anforderungen. ' + err);
       toggleUserAssignToEvent.mutate(eventId);
     }
   };

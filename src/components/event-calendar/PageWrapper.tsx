@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
 import Calendar from '@/components/event-calendar/calendar';
 import { useSession } from 'next-auth/react';
 import { CalendarMode } from './types';
-import { useRouter } from 'next/navigation';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
@@ -17,7 +15,6 @@ export default function CalendarPageWrapper({
   description?: string;
 }) {
   const { data: session, status: sessionStatus } = useSession();
-  const router = useRouter();
   const orgIds = session?.user?.orgIds;
 
   const { data: organizations, isError: isOrgError } = useOrganizations(orgIds);
@@ -33,6 +30,11 @@ export default function CalendarPageWrapper({
 
   const { isError: isEventError } = useEinsaetze(activeOrgId);
 
+  // Show loading state while session is being fetched
+  if (sessionStatus === 'loading') {
+    return <div>Lade Nutzerdaten...</div>;
+  }
+
   const descriptionText = description
     ? description
     : mode === 'verwaltung'
@@ -46,21 +48,8 @@ export default function CalendarPageWrapper({
   }
 
   if (isEventError) {
-    return <div>Fehler beim Laden der Einsätze. {}</div>;
+    return <div>Fehler beim Laden der Einsätze.</div>;
   }
-
-  // Redirect to sign-in if not authenticated (could happen if logout on different page)
-  useEffect(() => {
-    if (sessionStatus === 'loading') {
-      return;
-    }
-
-    if (!session) {
-      router.push(
-        `/signin?callbackUrl=${encodeURIComponent(window.location.href)}`
-      );
-    }
-  }, [router, session, sessionStatus]);
 
   return (
     <>

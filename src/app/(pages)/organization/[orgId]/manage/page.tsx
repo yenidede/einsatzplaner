@@ -1,20 +1,17 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { useSessionValidation } from '@/hooks/useSessionValidation';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
-  updateOrganizationAction,
   uploadOrganizationLogoAction,
   removeOrganizationLogoAction,
-  saveOrganizationDetailsAction,
 } from '@/features/settings/organization-action';
 import {
   useUserProfile,
@@ -35,7 +32,6 @@ import { OrganizationAddresses } from '@/features/settings/components/manage/Org
 import { OrganizationBankAccounts } from '@/features/settings/components/manage/OrganizationBankAccounts';
 import { OrganizationDetails } from '@/features/settings/components/manage/OrganizationDetails';
 import { SettingsHeader } from '@/features/settings/components/SettingsHeader';
-import { queryKeys } from '@/features/organization/queryKeys';
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -105,6 +101,12 @@ export default function OrganizationManagePage() {
   const { data: usersData, isLoading: usersLoading } =
     useOrganizationUserRoles(orgId);
 
+  const { data: currentUserRoles } = useOrganizationUserRoles(orgId);
+
+  const isSuperadmin =
+    currentUserRoles?.some(
+      (role) => role.role.name.toLowerCase() === 'superadmin'
+    ) ?? false;
   const handleSignOut = async () => {
     const toastId = toast.loading('Wird abgemeldet...');
     try {
@@ -145,7 +147,7 @@ export default function OrganizationManagePage() {
       setLogoFile(null);
 
       queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.org.detail(orgId),
       });
 
       toast.success('Logo erfolgreich hochgeladen!', { id: toastId });
@@ -169,7 +171,7 @@ export default function OrganizationManagePage() {
       if (fileInput) fileInput.value = '';
 
       queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.org.detail(orgId),
       });
 
       toast.success('Logo erfolgreich entfernt!', { id: toastId });
@@ -254,6 +256,7 @@ export default function OrganizationManagePage() {
                   onEmailChange={setEmail}
                   onPhoneChange={setPhone}
                   onDescriptionChange={setDescription}
+                  isSuperadmin={isSuperadmin}
                 />
               </div>
 
@@ -267,6 +270,7 @@ export default function OrganizationManagePage() {
                 onVatChange={setVat}
                 onZvrChange={setZvr}
                 onAuthorityChange={setAuthority}
+                isSuperadmin={isSuperadmin}
               />
             </div>
           </div>
@@ -285,9 +289,15 @@ export default function OrganizationManagePage() {
               onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
             />
           </div>
-          <OrganizationAddresses organizationId={orgId} />
+          <OrganizationAddresses
+            organizationId={orgId}
+            isSuperadmin={isSuperadmin}
+          />
 
-          <OrganizationBankAccounts organizationId={orgId} />
+          <OrganizationBankAccounts
+            organizationId={orgId}
+            isSuperadmin={isSuperadmin}
+          />
           <UserProperties organizationId={orgId} />
 
           <UsersManagementSection

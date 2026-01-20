@@ -35,7 +35,9 @@ export default function Component() {
     if (!session || !userOrganization) {
       return false;
     }
-    return userOrganization.some((userRole) => userRole.role.name === roleName);
+    return userOrganization.some(
+      (userRole) => userRole.role.name.toLowerCase() === roleName.toLowerCase()
+    );
   };
 
   // Navigation links array to be used in both desktop and mobile menus
@@ -43,12 +45,15 @@ export default function Component() {
     {
       href: '/helferansicht',
       label: 'Helferansicht',
-      hidden: !hasRoleInActiveOrg('Helfer'),
+      hidden:
+        !hasRoleInActiveOrg('Superadmin') && !hasRoleInActiveOrg('Helfer'),
     },
     {
       href: '/einsatzverwaltung',
       label: 'Einsatzverwaltung',
-      hidden: !hasRoleInActiveOrg('Einsatzverwaltung'),
+      hidden:
+        !hasRoleInActiveOrg('Superadmin') &&
+        !hasRoleInActiveOrg('Einsatzverwaltung'),
     },
     { href: '/auswertungen', label: 'Auswertungen', hidden: true },
   ];

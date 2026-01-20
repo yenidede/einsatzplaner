@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/features/user/queryKeys';
-import { getAllUsersWithRolesByOrgId, getAllUsersWithRolesByOrgIds } from '@/features/user/user-dal';
+import {
+  getAllUsersWithRolesByOrgId,
+  getAllUsersWithRolesByOrgIds,
+} from '@/features/user/user-dal';
 
 export function useUsers(activeOrgId: string | null | undefined) {
   return useQuery({
@@ -12,7 +15,7 @@ export function useUsers(activeOrgId: string | null | undefined) {
     select: (data) => {
       return data.map((user) => ({
         ...user,
-        user_property_value: (user as any).user_property_value || [],
+        user_property_value: user.user_property_value || [],
       }));
     },
   });

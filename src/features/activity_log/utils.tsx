@@ -61,7 +61,7 @@ export function getFormattedMessage(
                 onClick={() => openDialog && openDialog(activity.einsatz.id)}
                 key={index}
               >
-                '{activity.einsatz.title}'
+                &apos;{activity.einsatz.title}&apos;
               </span>
             );
           }

@@ -552,7 +552,18 @@ export function DefaultFormFields({
                         type="number"
                         min={1}
                         className="h-8 w-16 rounded-md border px-2 text-sm"
-                        defaultValue={config.min_matching_users ?? 1}
+                        value={config.min_matching_users ?? 1}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (!isNaN(value) && value >= 1) {
+                            handlePropertyConfigChange(
+                              config.user_property_id,
+                              {
+                                min_matching_users: value,
+                              }
+                            );
+                          }
+                        }}
                         onBlur={(e) => {
                           const value = parseInt(e.target.value);
                           const finalValue =
@@ -560,7 +571,6 @@ export function DefaultFormFields({
                           handlePropertyConfigChange(config.user_property_id, {
                             min_matching_users: finalValue,
                           });
-                          e.target.value = String(finalValue);
                         }}
                       />
                     </div>

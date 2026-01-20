@@ -14,12 +14,6 @@ export default function SignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  if (searchParams == null) {
-    console.error('Search parameters are null');
-    return <div>Error: Unable to retrieve search parameters.</div>;
-  }
-  const message = searchParams.get('message');
-
   const {
     register,
     handleSubmit,
@@ -28,7 +22,13 @@ export default function SignInForm() {
     resolver: zodResolver(LoginSchema),
   });
 
-  async function onSubmit(data: LoginData) {
+  if (searchParams == null) {
+    console.error('Search parameters are null');
+    return <div>Error: Unable to retrieve search parameters.</div>;
+  }
+  const message = searchParams.get('message');
+
+  async function redirectOnSubmit(data: LoginData) {
     setError(null);
     setIsLoading(true);
 
@@ -68,26 +68,6 @@ export default function SignInForm() {
     }
   }
 
-  // Alternative Methode für den Fall, dass die obige nicht funktioniert
-  async function onSubmitWithRedirect(data: LoginData) {
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      // Direkter Redirect mit NextAuth
-      await signIn('credentials', {
-        email: data.email,
-        password: data.password,
-        callbackUrl: '/helferansicht',
-        redirect: true,
-      });
-    } catch (err) {
-      console.error('Sign in exception:', err);
-      setError('Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.');
-      setIsLoading(false);
-    }
-  }
-
   return (
     <div className="mx-auto w-full max-w-md space-y-8">
       <div className="text-center">
@@ -121,7 +101,10 @@ export default function SignInForm() {
         </div>
       )}
 
-      <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+      <form
+        className="mt-8 space-y-6"
+        onSubmit={handleSubmit(redirectOnSubmit)}
+      >
         <div className="space-y-4 rounded-md shadow-sm">
           <div>
             <label
