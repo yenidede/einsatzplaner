@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
 import { signOut } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 function SignOutPage() {
   const queryClient = useQueryClient();
@@ -41,5 +42,15 @@ function SignOutPage() {
 }
 
 export default function Page() {
-  return <SignOutPage />;
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-secondary flex grow flex-col p-6 md:p-10">
+          Sie werden in Kürze abgemeldet...
+        </div>
+      }
+    >
+      <SignOutPage />
+    </Suspense>
+  );
 }
