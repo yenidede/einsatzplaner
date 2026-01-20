@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import Image from 'next/image';
 
 interface UserProfileHeaderProps {
   firstname: string;
@@ -50,9 +51,11 @@ export function UserProfileHeader({
     <div className="flex flex-col items-start justify-start gap-4 px-4">
       <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-slate-200">
         {pictureUrl && !imageError ? (
-          <img
+          <Image
             src={pictureUrl}
             alt={`${firstname} ${lastname}`}
+            width={80}
+            height={80}
             className="h-full w-full object-cover"
             loading="lazy"
             onError={() => setImageError(true)}

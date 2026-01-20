@@ -20,7 +20,7 @@ export default function NotFoundPage() {
         </div>
       </div>
       <Image
-        src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/not-found.jpg"
+        src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/not-found-3.jpg"
         alt="Frau bestaunt schönes Gemälde in Museum"
         width={3840}
         height={2603}
