@@ -564,14 +564,6 @@ export function DefaultFormFields({
                             );
                           }
                         }}
-                        onBlur={(e) => {
-                          const value = parseInt(e.target.value);
-                          const finalValue =
-                            isNaN(value) || value < 1 ? 1 : value;
-                          handlePropertyConfigChange(config.user_property_id, {
-                            min_matching_users: finalValue,
-                          });
-                        }}
                       />
                     </div>
                   )}
