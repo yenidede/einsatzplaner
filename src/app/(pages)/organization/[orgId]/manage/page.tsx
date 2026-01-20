@@ -114,6 +114,14 @@ export default function OrganizationManagePage() {
     }
   }, [orgData]);
 
+  const { data: currentUserRoles } = useQuery({
+    queryKey: settingsQueryKeys.userOrgRoles(session?.user?.id || '', orgId),
+    enabled: !!orgId && !!session?.user?.id,
+    queryFn: () => getAllUserOrgRolesAction(orgId),
+    staleTime,
+    gcTime,
+  });
+
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: settingsQueryKeys.userOrganizations(orgId),
     enabled: !!orgId,
@@ -121,7 +129,10 @@ export default function OrganizationManagePage() {
     staleTime,
     gcTime,
   });
-
+  const isSuperadmin =
+    currentUserRoles?.some(
+      (role) => role.role.name.toLowerCase() === 'superadmin'
+    ) ?? false;
   const handleSignOut = async () => {
     const toastId = toast.loading('Wird abgemeldet...');
     try {
@@ -343,6 +354,7 @@ export default function OrganizationManagePage() {
                   onEmailChange={setEmail}
                   onPhoneChange={setPhone}
                   onDescriptionChange={setDescription}
+                  isSuperadmin={isSuperadmin}
                 />
               </div>
 
@@ -356,6 +368,7 @@ export default function OrganizationManagePage() {
                 onVatChange={setVat}
                 onZvrChange={setZvr}
                 onAuthorityChange={setAuthority}
+                isSuperadmin={isSuperadmin}
               />
             </div>
           </div>
@@ -374,9 +387,15 @@ export default function OrganizationManagePage() {
               onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
             />
           </div>
-          <OrganizationAddresses organizationId={orgId} />
+          <OrganizationAddresses
+            organizationId={orgId}
+            isSuperadmin={isSuperadmin}
+          />
 
-          <OrganizationBankAccounts organizationId={orgId} />
+          <OrganizationBankAccounts
+            organizationId={orgId}
+            isSuperadmin={isSuperadmin}
+          />
           <UserProperties organizationId={orgId} />
 
           <UsersManagementSection
