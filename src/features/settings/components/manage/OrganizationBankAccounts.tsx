@@ -19,6 +19,7 @@ import {
 
 interface OrganizationBankAccountsProps {
   organizationId: string;
+  isSuperadmin?: boolean;
 }
 
 interface BankAccountFormData {
@@ -29,6 +30,7 @@ interface BankAccountFormData {
 
 export function OrganizationBankAccounts({
   organizationId,
+  isSuperadmin = false,
 }: OrganizationBankAccountsProps) {
   const queryClient = useQueryClient();
   const { showDialog, AlertDialogComponent } = useAlertDialog();
@@ -98,6 +100,13 @@ export function OrganizationBankAccounts({
     setEditingId(null);
   };
 
+  const handleAddClick = () => {
+    if (!isSuperadmin) {
+      toast.error('Nur Superadmins können Bankkonten hinzufügen');
+      return;
+    }
+    setIsAdding(!isAdding);
+  };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -155,13 +164,27 @@ export function OrganizationBankAccounts({
               Bankkonten
             </div>
           </div>
-          <button
-            onClick={() => setIsAdding(!isAdding)}
-            className="flex items-center gap-2 rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white transition-colors hover:bg-slate-800"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Hinzufügen</span>
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleAddClick}
+                disabled={!isSuperadmin}
+                className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                  isSuperadmin
+                    ? 'bg-slate-900 text-white hover:bg-slate-800'
+                    : 'cursor-not-allowed bg-slate-300 text-slate-500'
+                }`}
+              >
+                <Plus className="h-4 w-4" />
+                <span>Hinzufügen</span>
+              </button>
+            </TooltipTrigger>
+            {!isSuperadmin && (
+              <TooltipContent>
+                Nur Superadmins können Adressen hinzufügen
+              </TooltipContent>
+            )}
+          </Tooltip>
         </div>
 
         <div className="flex flex-col gap-3 self-stretch px-4 py-2">
@@ -274,7 +297,11 @@ export function OrganizationBankAccounts({
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => handleEdit(account)}
-                          className="rounded p-1.5 text-slate-600 transition-colors hover:bg-slate-100"
+                          className={`rounded p-1.5 transition-colors ${
+                            isSuperadmin
+                              ? 'text-slate-600 hover:bg-slate-100'
+                              : 'cursor-not-allowed text-slate-400'
+                          }`}
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
@@ -282,19 +309,31 @@ export function OrganizationBankAccounts({
                       <TooltipContent>
                         <p>Bankkonto bearbeiten</p>
                       </TooltipContent>
+                      {!isSuperadmin && (
+                        <TooltipContent>
+                          Nur Superadmins können Bankkonten bearbeiten
+                        </TooltipContent>
+                      )}
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => handleDelete(account.id)}
-                          className="rounded p-1.5 text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
+                          disabled={!isSuperadmin || deleteMutation.isPending}
+                          className={`rounded p-1.5 transition-colors ${
+                            isSuperadmin
+                              ? 'text-red-600 hover:bg-red-50'
+                              : 'cursor-not-allowed text-slate-400'
+                          }`}
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Bankkonto löschen</p>
-                      </TooltipContent>
+                      {!isSuperadmin && (
+                        <TooltipContent>
+                          Nur Superadmins können Adressen löschen
+                        </TooltipContent>
+                      )}
                     </Tooltip>
                   </div>
                 </div>
