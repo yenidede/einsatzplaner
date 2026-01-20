@@ -4,19 +4,22 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSessionValidation } from '@/hooks/useSessionValidation';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
-  getUserProfileAction,
-  updateUserProfileAction,
   uploadProfilePictureAction,
-  getSalutationsAction,
   updateOrgMailNotificationAction,
-  UserUpdateData,
-  removeUserFromOrganizationAction,
   removeProfilePictureAction,
 } from '@/features/settings/settings-action';
+import {
+  useUserProfile,
+  useSalutations,
+} from '@/features/settings/hooks/useUserProfile';
+import {
+  useUpdateUserProfile,
+  useLeaveOrganization,
+} from '@/features/settings/hooks/useSettingsMutations';
 import { toast } from 'sonner';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { OrganizationSidebar } from '@/features/settings/components/manage/OrganizationSideBar';
@@ -68,23 +71,11 @@ export default function SettingsPage() {
     };
   }, [profilePictureFile]);
 
-  const { data: userData, isLoading: isLoadingUser } = useQuery({
-    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-    enabled: !!session?.user?.id,
-    queryFn: async () => {
-      const res = await getUserProfileAction();
-      if (!res) throw new Error('Fehler beim Laden');
-      return res;
-    },
-  });
+  const { data: userData, isLoading: isLoadingUser } = useUserProfile(
+    session?.user?.id
+  );
 
-  const { data: salutations = [] } = useQuery({
-    queryKey: settingsQueryKeys.salutation(),
-    queryFn: async () => {
-      const res = await getSalutationsAction();
-      return res;
-    },
-  });
+  const { data: salutations = [] } = useSalutations();
 
   useEffect(() => {
     if (userData) {
@@ -102,55 +93,9 @@ export default function SettingsPage() {
     }
   }, [userData]);
 
-  const mutation = useMutation({
-    mutationKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-    mutationFn: async (newSettings: UserUpdateData) => {
-      const res = await updateUserProfileAction(newSettings);
-      if (!res) throw new Error('Fehler beim Speichern');
-      return res;
-    },
-    onMutate: () => {
-      return { toastId: toast.loading('Speichert...') };
-    },
-    onSuccess: (data, variables, context) => {
-      toast.success('Einstellungen erfolgreich gespeichert!', {
-        id: context.toastId,
-      });
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-      });
-    },
-    onError: (error, variables, context) => {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Fehler beim Speichern der Einstellungen',
-        { id: context?.toastId }
-      );
-    },
-  });
+  const mutation = useUpdateUserProfile(session?.user?.id);
 
-  const leaveOrgMutation = useMutation({
-    mutationFn: async ({
-      userId,
-      organizationId,
-    }: {
-      userId: string;
-      organizationId: string;
-    }) => {
-      const res = await removeUserFromOrganizationAction(
-        userId,
-        organizationId
-      );
-      if (!res) throw new Error('Failed to leave organization');
-      return res;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-      });
-    },
-  });
+  const leaveOrgMutation = useLeaveOrganization(session?.user?.id);
 
   const handleSave = async () => {
     if (!session?.user?.id) return;
@@ -215,7 +160,7 @@ export default function SettingsPage() {
       }
 
       await queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session?.user.id || ''),
+        queryKey: settingsQueryKeys.user.settings(session?.user.id || ''),
       });
     } catch (error) {
       toast.error(
@@ -248,7 +193,7 @@ export default function SettingsPage() {
       });
 
       queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.userSettings(session.user.id),
+        queryKey: settingsQueryKeys.user.settings(session.user.id),
       });
 
       toast.success('Profilbild erfolgreich entfernt!', { id: toastId });

@@ -5,8 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import type {
   InviteUserFormData,
   CreateInvitationData,
-  AcceptInvitationResult,
-  Invitation,
+  AcceptInvitationResult
 } from '@/features/invitations/types/invitation';
 import {
   acceptInvitationAction,

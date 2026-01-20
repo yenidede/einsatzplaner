@@ -1,12 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import { signOut, useSession } from 'next-auth/react';
-import {
-  acceptInvitationAction,
-  verifyInvitationAction,
-} from '@/features/invitations/invitation-action';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -16,50 +11,26 @@ import { useState } from 'react';
 import SignUpForm, {
   AvailableTab,
 } from '@/features/auth/components/acceptAndRegister-Form';
-
-interface Role {
-  id: string;
-  name: string;
-}
+import { useInvitationVerify } from '@/features/invitations/hooks/useInvitationVerify';
+import { useAcceptInvitation } from '@/features/invitations/hooks/useInvitationMutations';
 
 export default function InviteAcceptPage() {
   const params = useParams();
-  const router = useRouter();
   const token = params?.token as string;
   const { data: session, status: sessionStatus } = useSession();
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
   const [tab, setTab] = useState<AvailableTab>('accept');
 
-  const {
-    data: invitation,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ['invitation', token],
-    enabled: !!token,
-    queryFn: async () => {
-      const res = await verifyInvitationAction(token);
-      return res;
-    },
-    retry: false,
-  });
+  const { data: invitation, isLoading, error } = useInvitationVerify(token);
 
-  const acceptMutation = useMutation({
-    mutationFn: async () => {
-      return await acceptInvitationAction(token);
-    },
-    onSuccess: () => {
-      router.push('/');
-    },
-    onError: async (error: Error) => {
-      await showDialog({
-        title: 'Fehler',
-        description: error.message,
-        confirmText: 'OK',
-        variant: 'destructive',
-      });
-    },
+  const acceptMutation = useAcceptInvitation(token, async (error: Error) => {
+    await showDialog({
+      title: 'Fehler',
+      description: error.message,
+      confirmText: 'OK',
+      variant: 'destructive',
+    });
   });
 
   const handleAcceptClick = async () => {

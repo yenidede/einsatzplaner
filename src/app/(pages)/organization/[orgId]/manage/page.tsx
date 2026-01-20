@@ -1,27 +1,24 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { useSessionValidation } from '@/hooks/useSessionValidation';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
-  getUserOrganizationByIdAction,
-  updateOrganizationAction,
   uploadOrganizationLogoAction,
   removeOrganizationLogoAction,
-  saveOrganizationDetailsAction,
 } from '@/features/settings/organization-action';
-import { getUserProfileAction } from '@/features/settings/settings-action';
 import {
-  getAllUserOrgRolesAction,
-  getUserOrgRolesAction,
-} from '@/features/settings/users-action';
+  useUserProfile,
+  useOrganizationById,
+  useOrganizationUserRoles,
+} from '@/features/settings/hooks/useUserProfile';
+import { useUpdateOrganization } from '@/features/settings/hooks/useSettingsMutations';
 
 import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
@@ -35,7 +32,6 @@ import { OrganizationAddresses } from '@/features/settings/components/manage/Org
 import { OrganizationBankAccounts } from '@/features/settings/components/manage/OrganizationBankAccounts';
 import { OrganizationDetails } from '@/features/settings/components/manage/OrganizationDetails';
 import { SettingsHeader } from '@/features/settings/components/SettingsHeader';
-import { queryKeys } from '@/features/organization/queryKeys';
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -66,9 +62,6 @@ export default function OrganizationManagePage() {
   const [zvr, setZvr] = useState('');
   const [authority, setAuthority] = useState('');
 
-  const staleTime = 5 * 60 * 1000;
-  const gcTime = 10 * 60 * 1000;
-
   useSessionValidation({
     debug: false,
     onTokenExpired: () => {
@@ -76,13 +69,7 @@ export default function OrganizationManagePage() {
     },
   });
 
-  const { data, isLoading } = useQuery({
-    queryKey: settingsQueryKeys.userSettings(session?.user?.id || ''),
-    enabled: !!session?.user?.id,
-    queryFn: () => getUserProfileAction(),
-    staleTime,
-    gcTime,
-  });
+  const { data, isLoading } = useUserProfile(session?.user?.id);
 
   useEffect(() => {
     if (data) setUser(data);
@@ -92,13 +79,7 @@ export default function OrganizationManagePage() {
     data: orgData,
     isLoading: orgLoading,
     error: orgError,
-  } = useQuery({
-    queryKey: settingsQueryKeys.organization(orgId),
-    enabled: !!orgId,
-    queryFn: () => getUserOrganizationByIdAction(orgId || ''),
-    staleTime,
-    gcTime,
-  });
+  } = useOrganizationById(orgId);
 
   useEffect(() => {
     if (orgData) {
@@ -117,21 +98,11 @@ export default function OrganizationManagePage() {
     }
   }, [orgData]);
 
-  const { data: currentUserRoles } = useQuery({
-    queryKey: settingsQueryKeys.userOrgRoles(session?.user?.id || '', orgId),
-    enabled: !!orgId && !!session?.user?.id,
-    queryFn: () => getUserOrgRolesAction(orgId, session?.user?.id || ''),
-    staleTime,
-    gcTime,
-  });
+  const { data: usersData, isLoading: usersLoading } =
+    useOrganizationUserRoles(orgId);
 
-  const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: settingsQueryKeys.userOrganizations(orgId),
-    enabled: !!orgId,
-    queryFn: () => getAllUserOrgRolesAction(orgId),
-    staleTime,
-    gcTime,
-  });
+  const { data: currentUserRoles } = useOrganizationUserRoles(orgId);
+
   const isSuperadmin =
     currentUserRoles?.some(
       (role) => role.role.name.toLowerCase() === 'superadmin'
@@ -176,7 +147,7 @@ export default function OrganizationManagePage() {
       setLogoFile(null);
 
       queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.org.detail(orgId),
       });
 
       toast.success('Logo erfolgreich hochgeladen!', { id: toastId });
@@ -200,7 +171,7 @@ export default function OrganizationManagePage() {
       if (fileInput) fileInput.value = '';
 
       queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.organization(orgId),
+        queryKey: settingsQueryKeys.org.detail(orgId),
       });
 
       toast.success('Logo erfolgreich entfernt!', { id: toastId });
@@ -210,79 +181,7 @@ export default function OrganizationManagePage() {
     }
   };
 
-  const updateMutation = useMutation({
-    mutationFn: async (data: {
-      name: string;
-      description: string;
-      email?: string;
-      phone?: string;
-      helper_name_singular?: string;
-      helper_name_plural?: string;
-      einsatz_name_singular?: string;
-      einsatz_name_plural?: string;
-      max_participants_per_helper?: number;
-      logoFile?: File | null;
-      website?: string;
-      vat?: string;
-      zvr?: string;
-      authority?: string;
-    }) => {
-      // Update Organization
-      const updateData: any = {
-        id: orgId,
-        name: data.name,
-        description: data.description,
-        email: data.email,
-        max_participants_per_helper: data.max_participants_per_helper,
-        phone: data.phone,
-        helper_name_singular: data.helper_name_singular,
-        helper_name_plural: data.helper_name_plural,
-        einsatz_name_singular: data.einsatz_name_singular,
-        einsatz_name_plural: data.einsatz_name_plural,
-      };
-
-      const res = await updateOrganizationAction(updateData);
-      if (!res) throw new Error('Fehler beim Speichern');
-
-      // Update Organization Details
-      await saveOrganizationDetailsAction({
-        orgId,
-        website: data.website,
-        vat: data.vat,
-        zvr: data.zvr,
-        authority: data.authority,
-      });
-
-      return res;
-    },
-    onMutate: () => {
-      return { toastId: toast.loading('Organisation wird gespeichert...') };
-    },
-    onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.organization(orgId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.orgDetails(orgId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.organizations(session?.user?.orgIds || []),
-      });
-      setLogoFile(null);
-      toast.success('Organisation erfolgreich aktualisiert!', {
-        id: context.toastId,
-      });
-    },
-    onError: (error, variables, context) => {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Fehler beim Speichern der Organisation',
-        { id: context?.toastId }
-      );
-      console.error(error);
-    },
-  });
+  const updateMutation = useUpdateOrganization(orgId);
 
   const handleSave = () => {
     updateMutation.mutate({

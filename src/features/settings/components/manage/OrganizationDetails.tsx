@@ -36,7 +36,7 @@ export function OrganizationDetails({
   isSuperadmin = false,
 }: OrganizationDetailsProps) {
   const { data: details, isLoading } = useQuery({
-    queryKey: settingsQueryKeys.orgDetails(organizationId),
+    queryKey: settingsQueryKeys.org.details(organizationId),
     queryFn: () => getOrganizationDetailsAction(organizationId),
     enabled: !!organizationId,
   });
