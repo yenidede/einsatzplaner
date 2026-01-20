@@ -5,7 +5,7 @@ import { acceptInviteAndCreateNewAccount as serverAction } from '@/features/auth
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { useAction } from 'next-safe-action/hooks';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import {
   Field,
   FieldGroup,

@@ -669,9 +669,6 @@ export function UserProfileDialog({
                 {userProperties.length > 0 && (
                   <UserPersonalProperties
                     organizationName={userProfile.organization?.name || ''}
-                    hasKey={hasKey}
-                    onToggleKey={() => setHasKey(!hasKey)}
-                    description={userProfile.description}
                     userProperties={userProperties}
                     propertyValues={propertyValues}
                     onPropertyValueChange={handlePropertyValueChange}
