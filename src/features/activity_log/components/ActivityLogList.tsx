@@ -6,8 +6,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { getFormattedMessage } from '../utils';
 import { Button } from '@/components/ui/button';
-import { motion } from 'motion/react';
-import { useEventDialog } from '@/hooks/use-event-dialog';
+import { motion } from 'framer-motion';
 
 interface ActivityLogListProps {
   activities: ChangeLogEntry[];

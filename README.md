@@ -40,4 +40,3 @@ Aktionen, die nicht leicht rückgängig gemacht werden sollen zuerst mit einem D
 SMTP_USER als auch SMTP_From sind beides die Email Adresse
 Besuche diesen Link um ein App-Passwort von Google zu kriegen und setze sie dann bei SMTP_PASS ein
 https://myaccount.google.com/apppasswords
-

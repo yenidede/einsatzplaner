@@ -13,17 +13,17 @@ const compat = new FlatCompat({
 const eslintConfig = [
   {
     ignores: [
-      "**/node_modules/**",
-      "**/.next/**",
-      "**/build/**",
-      "**/src/generated/**",
+      '**/node_modules/**',
+      '**/.next/**',
+      '**/build/**',
+      '**/src/generated/**',
     ],
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": "warn",
-      "react-hooks/rules-of-hooks": rules["rules-of-hooks"],
-      "react-hooks/exhaustive-deps": rules["exhaustive-deps"],
-      "@typescript-eslint/no-unused-expressions": "warn",
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
+      'react-hooks/rules-of-hooks': rules['rules-of-hooks'],
+      'react-hooks/exhaustive-deps': rules['exhaustive-deps'],
+      '@typescript-eslint/no-unused-expressions': 'warn',
     },
   },
   ...compat.extends(

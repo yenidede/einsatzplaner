@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
 import { FileDown } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 import z from 'zod';
 import {
@@ -218,10 +220,13 @@ export function EventDialogVerwaltung({
   const [dynamicFormFields, setDynamicFormFields] = useState<CustomFormField[]>(
     []
   );
-  // stores the dynamic form data in key-value pairs
-  const [dynamicFormData, setDynamicFormData] = useState<Record<string, any>>(
-    {}
-  );
+
+  // React Hook Form für dynamische Felder
+  const dynamicForm = useForm<Record<string, any>>({
+    resolver: dynamicSchema ? zodResolver(dynamicSchema) : undefined,
+    mode: 'onChange',
+    defaultValues: {},
+  });
   const { data: availableProps } = useQuery({
     queryKey: userPropertyQueryKeys.byOrg(activeOrgId ?? ''),
     queryFn: () => getUserPropertiesByOrgId(activeOrgId ?? ''),
@@ -289,62 +294,7 @@ export function EventDialogVerwaltung({
   const currentEinsatz =
     typeof einsatz === 'string' ? detailedEinsatz : einsatz;
 
-  const handleDynamicFormDataChange = (updates: Record<string, any>) => {
-    Object.entries(updates).forEach(([key, value]) => {
-      if (typeof value === 'string') {
-        // Convert string values to appropriate types based on dynamic schema
-        const fieldType = dynamicFormFields.find((f) => f.id === key)?.dataType;
-        updates[key] = mapStringValueToType(value, fieldType);
-      }
-    });
-    // Validate using dynamic schema if it exists
-    if (dynamicSchema) {
-      // Validate just the updated fields using partial schema
-      const partialResult = dynamicSchema.partial().safeParse(updates);
-
-      // Update errors based on partial validation
-      setErrors((prevErrors) => {
-        const newErrors = { ...prevErrors };
-
-        if (!partialResult.success) {
-          // Add errors for the fields being updated
-          const flattenedErrors = z.flattenError(partialResult.error);
-
-          // Merge new field errors with existing ones
-          Object.entries(flattenedErrors.fieldErrors).forEach(
-            ([field, fieldErrors]) => {
-              if (fieldErrors) {
-                newErrors.fieldErrors[field] = fieldErrors;
-              }
-            }
-          );
-
-          // Add any form-level errors
-          if (flattenedErrors.formErrors.length > 0) {
-            newErrors.formErrors = [
-              ...new Set([
-                ...newErrors.formErrors,
-                ...flattenedErrors.formErrors,
-              ]),
-            ];
-          }
-        } else {
-          // Clear errors for the fields that are now valid
-          Object.keys(updates).forEach((field) => {
-            delete newErrors.fieldErrors[field];
-          });
-        }
-
-        return newErrors;
-      });
-    } else {
-      toast.error(
-        "'No dynamic schema available for validation.' Sollte der Fehler häufiger auftreten, wenden Sie sich an den Administrator."
-      );
-    }
-
-    setDynamicFormData((prev) => ({ ...prev, ...updates }));
-  };
+  // React Hook Form übernimmt jetzt die Validierung automatisch
 
   const handleFormDataChange = useCallback(
     (updates: Partial<EinsatzFormData>) => {
@@ -549,27 +499,35 @@ export function EventDialogVerwaltung({
             }) as InputHTMLAttributes<HTMLInputElement>,
           }))
         );
-        setDynamicFormData(
-          fields.reduce(
-            (acc, f) => {
-              const value =
-                detailedEinsatz?.einsatz_fields?.find(
-                  (ef) => ef.field_id === f.field.id // load data from einsatz_field if exists,
-                )?.value ?? f.field.default_value; //  else use default value
-              acc[f.field.id] = mapStringValueToType(
-                value,
-                f.field.type?.datatype || 'string'
-              );
-              return acc;
-            },
-            {} as Record<string, any>
-          )
+
+        // Populate React Hook Form with field values
+        const formValues = fields.reduce(
+          (acc, f) => {
+            const value =
+              detailedEinsatz?.einsatz_fields?.find(
+                (ef) => ef.field_id === f.field.id
+              )?.value ?? f.field.default_value;
+            acc[f.field.id] = mapStringValueToType(
+              value,
+              f.field.type?.datatype || 'text'
+            );
+            return acc;
+          },
+          {} as Record<string, any>
         );
+
+        // Reset form with new values
+        dynamicForm.reset(formValues);
       } catch (error) {
         console.error('Error generating schema: ' + error);
       }
     }
-  }, [activeTemplateId, templatesQuery.data, detailedEinsatz?.einsatz_fields]);
+  }, [
+    activeTemplateId,
+    templatesQuery.data,
+    detailedEinsatz?.einsatz_fields,
+    dynamicForm,
+  ]);
 
   const formatTimeForInput = (date: Date) => {
     const hours = date.getHours().toString().padStart(2, '0');
@@ -651,6 +609,7 @@ export function EventDialogVerwaltung({
   };
 
   const handleSave = async () => {
+    // Validiere statische Felder
     const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
 
     if (!parsedDataStatic.success) {
@@ -659,6 +618,13 @@ export function EventDialogVerwaltung({
         fieldErrors: flattenedErrors.fieldErrors,
         formErrors: flattenedErrors.formErrors || [],
       });
+      return;
+    }
+
+    // Validiere dynamische Felder mit React Hook Form
+    const isDynamicFormValid = await dynamicForm.trigger();
+    if (!isDynamicFormValid) {
+      toast.error('Bitte korrigieren Sie die Fehler in den Template-Feldern.');
       return;
     }
 
@@ -802,7 +768,9 @@ export function EventDialogVerwaltung({
         ? StatusValuePairs.vergeben
         : StatusValuePairs.offen;
 
-    const einsatzFields = Object.entries(dynamicFormData).map(
+    // Hole dynamische Felder aus React Hook Form
+    const dynamicFormValues = dynamicForm.getValues();
+    const einsatzFields = Object.entries(dynamicFormValues).map(
       ([field_id, value]: [string, any]) => {
         return {
           field_id,
@@ -1030,9 +998,8 @@ export function EventDialogVerwaltung({
 
               <DynamicFormFields
                 fields={dynamicFormFields}
-                formData={dynamicFormData}
-                errors={errors.fieldErrors}
-                onFormDataChange={handleDynamicFormDataChange}
+                control={dynamicForm.control}
+                errors={dynamicForm.formState.errors}
               />
               <div className="border-b"></div>
               <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />

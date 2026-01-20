@@ -21,6 +21,7 @@ interface FormSelectFieldProps {
   placeholder?: string;
   errors: string[];
   onValueChange?: (value: string) => void;
+  allowClear?: boolean;
 }
 
 export default function FormSelectField({
@@ -30,6 +31,7 @@ export default function FormSelectField({
   placeholder = 'Auswählen...',
   errors,
   onValueChange,
+  allowClear = false,
   ...props
 }: FormSelectFieldProps &
   Omit<React.ComponentProps<typeof Select>, 'value' | 'onValueChange'>) {
@@ -39,10 +41,15 @@ export default function FormSelectField({
   const normalizedOptions: Option[] =
     options.length > 0 && typeof options[0] === 'string'
       ? (options as string[]).map((option) => ({
-          value: option.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase(),
+          value: option,
           label: option,
         }))
       : (options as Option[]);
+
+  if (allowClear) {
+    // empty string or null not currently possible with radix select https://github.com/radix-ui/primitives/issues/2706
+    normalizedOptions.unshift({ label: 'Keine Auswahl', value: '_null_' });
+  }
 
   return (
     <div>
@@ -58,6 +65,11 @@ export default function FormSelectField({
                 key={option.value}
                 value={option.value}
                 aria-invalid={errors.length > 0}
+                className={
+                  option.value === '_null_'
+                    ? 'text-muted-foreground!'
+                    : undefined
+                }
               >
                 {option.label}
               </SelectItem>
