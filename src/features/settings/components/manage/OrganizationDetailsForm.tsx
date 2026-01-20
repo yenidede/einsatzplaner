@@ -1,4 +1,8 @@
 'use client';
+import {
+  criticalFieldLabel,
+  criticalFieldClass,
+} from '@/features/settings/utils/criticalFieldUtils';
 
 interface OrganizationDetailsFormProps {
   name: string;
@@ -9,6 +13,7 @@ interface OrganizationDetailsFormProps {
   onEmailChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  isSuperadmin?: boolean;
 }
 
 export function OrganizationDetailsForm({
@@ -20,6 +25,7 @@ export function OrganizationDetailsForm({
   onEmailChange,
   onPhoneChange,
   onDescriptionChange,
+  isSuperadmin = false,
 }: OrganizationDetailsFormProps) {
   return (
     <>
@@ -40,14 +46,13 @@ export function OrganizationDetailsForm({
 
       <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
         <div className="inline-flex flex-1 flex-col items-start justify-start gap-1.5">
-          <label className="font-['Inter'] text-sm leading-tight font-medium text-slate-800">
-            E-Mail
-          </label>
+          {criticalFieldLabel('E-Mail', isSuperadmin)}
           <input
             type="email"
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
-            className="w-full rounded-md bg-white px-3 py-2 outline outline-offset-1 outline-slate-300 focus:outline-blue-500"
+            disabled={!isSuperadmin}
+            className={criticalFieldClass(isSuperadmin)}
             placeholder="organisation@example.com"
           />
         </div>
