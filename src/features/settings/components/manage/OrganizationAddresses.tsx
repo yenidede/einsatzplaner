@@ -19,6 +19,7 @@ import {
 
 interface OrganizationAddressesProps {
   organizationId: string;
+  isSuperadmin?: boolean;
 }
 
 interface AddressFormData {
@@ -31,6 +32,7 @@ interface AddressFormData {
 
 export function OrganizationAddresses({
   organizationId,
+  isSuperadmin = false,
 }: OrganizationAddressesProps) {
   const queryClient = useQueryClient();
   const { showDialog, AlertDialogComponent } = useAlertDialog();
@@ -144,6 +146,11 @@ export function OrganizationAddresses({
   };
 
   const handleDelete = async (id: string) => {
+    if (!isSuperadmin) {
+      toast.error('Nur Superadmins können Adressen löschen');
+      return;
+    }
+
     const result = await showDialog({
       title: 'Adresse löschen',
       description: 'Möchten Sie diese Adresse wirklich löschen?',
@@ -157,6 +164,14 @@ export function OrganizationAddresses({
     }
   };
 
+  const handleAddClick = () => {
+    if (!isSuperadmin) {
+      toast.error('Nur Superadmins können Adressen hinzufügen');
+      return;
+    }
+    setIsAdding(!isAdding);
+  };
+
   return (
     <>
       {AlertDialogComponent}
@@ -168,13 +183,27 @@ export function OrganizationAddresses({
               Adressen
             </div>
           </div>
-          <button
-            onClick={() => setIsAdding(!isAdding)}
-            className="flex items-center gap-2 rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white transition-colors hover:bg-slate-800"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Hinzufügen</span>
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleAddClick}
+                disabled={!isSuperadmin}
+                className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                  isSuperadmin
+                    ? 'bg-slate-900 text-white hover:bg-slate-800'
+                    : 'cursor-not-allowed bg-slate-300 text-slate-500'
+                }`}
+              >
+                <Plus className="h-4 w-4" />
+                <span>Hinzufügen</span>
+              </button>
+            </TooltipTrigger>
+            {!isSuperadmin && (
+              <TooltipContent>
+                Nur Superadmins können Adressen hinzufügen
+              </TooltipContent>
+            )}
+          </Tooltip>
         </div>
 
         <div className="flex flex-col gap-3 self-stretch px-4 py-2">
@@ -269,14 +298,14 @@ export function OrganizationAddresses({
                   disabled={
                     createMutation.isPending || updateMutation.isPending
                   }
-                  className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white transition-colors hover:bg-slate-700 disabled:opacity-50"
+                  className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
                 >
                   {editingId ? 'Aktualisieren' : 'Hinzufügen'}
                 </button>
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 >
                   Abbrechen
                 </button>
@@ -287,61 +316,75 @@ export function OrganizationAddresses({
           {isLoading ? (
             <div className="text-sm text-slate-500">Lädt Adressen...</div>
           ) : addresses.length === 0 ? (
-            <div className="text-sm text-slate-500 italic">
-              Keine Adressen vorhanden
+            <div className="py-8 text-center text-sm text-slate-500">
+              Noch keine Adressen hinzugefügt
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              {addresses.map((address: any) => (
-                <div
-                  key={address.id}
-                  className="flex items-start justify-between rounded-md border border-slate-200 bg-white p-3 transition-colors hover:bg-slate-50"
-                >
-                  <div className="flex flex-col gap-1">
-                    {address.label && (
-                      <div className="text-sm font-semibold text-slate-800">
-                        {address.label}
-                      </div>
-                    )}
-                    <div className="text-sm text-slate-700">
-                      {address.street}
+            addresses.map((address: any) => (
+              <div
+                key={address.id}
+                className="flex items-start justify-between rounded-md border border-slate-200 bg-white p-4"
+              >
+                <div className="flex-1">
+                  {address.label && (
+                    <div className="mb-1 text-sm font-medium text-slate-900">
+                      {address.label}
                     </div>
-                    <div className="text-sm text-slate-600">
-                      {address.postal_code.toString()} {address.city},{' '}
-                      {address.country}
-                    </div>
+                  )}
+                  <div className="text-sm text-slate-700">{address.street}</div>
+                  <div className="text-sm text-slate-700">
+                    {address.postal_code} {address.city}
                   </div>
-                  <div className="flex gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => handleEdit(address)}
-                          className="rounded p-1.5 text-slate-600 transition-colors hover:bg-slate-100"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Adresse bearbeiten</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => handleDelete(address.id)}
-                          className="rounded p-1.5 text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Adresse löschen</p>
-                      </TooltipContent>
-                    </Tooltip>
+                  <div className="text-sm text-slate-700">
+                    {address.country}
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div className="flex gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleEdit(address)}
+                        disabled={!isSuperadmin}
+                        className={`rounded p-1.5 transition-colors ${
+                          isSuperadmin
+                            ? 'text-slate-600 hover:bg-slate-100'
+                            : 'cursor-not-allowed text-slate-400'
+                        }`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    {!isSuperadmin && (
+                      <TooltipContent>
+                        Nur Superadmins können Adressen bearbeiten
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleDelete(address.id)}
+                        disabled={!isSuperadmin || deleteMutation.isPending}
+                        className={`rounded p-1.5 transition-colors ${
+                          isSuperadmin
+                            ? 'text-red-600 hover:bg-red-50'
+                            : 'cursor-not-allowed text-slate-400'
+                        }`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    {!isSuperadmin && (
+                      <TooltipContent>
+                        Nur Superadmins können Adressen löschen
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
