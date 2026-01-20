@@ -153,7 +153,7 @@ export const MultiSelect = React.forwardRef<
       }
     }, [defaultValue, isControlled]);
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-    const [isAnimating] = React.useState(false);
+    const isAnimating = false;
 
     // Determine if the popover should be disabled
     React.useEffect(() => {

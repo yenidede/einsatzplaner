@@ -66,7 +66,6 @@ import {
 import { Select, SelectContent, SelectItem } from '../ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
-import { UserPropertyValue } from '@/features/user_properties/user_property-dal';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
