@@ -47,6 +47,25 @@ interface OrganizationCardProps {
   onLeave?: () => void;
 }
 
+export const sortRolesByPriority = (roles: RoleType[]): RoleType[] => {
+  const priority = (role: RoleType) => {
+    const n = (role.name ?? '').toLowerCase();
+    if (n === 'superadmin') return 4;
+    if (n === 'ov' || n === 'organisationsverwaltung') return 3;
+    if (n === 'ev' || n === 'einsatzverwaltung') return 2;
+    if (n === 'helfer:in' || n === 'helfer') return 1;
+    return 0;
+  };
+
+  return roles
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => {
+      const p = priority(b.r) - priority(a.r);
+      return p !== 0 ? p : a.i - b.i; // tie-break by original order
+    })
+    .map((x) => x.r);
+};
+
 export const OrganizationCard: React.FC<OrganizationCardProps> = ({
   name,
   roles = [],
@@ -59,23 +78,7 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
       ? roles.map((r) => (typeof r === 'string' ? { name: r } : r))
       : [{ name: String(roles) }];
 
-    // sort the roles by priority
-    const priority = (role: RoleType) => {
-      const n = (role.name ?? '').toLowerCase();
-      if (n === 'superadmin') return 4;
-      if (n === 'ov' || n === 'organisationsverwaltung') return 3;
-      if (n === 'ev' || n === 'einsatzverwaltung') return 2;
-      if (n === 'helfer:in' || n === 'helfer') return 1;
-      return 0;
-    };
-
-    return base
-      .map((r, i) => ({ r, i }))
-      .sort((a, b) => {
-        const p = priority(b.r) - priority(a.r);
-        return p !== 0 ? p : a.i - b.i; // tie-break by original order
-      })
-      .map((x) => x.r);
+    return sortRolesByPriority(base);
   })();
 
   return (

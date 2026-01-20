@@ -1,6 +1,7 @@
 'use client';
 
 import { ImagePlus } from 'lucide-react';
+import Image from 'next/image';
 
 interface OrganizationLogoSectionProps {
   name: string;
@@ -20,8 +21,10 @@ export function OrganizationLogoSection({
       <div className="inline-flex items-center justify-start gap-2">
         <div className="relative flex h-11 w-40 items-center justify-center overflow-hidden">
           {logoUrl ? (
-            <img
+            <Image
               src={logoUrl}
+              width={160}
+              height={160}
               alt={`${name} Logo`}
               className="max-h-full max-w-full object-contain"
               loading="lazy"
