@@ -31,21 +31,8 @@ async function checkUserSession() {
 }
 export async function getAllRolesExceptSuperAdmin() {
   const roles = await getAllRoles();
-  const roless = await prisma.role.findMany({
-    select: {
-      id: true,
-      name: true,
-      abbreviation: true,
-    },
-    orderBy: {
-      name: 'asc',
-    },
-    where: {
-      name: { not: 'Superadmin' },
-    },
-  });
 
-  return roles;
+  return roles.filter((role) => role.name !== 'Superadmin');
 }
 export async function getOrganizationById(orgId: string) {
   const org = await prisma.organization.findUnique({
@@ -525,11 +512,11 @@ export async function getOrganizationForPDF(
 
     details: details
       ? {
-          website: details.website,
-          vat: details.vat,
-          zvr: details.zvr,
-          authority: details.authority,
-        }
+        website: details.website,
+        vat: details.vat,
+        zvr: details.zvr,
+        authority: details.authority,
+      }
       : null,
   };
 }

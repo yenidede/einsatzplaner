@@ -10,6 +10,7 @@ import {
   updateOrganizationAction,
 } from '../organization-action';
 import { toast } from 'sonner';
+import { queryKeys } from '@/features/organization/queryKeys';
 
 export function useUpdateUserProfile(userId: string | undefined) {
   const queryClient = useQueryClient();
@@ -118,9 +119,13 @@ export function useUpdateOrganization(orgId: string | undefined) {
         throw new Error('Fehler beim Speichern der Organisationseinstellungen');
       return res;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.org.all(orgId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.all,
+        predicate: (query) => query.queryHash.includes(data.id),
       });
     },
   });

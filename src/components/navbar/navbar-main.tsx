@@ -28,8 +28,8 @@ export default function Component() {
   const { data: organizations } = useOrganizations(session?.user.orgIds);
 
   const { data: userOrganization } = useUserOrgRoles(
-    session?.user?.id,
-    session?.user?.activeOrganization?.id
+    session?.user?.activeOrganization?.id,
+    session?.user?.id
   );
   const hasRoleInActiveOrg = (roleName: string): boolean => {
     if (!session || !userOrganization) {

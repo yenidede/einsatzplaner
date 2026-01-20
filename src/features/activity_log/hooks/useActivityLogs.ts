@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { activityLogQueryKeys } from '../queryKeys';
 import { getActivityLogs } from '../activity_log-dal';
+import { getActivitiesForEinsatzAction } from '../activity_log-actions';
 
 export function useActivityLogs(params: { limit: number; offset: number }) {
   return useQuery({
@@ -12,3 +13,16 @@ export function useActivityLogs(params: { limit: number; offset: number }) {
     staleTime: 1 * 60 * 1000, // check for new notifications every minute
   });
 }
+
+export function useEinsatzActivityLogs(
+  einsatzId: string | null | undefined,
+  limit: number,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: activityLogQueryKeys.einsatz(einsatzId ?? '', limit),
+    queryFn: () => getActivitiesForEinsatzAction(einsatzId ?? '', limit),
+    enabled: !!einsatzId && enabled,
+  });
+}
+
