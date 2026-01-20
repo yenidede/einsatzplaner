@@ -29,6 +29,7 @@ import {
 } from '@/features/settings/organization-action';
 import { createInvitationAction } from '../invitation-action';
 import { Button } from '@/components/ui/button';
+import { getAllRoles } from '@/features/roles/roles-dal';
 
 interface InviteUserFormProps {
   organizationId: string;
@@ -76,7 +77,7 @@ export function InviteUserForm({
   // Rollen über Server Action laden
   const { data: rolesData } = useQuery<Role[]>({
     queryKey: ['roles'],
-    queryFn: () => getAllRolesExceptSuperAdmin(),
+    queryFn: () => getAllRoles(),
     staleTime: 1000 * 60 * 5, // 5 Minuten Cache
   });
   const einsatzNamePlural = organizationData?.einsatz_name_plural || 'Einsätze';
