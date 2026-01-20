@@ -56,7 +56,7 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
   // normalize roles to array of RoleType objects
   const normalizedRoles: RoleType[] = (() => {
     const base: RoleType[] = Array.isArray(roles)
-      ? (roles as any[]).map((r) => (typeof r === 'string' ? { name: r } : r))
+      ? roles.map((r) => (typeof r === 'string' ? { name: r } : r))
       : [{ name: String(roles) }];
 
     // sort the roles by priority
@@ -94,16 +94,18 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-col items-end justify-start gap-2.5 self-stretch">
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-white"
-          onClick={onLeave}
-        >
-          <Trash />
-          <span>Organisation verlassen</span>
-        </button>
-      </div>
+      {onLeave && (
+        <div className="flex flex-col items-end justify-start gap-2.5 self-stretch">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-white"
+            onClick={onLeave}
+          >
+            <Trash />
+            <span>Organisation verlassen</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -40,7 +40,7 @@ export function OrganizationsSection({
         ))
       ) : (
         <div className="px-4 py-2 text-slate-500">
-          Du bist in keiner Organisation.
+          Sie sind noch keiner Organisation zugeordnet.
         </div>
       )}
     </div>

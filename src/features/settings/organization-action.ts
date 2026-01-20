@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { OrganizationForPDF } from '@/features/organization/types';
 import { hasPermission } from '@/lib/auth/authGuard';
 import { BadRequestError } from '@/lib/errors';
+import { getAllRoles } from '../roles/roles-dal';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -29,7 +30,8 @@ async function checkUserSession() {
   return session;
 }
 export async function getAllRolesExceptSuperAdmin() {
-  const roles = await prisma.role.findMany({
+  const roles = await getAllRoles();
+  const roless = await prisma.role.findMany({
     select: {
       id: true,
       name: true,
