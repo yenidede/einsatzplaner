@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 import { EventCalendar } from '@/components/event-calendar';
 import { CalendarMode, CalendarEvent } from './types';
@@ -22,10 +23,7 @@ import {
 import { useUserPropertiesByOrg } from '@/features/user_properties/hooks/use-user-property-queries';
 import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
 import type { EinsatzCreate } from '@/features/einsatz/types';
-import { useQueryClient } from '@tanstack/react-query';
-import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
 import { useEventDialogFromContext } from '@/contexts/EventDialogContext';
-import { th } from 'date-fns/locale';
 
 interface ValidationResult {
   blocking: string[];
@@ -128,10 +126,14 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const userId = session?.user?.id;
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
-  const { selectedEinsatz } = useEventDialogFromContext();
+  const { selectedEinsatz, setEinsatz } = useEventDialogFromContext();
   const currentEinsatzString =
     typeof selectedEinsatz === 'string' ? selectedEinsatz : undefined;
-  const { data: detailedEinsatz } = useDetailedEinsatz(currentEinsatzString);
+  const {
+    data: detailedEinsatz,
+    error: detailedEinsatzError,
+    isError: isDetailedEinsatzError,
+  } = useDetailedEinsatz(currentEinsatzString);
 
   const { data: events } = useEinsaetze(activeOrgId);
   const { data: organizations } = useOrganizations(session?.user.orgIds);
@@ -157,6 +159,26 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     einsatz_singular,
     einsatz_plural
   );
+
+  // Handle invalid einsatz ID
+  useEffect(() => {
+    if (isDetailedEinsatzError && currentEinsatzString) {
+      const errorMessage =
+        detailedEinsatzError instanceof Error
+          ? detailedEinsatzError.message
+          : '';
+      toast.error(`${einsatz_singular} wurde nicht geladen: ${errorMessage}`, {
+        duration: 10000, // should stay longer to avoid confusion
+      });
+      setEinsatz(null);
+    }
+  }, [
+    isDetailedEinsatzError,
+    detailedEinsatzError,
+    currentEinsatzString,
+    setEinsatz,
+    einsatz_singular,
+  ]);
 
   const handleEventAdd = (event: EinsatzCreate) => {
     createMutation.mutate(event);

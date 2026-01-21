@@ -3,8 +3,7 @@
 import prisma from '@/lib/prisma';
 import type {
   einsatz as Einsatz,
-  einsatz_field,
-  einsatz_status,
+  einsatz_field
 } from '@/generated/prisma';
 import type {
   EinsatzForCalendar,
@@ -45,7 +44,6 @@ export async function getEinsatzWithDetailsById(
     einsatz_status,
     einsatz_helper,
     einsatz_to_category,
-    einsatz_comment,
     change_log,
     einsatz_field,
     einsatz_user_property,
@@ -70,18 +68,6 @@ export async function getEinsatzWithDetailsById(
       user_property_id: prop.user_property_id,
       is_required: prop.is_required,
       min_matching_users: prop.min_matching_users,
-    })),
-    comments: einsatz_comment.map((comment) => ({
-      id: comment.id,
-      einsatz_id: comment.einsatz_id,
-      user_id: comment.user_id,
-      created_at: comment.created_at,
-      comment: comment.comment,
-      user: {
-        id: comment.user.id,
-        firstname: comment.user.firstname,
-        lastname: comment.user.lastname,
-      },
     })),
     change_log: change_log.map((log) => ({
       id: log.id,
@@ -251,16 +237,16 @@ export async function getEinsaetzeForTableView(
     ),
     user: einsatz.user
       ? {
-          id: einsatz.user.id,
-          firstname: einsatz.user.firstname ?? null,
-          lastname: einsatz.user.lastname ?? null,
-        }
+        id: einsatz.user.id,
+        firstname: einsatz.user.firstname ?? null,
+        lastname: einsatz.user.lastname ?? null,
+      }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-          id: einsatz.einsatz_template.id,
-          name: einsatz.einsatz_template.name ?? null,
-        }
+        id: einsatz.einsatz_template.id,
+        name: einsatz.einsatz_template.name ?? null,
+      }
       : null,
     _count: einsatz._count,
   }));
@@ -463,7 +449,7 @@ export async function toggleUserAssignmentToEinsatz(
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-    existingEinsatz.einsatz_helper.length + addOrRemoveOne
+      existingEinsatz.einsatz_helper.length + addOrRemoveOne
       ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
       : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
@@ -929,8 +915,10 @@ async function getAllEinsatzeForCalendarFromDb(
 }
 
 async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
+  const { session } = await requireAuth();
+
   return prisma.einsatz.findUnique({
-    where: { id: einsatzId },
+    where: { id: einsatzId, organization: { user_organization_role: { some: { user_id: session.user.id } } } },
     include: {
       einsatz_helper: {
         select: {
