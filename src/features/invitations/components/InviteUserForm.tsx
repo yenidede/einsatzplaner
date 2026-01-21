@@ -79,7 +79,7 @@ export function InviteUserForm({
         roleIds: data.roleIds,
       });
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       setSuccessMessage(
         `Einladung erfolgreich an ${pendingFormData?.email || email} gesendet!`
       );
