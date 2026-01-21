@@ -512,11 +512,11 @@ export async function getOrganizationForPDF(
 
     details: details
       ? {
-        website: details.website,
-        vat: details.vat,
-        zvr: details.zvr,
-        authority: details.authority,
-      }
+          website: details.website,
+          vat: details.vat,
+          zvr: details.zvr,
+          authority: details.authority,
+        }
       : null,
   };
 }

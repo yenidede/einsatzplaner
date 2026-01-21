@@ -110,7 +110,7 @@ export function useUpdateEinsatz(
       });
       queryClient.invalidateQueries({
         queryKey: activityLogQueryKeys.allEinsatz(data.id),
-      })
+      });
     },
   });
 }

@@ -40,7 +40,9 @@ export function useOrganizationAddresses(organizationId: string | undefined) {
   });
 }
 
-export function useOrganizationBankAccounts(organizationId: string | undefined) {
+export function useOrganizationBankAccounts(
+  organizationId: string | undefined
+) {
   return useQuery({
     queryKey: ['org-bank-accounts', organizationId],
     queryFn: () => getOrganizationBankAccountsAction(organizationId ?? ''),

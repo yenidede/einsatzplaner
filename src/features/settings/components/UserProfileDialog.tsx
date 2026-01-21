@@ -570,7 +570,8 @@ export function UserProfileDialog({
 
   if (!userProfile) return null;
 
-  const activeOrgName = session?.user?.activeOrganization?.name || 'keine Organisation geladen ...'
+  const activeOrgName =
+    session?.user?.activeOrganization?.name || 'keine Organisation geladen ...';
 
   const content = (
     <>

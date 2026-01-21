@@ -48,4 +48,3 @@ export function useEinsaetzeTableView(userOrgIds: string[] | null | undefined) {
     enabled: !!userOrgIds && userOrgIds.length > 0,
   });
 }
-

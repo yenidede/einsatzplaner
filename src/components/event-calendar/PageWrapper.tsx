@@ -54,7 +54,9 @@ export default function CalendarPageWrapper({
   return (
     <>
       <h1>
-        {mode === 'verwaltung' ? `Verwaltungsansicht` : `${helper_plural}ansicht`}
+        {mode === 'verwaltung'
+          ? `Verwaltungsansicht`
+          : `${helper_plural}ansicht`}
       </h1>
       <p className="text-muted-foreground leading-4">{descriptionText}</p>
       <div className="mt-6">

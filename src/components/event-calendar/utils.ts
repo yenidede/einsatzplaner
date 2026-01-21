@@ -193,8 +193,8 @@ export const mapEinsatzToCalendarEvent = (
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-        .map((c) => c.einsatz_category.abbreviation)
-        .join(', ')})`
+          .map((c) => c.einsatz_category.abbreviation)
+          .join(', ')})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
@@ -305,8 +305,8 @@ export function mapDbDataTypeToFormFieldType(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-    datatype +
-    ' zu seinem FormField.'
+      datatype +
+      ' zu seinem FormField.'
   );
 }
 
@@ -324,8 +324,8 @@ export function mapDbDataTypeToInputProps(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-    datatype +
-    ' zu seinem FormField.'
+      datatype +
+      ' zu seinem FormField.'
   );
 }
 

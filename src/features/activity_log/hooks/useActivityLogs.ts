@@ -25,4 +25,3 @@ export function useEinsatzActivityLogs(
     enabled: !!einsatzId && enabled,
   });
 }
-
