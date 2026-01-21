@@ -26,9 +26,11 @@ function AvatarImage({
   className,
   src,
   alt,
+  size = 128,
 }: React.ComponentProps<typeof AvatarPrimitive.Image> & {
   src: string;
   alt: string;
+  size?: number;
 }) {
   if (!src) return null;
 
@@ -36,8 +38,8 @@ function AvatarImage({
     <Image
       src={src}
       alt={alt || 'Avatar'}
-      sizes="32px"
-      fill
+      width={size}
+      height={size}
       className={cn('object-cover', className)}
     />
   );
