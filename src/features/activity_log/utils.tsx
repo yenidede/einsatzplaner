@@ -91,7 +91,6 @@ export function detectChangeType(
   if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
     return 'cancel';
   }
-  // takeover after the first assignment of a potential einsatz
   if (
     currentUserId &&
     !previousAssignedUsers.includes(currentUserId) &&
@@ -152,6 +151,15 @@ export function detectChangeTypes(
     return changeTypes;
   }
 
+  if (
+    currentUserId &&
+    !previousAssignedUsers.includes(currentUserId) &&
+    currentAssignedUsers.includes(currentUserId)
+  ) {
+    changeTypes.push('takeover');
+    return changeTypes;
+  }
+
   if (currentAssignedUsers.length < previousAssignedUsers.length) {
     const removedUsers = previousAssignedUsers.filter(
       (id) => !currentAssignedUsers.includes(id)
@@ -165,21 +173,10 @@ export function detectChangeTypes(
     return changeTypes;
   }
 
-  // User wurden hinzugefügt
   if (currentAssignedUsers.length > previousAssignedUsers.length) {
-    if (
-      currentUserId &&
-      previousAssignedUsers.length > 0 &&
-      !previousAssignedUsers.includes(currentUserId) &&
-      currentAssignedUsers.includes(currentUserId)
-    ) {
-      changeTypes.push('takeover');
-    } else {
-      changeTypes.push('assign');
-    }
+    changeTypes.push('assign');
     return changeTypes;
   }
-
   changeTypes.push('edit');
   return changeTypes;
 }
