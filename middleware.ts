@@ -10,21 +10,26 @@ export default withAuth(
 
     // Only redirect from root path
     if (pathname === '/') {
-      const userRoles = (token?.roleIds as string[]) || [];
+      const userRoleIds = token?.roleIds || [];
 
       // Redirect based on highest available role
       if (
-        userRoles.includes(ROLE_NAME_MAP['Superadmin']) ||
-        userRoles.includes(ROLE_NAME_MAP['Einsatzverwaltung'])
+        userRoleIds.includes(ROLE_NAME_MAP.Superadmin) ||
+        userRoleIds.includes(ROLE_NAME_MAP.Einsatzverwaltung)
       ) {
         return NextResponse.redirect(
           new URL(`/einsatzverwaltung${searchParams}`, req.url)
         );
-      } else if (userRoles.includes(ROLE_NAME_MAP['Helfer'])) {
+      } else if (userRoleIds.includes(ROLE_NAME_MAP.Helfer)) {
         return NextResponse.redirect(
           new URL(`/helferansicht${searchParams}`, req.url)
         );
       }
+
+      // Fallback: if user has no recognized roles, redirect to helferansicht
+      return NextResponse.redirect(
+        new URL(`/helferansicht${searchParams}`, req.url)
+      );
     }
 
     return NextResponse.next();

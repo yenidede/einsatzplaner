@@ -195,12 +195,19 @@ function OrganizationWithRoles({
       {sortedRoles.find(
         (r) => r.name === 'Organisationsverwaltung' || r.name === 'OV'
       ) && (
-        <Button variant="ghost" size="sm" className="px-2 py-1 text-sm" asChild>
-          <Link href={`/organization/${orgId}/manage`}>
-            Bearbeiten{' '}
-            <PencilIcon size={16} aria-hidden="true" className="mr-1" />
-          </Link>
-        </Button>
+        <Close asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-2 py-1 text-sm"
+            asChild
+          >
+            <Link href={`/organization/${orgId}/manage`}>
+              Bearbeiten{' '}
+              <PencilIcon size={16} aria-hidden="true" className="mr-1" />
+            </Link>
+          </Button>
+        </Close>
       )}
     </div>
   );
