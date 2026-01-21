@@ -152,11 +152,20 @@ export function detectChangeTypes(
     return changeTypes;
   }
 
-  if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
-    changeTypes.push('cancel');
+  if (currentAssignedUsers.length < previousAssignedUsers.length) {
+    const removedUsers = previousAssignedUsers.filter(
+      (id) => !currentAssignedUsers.includes(id)
+    );
+
+    if (currentUserId && removedUsers.includes(currentUserId)) {
+      changeTypes.push('cancel');
+    } else {
+      changeTypes.push('remove');
+    }
     return changeTypes;
   }
 
+  // User wurden hinzugefügt
   if (currentAssignedUsers.length > previousAssignedUsers.length) {
     if (
       currentUserId &&
@@ -167,19 +176,6 @@ export function detectChangeTypes(
       changeTypes.push('takeover');
     } else {
       changeTypes.push('assign');
-    }
-    return changeTypes;
-  }
-
-  if (currentAssignedUsers.length < previousAssignedUsers.length) {
-    const removedUsers = previousAssignedUsers.filter(
-      (id) => !currentAssignedUsers.includes(id)
-    );
-
-    if (currentUserId && removedUsers.includes(currentUserId)) {
-      changeTypes.push('cancel');
-    } else {
-      changeTypes.push('remove');
     }
     return changeTypes;
   }
