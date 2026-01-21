@@ -38,4 +38,3 @@ export function useUserCount(organizationId: string | undefined) {
     enabled: !!organizationId,
   });
 }
-
