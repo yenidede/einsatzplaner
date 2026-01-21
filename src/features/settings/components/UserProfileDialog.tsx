@@ -2,13 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  getUserProfileAction,
   updateUserRoleAction,
   removeUserFromOrganizationAction,
-  getUserOrgRolesAction,
   promoteToSuperadminAction,
   demoteFromSuperadminAction,
 } from '@/features/settings/users-action';
@@ -19,13 +17,15 @@ import { UserContactInfo } from './userProfile/UserContactInfo';
 import { UserPersonalProperties } from './userProfile/UserPersonalProperties';
 import { UserRoleManagement } from './userProfile/UserRoleManagement';
 import { UserDangerZone } from './userProfile/UserDangerZone';
-import {
-  getUserPropertiesAction,
-  getUserPropertyValuesAction,
-  upsertUserPropertyValueAction,
-} from '@/features/user_properties/user_property-actions';
-import type { UserPropertyWithField } from '@/features/user_properties/user_property-dal';
+import { upsertUserPropertyValueAction } from '@/features/user_properties/user_property-actions';
 import { queryKeys } from '@/features/user/queryKeys';
+import {
+  useUserProfileById,
+  useUserPropertyValues,
+} from '@/features/settings/hooks/useUserProfile';
+import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
+import { useUserPropertiesByOrg } from '@/features/user_properties/hooks/use-user-property-queries';
+import { useSession } from 'next-auth/react';
 
 interface UserProfileDialogProps {
   isOpen: boolean;
@@ -66,38 +66,26 @@ export function UserProfileDialog({
   >({});
 
   const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { data: session } = useSession();
 
   const {
     data: userProfile,
     isLoading: profileLoading,
     error,
-  } = useQuery({
-    queryKey: settingsQueryKeys.org.userProfile(organizationId, userId),
-    queryFn: async () => await getUserProfileAction(userId, organizationId),
-    enabled: isOpen && !!userId && !!organizationId,
-    staleTime: 30000,
-    gcTime: 5 * 60 * 1000,
-  });
+  } = useUserProfileById(
+    isOpen ? userId : undefined,
+    isOpen ? organizationId : undefined
+  );
 
-  const { data: userOrgRoles = [] } = useQuery<UserRole[]>({
-    queryKey: settingsQueryKeys.org.userRoles(organizationId, userId),
-    queryFn: async () => await getUserOrgRolesAction(organizationId, userId),
-    enabled: isOpen && !!userId && !!organizationId,
-    staleTime: 30000,
-    gcTime: 5 * 60 * 1000,
-  });
+  const { data: userOrgRoles = [] } = useUserOrgRoles(
+    isOpen ? organizationId : undefined,
+    isOpen ? userId : undefined
+  );
 
-  const { data: currentUserOrgRoles = [] } = useQuery<UserRole[]>({
-    queryKey: settingsQueryKeys.org.userRoles(
-      organizationId,
-      currentUserId || ''
-    ),
-    queryFn: async () =>
-      await getUserOrgRolesAction(organizationId, currentUserId || ''),
-    enabled: isOpen && !!currentUserId && !!organizationId,
-    staleTime: 30000,
-    gcTime: 5 * 60 * 1000,
-  });
+  const { data: currentUserOrgRoles = [] } = useUserOrgRoles(
+    isOpen && currentUserId ? organizationId : undefined,
+    isOpen && currentUserId ? currentUserId : undefined
+  );
 
   const isCurrentUserSuperadmin = currentUserOrgRoles.some(
     (userRole) =>
@@ -105,19 +93,14 @@ export function UserProfileDialog({
       userRole.role?.abbreviation === 'SA'
   );
 
-  const { data: userProperties = [] } = useQuery<UserPropertyWithField[]>({
-    queryKey: ['userProperties', organizationId],
-    queryFn: () => getUserPropertiesAction(organizationId),
-    enabled: isOpen && !!organizationId,
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: userProperties = [] } = useUserPropertiesByOrg(
+    isOpen ? organizationId : undefined
+  );
 
-  const { data: userPropertyValues = [] } = useQuery({
-    queryKey: settingsQueryKeys.org.userProperties(organizationId, userId),
-    queryFn: () => getUserPropertyValuesAction(userId, organizationId),
-    enabled: isOpen && !!userId && !!organizationId,
-    staleTime: 30000,
-  });
+  const { data: userPropertyValues = [] } = useUserPropertyValues(
+    isOpen ? userId : undefined,
+    isOpen ? organizationId : undefined
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -587,6 +570,9 @@ export function UserProfileDialog({
 
   if (!userProfile) return null;
 
+  const activeOrgName =
+    session?.user?.activeOrganization?.name || 'keine Organisation geladen ...';
+
   const content = (
     <>
       {AlertDialogComponent}
@@ -653,7 +639,7 @@ export function UserProfileDialog({
                 />
                 {userProperties.length > 0 && (
                   <UserPersonalProperties
-                    organizationName={userProfile.organization?.name || ''}
+                    organizationName={activeOrgName}
                     userProperties={userProperties}
                     propertyValues={propertyValues}
                     onPropertyValueChange={handlePropertyValueChange}
@@ -661,13 +647,13 @@ export function UserProfileDialog({
                 )}
 
                 <UserRoleManagement
-                  organizationName={userProfile.organization?.name || ''}
+                  organizationName={activeOrgName}
                   userRoles={userRoles}
                   saving={saving}
                   onToggleRole={toggleRole}
                 />
                 <UserDangerZone
-                  organizationName={userProfile.organization?.name || ''}
+                  organizationName={activeOrgName}
                   isSuperadmin={isSuperadmin}
                   isCurrentUserSuperadmin={isCurrentUserSuperadmin}
                   isCurrentUserOV={isCurrentUserOV}

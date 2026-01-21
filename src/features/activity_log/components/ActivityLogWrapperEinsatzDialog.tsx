@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { ActivityLogList } from './ActivityLogList';
 import { ActivityLogListSkeleton } from './ActivityLogListSkeleton';
-import { activityLogQueryKeys as ActivityLogQueryKeys } from '../queryKeys';
-import { getActivitiesForEinsatzAction } from '../activity_log-actions';
+import { useEinsatzActivityLogs } from '../hooks/useActivityLogs';
 
 interface EinsatzActivityLogProps {
   einsatzId: string | null;
@@ -23,21 +21,17 @@ export function EinsatzActivityLog({
   const MAX_ACTIVITIES_LIMIT = 9999;
   const [showAll, setShowAll] = useState(false);
 
-  const limitedQuery = useQuery({
-    queryKey: ActivityLogQueryKeys.einsatz(einsatzId ?? '', initialLimit),
-    queryFn: () => getActivitiesForEinsatzAction(einsatzId ?? '', initialLimit),
-    enabled: !!einsatzId && !showAll,
-  });
+  const limitedQuery = useEinsatzActivityLogs(
+    einsatzId,
+    initialLimit,
+    !showAll
+  );
 
-  const allQuery = useQuery({
-    queryKey: ActivityLogQueryKeys.einsatz(
-      einsatzId ?? '',
-      MAX_ACTIVITIES_LIMIT
-    ),
-    queryFn: () =>
-      getActivitiesForEinsatzAction(einsatzId ?? '', MAX_ACTIVITIES_LIMIT),
-    enabled: !!einsatzId && showAll,
-  });
+  const allQuery = useEinsatzActivityLogs(
+    einsatzId,
+    MAX_ACTIVITIES_LIMIT,
+    showAll
+  );
 
   const activities = useMemo(() => {
     const limited = limitedQuery.data?.data?.activities;
