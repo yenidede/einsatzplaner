@@ -103,9 +103,11 @@ export function OrganizationPreferences({
             />
           </div>
         </div>
-        <Button onClick={onSave} className="mt-4">
-          Änderungen speichern
-        </Button>
+        <div className="px-4">
+          <Button onClick={onSave} className="mt-4">
+            Änderungen speichern
+          </Button>
+        </div>
       </div>
     </div>
   );

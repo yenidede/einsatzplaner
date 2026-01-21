@@ -6,12 +6,6 @@ import LogoutIcon from '@/components/icon/LogoutIcon';
 import SettingsIcon from '@/components/icon/SettingsIcon';
 import OrganisationIcon from '@/features/settings/components/ui/OrganisationIcon';
 
-interface Organization {
-  id: string;
-  name: string;
-  roles: any[];
-}
-
 interface OrganizationSidebarProps {
   user: any;
   onSignOut: () => void;
@@ -44,8 +38,8 @@ export function OrganizationSidebar({
   });
 
   return (
-    <div className="relative inline-flex flex-col items-start justify-between self-stretch">
-      <div className="sticky top-0 bottom-0 left-0 flex h-[calc(100vh-6rem)] w-64 flex-col items-start justify-start gap-2 rounded-br-lg rounded-bl-lg px-2 py-1.5">
+    <div className="sticky top-0 inline-flex h-[calc(100vh-12rem)] flex-col items-start justify-between self-stretch">
+      <div className="flex h-full w-64 flex-col items-start justify-start gap-2 rounded-br-lg rounded-bl-lg px-2 py-1.5">
         <Link
           href={`/settings`}
           className="inline-flex w-full items-center justify-start gap-2 rounded-md bg-white px-2 py-1.5 text-left transition-colors hover:bg-slate-50"
