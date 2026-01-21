@@ -28,7 +28,7 @@ export function useDetailedEinsatz(
       if (!(res instanceof Response)) return res;
       toast.error('Failed to fetch einsatz details: ' + res.statusText);
     },
-    enabled: typeof einsatzId === 'string' && !!einsatzId && isOpen,
+    enabled: typeof einsatzId === 'string' && isOpen,
   });
 }
 
