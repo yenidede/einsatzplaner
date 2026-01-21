@@ -25,6 +25,7 @@ interface InviteUserFormProps {
   organizationId: string;
   onClose: () => void;
   isOpen: boolean;
+  onSave: () => void;
 }
 
 interface Role {

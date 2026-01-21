@@ -182,6 +182,7 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
       },
       role: uor.role,
     })),
+    allow_self_sign_out: org.allow_self_sign_out,
   };
 }
 
@@ -197,6 +198,7 @@ export type OrganizationUpdateData = {
   einsatz_name_singular?: string;
   einsatz_name_plural?: string;
   logo_url?: string;
+  allow_self_sign_out?: boolean;
 };
 
 export async function updateOrganizationAction(data: OrganizationUpdateData) {
@@ -241,6 +243,8 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     }
     dataToUpdate.max_participants_per_helper = value;
   }
+  if (data.allow_self_sign_out !== undefined)
+    dataToUpdate.allow_self_sign_out = data.allow_self_sign_out;
 
   const updated = await prisma.organization.update({
     where: { id: data.id },
@@ -257,6 +261,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
       helper_name_plural: true,
       einsatz_name_singular: true,
       einsatz_name_plural: true,
+      allow_self_sign_out: true,
     },
   });
 
@@ -512,11 +517,11 @@ export async function getOrganizationForPDF(
 
     details: details
       ? {
-          website: details.website,
-          vat: details.vat,
-          zvr: details.zvr,
-          authority: details.authority,
-        }
+        website: details.website,
+        vat: details.vat,
+        zvr: details.zvr,
+        authority: details.authority,
+      }
       : null,
   };
 }

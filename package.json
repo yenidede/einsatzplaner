@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint . --ignore-pattern 'src/generated/**'",
-    "postinstall": "npx prisma generate",
+    "postinstall": "npx prisma db pull && npx prisma generate",
     "prettier": "prettier . --write"
   },
   "dependencies": {

@@ -5,7 +5,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Landmark } from 'lucide-react';
 import {
-  getOrganizationBankAccountsAction,
   createOrganizationBankAccountAction,
   updateOrganizationBankAccountAction,
   deleteOrganizationBankAccountAction,
@@ -20,6 +19,7 @@ import {
 
 interface OrganizationBankAccountsProps {
   organizationId: string;
+  onSave: () => void;
   isSuperadmin?: boolean;
 }
 

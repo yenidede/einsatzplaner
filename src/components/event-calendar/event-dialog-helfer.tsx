@@ -42,19 +42,12 @@ interface EventDialogProps {
   onAssignToggleEvent: (einsatzId: string) => void;
 }
 
-type UserPropertyWithField = {
-  id: string;
-  field?: {
-    name?: string | null;
-  };
-};
 export function EventDialogHelfer({
   einsatz,
   isOpen,
   onClose,
   onAssignToggleEvent,
 }: EventDialogProps) {
-  const [showAllActivities, setShowAllActivities] = useState(false);
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
   const { data: session } = useSession();
@@ -369,6 +362,7 @@ export function EventDialogHelfer({
               </Button>
             ) : (
               <Button
+                disabled={false}
                 onClick={() => {
                   if (!detailedEinsatz?.id || !session?.user?.id) {
                     toast.error(

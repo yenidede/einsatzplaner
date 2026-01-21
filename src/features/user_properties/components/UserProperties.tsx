@@ -26,6 +26,7 @@ import {
 
 interface UserPropertiesProps {
   organizationId: string;
+  onSave: () => void;
 }
 
 export function UserProperties({ organizationId }: UserPropertiesProps) {
