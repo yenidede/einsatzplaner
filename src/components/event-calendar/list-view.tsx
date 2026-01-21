@@ -14,10 +14,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-import { getEinsaetzeForTableView } from '@/features/einsatz/dal-einsatz';
 import type { ETV } from '@/features/einsatz/types';
-import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
-import { useQuery } from '@tanstack/react-query';
+import { useEinsaetzeTableView } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useStatuses } from '@/features/einsatz_status/hooks/useStatuses';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useTemplatesByOrgIds } from '@/features/template/hooks/use-template-queries';
@@ -62,12 +60,7 @@ export function ListView({
   const activeOrgId = userSession?.user?.activeOrganization?.id;
   const userOrgIds = userSession?.user?.orgIds ?? [];
 
-  const { data, isLoading } = useQuery<ETV[]>({
-    queryKey: [...einsatzQueryKeys.einsaetzeTableView(userOrgIds)],
-    queryFn: () => getEinsaetzeForTableView(userOrgIds),
-    placeholderData: (previousData) => previousData ?? [],
-    enabled: userOrgIds.length > 0,
-  });
+  const { data, isLoading } = useEinsaetzeTableView(userOrgIds);
 
   const { data: statusData, isLoading: isStatusLoading } = useStatuses();
 
@@ -331,13 +324,15 @@ export function ListView({
     ],
     [
       columnHelper,
+      einsatz_singular,
       statusData,
-      categoriesData,
-      templatesData,
       usersData,
+      categoriesData,
+      helper_plural,
+      templatesData,
+      mode,
       onEventEdit,
       onEventDelete,
-      mode,
     ]
   );
 
