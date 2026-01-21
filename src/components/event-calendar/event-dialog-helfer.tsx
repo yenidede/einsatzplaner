@@ -82,6 +82,10 @@ export function EventDialogHelfer({
     (user) => user.id === detailedEinsatz?.created_by
   );
 
+  const disAllowSelfSignout = !organizations?.find(
+    (org) => org.id === activeOrgId
+  )?.allow_self_sign_out;
+
   // Return early without error toast during loading
   if (!activeOrgId || !currentUserId) {
     return isOpen ? (
@@ -361,20 +365,33 @@ export function EventDialogHelfer({
                 Eintragen
               </Button>
             ) : (
-              <Button
-                disabled={false}
+              <div
                 onClick={() => {
-                  if (!detailedEinsatz?.id || !session?.user?.id) {
-                    toast.error(
-                      'Eintragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen.'
+                  if (disAllowSelfSignout) {
+                    toast.info(
+                      'Selbständiges Austragen ist in dieser Organisation nicht erlaubt. Bitte wenden Sie sich direkt an die Verwaltung.'
                     );
-                    return;
                   }
-                  onAssignToggleEvent(detailedEinsatz.id);
                 }}
               >
-                Austragen
-              </Button>
+                <Button
+                  disabled={disAllowSelfSignout}
+                  variant="destructive"
+                  onClick={() => {
+                    if (!detailedEinsatz?.id || !session?.user?.id) {
+                      toast.error(
+                        'Austragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen.'
+                      );
+                      return;
+                    }
+                    if (!disAllowSelfSignout) {
+                      onAssignToggleEvent(detailedEinsatz.id);
+                    }
+                  }}
+                >
+                  Austragen
+                </Button>
+              </div>
             )}
           </div>
         </DialogFooter>
