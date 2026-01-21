@@ -3,5 +3,5 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <main className="px-4 py-8 md:px-6">{children}</main>;
+  return <main className="px-4 py-8 pt-24 md:px-6">{children}</main>;
 }

@@ -26,7 +26,6 @@ function AvatarImage({
   className,
   src,
   alt,
-  ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Image> & {
   src: string;
   alt: string;
