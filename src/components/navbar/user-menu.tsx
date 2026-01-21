@@ -68,13 +68,7 @@ export default function UserMenu(): JSX.Element | null {
   const userName =
     session?.user.firstname && session.user.lastname
       ? `${session.user.firstname} ${session.user.lastname}`
-      : session?.user?.email || 'Benutzer';
-
-  console.log(
-    'Rendering UserMenu for user:',
-    userName,
-    session?.user.picture_url
-  );
+      : session?.user?.email || 'Username';
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
