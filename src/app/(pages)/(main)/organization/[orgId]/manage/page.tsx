@@ -232,10 +232,10 @@ export default function OrganizationManagePage() {
         isSaving={updateMutation.isPending}
         onCancel={() => router.push('/')}
       />
-      <div className="inline-flex items-start justify-start gap-4 self-stretch overflow-hidden py-4 pl-2">
+      <div className="inline-flex max-h-[calc(100vh-8rem)] items-start justify-start gap-4 self-stretch overflow-y-auto py-4 pl-2">
         <OrganizationSidebar user={user} onSignOut={handleSignOut} />
 
-        <div className="inline-flex flex-1 flex-col items-start justify-start gap-8">
+        <div className="inline-flex flex-1 flex-col items-start justify-start gap-8 overflow-y-auto">
           <div className="flex flex-col items-start justify-center gap-4 self-stretch">
             <div className="flex flex-col items-start justify-start gap-2 self-stretch">
               <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">

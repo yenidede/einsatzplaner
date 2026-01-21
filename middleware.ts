@@ -1,37 +1,8 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
-import { ROLE_NAME_MAP } from '@/lib/auth/authGuard';
 
 export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token;
-    const pathname = req.nextUrl.pathname;
-    const searchParams = req.nextUrl.search;
-
-    // Only redirect from root path
-    if (pathname === '/') {
-      const userRoleIds = token?.roleIds || [];
-
-      // Redirect based on highest available role
-      if (
-        userRoleIds.includes(ROLE_NAME_MAP.Superadmin) ||
-        userRoleIds.includes(ROLE_NAME_MAP.Einsatzverwaltung)
-      ) {
-        return NextResponse.redirect(
-          new URL(`/einsatzverwaltung${searchParams}`, req.url)
-        );
-      } else if (userRoleIds.includes(ROLE_NAME_MAP.Helfer)) {
-        return NextResponse.redirect(
-          new URL(`/helferansicht${searchParams}`, req.url)
-        );
-      }
-
-      // Fallback: if user has no recognized roles, redirect to helferansicht
-      return NextResponse.redirect(
-        new URL(`/helferansicht${searchParams}`, req.url)
-      );
-    }
-
+  function middleware() {
     return NextResponse.next();
   },
   {
