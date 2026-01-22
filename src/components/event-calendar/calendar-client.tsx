@@ -128,7 +128,7 @@ function validateUserAssignment({
         return String(propertyValue.value).trim() !== '';
       }).length;
 
-    const msg = `Eigenschaft "${propName}": mindestens ${minRequired} ${minRequired === 1 ? 'Helfer' : 'Helfer'} benötigt (aktuell: ${matchingCount})`;
+    const msg = `Eigenschaft "${propName}": mindestens ${minRequired} Helfer benötigt (aktuell: ${matchingCount})`;
 
     if (matchingCount < minRequired) {
       // If slots are filled, this is a blocking error
@@ -191,9 +191,12 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         detailedEinsatzError instanceof Error
           ? detailedEinsatzError.message
           : '';
-      toast.error(`${einsatz_singular} wurde nicht geladen: ${errorMessage}`, {
-        duration: 10000, // should stay longer to avoid confusion
-      });
+      toast.error(
+        `${einsatz_singular} konnte nicht geladen werden: ${errorMessage}`,
+        {
+          duration: 10000, // should stay longer to avoid confusion
+        }
+      );
       setEinsatz(null);
     }
   }, [
