@@ -30,7 +30,7 @@ export function generateEinsatzLink(einsatzId: string, baseUrl?: string): string
     const result = uuidSchema.safeParse(einsatzId);
     if (!result.success) {
         throw new Error(
-            `Cannot generate einsatz link: ${result.error.errors[0]?.message || 'Invalid UUID'}`
+            `Cannot generate einsatz link: ${result.error.message || 'Invalid UUID'}`
         );
     }
 
@@ -49,7 +49,12 @@ export function generateNewEinsatzLink(baseUrl?: string): string {
 }
 
 /**
- * Copy einsatz link to clipboard
+ * Copy einsatz link to clipboard.
+ *
+ * Requires a browser environment with the Clipboard API (`navigator.clipboard`) available.
+ * In environments without clipboard support (e.g. SSR, some older browsers),
+ * the returned promise will be rejected with an error.
+ *
  * @param einsatzId - The UUID of the einsatz
  * @returns Promise that resolves when link is copied
  * @throws Error if einsatzId is not a valid UUID or clipboard API fails
@@ -59,7 +64,7 @@ export async function copyEinsatzLinkToClipboard(einsatzId: string): Promise<voi
     const result = uuidSchema.safeParse(einsatzId);
     if (!result.success) {
         throw new Error(
-            `Cannot copy link to clipboard: ${result.error.errors[0]?.message || 'Invalid UUID'}`
+            `Cannot copy link to clipboard: ${result.error.message || 'Invalid UUID'}`
         );
     }
 
