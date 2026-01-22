@@ -272,7 +272,7 @@ export default function SettingsPage() {
           isSaving={mutation.isPending}
           onCancel={() => router.push('/')}
         />
-        <div className="inline-flex items-start justify-start gap-4 self-stretch overflow-clip py-4 pl-2">
+        <div className="inline-flex max-h-[calc(100vh-8rem)] items-start justify-start gap-4 self-stretch overflow-y-auto py-4 pl-2">
           <OrganizationSidebar user={userData} onSignOut={signOut} />
 
           <div className="inline-flex flex-1 flex-col items-start justify-start gap-8">
