@@ -935,22 +935,6 @@ async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
           },
         },
       },
-      einsatz_comment: {
-        select: {
-          id: true,
-          einsatz_id: true,
-          user_id: true,
-          created_at: true,
-          comment: true,
-          user: {
-            select: {
-              id: true,
-              firstname: true,
-              lastname: true,
-            },
-          },
-        },
-      },
       einsatz_to_category: {
         include: {
           einsatz_category: true,
