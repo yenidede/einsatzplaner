@@ -24,11 +24,23 @@ export function generateNewEinsatzLink(baseUrl?: string): string {
 }
 
 /**
- * Copy einsatz link to clipboard
+ * Copy einsatz link to clipboard.
+ *
+ * Requires a browser environment with the Clipboard API (`navigator.clipboard`) available.
+ * In environments without clipboard support (e.g. SSR, some older browsers),
+ * the returned promise will be rejected with an error.
+ *
  * @param einsatzId - The UUID of the einsatz
- * @returns Promise that resolves when link is copied
+ * @returns Promise that resolves when the link is copied, or rejects if clipboard is unavailable
  */
 export async function copyEinsatzLinkToClipboard(einsatzId: string): Promise<void> {
+    if (
+        typeof navigator === 'undefined' ||
+        !navigator.clipboard ||
+        typeof navigator.clipboard.writeText !== 'function'
+    ) {
+        throw new Error('Clipboard API is not available in this environment.');
+    }
     const link = generateEinsatzLink(einsatzId);
     await navigator.clipboard.writeText(link);
 }
