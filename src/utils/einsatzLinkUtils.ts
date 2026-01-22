@@ -36,6 +36,7 @@ export function generateNewEinsatzLink(baseUrl?: string): string {
  * @param einsatzId - The UUID of the einsatz
  * @returns Promise that resolves when link is copied
  * @throws {z.ZodError} If einsatzId is not a valid UUID
+ * @throws {Error} If clipboard is not available or writeText fails
  */
 export async function copyEinsatzLinkToClipboard(einsatzId: string): Promise<void> {
     // Validation happens in generateEinsatzLink
