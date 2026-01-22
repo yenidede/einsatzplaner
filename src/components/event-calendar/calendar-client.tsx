@@ -104,7 +104,7 @@ function validateUserAssignment({
         return String(propertyValue.value).trim() !== '';
       }).length;
 
-    const msg = `Eigenschaft "${propName}": mindestens ${minRequired} ${minRequired === 1 ? 'Helfer' : 'Helfer'} benötigt (aktuell: ${matchingCount})`;
+    const msg = `Eigenschaft "${propName}": mindestens ${minRequired} Helfer benötigt (aktuell: ${matchingCount})`;
 
     if (matchingCount < minRequired) {
       // If slots are filled, this is a blocking error
