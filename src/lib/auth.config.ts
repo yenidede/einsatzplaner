@@ -2,7 +2,6 @@ import { NextAuthOptions, Session, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import { updateLastLogin } from '@/DataAccessLayer/user';
-import crypto from 'crypto';
 import prisma from '@/lib/prisma';
 import { SignJWT } from 'jose';
 import { JWT } from 'next-auth/jwt';
@@ -45,7 +44,7 @@ async function generateAccessToken(userData: {
 }
 
 async function generateRefreshToken(userId: string): Promise<string> {
-  const refreshToken = crypto.randomBytes(32).toString('hex');
+  const refreshToken = crypto.randomUUID()
 
   await prisma.user_session
     .deleteMany({
@@ -348,9 +347,9 @@ export const authOptions: NextAuthOptions = {
         });
         const activeOrgData = userData?.active_org
           ? await prisma.organization.findUnique({
-              where: { id: userData.active_org },
-              select: { id: true, name: true, logo_url: true },
-            })
+            where: { id: userData.active_org },
+            select: { id: true, name: true, logo_url: true },
+          })
           : null;
         if (!activeOrgData) {
           throw new Response(

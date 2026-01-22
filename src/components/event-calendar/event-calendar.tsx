@@ -84,7 +84,7 @@ export function EventCalendar({
   const [currentDate, setCurrentDate] = useState(new Date());
   const {
     isOpen: isEventDialogOpen,
-    selectedEvent,
+    selectedEinsatz,
     openDialog,
     closeDialog,
   } = useEventDialog();
@@ -495,7 +495,7 @@ export function EventCalendar({
 
         {mode === 'verwaltung' ? (
           <EventDialogVerwaltung
-            einsatz={selectedEvent}
+            einsatz={selectedEinsatz}
             isOpen={isEventDialogOpen}
             onClose={closeDialog}
             onSave={handleEventSave}
@@ -504,9 +504,9 @@ export function EventCalendar({
         ) : mode === 'helper' ? (
           <EventDialogHelfer
             einsatz={
-              typeof selectedEvent === 'string'
-                ? selectedEvent
-                : selectedEvent?.id || null
+              typeof selectedEinsatz === 'string'
+                ? selectedEinsatz
+                : selectedEinsatz?.id || null
             }
             isOpen={isEventDialogOpen}
             onClose={closeDialog}

@@ -1,19 +1,24 @@
 'use client';
 
-import React, {
+import {
   createContext,
   useContext,
   useState,
   ReactNode,
   useMemo,
+  useCallback,
+  Suspense,
+  useEffect,
 } from 'react';
 import { EinsatzCreate } from '@/features/einsatz/types';
+import { parseAsString, useQueryState } from 'nuqs';
 
 interface EventDialogContextValue {
   isOpen: boolean;
-  selectedEvent: EinsatzCreate | string | null;
-  openDialog: (event: EinsatzCreate | string | null) => void;
+  readonly selectedEinsatz: EinsatzCreate | string | null;
+  openDialog: (einsatz: EinsatzCreate | string | null) => void;
   closeDialog: () => void;
+  setEinsatz: (einsatz: EinsatzCreate | string | null) => void;
 }
 
 const EventDialogContext = createContext<EventDialogContextValue | undefined>(
@@ -34,35 +39,101 @@ interface EventDialogProviderProps {
   children: ReactNode;
 }
 
-export function EventDialogProvider({ children }: EventDialogProviderProps) {
+function EventDialogProviderInner({ children }: EventDialogProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<
+
+  // URL state for einsatz ID (string only)
+  const [einsatzFromUrl, setEinsatzFromUrl] = useQueryState(
+    'einsatz',
+    parseAsString.withOptions({
+      history: 'push',
+    })
+  );
+
+  // Local state for full event object (can be string, EinsatzCreate, or null)
+  const [localSelectedEvent, setLocalSelectedEvent] = useState<
     EinsatzCreate | string | null
   >(null);
 
-  const openDialog = (event: EinsatzCreate | string | null) => {
-    setSelectedEvent(event);
-    setIsOpen(true);
-  };
+  // Compute the actual selectedEinsatz from both URL and local state
+  const selectedEinsatz = einsatzFromUrl || localSelectedEvent;
 
-  const closeDialog = () => {
+  // Auto-open dialog when selectedEinsatz changes to non-null (e.g., from URL navigation)
+  useEffect(() => {
+    if (selectedEinsatz !== null && !isOpen) {
+      setIsOpen(true);
+    } else if (selectedEinsatz === null && isOpen) {
+      setIsOpen(false);
+    }
+  }, [selectedEinsatz, isOpen]);
+
+  const openDialog = useCallback(
+    (event: EinsatzCreate | string | null) => {
+      if (typeof event === 'string') {
+        // Store einsatz ID in URL
+        setEinsatzFromUrl(event);
+        setLocalSelectedEvent(null);
+      } else if (event && 'id' in event && event.id) {
+        // Store einsatz ID in URL if it exists
+        setEinsatzFromUrl(event.id);
+        setLocalSelectedEvent(null);
+      } else {
+        // New einsatz or null - store locally only
+        setEinsatzFromUrl(null);
+        setLocalSelectedEvent(event);
+      }
+      setIsOpen(true);
+    },
+    [setEinsatzFromUrl, setLocalSelectedEvent]
+  );
+
+  const closeDialog = useCallback(() => {
     setIsOpen(false);
-    setSelectedEvent(null);
-  };
+    setEinsatzFromUrl(null);
+    setLocalSelectedEvent(null);
+  }, [setEinsatzFromUrl, setLocalSelectedEvent]);
+
+  const setEinsatzFunc = useCallback(
+    (event: EinsatzCreate | string | null) => {
+      if (typeof event === 'string') {
+        // Store einsatz ID in URL
+        setEinsatzFromUrl(event);
+        setLocalSelectedEvent(null);
+      } else if (event && 'id' in event && event.id) {
+        // Store einsatz ID in URL if it exists
+        setEinsatzFromUrl(event.id);
+        setLocalSelectedEvent(null);
+      } else {
+        // New einsatz or null - store locally only
+        setEinsatzFromUrl(null);
+        setLocalSelectedEvent(event);
+      }
+    },
+    [setEinsatzFromUrl, setLocalSelectedEvent]
+  );
 
   const contextValue: EventDialogContextValue = useMemo(
     () => ({
       isOpen,
-      selectedEvent,
       openDialog,
       closeDialog,
+      selectedEinsatz,
+      setEinsatz: setEinsatzFunc,
     }),
-    [isOpen, selectedEvent]
+    [isOpen, selectedEinsatz, openDialog, closeDialog, setEinsatzFunc]
   );
 
   return (
     <EventDialogContext.Provider value={contextValue}>
       {children}
     </EventDialogContext.Provider>
+  );
+}
+
+export function EventDialogProvider({ children }: EventDialogProviderProps) {
+  return (
+    <Suspense fallback={null}>
+      <EventDialogProviderInner>{children}</EventDialogProviderInner>
+    </Suspense>
   );
 }

@@ -46,6 +46,7 @@ export default function OrganizationManagePage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [description, setDescription] = useState('');
+  const [allowSelfSignOut, setAllowSelfSignOut] = useState(false);
   const [helperSingular, setHelperSingular] = useState('');
   const [helperPlural, setHelperPlural] = useState('');
   const [einsatzSingular, setEinsatzSingular] = useState('');
@@ -88,6 +89,7 @@ export default function OrganizationManagePage() {
       setLogoUrl(orgData.logo_url ?? '');
       setEmail(orgData.email ?? '');
       setPhone(orgData.phone ?? '');
+      setAllowSelfSignOut(orgData.allow_self_sign_out ?? false);
       setHelperSingular(orgData.helper_name_singular ?? 'Helfer:in');
       setHelperPlural(orgData.helper_name_plural ?? 'Helfer:innen');
       setMaxParticipantsPerHelper(
@@ -201,6 +203,7 @@ export default function OrganizationManagePage() {
       vat,
       zvr,
       authority,
+      allow_self_sign_out: allowSelfSignOut,
     });
   };
 
@@ -229,10 +232,10 @@ export default function OrganizationManagePage() {
         isSaving={updateMutation.isPending}
         onCancel={() => router.push('/')}
       />
-      <div className="inline-flex items-start justify-start gap-4 self-stretch overflow-hidden py-4 pl-2">
+      <div className="inline-flex max-h-[calc(100vh-8rem)] items-start justify-start gap-4 self-stretch overflow-y-auto py-4 pl-2">
         <OrganizationSidebar user={user} onSignOut={handleSignOut} />
 
-        <div className="inline-flex flex-1 flex-col items-start justify-start gap-8">
+        <div className="inline-flex flex-1 flex-col items-start justify-start gap-8 overflow-y-auto">
           <div className="flex flex-col items-start justify-center gap-4 self-stretch">
             <div className="flex flex-col items-start justify-start gap-2 self-stretch">
               <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
@@ -252,11 +255,14 @@ export default function OrganizationManagePage() {
                   email={email}
                   phone={phone}
                   description={description}
+                  allowSelfSignOut={allowSelfSignOut}
                   onNameChange={setName}
                   onEmailChange={setEmail}
                   onPhoneChange={setPhone}
                   onDescriptionChange={setDescription}
+                  onAllowSelfSignOutChange={setAllowSelfSignOut}
                   isSuperadmin={isSuperadmin}
+                  onSave={handleSave}
                 />
               </div>
 
@@ -271,6 +277,7 @@ export default function OrganizationManagePage() {
                 onZvrChange={setZvr}
                 onAuthorityChange={setAuthority}
                 isSuperadmin={isSuperadmin}
+                onSave={handleSave}
               />
             </div>
           </div>
@@ -287,18 +294,21 @@ export default function OrganizationManagePage() {
               onEinsatzPluralChange={setEinsatzPlural}
               maxParticipantsPerHelper={maxParticipantsPerHelper}
               onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+              onSave={handleSave}
             />
           </div>
           <OrganizationAddresses
             organizationId={orgId}
             isSuperadmin={isSuperadmin}
+            onSave={handleSave}
           />
 
           <OrganizationBankAccounts
             organizationId={orgId}
             isSuperadmin={isSuperadmin}
+            onSave={handleSave}
           />
-          <UserProperties organizationId={orgId} />
+          <UserProperties organizationId={orgId} onSave={handleSave} />
 
           <UsersManagementSection
             usersData={usersData || []}
@@ -306,6 +316,7 @@ export default function OrganizationManagePage() {
             currentUserEmail={session?.user?.email || ''}
             onUserProfileClick={handleUserProfileClick}
             onInviteClick={() => setIsInviteModalOpen(true)}
+            onSave={handleSave}
           />
 
           {selectedUserId && (
@@ -315,6 +326,7 @@ export default function OrganizationManagePage() {
               userId={selectedUserId}
               organizationId={orgId}
               currentUserId={session?.user?.id}
+              onSave={handleSave}
             />
           )}
 
@@ -322,6 +334,7 @@ export default function OrganizationManagePage() {
             organizationId={orgId}
             isOpen={isInviteModalOpen}
             onClose={() => setIsInviteModalOpen(false)}
+            onSave={handleSave}
           />
         </div>
       </div>

@@ -28,6 +28,7 @@ import { useUserPropertiesByOrg } from '@/features/user_properties/hooks/use-use
 import { useSession } from 'next-auth/react';
 
 interface UserProfileDialogProps {
+  onSave: () => void;
   isOpen: boolean;
   onClose: () => void;
   userId: string;
