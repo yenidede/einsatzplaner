@@ -25,6 +25,6 @@ export function useUsersByOrgIds(orgIds: string[]) {
   return useQuery({
     queryKey: queryKeys.users(orgIds),
     queryFn: () => getAllUsersWithRolesByOrgIds(orgIds),
-    enabled: orgIds.length > 0,
+    enabled: !!orgIds && orgIds.length > 0,
   });
 }

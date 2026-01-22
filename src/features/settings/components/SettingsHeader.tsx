@@ -35,9 +35,9 @@ export function SettingsHeader({
   }, [handleCancel]);
 
   return (
-    <div className="flex w-full items-center justify-between gap-8 border-b border-slate-200 p-4">
+    <div className="flex w-full items-center justify-between gap-8 border-b border-slate-200 bg-white p-4">
       <div className="flex h-8 flex-1 items-center justify-center gap-2.5">
-        <div className="flex-1 justify-start font-['Poppins'] text-2xl leading-loose font-semibold text-slate-800">
+        <div className="flex-1 justify-start font-['Inter'] text-2xl leading-loose font-semibold text-slate-800">
           Einstellungen
         </div>
       </div>

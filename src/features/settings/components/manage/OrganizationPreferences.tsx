@@ -1,5 +1,7 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+
 interface OrganizationPreferencesProps {
   helperSingular: string;
   helperPlural: string;
@@ -11,6 +13,7 @@ interface OrganizationPreferencesProps {
   onEinsatzPluralChange: (value: string) => void;
   onHelperSingularChange: (value: string) => void;
   onHelperPluralChange: (value: string) => void;
+  onSave: () => void;
 }
 
 export function OrganizationPreferences({
@@ -24,6 +27,7 @@ export function OrganizationPreferences({
   onEinsatzSingularChange,
   onEinsatzPluralChange,
   onMaxParticipantsPerHelperChange,
+  onSave,
 }: OrganizationPreferencesProps) {
   return (
     <div className="flex flex-col items-start justify-start gap-2 self-stretch">
@@ -98,6 +102,11 @@ export function OrganizationPreferences({
               placeholder="z.B. 25"
             />
           </div>
+        </div>
+        <div className="px-4">
+          <Button onClick={onSave} className="mt-4">
+            Änderungen speichern
+          </Button>
         </div>
       </div>
     </div>

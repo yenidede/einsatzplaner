@@ -64,9 +64,6 @@ export type EinsatzDetailed = EinsatzRawDb & {
     field_type: { datatype: string | null };
   })[];
   categories: string[];
-  comments: (CommentRawDb & {
-    user: { id: string; firstname: string | null; lastname: string | null };
-  })[];
   change_log: (ChangeLogRawDb & {
     user: { id: string; firstname: string | null; lastname: string | null };
   })[];

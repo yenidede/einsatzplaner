@@ -1,18 +1,27 @@
 'use client';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   criticalFieldLabel,
   criticalFieldClass,
 } from '@/features/settings/utils/criticalFieldUtils';
+import { Label } from '../ui/label';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useSession } from 'next-auth/react';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { Button } from '@/components/ui/button';
 
 interface OrganizationDetailsFormProps {
   name: string;
   email: string;
+  allowSelfSignOut: boolean;
   phone: string;
   description: string;
   onNameChange: (value: string) => void;
   onEmailChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  onAllowSelfSignOutChange: (value: boolean) => void;
+  onSave: () => void;
   isSuperadmin?: boolean;
 }
 
@@ -25,8 +34,21 @@ export function OrganizationDetailsForm({
   onEmailChange,
   onPhoneChange,
   onDescriptionChange,
+  allowSelfSignOut,
+  onAllowSelfSignOutChange,
   isSuperadmin = false,
+  onSave,
 }: OrganizationDetailsFormProps) {
+  const { data: session } = useSession();
+  const { data: organizations } = useOrganizations(
+    session?.user?.orgIds ?? undefined
+  );
+
+  const { helper_plural, einsatz_plural } = useOrganizationTerminology(
+    organizations,
+    session?.user.activeOrganization?.id
+  );
+
   return (
     <>
       <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
@@ -70,6 +92,29 @@ export function OrganizationDetailsForm({
         </div>
       </div>
 
+      <div className="flex flex-col gap-2 px-4">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="allow-self-signout"
+            name="allow-self-signout"
+            checked={allowSelfSignOut}
+            onCheckedChange={(checked) =>
+              onAllowSelfSignOutChange(checked === true)
+            }
+          />
+          <Label
+            htmlFor="allow-self-signout"
+            className="cursor-pointer font-medium text-slate-800"
+          >
+            {helper_plural} können sich selbst austragen
+          </Label>
+        </div>
+        <p className="ml-6 text-sm text-slate-600">
+          Wenn aktiviert, können sich {helper_plural} selbstständig aus{' '}
+          {einsatz_plural} austragen, für die sie sich eingetragen haben.
+        </p>
+      </div>
+
       <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
         <div className="inline-flex flex-1 flex-col items-start justify-start gap-1.5">
           <label className="font-['Inter'] text-sm leading-tight font-medium text-slate-800">
@@ -83,6 +128,9 @@ export function OrganizationDetailsForm({
           />
         </div>
       </div>
+      <Button onClick={onSave} className="mx-4 mt-4">
+        Änderungen speichern
+      </Button>
     </>
   );
 }
