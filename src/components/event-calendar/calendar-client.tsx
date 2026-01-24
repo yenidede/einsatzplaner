@@ -239,7 +239,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       });
 
       // Handle blocking errors
-      if (validationResult.blocking.length > 0) {
+      /*       if (validationResult.blocking.length > 0) {
         await showDialog({
           title: 'Eintragung nicht möglich',
           description:
@@ -250,7 +250,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
           variant: 'destructive',
         });
         return;
-      }
+      } */
 
       // Handle warnings
       if (validationResult.warnings.length > 0) {
