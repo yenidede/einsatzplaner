@@ -150,18 +150,19 @@ export function EventDialogHelfer({
         );
       }
     }
-
     if (warnings.length === 0) return true;
 
-    await showDialog({
-      title: 'Eintragen nicht möglich',
+    const confirmed = await showDialog({
+      title: 'Warnung: Kriterien nicht erfüllt',
       description:
         'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
         warnings.map((w) => `• ${w}`).join('\n') +
-        '\n\nBitte wenden Sie sich an die Einsatzverwaltung, um die erforderlichen Personeneigenschaften zu klären.',
+        '\n\nMöchten Sie trotzdem fortfahren?',
       confirmText: 'OK',
+      cancelText: 'Abbrechen',
+      variant: 'destructive',
     });
-
+    if (confirmed === 'success') return true;
     return false;
   };
 
