@@ -48,6 +48,7 @@ model einsatz {
   end                   DateTime                @db.Timestamp(6)
   helpers_needed        Int                     @default(1) @db.SmallInt
   status_id             String                  @default(dbgenerated("'bb169357-920b-4b49-9e3d-1cf489409370'::uuid")) @db.Uuid
+  anmerkung             String?
   change_log            change_log[]
   user                  user?                   @relation(fields: [created_by], references: [id], onDelete: Cascade)
   organization          organization            @relation(fields: [org_id], references: [id], onDelete: Cascade)

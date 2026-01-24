@@ -119,6 +119,7 @@ export const ZodEinsatzFormData = z
         })
       )
       .optional(),
+    anmerkung: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -426,6 +427,7 @@ export function EventDialogVerwaltung({
               is_required: prop.is_required,
               min_matching_users: prop.min_matching_users ?? null,
             })) || [],
+          anmerkung: einsatzDetailed.anmerkung || '',
         });
         // Reset errors when opening dialog
         setErrors({
@@ -830,6 +832,7 @@ export function EventDialogVerwaltung({
       assignedUsers: parsedDataStatic.data.assignedUsers,
       einsatz_fields: einsatzFields,
       userProperties: outgoingUserProperties,
+      anmerkung: parsedDataStatic.data.anmerkung ?? undefined,
     });
   };
 
