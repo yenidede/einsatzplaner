@@ -31,6 +31,8 @@ import FormInputFieldCustom from '../form/formInputFieldCustom';
 import type { EinsatzFormData } from '@/components/event-calendar/event-dialog';
 import { calcTotal, calcPricePerPersonFromTotal } from '../form/utils';
 import { MultiSelect } from '../form/multi-select';
+import { Textarea } from '../ui/textarea';
+import { FormInput } from 'lucide-react';
 
 interface DefaultFormFieldsProps {
   formData: EinsatzFormData;
@@ -483,7 +485,21 @@ export function DefaultFormFields({
           }}
         />
       </FormGroup>
-
+      <FormInputFieldCustom
+        name="Anmerkung"
+        errors={errors.fieldErrors['anmerkung'] || []}
+      >
+        <Textarea
+          className="mt-2 min-h-[100px] font-normal"
+          placeholder="Anmerkung"
+          value={formData.anmerkung || ''}
+          onChange={(e) => {
+            handleChange('anmerkung', e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+          }}
+        ></Textarea>
+      </FormInputFieldCustom>
       {/* Helpers and User Selection */}
       <div className="space-y-3">
         <FormInputFieldCustom

@@ -288,6 +288,11 @@ export function EventDialogHelfer({
               </div>
               <div>{creator?.email}</div>
             </DefinitionItem>
+            <DefinitionItem label="Anmerkung">
+              <div className="whitespace-pre-wrap">
+                {detailedEinsatz?.anmerkung || '-'}
+              </div>
+            </DefinitionItem>
             {!!detailedEinsatz && detailedEinsatz.einsatz_fields.length > 0 && (
               <>
                 <SectionDivider text="Eigene Felder" />
