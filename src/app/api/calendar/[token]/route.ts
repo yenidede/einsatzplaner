@@ -62,7 +62,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     );
 
     const urlToHelferansichtPage = new URL(
-      `/helferansicht?einsatzId=${encodeURIComponent(einsatz.id)}`,
+      `/helferansicht?einsatz=${encodeURIComponent(einsatz.id)}`,
       baseUrl
     ).toString();
 
