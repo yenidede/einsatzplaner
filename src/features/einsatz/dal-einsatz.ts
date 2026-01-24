@@ -1,10 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import type {
-  einsatz as Einsatz,
-  einsatz_field
-} from '@/generated/prisma';
+import type { einsatz as Einsatz, einsatz_field } from '@/generated/prisma';
 import type {
   EinsatzForCalendar,
   EinsatzCreate,
@@ -213,6 +210,7 @@ export async function getEinsaetzeForTableView(
     helpers_needed: einsatz.helpers_needed,
     status_id: einsatz.status_id,
     einsatz_status: einsatz.einsatz_status,
+    anmerkung: einsatz.anmerkung,
     organization: {
       id: einsatz.organization.id,
       name: einsatz.organization.name,
@@ -237,16 +235,16 @@ export async function getEinsaetzeForTableView(
     ),
     user: einsatz.user
       ? {
-        id: einsatz.user.id,
-        firstname: einsatz.user.firstname ?? null,
-        lastname: einsatz.user.lastname ?? null,
-      }
+          id: einsatz.user.id,
+          firstname: einsatz.user.firstname ?? null,
+          lastname: einsatz.user.lastname ?? null,
+        }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-        id: einsatz.einsatz_template.id,
-        name: einsatz.einsatz_template.name ?? null,
-      }
+          id: einsatz.einsatz_template.id,
+          name: einsatz.einsatz_template.name ?? null,
+        }
       : null,
     _count: einsatz._count,
   }));
@@ -449,7 +447,7 @@ export async function toggleUserAssignmentToEinsatz(
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-      existingEinsatz.einsatz_helper.length + addOrRemoveOne
+    existingEinsatz.einsatz_helper.length + addOrRemoveOne
       ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
       : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
@@ -918,7 +916,12 @@ async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
   const { session } = await requireAuth();
 
   return prisma.einsatz.findUnique({
-    where: { id: einsatzId, organization: { user_organization_role: { some: { user_id: session.user.id } } } },
+    where: {
+      id: einsatzId,
+      organization: {
+        user_organization_role: { some: { user_id: session.user.id } },
+      },
+    },
     include: {
       einsatz_helper: {
         select: {
