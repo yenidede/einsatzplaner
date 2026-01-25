@@ -171,7 +171,7 @@ export function EventDialogHelfer({
         'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
         warnings.map((w) => `• ${w}`).join('\n') +
         '\n\nMöchten Sie trotzdem fortfahren?',
-      confirmText: 'OK',
+      confirmText: 'Trotzdem fortfahren',
       cancelText: 'Abbrechen',
       variant: 'destructive',
     });
