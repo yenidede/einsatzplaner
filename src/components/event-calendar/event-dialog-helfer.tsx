@@ -142,9 +142,22 @@ export function EventDialogHelfer({
         userProperties?.find((p) => p.id === propConfig.user_property_id)?.field
           ?.name ?? propConfig.user_property_id;
 
-      if ((usersWithProp?.length ?? 0) < minRequired) {
+      if (minRequired === -1) {
+        // "Alle" bedeutet: alle benötigten Helfer (helpers_needed)
+        const helpersNeeded = detailedEinsatz.helpers_needed ?? 0;
+        const requiredCount =
+          helpersNeeded > 0 ? helpersNeeded : assignedDetails.length;
+
+        if ((usersWithProp?.length ?? 0) < requiredCount) {
+          warnings.push(
+            `Personeneigenschaft '${propertyName}': Alle ${helper_plural} benötigen diese Eigenschaft (${requiredCount} benötigt, aktuell: ${
+              usersWithProp?.length ?? 0
+            })`
+          );
+        }
+      } else if ((usersWithProp?.length ?? 0) < minRequired) {
         warnings.push(
-          `Personeneigenschaft '${propertyName}': mind. ${minRequired} benötigte (aktuell: ${
+          `Personeneigenschaft '${propertyName}': mind. ${minRequired} benötigt (aktuell: ${
             usersWithProp?.length ?? 0
           })`
         );
