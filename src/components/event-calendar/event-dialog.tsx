@@ -664,26 +664,16 @@ export function EventDialogVerwaltung({
         const matchingCount = usersWithProperty?.length || 0;
         const minRequired = propConfig.min_matching_users ?? 1;
 
-        let requiredCount: number;
-        if (minRequired === -1) {
-          requiredCount =
-            parsedDataStatic.data.helpersNeeded > 0
-              ? parsedDataStatic.data.helpersNeeded
-              : assignedUserDetails?.length || 0;
-        } else {
-          requiredCount = minRequired;
-        }
-        const helper_name_plural =
-          organizations?.find((o) => o.id === activeOrgId)
-            ?.helper_name_plural || 'Helfer';
+        // Wenn -1 = "Alle zugewiesenen Personen müssen die Eigenschaft haben"
+        const requiredCount =
+          minRequired === -1 ? assignedUserDetails?.length || 0 : minRequired;
+
         if (matchingCount < requiredCount) {
           const propName = property.field.name || 'Unbekannte Eigenschaft';
           const message =
             minRequired === -1
-              ? `Personeneigenschaft '${propName}': Alle ${helper_name_plural} benötigen diese Eigenschaft (${requiredCount} benötigt, aktuell: ${
-                  usersWithProperty?.length ?? 0
-                })`
-              : `Personeneigenschaften: mind. ${minRequired} ${helper_name_plural} mit '${propName}' benötigt (aktuell: ${matchingCount})`;
+              ? `Personeneigenschaften: Alle zugewiesenen Helfer benötigen '${propName}' (${matchingCount}/${requiredCount} erfüllt)`
+              : `Personeneigenschaften: mind. ${minRequired} Helfer mit '${propName}' benötigt (aktuell: ${matchingCount})`;
           warnings.push(message);
         }
       }
