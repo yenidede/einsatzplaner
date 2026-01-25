@@ -142,9 +142,20 @@ export function EventDialogHelfer({
         userProperties?.find((p) => p.id === propConfig.user_property_id)?.field
           ?.name ?? propConfig.user_property_id;
 
-      if ((usersWithProp?.length ?? 0) < minRequired) {
+      if (minRequired === -1) {
+        // "Alle" bedeutet: Alle zugewiesenen Helfer müssen die Eigenschaft haben
+        const requiredCount = assignedDetails.length;
+
+        if ((usersWithProp?.length ?? 0) < requiredCount) {
+          warnings.push(
+            `Personeneigenschaft '${propertyName}': Alle zugewiesenen ${helper_plural} benötigen diese Eigenschaft (${
+              usersWithProp?.length ?? 0
+            }/${requiredCount} erfüllt)`
+          );
+        }
+      } else if ((usersWithProp?.length ?? 0) < minRequired) {
         warnings.push(
-          `Personeneigenschaft '${propertyName}': mind. ${minRequired} benötigte (aktuell: ${
+          `Personeneigenschaft '${propertyName}': mind. ${minRequired} benötigt (aktuell: ${
             usersWithProp?.length ?? 0
           })`
         );
@@ -158,7 +169,7 @@ export function EventDialogHelfer({
         'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
         warnings.map((w) => `• ${w}`).join('\n') +
         '\n\nMöchten Sie trotzdem fortfahren?',
-      confirmText: 'OK',
+      confirmText: 'Trotzdem fortfahren',
       cancelText: 'Abbrechen',
       variant: 'destructive',
     });
