@@ -32,7 +32,6 @@ import type { EinsatzFormData } from '@/components/event-calendar/event-dialog';
 import { calcTotal, calcPricePerPersonFromTotal } from '../form/utils';
 import { MultiSelect } from '../form/multi-select';
 import { Textarea } from '../ui/textarea';
-import { FormInput } from 'lucide-react';
 
 interface DefaultFormFieldsProps {
   formData: EinsatzFormData;
@@ -159,7 +158,6 @@ export function DefaultFormFields({
         ? { ...config, ...updates }
         : config
     );
-
     setPropertyConfigs(newConfigs);
     onFormDataChange({ requiredUserProperties: newConfigs });
   };
@@ -555,34 +553,54 @@ export function DefaultFormFields({
                     </Label>
                   </div>
 
-                  {config.is_required && (
-                    <div className="flex items-center gap-2">
-                      <Label
-                        htmlFor={`min-${config.user_property_id}`}
-                        className="text-xs whitespace-nowrap"
-                      >
-                        Min:
-                      </Label>
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor={`min-${config.user_property_id}`}
+                      className="text-xs whitespace-nowrap"
+                    >
+                      Min:
+                    </Label>
+                    <div className="relative">
                       <input
                         id={`min-${config.user_property_id}`}
                         type="number"
-                        min={1}
-                        className="h-8 w-16 rounded-md border px-2 text-sm"
-                        value={config.min_matching_users ?? 1}
+                        min={0}
+                        disabled={!config.is_required}
+                        className={cn(
+                          'h-8 w-20 rounded-md border px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50',
+                          config.is_required &&
+                            config.min_matching_users === -1 &&
+                            'text-transparent'
+                        )}
+                        value={
+                          !config.is_required
+                            ? ''
+                            : config.min_matching_users === -1
+                              ? 0
+                              : (config.min_matching_users ?? 1)
+                        }
                         onChange={(e) => {
+                          if (!config.is_required) return;
                           const value = parseInt(e.target.value);
-                          if (!isNaN(value) && value >= 1) {
+                          if (!isNaN(value) && value >= 0) {
                             handlePropertyConfigChange(
                               config.user_property_id,
                               {
-                                min_matching_users: value,
+                                min_matching_users: value === 0 ? -1 : value,
                               }
                             );
                           }
                         }}
+                        placeholder={config.is_required ? '1' : '-'}
                       />
+                      {config.is_required &&
+                        config.min_matching_users === -1 && (
+                          <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-sm">
+                            Alle
+                          </span>
+                        )}
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}

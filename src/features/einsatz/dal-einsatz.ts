@@ -616,7 +616,7 @@ export async function updateEinsatz({
             create: userProperties.map((propId) => ({
               user_property: { connect: { id: propId.user_property_id } },
               is_required: propId.is_required,
-              min_matching_users: propId.min_matching_users || null,
+              min_matching_users: propId.min_matching_users ?? null,
             })),
           }),
         },
@@ -746,7 +746,7 @@ async function createEinsatzInDb({
           userProperties?.map((propId) => ({
             user_property: { connect: { id: propId.user_property_id } },
             is_required: propId.is_required,
-            min_matching_users: propId.min_matching_users || null,
+            min_matching_users: propId.min_matching_users ?? null,
           })) || [],
       },
       status_id,
