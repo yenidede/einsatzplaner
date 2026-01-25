@@ -115,7 +115,7 @@ export const ZodEinsatzFormData = z
         z.object({
           user_property_id: z.string().uuid(),
           is_required: z.boolean(),
-          min_matching_users: z.number().int().min(0).nullable(),
+          min_matching_users: z.number().int().min(-1).nullable(),
         })
       )
       .optional(),
@@ -630,8 +630,7 @@ export function EventDialogVerwaltung({
     // Warning 2: Required user properties check
     if (
       parsedDataStatic.data.requiredUserProperties &&
-      parsedDataStatic.data.requiredUserProperties.length > 0 &&
-      parsedDataStatic.data.assignedUsers.length > 0
+      parsedDataStatic.data.requiredUserProperties.length > 0
     ) {
       const assignedUserDetails = usersQuery.data?.filter((user) =>
         parsedDataStatic.data.assignedUsers.includes(user.id)
@@ -665,16 +664,20 @@ export function EventDialogVerwaltung({
         const matchingCount = usersWithProperty?.length || 0;
         const minRequired = propConfig.min_matching_users ?? 1;
 
-        if (matchingCount < minRequired) {
+        // Wenn -1 = "Alle zugewiesenen Personen müssen die Eigenschaft haben"
+        const requiredCount =
+          minRequired === -1 ? assignedUserDetails?.length || 0 : minRequired;
+
+        if (matchingCount < requiredCount) {
           const propName = property.field.name || 'Unbekannte Eigenschaft';
-          warnings.push(
-            `Personeneigenschaften: mind. ${minRequired} Helfer mit '${propName}' benötigt (aktuell: ${matchingCount})`
-          );
+          const message =
+            minRequired === -1
+              ? `Personeneigenschaften: Alle zugewiesenen Helfer benötigen '${propName}' (${matchingCount}/${requiredCount} erfüllt)`
+              : `Personeneigenschaften: mind. ${minRequired} Helfer mit '${propName}' benötigt (aktuell: ${matchingCount})`;
+          warnings.push(message);
         }
       }
     }
-
-    // Show warning dialog if there are any warnings
     if (warnings.length > 0) {
       const confirmed = await showDialog({
         title: 'Warnung: Kriterien nicht erfüllt',
@@ -780,12 +783,6 @@ export function EventDialogVerwaltung({
       currentAssignedUsers
     );
 
-    console.log(
-      'Detected change types for activity log:',
-      changeTypeNames,
-      isNewEinsatz,
-      currentAssignedUsers
-    );
     for (const changeTypeName of changeTypeNames) {
       const effectiveAffectedUserId =
         changeTypeName === 'create' ? null : affectedUserId;
