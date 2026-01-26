@@ -446,10 +446,10 @@ export function UserProfileDialog({
           queryKey: settingsQueryKeys.org.users(organizationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: queryKeys.user(organizationId),
+          queryKey: queryKeys.users(organizationId),
         }),
         queryClient.refetchQueries({
-          queryKey: queryKeys.user(organizationId),
+          queryKey: queryKeys.users(organizationId),
           exact: true,
         }),
       ]);
