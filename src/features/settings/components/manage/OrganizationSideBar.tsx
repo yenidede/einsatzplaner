@@ -10,7 +10,7 @@ import { Tree, TreeItem, TreeItemLabel } from '@/components/ui/tree';
 import { User } from 'next-auth';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useUserOrgRoles } from '../../hooks/useUserOrgRoles';
-import { organization } from '@/generated/prisma';
+import { type organization } from '@/generated/prisma';
 
 interface OrganizationSidebarProps {
   user: Pick<User, 'orgIds' | 'activeOrganization' | 'id'> | null;
@@ -96,7 +96,7 @@ export function OrganizationSidebar({
           </OrganizationFilter>
         ))}
       </div>
-      <div className="flex flex-shrink-0 flex-col gap-2 border-t border-slate-200 px-2 py-1.5">
+      <div className="flex shrink-0 flex-col gap-2 border-t border-slate-200 px-2 py-1.5">
         <div
           className="inline-flex cursor-pointer items-center justify-center gap-2 self-stretch rounded-md px-4 py-2 outline outline-offset-1 outline-slate-200 transition-colors hover:bg-slate-50"
           onClick={onSignOut}
