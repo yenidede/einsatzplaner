@@ -91,8 +91,9 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
   }, [selectedEinsatz, isOpen]);
 
   // Helper function to update einsatz state (URL or local)
+  // Returns true on success, false on validation failure
   const updateEinsatzState = useCallback(
-    (event: EinsatzCreate | string | null) => {
+    (event: EinsatzCreate | string | null): boolean => {
       if (typeof event === 'string') {
         // Validate UUID before storing in URL
         const validatedId = validateEinsatzIdFromUrl(event);
@@ -100,11 +101,12 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
           toast.error('Ungültige Einsatz-ID', {
             description: 'Die ID muss ein gültiges UUID-Format haben.',
           });
-          return;
+          return false;
         }
         // Store einsatz ID in URL
         setEinsatzFromUrl(validatedId);
         setLocalSelectedEvent(null);
+        return true;
       } else if (event && 'id' in event && event.id) {
         // Validate UUID before storing in URL
         const validatedId = validateEinsatzIdFromUrl(event.id);
@@ -112,15 +114,17 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
           toast.error('Ungültige Einsatz-ID', {
             description: 'Die ID muss ein gültiges UUID-Format haben.',
           });
-          return;
+          return false;
         }
         // Store einsatz ID in URL if it exists
         setEinsatzFromUrl(validatedId);
         setLocalSelectedEvent(null);
+        return true;
       } else {
         // New einsatz or null - store locally only
         setEinsatzFromUrl(null);
         setLocalSelectedEvent(event);
+        return true;
       }
     },
     [setEinsatzFromUrl, setLocalSelectedEvent]
@@ -128,8 +132,10 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
 
   const openDialog = useCallback(
     (event: EinsatzCreate | string | null) => {
-      updateEinsatzState(event);
-      setIsOpen(true);
+      const success = updateEinsatzState(event);
+      if (success) {
+        setIsOpen(true);
+      }
     },
     [updateEinsatzState]
   );
