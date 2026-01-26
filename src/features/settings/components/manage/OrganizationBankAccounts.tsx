@@ -303,6 +303,7 @@ export function OrganizationBankAccounts({
                               : 'cursor-not-allowed text-slate-400'
                           }`}
                           disabled={!isSuperadmin}
+                          aria-label="Bankkonto bearbeiten"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
@@ -326,6 +327,7 @@ export function OrganizationBankAccounts({
                               ? 'text-red-600 hover:bg-red-50'
                               : 'cursor-not-allowed text-slate-400'
                           }`}
+                          aria-label="Bankkonto löschen"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
