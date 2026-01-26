@@ -91,7 +91,6 @@ export function detectChangeType(
   if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
     return 'cancel';
   }
-  // takeover after the first assignment of a potential einsatz
   if (
     currentUserId &&
     !previousAssignedUsers.includes(currentUserId) &&
@@ -138,13 +137,12 @@ export function detectChangeTypes(
   currentUserId?: string
 ): string[] {
   const changeTypes: string[] = [];
+
   if (isNew) {
     changeTypes.push('create');
-
     if (currentAssignedUsers.length > 0) {
       changeTypes.push('assign');
     }
-
     return changeTypes;
   }
 
@@ -153,14 +151,8 @@ export function detectChangeTypes(
     return changeTypes;
   }
 
-  if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
-    changeTypes.push('cancel');
-    return changeTypes;
-  }
-
   if (
     currentUserId &&
-    previousAssignedUsers.length > 0 &&
     !previousAssignedUsers.includes(currentUserId) &&
     currentAssignedUsers.includes(currentUserId)
   ) {
@@ -168,13 +160,21 @@ export function detectChangeTypes(
     return changeTypes;
   }
 
-  if (currentAssignedUsers.length > previousAssignedUsers.length) {
-    changeTypes.push('assign');
+  if (currentAssignedUsers.length < previousAssignedUsers.length) {
+    const removedUsers = previousAssignedUsers.filter(
+      (id) => !currentAssignedUsers.includes(id)
+    );
+
+    if (currentUserId && removedUsers.includes(currentUserId)) {
+      changeTypes.push('cancel');
+    } else {
+      changeTypes.push('remove');
+    }
     return changeTypes;
   }
 
-  if (currentAssignedUsers.length < previousAssignedUsers.length) {
-    changeTypes.push('cancel');
+  if (currentAssignedUsers.length > previousAssignedUsers.length) {
+    changeTypes.push('assign');
     return changeTypes;
   }
   changeTypes.push('edit');

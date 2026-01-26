@@ -47,6 +47,8 @@ export type EinsatzCreate = {
     is_required: boolean;
     min_matching_users?: number | null;
   }>;
+
+  anmerkung?: string;
   // TODO:
   // change_log aktualisieren
 };
