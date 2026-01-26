@@ -10,6 +10,7 @@ import { Tree, TreeItem, TreeItemLabel } from '@/components/ui/tree';
 import { User } from 'next-auth';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useUserOrgRoles } from '../../hooks/useUserOrgRoles';
+import { organization } from '@/generated/prisma';
 
 interface OrganizationSidebarProps {
   user: Pick<User, 'orgIds' | 'activeOrganization' | 'id'> | null;
@@ -24,6 +25,39 @@ interface TreeItemData {
 
 const indent = 20;
 
+// Helper component that checks if org should be shown based on user roles
+function OrganizationFilter({
+  orgId,
+  userId,
+  children,
+}: {
+  orgId: string;
+  userId: string | undefined;
+  children: (shouldShow: boolean) => React.ReactNode;
+}) {
+  const { data: rolesData } = useUserOrgRoles(orgId, userId);
+
+  const hasAdminRole = useMemo(() => {
+    if (!rolesData) return false;
+
+    return rolesData.some((uor) => {
+      const role = uor.role;
+      const roleName = typeof role === 'string' ? role : role?.name || '';
+      const roleAbbr = typeof role === 'string' ? '' : role?.abbreviation || '';
+      const nameLower = roleName.toLowerCase();
+      const abbrLower = roleAbbr.toLowerCase();
+      return (
+        nameLower.includes('organisationsverwaltung') ||
+        nameLower.includes('superadmin') ||
+        abbrLower === 'ov' ||
+        nameLower === 'ov'
+      );
+    });
+  }, [rolesData]);
+
+  return <>{children(hasAdminRole)}</>;
+}
+
 export function OrganizationSidebar({
   user,
   onSignOut,
@@ -32,136 +66,37 @@ export function OrganizationSidebar({
 
   const { data: allOrgs } = useOrganizations(user?.orgIds);
 
-  // Fetch roles for each organization dynamically
-  const orgRolesQueries = (allOrgs || []).map((org) =>
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useUserOrgRoles(org.id, user?.id)
-  );
-
-  const managedOrgs = useMemo(() => {
-    if (!allOrgs) return [];
-
-    // Filter organizations where user has admin role
-    return allOrgs.filter((org, index) => {
-      const rolesData = orgRolesQueries[index]?.data;
-      if (!rolesData) return false;
-
-      return rolesData.some((uor) => {
-        const role = uor.role;
-        const roleName = typeof role === 'string' ? role : role?.name || '';
-        const roleAbbr =
-          typeof role === 'string' ? '' : role?.abbreviation || '';
-        const nameLower = roleName.toLowerCase();
-        const abbrLower = roleAbbr.toLowerCase();
-        return (
-          nameLower.includes('organisationsverwaltung') ||
-          nameLower.includes('superadmin') ||
-          abbrLower === 'ov' ||
-          nameLower === 'ov'
-        );
-      });
-    });
-  }, [allOrgs, orgRolesQueries]);
-
-  // Build tree items dynamically based on managed organizations
-  const treeItems = useMemo(() => {
-    const items: Record<string, TreeItemData> = {
-      root: {
-        name: 'Navigation',
-        children: ['settings', ...managedOrgs.map((org) => `org-${org.id}`)],
-      },
-      settings: { name: 'Allgemein', href: '/settings' },
-    };
-
-    // Add organizations and their sections to tree
-    managedOrgs.forEach((org) => {
-      const orgKey = `org-${org.id}`;
-      items[orgKey] = {
-        name: org.name,
-        href: `/organization/${org.id}/manage`,
-        children: [
-          `${orgKey}-details`,
-          `${orgKey}-preferences`,
-          `${orgKey}-addresses`,
-          `${orgKey}-bank-accounts`,
-          `${orgKey}-user-properties`,
-          `${orgKey}-users`,
-        ],
-      };
-
-      // Add sections for each organization
-      items[`${orgKey}-details`] = {
-        name: 'Organisationsdetails',
-        href: `/organization/${org.id}/manage#organization-details`,
-      };
-      items[`${orgKey}-preferences`] = {
-        name: 'Einstellungen',
-        href: `/organization/${org.id}/manage#preferences`,
-      };
-      items[`${orgKey}-addresses`] = {
-        name: 'Adressen',
-        href: `/organization/${org.id}/manage#addresses`,
-      };
-      items[`${orgKey}-bank-accounts`] = {
-        name: 'Bankkonten',
-        href: `/organization/${org.id}/manage#bank-accounts`,
-      };
-      items[`${orgKey}-user-properties`] = {
-        name: 'Benutzereigenschaften',
-        href: `/organization/${org.id}/manage#user-properties`,
-      };
-      items[`${orgKey}-users`] = {
-        name: 'Benutzer',
-        href: `/organization/${org.id}/manage#users`,
-      };
-    });
-
-    return items;
-  }, [managedOrgs]);
-
-  const tree = useTree<TreeItemData>({
-    dataLoader: {
-      getChildren: (itemId) => treeItems[itemId]?.children ?? [],
-      getItem: (itemId) => treeItems[itemId],
-    },
-    features: [syncDataLoaderFeature, hotkeysCoreFeature],
-    getItemName: (item) => item.getItemData().name,
-    indent,
-    initialState: {
-      expandedItems: managedOrgs.map((org) => `org-${org.id}`),
-    },
-    isItemFolder: (item) => (item.getItemData()?.children?.length ?? 0) > 0,
-    rootItemId: 'root',
-  });
-
   return (
-    <div className="sticky top-0 inline-flex h-[calc(100vh-12rem)] flex-col items-start justify-between self-stretch">
-      <div className="flex h-full w-64 flex-col items-start justify-start gap-2 overflow-y-auto rounded-br-lg rounded-bl-lg px-2 py-1.5">
-        <Tree className="w-full" indent={indent} tree={tree}>
-          {tree.getItems().map((item) => {
-            const itemData = item.getItemData();
-            const isActive =
-              itemData.href === pathname ||
-              (itemData.href &&
-                pathname.startsWith(itemData.href.split('#')[0]));
+    <div className="flex h-full w-64 flex-col justify-between">
+      <div className="flex flex-col gap-2 overflow-y-auto px-2 py-1.5">
+        {/* Allgemein link */}
+        <Link
+          href="/settings"
+          className={`rounded-md px-4 py-2 transition-colors hover:bg-slate-50 ${
+            pathname === '/settings'
+              ? 'font-semibold text-slate-900'
+              : 'text-slate-700'
+          }`}
+        >
+          Allgemein
+        </Link>
 
-            return (
-              <TreeItem item={item} key={item.getId()}>
-                {itemData.href ? (
-                  <Link href={itemData.href} className="w-full">
-                    <TreeItemLabel
-                      className={`before:bg-background relative rounded-md transition-colors before:absolute before:inset-x-0 before:-inset-y-0.5 before:-z-10 hover:before:bg-slate-50 ${isActive ? 'font-semibold text-slate-900' : 'text-slate-700'} `}
-                    />
-                  </Link>
-                ) : (
-                  <TreeItemLabel className="before:bg-background relative font-semibold text-slate-700 before:absolute before:inset-x-0 before:-inset-y-0.5 before:-z-10" />
-                )}
-              </TreeItem>
-            );
-          })}
-        </Tree>
+        {/* Organizations with role check */}
+        {(allOrgs || []).map((org) => (
+          <OrganizationFilter key={org.id} orgId={org.id} userId={user?.id}>
+            {(shouldShow) =>
+              shouldShow ? (
+                <OrganizationTreeSection
+                  org={org}
+                  pathname={pathname}
+                  userId={user?.id}
+                />
+              ) : null
+            }
+          </OrganizationFilter>
+        ))}
       </div>
-      <div className="flex w-64 flex-col items-start justify-start gap-2 rounded-br-lg rounded-bl-lg px-2 py-1.5">
+      <div className="flex flex-shrink-0 flex-col gap-2 border-t border-slate-200 px-2 py-1.5">
         <div
           className="inline-flex cursor-pointer items-center justify-center gap-2 self-stretch rounded-md px-4 py-2 outline outline-offset-1 outline-slate-200 transition-colors hover:bg-slate-50"
           onClick={onSignOut}
@@ -173,5 +108,98 @@ export function OrganizationSidebar({
         </div>
       </div>
     </div>
+  );
+}
+
+// Component to render organization tree section
+function OrganizationTreeSection({
+  org,
+  pathname,
+}: {
+  org: Pick<organization, 'id' | 'name'>;
+  pathname: string;
+  userId: string | undefined;
+}) {
+  const treeItems = useMemo(() => {
+    const orgKey = `org-${org.id}`;
+    const items: Record<string, TreeItemData> = {
+      root: {
+        name: org.name,
+        href: `/organization/${org.id}/manage`,
+        children: [
+          `${orgKey}-details`,
+          `${orgKey}-preferences`,
+          `${orgKey}-addresses`,
+          `${orgKey}-bank-accounts`,
+          `${orgKey}-user-properties`,
+          `${orgKey}-users`,
+        ],
+      },
+      [`${orgKey}-details`]: {
+        name: 'Organisationsdetails',
+        href: `/organization/${org.id}/manage#organization-details`,
+      },
+      [`${orgKey}-preferences`]: {
+        name: 'Einstellungen',
+        href: `/organization/${org.id}/manage#preferences`,
+      },
+      [`${orgKey}-addresses`]: {
+        name: 'Adressen',
+        href: `/organization/${org.id}/manage#addresses`,
+      },
+      [`${orgKey}-bank-accounts`]: {
+        name: 'Bankkonten',
+        href: `/organization/${org.id}/manage#bank-accounts`,
+      },
+      [`${orgKey}-user-properties`]: {
+        name: 'Benutzereigenschaften',
+        href: `/organization/${org.id}/manage#user-properties`,
+      },
+      [`${orgKey}-users`]: {
+        name: 'Benutzer',
+        href: `/organization/${org.id}/manage#users`,
+      },
+    };
+    return items;
+  }, [org.id, org.name]);
+
+  const tree = useTree<TreeItemData>({
+    dataLoader: {
+      getChildren: (itemId) => treeItems[itemId]?.children ?? [],
+      getItem: (itemId) => treeItems[itemId],
+    },
+    features: [syncDataLoaderFeature, hotkeysCoreFeature],
+    getItemName: (item) => item.getItemData().name,
+    indent,
+    initialState: {
+      expandedItems: ['root'],
+    },
+    isItemFolder: (item) => (item.getItemData()?.children?.length ?? 0) > 0,
+    rootItemId: 'root',
+  });
+
+  return (
+    <Tree className="w-full" indent={indent} tree={tree}>
+      {tree.getItems().map((item) => {
+        const itemData = item.getItemData();
+        const isActive =
+          itemData.href === pathname ||
+          (itemData.href && pathname.startsWith(itemData.href.split('#')[0]));
+
+        return (
+          <TreeItem item={item} key={item.getId()}>
+            {itemData.href ? (
+              <Link href={itemData.href} className="w-full">
+                <TreeItemLabel
+                  className={`before:bg-background relative rounded-md transition-colors before:absolute before:inset-x-0 before:-inset-y-0.5 before:-z-10 hover:before:bg-slate-50 ${isActive ? 'font-semibold text-slate-900' : 'text-slate-700'} `}
+                />
+              </Link>
+            ) : (
+              <TreeItemLabel className="before:bg-background relative font-semibold text-slate-700 before:absolute before:inset-x-0 before:-inset-y-0.5 before:-z-10" />
+            )}
+          </TreeItem>
+        );
+      })}
+    </Tree>
   );
 }

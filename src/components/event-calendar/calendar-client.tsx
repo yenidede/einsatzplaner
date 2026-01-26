@@ -22,8 +22,32 @@ import {
 } from '@/features/einsatz/hooks/useEinsatzMutations';
 import { useUserPropertiesByOrg } from '@/features/user_properties/hooks/use-user-property-queries';
 import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
-import type { EinsatzCreate } from '@/features/einsatz/types';
+import type {
+  EinsatzCreate,
+  EinsatzUserProperty,
+} from '@/features/einsatz/types';
 import { useEventDialogFromContext } from '@/contexts/EventDialogContext';
+import type { UserPropertyWithField } from '@/features/user_properties/user_property-dal';
+
+interface UserWithProperties {
+  id: string;
+  firstname: string | null;
+  lastname: string | null;
+  email: string;
+  user_organization_role: Array<{
+    id: string;
+    role: {
+      id: string;
+      name: string | null;
+      abbreviation: string | null;
+    };
+  }>;
+  user_property_value: Array<{
+    id: string;
+    user_property_id: string;
+    value: string | null;
+  }>;
+}
 
 interface ValidationResult {
   blocking: string[];
@@ -31,9 +55,9 @@ interface ValidationResult {
 }
 
 interface ValidateUserAssignmentParams {
-  requiredProperties: any[];
-  userProperties: any[];
-  allUsers: any[];
+  requiredProperties: EinsatzUserProperty[];
+  userProperties: UserPropertyWithField[];
+  allUsers: UserWithProperties[];
   currentAssignedUsers: string[];
   userIdToAdd: string;
   helpersNeeded: number;
