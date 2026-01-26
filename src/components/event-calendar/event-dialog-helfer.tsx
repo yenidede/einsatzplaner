@@ -142,26 +142,38 @@ export function EventDialogHelfer({
         userProperties?.find((p) => p.id === propConfig.user_property_id)?.field
           ?.name ?? propConfig.user_property_id;
 
-      if ((usersWithProp?.length ?? 0) < minRequired) {
+      if (minRequired === -1) {
+        // "Alle" bedeutet: Alle zugewiesenen Helfer müssen die Eigenschaft haben
+        const requiredCount = assignedDetails.length;
+
+        if ((usersWithProp?.length ?? 0) < requiredCount) {
+          warnings.push(
+            `Personeneigenschaft '${propertyName}': Alle zugewiesenen ${helper_plural} benötigen diese Eigenschaft (${
+              usersWithProp?.length ?? 0
+            }/${requiredCount} erfüllt)`
+          );
+        }
+      } else if ((usersWithProp?.length ?? 0) < minRequired) {
         warnings.push(
-          `Personeneigenschaft '${propertyName}': mind. ${minRequired} benötigte (aktuell: ${
+          `Personeneigenschaft '${propertyName}': mind. ${minRequired} benötigt (aktuell: ${
             usersWithProp?.length ?? 0
           })`
         );
       }
     }
-
     if (warnings.length === 0) return true;
 
-    await showDialog({
-      title: 'Eintragen nicht möglich',
+    const confirmed = await showDialog({
+      title: 'Warnung: Kriterien nicht erfüllt',
       description:
         'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
         warnings.map((w) => `• ${w}`).join('\n') +
-        '\n\nBitte wenden Sie sich an die Einsatzverwaltung, um die erforderlichen Personeneigenschaften zu klären.',
-      confirmText: 'OK',
+        '\n\nMöchten Sie trotzdem fortfahren?',
+      confirmText: 'Trotzdem fortfahren',
+      cancelText: 'Abbrechen',
+      variant: 'destructive',
     });
-
+    if (confirmed === 'success') return true;
     return false;
   };
 
@@ -286,6 +298,11 @@ export function EventDialogHelfer({
                 {creator?.firstname} {creator?.lastname}
               </div>
               <div>{creator?.email}</div>
+            </DefinitionItem>
+            <DefinitionItem label="Anmerkung">
+              <div className="whitespace-pre-wrap">
+                {detailedEinsatz?.anmerkung || '-'}
+              </div>
             </DefinitionItem>
             {!!detailedEinsatz && detailedEinsatz.einsatz_fields.length > 0 && (
               <>

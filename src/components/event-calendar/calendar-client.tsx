@@ -128,11 +128,20 @@ function validateUserAssignment({
         return String(propertyValue.value).trim() !== '';
       }).length;
 
-    const msg = `Eigenschaft "${propName}": mindestens ${minRequired} Helfer benötigt (aktuell: ${matchingCount})`;
+    // If Input -1: Every assigned user must have this property
+    let msg: string;
+    let isViolation: boolean;
 
-    if (matchingCount < minRequired) {
-      // If slots are filled, this is a blocking error
-      // Otherwise, it's just a warning
+    if (minRequired === -1) {
+      const totalAssigned = assignedAfterAdd.length;
+      msg = `Eigenschaft "${propName}": ALLE Helfer müssen diese Eigenschaft haben (aktuell: ${matchingCount}/${totalAssigned})`;
+      isViolation = matchingCount < totalAssigned;
+    } else {
+      msg = `Eigenschaft "${propName}": mindestens ${minRequired} Helfer benötigt (aktuell: ${matchingCount})`;
+      isViolation = matchingCount < minRequired;
+    }
+
+    if (isViolation) {
       if (slotsFilledAfterAdd) {
         blocking.push(msg);
       } else {
@@ -263,7 +272,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       });
 
       // Handle blocking errors
-      if (validationResult.blocking.length > 0) {
+      /*       if (validationResult.blocking.length > 0) {
         await showDialog({
           title: 'Eintragung nicht möglich',
           description:
@@ -274,7 +283,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
           variant: 'destructive',
         });
         return;
-      }
+      } */
 
       // Handle warnings
       if (validationResult.warnings.length > 0) {
