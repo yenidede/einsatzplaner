@@ -42,6 +42,13 @@ export async function deactivateCalendarSubscription(id: string) {
   });
 }
 
+export async function activateCalendarSubscription(id: string) {
+  return prisma.calendar_subscription.update({
+    where: { id },
+    data: { is_active: true },
+  });
+}
+
 export function buildCalendarSubscriptionUrl(token: string) {
   const baseUrl = process.env.NEXTAUTH_URL;
   if (!baseUrl) {

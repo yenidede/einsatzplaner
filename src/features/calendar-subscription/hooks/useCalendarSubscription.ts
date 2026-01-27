@@ -1,10 +1,12 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   getSubscriptionAction,
   rotateSubscriptionAction,
   deactivateSubscriptionAction,
+  activateSubscriptionAction,
 } from '../actions';
 
 export type CalendarSubscription = {
@@ -36,12 +38,20 @@ export function useCalendarSubscription(orgId: string) {
       queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
         prev
           ? {
-              ...prev,
-              token: data.token,
-              webcalUrl: data.webcalUrl,
-              httpUrl: data.httpUrl,
-            }
+            ...prev,
+            token: data.token,
+            webcalUrl: data.webcalUrl,
+            httpUrl: data.httpUrl,
+          }
           : prev
+      );
+      toast.success('Neuer Kalender-Link wurde generiert');
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Fehler beim Generieren des neuen Links'
       );
     },
   });
@@ -51,8 +61,33 @@ export function useCalendarSubscription(orgId: string) {
       queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
         prev ? { ...prev, is_active: false } : prev
       );
+      toast.success('Kalender-Integration wurde deaktiviert');
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Fehler beim Deaktivieren der Kalender-Integration'
+      );
     },
   });
 
-  return { query, rotate, deactivate };
+  const activate = useMutation({
+    mutationFn: (id: string) => activateSubscriptionAction(id),
+    onSuccess: () => {
+      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+        prev ? { ...prev, is_active: true } : prev
+      );
+      toast.success('Kalender-Integration wurde aktiviert');
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Fehler beim Aktivieren der Kalender-Integration'
+      );
+    },
+  });
+
+  return { query, rotate, deactivate, activate };
 }
