@@ -118,6 +118,47 @@ export async function getUserOrganizationsAction() {
     created_at: org.created_at.toISOString(),
   }));
 }
+
+export async function getUserManagedOrganizationsAction() {
+  const session = await checkUserSession();
+
+  const userOrgRoles = await prisma.user_organization_role.findMany({
+    where: {
+      user_id: session.user.id,
+      role: {
+        OR: [
+          { name: { contains: 'Organisationsverwaltung', mode: 'insensitive' } },
+          { name: { contains: 'Superadmin', mode: 'insensitive' } },
+          { abbreviation: 'OV' },
+          { name: 'OV' },
+        ],
+      },
+    },
+    include: {
+      organization: {
+        select: {
+          id: true,
+          name: true,
+          logo_url: true,
+        },
+      },
+    },
+  });
+
+  // Get unique organizations
+  const orgMap = new Map<string, { id: string; name: string; logo_url: string | null }>();
+  userOrgRoles.forEach((uor) => {
+    if (!orgMap.has(uor.organization.id)) {
+      orgMap.set(uor.organization.id, {
+        id: uor.organization.id,
+        name: uor.organization.name,
+        logo_url: uor.organization.logo_url,
+      });
+    }
+  });
+
+  return Array.from(orgMap.values());
+}
 export async function getUserOrganizationByIdAction(orgId: string | undefined) {
   if (!orgId) throw new Error('Organization ID is required');
 

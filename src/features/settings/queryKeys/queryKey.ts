@@ -75,6 +75,10 @@ export const settingsQueryKeys = {
 
   /** Global salutation options (Herr, Frau, etc.) - static reference data */
   salutation: () => [...settingsQueryKeys.all, 'salutations'] as const,
+
+  /** Organizations where user has OV/management role */
+  managedOrganizations: (userId: string) =>
+    [...settingsQueryKeys.all, 'user', userId, 'managed-organizations'] as const,
 };
 
 export type SettingsQueryKeys = typeof settingsQueryKeys;
