@@ -1,7 +1,9 @@
 'use client';
 
-import { ImagePlus } from 'lucide-react';
-import Image from 'next/image';
+import { useRef } from 'react';
+import { Upload, Trash2, Building2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 
 interface OrganizationLogoSectionProps {
   name: string;
@@ -16,74 +18,66 @@ export function OrganizationLogoSection({
   onLogoUpload,
   onLogoRemove,
 }: OrganizationLogoSectionProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const initials = name
+    ? name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 3)
+    : 'ORG';
+
   return (
-    <div className="flex flex-col items-start justify-start gap-2 self-stretch px-4">
-      <div className="inline-flex items-center justify-start gap-2">
-        <div className="relative flex h-11 w-40 items-center justify-center overflow-hidden">
-          {logoUrl ? (
-            <Image
-              src={logoUrl}
-              width={160}
-              height={160}
-              alt={`${name} Logo`}
-              className="max-h-full max-w-full object-contain"
-              loading="lazy"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                target.nextElementSibling?.classList.remove('hidden');
-              }}
-            />
-          ) : null}
-          <div
-            className={`flex h-11 w-40 items-center justify-center rounded-md bg-slate-200 ${
-              logoUrl ? 'hidden' : ''
-            }`}
-          >
-            <div className="text-xl font-semibold text-slate-700">
-              {name
-                ? name
-                    .split(' ')
-                    .map((n: string) => n[0])
-                    .join('')
-                    .toUpperCase()
-                    .slice(0, 3)
-                : 'ORG'}
-            </div>
-          </div>
-        </div>
-        <div className="inline-flex flex-col items-start justify-center">
-          <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-700">
-            {name}
-          </div>
-        </div>
-      </div>
-
-      <div className="inline-flex items-start justify-start gap-2">
-        <label
-          htmlFor="logo-upload"
-          className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-white transition-colors hover:bg-slate-800"
-        >
-          <ImagePlus className="relative h-4 w-4 overflow-hidden" />
-          <span>Logo hochladen</span>
-        </label>
-        <input
-          id="logo-upload"
-          type="file"
-          accept="image/*"
-          onChange={onLogoUpload}
-          className="hidden"
+    <div className="flex items-center gap-6">
+      <Avatar className="h-20 w-20">
+        <AvatarImage
+          src={logoUrl || undefined}
+          alt={`Logo von ${name}`}
         />
-
-        <button
-          type="button"
-          onClick={onLogoRemove}
-          className="flex items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2 outline outline-1 outline-offset-[-1px] outline-slate-200 transition-colors hover:bg-slate-50"
-        >
-          <span className="font-['Inter'] text-sm leading-normal font-medium text-slate-900">
-            Logo entfernen
-          </span>
-        </button>
+        <AvatarFallback className="text-lg">
+          {logoUrl ? (
+            <Building2 className="h-8 w-8" />
+          ) : (
+            initials
+          )}
+        </AvatarFallback>
+      </Avatar>
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={onLogoUpload}
+            id="logo-upload"
+            aria-label="Logo hochladen"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Logo hochladen
+          </Button>
+          {logoUrl && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onLogoRemove}
+              className="text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Entfernen
+            </Button>
+          )}
+        </div>
+        <p className="text-muted-foreground text-xs">
+          JPG, PNG oder GIF. Maximal 5MB.
+        </p>
       </div>
     </div>
   );

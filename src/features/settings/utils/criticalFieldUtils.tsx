@@ -1,22 +1,26 @@
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+
 export const criticalFieldClass = (isEditable: boolean) =>
-  `w-full rounded-md px-3 py-2 text-sm ${
+  cn(
     isEditable
-      ? 'border border-slate-300 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-      : 'border border-slate-200 bg-slate-100 cursor-not-allowed text-slate-600'
-  }`;
+      ? ''
+      : 'disabled:opacity-50 disabled:cursor-not-allowed'
+  );
 
 export const criticalFieldLabel = (
   label: string,
   isEditable: boolean,
-  required = false
+  required = false,
+  htmlFor?: string
 ) => (
-  <label className="text-sm font-medium text-slate-700">
+  <Label htmlFor={htmlFor} className="text-sm font-medium">
     {label}
-    {required && <span className="text-red-500"> *</span>}
+    {required && <span className="text-destructive ml-1">*</span>}
     {!isEditable && (
-      <span className="ml-2 text-xs font-normal text-slate-500">
+      <span className="ml-2 text-xs font-normal text-muted-foreground">
         (Nur Superadmin)
       </span>
     )}
-  </label>
+  </Label>
 );

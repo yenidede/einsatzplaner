@@ -1,9 +1,8 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { signOut } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -22,7 +21,6 @@ import { useUpdateOrganization } from '@/features/settings/hooks/useSettingsMuta
 
 import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
-import { OrganizationSidebar } from '@/features/settings/components/manage/OrganizationSideBar';
 import { OrganizationLogoSection } from '@/features/settings/components/manage/OrganizationLogo';
 import { OrganizationDetailsForm } from '@/features/settings/components/manage/OrganizationDetailsForm';
 import { OrganizationPreferences } from '@/features/settings/components/manage/OrganizationPreferences';
@@ -31,17 +29,40 @@ import { UserProperties } from '@/features/user_properties/components/UserProper
 import { OrganizationAddresses } from '@/features/settings/components/manage/OrganizationAddresses';
 import { OrganizationBankAccounts } from '@/features/settings/components/manage/OrganizationBankAccounts';
 import { OrganizationDetails } from '@/features/settings/components/manage/OrganizationDetails';
-import { SettingsHeader } from '@/features/settings/components/SettingsHeader';
+import { PageHeader } from '@/components/settings/PageHeader';
+import { OrgManageNav } from '@/components/settings/OrgManageNav';
+import {
+  ORG_MANAGE_NAV_ITEMS,
+  type OrgManageSectionId,
+} from '@/components/settings/org-manage-constants';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 export default function OrganizationManagePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const orgId = params?.orgId as string;
   const { data: session } = useSession();
 
-  const [user, setUser] = useState<any>(null);
+  const [activeSection, setActiveSection] = useState<OrgManageSectionId>('details');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  
+  // Section refs for scroll-into-view
+  const sectionRefs = useRef<Record<OrgManageSectionId, HTMLElement | null>>({
+    details: null,
+    preferences: null,
+    addresses: null,
+    'bank-accounts': null,
+    'user-properties': null,
+    users: null,
+  });
+  
+  const isScrollingProgrammatically = useRef(false);
+  const isUpdatingUrlFromScroll = useRef(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -70,11 +91,7 @@ export default function OrganizationManagePage() {
     },
   });
 
-  const { data, isLoading } = useUserProfile(session?.user?.id);
-
-  useEffect(() => {
-    if (data) setUser(data);
-  }, [data]);
+  const { data: userData, isLoading: isLoadingUser } = useUserProfile(session?.user?.id);
 
   const {
     data: orgData,
@@ -109,17 +126,202 @@ export default function OrganizationManagePage() {
     currentUserRoles?.some(
       (role) => role.role.name.toLowerCase() === 'superadmin'
     ) ?? false;
-  const handleSignOut = async () => {
-    const toastId = toast.loading('Wird abgemeldet...');
-    try {
-      await signOut({ callbackUrl: '/signin', redirect: true });
-      queryClient.clear();
-    } catch (error) {
-      console.error('Fehler beim Abmelden:', error);
-      toast.error('Fehler beim Abmelden', { id: toastId });
-      router.push('/signin');
+
+  const updateMutation = useUpdateOrganization(orgId);
+  useEffect(() => {
+    const section = searchParams.get('section') as OrgManageSectionId | null;
+    if (section && ORG_MANAGE_NAV_ITEMS.some((item) => item.id === section)) {
+      setActiveSection(section);
+      isScrollingProgrammatically.current = true;
+      setTimeout(() => {
+        sectionRefs.current[section]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+        setTimeout(() => {
+          isScrollingProgrammatically.current = false;
+        }, 500);
+      }, 100);
     }
-  };
+  }, [searchParams]);
+
+  const handleSave = useCallback(() => {
+    updateMutation.mutate({
+      name,
+      description,
+      email,
+      phone,
+      helper_name_singular: helperSingular,
+      helper_name_plural: helperPlural,
+      einsatz_name_singular: einsatzSingular,
+      max_participants_per_helper: maxParticipantsPerHelper
+        ? parseInt(maxParticipantsPerHelper)
+        : undefined,
+      einsatz_name_plural: einsatzPlural,
+      logoFile: logoFile,
+      website,
+      vat,
+      zvr,
+      authority,
+      allow_self_sign_out: allowSelfSignOut,
+    });
+  }, [
+    name,
+    description,
+    email,
+    phone,
+    helperSingular,
+    helperPlural,
+    einsatzSingular,
+    einsatzPlural,
+    maxParticipantsPerHelper,
+    logoFile,
+    website,
+    vat,
+    zvr,
+    authority,
+    allowSelfSignOut,
+    updateMutation,
+  ]);
+
+  const handleSectionChange = useCallback(
+    (sectionId: OrgManageSectionId) => {
+      setActiveSection(sectionId);
+      router.push(`/organization/${orgId}/manage?section=${sectionId}`, { scroll: false });
+      isScrollingProgrammatically.current = true;
+      sectionRefs.current[sectionId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+      setTimeout(() => {
+        isScrollingProgrammatically.current = false;
+      }, 500);
+    },
+    [router, orgId]
+  );
+
+  // Set default section in URL if none is specified
+  useEffect(() => {
+    if (!orgData) return;
+    const section = searchParams.get('section') as OrgManageSectionId | null;
+    if (!section) {
+      router.replace(`/organization/${orgId}/manage?section=details`, { scroll: false });
+    }
+  }, [orgData, searchParams, router, orgId]);
+
+  // Handle scroll-based section detection and URL updates
+  useEffect(() => {
+    if (!orgData) return;
+
+    const observerOptions = {
+      root: null,
+      rootMargin: '-100px 0px -50% 0px',
+      threshold: [0, 0.25, 0.5, 0.75, 1.0],
+    };
+
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+      if (isScrollingProgrammatically.current) return;
+
+      const headerOffset = 100;
+      const visibleSections = entries
+        .filter((entry) => entry.isIntersecting)
+        .map((entry) => {
+          const rect = entry.boundingClientRect;
+          const distanceFromTop = Math.max(0, rect.top - headerOffset);
+          return {
+            entry,
+            sectionId: entry.target.id as OrgManageSectionId,
+            distanceFromTop,
+            intersectionRatio: entry.intersectionRatio,
+            top: rect.top,
+          };
+        })
+        .filter((item) =>
+          item.sectionId &&
+          ORG_MANAGE_NAV_ITEMS.some((navItem) => navItem.id === item.sectionId)
+        )
+        .sort((a, b) => {
+          const aIsActive = a.top <= headerOffset + 50;
+          const bIsActive = b.top <= headerOffset + 50;
+
+          if (aIsActive && !bIsActive) return -1;
+          if (!aIsActive && bIsActive) return 1;
+
+          if (Math.abs(a.distanceFromTop - b.distanceFromTop) > 30) {
+            return a.distanceFromTop - b.distanceFromTop;
+          }
+
+          return b.intersectionRatio - a.intersectionRatio;
+        });
+
+      if (visibleSections.length > 0) {
+        const detectedSection = visibleSections[0].sectionId;
+        if (detectedSection !== activeSection) {
+          setActiveSection(detectedSection);
+          const currentSection = searchParams.get('section');
+          if (currentSection !== detectedSection) {
+            isUpdatingUrlFromScroll.current = true;
+            router.replace(`/organization/${orgId}/manage?section=${detectedSection}`, {
+              scroll: false,
+            });
+          }
+        }
+      }
+    };
+
+    const observer = new IntersectionObserver(handleIntersection, observerOptions);
+
+    const timeoutId = setTimeout(() => {
+      Object.values(sectionRefs.current).forEach((section) => {
+        if (section) {
+          observer.observe(section);
+        }
+      });
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [activeSection, router, searchParams, orgData, orgId]);
+
+  // Handle URL hash for direct section linking
+  useEffect(() => {
+    if (isUpdatingUrlFromScroll.current) {
+      isUpdatingUrlFromScroll.current = false;
+      return;
+    }
+
+    const section = searchParams.get('section') as OrgManageSectionId | null;
+    if (section && ORG_MANAGE_NAV_ITEMS.some((item) => item.id === section)) {
+      setActiveSection(section);
+      isScrollingProgrammatically.current = true;
+      setTimeout(() => {
+        sectionRefs.current[section]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+        setTimeout(() => {
+          isScrollingProgrammatically.current = false;
+        }, 500);
+      }, 100);
+    }
+  }, [searchParams]);
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        router.push('/');
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+        event.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router, handleSave]);
 
   const handleLogoUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -183,30 +385,6 @@ export default function OrganizationManagePage() {
     }
   };
 
-  const updateMutation = useUpdateOrganization(orgId);
-
-  const handleSave = () => {
-    updateMutation.mutate({
-      name,
-      description,
-      email,
-      phone,
-      helper_name_singular: helperSingular,
-      helper_name_plural: helperPlural,
-      einsatz_name_singular: einsatzSingular,
-      max_participants_per_helper: maxParticipantsPerHelper
-        ? parseInt(maxParticipantsPerHelper)
-        : undefined,
-      einsatz_name_plural: einsatzPlural,
-      logoFile: logoFile,
-      website,
-      vat,
-      zvr,
-      authority,
-      allow_self_sign_out: allowSelfSignOut,
-    });
-  };
-
   const handleUserProfileClick = (userId: string) => {
     setSelectedUserId(userId);
     setIsProfileDialogOpen(true);
@@ -217,127 +395,300 @@ export default function OrganizationManagePage() {
     setSelectedUserId(null);
   };
 
-  if (isLoading || orgLoading)
-    return <div className="p-6">Lädt Organisation...</div>;
-  if (orgError)
+  if (isLoadingUser || orgLoading) {
     return (
-      toast.error('Fehler beim Laden der Organisation'),
-      (<div className="p-6">Fehler beim Laden der Organisation</div>)
-    );
-
-  return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col rounded-lg bg-white outline -outline-offset-1 outline-slate-200">
-      <SettingsHeader
-        onSave={handleSave}
-        isSaving={updateMutation.isPending}
-        onCancel={() => router.push('/')}
-      />
-      <div className="inline-flex max-h-[calc(100vh-8rem)] items-start justify-start gap-4 self-stretch overflow-y-auto py-4 pl-2">
-        <OrganizationSidebar user={user} onSignOut={handleSignOut} />
-
-        <div className="inline-flex flex-1 flex-col items-start justify-start gap-8 overflow-y-auto">
-          <div className="flex flex-col items-start justify-center gap-4 self-stretch">
-            <div className="flex flex-col items-start justify-start gap-2 self-stretch">
-              <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
-                <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
-                  {name} verwalten
-                </div>
+      <div className="bg-background min-h-screen">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex gap-8">
+            <aside className="hidden w-64 shrink-0 lg:block">
+              <Skeleton className="mb-6 h-10 w-full" />
+              <div className="space-y-2">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
               </div>
-              <div className="flex flex-col items-start justify-start gap-4 self-stretch border-t border-slate-200 py-4">
-                <OrganizationLogoSection
-                  name={name}
-                  logoUrl={logoUrl}
-                  onLogoUpload={handleLogoUpload}
-                  onLogoRemove={handleLogoRemove}
-                />
-                <OrganizationDetailsForm
-                  name={name}
-                  email={email}
-                  phone={phone}
-                  description={description}
-                  allowSelfSignOut={allowSelfSignOut}
-                  onNameChange={setName}
-                  onEmailChange={setEmail}
-                  onPhoneChange={setPhone}
-                  onDescriptionChange={setDescription}
-                  onAllowSelfSignOutChange={setAllowSelfSignOut}
-                  isSuperadmin={isSuperadmin}
-                  onSave={handleSave}
-                />
-              </div>
-
-              <OrganizationDetails
-                organizationId={orgId}
-                website={website}
-                vat={vat}
-                zvr={zvr}
-                authority={authority}
-                onWebsiteChange={setWebsite}
-                onVatChange={setVat}
-                onZvrChange={setZvr}
-                onAuthorityChange={setAuthority}
-                isSuperadmin={isSuperadmin}
-                onSave={handleSave}
-              />
-            </div>
+            </aside>
+            <main className="flex-1 space-y-6">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-64 w-full rounded-xl" />
+              ))}
+            </main>
           </div>
-
-          <div className="flex flex-col items-start justify-center gap-4 self-stretch">
-            <OrganizationPreferences
-              helperSingular={helperSingular}
-              helperPlural={helperPlural}
-              onHelperSingularChange={setHelperSingular}
-              onHelperPluralChange={setHelperPlural}
-              einsatzSingular={einsatzSingular}
-              einsatzPlural={einsatzPlural}
-              onEinsatzSingularChange={setEinsatzSingular}
-              onEinsatzPluralChange={setEinsatzPlural}
-              maxParticipantsPerHelper={maxParticipantsPerHelper}
-              onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
-              onSave={handleSave}
-            />
-          </div>
-          <OrganizationAddresses
-            organizationId={orgId}
-            isSuperadmin={isSuperadmin}
-            onSave={handleSave}
-          />
-
-          <OrganizationBankAccounts
-            organizationId={orgId}
-            isSuperadmin={isSuperadmin}
-            onSave={handleSave}
-          />
-          <UserProperties organizationId={orgId} onSave={handleSave} />
-
-          <UsersManagementSection
-            usersData={usersData || []}
-            usersLoading={usersLoading}
-            currentUserEmail={session?.user?.email || ''}
-            onUserProfileClick={handleUserProfileClick}
-            onInviteClick={() => setIsInviteModalOpen(true)}
-            onSave={handleSave}
-          />
-
-          {selectedUserId && (
-            <UserProfileDialog
-              isOpen={isProfileDialogOpen}
-              onClose={handleCloseProfileDialog}
-              userId={selectedUserId}
-              organizationId={orgId}
-              currentUserId={session?.user?.id}
-              onSave={handleSave}
-            />
-          )}
-
-          <InviteUserForm
-            organizationId={orgId}
-            isOpen={isInviteModalOpen}
-            onClose={() => setIsInviteModalOpen(false)}
-            onSave={handleSave}
-          />
         </div>
       </div>
-    </div>
+    );
+  }
+
+  if (orgError || !orgData) {
+    return (
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Fehler</CardTitle>
+            <CardDescription>
+              {orgError ? 'Fehler beim Laden der Organisation' : 'Organisation nicht gefunden'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => router.push('/')}>Zur Startseite</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="bg-background min-h-screen overflow-clip rounded-l">
+        <PageHeader
+          title={`${name} verwalten`}
+          description="Verwalte die Einstellungen und Details deiner Organisation"
+          onSave={handleSave}
+          isSaving={updateMutation.isPending}
+          onCancel={() => router.push('/')}
+        />
+
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex gap-8">
+            {/* Sidebar Navigation */}
+            <aside className="hidden w-64 shrink-0 lg:block">
+              <OrgManageNav
+                currentOrgId={orgId}
+                activeSection={activeSection}
+                onSectionChange={handleSectionChange}
+              />
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 space-y-8" role="main">
+              {/* Mobile Navigation */}
+              <div
+                className="flex gap-2 overflow-x-auto pb-2 lg:hidden"
+                role="tablist"
+              >
+                {ORG_MANAGE_NAV_ITEMS.map((item) => (
+                  <Button
+                    key={item.id}
+                    variant={activeSection === item.id ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleSectionChange(item.id)}
+                    role="tab"
+                    aria-selected={activeSection === item.id}
+                  >
+                    <item.icon className="mr-2 h-4 w-4" />
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Details Section */}
+              <section
+                id="details"
+                ref={(el) => {
+                  sectionRefs.current.details = el;
+                }}
+                aria-labelledby="details-heading"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle id="details-heading">Organisationsdetails</CardTitle>
+                    <CardDescription>
+                      Grundlegende Informationen und Logo deiner Organisation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <OrganizationLogoSection
+                      name={name}
+                      logoUrl={logoUrl}
+                      onLogoUpload={handleLogoUpload}
+                      onLogoRemove={handleLogoRemove}
+                    />
+                    <Separator />
+                    <OrganizationDetailsForm
+                      name={name}
+                      email={email}
+                      phone={phone}
+                      description={description}
+                      allowSelfSignOut={allowSelfSignOut}
+                      onNameChange={setName}
+                      onEmailChange={setEmail}
+                      onPhoneChange={setPhone}
+                      onDescriptionChange={setDescription}
+                      onAllowSelfSignOutChange={setAllowSelfSignOut}
+                      isSuperadmin={isSuperadmin}
+                      onSave={handleSave}
+                    />
+                    <Separator />
+                    <OrganizationDetails
+                      organizationId={orgId}
+                      website={website}
+                      vat={vat}
+                      zvr={zvr}
+                      authority={authority}
+                      onWebsiteChange={setWebsite}
+                      onVatChange={setVat}
+                      onZvrChange={setZvr}
+                      onAuthorityChange={setAuthority}
+                      isSuperadmin={isSuperadmin}
+                      onSave={handleSave}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* Preferences Section */}
+              <section
+                id="preferences"
+                ref={(el) => {
+                  sectionRefs.current.preferences = el;
+                }}
+                aria-labelledby="preferences-heading"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle id="preferences-heading">Einstellungen</CardTitle>
+                    <CardDescription>
+                      Passe die Terminologie und Präferenzen deiner Organisation an
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <OrganizationPreferences
+                      helperSingular={helperSingular}
+                      helperPlural={helperPlural}
+                      onHelperSingularChange={setHelperSingular}
+                      onHelperPluralChange={setHelperPlural}
+                      einsatzSingular={einsatzSingular}
+                      einsatzPlural={einsatzPlural}
+                      onEinsatzSingularChange={setEinsatzSingular}
+                      onEinsatzPluralChange={setEinsatzPlural}
+                      maxParticipantsPerHelper={maxParticipantsPerHelper}
+                      onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+                      onSave={handleSave}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* Addresses Section */}
+              <section
+                id="addresses"
+                ref={(el) => {
+                  sectionRefs.current.addresses = el;
+                }}
+                aria-labelledby="addresses-heading"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle id="addresses-heading">Adressen</CardTitle>
+                    <CardDescription>
+                      Verwalte die Adressen deiner Organisation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <OrganizationAddresses
+                      organizationId={orgId}
+                      isSuperadmin={isSuperadmin}
+                      onSave={handleSave}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* Bank Accounts Section */}
+              <section
+                id="bank-accounts"
+                ref={(el) => {
+                  sectionRefs.current['bank-accounts'] = el;
+                }}
+                aria-labelledby="bank-accounts-heading"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle id="bank-accounts-heading">Bankkonten</CardTitle>
+                    <CardDescription>
+                      Verwalte die Bankkonten deiner Organisation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <OrganizationBankAccounts
+                      organizationId={orgId}
+                      isSuperadmin={isSuperadmin}
+                      onSave={handleSave}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* User Properties Section */}
+              <section
+                id="user-properties"
+                ref={(el) => {
+                  sectionRefs.current['user-properties'] = el;
+                }}
+                aria-labelledby="user-properties-heading"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle id="user-properties-heading">Benutzereigenschaften</CardTitle>
+                    <CardDescription>
+                      Verwalte die benutzerdefinierten Eigenschaften für Benutzer in dieser Organisation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <UserProperties organizationId={orgId} onSave={handleSave} />
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* Users Section */}
+              <section
+                id="users"
+                ref={(el) => {
+                  sectionRefs.current.users = el;
+                }}
+                aria-labelledby="users-heading"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle id="users-heading">Benutzer</CardTitle>
+                    <CardDescription>
+                      Verwalte Benutzer und ihre Rollen in dieser Organisation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <UsersManagementSection
+                      usersData={usersData || []}
+                      usersLoading={usersLoading}
+                      currentUserEmail={session?.user?.email || ''}
+                      onUserProfileClick={handleUserProfileClick}
+                      onInviteClick={() => setIsInviteModalOpen(true)}
+                      onSave={handleSave}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+
+              {selectedUserId && (
+                <UserProfileDialog
+                  isOpen={isProfileDialogOpen}
+                  onClose={handleCloseProfileDialog}
+                  userId={selectedUserId}
+                  organizationId={orgId}
+                  currentUserId={session?.user?.id}
+                  onSave={handleSave}
+                />
+              )}
+
+              <InviteUserForm
+                organizationId={orgId}
+                isOpen={isInviteModalOpen}
+                onClose={() => setIsInviteModalOpen(false)}
+                onSave={handleSave}
+              />
+            </main>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

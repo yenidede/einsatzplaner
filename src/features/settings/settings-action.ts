@@ -257,9 +257,9 @@ export async function uploadProfilePictureAction(formData: FormData) {
   if (!file.type.startsWith('image/')) {
     throw new Error('File must be an image');
   }
-  // Allow up to 10MB (compression should handle larger files on client side)
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error('File size must be less than 10MB');
+  // Allow up to 1MB (compression should handle larger files on client side)
+  if (file.size > 1 * 1024 * 1024) {
+    throw new Error('File size must be less than 1MB');
   }
 
   const oldUser = await prisma.user.findUnique({

@@ -56,6 +56,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import {
   NavItem,
   ManagedOrgLink,
@@ -197,7 +198,7 @@ export default function SettingsPage() {
       // boundingClientRect.top is relative to viewport, so we want sections
       // whose top is near 0 (accounting for sticky header ~100px)
       const headerOffset = 100; // Approximate sticky header height
-      
+
       const visibleSections = entries
         .filter((entry) => entry.isIntersecting)
         .map((entry) => {
@@ -212,41 +213,42 @@ export default function SettingsPage() {
             top: rect.top,
           };
         })
-        .filter((item) => 
-          item.sectionId && 
-          NAV_ITEMS.some((navItem) => navItem.id === item.sectionId)
+        .filter(
+          (item) =>
+            item.sectionId &&
+            NAV_ITEMS.some((navItem) => navItem.id === item.sectionId)
         )
         .sort((a, b) => {
           // Prefer sections whose top is above or near the header offset
           // Sections with top < headerOffset + 50px are considered "active"
           const aIsActive = a.top <= headerOffset + 50;
           const bIsActive = b.top <= headerOffset + 50;
-          
+
           if (aIsActive && !bIsActive) return -1;
           if (!aIsActive && bIsActive) return 1;
-          
+
           // If both or neither are active, sort by distance from top
           // (sections closer to the top are preferred)
           if (Math.abs(a.distanceFromTop - b.distanceFromTop) > 30) {
             return a.distanceFromTop - b.distanceFromTop;
           }
-          
+
           // If distances are very similar, prefer the one with higher intersection ratio
           return b.intersectionRatio - a.intersectionRatio;
         });
 
       if (visibleSections.length > 0) {
         const detectedSection = visibleSections[0].sectionId;
-        
+
         // Only update if this is a different section than what we last detected
         if (detectedSection !== lastDetectedSectionRef.current) {
           lastDetectedSectionRef.current = detectedSection;
-          
+
           // Debounce the update to prevent rapid changes during slow scrolling
           scrollUpdateTimeoutRef.current = setTimeout(() => {
             // Double-check we're still not programmatically scrolling
             if (isScrollingProgrammatically.current) return;
-            
+
             if (detectedSection !== activeSection) {
               setActiveSection(detectedSection);
               // Update URL without triggering scroll
@@ -342,7 +344,7 @@ export default function SettingsPage() {
           // Compress image before upload
           let fileToUpload = profilePictureFile;
           const originalSizeMB = profilePictureFile.size / (1024 * 1024);
-          
+
           // Only compress if file is larger than 1MB
           if (originalSizeMB > 1) {
             toast.loading('Profilbild wird komprimiert...', { id: toastId });
@@ -357,7 +359,10 @@ export default function SettingsPage() {
                 `Image compressed: ${originalSizeMB.toFixed(2)}MB -> ${compressedSizeMB.toFixed(2)}MB`
               );
             } catch (compressError) {
-              console.warn('Image compression failed, using original:', compressError);
+              console.warn(
+                'Image compression failed, using original:',
+                compressError
+              );
               // Continue with original file if compression fails
               fileToUpload = profilePictureFile;
             }
@@ -372,7 +377,9 @@ export default function SettingsPage() {
           toast.success('Profilbild erfolgreich hochgeladen!', { id: toastId });
         } catch (error) {
           const errorMessage =
-            error instanceof Error ? error.message : 'Fehler beim Hochladen des Profilbilds';
+            error instanceof Error
+              ? error.message
+              : 'Fehler beim Hochladen des Profilbilds';
           toast.error(errorMessage, { id: toastId });
           throw error;
         }
@@ -419,8 +426,6 @@ export default function SettingsPage() {
       await queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.user.settings(session?.user.id || ''),
       });
-
-      toast.success('Einstellungen erfolgreich gespeichert!');
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Unbekannter Fehler'
@@ -594,19 +599,18 @@ export default function SettingsPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => router.push('/')}>
-                <X className="mr-2 h-4 w-4" />
+              <Button variant="ghost" onClick={() => router.push('/')}>
                 Abbrechen
-                <kbd className="bg-muted text-muted-foreground ml-2 hidden rounded px-1.5 py-0.5 text-[10px] font-medium sm:inline">
-                  ESC
-                </kbd>
+                <span className="ml-2 hidden sm:inline">
+                  <Kbd>ESC</Kbd>
+                </span>
               </Button>
               <Button onClick={handleSave} disabled={mutation.isPending}>
-                <Save className="mr-2 h-4 w-4" />
                 {mutation.isPending ? 'Speichert...' : 'Speichern'}
-                <kbd className="bg-primary-foreground/20 ml-2 hidden rounded px-1.5 py-0.5 text-[10px] font-medium sm:inline">
-                  ⌘S
-                </kbd>
+                <KbdGroup className="hidden sm:flex">
+                  <Kbd>⌘</Kbd>
+                  <Kbd>S</Kbd>
+                </KbdGroup>
               </Button>
             </div>
           </div>
@@ -741,7 +745,8 @@ export default function SettingsPage() {
                           )}
                         </div>
                         <p className="text-muted-foreground text-xs">
-                          JPG, PNG oder GIF. Große Bilder werden automatisch komprimiert.
+                          JPG, PNG oder GIF. Große Bilder werden automatisch
+                          komprimiert.
                         </p>
                       </div>
                     </div>
