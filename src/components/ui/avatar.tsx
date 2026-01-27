@@ -28,7 +28,7 @@ function AvatarImage({
   alt,
   // size = 128,
 }: React.ComponentProps<typeof AvatarPrimitive.Image> & {
-  src: string;
+  src: string | undefined;
   alt: string;
   size?: number;
 }) {
