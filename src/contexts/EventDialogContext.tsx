@@ -20,7 +20,7 @@ interface EventDialogContextValue {
   readonly selectedEinsatz: EinsatzCreate | string | null;
   openDialog: (einsatz: EinsatzCreate | string | null) => void;
   closeDialog: () => void;
-  setEinsatz: (einsatz: EinsatzCreate | string | null) => void;
+  setEinsatz: (einsatz: EinsatzCreate | string | null) => boolean;
 }
 
 const EventDialogContext = createContext<EventDialogContextValue | undefined>(
@@ -147,8 +147,8 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
   }, [setEinsatzFromUrl, setLocalSelectedEvent]);
 
   const setEinsatzFunc = useCallback(
-    (event: EinsatzCreate | string | null) => {
-      updateEinsatzState(event);
+    (event: EinsatzCreate | string | null): boolean => {
+      return updateEinsatzState(event);
     },
     [updateEinsatzState]
   );
