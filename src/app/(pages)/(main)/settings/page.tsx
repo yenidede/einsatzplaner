@@ -285,7 +285,7 @@ export default function SettingsPage() {
       }
       observer.disconnect();
     };
-  }, [activeSection, router, searchParams, userData]);
+  }, [router, searchParams, userData]);
 
   const mutation = useUpdateUserProfile(session?.user?.id);
   const leaveOrgMutation = useLeaveOrganization(session?.user?.id);
