@@ -1,7 +1,12 @@
 'use client';
 
 import { useRef } from 'react';
-import { AlertCircleIcon, XIcon, CloudUpload, File } from 'lucide-react';
+import {
+  AlertCircleIcon,
+  XIcon,
+  CloudUpload,
+  File as FileIcon,
+} from 'lucide-react';
 import {
   FileMetadata,
   formatBytes,
@@ -73,7 +78,7 @@ const getFileIcon = (file: FileWithPreview) => {
   }
   return (
     <div className="flex aspect-square size-10 items-center justify-center overflow-hidden rounded-full">
-      <File className="size-5 opacity-60" />
+      <FileIcon className="size-5 opacity-60" />
     </div>
   );
 };
@@ -94,7 +99,7 @@ export function FileUpload({
   initialFiles,
 }: {
   maxFiles: number;
-  maxSize: number;
+  maxSize?: number; // Optional - no size restriction, will compress instead
   placeholder?: string;
   // description?: string;
   required?: boolean;
@@ -130,7 +135,7 @@ export function FileUpload({
   ] = useFileUpload({
     multiple: maxFiles > 1,
     maxFiles,
-    maxSize,
+    maxSize: maxSize ?? Infinity, // No size restriction - will compress instead
     accept,
     initialFiles,
     onFilesChange: (files) => {
@@ -138,7 +143,7 @@ export function FileUpload({
       const newFiles = files.filter((f) => f.file instanceof File);
       if (newFiles.length > 0) {
         queueMicrotask(() => {
-          optimizeFilesAndUpload(newFiles, maxSize)
+          optimizeFilesAndUpload(newFiles)
             .then((optimizedFiles) => {
               setValue(name, optimizedFiles, {
                 shouldValidate: true,
@@ -225,7 +230,9 @@ export function FileUpload({
                     {file.file.name}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {formatBytes(file.file.size)}
+                    {file.file.size > 0
+                      ? formatBytes(file.file.size)
+                      : 'Lokal geladen'}
                   </p>
                 </div>
               </div>
@@ -270,17 +277,15 @@ export function FileUpload({
   }
 
   async function optimizeFilesAndUpload(
-    files: FileWithPreview[],
-    maxSize: number
+    files: FileWithPreview[]
   ): Promise<string[]> {
     return Promise.all(
-      files.map((file) => optimizeAndUploadIfImage(file.file, maxSize))
+      files.map((file) => optimizeAndUploadIfImage(file.file))
     );
   }
 
   async function optimizeAndUploadIfImage(
-    file: File | FileMetadata,
-    maxSize: number
+    file: File | FileMetadata
   ): Promise<string> {
     const fileKey = getFileUniqueKey(file);
     if (isFileMetadataType(file)) {
@@ -300,40 +305,39 @@ export function FileUpload({
       throw new Error('Only image files are supported for upload.');
     }
 
-    const targetSizeMB = Math.max(
-      0.25,
-      Math.min(2, maxSize / 1024 / 1024, file.size / 1024 / 1024)
-    );
-
     try {
-      console.log(
-        'before optimize:',
-        fileObj.size / 1024 / 1024,
-        'targetSizeMB:',
-        targetSizeMB
-      );
+      const originalSizeMB = fileObj.size / 1024 / 1024;
+      console.log('Compressing image before upload:', {
+        originalSize: `${originalSizeMB.toFixed(2)} MB`,
+        fileName: fileObj.name,
+      });
+
+      // Always compress images before upload
       const optimized = await optimizeImage(fileObj);
+      const compressedSizeMB = optimized.size / 1024 / 1024;
+
+      // Use the optimized version if it's smaller, otherwise use original
       const fileToUpload = optimized.size < fileObj.size ? optimized : fileObj;
 
-      if (fileToUpload.size / 1024 / 1024 <= targetSizeMB) {
-        const uploadedPath = await onUpload(fileToUpload);
-        lastUploadKeyRef.current = fileKey;
-        lastUploadValueRef.current = uploadedPath;
-        return uploadedPath;
-      } else {
-        toast.info(
-          `Die Datei ist noch immer zu groß. Bitte erneut versuchen. ${
-            fileToUpload.size / 1024 / 1024
-          } MB, Ziel: ${targetSizeMB} MB`
-        );
-        throw new Error(
-          'Optimized image not smaller than original or exceeds target size'
-        );
-      }
-    } catch (error: unknown) {
-      toast.error(`Image optimization failed ${error}`, {
-        id: 'file-upload-optimize-error',
+      console.log('Image compression result:', {
+        originalSize: `${originalSizeMB.toFixed(2)} MB`,
+        compressedSize: `${compressedSizeMB.toFixed(2)} MB`,
+        finalSize: `${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`,
+        reduction: `${((1 - fileToUpload.size / fileObj.size) * 100).toFixed(1)}%`,
       });
+
+      const uploadedPath = await onUpload(fileToUpload);
+      lastUploadKeyRef.current = fileKey;
+      lastUploadValueRef.current = uploadedPath;
+      return uploadedPath;
+    } catch (error: unknown) {
+      console.error('Image optimization failed:', error);
+      toast.error(
+        `Bildkomprimierung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        {
+          id: 'file-upload-optimize-error',
+        }
+      );
       throw error;
     }
   }
