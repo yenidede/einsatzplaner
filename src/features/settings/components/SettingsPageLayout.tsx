@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { OrganizationSidebar } from './manage/OrganizationSideBar';
+import { OrganizationSidebar } from './settings/OrganizationSideBar';
 import { SettingsHeader } from './SettingsHeader';
 import { User } from 'next-auth';
 

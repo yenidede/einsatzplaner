@@ -8,6 +8,8 @@ import {
   deactivateSubscriptionAction,
   activateSubscriptionAction,
 } from '../actions';
+import { useSession } from 'next-auth/react';
+import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 
 export type CalendarSubscription = {
   id: string;
@@ -19,17 +21,17 @@ export type CalendarSubscription = {
   last_accessed: string | null;
 };
 
-const key = (orgId: string) => ['calendar-subscription', orgId];
+const key = (userId?: string, orgId?: string) => settingsQueryKeys.calendarSubscription(userId, orgId);
 
 export function useCalendarSubscription(orgId: string) {
   const queryClient = useQueryClient();
+  const session = useSession();
 
   const query = useQuery({
-    queryKey: key(orgId),
+    queryKey: key(session.data?.user?.id, orgId),
     queryFn: () => getSubscriptionAction(orgId),
     enabled: !!orgId,
     staleTime: 60000,
-    retry: 1,
   });
 
   const rotate = useMutation({
