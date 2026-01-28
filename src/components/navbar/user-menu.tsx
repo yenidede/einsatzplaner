@@ -14,10 +14,7 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
 import { Close, PopoverContent, PopoverTrigger } from '@radix-ui/react-popover';
 import { Popover } from '../ui/popover';
-import {
-  OrganizationRoleBadge,
-  sortRolesByPriority,
-} from '@/components/settings/OrganizationCard';
+import { RolesList } from '../Roles';
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
@@ -178,21 +175,15 @@ function OrganizationWithRoles({
   userId: string;
 }) {
   const { data: uorRoles } = useUserOrgRoles(orgId, userId);
-  const sortedRoles = uorRoles
-    ? sortRolesByPriority(uorRoles.map((uor) => uor.role))
-    : [];
+  const roles = uorRoles?.map((uor) => uor.role) || [];
 
   return (
     <div className="flex items-end justify-between">
       <div>
         <p className="text-muted-foreground mb-2 text-sm">{orgName}</p>
-        <div className="flex flex-wrap gap-2">
-          {sortedRoles.map((role, i) => (
-            <OrganizationRoleBadge key={i} role={role}></OrganizationRoleBadge>
-          ))}
-        </div>
+        <RolesList unsortedRoles={roles} />
       </div>
-      {sortedRoles.find(
+      {roles.find(
         (r) => r.name === 'Organisationsverwaltung' || r.name === 'OV'
       ) && (
         <Close asChild>

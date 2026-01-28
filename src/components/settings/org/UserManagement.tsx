@@ -2,10 +2,12 @@
 
 import { Button } from '@/components/ui/button';
 import { UserListItem } from './UserListItem';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useSession } from 'next-auth/react';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 
 interface UsersManagementSectionProps {
   usersData: any[];
-  usersLoading: boolean;
   currentUserEmail: string;
   onUserProfileClick: (userId: string) => void;
   onInviteClick: () => void;
@@ -14,11 +16,18 @@ interface UsersManagementSectionProps {
 
 export function UsersManagementSection({
   usersData,
-  usersLoading,
   currentUserEmail,
   onUserProfileClick,
   onInviteClick,
 }: UsersManagementSectionProps) {
+  const { data: session } = useSession();
+  const { data: organizations } = useOrganizations(session?.user.orgIds);
+
+  const { helper_plural } = useOrganizationTerminology(
+    organizations,
+    session?.user.activeOrganization?.id
+  );
+
   const groupedUsers = usersData?.reduce((acc: any, userOrgRole: any) => {
     const userId = userOrgRole.user?.id;
     if (!acc[userId]) {
@@ -72,60 +81,29 @@ export function UsersManagementSection({
     roleNames.includes('Superadmin');
 
   return (
-    <div className="flex flex-col items-start justify-center gap-4 self-stretch">
-      <div className="flex flex-col items-start justify-start gap-2 self-stretch">
-        <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
-          <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
-            Personen verwalten
+    <>
+      <div className="flex flex-col items-start justify-start gap-5 self-stretch">
+        {sortedUsers && sortedUsers.length > 0 ? (
+          sortedUsers.map((groupedUser: any) => (
+            <UserListItem
+              key={groupedUser.user?.id}
+              user={groupedUser.user}
+              roles={groupedUser.roles}
+              onProfileClick={() => onUserProfileClick(groupedUser.user?.id)}
+            />
+          ))
+        ) : (
+          <div className="self-stretch py-4 text-center text-gray-500">
+            Keine User gefunden
           </div>
-        </div>
-        <div className="flex flex-col items-start justify-start gap-5 self-stretch border-t border-slate-200 py-2">
-          {usersLoading ? (
-            <div className="self-stretch px-4 py-4 text-center text-gray-500">
-              Lädt User...
-            </div>
-          ) : sortedUsers && sortedUsers.length > 0 ? (
-            sortedUsers.map((groupedUser: any) => (
-              <UserListItem
-                key={groupedUser.user?.id}
-                user={groupedUser.user}
-                roles={groupedUser.roles}
-                onProfileClick={() => onUserProfileClick(groupedUser.user?.id)}
-              />
-            ))
-          ) : (
-            <div className="self-stretch px-4 py-4 text-center text-gray-500">
-              Keine User gefunden
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {canInviteUsers && (
-          <Button onClick={onInviteClick}>Helfer einladen</Button>
-        ) && (
-          <div className="flex flex-col gap-4 self-stretch border-t border-slate-200 px-4 py-4">
-            <button
-              onClick={onInviteClick}
-              className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
-            >
-              <svg
-                className="mr-2 h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                />
-              </svg>
-              Helfer einladen
-            </button>
-          </div>
-        )}
-    </div>
+        <div className="mt-8">
+          <Button onClick={onInviteClick}>{helper_plural} einladen</Button>
+        </div>
+      )}
+    </>
   );
 }
