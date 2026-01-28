@@ -2,17 +2,15 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAlertDialog } from '@/contexts/AlertDialogContext';
 
-interface UseUnsavedChangesOptions {
+interface UseUnsavedChangesOptions<T extends string = string> {
   hasUnsavedChanges: boolean;
-  onSave?: () => void | Promise<void>;
-  onSectionChange?: (section: string) => void;
+  onSectionChange?: (section: T) => void;
 }
 
-export function useUnsavedChanges({
+export function useUnsavedChanges<T extends string = string>({
   hasUnsavedChanges,
-  onSave,
   onSectionChange,
-}: UseUnsavedChangesOptions) {
+}: UseUnsavedChangesOptions<T>) {
   const router = useRouter();
   const pathname = usePathname();
   const { showDialog } = useAlertDialog();
@@ -33,6 +31,7 @@ export function useUnsavedChanges({
     if (!hasUnsavedChanges) return;
 
     // Store original methods
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const routerInstance = router as any;
     const originalPush = routerInstance.push?.bind(router) || router.push.bind(router);
     const originalReplace = routerInstance.replace?.bind(router) || router.replace.bind(router);
@@ -66,6 +65,7 @@ export function useUnsavedChanges({
     };
 
     // Override router methods
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     routerInstance.push = ((url: string, options?: any) => {
       if (isNavigatingRef.current || !hasUnsavedChangesRef.current) {
         return originalPush(url, options);
@@ -73,6 +73,7 @@ export function useUnsavedChanges({
       return handleNavigation(url, originalPush);
     }) as typeof router.push;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     routerInstance.replace = ((url: string, options?: any) => {
       if (isNavigatingRef.current || !hasUnsavedChangesRef.current) {
         return originalReplace(url, options);
@@ -93,7 +94,7 @@ export function useUnsavedChanges({
 
   // Intercept section changes
   const handleSectionChangeWithCheck = useCallback(
-    async (section: string) => {
+    async (section: T) => {
       if (!hasUnsavedChanges) {
         onSectionChange?.(section);
         return;

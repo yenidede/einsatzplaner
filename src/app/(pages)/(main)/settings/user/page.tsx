@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,12 +11,9 @@ import {
   LogOut,
   Upload,
   Trash2,
-  Save,
-  X,
   Calendar,
 } from 'lucide-react';
 
-import { useSessionValidation } from '@/hooks/useSessionValidation';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
   uploadProfilePictureAction,
@@ -56,7 +53,6 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import {
   CalendarIntegrationCard,
@@ -76,7 +72,6 @@ export default function SettingsPage() {
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const { data: session, status, update } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { showDialog } = useAlertDialog();
 
   // Form state
@@ -118,7 +113,6 @@ export default function SettingsPage() {
     sectionRefs,
     handleSectionChange: originalHandleSectionChange,
   } = useSectionNavigation<SectionId>({
-    sectionId: 'account',
     navItems: NAV_ITEMS,
     defaultSection: 'account',
     basePath: '/settings/user',
@@ -175,23 +169,6 @@ export default function SettingsPage() {
 
   const mutation = useUpdateUserProfile(session?.user?.id);
   const leaveOrgMutation = useLeaveOrganization(session?.user?.id);
-
-  // Get managed organizations
-  const managedOrgs = organizations.filter((org) => {
-    if (!Array.isArray(org.roles)) return false;
-    return org.roles.some((role: any) => {
-      const roleName = typeof role === 'string' ? role : role?.name || '';
-      const roleAbbr = typeof role === 'string' ? '' : role?.abbreviation || '';
-      const nameLower = roleName.toLowerCase();
-      const abbrLower = roleAbbr.toLowerCase();
-      return (
-        nameLower.includes('organisationsverwaltung') ||
-        nameLower.includes('superadmin') ||
-        abbrLower === 'ov' ||
-        nameLower === 'ov'
-      );
-    });
-  });
 
   // Check for unsaved changes
   const hasUnsavedChanges = (() => {
@@ -357,13 +334,11 @@ export default function SettingsPage() {
   ]);
 
   // Use unsaved changes hook
-  const { handleSectionChangeWithCheck, navigateWithCheck } = useUnsavedChanges(
-    {
+  const { handleSectionChangeWithCheck, navigateWithCheck } =
+    useUnsavedChanges<SectionId>({
       hasUnsavedChanges,
-      onSave: handleSave,
       onSectionChange: originalHandleSectionChange,
-    }
-  );
+    });
 
   // Wrapper for section change that checks for unsaved changes
   const handleSectionChange = useCallback(
@@ -511,7 +486,6 @@ export default function SettingsPage() {
       <SettingsPageLayout
         header={header}
         mobileNav={mobileNav}
-        activeUserSection={activeSection}
         onUserSectionChange={handleSectionChange}
         onNavigate={navigateWithCheck}
       >
@@ -805,9 +779,19 @@ export default function SettingsPage() {
               {organizations.length > 0 ? (
                 <div className="space-y-4">
                   {organizations.map((org) => {
+                    type RoleType =
+                      | string
+                      | {
+                          id: string;
+                          name: string;
+                          abbreviation: string | null;
+                        };
+
                     const normalizedRoles = Array.isArray(org.roles)
-                      ? org.roles.map((r: any) =>
-                          typeof r === 'string' ? { name: r } : r
+                      ? org.roles.map((r: RoleType) =>
+                          typeof r === 'string'
+                            ? { name: r, id: '', abbreviation: null }
+                            : r
                         )
                       : [];
 
@@ -821,7 +805,14 @@ export default function SettingsPage() {
                           {normalizedRoles.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                               {normalizedRoles.map(
-                                (role: any, index: number) => {
+                                (
+                                  role: {
+                                    id: string;
+                                    name: string;
+                                    abbreviation: string | null;
+                                  },
+                                  index: number
+                                ) => {
                                   const label =
                                     role?.abbreviation?.trim() ||
                                     role?.name ||

@@ -1,12 +1,11 @@
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { useSessionValidation } from '@/hooks/useSessionValidation';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
   uploadOrganizationLogoAction,
@@ -42,7 +41,7 @@ import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavi
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
-import { useAlertDialog } from '@/contexts/AlertDialogContext';
+import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
 import {
   Card,
   CardContent,
@@ -50,14 +49,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 export default function OrganizationManagePage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const orgId = params?.orgId as string;
   const { data: session } = useSession();
@@ -106,9 +102,7 @@ export default function OrganizationManagePage() {
   // Use shared session validation hook
   useSettingsSessionValidation();
 
-  const { data: userData, isLoading: isLoadingUser } = useUserProfile(
-    session?.user?.id
-  );
+  const { isLoading: isLoadingUser } = useUserProfile(session?.user?.id);
 
   const {
     data: orgData,
@@ -116,13 +110,15 @@ export default function OrganizationManagePage() {
     error: orgError,
   } = useOrganizationById(orgId);
 
+  // Load organization details separately (website, vat, zvr, authority)
+  const { data: orgDetails } = useOrganizationDetails(orgId);
+
   // Use shared section navigation hook
   const {
     activeSection,
     sectionRefs,
     handleSectionChange: originalHandleSectionChange,
   } = useSectionNavigation<OrgManageSectionId>({
-    sectionId: 'details',
     navItems: ORG_MANAGE_NAV_ITEMS,
     defaultSection: 'details',
     basePath: `/settings/org/${orgId}`,
@@ -158,15 +154,33 @@ export default function OrganizationManagePage() {
         einsatzPlural: orgData.einsatz_name_plural ?? 'Einsätze',
         maxParticipantsPerHelper:
           orgData.max_participants_per_helper?.toString() ?? '',
-        website: orgData.website ?? '',
-        vat: orgData.vat ?? '',
-        zvr: orgData.zvr ?? '',
-        authority: orgData.authority ?? '',
+        website: '', // Loaded separately via useOrganizationDetails
+        vat: '', // Loaded separately via useOrganizationDetails
+        zvr: '', // Loaded separately via useOrganizationDetails
+        authority: '', // Loaded separately via useOrganizationDetails
       };
       // Clear logo file when data is refreshed
       setLogoFile(null);
     }
   }, [orgData]);
+
+  // Update initial values when organization details load
+  useEffect(() => {
+    if (orgDetails && initialValuesRef.current) {
+      initialValuesRef.current = {
+        ...initialValuesRef.current,
+        website: orgDetails.website ?? '',
+        vat: orgDetails.vat ?? '',
+        zvr: orgDetails.zvr ?? '',
+        authority: orgDetails.authority ?? '',
+      };
+      // Also update the state
+      setWebsite(orgDetails.website ?? '');
+      setVat(orgDetails.vat ?? '');
+      setZvr(orgDetails.zvr ?? '');
+      setAuthority(orgDetails.authority ?? '');
+    }
+  }, [orgDetails]);
 
   const { data: usersData, isLoading: usersLoading } =
     useOrganizationUserRoles(orgId);
@@ -247,7 +261,7 @@ export default function OrganizationManagePage() {
         };
       }
       setLogoFile(null);
-    } catch (error) {
+    } catch {
       // Error handling is done by the mutation
     }
   }, [
@@ -270,13 +284,11 @@ export default function OrganizationManagePage() {
   ]);
 
   // Use unsaved changes hook
-  const { handleSectionChangeWithCheck, navigateWithCheck } = useUnsavedChanges(
-    {
+  const { handleSectionChangeWithCheck, navigateWithCheck } =
+    useUnsavedChanges<OrgManageSectionId>({
       hasUnsavedChanges,
-      onSave: handleSave,
       onSectionChange: originalHandleSectionChange,
-    }
-  );
+    });
 
   // Wrapper for section change that checks for unsaved changes
   const handleSectionChange = useCallback(
@@ -404,7 +416,6 @@ export default function OrganizationManagePage() {
         header={header}
         mobileNav={mobileNav}
         currentOrgId={orgId}
-        activeOrgSection={activeSection}
         onOrgSectionChange={handleSectionChange}
         onNavigate={navigateWithCheck}
       >

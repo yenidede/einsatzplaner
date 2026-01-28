@@ -9,7 +9,6 @@ interface UserSettingsMobileNavProps {
 }
 
 export function UserSettingsMobileNav({
-  activeSection,
   onSectionChange,
 }: UserSettingsMobileNavProps) {
   return (

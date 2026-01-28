@@ -12,7 +12,6 @@ interface OrgSettingsMobileNavProps {
 }
 
 export function OrgSettingsMobileNav({
-  activeSection,
   onSectionChange,
 }: OrgSettingsMobileNavProps) {
   return (

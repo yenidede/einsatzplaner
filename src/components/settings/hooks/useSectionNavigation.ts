@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 const SCROLL_OFFSET = 240;
 
 interface UseSectionNavigationOptions<T extends string> {
-  sectionId: T;
   navItems: readonly { id: T }[];
   defaultSection: T;
   basePath: string;
@@ -13,7 +12,6 @@ interface UseSectionNavigationOptions<T extends string> {
 }
 
 export function useSectionNavigation<T extends string>({
-  sectionId,
   navItems,
   defaultSection,
   basePath,
