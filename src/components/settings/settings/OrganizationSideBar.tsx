@@ -9,7 +9,7 @@ import { useTree } from '@headless-tree/react';
 import { Tree, TreeItem, TreeItemLabel } from '@/components/ui/tree';
 import { User } from 'next-auth';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
-import { useUserOrgRoles } from '../../hooks/useUserOrgRoles';
+import { useUserOrgRoles } from '../../../features/settings/hooks/useUserOrgRoles';
 import { type organization } from '@/generated/prisma';
 
 interface OrganizationSidebarProps {
@@ -71,9 +71,9 @@ export function OrganizationSidebar({
       <div className="flex flex-col gap-2 overflow-y-auto px-2 py-1.5">
         {/* Allgemein link */}
         <Link
-          href="/settings"
+          href="/settings/user"
           className={`rounded-md px-4 py-2 transition-colors hover:bg-slate-50 ${
-            pathname === '/settings'
+            pathname === '/settings/user'
               ? 'font-semibold text-slate-900'
               : 'text-slate-700'
           }`}
@@ -125,7 +125,7 @@ function OrganizationTreeSection({
     const items: Record<string, TreeItemData> = {
       root: {
         name: org.name,
-        href: `/organization/${org.id}/manage`,
+        href: `/settings/org/${org.id}`,
         children: [
           `${orgKey}-details`,
           `${orgKey}-preferences`,
@@ -137,27 +137,27 @@ function OrganizationTreeSection({
       },
       [`${orgKey}-details`]: {
         name: 'Organisationsdetails',
-        href: `/organization/${org.id}/manage#organization-details`,
+        href: `/settings/org/${org.id}#organization-details`,
       },
       [`${orgKey}-preferences`]: {
         name: 'Einstellungen',
-        href: `/organization/${org.id}/manage#preferences`,
+        href: `/settings/org/${org.id}#preferences`,
       },
       [`${orgKey}-addresses`]: {
         name: 'Adressen',
-        href: `/organization/${org.id}/manage#addresses`,
+        href: `/settings/org/${org.id}#addresses`,
       },
       [`${orgKey}-bank-accounts`]: {
         name: 'Bankkonten',
-        href: `/organization/${org.id}/manage#bank-accounts`,
+        href: `/settings/org/${org.id}#bank-accounts`,
       },
       [`${orgKey}-user-properties`]: {
         name: 'Benutzereigenschaften',
-        href: `/organization/${org.id}/manage#user-properties`,
+        href: `/settings/org/${org.id}#user-properties`,
       },
       [`${orgKey}-users`]: {
         name: 'Benutzer',
-        href: `/organization/${org.id}/manage#users`,
+        href: `/settings/org/${org.id}#users`,
       },
     };
     return items;

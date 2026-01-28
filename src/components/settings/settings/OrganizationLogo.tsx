@@ -2,8 +2,8 @@
 
 import { useRef } from 'react';
 import { Upload, Trash2, Building2 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 
 interface OrganizationLogoSectionProps {
   name: string;
@@ -20,23 +20,13 @@ export function OrganizationLogoSection({
 }: OrganizationLogoSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const initials = name
-    ? name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 3)
-    : 'ORG';
-
   return (
     <div className="flex items-center gap-6">
-      <Avatar className="h-20 w-20">
-        <AvatarImage src={logoUrl || undefined} alt={`Logo von ${name}`} />
-        <AvatarFallback className="text-lg">
-          {logoUrl ? <Building2 className="h-8 w-8" /> : initials}
-        </AvatarFallback>
-      </Avatar>
+      {logoUrl ? (
+        <Image src={logoUrl} alt={`Logo von ${name}`} width={80} height={80} />
+      ) : (
+        <Building2 className="h-20 w-20" />
+      )}
       <div className="space-y-2">
         <div className="flex flex-wrap gap-2">
           <input

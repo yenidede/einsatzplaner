@@ -13,7 +13,7 @@ interface SettingsHeaderProps {
 export function SettingsHeader({
   onSave,
   isSaving = false,
-  cancelHref = '/settings',
+  cancelHref = '/settings/user',
   onCancel,
 }: SettingsHeaderProps) {
   const handleCancel = () => {

@@ -1,11 +1,11 @@
 'use client';
 
 import { useId } from 'react';
-import { LabelSettings } from '@/features/settings/components/ui/LabelSettings';
-import { InputSettings } from '@/features/settings/components/ui/InputSettings';
-import UploadProfilePictureIcon from '@/features/settings/components/ui/UploadProfilePictureIcon';
-import ProfilePictureUpload from '@/features/settings/components/ProfilePictureUpload';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import ProfilePictureUpload from '@/components/settings/ProfilePictureUpload';
 import Image from 'next/image';
+import { Upload } from 'lucide-react';
 
 interface AccountSectionProps {
   firstname: string;
@@ -90,7 +90,7 @@ export function AccountSection({
                   )?.click()
                 }
               >
-                <UploadProfilePictureIcon />
+                <Upload className="h-4 w-4" />
                 <span>Profilbild hochladen</span>
               </button>
               <ProfilePictureUpload onUpload={onProfilePictureUpload} />
@@ -107,13 +107,10 @@ export function AccountSection({
 
           <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
             <div className="grid w-full max-w-sm items-center gap-3">
-              <LabelSettings
-                htmlFor="firstname"
-                className="text-sm font-medium"
-              >
+              <Label htmlFor="firstname" className="text-sm font-medium">
                 Vorname
-              </LabelSettings>
-              <InputSettings
+              </Label>
+              <Input
                 id="firstname"
                 value={firstname}
                 className="w-full"
@@ -121,10 +118,10 @@ export function AccountSection({
               />
             </div>
             <div className="grid w-full max-w-sm items-center gap-3">
-              <LabelSettings htmlFor="lastname" className="text-sm font-medium">
+              <Label htmlFor="lastname" className="text-sm font-medium">
                 Nachname
-              </LabelSettings>
-              <InputSettings
+              </Label>
+              <Input
                 id="lastname"
                 value={lastname}
                 className="w-full"
@@ -135,10 +132,10 @@ export function AccountSection({
 
           <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
             <div className="grid w-full max-w-sm items-center gap-3">
-              <LabelSettings htmlFor={emailId} className="text-sm font-medium">
+              <Label htmlFor={emailId} className="text-sm font-medium">
                 E-Mail
-              </LabelSettings>
-              <InputSettings
+              </Label>
+              <Input
                 id={emailId}
                 value={email}
                 className="w-full"
@@ -146,10 +143,10 @@ export function AccountSection({
               />
             </div>
             <div className="grid w-full max-w-sm items-center gap-3">
-              <LabelSettings htmlFor="phone" className="text-sm font-medium">
+              <Label htmlFor="phone" className="text-sm font-medium">
                 Telefon
-              </LabelSettings>
-              <InputSettings
+              </Label>
+              <Input
                 id="phone"
                 value={phone}
                 className="w-full"

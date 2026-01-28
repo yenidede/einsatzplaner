@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUserSettings } from '../hooks/useUserSettings';
+import { useUserSettings } from '../../features/settings/hooks/useUserSettings';
 import { useSession } from 'next-auth/react';
 import {
   FormField,
   Alert,
   Button,
   FormSection,
-} from '../../auth/components/ui/FormComponents';
+} from '../../features/auth/components/ui/FormComponents';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 
 interface UserSettingsProps {

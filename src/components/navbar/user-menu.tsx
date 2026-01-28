@@ -17,7 +17,7 @@ import { Popover } from '../ui/popover';
 import {
   OrganizationRoleBadge,
   sortRolesByPriority,
-} from '@/features/settings/components/OrganizationCard';
+} from '@/components/settings/OrganizationCard';
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
@@ -129,7 +129,7 @@ export default function UserMenu(): JSX.Element | null {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => router.push('/settings')}
+                onClick={() => router.push('/settings/user')}
               >
                 <Zap size={16} aria-hidden="true" />
                 Kalender verknüpfen
@@ -145,7 +145,7 @@ export default function UserMenu(): JSX.Element | null {
               <Button
                 variant="default"
                 className="flex-1"
-                onClick={() => router.push('/settings')}
+                onClick={() => router.push('/settings/user')}
               >
                 <SettingsIcon size={16} className="mr-2" aria-hidden="true" />
                 Einstellungen
@@ -202,7 +202,7 @@ function OrganizationWithRoles({
             className="px-2 py-1 text-sm"
             asChild
           >
-            <Link href={`/organization/${orgId}/manage`}>
+            <Link href={`/settings/org/${orgId}`}>
               Bearbeiten{' '}
               <PencilIcon size={16} aria-hidden="true" className="mr-1" />
             </Link>

@@ -307,7 +307,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
   });
 
   revalidatePath(`/organization/${data.id}`);
-  revalidatePath(`/organization/${data.id}/manage`);
+  revalidatePath(`/settings/org/${data.id}`);
 
   return {
     id: updated.id,
@@ -451,7 +451,7 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       }
     }
 
-    revalidatePath(`/organization/${orgId}/manage`);
+    revalidatePath(`/settings/org/${orgId}`);
 
     return { url: publicUrl };
   } catch (error) {
@@ -501,7 +501,7 @@ export async function removeOrganizationLogoAction(orgId: string) {
     where: { id: orgId },
     data: { logo_url: null },
   });
-  revalidatePath(`/organization/${orgId}/manage`);
+  revalidatePath(`/settings/org/${orgId}`);
   return { message: 'Logo erfolgreich entfernt' };
 }
 
@@ -602,7 +602,7 @@ export async function createOrganizationAddressAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, address };
   } catch (error) {
     console.error('Error creating address:', error);
@@ -631,7 +631,7 @@ export async function updateOrganizationAddressAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, address };
   } catch (error) {
     console.error('Error updating address:', error);
@@ -648,7 +648,7 @@ export async function deleteOrganizationAddressAction(
       where: { id },
     });
 
-    revalidatePath(`/organization/${orgId}/manage`);
+    revalidatePath(`/settings/org/${orgId}`);
     return { success: true };
   } catch (error) {
     console.error('Error deleting address:', error);
@@ -687,7 +687,7 @@ export async function createOrganizationBankAccountAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, account };
   } catch (error) {
     console.error('Error creating bank account:', error);
@@ -712,7 +712,7 @@ export async function updateOrganizationBankAccountAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, account };
   } catch (error) {
     console.error('Error updating bank account:', error);
@@ -729,7 +729,7 @@ export async function deleteOrganizationBankAccountAction(
       where: { id },
     });
 
-    revalidatePath(`/organization/${orgId}/manage`);
+    revalidatePath(`/settings/org/${orgId}`);
     return { success: true };
   } catch (error) {
     console.error('Error deleting bank account:', error);
@@ -787,7 +787,7 @@ export async function saveOrganizationDetailsAction(data: {
       });
     }
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, details };
   } catch (error) {
     console.error('Error saving organization details:', error);

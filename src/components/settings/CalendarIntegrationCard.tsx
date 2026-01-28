@@ -34,7 +34,10 @@ export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
         await navigator.clipboard.writeText(subscription.webcalUrl);
         toast.success('URL in Zwischenablage kopiert');
       } catch (error) {
-        toast.error('Fehler beim Kopieren der URL: ' + error);
+        toast.error(
+          'Fehler beim Kopieren der URL: ' +
+            (error instanceof Error ? error.message : String(error))
+        );
       }
     }
   };
