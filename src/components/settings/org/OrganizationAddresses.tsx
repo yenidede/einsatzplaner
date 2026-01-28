@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/button';
 
 interface OrganizationAddressesProps {
   organizationId: string;
-  onSave: () => void;
   isSuperadmin?: boolean;
 }
 

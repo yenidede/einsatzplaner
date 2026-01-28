@@ -51,8 +51,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
 export default function OrganizationManagePage() {
@@ -174,29 +172,48 @@ export default function OrganizationManagePage() {
 
   // Update initial values when organization details load
   useEffect(() => {
-    if (orgDetails && initialValuesRef.current) {
+    if (!orgDetails) return;
+
+    // Ensure initialValuesRef is initialized even if orgDetails resolves first.
+    if (!initialValuesRef.current) {
       initialValuesRef.current = {
-        ...initialValuesRef.current,
-        website: orgDetails.website ?? '',
-        vat: orgDetails.vat ?? '',
-        zvr: orgDetails.zvr ?? '',
-        authority: orgDetails.authority ?? '',
+        name: orgData?.name ?? '',
+        email: orgData?.email ?? '',
+        phone: orgData?.phone ?? '',
+        description: orgData?.description ?? '',
+        allowSelfSignOut: orgData?.allow_self_sign_out ?? false,
+        helperSingular: orgData?.helper_name_singular ?? 'Helfer:in',
+        helperPlural: orgData?.helper_name_plural ?? 'Helfer:innen',
+        einsatzSingular: orgData?.einsatz_name_singular ?? 'Einsatz',
+        einsatzPlural: orgData?.einsatz_name_plural ?? 'Einsätze',
+        maxParticipantsPerHelper:
+          orgData?.max_participants_per_helper?.toString() ?? '',
+        website: '',
+        vat: '',
+        zvr: '',
+        authority: '',
       };
-      // Also update the state
-      setWebsite(orgDetails.website ?? '');
-      setVat(orgDetails.vat ?? '');
-      setZvr(orgDetails.zvr ?? '');
-      setAuthority(orgDetails.authority ?? '');
     }
-  }, [orgDetails]);
 
-  const { data: usersData, isLoading: usersLoading } =
-    useOrganizationUserRoles(orgId);
+    initialValuesRef.current = {
+      ...initialValuesRef.current,
+      website: orgDetails.website ?? '',
+      vat: orgDetails.vat ?? '',
+      zvr: orgDetails.zvr ?? '',
+      authority: orgDetails.authority ?? '',
+    };
 
-  const { data: currentUserRoles } = useOrganizationUserRoles(orgId);
+    // Also update the state
+    setWebsite(orgDetails.website ?? '');
+    setVat(orgDetails.vat ?? '');
+    setZvr(orgDetails.zvr ?? '');
+    setAuthority(orgDetails.authority ?? '');
+  }, [orgDetails, orgData]);
+
+  const { data: currentUserWithRoles } = useOrganizationUserRoles(orgId);
 
   const isSuperadmin =
-    currentUserRoles?.some(
+    currentUserWithRoles?.some(
       (role) => role.role.name.toLowerCase() === 'superadmin'
     ) ?? false;
 
@@ -241,11 +258,6 @@ export default function OrganizationManagePage() {
           ? parseInt(maxParticipantsPerHelper)
           : undefined,
         einsatz_name_plural: einsatzPlural,
-        logoFile: logoFile,
-        website,
-        vat,
-        zvr,
-        authority,
         allow_self_sign_out: allowSelfSignOut,
       });
 
@@ -558,7 +570,6 @@ export default function OrganizationManagePage() {
                 onPhoneChange={setPhone}
                 onDescriptionChange={setDescription}
                 isSuperadmin={isSuperadmin}
-                onSave={handleSave}
               />
             </CardContent>
           </Card>
@@ -593,7 +604,6 @@ export default function OrganizationManagePage() {
                 onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
                 allowSelfSignOut={allowSelfSignOut}
                 onAllowSelfSignOutChange={setAllowSelfSignOut}
-                onSave={handleSave}
               />
             </CardContent>
           </Card>
@@ -626,7 +636,6 @@ export default function OrganizationManagePage() {
                 onZvrChange={setZvr}
                 onAuthorityChange={setAuthority}
                 isSuperadmin={isSuperadmin}
-                onSave={handleSave}
               />
             </CardContent>
           </Card>
@@ -651,7 +660,7 @@ export default function OrganizationManagePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <UserProperties organizationId={orgId} onSave={handleSave} />
+              <UserProperties organizationId={orgId} />
             </CardContent>
           </Card>
         </section>
@@ -678,11 +687,10 @@ export default function OrganizationManagePage() {
             </CardHeader>
             <CardContent>
               <UsersManagementSection
-                usersData={usersData || []}
+                usersData={currentUserWithRoles || []}
                 currentUserEmail={session?.user?.email || ''}
                 onUserProfileClick={handleUserProfileClick}
                 onInviteClick={() => setIsInviteModalOpen(true)}
-                onSave={handleSave}
               />
             </CardContent>
           </Card>
@@ -695,7 +703,6 @@ export default function OrganizationManagePage() {
             userId={selectedUserId}
             organizationId={orgId}
             currentUserId={session?.user?.id}
-            onSave={handleSave}
           />
         )}
 
@@ -703,7 +710,6 @@ export default function OrganizationManagePage() {
           organizationId={orgId}
           isOpen={isInviteModalOpen}
           onClose={() => setIsInviteModalOpen(false)}
-          onSave={handleSave}
         />
       </SettingsPageLayout>
     </>
