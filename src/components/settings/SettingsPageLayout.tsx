@@ -20,11 +20,9 @@ interface SettingsPageLayoutProps {
   mobileNav?: ReactNode;
   children: ReactNode;
   // For user settings page
-  activeUserSection?: SectionId;
   onUserSectionChange?: (sectionId: SectionId) => void;
   // For org settings page
   currentOrgId?: string;
-  activeOrgSection?: OrgManageSectionId;
   onOrgSectionChange?: (sectionId: OrgManageSectionId) => void;
   // Navigation guard for unsaved changes
   onNavigate?: (url: string) => void | Promise<void>;
@@ -34,10 +32,8 @@ export function SettingsPageLayout({
   header,
   mobileNav,
   children,
-  activeUserSection,
   onUserSectionChange,
   currentOrgId,
-  activeOrgSection,
   onOrgSectionChange,
   onNavigate,
 }: SettingsPageLayoutProps) {
