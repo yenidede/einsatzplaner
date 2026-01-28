@@ -12,6 +12,17 @@ import { Button } from '@/components/ui/button';
 import { optimizeImage } from '@/lib/utils';
 import { toast } from 'sonner';
 
+function isFileMetadataType(value: unknown): value is FileMetadata {
+  return (
+    typeof File !== 'undefined' &&
+    !(value instanceof File) &&
+    typeof value === 'object' &&
+    value !== null &&
+    'url' in value &&
+    'id' in value
+  );
+}
+
 const getFileIcon = (file: FileWithPreview) => {
   // Use preview if available (works for both File and FileMetadata)
   if (file.preview) {
@@ -32,7 +43,8 @@ const getFileIcon = (file: FileWithPreview) => {
     // New File - create object URL
     const fileType = file.file.type;
     if (fileType.startsWith('image/')) {
-      const imageSrc = URL.createObjectURL(file.file);
+      const fileBlob = file.file as File;
+      const imageSrc = URL.createObjectURL(fileBlob);
       return (
         <div className="aspect-square size-10 overflow-hidden rounded-md">
           <img
@@ -43,7 +55,7 @@ const getFileIcon = (file: FileWithPreview) => {
         </div>
       );
     }
-  } else {
+  } else if (isFileMetadataType(file.file)) {
     // FileMetadata - use url directly
     const metadata = file.file;
     const fileType = metadata.type;
@@ -122,15 +134,23 @@ export function FileUpload({
     accept,
     initialFiles,
     onFilesChange: (files) => {
-      queueMicrotask(() => {
-        optimizeFilesAndUpload(files, maxSize).then((optimizedFiles) => {
-          setValue(name, optimizedFiles, {
-            shouldValidate: true,
-            shouldDirty: true,
-            shouldTouch: true,
-          });
+      // Only process files that are actually File instances (not FileMetadata)
+      const newFiles = files.filter((f) => f.file instanceof File);
+      if (newFiles.length > 0) {
+        queueMicrotask(() => {
+          optimizeFilesAndUpload(newFiles, maxSize)
+            .then((optimizedFiles) => {
+              setValue(name, optimizedFiles, {
+                shouldValidate: true,
+                shouldDirty: true,
+                shouldTouch: true,
+              });
+            })
+            .catch((error) => {
+              console.error('Error optimizing/uploading files:', error);
+            });
         });
-      });
+      }
     },
   });
 
@@ -242,14 +262,8 @@ export function FileUpload({
     </div>
   );
 
-  function isFileMetadata(value: unknown): value is FileMetadata {
-    return (
-      typeof File !== 'undefined' && Object.hasOwn(value as object, 'path')
-    );
-  }
-
   function getFileUniqueKey(file: File | FileMetadata) {
-    if (isFileMetadata(file)) {
+    if (isFileMetadataType(file)) {
       return `metadata:${file.url}`;
     }
     return `file:${file.name}-${file.size}-${file.lastModified ?? 0}`;
@@ -269,17 +283,20 @@ export function FileUpload({
     maxSize: number
   ): Promise<string> {
     const fileKey = getFileUniqueKey(file);
-    if (isFileMetadata(file)) {
+    if (isFileMetadataType(file)) {
+      const metadata = file;
       lastUploadKeyRef.current = fileKey;
-      lastUploadValueRef.current = file.url;
-      return file.url;
+      lastUploadValueRef.current = metadata.url;
+      return metadata.url;
     }
 
     if (fileKey === lastUploadKeyRef.current && lastUploadValueRef.current) {
       return lastUploadValueRef.current;
     }
 
-    if (!file.type.startsWith('image/')) {
+    // At this point, file is definitely a File (not FileMetadata)
+    const fileObj = file as File;
+    if (!fileObj.type.startsWith('image/')) {
       throw new Error('Only image files are supported for upload.');
     }
 
@@ -291,12 +308,12 @@ export function FileUpload({
     try {
       console.log(
         'before optimize:',
-        file.size / 1024 / 1024,
+        fileObj.size / 1024 / 1024,
         'targetSizeMB:',
         targetSizeMB
       );
-      const optimized = await optimizeImage(file);
-      const fileToUpload = optimized.size < file.size ? optimized : file;
+      const optimized = await optimizeImage(fileObj);
+      const fileToUpload = optimized.size < fileObj.size ? optimized : fileObj;
 
       if (fileToUpload.size / 1024 / 1024 <= targetSizeMB) {
         const uploadedPath = await onUpload(fileToUpload);
