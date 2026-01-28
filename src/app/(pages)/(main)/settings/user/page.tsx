@@ -13,7 +13,7 @@ import {
   Trash2,
   Calendar,
 } from 'lucide-react';
-
+import Image from 'next/image';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
   uploadProfilePictureAction,
@@ -31,7 +31,7 @@ import {
 import { toast } from 'sonner';
 import { useAlertDialog } from '@/contexts/AlertDialogContext';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
-import { Organization } from '@/features/settings/types';
+import { OrganizationBase } from '@/features/settings/types';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -66,7 +66,8 @@ import { SettingsErrorCard } from '@/components/settings/SettingsErrorCard';
 import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavigation';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
-import { cn, optimizeImage } from '@/lib/utils';
+import { optimizeImage } from '@/lib/utils';
+import { RolesList } from '@/components/Roles';
 
 export default function SettingsPage() {
   const [showLogos, setShowLogos] = useState<boolean>(true);
@@ -84,7 +85,7 @@ export default function SettingsPage() {
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(
     null
   );
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationBase[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // Initial values for change detection
@@ -96,7 +97,7 @@ export default function SettingsPage() {
     pictureUrl: string | null;
     salutationId: string;
     showLogos: boolean;
-    organizations: Organization[];
+    organizations: OrganizationBase[];
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -779,79 +780,33 @@ export default function SettingsPage() {
               {organizations.length > 0 ? (
                 <div className="space-y-4">
                   {organizations.map((org) => {
-                    type RoleType =
-                      | string
-                      | {
-                          id: string;
-                          name: string;
-                          abbreviation: string | null;
-                        };
-
-                    const normalizedRoles = Array.isArray(org.roles)
-                      ? org.roles.map((r: RoleType) =>
-                          typeof r === 'string'
-                            ? { name: r, id: '', abbreviation: null }
-                            : r
-                        )
-                      : [];
-
+                    const logoUrl = org.small_logo_url || org.logo_url;
                     return (
                       <div
                         key={org.id}
-                        className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-4 rounded-lg border p-4 pl-2 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <div className="space-y-2">
-                          <h3 className="text-lg font-semibold">{org.name}</h3>
-                          {normalizedRoles.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {normalizedRoles.map(
-                                (
-                                  role: {
-                                    id: string;
-                                    name: string;
-                                    abbreviation: string | null;
-                                  },
-                                  index: number
-                                ) => {
-                                  const label =
-                                    role?.abbreviation?.trim() ||
-                                    role?.name ||
-                                    '';
-                                  const roleName = role?.name ?? '';
-                                  let bgColor = 'bg-secondary';
-                                  if (roleName === 'Superadmin')
-                                    bgColor = 'bg-rose-100 text-rose-700';
-                                  else if (
-                                    roleName === 'OV' ||
-                                    roleName === 'Organisationsverwaltung'
-                                  )
-                                    bgColor = 'bg-red-100 text-red-700';
-                                  else if (
-                                    roleName === 'EV' ||
-                                    roleName === 'Einsatzverwaltung'
-                                  )
-                                    bgColor = 'bg-orange-100 text-orange-700';
-                                  else if (
-                                    roleName === 'Helfer:in' ||
-                                    roleName === 'Helfer'
-                                  )
-                                    bgColor = 'bg-cyan-100 text-cyan-700';
-
-                                  return (
-                                    <span
-                                      key={role.id ?? index}
-                                      className={cn(
-                                        'inline-flex items-center rounded-md px-2 py-1 text-xs font-medium',
-                                        bgColor
-                                      )}
-                                    >
-                                      {label}
-                                    </span>
-                                  );
-                                }
-                              )}
-                            </div>
-                          )}
+                        <div className="flex items-center">
+                          <div className="flex w-20 justify-center">
+                            {logoUrl ? (
+                              <Image
+                                src={logoUrl}
+                                alt={org.name}
+                                width={80}
+                                height={60}
+                              />
+                            ) : (
+                              <div className="bg-muted flex size-10 items-center justify-center rounded-full p-2">
+                                <Building2 className="size-4" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <h3 className="text-lg font-semibold">
+                              {org.name}
+                            </h3>
+                            <RolesList unsortedRoles={org.roles} />
+                          </div>
                         </div>
                         <Button
                           variant="outline"
