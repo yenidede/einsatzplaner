@@ -10,6 +10,8 @@ import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
   uploadOrganizationLogoAction,
   removeOrganizationLogoAction,
+  uploadOrganizationSmallLogoAction,
+  removeOrganizationSmallLogoAction,
 } from '@/features/settings/organization-action';
 import {
   useUserProfile,
@@ -20,7 +22,7 @@ import { useUpdateOrganization } from '@/features/settings/hooks/useSettingsMuta
 
 import { UserProfileDialog } from '@/components/settings/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
-import { OrganizationLogoSection } from '@/components/settings/org/OrganizationLogo';
+import { FileUpload } from '@/components/form/file-upload';
 import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationDetailsForm';
 import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
 import { UsersManagementSection } from '@/components/settings/org/UserManagement';
@@ -72,6 +74,8 @@ export default function OrganizationManagePage() {
   const [maxParticipantsPerHelper, setMaxParticipantsPerHelper] = useState('');
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [smallLogoUrl, setSmallLogoUrl] = useState<string>('');
+  const [smallLogoFile, setSmallLogoFile] = useState<File | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
@@ -130,6 +134,7 @@ export default function OrganizationManagePage() {
       setName(orgData.name ?? '');
       setDescription(orgData.description ?? '');
       setLogoUrl(orgData.logo_url ?? '');
+      setSmallLogoUrl(orgData.small_logo_url ?? '');
       setEmail(orgData.email ?? '');
       setPhone(orgData.phone ?? '');
       setAllowSelfSignOut(orgData.allow_self_sign_out ?? false);
@@ -159,8 +164,9 @@ export default function OrganizationManagePage() {
         zvr: '', // Loaded separately via useOrganizationDetails
         authority: '', // Loaded separately via useOrganizationDetails
       };
-      // Clear logo file when data is refreshed
+      // Clear logo files when data is refreshed
       setLogoFile(null);
+      setSmallLogoFile(null);
     }
   }, [orgData]);
 
@@ -214,7 +220,8 @@ export default function OrganizationManagePage() {
       vat !== initial.vat ||
       zvr !== initial.zvr ||
       authority !== initial.authority ||
-      logoFile !== null
+      logoFile !== null ||
+      smallLogoFile !== null
     );
   })();
 
@@ -261,6 +268,7 @@ export default function OrganizationManagePage() {
         };
       }
       setLogoFile(null);
+      setSmallLogoFile(null);
     } catch {
       // Error handling is done by the mutation
     }
@@ -303,21 +311,7 @@ export default function OrganizationManagePage() {
     onSave: handleSave,
   });
 
-  const handleLogoUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Bitte eine gültige Bilddatei auswählen');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Datei zu groß. Maximum 5MB.');
-      return;
-    }
-
+  const handleLogoUpload = async (file: File): Promise<string> => {
     const toastId = toast.loading('Logo wird hochgeladen...');
     try {
       const formData = new FormData();
@@ -335,9 +329,11 @@ export default function OrganizationManagePage() {
       });
 
       toast.success('Logo erfolgreich hochgeladen!', { id: toastId });
+      return uploadRes.url;
     } catch (error) {
       toast.error('Fehler beim Hochladen', { id: toastId });
       console.error(error);
+      throw error;
     }
   };
 
@@ -349,11 +345,6 @@ export default function OrganizationManagePage() {
       setLogoUrl('');
       setLogoFile(null);
 
-      const fileInput = document.getElementById(
-        'logo-upload'
-      ) as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.org.detail(orgId),
       });
@@ -361,6 +352,51 @@ export default function OrganizationManagePage() {
       toast.success('Logo erfolgreich entfernt!', { id: toastId });
     } catch (error) {
       toast.error('Fehler beim Entfernen des Logos', { id: toastId });
+      console.error(error);
+    }
+  };
+
+  const handleSmallLogoUpload = async (file: File): Promise<string> => {
+    const toastId = toast.loading('Kleines Logo wird hochgeladen...');
+    try {
+      const formData = new FormData();
+      formData.append('smallLogo', file);
+      formData.append('orgId', orgId);
+      const uploadRes = await uploadOrganizationSmallLogoAction(formData);
+
+      if (!uploadRes) throw new Error('Upload fehlgeschlagen');
+
+      setSmallLogoUrl(uploadRes.url);
+      setSmallLogoFile(null);
+
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.org.detail(orgId),
+      });
+
+      toast.success('Kleines Logo erfolgreich hochgeladen!', { id: toastId });
+      return uploadRes.url;
+    } catch (error) {
+      toast.error('Fehler beim Hochladen', { id: toastId });
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const handleSmallLogoRemove = async () => {
+    const toastId = toast.loading('Kleines Logo wird entfernt...');
+    try {
+      await removeOrganizationSmallLogoAction(orgId);
+
+      setSmallLogoUrl('');
+      setSmallLogoFile(null);
+
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.org.detail(orgId),
+      });
+
+      toast.success('Kleines Logo erfolgreich entfernt!', { id: toastId });
+    } catch (error) {
+      toast.error('Fehler beim Entfernen des kleinen Logos', { id: toastId });
       console.error(error);
     }
   };
@@ -435,12 +471,78 @@ export default function OrganizationManagePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <OrganizationLogoSection
-                name={name}
-                logoUrl={logoUrl}
-                onLogoUpload={handleLogoUpload}
-                onLogoRemove={handleLogoRemove}
-              />
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Logo</label>
+                  <p className="text-muted-foreground text-sm">
+                    Das Hauptlogo deiner Organisation, das in verschiedenen
+                    Bereichen der Anwendung angezeigt wird.
+                  </p>
+                  <FileUpload
+                    id="logo-upload"
+                    name="logo"
+                    maxFiles={1}
+                    accept="image/png, image/jpeg, image/gif, image/jpg"
+                    placeholder="PNG, JPEG oder GIF (wird automatisch komprimiert)"
+                    setValue={(name, value) => {
+                      // FileUpload component manages its own state
+                      // We handle the upload in onUpload callback
+                    }}
+                    onUpload={handleLogoUpload}
+                    onFileRemove={
+                      logoUrl ? () => handleLogoRemove() : undefined
+                    }
+                    initialFiles={
+                      logoUrl
+                        ? [
+                            {
+                              id: 'logo',
+                              name: 'logo.png',
+                              url: logoUrl,
+                              type: 'image/png',
+                              size: 0,
+                            },
+                          ]
+                        : []
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Kleines Logo</label>
+                  <p className="text-muted-foreground text-sm">
+                    Ein kleineres Logo für kompakte Bereiche wie die Navigation
+                    oder interne Organisationsliste.
+                  </p>
+                  <FileUpload
+                    id="small-logo-upload"
+                    name="smallLogo"
+                    maxFiles={1}
+                    accept="image/png, image/jpeg, image/gif, image/jpg"
+                    placeholder="PNG, JPEG oder GIF (wird automatisch komprimiert)"
+                    setValue={(name, value) => {
+                      // FileUpload component manages its own state
+                      // We handle the upload in onUpload callback
+                    }}
+                    onUpload={handleSmallLogoUpload}
+                    onFileRemove={
+                      smallLogoUrl ? () => handleSmallLogoRemove() : undefined
+                    }
+                    initialFiles={
+                      smallLogoUrl
+                        ? [
+                            {
+                              id: 'small-logo',
+                              name: 'small-logo.png',
+                              url: smallLogoUrl,
+                              type: 'image/png',
+                              size: 0,
+                            },
+                          ]
+                        : []
+                    }
+                  />
+                </div>
+              </div>
               <Separator />
               <OrganizationDetailsForm
                 name={name}
