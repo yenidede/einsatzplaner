@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Mail, Send, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { invitationQueryKeys } from '../queryKeys';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,6 +18,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { createInvitationAction } from '../invitation-action';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
 import { useRoles } from '@/features/roles/hooks/use-roles-queries';
 
@@ -183,87 +192,64 @@ export function InviteUserForm({
     setPendingFormData(null);
   };
 
-  if (!isOpen) return null;
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
     <>
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
-        onClick={handleBackdropClick}
-      >
-        <div className="mx-4 w-full max-w-md rounded-lg bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-slate-200 p-6">
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-md gap-0 p-0">
+          <DialogHeader className="flex flex-row items-start gap-4 border-b px-6 py-6 sm:flex-row">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                <Mail className="h-5 w-5 text-blue-600" />
+              <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+                <Mail className="text-primary h-5 w-5" />
               </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Benutzer einladen
-                </h2>
-                <p className="text-sm text-slate-600">
+              <div className="space-y-1.5">
+                <DialogTitle>Benutzer einladen</DialogTitle>
+                <DialogDescription>
                   Neue Mitglieder zur Organisation hinzufügen
-                </p>
+                </DialogDescription>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="rounded-md p-2 transition-colors hover:bg-slate-100"
-            >
-              <X className="h-5 w-5 text-slate-500" />
-            </button>
-          </div>
+          </DialogHeader>
 
-          <div className="p-6">
+          <div className="space-y-6 p-6">
             {successMessage && (
-              <div className="mb-4 flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="text-sm text-green-800">{successMessage}</span>
+              <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/30">
+                <CheckCircle className="h-5 w-5 shrink-0 text-green-600 dark:text-green-500" />
+                <span className="text-sm text-green-800 dark:text-green-200">
+                  {successMessage}
+                </span>
               </div>
             )}
 
             {errorMessage && (
-              <div className="mb-4 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-3">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <span className="text-sm text-red-800">{errorMessage}</span>
+              <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/30">
+                <AlertCircle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-500" />
+                <span className="text-sm text-red-800 dark:text-red-200">
+                  {errorMessage}
+                </span>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-sm font-medium text-slate-700"
-                >
-                  E-Mail-Adresse
-                </label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="email">E-Mail-Adresse</Label>
+                <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="beispiel@email.de"
                   disabled={isSubmitting}
-                  className="w-full rounded-md border border-slate-200 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   autoComplete="email"
                 />
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="text-muted-foreground text-xs">
                   Die Person erhält eine E-Mail mit einem Einladungslink
                 </p>
               </div>
 
-              <div>
-                <label className="mb-3 block text-sm font-medium text-slate-700">
-                  Berechtigungen
-                </label>
+              <div className="space-y-3">
+                <Label>Berechtigungen</Label>
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3">
                     <Checkbox
                       id="role-helfer"
                       checked={helferRole}
@@ -272,55 +258,51 @@ export function InviteUserForm({
                       }
                       disabled={isSubmitting || !helferRoleId}
                     />
-                    <label
+                    <Label
                       htmlFor="role-helfer"
-                      className="cursor-pointer text-sm text-slate-700 select-none"
+                      className="cursor-pointer font-normal"
                     >
-                      <span className="font-medium">Helfer</span>
-                    </label>
+                      Helfer
+                    </Label>
                   </div>
 
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3">
                     <Checkbox
                       id="role-ev"
                       checked={evRole}
                       onCheckedChange={(checked) => setEvRole(checked === true)}
                       disabled={isSubmitting || !evRoleId}
                     />
-                    <label
+                    <Label
                       htmlFor="role-ev"
-                      className="cursor-pointer text-sm text-slate-700 select-none"
+                      className="cursor-pointer font-normal"
                     >
-                      <span className="font-medium">
-                        Einsatzverwaltung (EV)
-                      </span>
-                    </label>
+                      Einsatzverwaltung (EV)
+                    </Label>
                   </div>
 
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3">
                     <Checkbox
                       id="role-ov"
                       checked={ovRole}
                       onCheckedChange={(checked) => setOvRole(checked === true)}
                       disabled={isSubmitting || !ovRoleId}
                     />
-                    <label
+                    <Label
                       htmlFor="role-ov"
-                      className="cursor-pointer text-sm text-slate-700 select-none"
+                      className="cursor-pointer font-normal"
                     >
-                      <span className="font-medium">
-                        Organisationsverwaltung (OV)
-                      </span>
-                    </label>
+                      Organisationsverwaltung (OV)
+                    </Label>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-md bg-blue-50 p-3">
-                <h4 className="mb-1 text-sm font-medium text-blue-900">
+              <div className="bg-muted/50 rounded-md p-3">
+                <h4 className="mb-1 text-sm font-medium">
                   Was passiert als nächstes?
                 </h4>
-                <ul className="space-y-1 text-xs text-blue-700">
+                <ul className="text-muted-foreground space-y-1 text-xs">
                   <li>• Eine Einladungs-E-Mail wird versendet</li>
                   <li>• Der Link ist 7 Tage gültig</li>
                   <li>• Benutzer erhält die ausgewählten Rollen</li>
@@ -328,21 +310,22 @@ export function InviteUserForm({
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  className="flex-1"
                   onClick={onClose}
-                  className="flex-1 rounded-md border border-slate-200 px-4 py-2 text-slate-700 transition-colors hover:bg-slate-50"
                 >
                   Abbrechen
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
+                  className="flex-1"
                   disabled={isSubmitting || !email.trim()}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Sende...
                     </>
                   ) : (
@@ -351,12 +334,12 @@ export function InviteUserForm({
                       Einladung senden
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>

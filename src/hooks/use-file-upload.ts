@@ -213,7 +213,11 @@ export const useFileUpload = (
         }
 
         // Check file size only if maxSize is provided and not Infinity
-        if (maxSize !== Infinity && maxSize !== undefined && file.size > maxSize) {
+        if (
+          maxSize !== Infinity &&
+          maxSize !== undefined &&
+          file.size > maxSize
+        ) {
           errors.push(
             multiple
               ? `Some files exceed the maximum size of ${formatBytes(maxSize)}.`

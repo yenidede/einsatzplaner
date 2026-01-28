@@ -123,13 +123,11 @@ export default function UserMenu(): JSX.Element | null {
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Integrationen</h4>
             <Close asChild>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => router.push('/settings/user')}
-              >
-                <Zap size={16} aria-hidden="true" />
-                Kalender verknüpfen
+              <Button variant="outline" className="w-full" asChild>
+                <Link href="/settings/user#calendar">
+                  <Zap size={16} aria-hidden="true" />
+                  Kalender verknüpfen
+                </Link>
               </Button>
             </Close>
           </div>
@@ -139,13 +137,11 @@ export default function UserMenu(): JSX.Element | null {
           {/* Bottom Actions */}
           <div className="flex gap-2">
             <Close asChild>
-              <Button
-                variant="default"
-                className="flex-1"
-                onClick={() => router.push('/settings/user')}
-              >
-                <SettingsIcon size={16} className="mr-2" aria-hidden="true" />
-                Einstellungen
+              <Button variant="default" className="flex-1" asChild>
+                <Link href="/settings/user#account">
+                  <SettingsIcon size={16} className="mr-2" aria-hidden="true" />
+                  Einstellungen
+                </Link>
               </Button>
             </Close>
             <Close asChild>
@@ -193,7 +189,7 @@ function OrganizationWithRoles({
             className="px-2 py-1 text-sm"
             asChild
           >
-            <Link href={`/settings/org/${orgId}`}>
+            <Link href={`/settings/org/${orgId}#details`}>
               Bearbeiten{' '}
               <PencilIcon size={16} aria-hidden="true" className="mr-1" />
             </Link>

@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 // UUID validation schema
 const uuidSchema = z.string().uuid({
-    message: 'Invalid einsatz ID format. Expected a valid UUID.',
+  message: 'Invalid einsatz ID format. Expected a valid UUID.',
 });
 
 /**
@@ -15,7 +15,7 @@ const uuidSchema = z.string().uuid({
  * @returns true if valid UUID, false otherwise
  */
 function isValidUuid(value: string): boolean {
-    return uuidSchema.safeParse(value).success;
+  return uuidSchema.safeParse(value).success;
 }
 
 /**
@@ -25,17 +25,21 @@ function isValidUuid(value: string): boolean {
  * @returns Full URL to the einsatz
  * @throws Error if einsatzId is not a valid UUID
  */
-export function generateEinsatzLink(einsatzId: string, baseUrl?: string): string {
-    // Validate UUID format
-    const result = uuidSchema.safeParse(einsatzId);
-    if (!result.success) {
-        throw new Error(
-            `Cannot generate einsatz link: ${result.error.message || 'Invalid UUID'}`
-        );
-    }
+export function generateEinsatzLink(
+  einsatzId: string,
+  baseUrl?: string
+): string {
+  // Validate UUID format
+  const result = uuidSchema.safeParse(einsatzId);
+  if (!result.success) {
+    throw new Error(
+      `Cannot generate einsatz link: ${result.error.message || 'Invalid UUID'}`
+    );
+  }
 
-    const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-    return `${base}/einsatzverwaltung?einsatz=${einsatzId}`;
+  const base =
+    baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+  return `${base}/einsatzverwaltung?einsatz=${einsatzId}`;
 }
 
 /**
@@ -44,8 +48,9 @@ export function generateEinsatzLink(einsatzId: string, baseUrl?: string): string
  * @returns Full URL for new einsatz creation
  */
 export function generateNewEinsatzLink(baseUrl?: string): string {
-    const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-    return `${base}/einsatzverwaltung?new=true`;
+  const base =
+    baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+  return `${base}/einsatzverwaltung?new=true`;
 }
 
 /**
@@ -59,24 +64,26 @@ export function generateNewEinsatzLink(baseUrl?: string): string {
  * @returns Promise that resolves when link is copied
  * @throws Error if einsatzId is not a valid UUID or clipboard API fails
  */
-export async function copyEinsatzLinkToClipboard(einsatzId: string): Promise<void> {
-    // Validate UUID format
-    const result = uuidSchema.safeParse(einsatzId);
-    if (!result.success) {
-        throw new Error(
-            `Cannot copy link to clipboard: ${result.error.message || 'Invalid UUID'}`
-        );
-    }
+export async function copyEinsatzLinkToClipboard(
+  einsatzId: string
+): Promise<void> {
+  // Validate UUID format
+  const result = uuidSchema.safeParse(einsatzId);
+  if (!result.success) {
+    throw new Error(
+      `Cannot copy link to clipboard: ${result.error.message || 'Invalid UUID'}`
+    );
+  }
 
-    try {
-        const link = generateEinsatzLink(einsatzId);
-        await navigator.clipboard.writeText(link);
-    } catch (error) {
-        if (error instanceof Error) {
-            throw new Error(`Failed to copy link to clipboard: ${error.message}`);
-        }
-        throw new Error('Failed to copy link to clipboard: Unknown error');
+  try {
+    const link = generateEinsatzLink(einsatzId);
+    await navigator.clipboard.writeText(link);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Failed to copy link to clipboard: ${error.message}`);
     }
+    throw new Error('Failed to copy link to clipboard: Unknown error');
+  }
 }
 
 /**
@@ -84,7 +91,9 @@ export async function copyEinsatzLinkToClipboard(einsatzId: string): Promise<voi
  * @param einsatzId - The einsatz ID to validate
  * @returns Validated UUID string or null if invalid
  */
-export function validateEinsatzIdFromUrl(einsatzId: string | null | undefined): string | null {
-    if (!einsatzId) return null;
-    return isValidUuid(einsatzId) ? einsatzId : null;
+export function validateEinsatzIdFromUrl(
+  einsatzId: string | null | undefined
+): string | null {
+  if (!einsatzId) return null;
+  return isValidUuid(einsatzId) ? einsatzId : null;
 }

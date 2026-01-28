@@ -44,6 +44,7 @@ import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges
 import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -52,6 +53,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -572,7 +574,7 @@ export default function OrganizationManagePage() {
         >
           <Card>
             <CardHeader>
-              <CardTitle id="preferences-heading">Einstellungen</CardTitle>
+              <CardTitle id="preferences-heading">Präferenzen</CardTitle>
               <CardDescription>
                 Passe die Terminologie und Präferenzen deiner Organisation an
               </CardDescription>
@@ -668,6 +670,11 @@ export default function OrganizationManagePage() {
               <CardDescription>
                 Verwalte Benutzer und ihre Rollen in dieser Organisation
               </CardDescription>
+              <CardAction>
+                <Button onClick={() => setIsInviteModalOpen(true)}>
+                  {helperPlural} einladen
+                </Button>
+              </CardAction>
             </CardHeader>
             <CardContent>
               <UsersManagementSection

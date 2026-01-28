@@ -21,14 +21,17 @@ export type CalendarSubscription = {
   last_accessed: string | null;
 };
 
-const key = (userId?: string, orgId?: string) => settingsQueryKeys.calendarSubscription(userId, orgId);
+const key = (userId?: string, orgId?: string) =>
+  settingsQueryKeys.calendarSubscription(userId, orgId);
 
 export function useCalendarSubscription(orgId: string) {
   const queryClient = useQueryClient();
   const session = useSession();
+  const userId = session.data?.user?.id;
+  const queryKey = key(userId, orgId);
 
   const query = useQuery({
-    queryKey: key(session.data?.user?.id, orgId),
+    queryKey,
     queryFn: () => getSubscriptionAction(orgId),
     enabled: !!orgId,
     staleTime: 60000,
@@ -38,7 +41,7 @@ export function useCalendarSubscription(orgId: string) {
   const rotate = useMutation({
     mutationFn: (id: string) => rotateSubscriptionAction(id),
     onSuccess: (data) => {
-      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
         prev
           ? {
             ...prev,
@@ -61,7 +64,7 @@ export function useCalendarSubscription(orgId: string) {
   const deactivate = useMutation({
     mutationFn: (id: string) => deactivateSubscriptionAction(id),
     onSuccess: () => {
-      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
         prev ? { ...prev, is_active: false } : prev
       );
       toast.success('Kalender-Integration wurde deaktiviert');
@@ -78,7 +81,7 @@ export function useCalendarSubscription(orgId: string) {
   const activate = useMutation({
     mutationFn: (id: string) => activateSubscriptionAction(id),
     onSuccess: () => {
-      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
         prev ? { ...prev, is_active: true } : prev
       );
       toast.success('Kalender-Integration wurde aktiviert');

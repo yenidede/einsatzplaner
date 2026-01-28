@@ -21,7 +21,7 @@ export function sortRolesByPriority(roles: RoleType[]): RoleType[] {
       return p !== 0 ? p : a.i - b.i; // tie-break by original order
     })
     .map((x) => x.r);
-};
+}
 
 export function OrganizationRoleBadge({ role }: { role: RoleType }) {
   const label =
@@ -46,7 +46,7 @@ export function OrganizationRoleBadge({ role }: { role: RoleType }) {
       {label}
     </span>
   );
-};
+}
 
 export const RolesList = ({ unsortedRoles }: { unsortedRoles: RoleType[] }) => {
   const sortedRoles = unsortedRoles ? sortRolesByPriority(unsortedRoles) : [];

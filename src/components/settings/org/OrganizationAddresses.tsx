@@ -16,6 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 
 interface OrganizationAddressesProps {
   organizationId: string;
@@ -174,7 +175,7 @@ export function OrganizationAddresses({
     <>
       {AlertDialogComponent}
       <div className="flex flex-col items-start justify-center self-stretch">
-        <div className="flex items-center justify-between self-stretch border-b border-slate-200 px-4 py-2">
+        <div className="flex items-center justify-between self-stretch border-b border-slate-200 py-2">
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-slate-700" />
             <div className="font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
@@ -183,18 +184,15 @@ export function OrganizationAddresses({
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
+              <Button
                 onClick={handleAddClick}
                 disabled={!isSuperadmin}
-                className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
-                  isSuperadmin
-                    ? 'bg-slate-900 text-white hover:bg-slate-800'
-                    : 'cursor-not-allowed bg-slate-300 text-slate-500'
-                }`}
+                size="sm"
+                variant={isSuperadmin ? 'default' : 'secondary'}
               >
                 <Plus className="h-4 w-4" />
                 <span>Hinzufügen</span>
-              </button>
+              </Button>
             </TooltipTrigger>
             {!isSuperadmin && (
               <TooltipContent>
@@ -204,7 +202,7 @@ export function OrganizationAddresses({
           </Tooltip>
         </div>
 
-        <div className="flex flex-col gap-3 self-stretch px-4 py-2">
+        <div className="flex flex-col gap-3 self-stretch py-2">
           {isAdding && (
             <form
               onSubmit={handleSubmit}
@@ -291,22 +289,23 @@ export function OrganizationAddresses({
               </div>
 
               <div className="flex gap-2">
-                <button
+                <Button
                   type="submit"
                   disabled={
                     createMutation.isPending || updateMutation.isPending
                   }
-                  className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
+                  size="sm"
                 >
                   {editingId ? 'Aktualisieren' : 'Hinzufügen'}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={resetForm}
-                  className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  variant="outline"
+                  size="sm"
                 >
                   Abbrechen
-                </button>
+                </Button>
               </div>
             </form>
           )}
@@ -341,17 +340,14 @@ export function OrganizationAddresses({
                 <div className="flex gap-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
+                      <Button
                         onClick={() => handleEdit(address)}
                         disabled={!isSuperadmin}
-                        className={`rounded p-1.5 transition-colors ${
-                          isSuperadmin
-                            ? 'text-slate-600 hover:bg-slate-100'
-                            : 'cursor-not-allowed text-slate-400'
-                        }`}
+                        variant="ghost"
+                        size="icon"
                       >
                         <Pencil className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </TooltipTrigger>
                     {!isSuperadmin && (
                       <TooltipContent>
@@ -362,17 +358,15 @@ export function OrganizationAddresses({
 
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
+                      <Button
                         onClick={() => handleDelete(address.id)}
                         disabled={!isSuperadmin || deleteMutation.isPending}
-                        className={`rounded p-1.5 transition-colors ${
-                          isSuperadmin
-                            ? 'text-red-600 hover:bg-red-50'
-                            : 'cursor-not-allowed text-slate-400'
-                        }`}
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </TooltipTrigger>
                     {!isSuperadmin && (
                       <TooltipContent>

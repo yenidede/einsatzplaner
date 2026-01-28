@@ -33,10 +33,15 @@ export function useUnsavedChanges<T extends string = string>({
     // Store original methods
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const routerInstance = router as any;
-    const originalPush = routerInstance.push?.bind(router) || router.push.bind(router);
-    const originalReplace = routerInstance.replace?.bind(router) || router.replace.bind(router);
+    const originalPush =
+      routerInstance.push?.bind(router) || router.push.bind(router);
+    const originalReplace =
+      routerInstance.replace?.bind(router) || router.replace.bind(router);
 
-    const handleNavigation = async (url: string, navigationFn: typeof router.push): Promise<void> => {
+    const handleNavigation = async (
+      url: string,
+      navigationFn: typeof router.push
+    ): Promise<void> => {
       const currentPath = pathnameRef.current;
       const targetPath = url.split('#')[0].split('?')[0]; // Remove hash and query params
 

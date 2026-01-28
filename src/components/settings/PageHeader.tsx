@@ -38,9 +38,6 @@ export function PageHeader({
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <div>
           <h1>{title}</h1>
-          {description && (
-            <p className="text-muted-foreground text-sm">{description}</p>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={handleCancel}>
