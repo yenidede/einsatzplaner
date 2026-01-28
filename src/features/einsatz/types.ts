@@ -47,6 +47,8 @@ export type EinsatzCreate = {
     is_required: boolean;
     min_matching_users?: number | null;
   }>;
+
+  anmerkung?: string;
   // TODO:
   // change_log aktualisieren
 };
@@ -64,9 +66,6 @@ export type EinsatzDetailed = EinsatzRawDb & {
     field_type: { datatype: string | null };
   })[];
   categories: string[];
-  comments: (CommentRawDb & {
-    user: { id: string; firstname: string | null; lastname: string | null };
-  })[];
   change_log: (ChangeLogRawDb & {
     user: { id: string; firstname: string | null; lastname: string | null };
   })[];

@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { OrganizationForPDF } from '@/features/organization/types';
 import { hasPermission } from '@/lib/auth/authGuard';
 import { BadRequestError } from '@/lib/errors';
+import { getAllRoles } from '../roles/roles-dal';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -29,21 +30,9 @@ async function checkUserSession() {
   return session;
 }
 export async function getAllRolesExceptSuperAdmin() {
-  const roles = await prisma.role.findMany({
-    select: {
-      id: true,
-      name: true,
-      abbreviation: true,
-    },
-    orderBy: {
-      name: 'asc',
-    },
-    where: {
-      name: { not: 'Superadmin' },
-    },
-  });
+  const roles = await getAllRoles();
 
-  return roles;
+  return roles.filter((role) => role.name !== 'Superadmin');
 }
 export async function getOrganizationById(orgId: string) {
   const org = await prisma.organization.findUnique({
@@ -193,6 +182,7 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
       },
       role: uor.role,
     })),
+    allow_self_sign_out: org.allow_self_sign_out,
   };
 }
 
@@ -208,6 +198,7 @@ export type OrganizationUpdateData = {
   einsatz_name_singular?: string;
   einsatz_name_plural?: string;
   logo_url?: string;
+  allow_self_sign_out?: boolean;
 };
 
 export async function updateOrganizationAction(data: OrganizationUpdateData) {
@@ -252,6 +243,8 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     }
     dataToUpdate.max_participants_per_helper = value;
   }
+  if (data.allow_self_sign_out !== undefined)
+    dataToUpdate.allow_self_sign_out = data.allow_self_sign_out;
 
   const updated = await prisma.organization.update({
     where: { id: data.id },
@@ -268,6 +261,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
       helper_name_plural: true,
       einsatz_name_singular: true,
       einsatz_name_plural: true,
+      allow_self_sign_out: true,
     },
   });
 
@@ -523,11 +517,11 @@ export async function getOrganizationForPDF(
 
     details: details
       ? {
-          website: details.website,
-          vat: details.vat,
-          zvr: details.zvr,
-          authority: details.authority,
-        }
+        website: details.website,
+        vat: details.vat,
+        zvr: details.zvr,
+        authority: details.authority,
+      }
       : null,
   };
 }

@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Landmark } from 'lucide-react';
 import {
-  getOrganizationBankAccountsAction,
   createOrganizationBankAccountAction,
   updateOrganizationBankAccountAction,
   deleteOrganizationBankAccountAction,
 } from '../../organization-action';
+import { useOrganizationBankAccounts } from '@/features/organization/hooks/use-organization-queries';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import {
   Tooltip,
@@ -19,6 +19,7 @@ import {
 
 interface OrganizationBankAccountsProps {
   organizationId: string;
+  onSave: () => void;
   isSuperadmin?: boolean;
 }
 
@@ -42,11 +43,8 @@ export function OrganizationBankAccounts({
     bic: '',
   });
 
-  const { data: accounts = [], isLoading } = useQuery({
-    queryKey: ['org-bank-accounts', organizationId],
-    queryFn: () => getOrganizationBankAccountsAction(organizationId),
-    enabled: !!organizationId,
-  });
+  const { data: accounts = [], isLoading } =
+    useOrganizationBankAccounts(organizationId);
 
   const createMutation = useMutation({
     mutationFn: createOrganizationBankAccountAction,

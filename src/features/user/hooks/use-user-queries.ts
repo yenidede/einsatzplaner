@@ -7,7 +7,7 @@ import {
 
 export function useUsers(activeOrgId: string | null | undefined) {
   return useQuery({
-    queryKey: queryKeys.user(activeOrgId ?? ''),
+    queryKey: queryKeys.users(activeOrgId ? [activeOrgId] : undefined),
     queryFn: () => {
       return getAllUsersWithRolesByOrgId(activeOrgId ?? '');
     },
@@ -25,6 +25,6 @@ export function useUsersByOrgIds(orgIds: string[]) {
   return useQuery({
     queryKey: queryKeys.users(orgIds),
     queryFn: () => getAllUsersWithRolesByOrgIds(orgIds),
-    enabled: orgIds.length > 0,
+    enabled: !!orgIds && orgIds.length > 0,
   });
 }

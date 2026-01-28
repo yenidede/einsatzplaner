@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { Step, PropertyConfig, FieldType } from '../types';
 import { INITIAL_CONFIG } from '../types';
@@ -18,9 +18,15 @@ import {
 } from '../user_property-actions';
 import { userPropertyQueryKeys } from '../queryKeys';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import {
+  useUserPropertiesByOrg,
+  useExistingPropertyNames,
+  useUserCount,
+} from '../hooks/use-user-property-queries';
 
 interface UserPropertiesProps {
   organizationId: string;
+  onSave: () => void;
 }
 
 export function UserProperties({ organizationId }: UserPropertiesProps) {
@@ -33,20 +39,12 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
   const [originalPropertyName, setOriginalPropertyName] = useState<string>('');
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
-  const { data: properties, isLoading: propertiesLoading } = useQuery({
-    queryKey: userPropertyQueryKeys.byOrg(organizationId),
-    queryFn: () => getUserPropertiesAction(organizationId),
-  });
+  const { data: properties, isLoading: propertiesLoading } =
+    useUserPropertiesByOrg(organizationId);
 
-  const { data: existingNames = [] } = useQuery({
-    queryKey: userPropertyQueryKeys.names(organizationId),
-    queryFn: () => getExistingPropertyNamesAction(organizationId),
-  });
+  const { data: existingNames = [] } = useExistingPropertyNames(organizationId);
 
-  const { data: userCount = 0 } = useQuery({
-    queryKey: userPropertyQueryKeys.userCount(organizationId),
-    queryFn: () => getUserCountAction(organizationId),
-  });
+  const { data: userCount = 0 } = useUserCount(organizationId);
 
   const createMutation = useMutation({
     mutationFn: (config: PropertyConfig) =>

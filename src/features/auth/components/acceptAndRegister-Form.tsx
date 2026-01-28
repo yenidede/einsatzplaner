@@ -33,9 +33,7 @@ import {
 } from '@/components/ui/popover';
 import { FileUpload } from '@/components/form/file-upload';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
-import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
-import { getSalutationsAction } from '@/features/settings/settings-action';
+import { useSalutations } from '@/features/settings/hooks/useUserProfile';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { TabsContent } from '@/components/ui/tabs';
@@ -62,13 +60,7 @@ export function SignUpForm({
   setTab: (tab: AvailableTab) => void;
 }) {
   const [anredePopoverOpen, setAnredePopoverOpen] = useState(false);
-  const { data: salutations = [] } = useQuery({
-    queryKey: settingsQueryKeys.salutation(),
-    queryFn: async () => {
-      const res = await getSalutationsAction();
-      return res;
-    },
-  });
+  const { data: salutations = [] } = useSalutations();
   const profilePictureUploadFromClient = async (
     optimizedFile: File
   ): Promise<string> => {

@@ -1,11 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import type {
-  einsatz as Einsatz,
-  einsatz_field,
-  einsatz_status,
-} from '@/generated/prisma';
+import type { einsatz as Einsatz, einsatz_field } from '@/generated/prisma';
 import type {
   EinsatzForCalendar,
   EinsatzCreate,
@@ -45,7 +41,6 @@ export async function getEinsatzWithDetailsById(
     einsatz_status,
     einsatz_helper,
     einsatz_to_category,
-    einsatz_comment,
     change_log,
     einsatz_field,
     einsatz_user_property,
@@ -70,18 +65,6 @@ export async function getEinsatzWithDetailsById(
       user_property_id: prop.user_property_id,
       is_required: prop.is_required,
       min_matching_users: prop.min_matching_users,
-    })),
-    comments: einsatz_comment.map((comment) => ({
-      id: comment.id,
-      einsatz_id: comment.einsatz_id,
-      user_id: comment.user_id,
-      created_at: comment.created_at,
-      comment: comment.comment,
-      user: {
-        id: comment.user.id,
-        firstname: comment.user.firstname,
-        lastname: comment.user.lastname,
-      },
     })),
     change_log: change_log.map((log) => ({
       id: log.id,
@@ -227,6 +210,7 @@ export async function getEinsaetzeForTableView(
     helpers_needed: einsatz.helpers_needed,
     status_id: einsatz.status_id,
     einsatz_status: einsatz.einsatz_status,
+    anmerkung: einsatz.anmerkung,
     organization: {
       id: einsatz.organization.id,
       name: einsatz.organization.name,
@@ -632,7 +616,7 @@ export async function updateEinsatz({
             create: userProperties.map((propId) => ({
               user_property: { connect: { id: propId.user_property_id } },
               is_required: propId.is_required,
-              min_matching_users: propId.min_matching_users || null,
+              min_matching_users: propId.min_matching_users ?? null,
             })),
           }),
         },
@@ -762,7 +746,7 @@ async function createEinsatzInDb({
           userProperties?.map((propId) => ({
             user_property: { connect: { id: propId.user_property_id } },
             is_required: propId.is_required,
-            min_matching_users: propId.min_matching_users || null,
+            min_matching_users: propId.min_matching_users ?? null,
           })) || [],
       },
       status_id,
@@ -929,8 +913,15 @@ async function getAllEinsatzeForCalendarFromDb(
 }
 
 async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
+  const { session } = await requireAuth();
+
   return prisma.einsatz.findUnique({
-    where: { id: einsatzId },
+    where: {
+      id: einsatzId,
+      organization: {
+        user_organization_role: { some: { user_id: session.user.id } },
+      },
+    },
     include: {
       einsatz_helper: {
         select: {
@@ -938,22 +929,6 @@ async function getEinsatzWithDetailsByIdFromDb(einsatzId: string) {
           einsatz_id: true,
           user_id: true,
           joined_at: true,
-          user: {
-            select: {
-              id: true,
-              firstname: true,
-              lastname: true,
-            },
-          },
-        },
-      },
-      einsatz_comment: {
-        select: {
-          id: true,
-          einsatz_id: true,
-          user_id: true,
-          created_at: true,
-          comment: true,
           user: {
             select: {
               id: true,
