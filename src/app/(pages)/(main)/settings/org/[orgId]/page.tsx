@@ -21,20 +21,23 @@ import { useUpdateOrganization } from '@/features/settings/hooks/useSettingsMuta
 
 import { UserProfileDialog } from '@/components/settings/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
-import { OrganizationLogoSection } from '@/components/settings/settings/OrganizationLogo';
-import { OrganizationDetailsForm } from '@/components/settings/settings/OrganizationDetailsForm';
-import { OrganizationPreferences } from '@/components/settings/settings/OrganizationPreferences';
-import { UsersManagementSection } from '@/components/settings/settings/UserManagement';
+import { OrganizationLogoSection } from '@/components/settings/org/OrganizationLogo';
+import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationDetailsForm';
+import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
+import { UsersManagementSection } from '@/components/settings/org/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
-import { OrganizationAddresses } from '@/components/settings/settings/OrganizationAddresses';
-import { OrganizationBankAccounts } from '@/components/settings/settings/OrganizationBankAccounts';
-import { OrganizationDetails } from '@/components/settings/settings/OrganizationDetails';
+import { OrganizationAddresses } from '@/components/settings/org/OrganizationAddresses';
+import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
+import { OrganizationDetails } from '@/components/settings/org/OrganizationDetails';
 import { PageHeader } from '@/components/settings/PageHeader';
 import { OrgManageNav } from '@/components/settings/OrgManageNav';
 import {
   ORG_MANAGE_NAV_ITEMS,
   type OrgManageSectionId,
 } from '@/components/settings/org-manage-constants';
+import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
+import { OrgSettingsMobileNav } from '@/components/settings/OrgSettingsMobileNav';
+import { signOut } from 'next-auth/react';
 import {
   Card,
   CardContent,
@@ -461,271 +464,246 @@ export default function OrganizationManagePage() {
     );
   }
 
+  const header = (
+    <PageHeader
+      title={`${name} verwalten`}
+      description="Verwalte die Einstellungen und Details deiner Organisation"
+      onSave={handleSave}
+      isSaving={updateMutation.isPending}
+      onCancel={() => router.push('/')}
+    />
+  );
+
+  const sidebar = (
+    <OrgManageNav
+      currentOrgId={orgId}
+      activeSection={activeSection}
+      onSectionChange={handleSectionChange}
+    />
+  );
+
+  const mobileNav = (
+    <OrgSettingsMobileNav
+      activeSection={activeSection}
+      onSectionChange={handleSectionChange}
+    />
+  );
+
   return (
     <>
-      <div className="bg-background min-h-screen overflow-clip rounded-l">
-        <PageHeader
-          title={`${name} verwalten`}
-          description="Verwalte die Einstellungen und Details deiner Organisation"
-          onSave={handleSave}
-          isSaving={updateMutation.isPending}
-          onCancel={() => router.push('/')}
-        />
-
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex gap-8">
-            {/* Sidebar Navigation */}
-            <aside className="hidden w-64 shrink-0 lg:block">
-              <OrgManageNav
-                currentOrgId={orgId}
-                activeSection={activeSection}
-                onSectionChange={handleSectionChange}
+      <SettingsPageLayout
+        header={header}
+        sidebar={sidebar}
+        mobileNav={mobileNav}
+      >
+        {/* Details Section */}
+        <section
+          id="details"
+          ref={(el) => {
+            sectionRefs.current.details = el;
+          }}
+          aria-labelledby="details-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="details-heading">Organisationsdetails</CardTitle>
+              <CardDescription>
+                Grundlegende Informationen und Logo deiner Organisation
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <OrganizationLogoSection
+                name={name}
+                logoUrl={logoUrl}
+                onLogoUpload={handleLogoUpload}
+                onLogoRemove={handleLogoRemove}
               />
-            </aside>
-
-            {/* Main Content */}
-            <main className="flex-1 space-y-8" role="main">
-              {/* Mobile Navigation */}
-              <div
-                className="flex gap-2 overflow-x-auto pb-2 lg:hidden"
-                role="tablist"
-              >
-                {ORG_MANAGE_NAV_ITEMS.map((item) => (
-                  <Button
-                    key={item.id}
-                    variant={activeSection === item.id ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleSectionChange(item.id)}
-                    role="tab"
-                    aria-selected={activeSection === item.id}
-                  >
-                    <item.icon className="mr-2 h-4 w-4" />
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
-
-              {/* Details Section */}
-              <section
-                id="details"
-                ref={(el) => {
-                  sectionRefs.current.details = el;
-                }}
-                aria-labelledby="details-heading"
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle id="details-heading">
-                      Organisationsdetails
-                    </CardTitle>
-                    <CardDescription>
-                      Grundlegende Informationen und Logo deiner Organisation
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <OrganizationLogoSection
-                      name={name}
-                      logoUrl={logoUrl}
-                      onLogoUpload={handleLogoUpload}
-                      onLogoRemove={handleLogoRemove}
-                    />
-                    <Separator />
-                    <OrganizationDetailsForm
-                      name={name}
-                      email={email}
-                      phone={phone}
-                      description={description}
-                      allowSelfSignOut={allowSelfSignOut}
-                      onNameChange={setName}
-                      onEmailChange={setEmail}
-                      onPhoneChange={setPhone}
-                      onDescriptionChange={setDescription}
-                      onAllowSelfSignOutChange={setAllowSelfSignOut}
-                      isSuperadmin={isSuperadmin}
-                      onSave={handleSave}
-                    />
-                    <Separator />
-                    <OrganizationDetails
-                      organizationId={orgId}
-                      website={website}
-                      vat={vat}
-                      zvr={zvr}
-                      authority={authority}
-                      onWebsiteChange={setWebsite}
-                      onVatChange={setVat}
-                      onZvrChange={setZvr}
-                      onAuthorityChange={setAuthority}
-                      isSuperadmin={isSuperadmin}
-                      onSave={handleSave}
-                    />
-                  </CardContent>
-                </Card>
-              </section>
-
-              {/* Preferences Section */}
-              <section
-                id="preferences"
-                ref={(el) => {
-                  sectionRefs.current.preferences = el;
-                }}
-                aria-labelledby="preferences-heading"
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle id="preferences-heading">
-                      Einstellungen
-                    </CardTitle>
-                    <CardDescription>
-                      Passe die Terminologie und Präferenzen deiner Organisation
-                      an
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <OrganizationPreferences
-                      helperSingular={helperSingular}
-                      helperPlural={helperPlural}
-                      onHelperSingularChange={setHelperSingular}
-                      onHelperPluralChange={setHelperPlural}
-                      einsatzSingular={einsatzSingular}
-                      einsatzPlural={einsatzPlural}
-                      onEinsatzSingularChange={setEinsatzSingular}
-                      onEinsatzPluralChange={setEinsatzPlural}
-                      maxParticipantsPerHelper={maxParticipantsPerHelper}
-                      onMaxParticipantsPerHelperChange={
-                        setMaxParticipantsPerHelper
-                      }
-                      onSave={handleSave}
-                    />
-                  </CardContent>
-                </Card>
-              </section>
-
-              {/* Addresses Section */}
-              <section
-                id="addresses"
-                ref={(el) => {
-                  sectionRefs.current.addresses = el;
-                }}
-                aria-labelledby="addresses-heading"
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle id="addresses-heading">Adressen</CardTitle>
-                    <CardDescription>
-                      Verwalte die Adressen deiner Organisation
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <OrganizationAddresses
-                      organizationId={orgId}
-                      isSuperadmin={isSuperadmin}
-                      onSave={handleSave}
-                    />
-                  </CardContent>
-                </Card>
-              </section>
-
-              {/* Bank Accounts Section */}
-              <section
-                id="bank-accounts"
-                ref={(el) => {
-                  sectionRefs.current['bank-accounts'] = el;
-                }}
-                aria-labelledby="bank-accounts-heading"
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle id="bank-accounts-heading">Bankkonten</CardTitle>
-                    <CardDescription>
-                      Verwalte die Bankkonten deiner Organisation
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <OrganizationBankAccounts
-                      organizationId={orgId}
-                      isSuperadmin={isSuperadmin}
-                      onSave={handleSave}
-                    />
-                  </CardContent>
-                </Card>
-              </section>
-
-              {/* User Properties Section */}
-              <section
-                id="user-properties"
-                ref={(el) => {
-                  sectionRefs.current['user-properties'] = el;
-                }}
-                aria-labelledby="user-properties-heading"
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle id="user-properties-heading">
-                      Benutzereigenschaften
-                    </CardTitle>
-                    <CardDescription>
-                      Verwalte die benutzerdefinierten Eigenschaften für
-                      Benutzer in dieser Organisation
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <UserProperties
-                      organizationId={orgId}
-                      onSave={handleSave}
-                    />
-                  </CardContent>
-                </Card>
-              </section>
-
-              {/* Users Section */}
-              <section
-                id="users"
-                ref={(el) => {
-                  sectionRefs.current.users = el;
-                }}
-                aria-labelledby="users-heading"
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle id="users-heading">Benutzer</CardTitle>
-                    <CardDescription>
-                      Verwalte Benutzer und ihre Rollen in dieser Organisation
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <UsersManagementSection
-                      usersData={usersData || []}
-                      usersLoading={usersLoading}
-                      currentUserEmail={session?.user?.email || ''}
-                      onUserProfileClick={handleUserProfileClick}
-                      onInviteClick={() => setIsInviteModalOpen(true)}
-                      onSave={handleSave}
-                    />
-                  </CardContent>
-                </Card>
-              </section>
-
-              {selectedUserId && (
-                <UserProfileDialog
-                  isOpen={isProfileDialogOpen}
-                  onClose={handleCloseProfileDialog}
-                  userId={selectedUserId}
-                  organizationId={orgId}
-                  currentUserId={session?.user?.id}
-                  onSave={handleSave}
-                />
-              )}
-
-              <InviteUserForm
-                organizationId={orgId}
-                isOpen={isInviteModalOpen}
-                onClose={() => setIsInviteModalOpen(false)}
+              <Separator />
+              <OrganizationDetailsForm
+                name={name}
+                email={email}
+                phone={phone}
+                description={description}
+                allowSelfSignOut={allowSelfSignOut}
+                onNameChange={setName}
+                onEmailChange={setEmail}
+                onPhoneChange={setPhone}
+                onDescriptionChange={setDescription}
+                onAllowSelfSignOutChange={setAllowSelfSignOut}
+                isSuperadmin={isSuperadmin}
                 onSave={handleSave}
               />
-            </main>
-          </div>
-        </div>
-      </div>
+              <Separator />
+              <OrganizationDetails
+                organizationId={orgId}
+                website={website}
+                vat={vat}
+                zvr={zvr}
+                authority={authority}
+                onWebsiteChange={setWebsite}
+                onVatChange={setVat}
+                onZvrChange={setZvr}
+                onAuthorityChange={setAuthority}
+                isSuperadmin={isSuperadmin}
+                onSave={handleSave}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Preferences Section */}
+        <section
+          id="preferences"
+          ref={(el) => {
+            sectionRefs.current.preferences = el;
+          }}
+          aria-labelledby="preferences-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="preferences-heading">Einstellungen</CardTitle>
+              <CardDescription>
+                Passe die Terminologie und Präferenzen deiner Organisation an
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OrganizationPreferences
+                helperSingular={helperSingular}
+                helperPlural={helperPlural}
+                onHelperSingularChange={setHelperSingular}
+                onHelperPluralChange={setHelperPlural}
+                einsatzSingular={einsatzSingular}
+                einsatzPlural={einsatzPlural}
+                onEinsatzSingularChange={setEinsatzSingular}
+                onEinsatzPluralChange={setEinsatzPlural}
+                maxParticipantsPerHelper={maxParticipantsPerHelper}
+                onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+                onSave={handleSave}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Addresses Section */}
+        <section
+          id="addresses"
+          ref={(el) => {
+            sectionRefs.current.addresses = el;
+          }}
+          aria-labelledby="addresses-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="addresses-heading">Adressen</CardTitle>
+              <CardDescription>
+                Verwalte die Adressen deiner Organisation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OrganizationAddresses
+                organizationId={orgId}
+                isSuperadmin={isSuperadmin}
+                onSave={handleSave}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Bank Accounts Section */}
+        <section
+          id="bank-accounts"
+          ref={(el) => {
+            sectionRefs.current['bank-accounts'] = el;
+          }}
+          aria-labelledby="bank-accounts-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="bank-accounts-heading">Bankkonten</CardTitle>
+              <CardDescription>
+                Verwalte die Bankkonten deiner Organisation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OrganizationBankAccounts
+                organizationId={orgId}
+                isSuperadmin={isSuperadmin}
+                onSave={handleSave}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* User Properties Section */}
+        <section
+          id="user-properties"
+          ref={(el) => {
+            sectionRefs.current['user-properties'] = el;
+          }}
+          aria-labelledby="user-properties-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="user-properties-heading">
+                Benutzereigenschaften
+              </CardTitle>
+              <CardDescription>
+                Verwalte die benutzerdefinierten Eigenschaften für Benutzer in
+                dieser Organisation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UserProperties organizationId={orgId} onSave={handleSave} />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Users Section */}
+        <section
+          id="users"
+          ref={(el) => {
+            sectionRefs.current.users = el;
+          }}
+          aria-labelledby="users-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="users-heading">Benutzer</CardTitle>
+              <CardDescription>
+                Verwalte Benutzer und ihre Rollen in dieser Organisation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UsersManagementSection
+                usersData={usersData || []}
+                usersLoading={usersLoading}
+                currentUserEmail={session?.user?.email || ''}
+                onUserProfileClick={handleUserProfileClick}
+                onInviteClick={() => setIsInviteModalOpen(true)}
+                onSave={handleSave}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {selectedUserId && (
+          <UserProfileDialog
+            isOpen={isProfileDialogOpen}
+            onClose={handleCloseProfileDialog}
+            userId={selectedUserId}
+            organizationId={orgId}
+            currentUserId={session?.user?.id}
+            onSave={handleSave}
+          />
+        )}
+
+        <InviteUserForm
+          organizationId={orgId}
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          onSave={handleSave}
+        />
+      </SettingsPageLayout>
     </>
   );
 }
