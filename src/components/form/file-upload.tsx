@@ -85,7 +85,7 @@ const getFileIcon = (
     const fileType = metadata.type;
     if (fileType.startsWith('image/')) {
       return (
-        <div className={cn('h-10 overflow-hidden rounded-md', ç†)}>
+        <div className={cn('h-10 overflow-hidden rounded-md', aspectClass)}>
           <img
             src={metadata.url}
             className="h-full w-full object-cover"
