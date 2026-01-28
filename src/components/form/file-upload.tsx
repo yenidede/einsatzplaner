@@ -74,28 +74,18 @@ const getFileIcon = (
       );
     }
   } else if (file.file instanceof File) {
-    // New File - create object URL
-    const fileType = file.file.type;
-    if (fileType.startsWith('image/')) {
-      const fileBlob = file.file as File;
-      const imageSrc = URL.createObjectURL(fileBlob);
-      return (
-        <div className={`${aspectClass} size-10 overflow-hidden rounded-md`}>
-          <img
-            src={imageSrc}
-            className="h-full w-full object-cover"
-            alt={file.file.name}
-          />
-        </div>
-      );
-    }
+    return (
+      <div className="flex aspect-square size-10 items-center justify-center overflow-hidden rounded-full">
+        <FileIcon className="size-5 opacity-60" />
+      </div>
+    );
   } else if (isFileMetadataType(file.file)) {
     // FileMetadata - use url directly
     const metadata = file.file;
     const fileType = metadata.type;
     if (fileType.startsWith('image/')) {
       return (
-        <div className={`${aspectClass} size-10 overflow-hidden rounded-md`}>
+        <div className={cn('h-10 overflow-hidden rounded-md', ç†)}>
           <img
             src={metadata.url}
             className="h-full w-full object-cover"
@@ -342,32 +332,17 @@ export function FileUpload({
 
       // Skip compression for SVG files (they're already vector graphics)
       if (isSvg) {
-        console.log('Skipping compression for SVG file:', fileObj.name);
         const uploadedPath = await onUpload(fileObj);
         lastUploadKeyRef.current = fileKey;
         lastUploadValueRef.current = uploadedPath;
         return uploadedPath;
       }
 
-      const originalSizeMB = fileObj.size / 1024 / 1024;
-      console.log('Compressing image before upload:', {
-        originalSize: `${originalSizeMB.toFixed(2)} MB`,
-        fileName: fileObj.name,
-      });
-
       // Always compress images before upload (except SVG)
       const optimized = await optimizeImage(fileObj);
-      const compressedSizeMB = optimized.size / 1024 / 1024;
 
       // Use the optimized version if it's smaller, otherwise use original
       const fileToUpload = optimized.size < fileObj.size ? optimized : fileObj;
-
-      console.log('Image compression result:', {
-        originalSize: `${originalSizeMB.toFixed(2)} MB`,
-        compressedSize: `${compressedSizeMB.toFixed(2)} MB`,
-        finalSize: `${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`,
-        reduction: `${((1 - fileToUpload.size / fileObj.size) * 100).toFixed(1)}%`,
-      });
 
       const uploadedPath = await onUpload(fileToUpload);
       lastUploadKeyRef.current = fileKey;

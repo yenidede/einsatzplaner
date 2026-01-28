@@ -18,6 +18,8 @@ export function useUnsavedChanges<T extends string = string>({
   const routerRef = useRef(router);
   const pathnameRef = useRef(pathname);
   const hasUnsavedChangesRef = useRef(hasUnsavedChanges);
+  const skipNextPopStateRef = useRef(false);
+  const hasHistoryGuardRef = useRef(false);
 
   // Keep refs updated
   useEffect(() => {
@@ -128,9 +130,65 @@ export function useUnsavedChanges<T extends string = string>({
       return '';
     };
 
+    // Add a history entry so we can intercept a single back/forward action
+    // without immediately leaving the page.
+    const hasGuardInState =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Boolean((history.state as any)?.__unsavedChangesGuard);
+    if (!hasGuardInState && !hasHistoryGuardRef.current) {
+      // Preserve any existing history state (Next.js stores routing state here).
+      const currentState =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (history.state as any) && typeof history.state === 'object'
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          { ...(history.state as any), __unsavedChangesGuard: true }
+          : { __unsavedChangesGuard: true };
+      history.pushState(currentState, '', window.location.href);
+      hasHistoryGuardRef.current = true;
+    } else {
+      hasHistoryGuardRef.current = true;
+    }
+
+    const handlePopState = async () => {
+      // If we intentionally triggered the next pop (to allow navigation), don't block it.
+      if (skipNextPopStateRef.current) {
+        skipNextPopStateRef.current = false;
+        return;
+      }
+
+      if (!hasUnsavedChangesRef.current) return;
+
+      // Use existing confirmation flow when available
+      const result = await showDialog({
+        title: 'Ungespeicherte Änderungen',
+        description:
+          'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
+      });
+
+      if (result === 'success') {
+        // Allow the pop to proceed: go back once more to leave the guard entry.
+        skipNextPopStateRef.current = true;
+        history.back();
+      } else {
+        // Revert navigation by restoring the current URL/state.
+        const currentState =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (history.state as any) && typeof history.state === 'object'
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            { ...(history.state as any), __unsavedChangesGuard: true }
+            : { __unsavedChangesGuard: true };
+        history.pushState(currentState, '', window.location.href);
+        hasHistoryGuardRef.current = true;
+      }
+    };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [hasUnsavedChanges, showDialog]);
 
   // Navigation guard function that can be used to intercept any navigation
   const navigateWithCheck = useCallback(

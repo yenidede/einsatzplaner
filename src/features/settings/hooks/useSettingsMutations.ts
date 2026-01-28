@@ -84,11 +84,6 @@ export function useUpdateOrganization(orgId: string | undefined) {
       einsatz_name_singular?: string;
       einsatz_name_plural?: string;
       max_participants_per_helper?: number;
-      logoFile?: File | null;
-      website?: string;
-      vat?: string;
-      zvr?: string;
-      authority?: string;
       allow_self_sign_out?: boolean;
     }) => {
       if (!orgId) {

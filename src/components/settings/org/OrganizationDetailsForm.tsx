@@ -22,7 +22,6 @@ interface OrganizationDetailsFormProps {
   onPhoneChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onAllowSelfSignOutChange?: (value: boolean) => void;
-  onSave: () => void;
   isSuperadmin?: boolean;
 }
 
@@ -38,7 +37,6 @@ export function OrganizationDetailsForm({
   allowSelfSignOut,
   onAllowSelfSignOutChange,
   isSuperadmin = false,
-  onSave,
 }: OrganizationDetailsFormProps) {
   const { data: session } = useSession();
   const { data: organizations } = useOrganizations(

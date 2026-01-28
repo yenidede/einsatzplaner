@@ -33,7 +33,7 @@ export function useCalendarSubscription(orgId: string) {
   const query = useQuery({
     queryKey,
     queryFn: () => getSubscriptionAction(orgId),
-    enabled: !!orgId,
+    enabled: !!orgId && !!userId,
     staleTime: 60000,
     retry: 3,
   });
