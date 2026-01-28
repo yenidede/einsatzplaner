@@ -2,6 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface OrganizationPreferencesProps {
   helperSingular: string;
@@ -9,11 +10,13 @@ interface OrganizationPreferencesProps {
   einsatzSingular: string;
   einsatzPlural: string;
   maxParticipantsPerHelper: string;
+  allowSelfSignOut: boolean;
   onMaxParticipantsPerHelperChange: (value: string) => void;
   onEinsatzSingularChange: (value: string) => void;
   onEinsatzPluralChange: (value: string) => void;
   onHelperSingularChange: (value: string) => void;
   onHelperPluralChange: (value: string) => void;
+  onAllowSelfSignOutChange: (value: boolean) => void;
   onSave: () => void;
 }
 
@@ -25,9 +28,11 @@ export function OrganizationPreferences({
   einsatzSingular,
   einsatzPlural,
   maxParticipantsPerHelper,
+  allowSelfSignOut,
   onEinsatzSingularChange,
   onEinsatzPluralChange,
   onMaxParticipantsPerHelperChange,
+  onAllowSelfSignOutChange,
   onSave,
 }: OrganizationPreferencesProps) {
   return (
@@ -93,6 +98,28 @@ export function OrganizationPreferences({
           aria-label={`Maximale Teilnehmende pro ${helperSingular}`}
           min="0"
         />
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="allow-self-signout"
+            checked={allowSelfSignOut}
+            onCheckedChange={(checked: boolean) =>
+              onAllowSelfSignOutChange(checked === true)
+            }
+            aria-label={`${helperPlural} können sich selbst austragen`}
+          />
+          <Label
+            htmlFor="allow-self-signout"
+            className="cursor-pointer font-medium"
+          >
+            {helperPlural} können sich selbst austragen
+          </Label>
+        </div>
+        <p className="text-muted-foreground ml-6 text-sm">
+          Wenn aktiviert, können sich {helperPlural} selbstständig aus{' '}
+          {einsatzPlural} austragen, für die sie sich eingetragen haben.
+        </p>
       </div>
     </div>
   );

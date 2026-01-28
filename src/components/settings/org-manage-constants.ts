@@ -1,19 +1,17 @@
 import {
   Building2,
   Settings,
-  MapPin,
-  CreditCard,
-  Users,
   FileText,
+  Users,
+  FileDown,
 } from 'lucide-react';
 
 // Navigation items for the organization manage sidebar
 export const ORG_MANAGE_NAV_ITEMS = [
   { id: 'details', label: 'Organisationsdetails', icon: Building2 },
   { id: 'preferences', label: 'Einstellungen', icon: Settings },
-  { id: 'addresses', label: 'Adressen', icon: MapPin },
-  { id: 'bank-accounts', label: 'Bankkonten', icon: CreditCard },
-  { id: 'user-properties', label: 'Benutzereigenschaften', icon: FileText },
+  { id: 'pdf-export', label: 'PDF-Export', icon: FileDown },
+  { id: 'user-properties', label: 'Personeneigenschaften', icon: FileText },
   { id: 'users', label: 'Benutzer', icon: Users },
 ] as const;
 

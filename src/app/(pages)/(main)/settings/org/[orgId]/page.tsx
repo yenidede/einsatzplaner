@@ -22,7 +22,7 @@ import { useUpdateOrganization } from '@/features/settings/hooks/useSettingsMuta
 
 import { UserProfileDialog } from '@/components/settings/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
-import { FileUpload } from '@/components/form/file-upload';
+import { FileUpload, PreviewAspectRatio } from '@/components/form/file-upload';
 import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationDetailsForm';
 import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
 import { UsersManagementSection } from '@/components/settings/org/UserManagement';
@@ -52,6 +52,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -475,15 +477,16 @@ export default function OrganizationManagePage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Logo</label>
                   <p className="text-muted-foreground text-sm">
-                    Das Hauptlogo deiner Organisation, das in verschiedenen
-                    Bereichen der Anwendung angezeigt wird.
+                    Das Hauptlogo deiner Organisation, wird in verschiedenen
+                    Bereichen angezeigt.
                   </p>
                   <FileUpload
                     id="logo-upload"
                     name="logo"
                     maxFiles={1}
-                    accept="image/png, image/jpeg, image/gif, image/jpg"
-                    placeholder="PNG, JPEG oder GIF (wird automatisch komprimiert)"
+                    accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
+                    placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert)"
+                    previewAspectRatio={PreviewAspectRatio.LANDSCAPE}
                     setValue={(name, value) => {
                       // FileUpload component manages its own state
                       // We handle the upload in onUpload callback
@@ -510,15 +513,16 @@ export default function OrganizationManagePage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Kleines Logo</label>
                   <p className="text-muted-foreground text-sm">
-                    Ein kleineres Logo für kompakte Bereiche wie die Navigation
-                    oder interne Organisationsliste.
+                    Ein kleineres Logo, überschreibt das Hauptlogo in kompakten
+                    Bereichen.
                   </p>
                   <FileUpload
                     id="small-logo-upload"
                     name="smallLogo"
                     maxFiles={1}
-                    accept="image/png, image/jpeg, image/gif, image/jpg"
-                    placeholder="PNG, JPEG oder GIF (wird automatisch komprimiert)"
+                    accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
+                    placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert)"
+                    previewAspectRatio={PreviewAspectRatio.SQUARE}
                     setValue={(name, value) => {
                       // FileUpload component manages its own state
                       // We handle the upload in onUpload callback
@@ -549,26 +553,10 @@ export default function OrganizationManagePage() {
                 email={email}
                 phone={phone}
                 description={description}
-                allowSelfSignOut={allowSelfSignOut}
                 onNameChange={setName}
                 onEmailChange={setEmail}
                 onPhoneChange={setPhone}
                 onDescriptionChange={setDescription}
-                onAllowSelfSignOutChange={setAllowSelfSignOut}
-                isSuperadmin={isSuperadmin}
-                onSave={handleSave}
-              />
-              <Separator />
-              <OrganizationDetails
-                organizationId={orgId}
-                website={website}
-                vat={vat}
-                zvr={zvr}
-                authority={authority}
-                onWebsiteChange={setWebsite}
-                onVatChange={setVat}
-                onZvrChange={setZvr}
-                onAuthorityChange={setAuthority}
                 isSuperadmin={isSuperadmin}
                 onSave={handleSave}
               />
@@ -603,58 +591,66 @@ export default function OrganizationManagePage() {
                 onEinsatzPluralChange={setEinsatzPlural}
                 maxParticipantsPerHelper={maxParticipantsPerHelper}
                 onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+                allowSelfSignOut={allowSelfSignOut}
+                onAllowSelfSignOutChange={setAllowSelfSignOut}
                 onSave={handleSave}
               />
             </CardContent>
           </Card>
         </section>
 
-        {/* Addresses Section */}
+        {/* PDF-Export Section */}
         <section
-          id="addresses"
+          id="pdf-export"
           ref={(el) => {
-            sectionRefs.current.addresses = el;
+            sectionRefs.current['pdf-export'] = el;
           }}
-          aria-labelledby="addresses-heading"
+          aria-labelledby="pdf-export-heading"
         >
           <Card>
             <CardHeader>
-              <CardTitle id="addresses-heading">Adressen</CardTitle>
+              <CardTitle id="pdf-export-heading">PDF-Export</CardTitle>
               <CardDescription>
-                Verwalte die Adressen deiner Organisation
+                Einstellungen für den PDF-Export deiner Organisation
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <OrganizationAddresses
-                organizationId={orgId}
-                isSuperadmin={isSuperadmin}
-                onSave={handleSave}
-              />
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Bank Accounts Section */}
-        <section
-          id="bank-accounts"
-          ref={(el) => {
-            sectionRefs.current['bank-accounts'] = el;
-          }}
-          aria-labelledby="bank-accounts-heading"
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle id="bank-accounts-heading">Bankkonten</CardTitle>
-              <CardDescription>
-                Verwalte die Bankkonten deiner Organisation
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <OrganizationBankAccounts
-                organizationId={orgId}
-                isSuperadmin={isSuperadmin}
-                onSave={handleSave}
-              />
+            <CardContent className="space-y-6">
+              <div>
+                <h3 className="mb-4 text-lg font-semibold">
+                  Weitere Organisationsdetails (PDF-Export)
+                </h3>
+                <OrganizationDetails
+                  organizationId={orgId}
+                  website={website}
+                  vat={vat}
+                  zvr={zvr}
+                  authority={authority}
+                  onWebsiteChange={setWebsite}
+                  onVatChange={setVat}
+                  onZvrChange={setZvr}
+                  onAuthorityChange={setAuthority}
+                  isSuperadmin={isSuperadmin}
+                  onSave={handleSave}
+                />
+              </div>
+              <Separator />
+              <div>
+                <h3 className="mb-4 text-lg font-semibold">Adressen</h3>
+                <OrganizationAddresses
+                  organizationId={orgId}
+                  isSuperadmin={isSuperadmin}
+                  onSave={handleSave}
+                />
+              </div>
+              <Separator />
+              <div>
+                <h3 className="mb-4 text-lg font-semibold">Bankkonten</h3>
+                <OrganizationBankAccounts
+                  organizationId={orgId}
+                  isSuperadmin={isSuperadmin}
+                  onSave={handleSave}
+                />
+              </div>
             </CardContent>
           </Card>
         </section>
@@ -670,7 +666,7 @@ export default function OrganizationManagePage() {
           <Card>
             <CardHeader>
               <CardTitle id="user-properties-heading">
-                Benutzereigenschaften
+                Personeneigenschaften
               </CardTitle>
               <CardDescription>
                 Verwalte die benutzerdefinierten Eigenschaften für Benutzer in

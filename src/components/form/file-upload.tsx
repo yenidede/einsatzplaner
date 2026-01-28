@@ -14,8 +14,33 @@ import {
   type FileWithPreview,
 } from '@/hooks/use-file-upload';
 import { Button } from '@/components/ui/button';
-import { optimizeImage } from '@/lib/utils';
+import { cn, optimizeImage } from '@/lib/utils';
 import { toast } from 'sonner';
+
+export enum PreviewAspectRatio {
+  SQUARE = 'square', // 1:1
+  LANDSCAPE = 'landscape', // 16:9
+  PORTRAIT = 'portrait', // 9:16
+  WIDE = 'wide', // 4:3
+  TALL = 'tall', // 3:4
+}
+
+const getAspectRatioClass = (aspectRatio?: PreviewAspectRatio): string => {
+  switch (aspectRatio) {
+    case PreviewAspectRatio.SQUARE:
+      return 'aspect-square';
+    case PreviewAspectRatio.LANDSCAPE:
+      return 'aspect-video'; // 16:9
+    case PreviewAspectRatio.PORTRAIT:
+      return 'aspect-[9/16]';
+    case PreviewAspectRatio.WIDE:
+      return 'aspect-[4/3]';
+    case PreviewAspectRatio.TALL:
+      return 'aspect-[3/4]';
+    default:
+      return 'aspect-square'; // Default to square
+  }
+};
 
 function isFileMetadataType(value: unknown): value is FileMetadata {
   return (
@@ -28,14 +53,18 @@ function isFileMetadataType(value: unknown): value is FileMetadata {
   );
 }
 
-const getFileIcon = (file: FileWithPreview) => {
+const getFileIcon = (
+  file: FileWithPreview,
+  aspectRatio?: PreviewAspectRatio
+) => {
+  const aspectClass = getAspectRatioClass(aspectRatio);
   // Use preview if available (works for both File and FileMetadata)
   if (file.preview) {
     const fileType =
       file.file instanceof File ? file.file.type : file.file.type;
     if (fileType.startsWith('image/')) {
       return (
-        <div className="aspect-square size-10 overflow-hidden rounded-md">
+        <div className={cn('h-10 overflow-hidden rounded-md', aspectClass)}>
           <img
             src={file.preview}
             className="h-full w-full object-cover"
@@ -51,7 +80,7 @@ const getFileIcon = (file: FileWithPreview) => {
       const fileBlob = file.file as File;
       const imageSrc = URL.createObjectURL(fileBlob);
       return (
-        <div className="aspect-square size-10 overflow-hidden rounded-md">
+        <div className={`${aspectClass} size-10 overflow-hidden rounded-md`}>
           <img
             src={imageSrc}
             className="h-full w-full object-cover"
@@ -66,7 +95,7 @@ const getFileIcon = (file: FileWithPreview) => {
     const fileType = metadata.type;
     if (fileType.startsWith('image/')) {
       return (
-        <div className="aspect-square size-10 overflow-hidden rounded-md">
+        <div className={`${aspectClass} size-10 overflow-hidden rounded-md`}>
           <img
             src={metadata.url}
             className="h-full w-full object-cover"
@@ -97,6 +126,7 @@ export function FileUpload({
   onUpload,
   onFileRemove,
   initialFiles,
+  previewAspectRatio,
 }: {
   maxFiles: number;
   maxSize?: number; // Optional - no size restriction, will compress instead
@@ -119,6 +149,7 @@ export function FileUpload({
   onUpload: (optimizedFile: File) => Promise<string>;
   onFileRemove?: (id: string) => void | Promise<void>;
   initialFiles?: FileMetadata[];
+  previewAspectRatio?: PreviewAspectRatio;
 }) {
   const [
     { files, isDragging, errors },
@@ -224,7 +255,7 @@ export function FileUpload({
               className="flex items-center justify-between gap-2 rounded-lg border p-2 pe-3"
             >
               <div className="flex items-center gap-1.5 overflow-hidden">
-                {getFileIcon(file)}
+                {getFileIcon(file, previewAspectRatio)}
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="max-w-[200px] truncate text-[11px] font-medium">
                     {file.file.name}
@@ -306,13 +337,25 @@ export function FileUpload({
     }
 
     try {
+      const isSvg =
+        fileObj.type === 'image/svg+xml' || fileObj.name.endsWith('.svg');
+
+      // Skip compression for SVG files (they're already vector graphics)
+      if (isSvg) {
+        console.log('Skipping compression for SVG file:', fileObj.name);
+        const uploadedPath = await onUpload(fileObj);
+        lastUploadKeyRef.current = fileKey;
+        lastUploadValueRef.current = uploadedPath;
+        return uploadedPath;
+      }
+
       const originalSizeMB = fileObj.size / 1024 / 1024;
       console.log('Compressing image before upload:', {
         originalSize: `${originalSizeMB.toFixed(2)} MB`,
         fileName: fileObj.name,
       });
 
-      // Always compress images before upload
+      // Always compress images before upload (except SVG)
       const optimized = await optimizeImage(fileObj);
       const compressedSizeMB = optimized.size / 1024 / 1024;
 
