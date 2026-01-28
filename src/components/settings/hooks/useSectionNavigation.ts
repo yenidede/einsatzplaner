@@ -26,12 +26,26 @@ export function useSectionNavigation<T extends string>({
   const hasScrolledRef = useRef(false); // Track if we've done initial scroll
   const isInitialMountRef = useRef(true); // Track initial mount
 
+  // Store values in refs to avoid dependency array issues
+  const navItemsRef = useRef(navItems);
+  const basePathRef = useRef(basePath);
+  const defaultSectionRef = useRef(defaultSection);
+  const shouldSetDefaultRef = useRef(shouldSetDefault);
+
+  // Update refs when values change
+  useEffect(() => {
+    navItemsRef.current = navItems;
+    basePathRef.current = basePath;
+    defaultSectionRef.current = defaultSection;
+    shouldSetDefaultRef.current = shouldSetDefault;
+  }, [navItems, basePath, defaultSection, shouldSetDefault]);
+
   // Get current hash from URL
   const getHashSection = useCallback((): T | null => {
     if (typeof window === 'undefined') return null;
     const hash = window.location.hash.slice(1); // Remove #
-    return (hash && navItems.some((item) => item.id === hash)) ? (hash as T) : null;
-  }, [navItems]);
+    return (hash && navItemsRef.current.some((item) => item.id === hash)) ? (hash as T) : null;
+  }, []);
 
   // Scroll to section with offset
   const scrollToSection = useCallback((section: T, skipDelay = false) => {
@@ -59,11 +73,11 @@ export function useSectionNavigation<T extends string>({
   const handleSectionChange = useCallback(
     (newSection: T) => {
       setActiveSection(newSection);
-      router.push(`${basePath}#${newSection}`, { scroll: false });
+      router.push(`${basePathRef.current}#${newSection}`, { scroll: false });
       scrollToSection(newSection, true); // Skip delay for manual navigation
       onSectionChange?.(newSection);
     },
-    [router, basePath, scrollToSection, onSectionChange]
+    [router, scrollToSection, onSectionChange]
   );
 
   // Initial mount: Check hash first, then set default if needed - only scroll once
@@ -78,12 +92,12 @@ export function useSectionNavigation<T extends string>({
       // Hash exists and is valid - use it
       targetSection = hashSection;
       setActiveSection(hashSection);
-    } else if (shouldSetDefault && !currentHash) {
+    } else if (shouldSetDefaultRef.current && !currentHash) {
       // No hash - set default hash
-      targetSection = defaultSection;
+      targetSection = defaultSectionRef.current;
       // Set hash directly to avoid router scroll behavior
-      window.history.replaceState(null, '', `${basePath}#${defaultSection}`);
-      setActiveSection(defaultSection);
+      window.history.replaceState(null, '', `${basePathRef.current}#${defaultSectionRef.current}`);
+      setActiveSection(defaultSectionRef.current);
     }
 
     // Only scroll once after DOM is ready
@@ -99,7 +113,7 @@ export function useSectionNavigation<T extends string>({
     }
 
     isInitialMountRef.current = false;
-  }, [getHashSection, shouldSetDefault, basePath, defaultSection, scrollToSection]);
+  }, [getHashSection, scrollToSection]);
 
   // Handle hash changes (after initial mount)
   useEffect(() => {
