@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 const SCROLL_OFFSET = 80;
 
@@ -21,9 +21,15 @@ export function useSectionNavigation<T extends string>({
   shouldSetDefault = true,
 }: UseSectionNavigationOptions<T>) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<T>(defaultSection);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  // Get current hash from URL
+  const getHashSection = useCallback((): T | null => {
+    if (typeof window === 'undefined') return null;
+    const hash = window.location.hash.slice(1); // Remove #
+    return (hash && navItems.some((item) => item.id === hash)) ? (hash as T) : null;
+  }, [navItems]);
 
   // Scroll to section with offset
   const scrollToSection = useCallback((section: T) => {
@@ -42,34 +48,45 @@ export function useSectionNavigation<T extends string>({
   const handleSectionChange = useCallback(
     (newSection: T) => {
       setActiveSection(newSection);
-      router.push(`${basePath}?section=${newSection}`, { scroll: false });
+      router.push(`${basePath}#${newSection}`, { scroll: false });
       scrollToSection(newSection);
       onSectionChange?.(newSection);
     },
     [router, basePath, scrollToSection, onSectionChange]
   );
 
-  // Handle URL parameter changes
+  // Handle hash changes
   useEffect(() => {
-    const section = searchParams.get('section') as T | null;
-    if (section && navItems.some((item) => item.id === section)) {
-      setActiveSection(section);
-      setTimeout(() => {
-        scrollToSection(section);
-      }, 100);
+    const handleHashChange = () => {
+      const section = getHashSection();
+      if (section && section !== activeSection) {
+        setActiveSection(section);
+        setTimeout(() => {
+          scrollToSection(section);
+        }, 100);
+      }
+    };
+
+    // Check initial hash on mount
+    if (typeof window !== 'undefined') {
+      handleHashChange();
     }
-  }, [searchParams, navItems, scrollToSection]);
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [getHashSection, scrollToSection, activeSection]);
 
   // Set default section if none specified (only if shouldSetDefault is true)
   useEffect(() => {
-    if (!shouldSetDefault) return;
-    const section = searchParams.get('section') as T | null;
-    if (!section) {
-      router.replace(`${basePath}?section=${defaultSection}`, {
+    if (!shouldSetDefault || typeof window === 'undefined') return;
+    const currentHash = window.location.hash.slice(1);
+    if (!currentHash) {
+      router.replace(`${basePath}#${defaultSection}`, {
         scroll: false,
       });
     }
-  }, [searchParams, router, basePath, defaultSection, shouldSetDefault]);
+  }, [router, basePath, defaultSection, shouldSetDefault]);
 
   return {
     activeSection,

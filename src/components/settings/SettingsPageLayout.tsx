@@ -51,7 +51,7 @@ export function SettingsPageLayout({
     if (onOrgSectionChange) {
       onOrgSectionChange(sectionId);
     } else if (currentOrgId) {
-      router.push(`/settings/org/${currentOrgId}?section=${sectionId}`, {
+      router.push(`/settings/org/${currentOrgId}#${sectionId}`, {
         scroll: false,
       });
     }
@@ -61,7 +61,7 @@ export function SettingsPageLayout({
     if (onUserSectionChange) {
       onUserSectionChange(sectionId);
     } else {
-      router.push(`/settings/user?section=${sectionId}`, {
+      router.push(`/settings/user#${sectionId}`, {
         scroll: false,
       });
     }
