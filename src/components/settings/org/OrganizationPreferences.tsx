@@ -17,7 +17,6 @@ interface OrganizationPreferencesProps {
   onHelperSingularChange: (value: string) => void;
   onHelperPluralChange: (value: string) => void;
   onAllowSelfSignOutChange: (value: boolean) => void;
-  onSave: () => void;
 }
 
 export function OrganizationPreferences({
@@ -33,7 +32,6 @@ export function OrganizationPreferences({
   onEinsatzPluralChange,
   onMaxParticipantsPerHelperChange,
   onAllowSelfSignOutChange,
-  onSave,
 }: OrganizationPreferencesProps) {
   return (
     <div className="space-y-6">

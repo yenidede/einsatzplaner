@@ -22,7 +22,6 @@ interface OrganizationDetailsProps {
   onVatChange: (value: string) => void;
   onZvrChange: (value: string) => void;
   onAuthorityChange: (value: string) => void;
-  onSave: () => void;
   isSuperadmin?: boolean;
 }
 
@@ -37,7 +36,6 @@ export function OrganizationDetails({
   onZvrChange,
   onAuthorityChange,
   isSuperadmin = false,
-  onSave,
 }: OrganizationDetailsProps) {
   const { data: details, isLoading } = useOrganizationDetails(organizationId);
 
