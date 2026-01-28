@@ -145,10 +145,10 @@ export async function getUserProfileAction() {
     roleIds: user.user_organization_role.map((uor) => uor.role.id),
     activeOrganization: activeOrgData
       ? {
-        id: activeOrgData.id,
-        name: activeOrgData.name,
-        logo_url: activeOrgData.logo_url,
-      }
+          id: activeOrgData.id,
+          name: activeOrgData.name,
+          logo_url: activeOrgData.logo_url,
+        }
       : null,
     phone: user.phone ?? '',
     hasLogoinCalendar: user.hasLogoinCalendar ?? true,
@@ -215,7 +215,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     },
   });
 
-  revalidatePath('/settings');
+  revalidatePath('/settings/user');
 
   return {
     id: updatedUser.id,
@@ -244,7 +244,7 @@ export async function updateOrgMailNotificationAction(
     },
   });
 
-  revalidatePath('/settings');
+  revalidatePath('/settings/user');
 
   return { success: true };
 }
@@ -322,7 +322,7 @@ export async function uploadProfilePictureAction(formData: FormData) {
     }
   }
 
-  revalidatePath('/settings');
+  revalidatePath('/settings/user');
 
   return { picture_url: publicUrl };
 }
@@ -353,7 +353,7 @@ export async function removeProfilePictureAction() {
     where: { id: session.user.id },
     data: { picture_url: null },
   });
-  revalidatePath('/settings');
+  revalidatePath('/settings/user');
 
   return { success: true };
 }
@@ -464,7 +464,7 @@ export async function removeUserFromOrganizationAction(
       });
     }
 
-    revalidatePath('/settings');
+    revalidatePath('/settings/user');
     revalidatePath('/');
 
     return { success: true };

@@ -14,10 +14,7 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
 import { Close, PopoverContent, PopoverTrigger } from '@radix-ui/react-popover';
 import { Popover } from '../ui/popover';
-import {
-  OrganizationRoleBadge,
-  sortRolesByPriority,
-} from '@/features/settings/components/OrganizationCard';
+import { RolesList } from '../Roles';
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
@@ -126,13 +123,11 @@ export default function UserMenu(): JSX.Element | null {
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Integrationen</h4>
             <Close asChild>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => router.push('/settings')}
-              >
-                <Zap size={16} aria-hidden="true" />
-                Kalender verknüpfen
+              <Button variant="outline" className="w-full" asChild>
+                <Link href="/settings/user#calendar">
+                  <Zap size={16} aria-hidden="true" />
+                  Kalender verknüpfen
+                </Link>
               </Button>
             </Close>
           </div>
@@ -142,13 +137,11 @@ export default function UserMenu(): JSX.Element | null {
           {/* Bottom Actions */}
           <div className="flex gap-2">
             <Close asChild>
-              <Button
-                variant="default"
-                className="flex-1"
-                onClick={() => router.push('/settings')}
-              >
-                <SettingsIcon size={16} className="mr-2" aria-hidden="true" />
-                Einstellungen
+              <Button variant="default" className="flex-1" asChild>
+                <Link href="/settings/user#account">
+                  <SettingsIcon size={16} className="mr-2" aria-hidden="true" />
+                  Einstellungen
+                </Link>
               </Button>
             </Close>
             <Close asChild>
@@ -178,21 +171,15 @@ function OrganizationWithRoles({
   userId: string;
 }) {
   const { data: uorRoles } = useUserOrgRoles(orgId, userId);
-  const sortedRoles = uorRoles
-    ? sortRolesByPriority(uorRoles.map((uor) => uor.role))
-    : [];
+  const roles = uorRoles?.map((uor) => uor.role) || [];
 
   return (
     <div className="flex items-end justify-between">
       <div>
         <p className="text-muted-foreground mb-2 text-sm">{orgName}</p>
-        <div className="flex flex-wrap gap-2">
-          {sortedRoles.map((role, i) => (
-            <OrganizationRoleBadge key={i} role={role}></OrganizationRoleBadge>
-          ))}
-        </div>
+        <RolesList unsortedRoles={roles} />
       </div>
-      {sortedRoles.find(
+      {roles.find(
         (r) => r.name === 'Organisationsverwaltung' || r.name === 'OV'
       ) && (
         <Close asChild>
@@ -202,7 +189,7 @@ function OrganizationWithRoles({
             className="px-2 py-1 text-sm"
             asChild
           >
-            <Link href={`/organization/${orgId}/manage`}>
+            <Link href={`/settings/org/${orgId}#details`}>
               Bearbeiten{' '}
               <PencilIcon size={16} aria-hidden="true" className="mr-1" />
             </Link>

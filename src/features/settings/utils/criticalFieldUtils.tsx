@@ -2,11 +2,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 export const criticalFieldClass = (isEditable: boolean) =>
-  cn(
-    isEditable
-      ? ''
-      : 'disabled:opacity-50 disabled:cursor-not-allowed'
-  );
+  cn(isEditable ? '' : 'disabled:opacity-50 disabled:cursor-not-allowed');
 
 export const criticalFieldLabel = (
   label: string,
@@ -18,7 +14,7 @@ export const criticalFieldLabel = (
     {label}
     {required && <span className="text-destructive ml-1">*</span>}
     {!isEditable && (
-      <span className="ml-2 text-xs font-normal text-muted-foreground">
+      <span className="text-muted-foreground ml-2 text-xs font-normal">
         (Nur Superadmin)
       </span>
     )}
