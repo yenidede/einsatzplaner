@@ -1,7 +1,12 @@
 'use client';
 
 import { useRef } from 'react';
-import { AlertCircleIcon, XIcon, CloudUpload, File } from 'lucide-react';
+import {
+  AlertCircleIcon,
+  XIcon,
+  CloudUpload,
+  File as FileIcon,
+} from 'lucide-react';
 import {
   FileMetadata,
   formatBytes,
@@ -9,25 +14,100 @@ import {
   type FileWithPreview,
 } from '@/hooks/use-file-upload';
 import { Button } from '@/components/ui/button';
-import { optimizeImage } from '@/lib/utils';
+import { cn, optimizeImage } from '@/lib/utils';
 import { toast } from 'sonner';
 
-const getFileIcon = (file: { file: File | { type: string; name: string } }) => {
-  const fileType = file.file.type;
-  if (fileType.startsWith('image/')) {
-    // return preview
-    return (
-      <div className="aspect-square size-10 overflow-hidden rounded-md">
-        <img
-          src={URL.createObjectURL(file.file as Blob)}
-          className="h-full w-full object-cover"
-        />
-      </div>
-    );
+export enum PreviewAspectRatio {
+  SQUARE = 'square', // 1:1
+  LANDSCAPE = 'landscape', // 16:9
+  PORTRAIT = 'portrait', // 9:16
+  WIDE = 'wide', // 4:3
+  TALL = 'tall', // 3:4
+}
+
+const getAspectRatioClass = (aspectRatio?: PreviewAspectRatio): string => {
+  switch (aspectRatio) {
+    case PreviewAspectRatio.SQUARE:
+      return 'aspect-square';
+    case PreviewAspectRatio.LANDSCAPE:
+      return 'aspect-video'; // 16:9
+    case PreviewAspectRatio.PORTRAIT:
+      return 'aspect-[9/16]';
+    case PreviewAspectRatio.WIDE:
+      return 'aspect-[4/3]';
+    case PreviewAspectRatio.TALL:
+      return 'aspect-[3/4]';
+    default:
+      return 'aspect-square'; // Default to square
+  }
+};
+
+function isFileMetadataType(value: unknown): value is FileMetadata {
+  return (
+    typeof File !== 'undefined' &&
+    !(value instanceof File) &&
+    typeof value === 'object' &&
+    value !== null &&
+    'url' in value &&
+    'id' in value
+  );
+}
+
+const getFileIcon = (
+  file: FileWithPreview,
+  aspectRatio?: PreviewAspectRatio
+) => {
+  const aspectClass = getAspectRatioClass(aspectRatio);
+  // Use preview if available (works for both File and FileMetadata)
+  if (file.preview) {
+    const fileType =
+      file.file instanceof File ? file.file.type : file.file.type;
+    if (fileType.startsWith('image/')) {
+      return (
+        <div className={cn('h-10 overflow-hidden rounded-md', aspectClass)}>
+          <img
+            src={file.preview}
+            className="h-full w-full object-cover"
+            alt={file.file instanceof File ? file.file.name : file.file.name}
+          />
+        </div>
+      );
+    }
+  } else if (file.file instanceof File) {
+    // New File - create object URL
+    const fileType = file.file.type;
+    if (fileType.startsWith('image/')) {
+      const fileBlob = file.file as File;
+      const imageSrc = URL.createObjectURL(fileBlob);
+      return (
+        <div className={`${aspectClass} size-10 overflow-hidden rounded-md`}>
+          <img
+            src={imageSrc}
+            className="h-full w-full object-cover"
+            alt={file.file.name}
+          />
+        </div>
+      );
+    }
+  } else if (isFileMetadataType(file.file)) {
+    // FileMetadata - use url directly
+    const metadata = file.file;
+    const fileType = metadata.type;
+    if (fileType.startsWith('image/')) {
+      return (
+        <div className={`${aspectClass} size-10 overflow-hidden rounded-md`}>
+          <img
+            src={metadata.url}
+            className="h-full w-full object-cover"
+            alt={metadata.name}
+          />
+        </div>
+      );
+    }
   }
   return (
     <div className="flex aspect-square size-10 items-center justify-center overflow-hidden rounded-full">
-      <File className="size-5 opacity-60" />
+      <FileIcon className="size-5 opacity-60" />
     </div>
   );
 };
@@ -45,9 +125,11 @@ export function FileUpload({
   id,
   onUpload,
   onFileRemove,
+  initialFiles,
+  previewAspectRatio,
 }: {
   maxFiles: number;
-  maxSize: number;
+  maxSize?: number; // Optional - no size restriction, will compress instead
   placeholder?: string;
   // description?: string;
   required?: boolean;
@@ -65,7 +147,9 @@ export function FileUpload({
   name: string;
   id: string;
   onUpload: (optimizedFile: File) => Promise<string>;
-  onFileRemove?: (userId: string) => void;
+  onFileRemove?: (id: string) => void | Promise<void>;
+  initialFiles?: FileMetadata[];
+  previewAspectRatio?: PreviewAspectRatio;
 }) {
   const [
     { files, isDragging, errors },
@@ -82,18 +166,27 @@ export function FileUpload({
   ] = useFileUpload({
     multiple: maxFiles > 1,
     maxFiles,
-    maxSize,
+    maxSize: maxSize ?? Infinity, // No size restriction - will compress instead
     accept,
+    initialFiles,
     onFilesChange: (files) => {
-      queueMicrotask(() => {
-        optimizeFilesAndUpload(files, maxSize).then((optimizedFiles) => {
-          setValue(name, optimizedFiles, {
-            shouldValidate: true,
-            shouldDirty: true,
-            shouldTouch: true,
-          });
+      // Only process files that are actually File instances (not FileMetadata)
+      const newFiles = files.filter((f) => f.file instanceof File);
+      if (newFiles.length > 0) {
+        queueMicrotask(() => {
+          optimizeFilesAndUpload(newFiles)
+            .then((optimizedFiles) => {
+              setValue(name, optimizedFiles, {
+                shouldValidate: true,
+                shouldDirty: true,
+                shouldTouch: true,
+              });
+            })
+            .catch((error) => {
+              console.error('Error optimizing/uploading files:', error);
+            });
         });
-      });
+      }
     },
   });
 
@@ -162,13 +255,15 @@ export function FileUpload({
               className="flex items-center justify-between gap-2 rounded-lg border p-2 pe-3"
             >
               <div className="flex items-center gap-1.5 overflow-hidden">
-                {getFileIcon(file)}
+                {getFileIcon(file, previewAspectRatio)}
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="max-w-[200px] truncate text-[11px] font-medium">
                     {file.file.name}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {formatBytes(file.file.size)}
+                    {file.file.size > 0
+                      ? formatBytes(file.file.size)
+                      : 'Lokal geladen'}
                   </p>
                 </div>
               </div>
@@ -177,9 +272,13 @@ export function FileUpload({
                 size="icon"
                 variant="ghost"
                 className="text-muted-foreground/80 hover:text-foreground -me-2 size-8 hover:bg-transparent"
-                onClick={() => {
+                onClick={async () => {
                   removeFile(file.id);
-                  onFileRemove?.(file.id);
+                  // Check if it's a FileMetadata (existing file) or new File
+                  if (!(file.file instanceof File)) {
+                    // Existing file - call onFileRemove callback with file id
+                    await onFileRemove?.(file.id);
+                  }
                 }}
                 aria-label="Remove file"
               >
@@ -201,81 +300,87 @@ export function FileUpload({
     </div>
   );
 
-  function isFileMetadata(value: unknown): value is FileMetadata {
-    return (
-      typeof File !== 'undefined' && Object.hasOwn(value as object, 'path')
-    );
-  }
-
   function getFileUniqueKey(file: File | FileMetadata) {
-    if (isFileMetadata(file)) {
+    if (isFileMetadataType(file)) {
       return `metadata:${file.url}`;
     }
     return `file:${file.name}-${file.size}-${file.lastModified ?? 0}`;
   }
 
   async function optimizeFilesAndUpload(
-    files: FileWithPreview[],
-    maxSize: number
+    files: FileWithPreview[]
   ): Promise<string[]> {
     return Promise.all(
-      files.map((file) => optimizeAndUploadIfImage(file.file, maxSize))
+      files.map((file) => optimizeAndUploadIfImage(file.file))
     );
   }
 
   async function optimizeAndUploadIfImage(
-    file: File | FileMetadata,
-    maxSize: number
+    file: File | FileMetadata
   ): Promise<string> {
     const fileKey = getFileUniqueKey(file);
-    if (isFileMetadata(file)) {
+    if (isFileMetadataType(file)) {
+      const metadata = file;
       lastUploadKeyRef.current = fileKey;
-      lastUploadValueRef.current = file.url;
-      return file.url;
+      lastUploadValueRef.current = metadata.url;
+      return metadata.url;
     }
 
     if (fileKey === lastUploadKeyRef.current && lastUploadValueRef.current) {
       return lastUploadValueRef.current;
     }
 
-    if (!file.type.startsWith('image/')) {
+    // At this point, file is definitely a File (not FileMetadata)
+    const fileObj = file as File;
+    if (!fileObj.type.startsWith('image/')) {
       throw new Error('Only image files are supported for upload.');
     }
 
-    const targetSizeMB = Math.max(
-      0.25,
-      Math.min(2, maxSize / 1024 / 1024, file.size / 1024 / 1024)
-    );
-
     try {
-      console.log(
-        'before optimize:',
-        file.size / 1024 / 1024,
-        'targetSizeMB:',
-        targetSizeMB
-      );
-      const optimized = await optimizeImage(file);
-      const fileToUpload = optimized.size < file.size ? optimized : file;
+      const isSvg =
+        fileObj.type === 'image/svg+xml' || fileObj.name.endsWith('.svg');
 
-      if (fileToUpload.size / 1024 / 1024 <= targetSizeMB) {
-        const uploadedPath = await onUpload(fileToUpload);
+      // Skip compression for SVG files (they're already vector graphics)
+      if (isSvg) {
+        console.log('Skipping compression for SVG file:', fileObj.name);
+        const uploadedPath = await onUpload(fileObj);
         lastUploadKeyRef.current = fileKey;
         lastUploadValueRef.current = uploadedPath;
         return uploadedPath;
-      } else {
-        toast.info(
-          `Die Datei ist noch immer zu groß. Bitte erneut versuchen. ${
-            fileToUpload.size / 1024 / 1024
-          } MB, Ziel: ${targetSizeMB} MB`
-        );
-        throw new Error(
-          'Optimized image not smaller than original or exceeds target size'
-        );
       }
-    } catch (error: unknown) {
-      toast.error(`Image optimization failed ${error}`, {
-        id: 'file-upload-optimize-error',
+
+      const originalSizeMB = fileObj.size / 1024 / 1024;
+      console.log('Compressing image before upload:', {
+        originalSize: `${originalSizeMB.toFixed(2)} MB`,
+        fileName: fileObj.name,
       });
+
+      // Always compress images before upload (except SVG)
+      const optimized = await optimizeImage(fileObj);
+      const compressedSizeMB = optimized.size / 1024 / 1024;
+
+      // Use the optimized version if it's smaller, otherwise use original
+      const fileToUpload = optimized.size < fileObj.size ? optimized : fileObj;
+
+      console.log('Image compression result:', {
+        originalSize: `${originalSizeMB.toFixed(2)} MB`,
+        compressedSize: `${compressedSizeMB.toFixed(2)} MB`,
+        finalSize: `${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`,
+        reduction: `${((1 - fileToUpload.size / fileObj.size) * 100).toFixed(1)}%`,
+      });
+
+      const uploadedPath = await onUpload(fileToUpload);
+      lastUploadKeyRef.current = fileKey;
+      lastUploadValueRef.current = uploadedPath;
+      return uploadedPath;
+    } catch (error: unknown) {
+      console.error('Image optimization failed:', error);
+      toast.error(
+        `Bildkomprimierung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        {
+          id: 'file-upload-optimize-error',
+        }
+      );
       throw error;
     }
   }

@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { settingsQueryKeys } from '../queryKeys/queryKey';
 import { getUserProfileAction, getSalutationsAction } from '../settings-action';
-import { getUserOrganizationByIdAction, getUserManagedOrganizationsAction } from '../organization-action';
+import {
+  getUserOrganizationByIdAction,
+  getUserManagedOrganizationsAction,
+} from '../organization-action';
 import { getAllUserOrgRolesAction } from '../users-action';
 import { getUserPropertyValuesAction } from '@/features/user_properties/user_property-actions';
 
