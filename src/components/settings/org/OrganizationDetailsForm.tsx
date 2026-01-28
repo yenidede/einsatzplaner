@@ -14,14 +14,14 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 interface OrganizationDetailsFormProps {
   name: string;
   email: string;
-  allowSelfSignOut: boolean;
+  allowSelfSignOut?: boolean;
   phone: string;
   description: string;
   onNameChange: (value: string) => void;
   onEmailChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
-  onAllowSelfSignOutChange: (value: boolean) => void;
+  onAllowSelfSignOutChange?: (value: boolean) => void;
   onSave: () => void;
   isSuperadmin?: boolean;
 }
@@ -98,28 +98,30 @@ export function OrganizationDetailsForm({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="allow-self-signout"
-            checked={allowSelfSignOut}
-            onCheckedChange={(checked) =>
-              onAllowSelfSignOutChange(checked === true)
-            }
-            aria-label={`${helper_plural} können sich selbst austragen`}
-          />
-          <Label
-            htmlFor="allow-self-signout"
-            className="cursor-pointer font-medium"
-          >
-            {helper_plural} können sich selbst austragen
-          </Label>
+      {allowSelfSignOut !== undefined && onAllowSelfSignOutChange && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="allow-self-signout"
+              checked={allowSelfSignOut}
+              onCheckedChange={(checked) =>
+                onAllowSelfSignOutChange(checked === true)
+              }
+              aria-label={`${helper_plural} können sich selbst austragen`}
+            />
+            <Label
+              htmlFor="allow-self-signout"
+              className="cursor-pointer font-medium"
+            >
+              {helper_plural} können sich selbst austragen
+            </Label>
+          </div>
+          <p className="text-muted-foreground ml-6 text-sm">
+            Wenn aktiviert, können sich {helper_plural} selbstständig aus{' '}
+            {einsatz_plural} austragen, für die sie sich eingetragen haben.
+          </p>
         </div>
-        <p className="text-muted-foreground ml-6 text-sm">
-          Wenn aktiviert, können sich {helper_plural} selbstständig aus{' '}
-          {einsatz_plural} austragen, für die sie sich eingetragen haben.
-        </p>
-      </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="org-description">Beschreibung</Label>

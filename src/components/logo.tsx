@@ -1,4 +1,26 @@
-export default function Logo() {
+import Image from 'next/image';
+
+interface LogoProps {
+  logoUrl?: string | null;
+}
+
+export default function Logo({ logoUrl }: LogoProps) {
+  // If logo URL is provided, display it; otherwise show default SVG
+  if (logoUrl) {
+    return (
+      <div className="flex h-8 max-w-14 items-center justify-center">
+        <Image
+          src={logoUrl}
+          alt="Logo"
+          className="h-full w-full object-contain"
+          width={56}
+          height={32}
+        />
+      </div>
+    );
+  }
+
+  // Default SVG logo
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
