@@ -599,7 +599,6 @@ export default function OrganizationManagePage() {
             <CardContent>
               <UsersManagementSection
                 usersData={usersData || []}
-                usersLoading={usersLoading}
                 currentUserEmail={session?.user?.email || ''}
                 onUserProfileClick={handleUserProfileClick}
                 onInviteClick={() => setIsInviteModalOpen(true)}

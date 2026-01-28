@@ -28,11 +28,11 @@ function AvatarImage({
   alt,
   // size = 128,
 }: React.ComponentProps<typeof AvatarPrimitive.Image> & {
-  src: string | undefined;
+  src: string | null | undefined;
   alt: string;
   size?: number;
 }) {
-  if (!src) return null;
+  if (!src || src === '') return null;
 
   return (
     <Image
