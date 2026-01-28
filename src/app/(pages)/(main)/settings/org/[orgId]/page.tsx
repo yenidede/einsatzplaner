@@ -30,14 +30,12 @@ import { OrganizationAddresses } from '@/components/settings/org/OrganizationAdd
 import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
 import { OrganizationDetails } from '@/components/settings/org/OrganizationDetails';
 import { PageHeader } from '@/components/settings/PageHeader';
-import { OrgManageNav } from '@/components/settings/OrgManageNav';
 import {
   ORG_MANAGE_NAV_ITEMS,
   type OrgManageSectionId,
 } from '@/components/settings/org-manage-constants';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { OrgSettingsMobileNav } from '@/components/settings/OrgSettingsMobileNav';
-import { signOut } from 'next-auth/react';
 import {
   Card,
   CardContent,
@@ -474,14 +472,6 @@ export default function OrganizationManagePage() {
     />
   );
 
-  const sidebar = (
-    <OrgManageNav
-      currentOrgId={orgId}
-      activeSection={activeSection}
-      onSectionChange={handleSectionChange}
-    />
-  );
-
   const mobileNav = (
     <OrgSettingsMobileNav
       activeSection={activeSection}
@@ -493,8 +483,10 @@ export default function OrganizationManagePage() {
     <>
       <SettingsPageLayout
         header={header}
-        sidebar={sidebar}
         mobileNav={mobileNav}
+        currentOrgId={orgId}
+        activeOrgSection={activeSection}
+        onOrgSectionChange={handleSectionChange}
       >
         {/* Details Section */}
         <section

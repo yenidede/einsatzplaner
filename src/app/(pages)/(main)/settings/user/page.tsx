@@ -63,7 +63,6 @@ import {
   type SectionId,
 } from '@/components/settings';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
-import { UserSettingsSidebar } from '@/components/settings/UserSettingsSidebar';
 import { UserSettingsMobileNav } from '@/components/settings/UserSettingsMobileNav';
 import { cn, optimizeImage } from '@/lib/utils';
 
@@ -614,14 +613,6 @@ export default function SettingsPage() {
     </header>
   );
 
-  const sidebar = (
-    <UserSettingsSidebar
-      activeSection={activeSection}
-      onSectionChange={handleSectionChange}
-      managedOrgs={managedOrgs}
-    />
-  );
-
   const mobileNav = (
     <UserSettingsMobileNav
       activeSection={activeSection}
@@ -634,8 +625,9 @@ export default function SettingsPage() {
       {AlertDialogComponent}
       <SettingsPageLayout
         header={header}
-        sidebar={sidebar}
         mobileNav={mobileNav}
+        activeUserSection={activeSection}
+        onUserSectionChange={handleSectionChange}
       >
         {/* Account Section */}
         <section
