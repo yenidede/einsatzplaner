@@ -48,11 +48,12 @@ model einsatz {
   end                   DateTime                @db.Timestamp(6)
   helpers_needed        Int                     @default(1) @db.SmallInt
   status_id             String                  @default(dbgenerated("'bb169357-920b-4b49-9e3d-1cf489409370'::uuid")) @db.Uuid
+  anmerkung             String?
   change_log            change_log[]
-  user                  user?                   @relation(fields: [created_by], references: [id])
+  user                  user?                   @relation(fields: [created_by], references: [id], onDelete: Cascade)
   organization          organization            @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  einsatz_status        einsatz_status          @relation(fields: [status_id], references: [id], onDelete: NoAction)
-  einsatz_template      einsatz_template?       @relation(fields: [template_id], references: [id])
+  einsatz_status        einsatz_status          @relation(fields: [status_id], references: [id], onDelete: Cascade)
+  einsatz_template      einsatz_template?       @relation(fields: [template_id], references: [id], onDelete: Cascade)
   einsatz_comment       einsatz_comment[]
   einsatz_field         einsatz_field[]
   einsatz_helper        einsatz_helper[]
@@ -105,7 +106,7 @@ model einsatz_template {
   all_day_default               Boolean?
   einsatz                       einsatz[]
   user                          user?            @relation(fields: [created_by], references: [id], onDelete: Cascade)
-  template_icon                 template_icon    @relation(fields: [icon_id], references: [id], onDelete: NoAction)
+  template_icon                 template_icon    @relation(fields: [icon_id], references: [id], onDelete: Cascade)
   organization                  organization?    @relation(fields: [org_id], references: [id], onDelete: Cascade)
   template_field                template_field[]
 }
@@ -127,6 +128,7 @@ model organization {
   verwalteransicht_description String?
   abbreviation                 String?
   max_participants_per_helper  Int?                        @default(25) @db.SmallInt
+  allow_self_sign_out          Boolean                     @default(false) @map("allow_self-sign-out")
   calendar_subscription        calendar_subscription[]
   einsatz                      einsatz[]
   einsatz_category             einsatz_category[]
@@ -176,7 +178,7 @@ model user {
   einsatz_helper                            einsatz_helper[]
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
-  organization                              organization?            @relation(fields: [active_org], references: [id])
+  organization                              organization?            @relation(fields: [active_org], references: [id], onDelete: Cascade)
   salutation                                salutation?              @relation(fields: [salutationId], references: [id], onDelete: Cascade)
   user_organization_role                    user_organization_role[]
   user_property_value                       user_property_value[]
@@ -191,7 +193,7 @@ model user_organization_role {
   role_id                String       @db.Uuid
   hasGetMailNotification Boolean?
   organization           organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  role                   role         @relation(fields: [role_id], references: [id], onDelete: NoAction)
+  role                   role         @relation(fields: [role_id], references: [id], onDelete: Cascade)
   user                   user         @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
@@ -219,7 +221,7 @@ model invitation {
   new_user_id  String       @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user         user         @relation(fields: [invited_by], references: [id], onDelete: Cascade)
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  role         role         @relation(fields: [role_id], references: [id], onDelete: NoAction)
+  role         role         @relation(fields: [role_id], references: [id], onDelete: Cascade)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.

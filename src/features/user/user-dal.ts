@@ -4,9 +4,13 @@ import prisma from '@/lib/prisma';
 import { createClient } from '@supabase/supabase-js';
 
 export async function getAllUsersWithRolesByOrgIds(
-  org_ids: string[],
+  org_ids: string[] | null | undefined,
   role: string | null = null
 ) {
+  if (!org_ids || org_ids.length === 0) {
+    return [];
+  }
+
   const roleFilter = role ? { role: { name: role } } : {};
 
   const users = await prisma.user.findMany({

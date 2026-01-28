@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { UserListItem } from './UserListItem';
 
 interface UsersManagementSectionProps {
@@ -8,6 +9,7 @@ interface UsersManagementSectionProps {
   currentUserEmail: string;
   onUserProfileClick: (userId: string) => void;
   onInviteClick: () => void;
+  onSave: () => void;
 }
 
 export function UsersManagementSection({
@@ -100,28 +102,30 @@ export function UsersManagementSection({
       </div>
 
       {canInviteUsers && (
-        <div className="flex flex-col gap-4 self-stretch border-t border-slate-200 px-4 py-4">
-          <button
-            onClick={onInviteClick}
-            className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
-          >
-            <svg
-              className="mr-2 h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <Button onClick={onInviteClick}>Helfer einladen</Button>
+        ) && (
+          <div className="flex flex-col gap-4 self-stretch border-t border-slate-200 px-4 py-4">
+            <button
+              onClick={onInviteClick}
+              className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-              />
-            </svg>
-            Helfer einladen
-          </button>
-        </div>
-      )}
+              <svg
+                className="mr-2 h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                />
+              </svg>
+              Helfer einladen
+            </button>
+          </div>
+        )}
     </div>
   );
 }

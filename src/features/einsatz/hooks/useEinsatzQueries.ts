@@ -1,9 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/features/einsatz/queryKeys';
 import { getEinsaetzeData } from '@/components/event-calendar/utils';
-import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
+import {
+  getEinsatzWithDetailsById,
+  getEinsaetzeForTableView,
+} from '@/features/einsatz/dal-einsatz';
 import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
 import { toast } from 'sonner';
+import type { ETV } from '@/features/einsatz/types';
 
 export function useEinsaetze(activeOrgId: string | null | undefined) {
   return useQuery({
@@ -21,10 +25,13 @@ export function useDetailedEinsatz(
     queryKey: queryKeys.detailedEinsatz(einsatzId as string),
     queryFn: async () => {
       const res = await getEinsatzWithDetailsById(einsatzId as string);
-      if (!(res instanceof Response)) return res;
-      toast.error('Failed to fetch einsatz details: ' + res.statusText);
+      if (res instanceof Response) {
+        throw new Error(`Einsatz konnte nicht geladen werden: ${res.statusText}`);
+      }
+      return res;
     },
     enabled: typeof einsatzId === 'string' && !!einsatzId && isOpen,
+    retry: false,
   });
 }
 
@@ -33,5 +40,14 @@ export function useCategories(activeOrgId: string | null | undefined) {
     queryKey: queryKeys.categories(activeOrgId ?? ''),
     queryFn: () => getCategoriesByOrgIds(activeOrgId ? [activeOrgId] : []),
     enabled: !!activeOrgId,
+  });
+}
+
+export function useEinsaetzeTableView(userOrgIds: string[] | null | undefined) {
+  return useQuery<ETV[]>({
+    queryKey: [...queryKeys.einsaetzeTableView(userOrgIds ?? [])],
+    queryFn: () => getEinsaetzeForTableView(userOrgIds ?? []),
+    placeholderData: (previousData) => previousData ?? [],
+    enabled: !!userOrgIds && userOrgIds.length > 0,
   });
 }

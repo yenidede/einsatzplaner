@@ -1,15 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Mail,
-  Send,
-  X,
-  CheckCircle,
-  AlertCircle,
-  AlertTriangle,
-} from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Mail, Send, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { invitationQueryKeys } from '../queryKeys';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,17 +16,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  getEinsatzNamesByOrgId,
-  getAllRolesExceptSuperAdmin,
-} from '@/features/settings/organization-action';
 import { createInvitationAction } from '../invitation-action';
 import { Button } from '@/components/ui/button';
+import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
+import { useRoles } from '@/features/roles/hooks/use-roles-queries';
 
 interface InviteUserFormProps {
   organizationId: string;
   onClose: () => void;
   isOpen: boolean;
+  onSave: () => void;
 }
 
 interface Role {
@@ -67,18 +59,10 @@ export function InviteUserForm({
   const queryClient = useQueryClient();
 
   // Organisation-Daten über Server Action laden
-  const { data: organizationData } = useQuery({
-    queryKey: ['organization', organizationId],
-    queryFn: () => getEinsatzNamesByOrgId(organizationId),
-    enabled: isOpen && !!organizationId,
-  });
+  const { data: organizationData } = useOrganization(organizationId);
 
   // Rollen über Server Action laden
-  const { data: rolesData } = useQuery<Role[]>({
-    queryKey: ['roles'],
-    queryFn: () => getAllRolesExceptSuperAdmin(),
-    staleTime: 1000 * 60 * 5, // 5 Minuten Cache
-  });
+  const { data: rolesData } = useRoles();
   const einsatzNamePlural = organizationData?.einsatz_name_plural || 'Einsätze';
 
   // Rollen-IDs dynamisch aus DB holen
@@ -96,7 +80,7 @@ export function InviteUserForm({
         roleIds: data.roleIds,
       });
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       setSuccessMessage(
         `Einladung erfolgreich an ${pendingFormData?.email || email} gesendet!`
       );

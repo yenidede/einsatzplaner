@@ -1,14 +1,13 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
-import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
-import { getOrganizationDetailsAction } from '@/features/settings/organization-action';
+import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
 import {
   criticalFieldClass,
   criticalFieldLabel,
 } from '@/features/settings/utils/criticalFieldUtils';
+import { Button } from '@/components/ui/button';
 
 interface OrganizationDetailsProps {
   organizationId: string;
@@ -20,6 +19,7 @@ interface OrganizationDetailsProps {
   onVatChange: (value: string) => void;
   onZvrChange: (value: string) => void;
   onAuthorityChange: (value: string) => void;
+  onSave: () => void;
   isSuperadmin?: boolean;
 }
 
@@ -34,12 +34,9 @@ export function OrganizationDetails({
   onZvrChange,
   onAuthorityChange,
   isSuperadmin = false,
+  onSave,
 }: OrganizationDetailsProps) {
-  const { data: details, isLoading } = useQuery({
-    queryKey: settingsQueryKeys.org.details(organizationId),
-    queryFn: () => getOrganizationDetailsAction(organizationId),
-    enabled: !!organizationId,
-  });
+  const { data: details, isLoading } = useOrganizationDetails(organizationId);
 
   useEffect(() => {
     if (details) {
@@ -55,7 +52,7 @@ export function OrganizationDetails({
       <div className="flex items-center justify-between self-stretch px-4 py-2">
         <div className="flex items-center gap-2">
           <div className="text-sm font-semibold text-slate-900">
-            Weitere Organisationsdetails
+            Weitere Organisationsdetails (PDF-Export)
           </div>
         </div>
       </div>
@@ -134,6 +131,13 @@ export function OrganizationDetails({
                 }
               />
             </div>
+          </div>
+        )}
+        {isSuperadmin && (
+          <div>
+            <Button onClick={onSave} className="mt-4">
+              Änderungen speichern
+            </Button>
           </div>
         )}
       </div>

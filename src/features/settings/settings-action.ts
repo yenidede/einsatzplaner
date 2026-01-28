@@ -145,10 +145,10 @@ export async function getUserProfileAction() {
     roleIds: user.user_organization_role.map((uor) => uor.role.id),
     activeOrganization: activeOrgData
       ? {
-          id: activeOrgData.id,
-          name: activeOrgData.name,
-          logo_url: activeOrgData.logo_url,
-        }
+        id: activeOrgData.id,
+        name: activeOrgData.name,
+        logo_url: activeOrgData.logo_url,
+      }
       : null,
     phone: user.phone ?? '',
     hasLogoinCalendar: user.hasLogoinCalendar ?? true,
@@ -257,8 +257,9 @@ export async function uploadProfilePictureAction(formData: FormData) {
   if (!file.type.startsWith('image/')) {
     throw new Error('File must be an image');
   }
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error('File size must be less than 5MB');
+  // Allow up to 10MB (compression should handle larger files on client side)
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('File size must be less than 10MB');
   }
 
   const oldUser = await prisma.user.findUnique({

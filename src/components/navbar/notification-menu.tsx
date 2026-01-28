@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { BellIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 import {
   Popover,
   PopoverContent,
@@ -90,12 +91,6 @@ export default function NotificationMenu() {
   const { data: orgsData } = useOrganizations(
     orgIds && orgIds.length > 1 ? orgIds : undefined
   );
-
-  const activeOrg = useMemo(() => {
-    return orgsData?.find(
-      (org) => org.id === session?.user.activeOrganization?.id
-    );
-  }, [orgsData, session?.user.activeOrganization?.id]);
 
   const activities = data || [];
 
@@ -195,10 +190,12 @@ export default function NotificationMenu() {
                       }}
                     >
                       {activity.change_type.change_icon_url ? (
-                        <img
+                        <Image
                           src={activity.change_type.change_icon_url}
                           alt={activity.change_type.name}
                           className="h-4 w-4 object-contain"
+                          width={32}
+                          height={32}
                         />
                       ) : (
                         <div

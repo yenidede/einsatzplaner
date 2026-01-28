@@ -5,6 +5,7 @@ import { LabelSettings } from '@/features/settings/components/ui/LabelSettings';
 import { InputSettings } from '@/features/settings/components/ui/InputSettings';
 import UploadProfilePictureIcon from '@/features/settings/components/ui/UploadProfilePictureIcon';
 import ProfilePictureUpload from '@/features/settings/components/ProfilePictureUpload';
+import Image from 'next/image';
 
 interface AccountSectionProps {
   firstname: string;
@@ -54,8 +55,10 @@ export function AccountSection({
           <div className="flex flex-col items-start justify-start gap-2 self-stretch px-4">
             <div className="inline-flex items-center justify-start gap-2">
               {previewUrl || pictureUrl ? (
-                <img
+                <Image
                   src={previewUrl || pictureUrl || ''}
+                  width={48}
+                  height={48}
                   alt={previewUrl ? 'Profilbild Vorschau' : 'Profilbild'}
                   className="h-10 w-10 rounded-full border object-cover"
                   loading="lazy"
