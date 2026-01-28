@@ -10,8 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useSession } from 'next-auth/react';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 interface OrganizationDetailsFormProps {
   name: string;

@@ -2,7 +2,7 @@
 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Organization } from '../../../features/settings/types';
+import { Organization } from '@/features/settings/types';
 
 interface NotificationsSectionProps {
   organizations: Organization[];
