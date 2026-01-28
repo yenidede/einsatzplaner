@@ -41,6 +41,8 @@ import { SettingsErrorCard } from '@/components/settings/SettingsErrorCard';
 import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavigation';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
+import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
+import { useAlertDialog } from '@/contexts/AlertDialogContext';
 import {
   Card,
   CardContent,
@@ -83,6 +85,24 @@ export default function OrganizationManagePage() {
   const [zvr, setZvr] = useState('');
   const [authority, setAuthority] = useState('');
 
+  // Initial values for change detection
+  const initialValuesRef = useRef<{
+    name: string;
+    email: string;
+    phone: string;
+    description: string;
+    allowSelfSignOut: boolean;
+    helperSingular: string;
+    helperPlural: string;
+    einsatzSingular: string;
+    einsatzPlural: string;
+    maxParticipantsPerHelper: string;
+    website: string;
+    vat: string;
+    zvr: string;
+    authority: string;
+  } | null>(null);
+
   // Use shared session validation hook
   useSettingsSessionValidation();
 
@@ -97,14 +117,17 @@ export default function OrganizationManagePage() {
   } = useOrganizationById(orgId);
 
   // Use shared section navigation hook
-  const { activeSection, sectionRefs, handleSectionChange } =
-    useSectionNavigation<OrgManageSectionId>({
-      sectionId: 'details',
-      navItems: ORG_MANAGE_NAV_ITEMS,
-      defaultSection: 'details',
-      basePath: `/settings/org/${orgId}`,
-      shouldSetDefault: !!orgData,
-    });
+  const {
+    activeSection,
+    sectionRefs,
+    handleSectionChange: originalHandleSectionChange,
+  } = useSectionNavigation<OrgManageSectionId>({
+    sectionId: 'details',
+    navItems: ORG_MANAGE_NAV_ITEMS,
+    defaultSection: 'details',
+    basePath: `/settings/org/${orgId}`,
+    shouldSetDefault: !!orgData,
+  });
 
   useEffect(() => {
     if (orgData) {
@@ -121,6 +144,27 @@ export default function OrganizationManagePage() {
       );
       setEinsatzSingular(orgData.einsatz_name_singular ?? 'Einsatz');
       setEinsatzPlural(orgData.einsatz_name_plural ?? 'Einsätze');
+
+      // Update initial values whenever orgData changes (including after save/refetch)
+      initialValuesRef.current = {
+        name: orgData.name ?? '',
+        email: orgData.email ?? '',
+        phone: orgData.phone ?? '',
+        description: orgData.description ?? '',
+        allowSelfSignOut: orgData.allow_self_sign_out ?? false,
+        helperSingular: orgData.helper_name_singular ?? 'Helfer:in',
+        helperPlural: orgData.helper_name_plural ?? 'Helfer:innen',
+        einsatzSingular: orgData.einsatz_name_singular ?? 'Einsatz',
+        einsatzPlural: orgData.einsatz_name_plural ?? 'Einsätze',
+        maxParticipantsPerHelper:
+          orgData.max_participants_per_helper?.toString() ?? '',
+        website: orgData.website ?? '',
+        vat: orgData.vat ?? '',
+        zvr: orgData.zvr ?? '',
+        authority: orgData.authority ?? '',
+      };
+      // Clear logo file when data is refreshed
+      setLogoFile(null);
     }
   }, [orgData]);
 
@@ -136,26 +180,76 @@ export default function OrganizationManagePage() {
 
   const updateMutation = useUpdateOrganization(orgId);
 
-  const handleSave = useCallback(() => {
-    updateMutation.mutate({
-      name,
-      description,
-      email,
-      phone,
-      helper_name_singular: helperSingular,
-      helper_name_plural: helperPlural,
-      einsatz_name_singular: einsatzSingular,
-      max_participants_per_helper: maxParticipantsPerHelper
-        ? parseInt(maxParticipantsPerHelper)
-        : undefined,
-      einsatz_name_plural: einsatzPlural,
-      logoFile: logoFile,
-      website,
-      vat,
-      zvr,
-      authority,
-      allow_self_sign_out: allowSelfSignOut,
-    });
+  // Check for unsaved changes
+  const hasUnsavedChanges = (() => {
+    if (!initialValuesRef.current) return false;
+    const initial = initialValuesRef.current;
+
+    return (
+      name !== initial.name ||
+      email !== initial.email ||
+      phone !== initial.phone ||
+      description !== initial.description ||
+      allowSelfSignOut !== initial.allowSelfSignOut ||
+      helperSingular !== initial.helperSingular ||
+      helperPlural !== initial.helperPlural ||
+      einsatzSingular !== initial.einsatzSingular ||
+      einsatzPlural !== initial.einsatzPlural ||
+      maxParticipantsPerHelper !== initial.maxParticipantsPerHelper ||
+      website !== initial.website ||
+      vat !== initial.vat ||
+      zvr !== initial.zvr ||
+      authority !== initial.authority ||
+      logoFile !== null
+    );
+  })();
+
+  const handleSave = useCallback(async () => {
+    try {
+      await updateMutation.mutateAsync({
+        name,
+        description,
+        email,
+        phone,
+        helper_name_singular: helperSingular,
+        helper_name_plural: helperPlural,
+        einsatz_name_singular: einsatzSingular,
+        max_participants_per_helper: maxParticipantsPerHelper
+          ? parseInt(maxParticipantsPerHelper)
+          : undefined,
+        einsatz_name_plural: einsatzPlural,
+        logoFile: logoFile,
+        website,
+        vat,
+        zvr,
+        authority,
+        allow_self_sign_out: allowSelfSignOut,
+      });
+
+      // Note: Initial values will be updated automatically when orgData refetches
+      // But we also update them here immediately to prevent false positives
+      if (initialValuesRef.current) {
+        initialValuesRef.current = {
+          name,
+          email,
+          phone,
+          description,
+          allowSelfSignOut,
+          helperSingular,
+          helperPlural,
+          einsatzSingular,
+          einsatzPlural,
+          maxParticipantsPerHelper,
+          website,
+          vat,
+          zvr,
+          authority,
+        };
+      }
+      setLogoFile(null);
+    } catch (error) {
+      // Error handling is done by the mutation
+    }
   }, [
     name,
     description,
@@ -174,6 +268,23 @@ export default function OrganizationManagePage() {
     allowSelfSignOut,
     updateMutation,
   ]);
+
+  // Use unsaved changes hook
+  const { handleSectionChangeWithCheck, navigateWithCheck } = useUnsavedChanges(
+    {
+      hasUnsavedChanges,
+      onSave: handleSave,
+      onSectionChange: originalHandleSectionChange,
+    }
+  );
+
+  // Wrapper for section change that checks for unsaved changes
+  const handleSectionChange = useCallback(
+    (section: OrgManageSectionId) => {
+      handleSectionChangeWithCheck(section);
+    },
+    [handleSectionChangeWithCheck]
+  );
 
   // Use shared keyboard shortcuts hook
   useSettingsKeyboardShortcuts({
@@ -295,6 +406,7 @@ export default function OrganizationManagePage() {
         currentOrgId={orgId}
         activeOrgSection={activeSection}
         onOrgSectionChange={handleSectionChange}
+        onNavigate={navigateWithCheck}
       >
         {/* Details Section */}
         <section
