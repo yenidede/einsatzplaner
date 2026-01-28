@@ -27,9 +27,7 @@ import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationD
 import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
 import { UsersManagementSection } from '@/components/settings/org/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
-import { OrganizationAddresses } from '@/components/settings/org/OrganizationAddresses';
-import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
-import { OrganizationDetails } from '@/components/settings/org/OrganizationDetails';
+import { OrganizationPdfExportForm } from '@/components/settings/org/OrganizationPdfExportForm';
 import { PageHeader } from '@/components/settings/PageHeader';
 import {
   ORG_MANAGE_NAV_ITEMS,
@@ -614,43 +612,20 @@ export default function OrganizationManagePage() {
                 Einstellungen für den PDF-Export deiner Organisation
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="mb-4 text-lg font-semibold">
-                  Weitere Organisationsdetails (PDF-Export)
-                </h3>
-                <OrganizationDetails
-                  organizationId={orgId}
-                  website={website}
-                  vat={vat}
-                  zvr={zvr}
-                  authority={authority}
-                  onWebsiteChange={setWebsite}
-                  onVatChange={setVat}
-                  onZvrChange={setZvr}
-                  onAuthorityChange={setAuthority}
-                  isSuperadmin={isSuperadmin}
-                  onSave={handleSave}
-                />
-              </div>
-              <Separator />
-              <div>
-                <h3 className="mb-4 text-lg font-semibold">Adressen</h3>
-                <OrganizationAddresses
-                  organizationId={orgId}
-                  isSuperadmin={isSuperadmin}
-                  onSave={handleSave}
-                />
-              </div>
-              <Separator />
-              <div>
-                <h3 className="mb-4 text-lg font-semibold">Bankkonten</h3>
-                <OrganizationBankAccounts
-                  organizationId={orgId}
-                  isSuperadmin={isSuperadmin}
-                  onSave={handleSave}
-                />
-              </div>
+            <CardContent>
+              <OrganizationPdfExportForm
+                organizationId={orgId}
+                website={website}
+                vat={vat}
+                zvr={zvr}
+                authority={authority}
+                onWebsiteChange={setWebsite}
+                onVatChange={setVat}
+                onZvrChange={setZvr}
+                onAuthorityChange={setAuthority}
+                isSuperadmin={isSuperadmin}
+                onSave={handleSave}
+              />
             </CardContent>
           </Card>
         </section>
