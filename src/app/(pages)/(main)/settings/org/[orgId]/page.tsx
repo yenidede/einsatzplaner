@@ -19,16 +19,16 @@ import {
 } from '@/features/settings/hooks/useUserProfile';
 import { useUpdateOrganization } from '@/features/settings/hooks/useSettingsMutations';
 
-import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
+import { UserProfileDialog } from '@/components/settings/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
-import { OrganizationLogoSection } from '@/features/settings/components/settings/OrganizationLogo';
-import { OrganizationDetailsForm } from '@/features/settings/components/settings/OrganizationDetailsForm';
-import { OrganizationPreferences } from '@/features/settings/components/settings/OrganizationPreferences';
-import { UsersManagementSection } from '@/features/settings/components/settings/UserManagement';
+import { OrganizationLogoSection } from '@/components/settings/settings/OrganizationLogo';
+import { OrganizationDetailsForm } from '@/components/settings/settings/OrganizationDetailsForm';
+import { OrganizationPreferences } from '@/components/settings/settings/OrganizationPreferences';
+import { UsersManagementSection } from '@/components/settings/settings/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
-import { OrganizationAddresses } from '@/features/settings/components/settings/OrganizationAddresses';
-import { OrganizationBankAccounts } from '@/features/settings/components/settings/OrganizationBankAccounts';
-import { OrganizationDetails } from '@/features/settings/components/settings/OrganizationDetails';
+import { OrganizationAddresses } from '@/components/settings/settings/OrganizationAddresses';
+import { OrganizationBankAccounts } from '@/components/settings/settings/OrganizationBankAccounts';
+import { OrganizationDetails } from '@/components/settings/settings/OrganizationDetails';
 import { PageHeader } from '@/components/settings/PageHeader';
 import { OrgManageNav } from '@/components/settings/OrgManageNav';
 import {
@@ -196,7 +196,7 @@ export default function OrganizationManagePage() {
   const handleSectionChange = useCallback(
     (sectionId: OrgManageSectionId) => {
       setActiveSection(sectionId);
-      router.push(`/organization/${orgId}/manage?section=${sectionId}`, {
+      router.push(`/settings/org/${orgId}?section=${sectionId}`, {
         scroll: false,
       });
       isScrollingProgrammatically.current = true;
@@ -216,7 +216,7 @@ export default function OrganizationManagePage() {
     if (!orgData) return;
     const section = searchParams.get('section') as OrgManageSectionId | null;
     if (!section) {
-      router.replace(`/organization/${orgId}/manage?section=details`, {
+      router.replace(`/settings/org/${orgId}?section=details`, {
         scroll: false,
       });
     }
@@ -278,7 +278,7 @@ export default function OrganizationManagePage() {
           if (currentSection !== detectedSection) {
             isUpdatingUrlFromScroll.current = true;
             router.replace(
-              `/organization/${orgId}/manage?section=${detectedSection}`,
+              `/settings/org/${orgId}?section=${detectedSection}`,
               {
                 scroll: false,
               }

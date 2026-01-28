@@ -1,9 +1,8 @@
 'use client';
 
-import { Switch } from '@/features/settings/components/ui/switch';
-import { Label } from '@/features/settings/components/ui/label';
-import { LabelSettings } from '@/features/settings/components/ui/LabelSettings';
-import { Salutation } from '../../types';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Salutation } from '../../../features/settings/types';
 
 interface PersonalPreferencesSectionProps {
   showLogos: boolean;
@@ -54,9 +53,9 @@ export function PersonalPreferencesSection({
       <div className="inline-flex items-start justify-start gap-4 self-stretch py-2">
         <div className="flex flex-1 items-start justify-start gap-4 px-4">
           <div className="inline-flex min-w-72 flex-1 flex-col items-start justify-start gap-1.5">
-            <LabelSettings htmlFor="salutation" className="text-sm font-medium">
+            <Label htmlFor="salutation" className="text-sm font-medium">
               Anrede
-            </LabelSettings>
+            </Label>
             <select
               id="salutation"
               value={salutationId || ''}

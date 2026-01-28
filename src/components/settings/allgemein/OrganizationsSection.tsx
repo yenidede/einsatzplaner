@@ -1,8 +1,8 @@
 'use client';
 
-import OrganizationCard from '@/features/settings/components/OrganizationCard';
+import OrganizationCard from '@/components/settings/OrganizationCard';
 import CalendarSubscription from '@/features/calendar-subscription/components/CalendarSubscriptionClient';
-import { Organization } from '../../types';
+import { Organization } from '../../../features/settings/types';
 
 interface OrganizationsSectionProps {
   organizations: Organization[];

@@ -170,7 +170,7 @@ export default function SettingsPage() {
     if (!userData) return;
     const section = searchParams.get('section') as SectionId | null;
     if (!section) {
-      router.replace('/settings?section=account', { scroll: false });
+      router.replace('/settings/user?section=account', { scroll: false });
     }
   }, [userData, searchParams, router]);
 
@@ -256,7 +256,7 @@ export default function SettingsPage() {
               if (currentSection !== detectedSection) {
                 // Set flag to prevent searchParams effect from scrolling
                 isUpdatingUrlFromScroll.current = true;
-                router.replace(`/settings?section=${detectedSection}`, {
+                router.replace(`/settings/user?section=${detectedSection}`, {
                   scroll: false,
                 });
               }
@@ -312,7 +312,7 @@ export default function SettingsPage() {
   const handleSectionChange = useCallback(
     (sectionId: SectionId) => {
       setActiveSection(sectionId);
-      router.push(`/settings?section=${sectionId}`, { scroll: false });
+      router.push(`/settings/user?section=${sectionId}`, { scroll: false });
       isScrollingProgrammatically.current = true;
       // Clear any pending scroll updates and reset detection
       if (scrollUpdateTimeoutRef.current) {
@@ -797,71 +797,31 @@ export default function SettingsPage() {
                           autoComplete="tel"
                         />
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </section>
 
-              {/* Preferences Section */}
-              <section
-                id="preferences"
-                ref={(el) => {
-                  sectionRefs.current.preferences = el;
-                }}
-                aria-labelledby="preferences-heading"
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle id="preferences-heading">
-                      Persönliche Präferenzen
-                    </CardTitle>
-                    <CardDescription>
-                      Passe die Anwendung an deine Bedürfnisse an
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="show-logos" className="text-base">
-                          Logos in Kalenderansicht
-                        </Label>
-                        <p className="text-muted-foreground text-sm">
-                          Zeigt Organisationslogos in der Kalenderübersicht an
+                      <div className="space-y-2">
+                        <Label htmlFor="salutation">Anrede</Label>
+                        <Select
+                          value={salutationId || ''}
+                          onValueChange={setSalutationId}
+                        >
+                          <SelectTrigger
+                            id="salutation"
+                            className="w-full sm:w-64"
+                          >
+                            <SelectValue placeholder="Anrede wählen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {salutations.map((sal) => (
+                              <SelectItem key={sal.id} value={sal.id}>
+                                {sal.salutation}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-muted-foreground text-xs">
+                          Wird für personalisierte Kommunikation verwendet
                         </p>
                       </div>
-                      <Switch
-                        id="show-logos"
-                        checked={showLogos}
-                        onCheckedChange={setShowLogos}
-                        aria-describedby="show-logos-description"
-                      />
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <Label htmlFor="salutation">Anrede</Label>
-                      <Select
-                        value={salutationId || ''}
-                        onValueChange={setSalutationId}
-                      >
-                        <SelectTrigger
-                          id="salutation"
-                          className="w-full sm:w-64"
-                        >
-                          <SelectValue placeholder="Anrede wählen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {salutations.map((sal) => (
-                            <SelectItem key={sal.id} value={sal.id}>
-                              {sal.salutation}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-muted-foreground text-xs">
-                        Wird für personalisierte Kommunikation verwendet
-                      </p>
                     </div>
                   </CardContent>
                 </Card>

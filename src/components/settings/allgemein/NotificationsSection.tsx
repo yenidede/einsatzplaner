@@ -1,8 +1,8 @@
 'use client';
 
-import { Switch } from '@/features/settings/components/ui/switch';
-import { Label } from '@/features/settings/components/ui/label';
-import { Organization } from '../../types';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Organization } from '../../../features/settings/types';
 
 interface NotificationsSectionProps {
   organizations: Organization[];

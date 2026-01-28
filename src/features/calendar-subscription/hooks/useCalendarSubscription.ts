@@ -32,6 +32,7 @@ export function useCalendarSubscription(orgId: string) {
     queryFn: () => getSubscriptionAction(orgId),
     enabled: !!orgId,
     staleTime: 60000,
+    retry: 3,
   });
 
   const rotate = useMutation({

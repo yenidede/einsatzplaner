@@ -28,15 +28,13 @@ export function OrgManageNav({
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { data: managedOrgs = [] } = useManagedOrganizations(
-    session?.user?.id
-  );
+  const { data: managedOrgs = [] } = useManagedOrganizations(session?.user?.id);
 
   const handleSectionClick = (sectionId: OrgManageSectionId) => {
     if (onSectionChange) {
       onSectionChange(sectionId);
     } else {
-      router.push(`/organization/${currentOrgId}/manage#${sectionId}`, {
+      router.push(`/settings/org/${currentOrgId}#${sectionId}`, {
         scroll: false,
       });
     }

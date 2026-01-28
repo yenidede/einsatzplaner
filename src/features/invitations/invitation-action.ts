@@ -149,7 +149,7 @@ export async function createInvitationAction(data: {
     }
 
     // Revalidate paths
-    revalidatePath(`/organization/${data.organizationId}/manage`);
+    revalidatePath(`/settings/org/${data.organizationId}`);
 
     return {
       success: true,
@@ -213,8 +213,8 @@ export async function acceptInvitationAction(token: string) {
     if (firstInvitation.email !== session.user.email) {
       throw new Error(
         'E-Mail-Adresse stimmt nicht überein. Einladung ist gültig für ' +
-          firstInvitation.email.substring(0, 3) +
-          '****'
+        firstInvitation.email.substring(0, 3) +
+        '****'
       );
     }
 

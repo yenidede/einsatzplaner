@@ -10,7 +10,7 @@ import {
   promoteToSuperadminAction,
   demoteFromSuperadminAction,
 } from '@/features/settings/users-action';
-import { settingsQueryKeys } from '../queryKeys/queryKey';
+import { settingsQueryKeys } from '../../features/settings/queryKeys/queryKey';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { UserProfileHeader } from './userProfile/UserProfileHeader';
 import { UserContactInfo } from './userProfile/UserContactInfo';

@@ -26,7 +26,7 @@ export function SettingsPageLayout({
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
       {/* Header - Fixed at top */}
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <div className="mx-auto w-full max-w-7xl">
           <div className="rounded-lg bg-white outline -outline-offset-1 outline-slate-200">
             <SettingsHeader

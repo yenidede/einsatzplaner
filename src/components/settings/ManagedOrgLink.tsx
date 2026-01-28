@@ -11,7 +11,7 @@ export interface ManagedOrgLinkProps {
 export function ManagedOrgLink({ org }: ManagedOrgLinkProps) {
   return (
     <Link
-      href={`/organization/${org.id}/manage`}
+      href={`/settings/org/${org.id}`}
       className={cn(
         'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
         'text-muted-foreground hover:bg-muted hover:text-foreground',
