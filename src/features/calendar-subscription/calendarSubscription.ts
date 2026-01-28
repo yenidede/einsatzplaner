@@ -5,11 +5,19 @@ export async function getOrCreateCalendarSubscription(
   orgId: string,
   userId: string
 ) {
+  console.log('getOrCreateCalendarSubscription', orgId, userId);
+
+  if (!orgId || !userId) {
+    throw new Error('Invalid orgId or userId');
+  }
+
   const existingCalendarSubscription =
     await prisma.calendar_subscription.findFirst({
       where: { org_id: orgId, user_id: userId, is_active: true },
     });
+  console.log('result: calendar subscription', existingCalendarSubscription);
   if (existingCalendarSubscription) {
+    console.log('returning existing calendar subscription');
     return existingCalendarSubscription;
   }
   const organization = await prisma.organization.findUnique({
@@ -29,6 +37,10 @@ export async function getOrCreateCalendarSubscription(
 }
 
 export async function rotateCalendarSubscription(id: string, userId: string) {
+  if (!id || !userId) {
+    throw new Error('Invalid orgId or userId');
+  }
+
   return prisma.calendar_subscription.update({
     where: { id, user_id: userId },
     data: { token: generatedToken(24), is_active: true },
@@ -36,6 +48,10 @@ export async function rotateCalendarSubscription(id: string, userId: string) {
 }
 
 export async function deactivateCalendarSubscription(id: string, userId: string) {
+  if (!id || !userId) {
+    throw new Error('Invalid orgId or userId');
+  }
+
   return prisma.calendar_subscription.update({
     where: { id, user_id: userId },
     data: { is_active: false },
@@ -43,6 +59,10 @@ export async function deactivateCalendarSubscription(id: string, userId: string)
 }
 
 export async function activateCalendarSubscription(id: string, userId: string) {
+  if (!id || !userId) {
+    throw new Error('Invalid orgId or userId');
+  }
+
   return prisma.calendar_subscription.update({
     where: { id, user_id: userId },
     data: { is_active: true },
