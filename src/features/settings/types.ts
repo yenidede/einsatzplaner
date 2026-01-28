@@ -1,17 +1,10 @@
-export type Organization = {
-  id: string;
-  name: string;
-  helper_name_singular?: string;
-  helper_name_plural?: string;
+import type { organization } from '@/generated/prisma';
+import type { RoleType } from '@/components/Roles';
+import type { salutation } from '@/generated/prisma';
+
+export type OrganizationBase = Pick<organization, 'id' | 'name' | 'helper_name_singular' | 'helper_name_plural' | 'logo_url' | 'small_logo_url'> & {
+  roles: RoleType[];
   hasGetMailNotification: boolean;
-  roles: Array<{
-    id: string;
-    name: string;
-    abbreviation: string | null;
-  }>;
 };
 
-export type Salutation = {
-  id: string;
-  salutation: string;
-};
+export type Salutation = salutation;
