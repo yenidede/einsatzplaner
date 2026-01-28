@@ -8,7 +8,7 @@ import {
   createOrganizationAddressAction,
   updateOrganizationAddressAction,
   deleteOrganizationAddressAction,
-} from '../../../features/settings/organization-action';
+} from '@/features/settings/organization-action';
 import { useOrganizationAddresses } from '@/features/organization/hooks/use-organization-queries';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import {

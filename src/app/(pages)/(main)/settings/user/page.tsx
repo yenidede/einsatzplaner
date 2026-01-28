@@ -98,10 +98,6 @@ export default function SettingsPage() {
     calendar: null,
     organizations: null,
   });
-  const isScrollingProgrammatically = useRef(false);
-  const isUpdatingUrlFromScroll = useRef(false);
-  const scrollUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastDetectedSectionRef = useRef<SectionId | null>(null);
 
   useSessionValidation({
     debug: false,
@@ -112,25 +108,14 @@ export default function SettingsPage() {
 
   // Handle URL hash for direct section linking
   useEffect(() => {
-    // Skip if URL was updated from scroll detection (to prevent auto-scroll)
-    if (isUpdatingUrlFromScroll.current) {
-      isUpdatingUrlFromScroll.current = false;
-      return;
-    }
-
     const section = searchParams.get('section') as SectionId | null;
     if (section && NAV_ITEMS.some((item) => item.id === section)) {
       setActiveSection(section);
-      isScrollingProgrammatically.current = true;
       setTimeout(() => {
         sectionRefs.current[section]?.scrollIntoView({
           behavior: 'smooth',
           block: 'start',
         });
-        // Reset flag after scroll animation completes
-        setTimeout(() => {
-          isScrollingProgrammatically.current = false;
-        }, 500);
       }, 100);
     }
   }, [searchParams]);
@@ -174,121 +159,6 @@ export default function SettingsPage() {
     }
   }, [userData, searchParams, router]);
 
-  // Handle scroll-based section detection and URL updates
-  useEffect(() => {
-    // Only set up observer if userData is loaded (sections are rendered)
-    if (!userData) return;
-
-    const observerOptions = {
-      root: null,
-      rootMargin: '-100px 0px -50% 0px', // Trigger when section top is within 100px of viewport top
-      threshold: [0, 0.25, 0.5, 0.75, 1.0],
-    };
-
-    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
-      // Skip if we're programmatically scrolling
-      if (isScrollingProgrammatically.current) return;
-
-      // Clear any pending updates
-      if (scrollUpdateTimeoutRef.current) {
-        clearTimeout(scrollUpdateTimeoutRef.current);
-      }
-
-      // Find the section that's closest to the top of the viewport
-      // boundingClientRect.top is relative to viewport, so we want sections
-      // whose top is near 0 (accounting for sticky header ~100px)
-      const headerOffset = 100; // Approximate sticky header height
-
-      const visibleSections = entries
-        .filter((entry) => entry.isIntersecting)
-        .map((entry) => {
-          const rect = entry.boundingClientRect;
-          // Distance from the top of the viewport (accounting for header)
-          const distanceFromTop = Math.max(0, rect.top - headerOffset);
-          return {
-            entry,
-            sectionId: entry.target.id as SectionId,
-            distanceFromTop,
-            intersectionRatio: entry.intersectionRatio,
-            top: rect.top,
-          };
-        })
-        .filter(
-          (item) =>
-            item.sectionId &&
-            NAV_ITEMS.some((navItem) => navItem.id === item.sectionId)
-        )
-        .sort((a, b) => {
-          // Prefer sections whose top is above or near the header offset
-          // Sections with top < headerOffset + 50px are considered "active"
-          const aIsActive = a.top <= headerOffset + 50;
-          const bIsActive = b.top <= headerOffset + 50;
-
-          if (aIsActive && !bIsActive) return -1;
-          if (!aIsActive && bIsActive) return 1;
-
-          // If both or neither are active, sort by distance from top
-          // (sections closer to the top are preferred)
-          if (Math.abs(a.distanceFromTop - b.distanceFromTop) > 30) {
-            return a.distanceFromTop - b.distanceFromTop;
-          }
-
-          // If distances are very similar, prefer the one with higher intersection ratio
-          return b.intersectionRatio - a.intersectionRatio;
-        });
-
-      if (visibleSections.length > 0) {
-        const detectedSection = visibleSections[0].sectionId;
-
-        // Only update if this is a different section than what we last detected
-        if (detectedSection !== lastDetectedSectionRef.current) {
-          lastDetectedSectionRef.current = detectedSection;
-
-          // Debounce the update to prevent rapid changes during slow scrolling
-          scrollUpdateTimeoutRef.current = setTimeout(() => {
-            // Double-check we're still not programmatically scrolling
-            if (isScrollingProgrammatically.current) return;
-
-            if (detectedSection !== activeSection) {
-              setActiveSection(detectedSection);
-              // Update URL without triggering scroll
-              const currentSection = searchParams.get('section');
-              if (currentSection !== detectedSection) {
-                // Set flag to prevent searchParams effect from scrolling
-                isUpdatingUrlFromScroll.current = true;
-                router.replace(`/settings/user?section=${detectedSection}`, {
-                  scroll: false,
-                });
-              }
-            }
-          }, 150); // 150ms debounce to wait for scroll to settle
-        }
-      }
-    };
-
-    const observer = new IntersectionObserver(
-      handleIntersection,
-      observerOptions
-    );
-
-    // Observe all sections - use a small delay to ensure refs are set
-    const timeoutId = setTimeout(() => {
-      Object.values(sectionRefs.current).forEach((section) => {
-        if (section) {
-          observer.observe(section);
-        }
-      });
-    }, 100);
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (scrollUpdateTimeoutRef.current) {
-        clearTimeout(scrollUpdateTimeoutRef.current);
-      }
-      observer.disconnect();
-    };
-  }, [router, searchParams, userData]);
-
   const mutation = useUpdateUserProfile(session?.user?.id);
   const leaveOrgMutation = useLeaveOrganization(session?.user?.id);
 
@@ -313,21 +183,10 @@ export default function SettingsPage() {
     (sectionId: SectionId) => {
       setActiveSection(sectionId);
       router.push(`/settings/user?section=${sectionId}`, { scroll: false });
-      isScrollingProgrammatically.current = true;
-      // Clear any pending scroll updates and reset detection
-      if (scrollUpdateTimeoutRef.current) {
-        clearTimeout(scrollUpdateTimeoutRef.current);
-        scrollUpdateTimeoutRef.current = null;
-      }
-      lastDetectedSectionRef.current = sectionId;
       sectionRefs.current[sectionId]?.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
       });
-      // Reset flag after scroll animation completes
-      setTimeout(() => {
-        isScrollingProgrammatically.current = false;
-      }, 500);
     },
     [router]
   );

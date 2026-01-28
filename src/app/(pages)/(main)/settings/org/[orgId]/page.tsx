@@ -69,8 +69,6 @@ export default function OrganizationManagePage() {
     users: null,
   });
 
-  const isScrollingProgrammatically = useRef(false);
-  const isUpdatingUrlFromScroll = useRef(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -142,15 +140,11 @@ export default function OrganizationManagePage() {
     const section = searchParams.get('section') as OrgManageSectionId | null;
     if (section && ORG_MANAGE_NAV_ITEMS.some((item) => item.id === section)) {
       setActiveSection(section);
-      isScrollingProgrammatically.current = true;
       setTimeout(() => {
         sectionRefs.current[section]?.scrollIntoView({
           behavior: 'smooth',
           block: 'start',
         });
-        setTimeout(() => {
-          isScrollingProgrammatically.current = false;
-        }, 500);
       }, 100);
     }
   }, [searchParams]);
@@ -200,14 +194,10 @@ export default function OrganizationManagePage() {
       router.push(`/settings/org/${orgId}?section=${sectionId}`, {
         scroll: false,
       });
-      isScrollingProgrammatically.current = true;
       sectionRefs.current[sectionId]?.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
       });
-      setTimeout(() => {
-        isScrollingProgrammatically.current = false;
-      }, 500);
     },
     [router, orgId]
   );
@@ -223,110 +213,16 @@ export default function OrganizationManagePage() {
     }
   }, [orgData, searchParams, router, orgId]);
 
-  // Handle scroll-based section detection and URL updates
-  useEffect(() => {
-    if (!orgData) return;
-
-    const observerOptions = {
-      root: null,
-      rootMargin: '-100px 0px -50% 0px',
-      threshold: [0, 0.25, 0.5, 0.75, 1.0],
-    };
-
-    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
-      if (isScrollingProgrammatically.current) return;
-
-      const headerOffset = 100;
-      const visibleSections = entries
-        .filter((entry) => entry.isIntersecting)
-        .map((entry) => {
-          const rect = entry.boundingClientRect;
-          const distanceFromTop = Math.max(0, rect.top - headerOffset);
-          return {
-            entry,
-            sectionId: entry.target.id as OrgManageSectionId,
-            distanceFromTop,
-            intersectionRatio: entry.intersectionRatio,
-            top: rect.top,
-          };
-        })
-        .filter(
-          (item) =>
-            item.sectionId &&
-            ORG_MANAGE_NAV_ITEMS.some(
-              (navItem) => navItem.id === item.sectionId
-            )
-        )
-        .sort((a, b) => {
-          const aIsActive = a.top <= headerOffset + 50;
-          const bIsActive = b.top <= headerOffset + 50;
-
-          if (aIsActive && !bIsActive) return -1;
-          if (!aIsActive && bIsActive) return 1;
-
-          if (Math.abs(a.distanceFromTop - b.distanceFromTop) > 30) {
-            return a.distanceFromTop - b.distanceFromTop;
-          }
-
-          return b.intersectionRatio - a.intersectionRatio;
-        });
-
-      if (visibleSections.length > 0) {
-        const detectedSection = visibleSections[0].sectionId;
-        if (detectedSection !== activeSection) {
-          setActiveSection(detectedSection);
-          const currentSection = searchParams.get('section');
-          if (currentSection !== detectedSection) {
-            isUpdatingUrlFromScroll.current = true;
-            router.replace(
-              `/settings/org/${orgId}?section=${detectedSection}`,
-              {
-                scroll: false,
-              }
-            );
-          }
-        }
-      }
-    };
-
-    const observer = new IntersectionObserver(
-      handleIntersection,
-      observerOptions
-    );
-
-    const timeoutId = setTimeout(() => {
-      Object.values(sectionRefs.current).forEach((section) => {
-        if (section) {
-          observer.observe(section);
-        }
-      });
-    }, 100);
-
-    return () => {
-      clearTimeout(timeoutId);
-      observer.disconnect();
-    };
-  }, [activeSection, router, searchParams, orgData, orgId]);
-
   // Handle URL hash for direct section linking
   useEffect(() => {
-    if (isUpdatingUrlFromScroll.current) {
-      isUpdatingUrlFromScroll.current = false;
-      return;
-    }
-
     const section = searchParams.get('section') as OrgManageSectionId | null;
     if (section && ORG_MANAGE_NAV_ITEMS.some((item) => item.id === section)) {
       setActiveSection(section);
-      isScrollingProgrammatically.current = true;
       setTimeout(() => {
         sectionRefs.current[section]?.scrollIntoView({
           behavior: 'smooth',
           block: 'start',
         });
-        setTimeout(() => {
-          isScrollingProgrammatically.current = false;
-        }, 500);
       }, 100);
     }
   }, [searchParams]);
