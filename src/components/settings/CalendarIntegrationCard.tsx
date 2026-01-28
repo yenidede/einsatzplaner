@@ -6,7 +6,6 @@ import {
   ExternalLink,
   RefreshCw,
   Link2Off,
-  Link2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCalendarSubscription } from '@/features/calendar-subscription/hooks/useCalendarSubscription';
@@ -31,8 +30,12 @@ export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
 
   const copyUrl = async () => {
     if (subscription?.webcalUrl) {
-      await navigator.clipboard.writeText(subscription.webcalUrl);
-      toast.success('URL in Zwischenablage kopiert');
+      try {
+        await navigator.clipboard.writeText(subscription.webcalUrl);
+        toast.success('URL in Zwischenablage kopiert');
+      } catch (error) {
+        toast.error('Fehler beim Kopieren der URL: ' + error);
+      }
     }
   };
 
@@ -114,20 +117,22 @@ export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
         </div>
       </div>
 
-      <div
+      <button
+        type="button"
         className={cn(
-          'group rounded-md p-3 transition-colors',
+          'group w-full rounded-md p-3 text-left transition-colors',
           subscription.is_active
             ? 'bg-muted/50 hover:bg-muted cursor-pointer'
-            : 'bg-muted/30 opacity-60'
+            : 'bg-muted/30 cursor-default opacity-60'
         )}
         onClick={subscription.is_active ? copyUrl : undefined}
         title={subscription.is_active ? 'Klicken zum Kopieren' : undefined}
+        disabled={!subscription.is_active}
       >
-        <p className="text-muted-foreground font-mono text-xs break-all">
+        <span className="text-muted-foreground font-mono text-xs break-all">
           {subscription.webcalUrl}
-        </p>
-      </div>
+        </span>
+      </button>
 
       {subscription.is_active ? (
         <div className="flex flex-wrap gap-2">

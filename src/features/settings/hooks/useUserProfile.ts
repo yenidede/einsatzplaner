@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { settingsQueryKeys } from '../queryKeys/queryKey';
 import { getUserProfileAction, getSalutationsAction } from '../settings-action';
-import { getUserOrganizationByIdAction } from '../organization-action';
+import { getUserOrganizationByIdAction, getUserManagedOrganizationsAction } from '../organization-action';
 import { getAllUserOrgRolesAction } from '../users-action';
 import { getUserPropertyValuesAction } from '@/features/user_properties/user_property-actions';
 
@@ -72,5 +72,16 @@ export function useUserPropertyValues(
       getUserPropertyValuesAction(userId ?? '', organizationId ?? ''),
     enabled: !!userId && !!organizationId,
     staleTime: 30000,
+  });
+}
+
+export function useManagedOrganizations(userId: string | undefined) {
+  return useQuery({
+    queryKey: settingsQueryKeys.managedOrganizations(userId || ''),
+    enabled: !!userId,
+    queryFn: async () => {
+      const res = await getUserManagedOrganizationsAction();
+      return res;
+    },
   });
 }
