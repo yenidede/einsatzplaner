@@ -43,7 +43,10 @@ export async function rotateCalendarSubscription(id: string, userId: string) {
   });
 }
 
-export async function deactivateCalendarSubscription(id: string, userId: string) {
+export async function deactivateCalendarSubscription(
+  id: string,
+  userId: string
+) {
   if (!id || !userId) {
     throw new Error('Invalid orgId or userId');
   }

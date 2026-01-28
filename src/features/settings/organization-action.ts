@@ -127,7 +127,9 @@ export async function getUserManagedOrganizationsAction() {
       user_id: session.user.id,
       role: {
         OR: [
-          { name: { contains: 'Organisationsverwaltung', mode: 'insensitive' } },
+          {
+            name: { contains: 'Organisationsverwaltung', mode: 'insensitive' },
+          },
           { name: { contains: 'Superadmin', mode: 'insensitive' } },
           { abbreviation: 'OV' },
           { name: 'OV' },
@@ -146,7 +148,10 @@ export async function getUserManagedOrganizationsAction() {
   });
 
   // Get unique organizations
-  const orgMap = new Map<string, { id: string; name: string; logo_url: string | null }>();
+  const orgMap = new Map<
+    string,
+    { id: string; name: string; logo_url: string | null }
+  >();
   userOrgRoles.forEach((uor) => {
     if (!orgMap.has(uor.organization.id)) {
       orgMap.set(uor.organization.id, {
@@ -650,7 +655,10 @@ export async function removeOrganizationSmallLogoAction(orgId: string) {
           .from('logos')
           .remove([path]);
         if (deleteError) {
-          console.warn('Failed to delete small logo from storage:', deleteError);
+          console.warn(
+            'Failed to delete small logo from storage:',
+            deleteError
+          );
         }
       }
     } catch (error) {
@@ -719,11 +727,11 @@ export async function getOrganizationForPDF(
 
     details: details
       ? {
-        website: details.website,
-        vat: details.vat,
-        zvr: details.zvr,
-        authority: details.authority,
-      }
+          website: details.website,
+          vat: details.vat,
+          zvr: details.zvr,
+          authority: details.authority,
+        }
       : null,
   };
 }

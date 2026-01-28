@@ -42,7 +42,9 @@ export function useSectionNavigation<T extends string>({
   const getHashSection = useCallback((): T | null => {
     if (typeof window === 'undefined') return null;
     const hash = window.location.hash.slice(1); // Remove #
-    return (hash && navItemsRef.current.some((item) => item.id === hash)) ? (hash as T) : null;
+    return hash && navItemsRef.current.some((item) => item.id === hash)
+      ? (hash as T)
+      : null;
   }, []);
 
   // Scroll to section with offset
@@ -94,7 +96,11 @@ export function useSectionNavigation<T extends string>({
       // No hash - set default hash
       targetSection = defaultSectionRef.current;
       // Set hash directly to avoid router scroll behavior
-      window.history.replaceState(null, '', `${basePathRef.current}#${defaultSectionRef.current}`);
+      window.history.replaceState(
+        null,
+        '',
+        `${basePathRef.current}#${defaultSectionRef.current}`
+      );
       setActiveSection(defaultSectionRef.current);
     }
 

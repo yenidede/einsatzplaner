@@ -16,6 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 
 interface OrganizationBankAccountsProps {
   organizationId: string;
@@ -155,7 +156,7 @@ export function OrganizationBankAccounts({
     <>
       {AlertDialogComponent}
       <div className="flex flex-col items-start justify-center self-stretch">
-        <div className="flex items-center justify-between self-stretch border-b border-slate-200 px-4 py-2">
+        <div className="flex items-center justify-between self-stretch border-b border-slate-200 py-2">
           <div className="flex items-center gap-2">
             <Landmark className="h-4 w-4 text-slate-700" />
             <div className="font-['Inter'] text-sm leading-tight font-semibold text-slate-800">
@@ -164,18 +165,15 @@ export function OrganizationBankAccounts({
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
+              <Button
                 onClick={handleAddClick}
                 disabled={!isSuperadmin}
-                className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
-                  isSuperadmin
-                    ? 'bg-slate-900 text-white hover:bg-slate-800'
-                    : 'cursor-not-allowed bg-slate-300 text-slate-500'
-                }`}
+                size="sm"
+                variant={isSuperadmin ? 'default' : 'secondary'}
               >
                 <Plus className="h-4 w-4" />
                 <span>Hinzufügen</span>
-              </button>
+              </Button>
             </TooltipTrigger>
             {!isSuperadmin && (
               <TooltipContent>
@@ -185,7 +183,7 @@ export function OrganizationBankAccounts({
           </Tooltip>
         </div>
 
-        <div className="flex flex-col gap-3 self-stretch px-4 py-2">
+        <div className="flex flex-col gap-3 self-stretch py-2">
           {isAdding && (
             <form
               onSubmit={handleSubmit}
@@ -193,10 +191,15 @@ export function OrganizationBankAccounts({
             >
               <div className="grid grid-cols-1 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-slate-700">
+                  <label
+                    htmlFor="bank_name"
+                    className="text-sm font-medium text-slate-700"
+                  >
                     Bankname *
                   </label>
                   <input
+                    id="bank_name"
+                    name="bank_name"
                     type="text"
                     value={formData.bank_name}
                     onChange={(e) =>
@@ -208,11 +211,16 @@ export function OrganizationBankAccounts({
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-slate-700">
+                  <label
+                    htmlFor="iban"
+                    className="text-sm font-medium text-slate-700"
+                  >
                     IBAN *
                   </label>
                   <input
                     type="text"
+                    id="iban"
+                    name="iban"
                     value={formData.iban}
                     onChange={(e) =>
                       setFormData({
@@ -226,11 +234,16 @@ export function OrganizationBankAccounts({
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-slate-700">
+                  <label
+                    htmlFor="bic"
+                    className="text-sm font-medium text-slate-700"
+                  >
                     BIC *
                   </label>
                   <input
                     type="text"
+                    id="bic"
+                    name="bic"
                     value={formData.bic}
                     onChange={(e) =>
                       setFormData({
@@ -246,22 +259,17 @@ export function OrganizationBankAccounts({
               </div>
 
               <div className="flex gap-2">
-                <button
+                <Button
                   type="submit"
                   disabled={
                     createMutation.isPending || updateMutation.isPending
                   }
-                  className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white transition-colors hover:bg-slate-700 disabled:opacity-50"
                 >
                   {editingId ? 'Aktualisieren' : 'Hinzufügen'}
-                </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm transition-colors hover:bg-slate-50"
-                >
+                </Button>
+                <Button variant="outline" type="button" onClick={resetForm}>
                   Abbrechen
-                </button>
+                </Button>
               </div>
             </form>
           )}
@@ -293,40 +301,32 @@ export function OrganizationBankAccounts({
                   <div className="flex gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button
+                        <Button
                           onClick={() => handleEdit(account)}
-                          className={`rounded p-1.5 transition-colors ${
-                            isSuperadmin
-                              ? 'text-slate-600 hover:bg-slate-100'
-                              : 'cursor-not-allowed text-slate-400'
-                          }`}
                           disabled={!isSuperadmin}
+                          variant="ghost"
+                          size="icon"
                         >
                           <Pencil className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Bankkonto bearbeiten</p>
+                        {!isSuperadmin
+                          ? 'Nur Superadmins können Bankkonten bearbeiten'
+                          : 'Bankkonto bearbeiten'}
                       </TooltipContent>
-                      {!isSuperadmin && (
-                        <TooltipContent>
-                          Nur Superadmins können Bankkonten bearbeiten
-                        </TooltipContent>
-                      )}
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button
+                        <Button
                           onClick={() => handleDelete(account.id)}
                           disabled={!isSuperadmin || deleteMutation.isPending}
-                          className={`rounded p-1.5 transition-colors ${
-                            isSuperadmin
-                              ? 'text-red-600 hover:bg-red-50'
-                              : 'cursor-not-allowed text-slate-400'
-                          }`}
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </TooltipTrigger>
                       {!isSuperadmin && (
                         <TooltipContent>

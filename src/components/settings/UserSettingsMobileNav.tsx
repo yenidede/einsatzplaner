@@ -21,7 +21,6 @@ export function UserSettingsMobileNav({
           onClick={() => onSectionChange(item.id)}
           role="tab"
         >
-          <item.icon className="mr-2 h-4 w-4" />
           {item.label}
         </Button>
       ))}

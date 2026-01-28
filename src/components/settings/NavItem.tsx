@@ -10,7 +10,12 @@ export interface NavItemProps {
   onClick: () => void;
 }
 
-export function NavItem({ label, icon: Icon, isActive, onClick }: NavItemProps) {
+export function NavItem({
+  label,
+  icon: Icon,
+  isActive,
+  onClick,
+}: NavItemProps) {
   return (
     <button
       type="button"

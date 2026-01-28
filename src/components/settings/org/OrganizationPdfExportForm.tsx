@@ -131,7 +131,7 @@ export function OrganizationPdfExportForm({
               id="authority-restriction"
               className="text-muted-foreground text-xs"
             >
-              Nur Superadmins können die Behörde ändern
+              Nur Superadmins können dieses Feld ändern
             </p>
           )}
         </div>

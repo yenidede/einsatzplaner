@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CardTitle } from '@/components/ui/card';
 
 interface OrganizationDetailsProps {
   organizationId: string;
@@ -51,13 +52,7 @@ export function OrganizationDetails({
 
   return (
     <div className="flex flex-col items-start justify-center self-stretch">
-      <div className="flex items-center justify-between self-stretch px-4 py-2">
-        <div className="flex items-center gap-2">
-          <div className="text-sm font-semibold text-slate-900">
-            Weitere Organisationsdetails (PDF-Export)
-          </div>
-        </div>
-      </div>
+      <CardTitle>Weitere Organisationsdetails (PDF-Export)</CardTitle>
 
       <div className="space-y-6">
         {isLoading ? (
@@ -66,7 +61,12 @@ export function OrganizationDetails({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Website */}
             <div className="space-y-2">
-              {criticalFieldLabel('Website', isSuperadmin, false, 'org-website')}
+              {criticalFieldLabel(
+                'Website',
+                isSuperadmin,
+                false,
+                'org-website'
+              )}
               <Input
                 id="org-website"
                 type="url"
@@ -76,10 +76,15 @@ export function OrganizationDetails({
                 placeholder="https://www.beispiel.at"
                 className={criticalFieldClass(isSuperadmin)}
                 aria-label="Website der Organisation"
-                aria-describedby={!isSuperadmin ? 'website-restriction' : undefined}
+                aria-describedby={
+                  !isSuperadmin ? 'website-restriction' : undefined
+                }
               />
               {!isSuperadmin && (
-                <p id="website-restriction" className="text-muted-foreground text-xs">
+                <p
+                  id="website-restriction"
+                  className="text-muted-foreground text-xs"
+                >
                   Nur Superadmins können die Website ändern
                 </p>
               )}
@@ -87,7 +92,12 @@ export function OrganizationDetails({
 
             {/* UID / Steuernummer */}
             <div className="space-y-2">
-              {criticalFieldLabel('UID / Steuernummer', isSuperadmin, false, 'org-vat')}
+              {criticalFieldLabel(
+                'UID / Steuernummer',
+                isSuperadmin,
+                false,
+                'org-vat'
+              )}
               <Input
                 id="org-vat"
                 type="text"
@@ -100,7 +110,10 @@ export function OrganizationDetails({
                 aria-describedby={!isSuperadmin ? 'vat-restriction' : undefined}
               />
               {!isSuperadmin && (
-                <p id="vat-restriction" className="text-muted-foreground text-xs">
+                <p
+                  id="vat-restriction"
+                  className="text-muted-foreground text-xs"
+                >
                   Nur Superadmins können die UID ändern
                 </p>
               )}
@@ -121,7 +134,10 @@ export function OrganizationDetails({
                 aria-describedby={!isSuperadmin ? 'zvr-restriction' : undefined}
               />
               {!isSuperadmin && (
-                <p id="zvr-restriction" className="text-muted-foreground text-xs">
+                <p
+                  id="zvr-restriction"
+                  className="text-muted-foreground text-xs"
+                >
                   Nur Superadmins können die ZVR-Nummer ändern
                 </p>
               )}
@@ -129,7 +145,12 @@ export function OrganizationDetails({
 
             {/* Zuständige Behörde */}
             <div className="space-y-2">
-              {criticalFieldLabel('Zuständige Behörde', isSuperadmin, false, 'org-authority')}
+              {criticalFieldLabel(
+                'Zuständige Behörde',
+                isSuperadmin,
+                false,
+                'org-authority'
+              )}
               <Input
                 id="org-authority"
                 type="text"
@@ -139,10 +160,15 @@ export function OrganizationDetails({
                 placeholder="Magistrat Wien"
                 className={criticalFieldClass(isSuperadmin)}
                 aria-label="Zuständige Behörde"
-                aria-describedby={!isSuperadmin ? 'authority-restriction' : undefined}
+                aria-describedby={
+                  !isSuperadmin ? 'authority-restriction' : undefined
+                }
               />
               {!isSuperadmin && (
-                <p id="authority-restriction" className="text-muted-foreground text-xs">
+                <p
+                  id="authority-restriction"
+                  className="text-muted-foreground text-xs"
+                >
                   Nur Superadmins können die Behörde ändern
                 </p>
               )}
