@@ -5,7 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model change_log {
@@ -127,6 +129,9 @@ model organization {
   abbreviation                 String?
   max_participants_per_helper  Int?                        @default(25) @db.SmallInt
   allow_self_sign_out          Boolean                     @default(false) @map("allow_self-sign-out")
+  default_start_time           DateTime                    @default(dbgenerated("'09:00:00'::time without time zone")) @map("default-start-time") @db.Time(6)
+  default_endtime              DateTime                    @default(dbgenerated("'10:00:00'::time without time zone")) @map("default-endtime") @db.Time(6)
+  small_logo_url               String?                     @map("small-logo_url")
   calendar_subscription        calendar_subscription[]
   einsatz                      einsatz[]
   einsatz_category             einsatz_category[]
