@@ -1,55 +1,45 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { OrganizationSidebar } from './settings/OrganizationSideBar';
-import { SettingsHeader } from './SettingsHeader';
-import { User } from 'next-auth';
 
 interface SettingsPageLayoutProps {
-  user: Pick<User, 'orgIds' | 'activeOrganization' | 'id'> | null;
-  onSignOut: () => void;
-  onSave: () => void;
-  isSaving?: boolean;
+  header: ReactNode;
+  sidebar: ReactNode;
+  mobileNav?: ReactNode;
   children: ReactNode;
 }
 
 export function SettingsPageLayout({
-  user,
-  onSignOut,
-  onSave,
-  isSaving = false,
+  header,
+  sidebar,
+  mobileNav,
   children,
 }: SettingsPageLayoutProps) {
-  const router = useRouter();
-
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden">
-      {/* Header - Fixed at top */}
-      <div className="shrink-0">
-        <div className="mx-auto w-full max-w-7xl">
-          <div className="rounded-lg bg-white outline -outline-offset-1 outline-slate-200">
-            <SettingsHeader
-              onSave={onSave}
-              isSaving={isSaving}
-              onCancel={() => router.push('/')}
-            />
-          </div>
-        </div>
-      </div>
+    <div className="bg-background min-h-screen overflow-clip rounded-l">
+      {/* Header */}
+      {header}
 
-      {/* Main content area - Scrollable */}
-      <div className="flex-1 overflow-hidden">
-        <div className="mx-auto h-full w-full max-w-7xl">
-          <div className="flex h-full gap-4 bg-white px-2 py-4">
-            {/* Sidebar - Fixed position, scrollable internally */}
-            <div className="shrink-0">
-              <OrganizationSidebar user={user} onSignOut={onSignOut} />
-            </div>
+      {/* Main Content */}
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex gap-8">
+          {/* Sidebar Navigation */}
+          <aside className="hidden w-64 shrink-0 lg:block">{sidebar}</aside>
 
-            {/* Content - Scrollable */}
-            <div className="flex-1 overflow-y-auto">{children}</div>
-          </div>
+          {/* Main Content */}
+          <main className="flex-1 space-y-8" role="main">
+            {/* Mobile Navigation */}
+            {mobileNav && (
+              <div
+                className="flex gap-2 overflow-x-auto pb-2 lg:hidden"
+                role="tablist"
+              >
+                {mobileNav}
+              </div>
+            )}
+
+            {children}
+          </main>
         </div>
       </div>
     </div>
