@@ -21,21 +21,27 @@ import { useUpdateOrganization } from '@/features/settings/hooks/useSettingsMuta
 
 import { UserProfileDialog } from '@/features/settings/components/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
-import { OrganizationLogoSection } from '@/features/settings/components/manage/OrganizationLogo';
-import { OrganizationDetailsForm } from '@/features/settings/components/manage/OrganizationDetailsForm';
-import { OrganizationPreferences } from '@/features/settings/components/manage/OrganizationPreferences';
-import { UsersManagementSection } from '@/features/settings/components/manage/UserManagement';
+import { OrganizationLogoSection } from '@/features/settings/components/settings/OrganizationLogo';
+import { OrganizationDetailsForm } from '@/features/settings/components/settings/OrganizationDetailsForm';
+import { OrganizationPreferences } from '@/features/settings/components/settings/OrganizationPreferences';
+import { UsersManagementSection } from '@/features/settings/components/settings/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
-import { OrganizationAddresses } from '@/features/settings/components/manage/OrganizationAddresses';
-import { OrganizationBankAccounts } from '@/features/settings/components/manage/OrganizationBankAccounts';
-import { OrganizationDetails } from '@/features/settings/components/manage/OrganizationDetails';
+import { OrganizationAddresses } from '@/features/settings/components/settings/OrganizationAddresses';
+import { OrganizationBankAccounts } from '@/features/settings/components/settings/OrganizationBankAccounts';
+import { OrganizationDetails } from '@/features/settings/components/settings/OrganizationDetails';
 import { PageHeader } from '@/components/settings/PageHeader';
 import { OrgManageNav } from '@/components/settings/OrgManageNav';
 import {
   ORG_MANAGE_NAV_ITEMS,
   type OrgManageSectionId,
 } from '@/components/settings/org-manage-constants';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -48,9 +54,10 @@ export default function OrganizationManagePage() {
   const orgId = params?.orgId as string;
   const { data: session } = useSession();
 
-  const [activeSection, setActiveSection] = useState<OrgManageSectionId>('details');
+  const [activeSection, setActiveSection] =
+    useState<OrgManageSectionId>('details');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  
+
   // Section refs for scroll-into-view
   const sectionRefs = useRef<Record<OrgManageSectionId, HTMLElement | null>>({
     details: null,
@@ -60,7 +67,7 @@ export default function OrganizationManagePage() {
     'user-properties': null,
     users: null,
   });
-  
+
   const isScrollingProgrammatically = useRef(false);
   const isUpdatingUrlFromScroll = useRef(false);
   const [name, setName] = useState('');
@@ -91,7 +98,9 @@ export default function OrganizationManagePage() {
     },
   });
 
-  const { data: userData, isLoading: isLoadingUser } = useUserProfile(session?.user?.id);
+  const { data: userData, isLoading: isLoadingUser } = useUserProfile(
+    session?.user?.id
+  );
 
   const {
     data: orgData,
@@ -187,7 +196,9 @@ export default function OrganizationManagePage() {
   const handleSectionChange = useCallback(
     (sectionId: OrgManageSectionId) => {
       setActiveSection(sectionId);
-      router.push(`/organization/${orgId}/manage?section=${sectionId}`, { scroll: false });
+      router.push(`/organization/${orgId}/manage?section=${sectionId}`, {
+        scroll: false,
+      });
       isScrollingProgrammatically.current = true;
       sectionRefs.current[sectionId]?.scrollIntoView({
         behavior: 'smooth',
@@ -205,7 +216,9 @@ export default function OrganizationManagePage() {
     if (!orgData) return;
     const section = searchParams.get('section') as OrgManageSectionId | null;
     if (!section) {
-      router.replace(`/organization/${orgId}/manage?section=details`, { scroll: false });
+      router.replace(`/organization/${orgId}/manage?section=details`, {
+        scroll: false,
+      });
     }
   }, [orgData, searchParams, router, orgId]);
 
@@ -236,9 +249,12 @@ export default function OrganizationManagePage() {
             top: rect.top,
           };
         })
-        .filter((item) =>
-          item.sectionId &&
-          ORG_MANAGE_NAV_ITEMS.some((navItem) => navItem.id === item.sectionId)
+        .filter(
+          (item) =>
+            item.sectionId &&
+            ORG_MANAGE_NAV_ITEMS.some(
+              (navItem) => navItem.id === item.sectionId
+            )
         )
         .sort((a, b) => {
           const aIsActive = a.top <= headerOffset + 50;
@@ -261,15 +277,21 @@ export default function OrganizationManagePage() {
           const currentSection = searchParams.get('section');
           if (currentSection !== detectedSection) {
             isUpdatingUrlFromScroll.current = true;
-            router.replace(`/organization/${orgId}/manage?section=${detectedSection}`, {
-              scroll: false,
-            });
+            router.replace(
+              `/organization/${orgId}/manage?section=${detectedSection}`,
+              {
+                scroll: false,
+              }
+            );
           }
         }
       }
     };
 
-    const observer = new IntersectionObserver(handleIntersection, observerOptions);
+    const observer = new IntersectionObserver(
+      handleIntersection,
+      observerOptions
+    );
 
     const timeoutId = setTimeout(() => {
       Object.values(sectionRefs.current).forEach((section) => {
@@ -426,7 +448,9 @@ export default function OrganizationManagePage() {
           <CardHeader>
             <CardTitle>Fehler</CardTitle>
             <CardDescription>
-              {orgError ? 'Fehler beim Laden der Organisation' : 'Organisation nicht gefunden'}
+              {orgError
+                ? 'Fehler beim Laden der Organisation'
+                : 'Organisation nicht gefunden'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -491,7 +515,9 @@ export default function OrganizationManagePage() {
               >
                 <Card>
                   <CardHeader>
-                    <CardTitle id="details-heading">Organisationsdetails</CardTitle>
+                    <CardTitle id="details-heading">
+                      Organisationsdetails
+                    </CardTitle>
                     <CardDescription>
                       Grundlegende Informationen und Logo deiner Organisation
                     </CardDescription>
@@ -546,9 +572,12 @@ export default function OrganizationManagePage() {
               >
                 <Card>
                   <CardHeader>
-                    <CardTitle id="preferences-heading">Einstellungen</CardTitle>
+                    <CardTitle id="preferences-heading">
+                      Einstellungen
+                    </CardTitle>
                     <CardDescription>
-                      Passe die Terminologie und Präferenzen deiner Organisation an
+                      Passe die Terminologie und Präferenzen deiner Organisation
+                      an
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -562,7 +591,9 @@ export default function OrganizationManagePage() {
                       onEinsatzSingularChange={setEinsatzSingular}
                       onEinsatzPluralChange={setEinsatzPlural}
                       maxParticipantsPerHelper={maxParticipantsPerHelper}
-                      onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+                      onMaxParticipantsPerHelperChange={
+                        setMaxParticipantsPerHelper
+                      }
                       onSave={handleSave}
                     />
                   </CardContent>
@@ -629,13 +660,19 @@ export default function OrganizationManagePage() {
               >
                 <Card>
                   <CardHeader>
-                    <CardTitle id="user-properties-heading">Benutzereigenschaften</CardTitle>
+                    <CardTitle id="user-properties-heading">
+                      Benutzereigenschaften
+                    </CardTitle>
                     <CardDescription>
-                      Verwalte die benutzerdefinierten Eigenschaften für Benutzer in dieser Organisation
+                      Verwalte die benutzerdefinierten Eigenschaften für
+                      Benutzer in dieser Organisation
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <UserProperties organizationId={orgId} onSave={handleSave} />
+                    <UserProperties
+                      organizationId={orgId}
+                      onSave={handleSave}
+                    />
                   </CardContent>
                 </Card>
               </section>

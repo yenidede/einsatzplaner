@@ -79,6 +79,10 @@ export const settingsQueryKeys = {
   /** Organizations where user has OV/management role */
   managedOrganizations: (userId: string) =>
     [...settingsQueryKeys.all, 'user', userId, 'managed-organizations'] as const,
+
+  /** Calendar subscription data for a specific user */
+  calendarSubscription: (userId?: string, orgId?: string) =>
+    ['user', 'calendar-subscription', userId ?? '', orgId ?? ''] as const,
 };
 
 export type SettingsQueryKeys = typeof settingsQueryKeys;

@@ -951,12 +951,6 @@ export default function SettingsPage() {
                   <CardContent>
                     {organizations.length > 0 ? (
                       <div className="space-y-4">
-                        {organizations.map((org) => (
-                          <CalendarIntegrationCard key={org.id} org={org} />
-                        ))}
-
-                        <Separator className="my-6" />
-
                         <div className="bg-muted/50 rounded-lg p-4">
                           <h4 className="mb-2 text-sm font-medium">
                             So funktioniert&apos;s
@@ -985,6 +979,12 @@ export default function SettingsPage() {
                             </li>
                           </ol>
                         </div>
+
+                        <Separator className="my-6" />
+
+                        {organizations.map((org) => (
+                          <CalendarIntegrationCard key={org.id} org={org} />
+                        ))}
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">

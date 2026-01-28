@@ -32,16 +32,9 @@ export function OrganizationLogoSection({
   return (
     <div className="flex items-center gap-6">
       <Avatar className="h-20 w-20">
-        <AvatarImage
-          src={logoUrl || undefined}
-          alt={`Logo von ${name}`}
-        />
+        <AvatarImage src={logoUrl || undefined} alt={`Logo von ${name}`} />
         <AvatarFallback className="text-lg">
-          {logoUrl ? (
-            <Building2 className="h-8 w-8" />
-          ) : (
-            initials
-          )}
+          {logoUrl ? <Building2 className="h-8 w-8" /> : initials}
         </AvatarFallback>
       </Avatar>
       <div className="space-y-2">
@@ -76,7 +69,7 @@ export function OrganizationLogoSection({
           )}
         </div>
         <p className="text-muted-foreground text-xs">
-          JPG, PNG oder GIF. Maximal 5MB.
+          JPG, PNG oder GIF. Maximal 1MB.
         </p>
       </div>
     </div>
