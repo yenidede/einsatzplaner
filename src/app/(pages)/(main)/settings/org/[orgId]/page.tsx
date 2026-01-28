@@ -36,6 +36,11 @@ import {
 } from '@/components/settings/org-manage-constants';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { OrgSettingsMobileNav } from '@/components/settings/OrgSettingsMobileNav';
+import { SettingsLoadingSkeleton } from '@/components/settings/SettingsLoadingSkeleton';
+import { SettingsErrorCard } from '@/components/settings/SettingsErrorCard';
+import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavigation';
+import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
+import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import {
   Card,
   CardContent,
@@ -55,19 +60,7 @@ export default function OrganizationManagePage() {
   const orgId = params?.orgId as string;
   const { data: session } = useSession();
 
-  const [activeSection, setActiveSection] =
-    useState<OrgManageSectionId>('details');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-
-  // Section refs for scroll-into-view
-  const sectionRefs = useRef<Record<OrgManageSectionId, HTMLElement | null>>({
-    details: null,
-    preferences: null,
-    addresses: null,
-    'bank-accounts': null,
-    'user-properties': null,
-    users: null,
-  });
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -90,12 +83,8 @@ export default function OrganizationManagePage() {
   const [zvr, setZvr] = useState('');
   const [authority, setAuthority] = useState('');
 
-  useSessionValidation({
-    debug: false,
-    onTokenExpired: () => {
-      router.push('/signin');
-    },
-  });
+  // Use shared session validation hook
+  useSettingsSessionValidation();
 
   const { data: userData, isLoading: isLoadingUser } = useUserProfile(
     session?.user?.id
@@ -106,6 +95,16 @@ export default function OrganizationManagePage() {
     isLoading: orgLoading,
     error: orgError,
   } = useOrganizationById(orgId);
+
+  // Use shared section navigation hook
+  const { activeSection, sectionRefs, handleSectionChange } =
+    useSectionNavigation<OrgManageSectionId>({
+      sectionId: 'details',
+      navItems: ORG_MANAGE_NAV_ITEMS,
+      defaultSection: 'details',
+      basePath: `/settings/org/${orgId}`,
+      shouldSetDefault: !!orgData,
+    });
 
   useEffect(() => {
     if (orgData) {
@@ -136,18 +135,6 @@ export default function OrganizationManagePage() {
     ) ?? false;
 
   const updateMutation = useUpdateOrganization(orgId);
-  useEffect(() => {
-    const section = searchParams.get('section') as OrgManageSectionId | null;
-    if (section && ORG_MANAGE_NAV_ITEMS.some((item) => item.id === section)) {
-      setActiveSection(section);
-      setTimeout(() => {
-        sectionRefs.current[section]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      }, 100);
-    }
-  }, [searchParams]);
 
   const handleSave = useCallback(() => {
     updateMutation.mutate({
@@ -188,59 +175,10 @@ export default function OrganizationManagePage() {
     updateMutation,
   ]);
 
-  const handleSectionChange = useCallback(
-    (sectionId: OrgManageSectionId) => {
-      setActiveSection(sectionId);
-      router.push(`/settings/org/${orgId}?section=${sectionId}`, {
-        scroll: false,
-      });
-      sectionRefs.current[sectionId]?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    },
-    [router, orgId]
-  );
-
-  // Set default section in URL if none is specified
-  useEffect(() => {
-    if (!orgData) return;
-    const section = searchParams.get('section') as OrgManageSectionId | null;
-    if (!section) {
-      router.replace(`/settings/org/${orgId}?section=details`, {
-        scroll: false,
-      });
-    }
-  }, [orgData, searchParams, router, orgId]);
-
-  // Handle URL hash for direct section linking
-  useEffect(() => {
-    const section = searchParams.get('section') as OrgManageSectionId | null;
-    if (section && ORG_MANAGE_NAV_ITEMS.some((item) => item.id === section)) {
-      setActiveSection(section);
-      setTimeout(() => {
-        sectionRefs.current[section]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      }, 100);
-    }
-  }, [searchParams]);
-
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        router.push('/');
-      }
-      if ((event.metaKey || event.ctrlKey) && event.key === 's') {
-        event.preventDefault();
-        handleSave();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [router, handleSave]);
+  // Use shared keyboard shortcuts hook
+  useSettingsKeyboardShortcuts({
+    onSave: handleSave,
+  });
 
   const handleLogoUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -315,46 +253,20 @@ export default function OrganizationManagePage() {
   };
 
   if (isLoadingUser || orgLoading) {
-    return (
-      <div className="bg-background min-h-screen">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex gap-8">
-            <aside className="hidden w-64 shrink-0 lg:block">
-              <Skeleton className="mb-6 h-10 w-full" />
-              <div className="space-y-2">
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            </aside>
-            <main className="flex-1 space-y-6">
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-64 w-full rounded-xl" />
-              ))}
-            </main>
-          </div>
-        </div>
-      </div>
-    );
+    return <SettingsLoadingSkeleton sidebarItems={6} />;
   }
 
   if (orgError || !orgData) {
     return (
-      <div className="bg-background flex min-h-screen items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Fehler</CardTitle>
-            <CardDescription>
-              {orgError
-                ? 'Fehler beim Laden der Organisation'
-                : 'Organisation nicht gefunden'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => router.push('/')}>Zur Startseite</Button>
-          </CardContent>
-        </Card>
-      </div>
+      <SettingsErrorCard
+        title="Fehler"
+        description={
+          orgError
+            ? 'Fehler beim Laden der Organisation'
+            : 'Organisation nicht gefunden'
+        }
+        error={orgError || undefined}
+      />
     );
   }
 

@@ -64,10 +64,14 @@ import {
 } from '@/components/settings';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { UserSettingsMobileNav } from '@/components/settings/UserSettingsMobileNav';
+import { SettingsLoadingSkeleton } from '@/components/settings/SettingsLoadingSkeleton';
+import { SettingsErrorCard } from '@/components/settings/SettingsErrorCard';
+import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavigation';
+import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
+import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import { cn, optimizeImage } from '@/lib/utils';
 
 export default function SettingsPage() {
-  const [activeSection, setActiveSection] = useState<SectionId>('account');
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const { data: session, status, update } = useSession();
   const router = useRouter();
@@ -90,35 +94,23 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
-  // Section refs for scroll-into-view
-  const sectionRefs = useRef<Record<SectionId, HTMLElement | null>>({
-    account: null,
-    preferences: null,
-    notifications: null,
-    calendar: null,
-    organizations: null,
-  });
+  const { data: userData, isLoading: isLoadingUser } = useUserProfile(
+    session?.user?.id
+  );
+  const { data: salutations = [] } = useSalutations();
 
-  useSessionValidation({
-    debug: false,
-    onTokenExpired: () => {
-      router.push('/signin');
-    },
-  });
+  // Use shared section navigation hook
+  const { activeSection, sectionRefs, handleSectionChange } =
+    useSectionNavigation<SectionId>({
+      sectionId: 'account',
+      navItems: NAV_ITEMS,
+      defaultSection: 'account',
+      basePath: '/settings/user',
+      shouldSetDefault: !!userData,
+    });
 
-  // Handle URL hash for direct section linking
-  useEffect(() => {
-    const section = searchParams.get('section') as SectionId | null;
-    if (section && NAV_ITEMS.some((item) => item.id === section)) {
-      setActiveSection(section);
-      setTimeout(() => {
-        sectionRefs.current[section]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      }, 100);
-    }
-  }, [searchParams]);
+  // Use shared session validation hook
+  useSettingsSessionValidation();
 
   useEffect(() => {
     if (!profilePictureFile) {
@@ -129,11 +121,6 @@ export default function SettingsPage() {
     setPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [profilePictureFile]);
-
-  const { data: userData, isLoading: isLoadingUser } = useUserProfile(
-    session?.user?.id
-  );
-  const { data: salutations = [] } = useSalutations();
 
   useEffect(() => {
     if (userData) {
@@ -149,15 +136,6 @@ export default function SettingsPage() {
       }
     }
   }, [userData]);
-
-  // Set default section in URL if none is specified (after userData loads)
-  useEffect(() => {
-    if (!userData) return;
-    const section = searchParams.get('section') as SectionId | null;
-    if (!section) {
-      router.replace('/settings/user?section=account', { scroll: false });
-    }
-  }, [userData, searchParams, router]);
 
   const mutation = useUpdateUserProfile(session?.user?.id);
   const leaveOrgMutation = useLeaveOrganization(session?.user?.id);
@@ -178,18 +156,6 @@ export default function SettingsPage() {
       );
     });
   });
-
-  const handleSectionChange = useCallback(
-    (sectionId: SectionId) => {
-      setActiveSection(sectionId);
-      router.push(`/settings/user?section=${sectionId}`, { scroll: false });
-      sectionRefs.current[sectionId]?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    },
-    [router]
-  );
 
   const handleSave = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -380,20 +346,10 @@ export default function SettingsPage() {
     );
   };
 
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        router.push('/');
-      }
-      if ((event.metaKey || event.ctrlKey) && event.key === 's') {
-        event.preventDefault();
-        handleSave();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [router, handleSave]);
+  // Use shared keyboard shortcuts hook
+  useSettingsKeyboardShortcuts({
+    onSave: handleSave,
+  });
 
   if (status === 'unauthenticated') {
     signOut({ callbackUrl: '/signin' });
@@ -405,42 +361,15 @@ export default function SettingsPage() {
 
   // Loading skeleton
   if (isLoadingUser) {
-    return (
-      <div className="bg-background min-h-screen">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex gap-8">
-            <aside className="hidden w-64 shrink-0 lg:block">
-              <Skeleton className="mb-6 h-10 w-full" />
-              <div className="space-y-2">
-                {[...Array(4)].map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            </aside>
-            <main className="flex-1 space-y-6">
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-64 w-full rounded-xl" />
-              ))}
-            </main>
-          </div>
-        </div>
-      </div>
-    );
+    return <SettingsLoadingSkeleton />;
   }
 
   if (!userData) {
     return (
-      <div className="bg-background flex min-h-screen items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Fehler</CardTitle>
-            <CardDescription>Keine Benutzerdaten gefunden.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => router.push('/')}>Zur Startseite</Button>
-          </CardContent>
-        </Card>
-      </div>
+      <SettingsErrorCard
+        title="Fehler"
+        description="Keine Benutzerdaten gefunden."
+      />
     );
   }
 
