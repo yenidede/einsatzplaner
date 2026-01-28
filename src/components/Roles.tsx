@@ -31,7 +31,7 @@ export function OrganizationRoleBadge({ role }: { role: RoleType }) {
 
   let bgColor = 'bg-secondary text-secondary-foreground';
   const roleName = role?.name ?? '';
-  if (roleName === 'Superadmin') bgColor = 'bg-rose-100 text-rose-700';
+  if (roleName === 'Superadmin') bgColor = 'bg-rose-200 text-rose-700';
   else if (roleName === 'OV' || roleName === 'Organisationsverwaltung')
     bgColor = 'bg-red-100 text-red-700';
   else if (roleName === 'EV' || roleName === 'Einsatzverwaltung')

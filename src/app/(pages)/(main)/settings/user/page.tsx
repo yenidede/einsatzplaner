@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -72,7 +71,6 @@ import { RolesList } from '@/components/Roles';
 export default function SettingsPage() {
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const { data: session, status, update } = useSession();
-  const router = useRouter();
   const { showDialog } = useAlertDialog();
 
   // Form state
@@ -370,6 +368,15 @@ export default function SettingsPage() {
         user: { ...session.user, picture_url: null },
       });
 
+      // Keep local "initial values" in sync with saved state to avoid
+      // unsaved-changes prompts until the profile refetch completes.
+      if (initialValuesRef.current) {
+        initialValuesRef.current = {
+          ...initialValuesRef.current,
+          pictureUrl: null,
+        };
+      }
+
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.user.settings(session.user.id),
       });
@@ -454,7 +461,7 @@ export default function SettingsPage() {
           <h1>Persönliche Einstellungen</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => router.push('/')}>
+          <Button variant="ghost" onClick={() => navigateWithCheck('/')}>
             Abbrechen
             <span className="ml-2 hidden sm:inline">
               <Kbd>ESC</Kbd>

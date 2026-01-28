@@ -9,21 +9,29 @@ interface UserSettingsMobileNavProps {
 }
 
 export function UserSettingsMobileNav({
+  activeSection,
   onSectionChange,
 }: UserSettingsMobileNavProps) {
   return (
     <>
-      {NAV_ITEMS.map((item) => (
-        <Button
-          key={item.id}
-          variant="outline"
-          size="sm"
-          onClick={() => onSectionChange(item.id)}
-          role="tab"
-        >
-          {item.label}
-        </Button>
-      ))}
+      {NAV_ITEMS.map((item) =>
+        (() => {
+          const isActive = item.id === activeSection;
+          return (
+            <Button
+              key={item.id}
+              variant={isActive ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onSectionChange(item.id)}
+              role="tab"
+              aria-selected={isActive}
+              tabIndex={isActive ? 0 : -1}
+            >
+              {item.label}
+            </Button>
+          );
+        })()
+      )}
     </>
   );
 }

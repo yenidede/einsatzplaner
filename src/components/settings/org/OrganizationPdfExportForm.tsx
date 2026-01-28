@@ -18,7 +18,6 @@ interface OrganizationPdfExportFormProps {
   onVatChange: (value: string) => void;
   onZvrChange: (value: string) => void;
   onAuthorityChange: (value: string) => void;
-  onSave: () => void;
   isSuperadmin?: boolean;
 }
 
@@ -33,7 +32,6 @@ export function OrganizationPdfExportForm({
   onZvrChange,
   onAuthorityChange,
   isSuperadmin = false,
-  onSave,
 }: OrganizationPdfExportFormProps) {
   return (
     <div className="space-y-6">
@@ -140,13 +138,11 @@ export function OrganizationPdfExportForm({
       <OrganizationAddresses
         organizationId={organizationId}
         isSuperadmin={isSuperadmin}
-        onSave={onSave}
       />
 
       <OrganizationBankAccounts
         organizationId={organizationId}
         isSuperadmin={isSuperadmin}
-        onSave={onSave}
       />
     </div>
   );

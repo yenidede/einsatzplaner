@@ -11,7 +11,6 @@ interface UsersManagementSectionProps {
   currentUserEmail: string;
   onUserProfileClick: (userId: string) => void;
   onInviteClick: () => void;
-  onSave: () => void;
 }
 
 export function UsersManagementSection({

@@ -57,19 +57,25 @@ function SettingsSidebarTreeContent({
   const isUserSettingsPage = pathname === '/settings/user';
   const isOrgSettingsPage = pathname?.startsWith('/settings/org/');
 
-  const rootId = 'settings';
-  const personalId = 'personal';
+  // Tree node IDs must be unique across the whole tree. Raw IDs (org.id, section ids, etc.)
+  // can collide, so we namespace all tree item ids while keeping action payloads "real".
+  const rootId = 'settings-root';
+  const personalId = 'user-personal';
+  const userItemId = (sectionId: SectionId) => `user-${sectionId}`;
+  const orgItemId = (orgId: string) => `org-${orgId}`;
+  const orgSectionItemId = (orgId: string, sectionId: OrgManageSectionId) =>
+    `org-${orgId}-${sectionId}`;
 
-  const personalChildIds = NAV_ITEMS.map((item) => item.id);
-  const orgIds = managedOrgs.map((org) => org.id);
+  const personalChildIds = NAV_ITEMS.map((item) => userItemId(item.id));
+  const orgIds = managedOrgs.map((org) => orgItemId(org.id));
 
   const getOrgSectionIds = (orgId: string) =>
-    ORG_MANAGE_NAV_ITEMS.map((item) => `${orgId}-${item.id}`);
+    ORG_MANAGE_NAV_ITEMS.map((item) => orgSectionItemId(orgId, item.id));
 
   const personalItems: Record<string, SettingsTreeItemData> =
     Object.fromEntries(
       NAV_ITEMS.map((item) => [
-        item.id,
+        userItemId(item.id),
         {
           name: item.label,
           action: { type: 'user_section' as const, sectionId: item.id },
@@ -79,7 +85,7 @@ function SettingsSidebarTreeContent({
 
   const orgItems: Record<string, SettingsTreeItemData> = Object.fromEntries(
     managedOrgs.map((org) => [
-      org.id,
+      orgItemId(org.id),
       {
         name: org.name,
         children: getOrgSectionIds(org.id),
@@ -92,7 +98,7 @@ function SettingsSidebarTreeContent({
     Object.fromEntries(
       managedOrgs.flatMap((org) =>
         ORG_MANAGE_NAV_ITEMS.map((item) => [
-          `${org.id}-${item.id}`,
+          orgSectionItemId(org.id, item.id),
           {
             name: item.label,
             icon: item.icon,
@@ -210,7 +216,7 @@ function SettingsSidebarTreeContent({
   };
 
   const isOrgName = (itemId: string): boolean =>
-    managedOrgs.some((org) => org.id === itemId);
+    managedOrgs.some((org) => orgItemId(org.id) === itemId);
 
   const treeItems = tree.getItems().filter((item) => item.getId() !== rootId);
 
