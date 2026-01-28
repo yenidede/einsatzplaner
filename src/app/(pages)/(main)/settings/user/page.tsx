@@ -32,7 +32,8 @@ import {
   useLeaveOrganization,
 } from '@/features/settings/hooks/useSettingsMutations';
 import { toast } from 'sonner';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useAlertDialog } from '@/contexts/AlertDialogContext';
+import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
 import { Organization } from '@/features/settings/types';
 
 import { Button } from '@/components/ui/button';
@@ -76,7 +77,7 @@ export default function SettingsPage() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDialog } = useAlertDialog();
 
   // Form state
   const [email, setEmail] = useState<string>('');
@@ -91,6 +92,18 @@ export default function SettingsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // Initial values for change detection
+  const initialValuesRef = useRef<{
+    email: string;
+    phone: string;
+    firstname: string;
+    lastname: string;
+    pictureUrl: string | null;
+    salutationId: string;
+    showLogos: boolean;
+    organizations: Organization[];
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -100,14 +113,17 @@ export default function SettingsPage() {
   const { data: salutations = [] } = useSalutations();
 
   // Use shared section navigation hook
-  const { activeSection, sectionRefs, handleSectionChange } =
-    useSectionNavigation<SectionId>({
-      sectionId: 'account',
-      navItems: NAV_ITEMS,
-      defaultSection: 'account',
-      basePath: '/settings/user',
-      shouldSetDefault: !!userData,
-    });
+  const {
+    activeSection,
+    sectionRefs,
+    handleSectionChange: originalHandleSectionChange,
+  } = useSectionNavigation<SectionId>({
+    sectionId: 'account',
+    navItems: NAV_ITEMS,
+    defaultSection: 'account',
+    basePath: '/settings/user',
+    shouldSetDefault: !!userData,
+  });
 
   // Use shared session validation hook
   useSettingsSessionValidation();
@@ -134,6 +150,26 @@ export default function SettingsPage() {
       if (userData.organizations && Array.isArray(userData.organizations)) {
         setOrganizations(userData.organizations);
       }
+
+      // Update initial values whenever userData changes (including after save/refetch)
+      initialValuesRef.current = {
+        email: userData.email ?? '',
+        phone: userData.phone ?? '',
+        firstname: userData.firstname ?? '',
+        lastname: userData.lastname ?? '',
+        pictureUrl: userData.picture_url,
+        salutationId: userData.salutationId,
+        showLogos: userData.hasLogoinCalendar ?? true,
+        organizations:
+          userData.organizations && Array.isArray(userData.organizations)
+            ? userData.organizations.map((org) => ({
+                ...org,
+                hasGetMailNotification: org.hasGetMailNotification ?? true,
+              }))
+            : [],
+      };
+      // Clear profile picture file when data is refreshed
+      setProfilePictureFile(null);
     }
   }, [userData]);
 
@@ -156,6 +192,35 @@ export default function SettingsPage() {
       );
     });
   });
+
+  // Check for unsaved changes
+  const hasUnsavedChanges = (() => {
+    if (!initialValuesRef.current) return false;
+    const initial = initialValuesRef.current;
+
+    return (
+      email !== initial.email ||
+      phone !== initial.phone ||
+      firstname !== initial.firstname ||
+      lastname !== initial.lastname ||
+      pictureUrl !== initial.pictureUrl ||
+      salutationId !== initial.salutationId ||
+      showLogos !== initial.showLogos ||
+      profilePictureFile !== null ||
+      JSON.stringify(
+        organizations.map((org) => ({
+          id: org.id,
+          hasGetMailNotification: org.hasGetMailNotification,
+        }))
+      ) !==
+        JSON.stringify(
+          initial.organizations.map((org) => ({
+            id: org.id,
+            hasGetMailNotification: org.hasGetMailNotification,
+          }))
+        )
+    );
+  })();
 
   const handleSave = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -251,6 +316,25 @@ export default function SettingsPage() {
       await queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.user.settings(session?.user.id || ''),
       });
+
+      // Note: Initial values will be updated automatically when userData refetches
+      // But we also update them here immediately to prevent false positives
+      if (initialValuesRef.current) {
+        initialValuesRef.current = {
+          email,
+          phone,
+          firstname,
+          lastname,
+          pictureUrl: finalPictureUrl,
+          salutationId,
+          showLogos,
+          organizations: organizations.map((org) => ({
+            ...org,
+            hasGetMailNotification: org.hasGetMailNotification ?? true,
+          })),
+        };
+      }
+      setProfilePictureFile(null);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Unbekannter Fehler'
@@ -271,6 +355,23 @@ export default function SettingsPage() {
     update,
     queryClient,
   ]);
+
+  // Use unsaved changes hook
+  const { handleSectionChangeWithCheck, navigateWithCheck } = useUnsavedChanges(
+    {
+      hasUnsavedChanges,
+      onSave: handleSave,
+      onSectionChange: originalHandleSectionChange,
+    }
+  );
+
+  // Wrapper for section change that checks for unsaved changes
+  const handleSectionChange = useCallback(
+    (section: SectionId) => {
+      handleSectionChangeWithCheck(section);
+    },
+    [handleSectionChangeWithCheck]
+  );
 
   const handleProfilePictureUpload = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -316,9 +417,6 @@ export default function SettingsPage() {
     const result = await showDialog({
       title: 'Organisation verlassen',
       description: `Möchten Sie wirklich ${orgName} verlassen? Sie verlieren den Zugriff auf alle Daten dieser Organisation.`,
-      confirmText: 'Verlassen',
-      cancelText: 'Abbrechen',
-      variant: 'destructive',
     });
 
     if (result !== 'success') return;
@@ -410,12 +508,12 @@ export default function SettingsPage() {
 
   return (
     <>
-      {AlertDialogComponent}
       <SettingsPageLayout
         header={header}
         mobileNav={mobileNav}
         activeUserSection={activeSection}
         onUserSectionChange={handleSectionChange}
+        onNavigate={navigateWithCheck}
       >
         {/* Account Section */}
         <section

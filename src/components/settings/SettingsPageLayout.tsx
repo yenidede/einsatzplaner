@@ -14,7 +14,6 @@ import {
   type OrgManageSectionId,
 } from './org-manage-constants';
 import { useManagedOrganizations } from '@/features/settings/hooks/useUserProfile';
-import Link from 'next/link';
 
 interface SettingsPageLayoutProps {
   header: ReactNode;
@@ -27,6 +26,8 @@ interface SettingsPageLayoutProps {
   currentOrgId?: string;
   activeOrgSection?: OrgManageSectionId;
   onOrgSectionChange?: (sectionId: OrgManageSectionId) => void;
+  // Navigation guard for unsaved changes
+  onNavigate?: (url: string) => void | Promise<void>;
 }
 
 export function SettingsPageLayout({
@@ -38,6 +39,7 @@ export function SettingsPageLayout({
   currentOrgId,
   activeOrgSection,
   onOrgSectionChange,
+  onNavigate,
 }: SettingsPageLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -90,12 +92,18 @@ export function SettingsPageLayout({
           ))
         ) : (
           // Show link to personal settings when on org settings page
-          <Link
-            href="/settings/user"
+          <button
+            onClick={() => {
+              if (onNavigate) {
+                onNavigate('/settings/user');
+              } else {
+                router.push('/settings/user');
+              }
+            }}
             className="group text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <span className="truncate">Allgemein</span>
-          </Link>
+          </button>
         )}
       </div>
 
@@ -114,12 +122,19 @@ export function SettingsPageLayout({
               return (
                 <div key={org.id} className="space-y-1">
                   {/* Organization Link */}
-                  <Link
-                    href={`/settings/org/${org.id}`}
+                  <button
+                    onClick={() => {
+                      const url = `/settings/org/${org.id}`;
+                      if (onNavigate) {
+                        onNavigate(url);
+                      } else {
+                        router.push(url);
+                      }
+                    }}
                     className="group text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                   >
                     <span className="truncate">{org.name}</span>
-                  </Link>
+                  </button>
 
                   {/* Organization Sub-sections (only show when on this org's page) */}
                   {isOrgActive && (
