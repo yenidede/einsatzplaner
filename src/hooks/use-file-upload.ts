@@ -3,6 +3,7 @@
 import type React from 'react';
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -82,6 +83,21 @@ export const useFileUpload = (
   });
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync internal files when initialFiles changes (e.g. after org data loads on settings page)
+  const initialFilesKey = initialFiles
+    .map((f) => `${f.id}:${f.url}`)
+    .join('|');
+  useEffect(() => {
+    setState((prev) => ({
+      ...prev,
+      files: initialFiles.map((file) => ({
+        file,
+        id: file.id,
+        preview: file.url,
+      })),
+    }));
+  }, [initialFilesKey]);
 
   const validateFile = useCallback(
     (file: File | FileMetadata): string | null => {
