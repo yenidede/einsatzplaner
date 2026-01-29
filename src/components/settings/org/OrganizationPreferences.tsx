@@ -10,12 +10,16 @@ interface OrganizationPreferencesProps {
   einsatzSingular: string;
   einsatzPlural: string;
   maxParticipantsPerHelper: string;
+  defaultStartTime: string;
+  defaultEndTime: string;
   allowSelfSignOut: boolean;
   onMaxParticipantsPerHelperChange: (value: string) => void;
   onEinsatzSingularChange: (value: string) => void;
   onEinsatzPluralChange: (value: string) => void;
   onHelperSingularChange: (value: string) => void;
   onHelperPluralChange: (value: string) => void;
+  onDefaultStartTimeChange: (value: string) => void;
+  onDefaultEndTimeChange: (value: string) => void;
   onAllowSelfSignOutChange: (value: boolean) => void;
 }
 
@@ -27,6 +31,10 @@ export function OrganizationPreferences({
   einsatzSingular,
   einsatzPlural,
   maxParticipantsPerHelper,
+  defaultStartTime,
+  defaultEndTime,
+  onDefaultStartTimeChange,
+  onDefaultEndTimeChange,
   allowSelfSignOut,
   onEinsatzSingularChange,
   onEinsatzPluralChange,
@@ -96,6 +104,40 @@ export function OrganizationPreferences({
           aria-label={`Maximale Teilnehmende pro ${helperSingular}`}
           min="0"
         />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="default-starttime">
+            Standard-Startzeit für {einsatzSingular}
+          </Label>
+          <Input
+            id="default-starttime"
+            type="time"
+            value={defaultStartTime}
+            onChange={(e) => onDefaultStartTimeChange(e.target.value)}
+            aria-label={`Standard-Startzeit für ${einsatzSingular}`}
+          />
+          <p className="text-muted-foreground text-sm">
+            Wird beim Anlegen neuer {einsatzPlural} vorausgefüllt, Vorlagen
+            überschreiben diesen Wert.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="default-endtime">
+            Standard-Endzeit für {einsatzSingular}
+          </Label>
+          <Input
+            id="default-endtime"
+            type="time"
+            value={defaultEndTime}
+            onChange={(e) => onDefaultEndTimeChange(e.target.value)}
+            aria-label={`Standard-Endzeit für ${einsatzSingular}`}
+          />
+          <p className="text-muted-foreground text-sm">
+            Wird beim Anlegen neuer {einsatzPlural} vorausgefüllt, Vorlagen
+            überschreiben diesen Wert.
+          </p>
+        </div>
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-2">

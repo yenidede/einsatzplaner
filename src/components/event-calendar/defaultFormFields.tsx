@@ -61,6 +61,8 @@ export function DefaultFormFields({
   activeOrg,
   availableProps,
 }: DefaultFormFieldsProps) {
+  console.log('formData', formData);
+  console.log('starttime', formData.startTime);
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
   const [propertyConfigs, setPropertyConfigs] = useState<

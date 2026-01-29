@@ -197,6 +197,8 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
       created_at: true,
       max_participants_per_helper: true,
       allow_self_sign_out: true,
+      default_starttime: true,
+      default_endtime: true,
       user_organization_role: {
         include: {
           user: {
@@ -244,6 +246,8 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
       role: uor.role,
     })),
     allow_self_sign_out: org.allow_self_sign_out,
+    default_starttime: org.default_starttime,
+    default_endtime: org.default_endtime,
   };
 }
 
@@ -260,6 +264,10 @@ export type OrganizationUpdateData = {
   einsatz_name_plural?: string;
   logo_url?: string;
   allow_self_sign_out?: boolean;
+  /** Time as "HH:mm" string */
+  default_starttime?: string;
+  /** Time as "HH:mm" string */
+  default_endtime?: string;
 };
 
 export async function updateOrganizationAction(data: OrganizationUpdateData) {
@@ -307,9 +315,25 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
   if (data.allow_self_sign_out !== undefined)
     dataToUpdate.allow_self_sign_out = data.allow_self_sign_out;
 
+  const prismaData = { ...dataToUpdate } as Parameters<
+    typeof prisma.organization.update
+  >[0]['data'];
+  if (data.default_starttime !== undefined) {
+    const [h, m] = data.default_starttime.split(':').map(Number);
+    if (!Number.isNaN(h) && !Number.isNaN(m) && h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+      prismaData.default_starttime = new Date(1970, 0, 1, h, m, 0);
+    }
+  }
+  if (data.default_endtime !== undefined) {
+    const [h, m] = data.default_endtime.split(':').map(Number);
+    if (!Number.isNaN(h) && !Number.isNaN(m) && h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+      prismaData.default_endtime = new Date(1970, 0, 1, h, m, 0);
+    }
+  }
+
   const updated = await prisma.organization.update({
     where: { id: data.id },
-    data: dataToUpdate,
+    data: prismaData,
     select: {
       id: true,
       name: true,
@@ -323,6 +347,8 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
       einsatz_name_singular: true,
       einsatz_name_plural: true,
       allow_self_sign_out: true,
+      default_starttime: true,
+      default_endtime: true,
     },
   });
 

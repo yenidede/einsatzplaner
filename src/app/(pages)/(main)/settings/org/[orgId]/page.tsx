@@ -53,6 +53,31 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 
+/** Format org default time (Date or ISO string) to "HH:mm" for input fields */
+function formatOrgTimeForInput(value: unknown, fallback: string): string {
+  if (!value) return fallback;
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/);
+    if (m?.[1] && m?.[2]) return `${m[1]}:${m[2]}`;
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) {
+      const useUtc = value.endsWith('Z');
+      const hours = (useUtc ? d.getUTCHours() : d.getHours())
+        .toString()
+        .padStart(2, '0');
+      const minutes = (useUtc ? d.getUTCMinutes() : d.getMinutes())
+        .toString()
+        .padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+    return fallback;
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${value.getHours().toString().padStart(2, '0')}:${value.getMinutes().toString().padStart(2, '0')}`;
+  }
+  return fallback;
+}
+
 export default function OrganizationManagePage() {
   const params = useParams();
   const router = useRouter();
@@ -72,6 +97,8 @@ export default function OrganizationManagePage() {
   const [einsatzSingular, setEinsatzSingular] = useState('');
   const [einsatzPlural, setEinsatzPlural] = useState('');
   const [maxParticipantsPerHelper, setMaxParticipantsPerHelper] = useState('');
+  const [defaultStartTime, setDefaultStartTime] = useState('');
+  const [defaultEndTime, setDefaultEndTime] = useState('');
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [smallLogoUrl, setSmallLogoUrl] = useState<string>('');
@@ -97,6 +124,8 @@ export default function OrganizationManagePage() {
     einsatzSingular: string;
     einsatzPlural: string;
     maxParticipantsPerHelper: string;
+    defaultStartTime: string;
+    defaultEndTime: string;
     website: string;
     vat: string;
     zvr: string;
@@ -145,8 +174,19 @@ export default function OrganizationManagePage() {
       );
       setEinsatzSingular(orgData.einsatz_name_singular ?? 'Einsatz');
       setEinsatzPlural(orgData.einsatz_name_plural ?? 'Einsätze');
+      setDefaultStartTime(
+        formatOrgTimeForInput(orgData.default_starttime, '09:00')
+      );
+      setDefaultEndTime(
+        formatOrgTimeForInput(orgData.default_endtime, '18:00')
+      );
 
       // Update initial values whenever orgData changes (including after save/refetch)
+      const startTime = formatOrgTimeForInput(
+        orgData.default_starttime,
+        '09:00'
+      );
+      const endTime = formatOrgTimeForInput(orgData.default_endtime, '10:00');
       initialValuesRef.current = {
         name: orgData.name ?? '',
         email: orgData.email ?? '',
@@ -159,6 +199,8 @@ export default function OrganizationManagePage() {
         einsatzPlural: orgData.einsatz_name_plural ?? 'Einsätze',
         maxParticipantsPerHelper:
           orgData.max_participants_per_helper?.toString() ?? '',
+        defaultStartTime: startTime,
+        defaultEndTime: endTime,
         website: '', // Loaded separately via useOrganizationDetails
         vat: '', // Loaded separately via useOrganizationDetails
         zvr: '', // Loaded separately via useOrganizationDetails
@@ -188,6 +230,12 @@ export default function OrganizationManagePage() {
         einsatzPlural: orgData?.einsatz_name_plural ?? 'Einsätze',
         maxParticipantsPerHelper:
           orgData?.max_participants_per_helper?.toString() ?? '',
+        defaultStartTime: orgData
+          ? formatOrgTimeForInput(orgData.default_starttime, '09:00')
+          : '09:00',
+        defaultEndTime: orgData
+          ? formatOrgTimeForInput(orgData.default_endtime, '10:00')
+          : '10:00',
         website: '',
         vat: '',
         zvr: '',
@@ -235,6 +283,8 @@ export default function OrganizationManagePage() {
       einsatzSingular !== initial.einsatzSingular ||
       einsatzPlural !== initial.einsatzPlural ||
       maxParticipantsPerHelper !== initial.maxParticipantsPerHelper ||
+      defaultStartTime !== initial.defaultStartTime ||
+      defaultEndTime !== initial.defaultEndTime ||
       website !== initial.website ||
       vat !== initial.vat ||
       zvr !== initial.zvr ||
@@ -259,6 +309,8 @@ export default function OrganizationManagePage() {
           : undefined,
         einsatz_name_plural: einsatzPlural,
         allow_self_sign_out: allowSelfSignOut,
+        default_starttime: defaultStartTime || undefined,
+        default_endtime: defaultEndTime || undefined,
       });
 
       // Note: Initial values will be updated automatically when orgData refetches
@@ -275,6 +327,8 @@ export default function OrganizationManagePage() {
           einsatzSingular,
           einsatzPlural,
           maxParticipantsPerHelper,
+          defaultStartTime,
+          defaultEndTime,
           website,
           vat,
           zvr,
@@ -296,6 +350,8 @@ export default function OrganizationManagePage() {
     einsatzSingular,
     einsatzPlural,
     maxParticipantsPerHelper,
+    defaultStartTime,
+    defaultEndTime,
     logoFile,
     website,
     vat,
@@ -602,6 +658,10 @@ export default function OrganizationManagePage() {
                 onEinsatzPluralChange={setEinsatzPlural}
                 maxParticipantsPerHelper={maxParticipantsPerHelper}
                 onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+                defaultStartTime={defaultStartTime}
+                defaultEndTime={defaultEndTime}
+                onDefaultStartTimeChange={setDefaultStartTime}
+                onDefaultEndTimeChange={setDefaultEndTime}
                 allowSelfSignOut={allowSelfSignOut}
                 onAllowSelfSignOutChange={setAllowSelfSignOut}
               />

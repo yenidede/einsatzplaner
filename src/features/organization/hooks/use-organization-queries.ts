@@ -19,7 +19,8 @@ export function useOrganizations(orgIds: string[] | null | undefined) {
 export function useOrganization(orgId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.organization(orgId ?? ''),
-    queryFn: () => getOrganizationsByIds([orgId ?? '']).then((orgs) => orgs[0]),
+    queryFn: () => getOrganizationsByIds([orgId ?? '']),
+    select: (data) => data?.[0],
     enabled: !!orgId,
   });
 }

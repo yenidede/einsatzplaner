@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
 import { FileDown } from 'lucide-react';
@@ -66,23 +66,7 @@ import {
 import { Select, SelectContent, SelectItem } from '../ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
-
-// Defaults for the defaultFormFields (no template loaded yet)
-const DEFAULTFORMDATA: EinsatzFormData = {
-  title: '',
-  einsatzCategoriesIds: [],
-  startDate: new Date(),
-  endDate: new Date(),
-  startTime: `${DefaultStartHour}:00`,
-  endTime: `${DefaultEndHour}:00`,
-  all_day: false,
-  participantCount: 20,
-  pricePerPerson: 0,
-  totalPrice: 0,
-  helpersNeeded: 1,
-  assignedUsers: [],
-  requiredUserProperties: [],
-};
+import { organization } from '@/generated/prisma';
 
 function formatOrgTimeForInput(value: unknown, fallback: string): string {
   if (!value) return fallback;
@@ -229,10 +213,49 @@ export function EventDialogVerwaltung({
   onSave,
   onDelete,
 }: EventDialogProps) {
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
   const { data: session } = useSession();
-
+  const { data: organizations } = useOrganizations(session?.user.orgIds);
   const activeOrgId = session?.user?.activeOrganization?.id;
+  const activeOrg = organizations?.find((org) => org.id === activeOrgId);
+
+  const orgDefaultStartTime = formatOrgTimeForInput(
+    activeOrg?.default_starttime,
+    `${DefaultStartHour.toString().padStart(2, '0')}:00`
+  );
+  const orgDefaultEndTime = formatOrgTimeForInput(
+    activeOrg?.default_endtime,
+    `${DefaultEndHour.toString().padStart(2, '0')}:00`
+  );
+
+  console.log('orgDefaultStartTime', orgDefaultStartTime);
+  console.log('orgDefaultEndTime', orgDefaultEndTime);
+  console.log('activeOrg?.default_starttime', activeOrg?.default_starttime);
+  console.log('activeOrg?.default_endtime', activeOrg?.default_endtime);
+
+  // Defaults for the defaultFormFields (no template loaded yet)
+  const DEFAULTFORMDATA: EinsatzFormData = useMemo(
+    () => ({
+      title: '',
+      einsatzCategoriesIds: [],
+      startDate: new Date(),
+      endDate: new Date(),
+      startTime: orgDefaultStartTime,
+      endTime: orgDefaultEndTime,
+      all_day: false,
+      participantCount: 20,
+      pricePerPerson: 0,
+      totalPrice: 0,
+      helpersNeeded: 1,
+      assignedUsers: [],
+      requiredUserProperties: [],
+    }),
+    [orgDefaultStartTime, orgDefaultEndTime]
+  );
+
+  console.log('DEFAULTFORMDATA', DEFAULTFORMDATA);
+
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
+
   const currentUserId = session?.user?.id;
 
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
@@ -263,6 +286,15 @@ export function EventDialogVerwaltung({
     formErrors: [],
   });
 
+  useEffect(() => {
+    console.log('DEFAULTFORMDATA times have changed', DEFAULTFORMDATA);
+    setStaticFormData((prev) => ({
+      ...prev,
+      startTime: DEFAULTFORMDATA.startTime,
+      endTime: DEFAULTFORMDATA.endTime,
+    }));
+  }, [DEFAULTFORMDATA.startTime, DEFAULTFORMDATA.endTime]);
+
   // Update form resolver when dynamicSchema changes
   useEffect(() => {
     if (dynamicSchema) {
@@ -285,18 +317,6 @@ export function EventDialogVerwaltung({
   const templatesQuery = useTemplates(activeOrgId);
 
   const usersQuery = useUsers(activeOrgId);
-
-  const { data: organizations } = useOrganizations(session?.user.orgIds);
-  const activeOrg = organizations?.find((org) => org.id === activeOrgId);
-
-  const orgDefaultStartTime = formatOrgTimeForInput(
-    activeOrg?.default_starttime,
-    `${DefaultStartHour.toString().padStart(2, '0')}:00`
-  );
-  const orgDefaultEndTime = formatOrgTimeForInput(
-    activeOrg?.default_endtime,
-    `${DefaultEndHour.toString().padStart(2, '0')}:00`
-  );
 
   const { einsatz_singular } = useOrganizationTerminology(
     organizations,
@@ -411,10 +431,8 @@ export function EventDialogVerwaltung({
       ...DEFAULTFORMDATA,
       startDate: now,
       endDate: now,
-      startTime: orgDefaultStartTime,
-      endTime: orgDefaultEndTime,
     };
-  }, [orgDefaultStartTime, orgDefaultEndTime]);
+  }, [DEFAULTFORMDATA]);
 
   const resetForm = useCallback(() => {
     handleFormDataChange(getDefaultStaticFormData());
@@ -494,7 +512,6 @@ export function EventDialogVerwaltung({
     }
   }, [
     currentEinsatz,
-    handleFormDataChange,
     resetForm,
     isOpen,
     getDefaultStaticFormData,
