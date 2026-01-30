@@ -448,8 +448,8 @@ export default function SettingsPage() {
   if (!userData) {
     return (
       <SettingsErrorCard
-        title="Fehler"
-        description="Keine Benutzerdaten gefunden."
+        title="Lade Benutzerdaten..."
+        description="Bitte warten Sie einen Moment. Sollte sich dieser Status nicht ändern, laden Sie die Seite bitte neu."
       />
     );
   }

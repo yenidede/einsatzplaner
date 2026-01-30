@@ -14,7 +14,7 @@ export function useUserProfile(userId: string | undefined) {
     enabled: !!userId,
     queryFn: async () => {
       const res = await getUserProfileAction();
-      if (!res) throw new Error('Fehler beim Laden');
+      if (!res) throw new Error('Fehler beim Laden der Benutzerdaten.');
       return res;
     },
   });
