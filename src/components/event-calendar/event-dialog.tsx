@@ -74,7 +74,11 @@ function formatOrgTimeForInput(value: unknown, fallback: string): string {
   // Handle "HH:MM:SS" (or "HH:MM") strings directly to avoid timezone issues
   if (typeof value === 'string') {
     const m = value.match(/^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/);
-    if (m?.[1] && m?.[2]) return `${m[1]}:${m[2]}`;
+    if (m?.[1] && m?.[2]) {
+      const hours = m[1];
+      const minutes = Math.floor(parseInt(m[2], 10) / 15) * 15;
+      return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    }
 
     const d = new Date(value);
     if (!Number.isNaN(d.getTime())) {
@@ -83,7 +87,8 @@ function formatOrgTimeForInput(value: unknown, fallback: string): string {
       const hours = (useUtc ? d.getUTCHours() : d.getHours())
         .toString()
         .padStart(2, '0');
-      const minutes = (useUtc ? d.getUTCMinutes() : d.getMinutes())
+      const rawMinutes = useUtc ? d.getUTCMinutes() : d.getMinutes();
+      const minutes = (Math.floor(rawMinutes / 15) * 15)
         .toString()
         .padStart(2, '0');
       return `${hours}:${minutes}`;
@@ -94,7 +99,9 @@ function formatOrgTimeForInput(value: unknown, fallback: string): string {
 
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     const hours = value.getHours().toString().padStart(2, '0');
-    const minutes = value.getMinutes().toString().padStart(2, '0');
+    const minutes = (Math.floor(value.getMinutes() / 15) * 15)
+      .toString()
+      .padStart(2, '0');
     return `${hours}:${minutes}`;
   }
 
@@ -227,11 +234,6 @@ export function EventDialogVerwaltung({
     `${DefaultEndHour.toString().padStart(2, '0')}:00`
   );
 
-  console.log('orgDefaultStartTime', orgDefaultStartTime);
-  console.log('orgDefaultEndTime', orgDefaultEndTime);
-  console.log('activeOrg?.default_starttime', activeOrg?.default_starttime);
-  console.log('activeOrg?.default_endtime', activeOrg?.default_endtime);
-
   // Defaults for the defaultFormFields (no template loaded yet)
   const DEFAULTFORMDATA: EinsatzFormData = useMemo(
     () => ({
@@ -251,8 +253,6 @@ export function EventDialogVerwaltung({
     }),
     [orgDefaultStartTime, orgDefaultEndTime]
   );
-
-  console.log('DEFAULTFORMDATA', DEFAULTFORMDATA);
 
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
@@ -287,7 +287,6 @@ export function EventDialogVerwaltung({
   });
 
   useEffect(() => {
-    console.log('DEFAULTFORMDATA times have changed', DEFAULTFORMDATA);
     setStaticFormData((prev) => ({
       ...prev,
       startTime: DEFAULTFORMDATA.startTime,
@@ -456,14 +455,14 @@ export function EventDialogVerwaltung({
           const start = createEinsatz.start;
           handleFormDataChange({
             startDate: start,
-            startTime: formatTimeForInput(start),
+            startTime: orgDefaultStartTime,
           });
         }
         if (createEinsatz.end) {
           const end = createEinsatz.end;
           handleFormDataChange({
             endDate: end,
-            endTime: formatTimeForInput(end),
+            endTime: orgDefaultEndTime,
           });
         }
         handleFormDataChange({
