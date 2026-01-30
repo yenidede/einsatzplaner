@@ -7,6 +7,9 @@ import { de } from 'date-fns/locale';
 
 import { CalendarEvent, EventItem } from '@/components/event-calendar';
 import { CalendarMode } from './types';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useSession } from 'next-auth/react';
 
 interface AgendaViewProps {
   events: CalendarEvent[];
@@ -15,6 +18,13 @@ interface AgendaViewProps {
 }
 
 export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
+  const { data: session } = useSession();
+  const activeOrgId = session?.user?.activeOrganization?.id;
+  const { data: organizations } = useOrganizations(session?.user.orgIds);
+  const { einsatz_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
   // Filter events that are in the future and group them by day
   const futureEventsByDay = useMemo(() => {
     console.log('Agenda view updating - showing all future events');
@@ -41,7 +51,7 @@ export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
       if (currentDay < today) {
         currentDay = new Date(today);
       }
-      
+
       while (currentDay <= endDay) {
         const dayKey = currentDay.toISOString();
         if (!eventsByDay.has(dayKey)) {
@@ -79,9 +89,11 @@ export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
             size={32}
             className="text-muted-foreground/50 mb-2"
           />
-          <h3 className="text-lg font-medium">No upcoming events</h3>
+          <h3 className="text-lg font-medium">
+            Keine geplanten {einsatz_plural}
+          </h3>
           <p className="text-muted-foreground">
-            There are no events scheduled in the future.
+            Es sind noch keine {einsatz_plural} eingetragen.
           </p>
         </div>
       ) : (
