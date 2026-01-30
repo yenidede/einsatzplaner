@@ -179,8 +179,16 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   );
 
   // Mutations with optimistic update
-  const createMutation = useCreateEinsatz(activeOrgId, einsatz_singular);
-  const updateMutation = useUpdateEinsatz(activeOrgId, einsatz_singular);
+  const createMutation = useCreateEinsatz(
+    activeOrgId,
+    einsatz_singular,
+    (einsatzId) => setEinsatz(einsatzId)
+  );
+  const updateMutation = useUpdateEinsatz(
+    activeOrgId,
+    einsatz_singular,
+    (einsatzId) => setEinsatz(einsatzId)
+  );
   const toggleUserAssignToEvent = useToggleUserAssignment(
     activeOrgId,
     session?.user.id,
@@ -326,6 +334,8 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   return (
     <>
       {AlertDialogComponent}
+      {createMutation.AlertDialogComponent}
+      {updateMutation.AlertDialogComponent}
       <EventCalendar
         events={events as CalendarEvent[]}
         onEventAdd={handleEventAdd}
