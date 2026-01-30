@@ -340,7 +340,6 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   }
 
   const calendarEvents = Array.isArray(events) ? events : [];
-  console.log('calendarEvents', calendarEvents);
   return (
     <>
       {AlertDialogComponent}
