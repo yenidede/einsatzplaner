@@ -149,7 +149,7 @@ export async function createInvitationAction(data: {
     }
 
     // Revalidate paths
-    revalidatePath(`/organization/${data.organizationId}/manage`);
+    revalidatePath(`/settings/org/${data.organizationId}`);
 
     return {
       success: true,

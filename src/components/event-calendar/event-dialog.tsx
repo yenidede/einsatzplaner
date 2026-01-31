@@ -84,6 +84,39 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   requiredUserProperties: [],
 };
 
+function formatOrgTimeForInput(value: unknown, fallback: string): string {
+  if (!value) return fallback;
+
+  // Handle "HH:MM:SS" (or "HH:MM") strings directly to avoid timezone issues
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/);
+    if (m?.[1] && m?.[2]) return `${m[1]}:${m[2]}`;
+
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) {
+      // If this is an ISO string with Z (UTC), use UTC components
+      const useUtc = value.endsWith('Z');
+      const hours = (useUtc ? d.getUTCHours() : d.getHours())
+        .toString()
+        .padStart(2, '0');
+      const minutes = (useUtc ? d.getUTCMinutes() : d.getMinutes())
+        .toString()
+        .padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+
+    return fallback;
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const hours = value.getHours().toString().padStart(2, '0');
+    const minutes = value.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  return fallback;
+}
+
 export const ZodEinsatzFormData = z
   .object({
     title: z.string().min(1, 'Titel ist erforderlich'),
@@ -254,6 +287,16 @@ export function EventDialogVerwaltung({
   const usersQuery = useUsers(activeOrgId);
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
+  const activeOrg = organizations?.find((org) => org.id === activeOrgId);
+
+  const orgDefaultStartTime = formatOrgTimeForInput(
+    activeOrg?.default_starttime,
+    `${DefaultStartHour.toString().padStart(2, '0')}:00`
+  );
+  const orgDefaultEndTime = formatOrgTimeForInput(
+    activeOrg?.default_endtime,
+    `${DefaultEndHour.toString().padStart(2, '0')}:00`
+  );
 
   const { einsatz_singular } = useOrganizationTerminology(
     organizations,
@@ -362,20 +405,33 @@ export function EventDialogVerwaltung({
     []
   );
 
+  const getDefaultStaticFormData = useCallback((): EinsatzFormData => {
+    const now = new Date();
+    return {
+      ...DEFAULTFORMDATA,
+      startDate: now,
+      endDate: now,
+      startTime: orgDefaultStartTime,
+      endTime: orgDefaultEndTime,
+    };
+  }, [orgDefaultStartTime, orgDefaultEndTime]);
+
   const resetForm = useCallback(() => {
-    handleFormDataChange(DEFAULTFORMDATA);
+    handleFormDataChange(getDefaultStaticFormData());
     setActiveTemplateId(null);
     setErrors({
       fieldErrors: {},
       formErrors: [],
     });
-  }, [handleFormDataChange]);
+  }, [handleFormDataChange, getDefaultStaticFormData]);
 
   useEffect(() => {
     if (currentEinsatz && typeof currentEinsatz === 'object') {
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
+        // Ensure we start from org-specific defaults each time
+        setStaticFormData(getDefaultStaticFormData());
         setActiveTemplateId(createEinsatz.template_id || null);
         handleFormDataChange({ title: createEinsatz.title || '' });
         if (createEinsatz.start) {
@@ -410,11 +466,9 @@ export function EventDialogVerwaltung({
           all_day: einsatzDetailed.all_day || false,
           startDate: einsatzDetailed.start || new Date(),
           startTime:
-            formatTimeForInput(einsatzDetailed.start) ||
-            DefaultStartHour + ':00',
+            formatTimeForInput(einsatzDetailed.start) || orgDefaultStartTime,
           endDate: einsatzDetailed.end || new Date(),
-          endTime:
-            formatTimeForInput(einsatzDetailed.end) || DefaultEndHour + ':00',
+          endTime: formatTimeForInput(einsatzDetailed.end) || orgDefaultEndTime,
           participantCount: einsatzDetailed.participant_count || 0,
           pricePerPerson: einsatzDetailed.price_per_person || 0,
           totalPrice: einsatzDetailed.total_price || 0,
@@ -438,7 +492,15 @@ export function EventDialogVerwaltung({
     } else {
       resetForm();
     }
-  }, [currentEinsatz, handleFormDataChange, resetForm, isOpen]);
+  }, [
+    currentEinsatz,
+    handleFormDataChange,
+    resetForm,
+    isOpen,
+    getDefaultStaticFormData,
+    orgDefaultStartTime,
+    orgDefaultEndTime,
+  ]);
 
   // Generate or refresh dynamic schema/data when template or detailed fields change
   useEffect(() => {
