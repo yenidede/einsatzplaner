@@ -653,6 +653,9 @@ export function EventDialogVerwaltung({
       });
       return;
     }
+    const assignedUsers = Array.from(
+      new Set(parsedDataStatic.data.assignedUsers)
+    );
 
     // Validiere dynamische Felder mit React Hook Form
     const isDynamicFormValid = await dynamicForm.trigger();
@@ -695,7 +698,7 @@ export function EventDialogVerwaltung({
       parsedDataStatic.data.requiredUserProperties.length > 0
     ) {
       const assignedUserDetails = usersQuery.data?.filter((user) =>
-        parsedDataStatic.data.assignedUsers.includes(user.id)
+        assignedUsers.includes(user.id)
       );
 
       for (const propConfig of parsedDataStatic.data.requiredUserProperties) {
@@ -797,8 +800,7 @@ export function EventDialogVerwaltung({
 
     // If einsatz was changed, always remove bestätigt status
     const status =
-      parsedDataStatic.data.assignedUsers.length >=
-      parsedDataStatic.data.helpersNeeded
+      assignedUsers.length >= parsedDataStatic.data.helpersNeeded
         ? StatusValuePairs.vergeben
         : StatusValuePairs.offen;
 
@@ -832,7 +834,7 @@ export function EventDialogVerwaltung({
         ? currentEinsatz.assigned_users || []
         : [];
 
-    const currentAssignedUsers = parsedDataStatic.data.assignedUsers;
+    const currentAssignedUsers = assignedUsers;
 
     const changeTypeNames = detectChangeTypes(
       isNewEinsatz,
@@ -888,7 +890,7 @@ export function EventDialogVerwaltung({
       template_id: activeTemplateId ?? undefined,
       helpers_needed: parsedDataStatic.data.helpersNeeded,
       categories: parsedDataStatic.data.einsatzCategoriesIds ?? [],
-      assignedUsers: parsedDataStatic.data.assignedUsers,
+      assignedUsers: assignedUsers,
       einsatz_fields: einsatzFields,
       userProperties: outgoingUserProperties,
       anmerkung: parsedDataStatic.data.anmerkung ?? undefined,

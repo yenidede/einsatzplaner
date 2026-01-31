@@ -16,6 +16,116 @@ import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
 import { createChangeLogAuto } from '../activity_log/activity_log-dal';
 import { BadRequestError, ForbiddenError } from '@/lib/errors';
 
+// Helper type for conflict information
+export type EinsatzConflict = {
+  userId: string;
+  userName: string;
+  conflictingEinsatz: {
+    id: string;
+    title: string;
+    start: Date;
+    end: Date;
+  };
+};
+
+// Response type for update operations that includes conflicts
+export type EinsatzUpdateResponse = {
+  einsatz?: Einsatz;
+  conflicts: EinsatzConflict[];
+};
+
+// Response type for create operations that includes conflicts
+export type EinsatzCreateResponse = {
+  einsatz?: Einsatz;
+  conflicts: EinsatzConflict[];
+};
+
+/**
+ * Check if users have conflicting time entries with an Einsatz
+ * @param userIds Array of user IDs to check
+ * @param start Start time of the Einsatz
+ * @param end End time of the Einsatz
+ * @param exclude Optional ID of an Einsatz to exclude or true to exclude all Einsätze
+ * @returns Array of conflicts found
+ */
+async function checkEinsatzConflicts(
+  userIds: string[],
+  start: Date,
+  end: Date,
+  exclude: string | boolean = false
+): Promise<EinsatzConflict[]> {
+  if (userIds.length === 0) {
+    return [];
+  }
+
+  if (exclude === true) {
+    return [];
+  }
+
+  // Find all Einsatz assignments for these users that overlap with the given time range
+  const conflictingAssignments = await prisma.einsatz_helper.findMany({
+    where: {
+      user_id: { in: userIds },
+      einsatz: {
+        id: exclude ? { not: exclude } : undefined,
+        OR: [
+          // Einsatz starts during the time range
+          {
+            start: {
+              gte: start,
+              lt: end,
+            },
+          },
+          // Einsatz ends during the time range
+          {
+            end: {
+              gt: start,
+              lte: end,
+            },
+          },
+          // Einsatz completely encompasses the time range
+          {
+            start: {
+              lte: start,
+            },
+            end: {
+              gte: end,
+            },
+          },
+        ],
+      },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+        },
+      },
+      einsatz: {
+        select: {
+          id: true,
+          title: true,
+          start: true,
+          end: true,
+        },
+      },
+    },
+  });
+
+  return conflictingAssignments.map((assignment) => ({
+    userId: assignment.user_id,
+    userName: `${assignment.user.firstname} ${assignment.user.lastname}`,
+    conflictingEinsatz: {
+      id: assignment.einsatz.id,
+      title: assignment.einsatz.title,
+      start: assignment.einsatz.start,
+      end: assignment.einsatz.end,
+    },
+  }));
+}
+
 // TODO: Add auth check
 export async function getEinsatzWithDetailsById(
   id: string
@@ -235,16 +345,16 @@ export async function getEinsaetzeForTableView(
     ),
     user: einsatz.user
       ? {
-          id: einsatz.user.id,
-          firstname: einsatz.user.firstname ?? null,
-          lastname: einsatz.user.lastname ?? null,
-        }
+        id: einsatz.user.id,
+        firstname: einsatz.user.firstname ?? null,
+        lastname: einsatz.user.lastname ?? null,
+      }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-          id: einsatz.einsatz_template.id,
-          name: einsatz.einsatz_template.name ?? null,
-        }
+        id: einsatz.einsatz_template.id,
+        name: einsatz.einsatz_template.name ?? null,
+      }
       : null,
     _count: einsatz._count,
   }));
@@ -313,9 +423,11 @@ export async function getAllTemplatesWithFields(org_id?: string) {
 
 export async function createEinsatz({
   data,
+  disableTimeConflicts = false,
 }: {
   data: EinsatzCreate;
-}): Promise<Einsatz> {
+  disableTimeConflicts?: boolean;
+}): Promise<EinsatzCreateResponse> {
   const { session, userIds } = await requireAuth();
 
   if (
@@ -338,6 +450,23 @@ export async function createEinsatz({
 
   if (!userOrgIds.includes(useOrgId)) {
     throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
+  }
+
+  // Check for conflicts when creating with assigned users (unless disabled)
+  let conflicts: EinsatzConflict[] = [];
+  if (!disableTimeConflicts && data.assignedUsers && data.assignedUsers.length > 0) {
+    conflicts = await checkEinsatzConflicts(
+      data.assignedUsers,
+      data.start,
+      data.end,
+    );
+
+    // Return early if conflicts exist - do not create the einsatz
+    if (conflicts.length > 0) {
+      return {
+        conflicts,
+      };
+    }
   }
 
   const einsatzWithAuth = {
@@ -375,14 +504,18 @@ export async function createEinsatz({
     }
   }
 
-  return createdEinsatz;
+  return {
+    einsatz: createdEinsatz,
+    conflicts: [],
+  };
 }
 
 export async function updateEinsatzTime(data: {
   id: string;
   start: Date;
   end: Date;
-}): Promise<Einsatz> {
+  disableTimeConflicts?: boolean;
+}): Promise<EinsatzUpdateResponse> {
   const { session } = await requireAuth();
   if (
     !(await hasPermission(
@@ -398,11 +531,45 @@ export async function updateEinsatzTime(data: {
     id: z.string(),
     start: z.date(),
     end: z.date(),
+    disableTimeConflicts: z.boolean().optional(),
   });
 
-  const { id, start, end } = dataSchema.parse(data);
+  const { id, start, end, disableTimeConflicts = false } = dataSchema.parse(data);
 
-  return prisma.einsatz.update({
+  // Get assigned users for this Einsatz
+  const existingEinsatz = await prisma.einsatz.findUnique({
+    where: { id },
+    select: {
+      einsatz_helper: {
+        select: { user_id: true },
+      },
+    },
+  });
+
+  let conflicts: EinsatzConflict[] = [];
+
+  if (!disableTimeConflicts && existingEinsatz && existingEinsatz.einsatz_helper.length > 0) {
+    const assignedUserIds = existingEinsatz.einsatz_helper.map(
+      (helper) => helper.user_id
+    );
+
+    // Check if the new time causes conflicts with already assigned users
+    conflicts = await checkEinsatzConflicts(
+      assignedUserIds,
+      start,
+      end,
+      id
+    );
+
+    // Return early if conflicts exist - do not update the time
+    if (conflicts.length > 0) {
+      return {
+        conflicts,
+      };
+    }
+  }
+
+  const einsatz = await prisma.einsatz.update({
     where: { id },
     data: {
       start,
@@ -410,6 +577,11 @@ export async function updateEinsatzTime(data: {
       updated_at: new Date(),
     },
   });
+
+  return {
+    einsatz,
+    conflicts: [],
+  };
 }
 
 export async function toggleUserAssignmentToEinsatz(
@@ -428,6 +600,8 @@ export async function toggleUserAssignmentToEinsatz(
       id: true,
       title: true,
       org_id: true,
+      start: true,
+      end: true,
       einsatz_helper: { select: { user_id: true } },
       helpers_needed: true,
     },
@@ -443,11 +617,28 @@ export async function toggleUserAssignmentToEinsatz(
     (helper) => helper.user_id === session.user.id
   );
 
+  // Check for conflicts only when assigning (not when removing)
+  if (!isSignedInUserAssigned) {
+    const conflicts = await checkEinsatzConflicts(
+      [session.user.id],
+      existingEinsatz.start,
+      existingEinsatz.end,
+      einsatzId
+    );
+
+    if (conflicts.length > 0) {
+      const conflict = conflicts[0];
+      throw new BadRequestError(
+        `Sie sind bereits für einen anderen Einsatz in diesem Zeitraum eingeteilt: "${conflict.conflictingEinsatz.title}" (${conflict.conflictingEinsatz.start.toLocaleString('de-AT')} - ${conflict.conflictingEinsatz.end.toLocaleString('de-AT')})`
+      );
+    }
+  }
+
   const addOrRemoveOne = isSignedInUserAssigned ? -1 : 1;
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-    existingEinsatz.einsatz_helper.length + addOrRemoveOne
+      existingEinsatz.einsatz_helper.length + addOrRemoveOne
       ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
       : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
@@ -527,9 +718,11 @@ export async function toggleUserAssignmentToEinsatz(
 
 export async function updateEinsatz({
   data,
+  disableTimeConflicts = false,
 }: {
   data: Partial<EinsatzCreate>;
-}): Promise<Einsatz> {
+  disableTimeConflicts?: boolean;
+}): Promise<EinsatzUpdateResponse> {
   const { session, userIds } = await requireAuth();
 
   if (
@@ -565,7 +758,11 @@ export async function updateEinsatz({
   // Prüfe ob Einsatz existiert und User Zugriff hat
   const existingEinsatz = await prisma.einsatz.findUnique({
     where: { id },
-    select: { org_id: true },
+    select: {
+      org_id: true,
+      start: true,
+      end: true,
+    },
   });
 
   if (!existingEinsatz) {
@@ -577,8 +774,30 @@ export async function updateEinsatz({
     throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
   }
 
+  // Check for conflicts when assigning users (unless disabled)
+  let conflicts: EinsatzConflict[] = [];
+  if (!disableTimeConflicts && assignedUsers && assignedUsers.length > 0) {
+    // Use the new start/end times if provided, otherwise use existing ones
+    const checkStart = updateData.start || existingEinsatz.start;
+    const checkEnd = updateData.end || existingEinsatz.end;
+
+    conflicts = await checkEinsatzConflicts(
+      assignedUsers,
+      checkStart,
+      checkEnd,
+      id
+    );
+
+    // Return early if conflicts exist - do not update the einsatz
+    if (conflicts.length > 0) {
+      return {
+        conflicts,
+      };
+    }
+  }
+
   try {
-    return prisma.einsatz.update({
+    const einsatz = await prisma.einsatz.update({
       where: { id },
       data: {
         ...updateData,
@@ -622,6 +841,11 @@ export async function updateEinsatz({
         },
       },
     });
+
+    return {
+      einsatz,
+      conflicts: [],
+    };
   } catch (error) {
     throw new Response(`Failed to update Einsatz with ID ${id}: ${error}`, {
       status: 500,
