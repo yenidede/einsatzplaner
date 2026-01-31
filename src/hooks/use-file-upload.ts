@@ -26,7 +26,7 @@ export type FileWithPreview = {
 
 export type FileUploadOptions = {
   maxFiles?: number; // Only used when multiple is true, defaults to Infinity
-  maxSize?: number; // in bytes
+  maxSize?: number; // in bytes (optional - if not provided, no size restriction)
   accept?: string;
   multiple?: boolean; // Defaults to false
   initialFiles?: FileMetadata[];
@@ -85,13 +85,16 @@ export const useFileUpload = (
 
   const validateFile = useCallback(
     (file: File | FileMetadata): string | null => {
-      if (file instanceof File) {
-        if (file.size > maxSize) {
-          return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
-        }
-      } else {
-        if (file.size > maxSize) {
-          return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
+      // Only validate size if maxSize is provided and not Infinity
+      if (maxSize !== Infinity && maxSize !== undefined) {
+        if (file instanceof File) {
+          if (file.size > maxSize) {
+            return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
+          }
+        } else {
+          if (file.size > maxSize) {
+            return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
+          }
         }
       }
 
@@ -133,7 +136,7 @@ export const useFileUpload = (
 
   const generateUniqueId = useCallback((file: File | FileMetadata): string => {
     if (file instanceof File) {
-      return `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      return `${file.name}-${crypto.randomUUID()}`;
     }
     return file.id;
   }, []);
@@ -209,8 +212,12 @@ export const useFileUpload = (
           }
         }
 
-        // Check file size
-        if (file.size > maxSize) {
+        // Check file size only if maxSize is provided and not Infinity
+        if (
+          maxSize !== Infinity &&
+          maxSize !== undefined &&
+          file.size > maxSize
+        ) {
           errors.push(
             multiple
               ? `Some files exceed the maximum size of ${formatBytes(maxSize)}.`

@@ -8,6 +8,8 @@ import {
   deactivateSubscriptionAction,
   activateSubscriptionAction,
 } from '../actions';
+import { useSession } from 'next-auth/react';
+import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 
 export type CalendarSubscription = {
   id: string;
@@ -19,23 +21,27 @@ export type CalendarSubscription = {
   last_accessed: string | null;
 };
 
-const key = (orgId: string) => ['calendar-subscription', orgId];
+const key = (userId?: string, orgId?: string) =>
+  settingsQueryKeys.calendarSubscription(userId, orgId);
 
 export function useCalendarSubscription(orgId: string) {
   const queryClient = useQueryClient();
+  const session = useSession();
+  const userId = session.data?.user?.id;
+  const queryKey = key(userId, orgId);
 
   const query = useQuery({
-    queryKey: key(orgId),
+    queryKey,
     queryFn: () => getSubscriptionAction(orgId),
-    enabled: !!orgId,
+    enabled: !!orgId && !!userId,
     staleTime: 60000,
-    retry: 1,
+    retry: 3,
   });
 
   const rotate = useMutation({
     mutationFn: (id: string) => rotateSubscriptionAction(id),
     onSuccess: (data) => {
-      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
         prev
           ? {
             ...prev,
@@ -58,7 +64,7 @@ export function useCalendarSubscription(orgId: string) {
   const deactivate = useMutation({
     mutationFn: (id: string) => deactivateSubscriptionAction(id),
     onSuccess: () => {
-      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
         prev ? { ...prev, is_active: false } : prev
       );
       toast.success('Kalender-Integration wurde deaktiviert');
@@ -75,7 +81,7 @@ export function useCalendarSubscription(orgId: string) {
   const activate = useMutation({
     mutationFn: (id: string) => activateSubscriptionAction(id),
     onSuccess: () => {
-      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
         prev ? { ...prev, is_active: true } : prev
       );
       toast.success('Kalender-Integration wurde aktiviert');

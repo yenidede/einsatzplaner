@@ -118,6 +118,52 @@ export async function getUserOrganizationsAction() {
     created_at: org.created_at.toISOString(),
   }));
 }
+
+export async function getUserManagedOrganizationsAction() {
+  const session = await checkUserSession();
+
+  const userOrgRoles = await prisma.user_organization_role.findMany({
+    where: {
+      user_id: session.user.id,
+      role: {
+        OR: [
+          {
+            name: { contains: 'Organisationsverwaltung', mode: 'insensitive' },
+          },
+          { name: { contains: 'Superadmin', mode: 'insensitive' } },
+          { abbreviation: 'OV' },
+          { name: 'OV' },
+        ],
+      },
+    },
+    include: {
+      organization: {
+        select: {
+          id: true,
+          name: true,
+          logo_url: true,
+        },
+      },
+    },
+  });
+
+  // Get unique organizations
+  const orgMap = new Map<
+    string,
+    { id: string; name: string; logo_url: string | null }
+  >();
+  userOrgRoles.forEach((uor) => {
+    if (!orgMap.has(uor.organization.id)) {
+      orgMap.set(uor.organization.id, {
+        id: uor.organization.id,
+        name: uor.organization.name,
+        logo_url: uor.organization.logo_url,
+      });
+    }
+  });
+
+  return Array.from(orgMap.values());
+}
 export async function getUserOrganizationByIdAction(orgId: string | undefined) {
   if (!orgId) throw new Error('Organization ID is required');
 
@@ -136,7 +182,21 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      logo_url: true,
+      small_logo_url: true,
+      email: true,
+      phone: true,
+      helper_name_singular: true,
+      helper_name_plural: true,
+      einsatz_name_singular: true,
+      einsatz_name_plural: true,
+      created_at: true,
+      max_participants_per_helper: true,
+      allow_self_sign_out: true,
       user_organization_role: {
         include: {
           user: {
@@ -167,6 +227,7 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
     name: org.name,
     description: org.description ?? '',
     logo_url: org.logo_url ?? '',
+    small_logo_url: org.small_logo_url ?? '',
     email: org.email ?? '',
     phone: org.phone ?? '',
     helper_name_singular: org.helper_name_singular ?? 'Helfer:in',
@@ -266,7 +327,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
   });
 
   revalidatePath(`/organization/${data.id}`);
-  revalidatePath(`/organization/${data.id}/manage`);
+  revalidatePath(`/settings/org/${data.id}`);
 
   return {
     id: updated.id,
@@ -410,7 +471,7 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       }
     }
 
-    revalidatePath(`/organization/${orgId}/manage`);
+    revalidatePath(`/settings/org/${orgId}`);
 
     return { url: publicUrl };
   } catch (error) {
@@ -460,8 +521,154 @@ export async function removeOrganizationLogoAction(orgId: string) {
     where: { id: orgId },
     data: { logo_url: null },
   });
-  revalidatePath(`/organization/${orgId}/manage`);
+  revalidatePath(`/settings/org/${orgId}`);
   return { message: 'Logo erfolgreich entfernt' };
+}
+
+export async function uploadOrganizationSmallLogoAction(formData: FormData) {
+  try {
+    const session = await checkUserSession();
+
+    const orgId = formData.get('orgId') as string;
+    const file = formData.get('smallLogo') as File;
+
+    if (!file || !orgId) throw new Error('Missing file or orgId');
+
+    const userOrgRole = await prisma.user_organization_role.findFirst({
+      where: {
+        org_id: orgId,
+        user_id: session.user.id,
+      },
+      include: { role: true },
+    });
+
+    if (!userOrgRole) throw new Error('Forbidden');
+
+    if (!(await hasPermission(session, 'organization:update')))
+      throw new Error('Insufficient permissions');
+
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File must be an image');
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('File size must be less than 5MB');
+    }
+
+    const oldOrg = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { small_logo_url: true },
+    });
+
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const timestamp = Date.now();
+    const fileName = `${orgId}-small.${fileExt}`;
+    const filePath = `organizations/${orgId}/${fileName}`;
+
+    const buffer = await file.arrayBuffer();
+
+    const { error: uploadError } = await supabaseServer.storage
+      .from('logos')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError);
+      throw new Error(`Failed to upload image: ${uploadError.message}`);
+    }
+
+    const { data: urlData } = supabaseServer.storage
+      .from('logos')
+      .getPublicUrl(filePath);
+
+    const publicUrl = `${urlData.publicUrl}?t=${timestamp}`;
+
+    await prisma.organization.update({
+      where: { id: orgId },
+      data: { small_logo_url: publicUrl },
+    });
+
+    if (oldOrg?.small_logo_url && oldOrg.small_logo_url.includes('supabase')) {
+      try {
+        const urlParts = oldOrg.small_logo_url.split('/logos/');
+        if (urlParts[1]) {
+          const oldPathWithParams = urlParts[1];
+          const oldPath = oldPathWithParams.split('?')[0];
+
+          if (
+            oldPath !== filePath &&
+            oldPath.startsWith(`organizations/${orgId}/`)
+          ) {
+            const { error: deleteError } = await supabaseServer.storage
+              .from('logos')
+              .remove([oldPath]);
+
+            if (deleteError) {
+              console.warn('Failed to delete old small logo:', deleteError);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error while deleting old small logo:', error);
+      }
+    }
+
+    revalidatePath(`/settings/org/${orgId}`);
+
+    return { url: publicUrl };
+  } catch (error) {
+    console.error('uploadOrganizationSmallLogoAction error:', error);
+    throw error;
+  }
+}
+
+export async function removeOrganizationSmallLogoAction(orgId: string) {
+  const session = await checkUserSession();
+
+  const userOrgRole = await prisma.user_organization_role.findFirst({
+    where: {
+      org_id: orgId,
+      user_id: session.user.id,
+    },
+    include: { role: true },
+  });
+  if (!userOrgRole) throw new Error('Forbidden');
+
+  if (!(await hasPermission(session, 'organization:update')))
+    throw new Error('Insufficient permissions');
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { small_logo_url: true },
+  });
+  if (!org) throw new Error('Organization not found');
+
+  if (org.small_logo_url && org.small_logo_url.includes('supabase')) {
+    try {
+      const urlParts = org.small_logo_url.split('/logos/');
+      if (urlParts[1]) {
+        const pathWithParams = urlParts[1];
+        const path = pathWithParams.split('?')[0];
+        const { error: deleteError } = await supabaseServer.storage
+          .from('logos')
+          .remove([path]);
+        if (deleteError) {
+          console.warn('Failed to delete small logo from storage:', deleteError);
+        }
+      }
+    } catch (error) {
+      console.warn('Error while deleting small logo from storage:', error);
+    }
+  }
+
+  await prisma.organization.update({
+    where: { id: orgId },
+    data: { small_logo_url: null },
+  });
+  revalidatePath(`/settings/org/${orgId}`);
+  return { message: 'Kleines Logo erfolgreich entfernt' };
 }
 
 export async function getOrganizationWithRelations(orgId: string) {
@@ -561,7 +768,7 @@ export async function createOrganizationAddressAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, address };
   } catch (error) {
     console.error('Error creating address:', error);
@@ -590,7 +797,7 @@ export async function updateOrganizationAddressAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, address };
   } catch (error) {
     console.error('Error updating address:', error);
@@ -607,7 +814,7 @@ export async function deleteOrganizationAddressAction(
       where: { id },
     });
 
-    revalidatePath(`/organization/${orgId}/manage`);
+    revalidatePath(`/settings/org/${orgId}`);
     return { success: true };
   } catch (error) {
     console.error('Error deleting address:', error);
@@ -646,7 +853,7 @@ export async function createOrganizationBankAccountAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, account };
   } catch (error) {
     console.error('Error creating bank account:', error);
@@ -671,7 +878,7 @@ export async function updateOrganizationBankAccountAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, account };
   } catch (error) {
     console.error('Error updating bank account:', error);
@@ -688,7 +895,7 @@ export async function deleteOrganizationBankAccountAction(
       where: { id },
     });
 
-    revalidatePath(`/organization/${orgId}/manage`);
+    revalidatePath(`/settings/org/${orgId}`);
     return { success: true };
   } catch (error) {
     console.error('Error deleting bank account:', error);
@@ -746,7 +953,7 @@ export async function saveOrganizationDetailsAction(data: {
       });
     }
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, details };
   } catch (error) {
     console.error('Error saving organization details:', error);

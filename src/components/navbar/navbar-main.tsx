@@ -20,7 +20,10 @@ import { usePathname } from 'next/navigation';
 import NavSwitchOrgSelect from './switch-org';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
-import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import {
+  useOrganizations,
+  useOrganization,
+} from '@/features/organization/hooks/use-organization-queries';
 import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 
@@ -30,6 +33,7 @@ export default function Component() {
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
   const activeOrgId = session?.user?.activeOrganization?.id;
+  const { data: activeOrganization } = useOrganization(activeOrgId);
 
   const { helper_plural } = useOrganizationTerminology(
     organizations,
@@ -140,7 +144,13 @@ export default function Component() {
           {/* Main nav */}
           <div className="flex items-center gap-6">
             <Link href="/" className="text-primary hover:text-primary/90">
-              <Logo />
+              <Logo
+                logoUrl={
+                  activeOrganization?.small_logo_url ||
+                  activeOrganization?.logo_url ||
+                  null
+                }
+              />
             </Link>
             {/* Navigation menu */}
             <NavigationMenu className="max-md:hidden">
