@@ -61,7 +61,23 @@ export default function ResetPasswordClient({ token }: { token?: string }) {
       }
     } catch (error) {
       console.error('Reset password error:', error);
-      toast.error('Ein Fehler ist aufgetreten');
+
+      // Check if it's a network-related error
+      const errorMessage =
+        error instanceof Error ? error.message.toLowerCase() : '';
+      if (
+        errorMessage.includes('fetch') ||
+        errorMessage.includes('network') ||
+        errorMessage.includes('failed to fetch') ||
+        errorMessage.includes('networkerror') ||
+        error instanceof TypeError
+      ) {
+        toast.error(
+          'Keine Internetverbindung. Bitte überprüfen Sie Ihre Netzwerkverbindung.'
+        );
+      } else {
+        toast.error('Ein Fehler ist aufgetreten');
+      }
     } finally {
       setIsLoading(false);
     }

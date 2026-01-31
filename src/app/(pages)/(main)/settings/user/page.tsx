@@ -446,10 +446,19 @@ export default function SettingsPage() {
   }
 
   if (!userData) {
+    if (isLoadingUser) {
+      return (
+        <SettingsErrorCard
+          title="Lade Benutzerdaten..."
+          description="Bitte warten Sie einen Moment. Sollte sich dieser Status nicht ändern, laden Sie die Seite bitte neu."
+        />
+      );
+    }
+
     return (
       <SettingsErrorCard
-        title="Fehler"
-        description="Keine Benutzerdaten gefunden."
+        title="Fehler beim Laden der Benutzerdaten"
+        description="Bitte warten Sie einen Moment. Sollte sich dieser Status nicht ändern, laden Sie die Seite bitte neu."
       />
     );
   }

@@ -9,24 +9,44 @@ import {
   deleteEinsatzById,
   toggleUserAssignmentToEinsatz,
   deleteEinsaetzeByIds,
+  type EinsatzConflict,
 } from '../dal-einsatz';
 import { EinsatzCreate } from '../types';
 import { CalendarEvent } from '@/components/event-calendar/types';
 import { EinsatzCreateToCalendarEvent } from '@/components/event-calendar/einsatz-service';
 import { toast } from 'sonner';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
+
+// Helper function to format conflict messages
+function formatConflictMessages(conflicts: EinsatzConflict[]): string {
+  return conflicts
+    .map(
+      (c) =>
+        `• ${c.userName}: "${c.conflictingEinsatz.title}" (${new Date(c.conflictingEinsatz.start).toLocaleString('de-AT')} - ${new Date(c.conflictingEinsatz.end).toLocaleString('de-AT')})`
+    )
+    .join('\n');
+}
 
 export function useCreateEinsatz(
   activeOrgId: string | undefined,
-  einsatzSingular: string = 'Einsatz'
+  einsatzSingular: string = 'Einsatz',
+  onConflictCancel?: (eventId: string) => void
 ) {
   const queryClient = useQueryClient();
   const queryKey = queryKeys.einsaetze(activeOrgId ?? '');
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
 
-  return useMutation({
-    mutationFn: async (event: EinsatzCreate) => {
-      return createEinsatz({ data: event });
+  const mutation = useMutation({
+    mutationFn: async ({
+      event,
+      disableTimeConflicts = false,
+    }: {
+      event: EinsatzCreate;
+      disableTimeConflicts?: boolean;
+    }) => {
+      return createEinsatz({ data: event, disableTimeConflicts });
     },
-    onMutate: async (event) => {
+    onMutate: async ({ event }) => {
       await queryClient.cancelQueries({ queryKey });
 
       const previous = queryClient.getQueryData<CalendarEvent[]>(queryKey);
@@ -45,37 +65,83 @@ export function useCreateEinsatz(
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error(`${einsatzSingular} konnte nicht erstellt werden: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`${einsatzSingular} konnte nicht erstellt werden: ${errorMessage}`);
     },
-    onSuccess: (_data, vars) => {
-      toast.success(`${einsatzSingular} '${vars.title}' wurde erstellt.`);
+    onSuccess: async (data, vars, ctx) => {
+      if (data.conflicts && data.conflicts.length > 0) {
+        // Roll back optimistic update if there are conflicts
+        queryClient.setQueryData(queryKey, ctx?.previous);
+
+        // Show confirmation dialog
+        const dialogResult = await showDialog({
+          title: 'Warnung: Zeitkonflikte erkannt',
+          description:
+            'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
+            formatConflictMessages(data.conflicts) +
+            '\n\nMöchten Sie trotzdem fortfahren?',
+          confirmText: 'Trotzdem fortfahren',
+          cancelText: 'Abbrechen',
+          variant: 'destructive',
+        });
+
+        if (dialogResult === 'success') {
+          // User confirmed, retry with conflicts disabled
+          mutation.mutate({ event: vars.event, disableTimeConflicts: true });
+        } else {
+          // User cancelled, open the event dialog if callback provided
+          if (onConflictCancel && data.conflicts.length > 0) {
+            // Get the first conflicting einsatz ID
+            const conflictingEinsatzId = data.conflicts[0].conflictingEinsatz.id;
+            onConflictCancel(conflictingEinsatzId);
+          }
+        }
+      } else if (data.einsatz) {
+        toast.success(`${einsatzSingular} '${vars.event.title}' wurde erstellt.`);
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
     },
   });
+
+  return {
+    ...mutation,
+    AlertDialogComponent,
+    mutate: (event: EinsatzCreate) => mutation.mutate({ event }),
+    mutateAsync: (event: EinsatzCreate) => mutation.mutateAsync({ event }),
+  };
 }
 
 export function useUpdateEinsatz(
   activeOrgId: string | undefined,
-  einsatzSingular: string = 'Einsatz'
+  einsatzSingular: string = 'Einsatz',
+  onConflictCancel?: (eventId: string) => void
 ) {
   const queryClient = useQueryClient();
   const queryKey = queryKeys.einsaetze(activeOrgId ?? '');
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
 
-  return useMutation({
-    mutationFn: async (event: EinsatzCreate | CalendarEvent) => {
+  const mutation = useMutation({
+    mutationFn: async ({
+      event,
+      disableTimeConflicts = false,
+    }: {
+      event: EinsatzCreate | CalendarEvent;
+      disableTimeConflicts?: boolean;
+    }) => {
       if ('org_id' in event) {
-        return updateEinsatz({ data: event });
+        return updateEinsatz({ data: event, disableTimeConflicts });
       } else {
         return updateEinsatzTime({
           id: event.id,
           start: event.start,
           end: event.end,
+          disableTimeConflicts,
         });
       }
     },
-    onMutate: async (updatedEvent) => {
+    onMutate: async ({ event: updatedEvent }) => {
       await queryClient.cancelQueries({ queryKey });
 
       const previous =
@@ -96,23 +162,70 @@ export function useUpdateEinsatz(
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(
-        `${einsatzSingular} konnte nicht aktualisiert werden: ${error}`
+        `${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`
       );
     },
-    onSuccess: (data, vars) => {
-      toast.success(`${einsatzSingular} '${vars.title}' wurde aktualisiert.`);
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.allLists(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.detailedEinsatz(data.id),
-      });
-      queryClient.invalidateQueries({
-        queryKey: activityLogQueryKeys.allEinsatz(data.id),
-      });
+    onSuccess: async (data, vars, ctx) => {
+      const einsatz = 'einsatz' in data ? data.einsatz : data;
+      const conflicts = 'conflicts' in data ? data.conflicts : [];
+      const einsatzId = einsatz && 'id' in einsatz ? einsatz.id : undefined;
+
+      if (conflicts && conflicts.length > 0) {
+        // Roll back optimistic update if there are conflicts
+        queryClient.setQueryData(queryKey, ctx?.previous);
+
+        // Show confirmation dialog
+        const dialogResult = await showDialog({
+          title: 'Warnung: Zeitkonflikte erkannt',
+          description:
+            'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
+            formatConflictMessages(conflicts) +
+            '\n\nMöchten Sie trotzdem fortfahren?',
+          confirmText: 'Trotzdem fortfahren',
+          cancelText: 'Abbrechen',
+          variant: 'destructive',
+        });
+
+        if (dialogResult === 'success') {
+          // User confirmed, retry with conflicts disabled
+          mutation.mutate({ event: vars.event, disableTimeConflicts: true });
+        } else {
+          // User cancelled, open the event dialog if callback provided
+          if (onConflictCancel && conflicts.length > 0) {
+            // Get the first conflicting einsatz ID
+            const conflictingEinsatzId = conflicts[0].conflictingEinsatz.id;
+            onConflictCancel(conflictingEinsatzId);
+          }
+        }
+      } else if (einsatz) {
+        const title = 'title' in vars.event ? vars.event.title : einsatzSingular;
+        toast.success(`${einsatzSingular} '${title}' wurde aktualisiert.`);
+      }
+
+      // Only invalidate queries if the update was successful
+      if (einsatzId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.allLists(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.detailedEinsatz(einsatzId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: activityLogQueryKeys.allEinsatz(einsatzId),
+        });
+      }
     },
   });
+
+  return {
+    ...mutation,
+    AlertDialogComponent,
+    mutate: (event: EinsatzCreate | CalendarEvent) => mutation.mutate({ event }),
+    mutateAsync: (event: EinsatzCreate | CalendarEvent) =>
+      mutation.mutateAsync({ event }),
+  };
 }
 
 export function useToggleUserAssignment(
@@ -150,9 +263,10 @@ export function useToggleUserAssignment(
 
       return { previous };
     },
-    onError: (_error, _vars, ctx) => {
+    onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error(`${einsatzSingular} konnte nicht aktualisiert werden`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`);
     },
     onSuccess: (data) => {
       if (!Object.hasOwn(data, 'deleted'))
@@ -206,7 +320,8 @@ export function useDeleteEinsatz(
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
     },
     onSuccess: (_data, vars, ctx) => {
       const title = ctx?.toDelete?.title || vars.eventTitle || 'Unbenannt';
@@ -252,7 +367,8 @@ export function useDeleteMultipleEinsaetze(
     },
     onError: (error, _vars, ctx) => {
       queryClient.setQueryData(queryKey, ctx?.previous);
-      toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
     },
     onSuccess: (_data, vars) => {
       toast.success(

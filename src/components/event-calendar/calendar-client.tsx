@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 import { EventCalendar } from '@/components/event-calendar';
 import { CalendarMode, CalendarEvent } from './types';
@@ -178,9 +178,25 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     activeOrgId
   );
 
+  // Stable callback for conflict cancellation
+  const handleConflictCancel = useCallback(
+    (einsatzId: string) => {
+      setEinsatz(einsatzId);
+    },
+    [setEinsatz]
+  );
+
   // Mutations with optimistic update
-  const createMutation = useCreateEinsatz(activeOrgId, einsatz_singular);
-  const updateMutation = useUpdateEinsatz(activeOrgId, einsatz_singular);
+  const createMutation = useCreateEinsatz(
+    activeOrgId,
+    einsatz_singular,
+    handleConflictCancel
+  );
+  const updateMutation = useUpdateEinsatz(
+    activeOrgId,
+    einsatz_singular,
+    handleConflictCancel
+  );
   const toggleUserAssignToEvent = useToggleUserAssignment(
     activeOrgId,
     session?.user.id,
@@ -323,11 +339,14 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     return <div>Lade Daten...</div>;
   }
 
+  const calendarEvents = Array.isArray(events) ? events : [];
   return (
     <>
       {AlertDialogComponent}
+      {createMutation.AlertDialogComponent}
+      {updateMutation.AlertDialogComponent}
       <EventCalendar
-        events={events as CalendarEvent[]}
+        events={calendarEvents}
         onEventAdd={handleEventAdd}
         onEventUpdate={handleEventUpdate}
         onAssignToggleEvent={handleAssignToggleEvent}

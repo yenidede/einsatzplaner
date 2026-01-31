@@ -497,7 +497,7 @@ export default function OrganizationManagePage() {
                     name="logo"
                     maxFiles={1}
                     accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
-                    placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert)"
+                    placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert). Sollte das Logo nicht richtig laden, bitte die Seite neu laden."
                     previewAspectRatio={PreviewAspectRatio.LANDSCAPE}
                     setValue={(name, value) => {
                       // FileUpload component manages its own state
@@ -533,7 +533,7 @@ export default function OrganizationManagePage() {
                     name="smallLogo"
                     maxFiles={1}
                     accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
-                    placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert)"
+                    placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert). Sollte das Logo nicht richtig laden, bitte die Seite neu laden."
                     previewAspectRatio={PreviewAspectRatio.SQUARE}
                     setValue={(name, value) => {
                       // FileUpload component manages its own state
