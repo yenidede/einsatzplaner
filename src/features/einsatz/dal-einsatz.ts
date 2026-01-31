@@ -459,7 +459,6 @@ export async function createEinsatz({
       data.assignedUsers,
       data.start,
       data.end,
-      true // exclude all checks since this is a new einsatz
     );
 
     // Return early if conflicts exist - do not create the einsatz
