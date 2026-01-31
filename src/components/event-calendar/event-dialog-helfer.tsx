@@ -163,7 +163,7 @@ export function EventDialogHelfer({
     }
     if (warnings.length === 0) return true;
 
-    const confirmed = await showDialog({
+    const dialogResult = await showDialog({
       title: 'Warnung: Kriterien nicht erfüllt',
       description:
         'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
@@ -173,7 +173,7 @@ export function EventDialogHelfer({
       cancelText: 'Abbrechen',
       variant: 'destructive',
     });
-    if (confirmed === 'success') return true;
+    if (dialogResult === 'success') return true;
     return false;
   };
 

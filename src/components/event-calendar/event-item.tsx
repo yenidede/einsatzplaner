@@ -67,8 +67,11 @@ function EventWrapper({
   const userId = useSession().data?.user?.id;
   let statusForColor: EinsatzStatus | string = event.status || 'fallback';
 
-  if (event.assignedUsers.some((assignedUserId) => assignedUserId === userId)) {
-    // User is a helper for this event
+  if (
+    mode === 'helper' &&
+    event.assignedUsers.some((assignedUserId) => assignedUserId === userId)
+  ) {
+    // User is a helper for this event - only show "eigene" in helper mode
     statusForColor = 'eigene';
   }
   return (
@@ -134,9 +137,10 @@ export function EventItem({
   let statusForColor: EinsatzStatus | string = event.status || 'fallback';
 
   if (
+    mode === 'helper' &&
     event.assignedUsers?.some((assignedUserId) => assignedUserId === userId)
   ) {
-    // User is a helper for this event
+    // User is a helper for this event - only show "eigene" in helper mode
     statusForColor = 'eigene';
   }
 
