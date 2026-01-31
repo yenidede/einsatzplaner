@@ -362,17 +362,31 @@ export async function getChangeTypeById(typeId: string) {
 export async function getEinsatzActivityLogs(
   einsatzId: string,
   limit = 50,
-  offset = 0
+  offset = 0,
+  orgId?: string
 ): Promise<ActivityLogResult> {
-  return getActivityLogs({ einsatzId, limit, offset });
+  const filters: ActivityLogFilters = { einsatzId, limit, offset };
+
+  if (orgId) {
+    filters.orgId = orgId;
+  }
+
+  return getActivityLogs(filters);
 }
 
 export async function getUserActivityLogs(
   userId: string,
   limit = 50,
-  offset = 0
+  offset = 0,
+  orgId?: string
 ): Promise<ActivityLogResult> {
-  return getActivityLogs({ userId, limit, offset });
+  const filters: ActivityLogFilters = { userId, limit, offset };
+
+  if (orgId) {
+    filters.orgId = orgId;
+  }
+
+  return getActivityLogs(filters);
 }
 
 export async function getOrganizationActivityLogs(

@@ -86,12 +86,11 @@ export default function NotificationMenu() {
   const { data: session } = useSession();
 
   const { data, isLoading } = useActivityLogs({ limit: 10, offset: 0 });
-
   const orgIds = session?.user.orgIds;
+
   const { data: orgsData } = useOrganizations(
     orgIds && orgIds.length > 1 ? orgIds : undefined
   );
-
   const activities = data || [];
 
   // Read IDs beim Mount laden
