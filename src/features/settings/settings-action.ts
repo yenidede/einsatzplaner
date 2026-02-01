@@ -8,6 +8,7 @@ import { hash, compare } from 'bcrypt';
 import { revalidatePath } from 'next/cache';
 import { OrganizationRole } from '@/types/next-auth';
 import { createClient } from '@supabase/supabase-js';
+import { hasPermission } from '@/lib/auth/authGuard';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -160,6 +161,101 @@ export async function getUserProfileAction() {
   };
 }
 
+export async function getUserProfileByIdAction(
+  userId: string,
+  organizationId: string
+) {
+  const session = await checkUserSession();
+  if (
+    !session.user.orgIds.includes(organizationId) ||
+    !(await hasPermission(session, 'einsaetze:read', organizationId))
+  ) {
+    throw new Error('Insufficient permissions');
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      firstname: true,
+      lastname: true,
+      picture_url: true,
+      phone: true,
+      hasLogoinCalendar: true,
+      created_at: true,
+      salutationId: true,
+      active_org: true,
+      user_organization_role: {
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              logo_url: true,
+            },
+          },
+          role: {
+            select: {
+              id: true,
+              name: true,
+              abbreviation: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!user) throw new Error('User not found');
+
+  const organizationsMap = new Map();
+  user.user_organization_role.forEach((uor) => {
+    const orgId = uor.organization.id;
+    if (!organizationsMap.has(orgId)) {
+      organizationsMap.set(orgId, {
+        id: orgId,
+        name: uor.organization.name,
+        logo_url: uor.organization.logo_url,
+        roles: [],
+        hasGetMailNotification: uor.hasGetMailNotification ?? true,
+      });
+    }
+
+    const org = organizationsMap.get(orgId);
+    if (!org.roles.find((r: OrganizationRole) => r.roleId === uor.role.id)) {
+      org.roles.push(uor.role);
+    }
+  });
+
+  const activeOrgId =
+    user.active_org || Array.from(organizationsMap.keys())[0] || null;
+  const activeOrgData = activeOrgId ? organizationsMap.get(activeOrgId) : null;
+
+  return {
+    id: user.id,
+    email: user.email,
+    firstname: user.firstname ?? '',
+    lastname: user.lastname ?? '',
+    picture_url: user.picture_url,
+    salutationId: user.salutationId ?? '',
+    orgIds: Array.from(organizationsMap.keys()),
+    roleIds: user.user_organization_role.map((uor) => uor.role.id),
+    activeOrganization: activeOrgData
+      ? {
+          id: activeOrgData.id,
+          name: activeOrgData.name,
+          logo_url: activeOrgData.logo_url,
+        }
+      : null,
+    phone: user.phone ?? '',
+    hasLogoinCalendar: user.hasLogoinCalendar ?? true,
+    created_at: user.created_at.toISOString(),
+    organizations: Array.from(organizationsMap.values()),
+    hasGetMailNotification: Array.from(organizationsMap.values()).some(
+      (org) => org.hasGetMailNotification
+    ),
+  };
+}
 export async function updateUserProfileAction(data: UserUpdateData) {
   const session = await checkUserSession();
 

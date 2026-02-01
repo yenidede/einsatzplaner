@@ -6,8 +6,23 @@ import { useOrganizationTerminology } from '@/hooks/use-organization-terminology
 import { useSession } from 'next-auth/react';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 
+interface usersData {
+  user: {
+    id: string;
+    email: string;
+    firstname: string | null;
+    lastname: string | null;
+    picture_url: string | null;
+  };
+  role: {
+    id: string;
+    name: string;
+    abbreviation: string | null;
+  };
+}
+
 interface UsersManagementSectionProps {
-  usersData: any[];
+  usersData: usersData[];
   currentUserEmail: string;
   onUserProfileClick: (userId: string) => void;
   onInviteClick: () => void;
@@ -27,20 +42,32 @@ export function UsersManagementSection({
     session?.user.activeOrganization?.id
   );
 
-  const groupedUsers = usersData?.reduce((acc: any, userOrgRole: any) => {
-    const userId = userOrgRole.user?.id;
-    if (!acc[userId]) {
-      acc[userId] = {
-        user: userOrgRole.user,
-        roles: [],
-      };
-    }
-    acc[userId].roles.push(userOrgRole.role);
-    return acc;
-  }, {});
+  const groupedUsers = usersData?.reduce(
+    (
+      acc: Record<
+        string,
+        { user: usersData['user']; roles: usersData['role'][] }
+      >,
+      userOrgRole: usersData
+    ) => {
+      const userId = userOrgRole.user?.id;
+      if (!acc[userId]) {
+        acc[userId] = {
+          user: userOrgRole.user,
+          roles: [],
+        };
+      }
+      acc[userId].roles.push(userOrgRole.role);
+      return acc;
+    },
+    {}
+  );
   const sortedUsers = Object.values(groupedUsers || {}).sort(
-    (a: any, b: any) => {
-      const getRoleWeight = (roles: any[]) => {
+    (
+      a: { user: usersData['user']; roles: usersData['role'][] },
+      b: { user: usersData['user']; roles: usersData['role'][] }
+    ) => {
+      const getRoleWeight = (roles: usersData['role'][]) => {
         const weights: Record<string, number> = {
           Superadmin: 4,
           Organisationsverwaltung: 3,
@@ -52,7 +79,7 @@ export function UsersManagementSection({
         };
         return Math.max(
           ...roles.map(
-            (r: any) =>
+            (r: usersData['role']) =>
               weights[r?.name as string] ||
               weights[r?.abbreviation as string] ||
               0
@@ -83,14 +110,19 @@ export function UsersManagementSection({
     <>
       <div className="flex flex-col items-start justify-start gap-5 self-stretch">
         {sortedUsers && sortedUsers.length > 0 ? (
-          sortedUsers.map((groupedUser: any) => (
-            <UserListItem
-              key={groupedUser.user?.id}
-              user={groupedUser.user}
-              roles={groupedUser.roles}
-              onProfileClick={() => onUserProfileClick(groupedUser.user?.id)}
-            />
-          ))
+          sortedUsers.map(
+            (groupedUser: {
+              user: usersData['user'];
+              roles: usersData['role'][];
+            }) => (
+              <UserListItem
+                key={groupedUser.user?.id}
+                user={groupedUser.user}
+                roles={groupedUser.roles}
+                onProfileClick={() => onUserProfileClick(groupedUser.user?.id)}
+              />
+            )
+          )
         ) : (
           <div className="self-stretch py-4 text-center text-gray-500">
             Keine User gefunden
