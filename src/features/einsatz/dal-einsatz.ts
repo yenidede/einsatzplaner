@@ -160,7 +160,9 @@ export async function getEinsatzWithDetailsById(
   return {
     ...rest,
     einsatz_status,
-    assigned_users: einsatz_helper.map((helper) => helper.user_id),
+    assigned_users: Array.from(
+      new Set(einsatz_helper.map((helper) => helper.user_id))
+    ),
     einsatz_fields: einsatz_field.map((field) => ({
       id: field.id,
       field_name: field.field.name,
@@ -325,11 +327,18 @@ export async function getEinsaetzeForTableView(
       id: einsatz.organization.id,
       name: einsatz.organization.name,
     },
-    einsatz_helper: einsatz.einsatz_helper.map((helper) => ({
-      id: helper.user.id,
-      firstname: helper.user.firstname ?? null,
-      lastname: helper.user.lastname ?? null,
-    })),
+    einsatz_helper: Array.from(
+      new Map(
+        einsatz.einsatz_helper.map((helper) => [
+          helper.user.id,
+          {
+            id: helper.user.id,
+            firstname: helper.user.firstname ?? null,
+            lastname: helper.user.lastname ?? null,
+          },
+        ])
+      ).values()
+    ),
     einsatz_categories: einsatz.einsatz_to_category.map(
       (cat) => cat.einsatz_category
     ),
@@ -549,8 +558,10 @@ export async function updateEinsatzTime(data: {
   let conflicts: EinsatzConflict[] = [];
 
   if (!disableTimeConflicts && existingEinsatz && existingEinsatz.einsatz_helper.length > 0) {
-    const assignedUserIds = existingEinsatz.einsatz_helper.map(
-      (helper) => helper.user_id
+    const assignedUserIds = Array.from(
+      new Set(
+        existingEinsatz.einsatz_helper.map((helper) => helper.user_id)
+      )
     );
 
     // Check if the new time causes conflicts with already assigned users
