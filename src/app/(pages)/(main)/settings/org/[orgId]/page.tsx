@@ -249,7 +249,6 @@ export default function OrganizationManagePage() {
       smallLogoFile !== null
     );
   })();
-
   const handleSave = useCallback(async () => {
     try {
       await updateMutation.mutateAsync({
