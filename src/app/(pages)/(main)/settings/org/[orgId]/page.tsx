@@ -52,7 +52,6 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { usePermissionGuard } from '@/hooks/use-permission-guard';
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -85,11 +84,6 @@ export default function OrganizationManagePage() {
   const [vat, setVat] = useState('');
   const [zvr, setZvr] = useState('');
   const [authority, setAuthority] = useState('');
-
-  const { isAuthorized, isLoading } = usePermissionGuard({
-    requiredPermissions: ['organization:update'],
-    requireAll: false,
-  });
 
   // Initial values for change detection
   const initialValuesRef = useRef<{
@@ -429,13 +423,7 @@ export default function OrganizationManagePage() {
     setIsProfileDialogOpen(false);
     setSelectedUserId(null);
   };
-  if (isLoading) {
-    return <div>Lade Nutzerdaten...</div>;
-  }
 
-  if (!isAuthorized) {
-    return <div>Keine Berechtigung. Weiterleitung...</div>;
-  }
   if (isLoadingUser || orgLoading) {
     return <SettingsLoadingSkeleton sidebarItems={6} />;
   }

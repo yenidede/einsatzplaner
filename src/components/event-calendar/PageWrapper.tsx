@@ -1,12 +1,11 @@
 'use client';
 
 import Calendar from '@/components/event-calendar/calendar';
+import { useSession } from 'next-auth/react';
 import { CalendarMode } from './types';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
-import { usePermissionGuard } from '@/hooks/use-permission-guard';
-import { ROLE_NAME_MAP } from '@/lib/auth/authGuard';
 
 export default function CalendarPageWrapper({
   mode,
@@ -15,27 +14,7 @@ export default function CalendarPageWrapper({
   mode: CalendarMode;
   description?: string;
 }) {
-  const { isAuthorized, isLoading, session } = usePermissionGuard(
-    mode === 'verwaltung'
-      ? {
-          requiredPermissions: [
-            'einsaetze:create',
-            'einsaetze:update',
-            'einsaetze:delete',
-          ],
-          requireAll: false, // User needs at least one of these
-          customRedirect: (roleIds) => {
-            if (roleIds.includes(ROLE_NAME_MAP['Helfer'])) {
-              return '/helferansicht';
-            }
-            return '/';
-          },
-        }
-      : {
-          requiredPermissions: ['einsaetze:read'],
-        }
-  );
-
+  const { data: session, status: sessionStatus } = useSession();
   const orgIds = session?.user?.orgIds;
 
   const { data: organizations, isError: isOrgError } = useOrganizations(orgIds);
@@ -51,14 +30,9 @@ export default function CalendarPageWrapper({
 
   const { isError: isEventError } = useEinsaetze(activeOrgId);
 
-  // Show loading state while authorization is being checked
-  if (isLoading) {
+  // Show loading state while session is being fetched
+  if (sessionStatus === 'loading') {
     return <div>Lade Nutzerdaten...</div>;
-  }
-
-  // If not authorized, show loading message while redirect happens
-  if (!isAuthorized) {
-    return <div>Keine Berechtigung. Weiterleitung...</div>;
   }
 
   const descriptionText = description

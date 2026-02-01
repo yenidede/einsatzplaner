@@ -6,13 +6,7 @@ import { Button } from '@/components/ui/button';
 import type { user } from '@/generated/prisma';
 
 interface UserListItemProps {
-  user: Omit<
-    Pick<user, 'id' | 'email' | 'firstname' | 'lastname' | 'picture_url'>,
-    'firstname' | 'lastname'
-  > & {
-    firstname: string | null;
-    lastname: string | null;
-  };
+  user: Pick<user, 'id' | 'email' | 'firstname' | 'lastname' | 'picture_url'>;
   roles: RoleType[];
   onProfileClick: () => void;
 }
