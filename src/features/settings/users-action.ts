@@ -48,7 +48,7 @@ export async function getAllUserOrgRolesAction(orgId: string | undefined) {
 
   if (
     !session.user.orgIds.includes(orgId) ||
-    !(await hasPermission(session, 'users:read', orgId))
+    !(await hasPermission(session, 'users:manage', orgId))
   ) {
     throw new Error('Insufficient permissions');
   }

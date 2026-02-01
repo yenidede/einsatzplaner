@@ -50,11 +50,49 @@ export async function getActivitiesForEinsatzAction(
 
 export async function getActivityLogsAction(filters?: ActivityLogFilters) {
   try {
-    await requireAuth();
+    const { session } = await requireAuth();
 
-    const result = await getActivityLogs(filters);
+    const userOrgIds = session.user.orgIds || [];
 
-    return { success: true, data: result };
+    if (userOrgIds.length === 0) {
+      return { success: false, error: 'Keine Organisationen gefunden' };
+    }
+
+    let allowedOrgIds = userOrgIds;
+    if (filters?.orgId) {
+      if (!userOrgIds.includes(filters.orgId)) {
+        return {
+          success: false,
+          error: 'Keine Berechtigung für diese Organisation',
+        };
+      }
+      allowedOrgIds = [filters.orgId];
+    }
+
+    const allActivities = await Promise.all(
+      allowedOrgIds.map((orgId) =>
+        getActivityLogs({
+          ...filters,
+          orgId,
+        })
+      )
+    );
+
+    const combinedActivities = allActivities
+      .flatMap((result) => result.activities)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+      .slice(0, filters?.limit || 50);
+
+    const total = allActivities.reduce((sum, result) => sum + result.total, 0);
+
+    return {
+      success: true,
+      data: {
+        activities: combinedActivities,
+        total,
+        hasMore: combinedActivities.length < total,
+      },
+    };
   } catch (error) {
     console.error('Error fetching activity logs:', error);
     return {
