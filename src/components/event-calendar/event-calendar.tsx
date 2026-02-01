@@ -193,8 +193,6 @@ export function EventCalendar({
   };
 
   const handleEventCreate = (startTime: Date) => {
-    console.log('Creating new event at:', startTime); // Debug log
-
     // Snap to 15-minute intervals
     const minutes = startTime.getMinutes();
     const remainder = minutes % 15;
