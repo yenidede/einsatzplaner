@@ -910,6 +910,9 @@ export function EventDialogVerwaltung({
   //   }
   // };
 
+  console.log('usersQuery.data', usersQuery.data);
+  console.log('staticFormData', staticFormData.assignedUsers);
+
   return (
     <>
       {AlertDialogComponent}
