@@ -33,6 +33,7 @@ export function useSalutations() {
     },
   });
 }
+
 export function useOrganizationById(orgId: string | undefined) {
   return useQuery({
     queryKey: settingsQueryKeys.org.detail(orgId),
