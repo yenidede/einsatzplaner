@@ -176,7 +176,7 @@ export async function getUserProfileByIdAction(
 
   if (
     !session.user.orgIds.includes(organizationId) ||
-    !(await hasPermission(session, 'organization:manage', organizationId))
+    !(await hasPermission(session, 'organization:read', organizationId))
   ) {
     throw new Error('Insufficient permissions');
   }
