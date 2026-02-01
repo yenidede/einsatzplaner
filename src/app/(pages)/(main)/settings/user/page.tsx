@@ -220,10 +220,6 @@ export default function SettingsPage() {
                 maxWidthOrHeight: 1200,
                 useWebWorker: true,
               });
-              const compressedSizeMB = fileToUpload.size / (1024 * 1024);
-              console.log(
-                `Image compressed: ${originalSizeMB.toFixed(2)}MB -> ${compressedSizeMB.toFixed(2)}MB`
-              );
             } catch (compressError) {
               console.warn(
                 'Image compression failed, using original:',
