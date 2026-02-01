@@ -161,12 +161,6 @@ export async function getUserForSession(userId: string) {
       },
     });
 
-    console.log('getUserForSession result:', {
-      found: !!user,
-      picture_url: user?.picture_url,
-      email: user?.email,
-    });
-
     return user;
   } catch (error: any) {
     console.error('getUserForSession error:', error);
@@ -209,10 +203,10 @@ export async function createUserWithOrgAndRoles(data: {
     const assignRoleIds = data.roleIds
       ? data.roleIds
       : data.roleNames
-          ?.map(
-            (roleName) => roleRecords.find((role) => role.name === roleName)?.id
-          )
-          .filter((id): id is string => !!id) || [];
+        ?.map(
+          (roleName) => roleRecords.find((role) => role.name === roleName)?.id
+        )
+        .filter((id): id is string => !!id) || [];
 
     return prisma.user.create({
       data: {

@@ -27,7 +27,6 @@ export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
   );
   // Filter events that are in the future and group them by day
   const futureEventsByDay = useMemo(() => {
-    console.log('Agenda view updating - showing all future events');
     const today = startOfDay(new Date());
 
     // Filter events that end today or later
@@ -77,7 +76,6 @@ export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('Agenda view event clicked:', event);
     onEventSelect(event);
   };
 
