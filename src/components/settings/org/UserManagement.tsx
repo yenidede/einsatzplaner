@@ -10,8 +10,8 @@ interface usersData {
   user: {
     id: string;
     email: string;
-    firstname: string | null;
-    lastname: string | null;
+    firstname: string;
+    lastname: string;
     picture_url: string | null;
   };
   role: {
