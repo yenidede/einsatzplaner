@@ -166,12 +166,21 @@ export async function getUserProfileByIdAction(
   organizationId: string
 ) {
   const session = await checkUserSession();
+  const targetUserInOrg = await prisma.user_organization_role.findFirst({
+    where: { user_id: userId, org_id: organizationId },
+  });
+
+  if (!targetUserInOrg) {
+    throw new Error('User is not part of the organization');
+  }
+
   if (
     !session.user.orgIds.includes(organizationId) ||
-    !(await hasPermission(session, 'einsaetze:read', organizationId))
+    !(await hasPermission(session, 'organization:manage', organizationId))
   ) {
     throw new Error('Insufficient permissions');
   }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
