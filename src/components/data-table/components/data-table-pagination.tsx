@@ -85,14 +85,6 @@ export function DataTablePagination<TData>({
             size="icon"
             className="size-8"
             onClick={() => {
-              console.log('pageIndex: ', table.getState().pagination.pageIndex);
-              console.log(
-                'setting to: ',
-                table.getState().pagination.pageIndex === 1
-                  ? FirstPageAlias
-                  : table.getState().pagination.pageIndex - 1
-              );
-
               // bug: pageIndex is always reset to 1, so 1 is now disabled. First page is aliased. If curr page is 2, set to FirstPageAlias
               table.setPageIndex(
                 table.getState().pagination.pageIndex === 1
