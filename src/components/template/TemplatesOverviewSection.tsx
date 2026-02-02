@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { TemplateCard } from '@/components/template/TemplateCard';
 
 interface TemplatesOverviewSectionProps {
   orgId: string;
@@ -80,35 +81,34 @@ export function TemplatesOverviewSection({
         {!isLoading && hasTemplates && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((template) => (
-              <button
+              <TemplateCard
                 key={template.id}
-                type="button"
+                icon={
+                  template.template_icon?.icon_url?.trim() ? (
+                    <Image
+                      src={template.template_icon.icon_url.trim()}
+                      alt={template.name ?? 'Unbenannte Vorlage'}
+                      width={24}
+                      height={24}
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="h-6 w-6 rounded bg-slate-200" />
+                  )
+                }
+                title={template.name ?? 'Unbenannte Vorlage'}
+                description={template.description}
                 onClick={() => handleEdit(template.id)}
-                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-slate-200 bg-slate-50 p-6 text-left transition-colors hover:border-slate-300 hover:bg-slate-100"
-              >
-                {template.template_icon?.icon_url?.trim() ? (
-                  <Image
-                    src={template.template_icon.icon_url.trim()}
-                    alt=""
-                    width={24}
-                    height={24}
-                    className="shrink-0"
-                    unoptimized
-                  />
-                ) : (
-                  <div className="h-6 w-6 shrink-0 rounded bg-slate-200" />
-                )}
-                <span className="font-medium">
-                  {template.name ?? 'Unbenannte Vorlage'}
-                </span>
-                {template.description && (
-                  <span className="text-muted-foreground line-clamp-2 text-center text-xs">
-                    {template.description}
-                  </span>
-                )}
-              </button>
+              />
             ))}
-            <button
+            <TemplateCard
+              icon={<Plus className="text-muted-foreground" />}
+              title="Neue Vorlage"
+              description="Erstelle eine neue Vorlage"
+              onClick={handleCreate}
+              className="border-dashed opacity-70"
+            />
+            {/* <button
               type="button"
               onClick={handleCreate}
               className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white p-6 transition-colors hover:border-slate-300 hover:bg-slate-50"
@@ -117,7 +117,7 @@ export function TemplatesOverviewSection({
               <span className="text-muted-foreground text-sm">
                 Neues Template
               </span>
-            </button>
+            </button> */}
           </div>
         )}
       </CardContent>
