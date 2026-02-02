@@ -8,6 +8,7 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { ROLE_NAME_MAP } from '@/lib/auth/authGuard';
+import { useSSE } from '@/hooks/useSSE'; // ← HINZUFÜGEN
 
 export default function CalendarPageWrapper({
   mode,
@@ -33,7 +34,7 @@ export default function CalendarPageWrapper({
             'einsaetze:update',
             'einsaetze:delete',
           ],
-          requireAll: false, // User needs at least one of these
+          requireAll: false,
           customRedirect: (roleIds) => {
             if (roleIds.includes(ROLE_NAME_MAP['Helfer'])) {
               return '/helferansicht';
@@ -49,6 +50,10 @@ export default function CalendarPageWrapper({
   const activeOrgId = permissionSession?.user?.activeOrganization?.id;
   const activeOrg =
     organizations?.find((org) => org.id === activeOrgId) ?? null;
+
+  // ← SSE-VERBINDUNG HERSTELLEN
+  const { isConnected } = useSSE(activeOrgId);
+  console.log('[PageWrapper] SSE Connection status:', isConnected);
 
   const { einsatz_plural, helper_plural } = useOrganizationTerminology(
     organizations,
