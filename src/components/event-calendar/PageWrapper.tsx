@@ -8,7 +8,7 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { ROLE_NAME_MAP } from '@/lib/auth/authGuard';
-import { useSSE } from '@/hooks/useSSE';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 export default function CalendarPageWrapper({
   mode,
@@ -51,7 +51,7 @@ export default function CalendarPageWrapper({
   const activeOrg =
     organizations?.find((org) => org.id === activeOrgId) ?? null;
 
-  const { isConnected } = useSSE(activeOrgId);
+  const { isConnected } = useSupabaseRealtime(activeOrgId);
 
   const { einsatz_plural, helper_plural } = useOrganizationTerminology(
     organizations,
