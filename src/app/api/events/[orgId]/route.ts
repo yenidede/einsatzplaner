@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth.config';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
+export const maxDuration = 60;
 interface ConnectedMessage {
   type: 'connected';
   orgId: string;
