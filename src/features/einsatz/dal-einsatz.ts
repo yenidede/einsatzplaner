@@ -518,7 +518,7 @@ export async function createEinsatz({
     }
   }
 
-  await sseEmitter.emit({
+  sseEmitter.emit({
     type: 'einsatz:created',
     data: createdEinsatz,
     orgId: useOrgId,
