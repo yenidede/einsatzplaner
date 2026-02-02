@@ -15,7 +15,6 @@ import z from 'zod';
 import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
 import { createChangeLogAuto } from '../activity_log/activity_log-dal';
 import { BadRequestError, ForbiddenError } from '@/lib/errors';
-// Entferne: import { sseEmitter } from '@/lib/sse/eventEmitter';
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -519,11 +518,6 @@ export async function createEinsatz({
     }
   }
 
-  /*   sseEmitter.emit({
-    type: 'einsatz:created',
-    data: createdEinsatz,
-    orgId: useOrgId,
-  }); */
   return {
     einsatz: createdEinsatz,
     conflicts: [],
@@ -601,12 +595,6 @@ export async function updateEinsatzTime(data: {
       updated_at: new Date(),
     },
   });
-
-  /*   sseEmitter.emit({
-    type: 'einsatz:updated',
-    data: einsatz,
-    orgId: einsatz.org_id,
-  }); */
 
   return {
     einsatz,
@@ -913,11 +901,6 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
         id: einsatz.id,
       },
     });
-    /*     sseEmitter.emit({
-      type: 'einsatz:deleted',
-      data: { id: einsatz.id, deleted: true },
-      orgId: einsatz.org_id,
-    }); */
   } catch (error) {
     throw new Response(
       `Failed to delete Einsaetze with ID ${einsatzId}: ${error}`,
