@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Type, Hash, Link2, Plus } from 'lucide-react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   getFieldTypeDefinition,
   type FieldTypeKey,
@@ -34,6 +36,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { StandardFieldsList } from './StandardFieldsList';
+import {
+  templateFormSchema,
+  type TemplateFormValues,
+  type TemplateFormInputValues,
+} from './template-form-schema';
 import { FieldTypeSelector } from '@/features/user_properties/components/FieldTypeSelector';
 import { PropertyConfiguration } from '@/features/user_properties/components/PropertyConfiguration';
 import type { PropertyConfig } from '@/features/user_properties/types';
@@ -71,9 +78,19 @@ export function TemplateForm({
   const { data: icons = [] } = useTemplateIcons();
   const { data: org } = useOrganization(effectiveOrgId);
 
-  const [name, setName] = useState('');
-  const [iconId, setIconId] = useState('');
-  const [description, setDescription] = useState('');
+  const form = useForm<TemplateFormInputValues, unknown, TemplateFormValues>({
+    resolver: zodResolver(templateFormSchema),
+    defaultValues: {
+      name: '',
+      icon_id: '',
+      description: '',
+    },
+  });
+
+  const { register, control, handleSubmit, formState, watch, setValue, reset } =
+    form;
+  const { errors } = formState;
+
   const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
   const [customFieldStep, setCustomFieldStep] = useState<
     'typeSelection' | 'configuration'
@@ -83,50 +100,52 @@ export function TemplateForm({
 
   useEffect(() => {
     if (template) {
-      setName(template.name ?? '');
-      setIconId(template.icon_id);
-      setDescription(template.description ?? '');
+      reset({
+        name: template.name ?? '',
+        icon_id: template.icon_id ?? '',
+        description: template.description ?? '',
+      });
     }
-  }, [template]);
+  }, [template, reset]);
 
-  const handleSave = useCallback(() => {
-    if (!iconId && icons.length > 0) setIconId(icons[0].id);
-    if (isEdit && templateId) {
-      updateMutation.mutate({
-        templateId,
-        name: name.trim() || null,
-        icon_id: iconId || undefined,
-        description: description.trim() || null,
-      });
-    } else if (effectiveOrgId) {
-      createMutation.mutate({
-        org_id: effectiveOrgId,
-        name: name.trim() || '',
-        icon_id: iconId || (icons[0]?.id ?? ''),
-        description: description.trim() || null,
-      });
+  useEffect(() => {
+    if (icons.length > 0 && !watch('icon_id')) {
+      setValue('icon_id', icons[0].id, { shouldValidate: true });
     }
-  }, [
-    isEdit,
-    templateId,
-    effectiveOrgId,
-    name,
-    iconId,
-    icons,
-    createMutation,
-    updateMutation,
-  ]);
+  }, [icons, setValue, watch]);
+
+  const onSubmit = useCallback(
+    (data: TemplateFormValues) => {
+      const iconId = data.icon_id || (icons[0]?.id ?? '');
+      if (isEdit && templateId) {
+        updateMutation.mutate({
+          templateId,
+          name: data.name || null,
+          icon_id: iconId || undefined,
+          description: data.description ?? null,
+        });
+      } else if (effectiveOrgId) {
+        createMutation.mutate({
+          org_id: effectiveOrgId,
+          name: data.name || '',
+          icon_id: iconId,
+          description: data.description ?? null,
+        });
+      }
+    },
+    [isEdit, templateId, effectiveOrgId, icons, createMutation, updateMutation]
+  );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
-        handleSave();
+        form.handleSubmit(onSubmit)();
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [handleSave]);
+  }, [form, onSubmit]);
 
   const computedBackHref =
     isEdit && template?.org_id
@@ -137,11 +156,12 @@ export function TemplateForm({
     router.push(computedBackHref);
   }, [router, computedBackHref]);
 
+  const formName = watch('name');
   const pageTitle = isEdit
     ? template
-      ? `${(template.name ?? '').trim() || 'Vorlage'} bearbeiten`
+      ? `'${formName.trim()}' bearbeiten`
       : 'Vorlage erstellen'
-    : `Erstelle Vorlage ${name.trim() !== '' ? `'${name.trim()}'` : ''}`;
+    : `Erstelle Vorlage ${formName?.trim() ? `'${formName.trim()}'` : ''}`;
 
   const existingTemplateFieldNames =
     template?.template_field
@@ -186,7 +206,7 @@ export function TemplateForm({
   const header = (
     <PageHeader
       title={pageTitle}
-      onSave={handleSave}
+      onSave={() => form.handleSubmit(onSubmit)()}
       isSaving={isSaving}
       onCancel={handleCancel}
     />
@@ -200,7 +220,7 @@ export function TemplateForm({
 
   if (isEdit && templateLoading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
         {loadingContent}
       </div>
     );
@@ -208,7 +228,7 @@ export function TemplateForm({
 
   if (isEdit && !templateLoading && !template) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
         <p className="text-muted-foreground py-8 text-center text-sm">
           Vorlage nicht gefunden.
         </p>
@@ -223,7 +243,7 @@ export function TemplateForm({
         <Card>
           <CardHeader>
             <CardTitle>Template-Informationen</CardTitle>
-            <CardDescription>Bezeichnung und Icon der Vorlage</CardDescription>
+            <CardDescription>Bezeichnung und Icon der Vorlage.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -233,42 +253,67 @@ export function TemplateForm({
               <Input
                 id="template-name"
                 placeholder="Einsatzname"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                {...register('name')}
               />
+              {errors.name && (
+                <p className="text-destructive text-sm">
+                  {errors.name.message}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="template-icon">
                 Template Icon <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={iconId || (icons[0]?.id ?? '')}
-                onValueChange={setIconId}
-              >
-                <SelectTrigger id="template-icon">
-                  <SelectValue placeholder="Icon auswählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {icons.map((icon, index) => (
-                    <SelectItem key={icon.id} value={icon.id}>
-                      <span className="flex items-center gap-2">
-                        {icon.icon_url?.trim() ? (
-                          <Image
-                            src={icon.icon_url.trim()}
-                            alt=""
-                            width={18}
-                            height={18}
-                            unoptimized
-                          />
-                        ) : (
-                          <span className="bg-muted h-[18px] w-[18px] rounded" />
-                        )}
-                        Icon {index + 1}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                name="icon_id"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value || (icons[0]?.id ?? '')}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger id="template-icon">
+                      <SelectValue placeholder="Icon auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {icons.map((icon, index) => (
+                        <SelectItem key={icon.id} value={icon.id}>
+                          <span className="flex items-center gap-2">
+                            {icon.icon_url?.trim() ? (
+                              <Image
+                                src={icon.icon_url.trim()}
+                                alt=""
+                                width={18}
+                                height={18}
+                                unoptimized
+                              />
+                            ) : (
+                              <span className="bg-muted h-[18px] w-[18px] rounded" />
+                            )}
+                            Icon {index + 1}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.icon_id && (
+                <p className="text-destructive text-sm">
+                  {errors.icon_id.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="template-description">
+                Beschreibung (optional)
+              </Label>
+              <Input
+                id="template-description"
+                placeholder="Kurze Beschreibung der Vorlage"
+                {...register('description')}
+              />
             </div>
           </CardContent>
         </Card>
@@ -333,25 +378,32 @@ export function TemplateForm({
               </div>
             ) : (
               <ul className="space-y-2">
-                {template.template_field.map((tf) => (
-                  <li
-                    key={tf.field.id}
-                    className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-2"
-                  >
-                    <Type className="text-muted-foreground h-4 w-4 shrink-0" />
-                    <span className="text-sm font-medium">
-                      {tf.field?.name ?? 'Feld'}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      ({tf.field?.type?.datatype ?? '—'})
-                    </span>
-                    {tf.field?.is_required && (
-                      <span className="text-muted-foreground ml-auto text-xs">
-                        Pflichtfeld
+                {template.template_field.map((tf) => {
+                  const datatype = tf.field?.type?.datatype ?? 'text';
+                  const fieldDef = getFieldTypeDefinition(
+                    datatype as FieldTypeKey
+                  );
+                  const FieldIcon = fieldDef?.Icon ?? Type;
+                  return (
+                    <li
+                      key={tf.field.id}
+                      className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-2"
+                    >
+                      <FieldIcon className="text-muted-foreground h-4 w-4 shrink-0" />
+                      <span className="text-sm font-medium">
+                        {tf.field?.name ?? 'Feld'}
                       </span>
-                    )}
-                  </li>
-                ))}
+                      <span className="text-muted-foreground text-xs">
+                        ({tf.field?.type?.datatype ?? '—'})
+                      </span>
+                      {tf.field?.is_required && (
+                        <span className="text-muted-foreground ml-auto text-xs">
+                          Pflichtfeld
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>
@@ -428,7 +480,10 @@ export function TemplateForm({
         <Button variant="ghost" onClick={handleCancel}>
           Schließen (ESC)
         </Button>
-        <Button onClick={handleSave} disabled={isSaving}>
+        <Button
+          onClick={() => form.handleSubmit(onSubmit)()}
+          disabled={isSaving}
+        >
           {isSaving ? 'Speichert…' : 'Speichern'}
         </Button>
       </footer>
@@ -436,7 +491,7 @@ export function TemplateForm({
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
       <div className="space-y-8">
         {header}
         {formContent}
