@@ -11,9 +11,33 @@ interface ConnectedMessage {
   orgId: string;
 }
 
-const KEEP_ALIVE_INTERVAL_MS = Number(
-  process.env.KEEP_ALIVE_INTERVAL_MS || 30000
-);
+const MIN_KEEP_ALIVE_MS = 5_000; // 5 seconds
+const MAX_KEEP_ALIVE_MS = 5 * 60_000; // 5 minutes
+const DEFAULT_KEEP_ALIVE_MS = 30_000; // 30 seconds
+
+const rawKeepAlive = Number(process.env.KEEP_ALIVE_INTERVAL_MS);
+const KEEP_ALIVE_INTERVAL_MS = Number.isNaN(rawKeepAlive)
+  ? DEFAULT_KEEP_ALIVE_MS
+  : Math.max(MIN_KEEP_ALIVE_MS, Math.min(MAX_KEEP_ALIVE_MS, rawKeepAlive));
+
+const MIN_REVALIDATION_MS = 30_000; // 30 seconds
+const MAX_REVALIDATION_MS = 10 * 60_000; // 10 minutes
+const DEFAULT_REVALIDATION_MS = 2 * 60_000; // 2 minutes
+
+const rawRevalidation = Number(process.env.SSE_SESSION_REVALIDATION_MS);
+const SESSION_REVALIDATION_MS = Number.isNaN(rawRevalidation)
+  ? DEFAULT_REVALIDATION_MS
+  : Math.max(
+      MIN_REVALIDATION_MS,
+      Math.min(MAX_REVALIDATION_MS, rawRevalidation)
+    );
+
+if (process.env.NODE_ENV === 'development') {
+  console.log('[SSE Config]', {
+    keepAliveMs: KEEP_ALIVE_INTERVAL_MS,
+    sessionRevalidationMs: SESSION_REVALIDATION_MS,
+  });
+}
 
 export async function GET(
   req: NextRequest,
@@ -38,12 +62,17 @@ export async function GET(
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       let keepAliveInterval: NodeJS.Timeout | null = null;
+      let revalidationInterval: NodeJS.Timeout | null = null;
       let unsubscribe: (() => void) | null = null;
 
       const cleanup = (): void => {
         if (keepAliveInterval) {
           clearInterval(keepAliveInterval);
           keepAliveInterval = null;
+        }
+        if (revalidationInterval) {
+          clearInterval(revalidationInterval);
+          revalidationInterval = null;
         }
         if (unsubscribe) {
           unsubscribe();
@@ -78,7 +107,6 @@ export async function GET(
           }
         });
       } catch (error) {
-        // Handle subscription error (e.g., max connections reached)
         console.error('[SSE] Error subscribing to events:', error);
         cleanup();
         return;
@@ -92,6 +120,26 @@ export async function GET(
           cleanup();
         }
       }, KEEP_ALIVE_INTERVAL_MS);
+
+      revalidationInterval = setInterval(async () => {
+        try {
+          const currentSession = await getServerSession(authOptions);
+
+          if (!currentSession?.user?.id) {
+            cleanup();
+            return;
+          }
+
+          if (!currentSession.user.orgIds?.includes(orgId)) {
+            cleanup();
+            return;
+          }
+        } catch (error) {
+          console.error('[SSE] Error during session revalidation:', error);
+          // Don't close connection on revalidation errors to avoid false positives
+          // The connection will be closed on the next failed revalidation or keep-alive
+        }
+      }, SESSION_REVALIDATION_MS);
 
       req.signal.addEventListener('abort', cleanup);
 

@@ -601,7 +601,7 @@ export async function updateEinsatzTime(data: {
     },
   });
 
-  await sseEmitter.emit({
+  sseEmitter.emit({
     type: 'einsatz:updated',
     data: einsatz,
     orgId: einsatz.org_id,
@@ -912,7 +912,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
         id: einsatz.id,
       },
     });
-    await sseEmitter.emit({
+    sseEmitter.emit({
       type: 'einsatz:deleted',
       data: { id: einsatz.id, deleted: true },
       orgId: einsatz.org_id,
