@@ -15,7 +15,6 @@ import z from 'zod';
 import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
 import { createChangeLogAuto } from '../activity_log/activity_log-dal';
 import { BadRequestError, ForbiddenError } from '@/lib/errors';
-import { sseEmitter } from '@/lib/sse/eventEmitter';
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -63,7 +62,7 @@ async function checkEinsatzConflicts(
     return [];
   }
 
-  // Find all Einsatz assignments for these users that overlap with the given time range
+  // Find all Einsätze assignments for these users that overlap with the given time range
   const conflictingAssignments = await prisma.einsatz_helper.findMany({
     where: {
       user_id: { in: userIds },
@@ -276,6 +275,7 @@ export async function getEinsaetzeForTableView(
             select: {
               type: {
                 select: {
+                  name: true,
                   datatype: true,
                 },
               },
@@ -518,11 +518,6 @@ export async function createEinsatz({
     }
   }
 
-  sseEmitter.emit({
-    type: 'einsatz:created',
-    data: createdEinsatz,
-    orgId: useOrgId,
-  });
   return {
     einsatz: createdEinsatz,
     conflicts: [],
@@ -599,12 +594,6 @@ export async function updateEinsatzTime(data: {
       end,
       updated_at: new Date(),
     },
-  });
-
-  sseEmitter.emit({
-    type: 'einsatz:updated',
-    data: einsatz,
-    orgId: einsatz.org_id,
   });
 
   return {
@@ -876,7 +865,7 @@ export async function updateEinsatz({
       conflicts: [],
     };
   } catch (error) {
-    throw new Response(`Failed to update Einsatz with ID ${id}: ${error}`, {
+    throw new Response(`Failed to update Einsaetze with ID ${id}: ${error}`, {
       status: 500,
     });
   }
@@ -912,14 +901,9 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
         id: einsatz.id,
       },
     });
-    sseEmitter.emit({
-      type: 'einsatz:deleted',
-      data: { id: einsatz.id, deleted: true },
-      orgId: einsatz.org_id,
-    });
   } catch (error) {
     throw new Response(
-      `Failed to delete Einsatz with ID ${einsatzId}: ${error}`,
+      `Failed to delete Einsaetze with ID ${einsatzId}: ${error}`,
       { status: 500 }
     );
   }
