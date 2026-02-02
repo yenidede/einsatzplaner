@@ -15,6 +15,7 @@ import z from 'zod';
 import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
 import { createChangeLogAuto } from '../activity_log/activity_log-dal';
 import { BadRequestError, ForbiddenError } from '@/lib/errors';
+import { sseEmitter } from '@/lib/sse/eventEmitter';
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -354,16 +355,16 @@ export async function getEinsaetzeForTableView(
     ),
     user: einsatz.user
       ? {
-        id: einsatz.user.id,
-        firstname: einsatz.user.firstname ?? null,
-        lastname: einsatz.user.lastname ?? null,
-      }
+          id: einsatz.user.id,
+          firstname: einsatz.user.firstname ?? null,
+          lastname: einsatz.user.lastname ?? null,
+        }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-        id: einsatz.einsatz_template.id,
-        name: einsatz.einsatz_template.name ?? null,
-      }
+          id: einsatz.einsatz_template.id,
+          name: einsatz.einsatz_template.name ?? null,
+        }
       : null,
     _count: einsatz._count,
   }));
@@ -463,11 +464,15 @@ export async function createEinsatz({
 
   // Check for conflicts when creating with assigned users (unless disabled)
   let conflicts: EinsatzConflict[] = [];
-  if (!disableTimeConflicts && data.assignedUsers && data.assignedUsers.length > 0) {
+  if (
+    !disableTimeConflicts &&
+    data.assignedUsers &&
+    data.assignedUsers.length > 0
+  ) {
     conflicts = await checkEinsatzConflicts(
       data.assignedUsers,
       data.start,
-      data.end,
+      data.end
     );
 
     // Return early if conflicts exist - do not create the einsatz
@@ -513,6 +518,11 @@ export async function createEinsatz({
     }
   }
 
+  await sseEmitter.emit({
+    type: 'einsatz:created',
+    data: createdEinsatz,
+    orgId: useOrgId,
+  });
   return {
     einsatz: createdEinsatz,
     conflicts: [],
@@ -543,7 +553,12 @@ export async function updateEinsatzTime(data: {
     disableTimeConflicts: z.boolean().optional(),
   });
 
-  const { id, start, end, disableTimeConflicts = false } = dataSchema.parse(data);
+  const {
+    id,
+    start,
+    end,
+    disableTimeConflicts = false,
+  } = dataSchema.parse(data);
 
   // Get assigned users for this Einsatz
   const existingEinsatz = await prisma.einsatz.findUnique({
@@ -557,20 +572,17 @@ export async function updateEinsatzTime(data: {
 
   let conflicts: EinsatzConflict[] = [];
 
-  if (!disableTimeConflicts && existingEinsatz && existingEinsatz.einsatz_helper.length > 0) {
+  if (
+    !disableTimeConflicts &&
+    existingEinsatz &&
+    existingEinsatz.einsatz_helper.length > 0
+  ) {
     const assignedUserIds = Array.from(
-      new Set(
-        existingEinsatz.einsatz_helper.map((helper) => helper.user_id)
-      )
+      new Set(existingEinsatz.einsatz_helper.map((helper) => helper.user_id))
     );
 
     // Check if the new time causes conflicts with already assigned users
-    conflicts = await checkEinsatzConflicts(
-      assignedUserIds,
-      start,
-      end,
-      id
-    );
+    conflicts = await checkEinsatzConflicts(assignedUserIds, start, end, id);
 
     // Return early if conflicts exist - do not update the time
     if (conflicts.length > 0) {
@@ -587,6 +599,12 @@ export async function updateEinsatzTime(data: {
       end,
       updated_at: new Date(),
     },
+  });
+
+  await sseEmitter.emit({
+    type: 'einsatz:updated',
+    data: einsatz,
+    orgId: einsatz.org_id,
   });
 
   return {
@@ -649,7 +667,7 @@ export async function toggleUserAssignmentToEinsatz(
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-      existingEinsatz.einsatz_helper.length + addOrRemoveOne
+    existingEinsatz.einsatz_helper.length + addOrRemoveOne
       ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
       : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
@@ -893,6 +911,11 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
       where: {
         id: einsatz.id,
       },
+    });
+    await sseEmitter.emit({
+      type: 'einsatz:deleted',
+      data: { id: einsatz.id, deleted: true },
+      orgId: einsatz.org_id,
     });
   } catch (error) {
     throw new Response(
