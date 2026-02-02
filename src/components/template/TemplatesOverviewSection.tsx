@@ -108,16 +108,6 @@ export function TemplatesOverviewSection({
               onClick={handleCreate}
               className="border-dashed opacity-70"
             />
-            {/* <button
-              type="button"
-              onClick={handleCreate}
-              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white p-6 transition-colors hover:border-slate-300 hover:bg-slate-50"
-            >
-              <Plus className="h-8 w-8 text-slate-400" />
-              <span className="text-muted-foreground text-sm">
-                Neues Template
-              </span>
-            </button> */}
           </div>
         )}
       </CardContent>
