@@ -473,6 +473,7 @@ export default function OrganizationManagePage() {
   return (
     <>
       <SettingsPageLayout
+        key={orgId}
         header={header}
         mobileNav={mobileNav}
         currentOrgId={orgId}
