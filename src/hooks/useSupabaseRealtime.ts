@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/features/einsatz/queryKeys';
-import { supabaseRealtimeClient } from '@/lib/supabase-client'; // GEÄNDERT
+import { supabaseRealtimeClient } from '@/lib/supabase-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export function useSupabaseRealtime(orgId?: string) {
@@ -22,7 +22,7 @@ export function useSupabaseRealtime(orgId?: string) {
     }
 
     const channelName = `org-changes:${orgId}:${Date.now()}`;
-    const channel = supabaseRealtimeClient.channel(channelName); // GEÄNDERT
+    const channel = supabaseRealtimeClient.channel(channelName);
 
     channelRef.current = channel;
 
@@ -84,7 +84,7 @@ export function useSupabaseRealtime(orgId?: string) {
     return () => {
       isMountedRef.current = false;
       if (channelRef.current) {
-        supabaseRealtimeClient.removeChannel(channelRef.current); // GEÄNDERT
+        supabaseRealtimeClient.removeChannel(channelRef.current);
         channelRef.current = null;
       }
       setIsConnected(false);
