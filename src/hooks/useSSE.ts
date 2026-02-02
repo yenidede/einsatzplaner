@@ -2,17 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/features/einsatz/queryKeys';
-
-interface SSEEvent {
-  type:
-    | 'connected'
-    | 'einsatz:created'
-    | 'einsatz:updated'
-    | 'einsatz:deleted'
-    | 'einsatz:assignment';
-  data?: any;
-  orgId?: string;
-}
+import type { SSEEvent } from '@/lib/sse/eventEmitter';
 
 export function useSSE(orgId?: string) {
   const { data: session } = useSession();
@@ -21,15 +11,24 @@ export function useSSE(orgId?: string) {
   const [isConnected, setIsConnected] = useState(false);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const isMountedRef = useRef(true);
   const maxReconnectAttempts = 5;
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     if (!orgId || !session?.user?.id) {
       setIsConnected(false);
       return;
     }
 
     const connect = () => {
+      // Check if component is still mounted
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      // Close existing connection
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
@@ -39,17 +38,21 @@ export function useSSE(orgId?: string) {
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
+        if (!isMountedRef.current) {
+          eventSource.close();
+          return;
+        }
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
       };
 
       eventSource.onmessage = (event) => {
+        if (!isMountedRef.current) {
+          return;
+        }
+
         try {
           const data: SSEEvent = JSON.parse(event.data);
-
-          if (data.type === 'connected') {
-            return;
-          }
 
           // Invalidate queries based on event type
           switch (data.type) {
@@ -60,7 +63,7 @@ export function useSSE(orgId?: string) {
               queryClient.invalidateQueries({
                 queryKey: queryKeys.einsaetze(orgId),
               });
-              if (data.data?.id) {
+              if (data.data && 'id' in data.data && data.data.id) {
                 queryClient.invalidateQueries({
                   queryKey: queryKeys.detailedEinsatz(data.data.id),
                 });
@@ -72,7 +75,7 @@ export function useSSE(orgId?: string) {
         }
       };
 
-      eventSource.onerror = (error) => {
+      eventSource.onerror = () => {
         setIsConnected(false);
 
         if (eventSourceRef.current) {
@@ -80,36 +83,47 @@ export function useSSE(orgId?: string) {
           eventSourceRef.current = null;
         }
 
-        // Attempt to reconnect with exponential backoff
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const delay = Math.min(
-            1000 * Math.pow(2, reconnectAttemptsRef.current),
-            30000
-          );
+        // Only reconnect if component is still mounted
+        if (
+          !isMountedRef.current ||
+          reconnectAttemptsRef.current >= maxReconnectAttempts
+        ) {
+          if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+            console.error('[SSE] Max reconnection attempts reached');
+          }
+          return;
+        }
 
-          reconnectTimeoutRef.current = setTimeout(() => {
+        const delay = Math.min(
+          1000 * Math.pow(2, reconnectAttemptsRef.current),
+          30000
+        );
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
             reconnectAttemptsRef.current++;
             connect();
-          }, delay);
-        } else {
-          console.error('[SSE] Max reconnection attempts reached');
-        }
+          }
+        }, delay);
       };
     };
 
     connect();
 
     return () => {
+      isMountedRef.current = false;
+
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       setIsConnected(false);
     };
-  }, [orgId, queryClient]);
+  }, [session?.user?.id, orgId, queryClient]);
 
   return { isConnected };
 }

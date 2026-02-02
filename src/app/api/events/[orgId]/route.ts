@@ -1,12 +1,7 @@
 import { NextRequest } from 'next/server';
-import { sseEmitter } from '@/lib/sse/eventEmitter';
+import { sseEmitter, type SSEController } from '@/lib/sse/eventEmitter';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth.config';
-import {
-  ForbiddenError,
-  InternalServerError,
-  UnauthorizedError,
-} from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,6 +11,10 @@ interface ConnectedMessage {
   orgId: string;
 }
 
+const KEEP_ALIVE_INTERVAL_MS = Number(
+  process.env.KEEP_ALIVE_INTERVAL_MS || 30000
+);
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { orgId: string } }
@@ -23,52 +22,23 @@ export async function GET(
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    return new UnauthorizedError('User is not authenticated');
+    return new Response('User is not authenticated', { status: 401 });
   }
+
   const { orgId } = await params;
 
   if (!session.user.orgIds?.includes(orgId)) {
-    return new ForbiddenError('You do not have access to this organization');
+    return new Response('You do not have access to this organization', {
+      status: 403,
+    });
   }
 
   const encoder = new TextEncoder();
 
-  const stream = new ReadableStream({
-    start(controller: ReadableStreamDefaultController<Uint8Array>) {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
       let keepAliveInterval: NodeJS.Timeout | null = null;
       let unsubscribe: (() => void) | null = null;
-
-      try {
-        const connectedMsg: ConnectedMessage = { type: 'connected', orgId };
-        const data = encoder.encode(
-          `data: ${JSON.stringify(connectedMsg)}\n\n`
-        );
-        controller.enqueue(data);
-      } catch (error) {
-        controller.close();
-        return new InternalServerError(
-          `Error initializing SSE connection: ${error}`
-        );
-      }
-
-      unsubscribe = sseEmitter.subscribe(orgId, (event) => {
-        try {
-          const message = `data: ${JSON.stringify(event)}\n\n`;
-          controller.enqueue(encoder.encode(message));
-        } catch (error) {
-          cleanup();
-          return new InternalServerError(`Error sending SSE event: ${error}`);
-        }
-      });
-
-      keepAliveInterval = setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(': keep-alive\n\n'));
-        } catch (error) {
-          cleanup();
-          return new InternalServerError(`Error sending keep-alive: ${error}`);
-        }
-      }, 30000);
 
       const cleanup = (): void => {
         if (keepAliveInterval) {
@@ -81,27 +51,59 @@ export async function GET(
         }
         try {
           controller.close();
-        } catch (error) {
+        } catch {
           // Controller might already be closed
-          return;
         }
       };
 
+      try {
+        const connectedMsg: ConnectedMessage = { type: 'connected', orgId };
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(connectedMsg)}\n\n`)
+        );
+      } catch (error) {
+        console.error('[SSE] Error sending initial message:', error);
+        cleanup();
+        return;
+      }
+
+      try {
+        unsubscribe = sseEmitter.subscribe(orgId, (event) => {
+          try {
+            const message = `data: ${JSON.stringify(event)}\n\n`;
+            controller.enqueue(encoder.encode(message));
+          } catch (error) {
+            console.error('[SSE] Error sending event:', error);
+            cleanup();
+          }
+        });
+      } catch (error) {
+        // Handle subscription error (e.g., max connections reached)
+        console.error('[SSE] Error subscribing to events:', error);
+        cleanup();
+        return;
+      }
+
+      keepAliveInterval = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(': keep-alive\n\n'));
+        } catch (error) {
+          console.error('[SSE] Error sending keep-alive:', error);
+          cleanup();
+        }
+      }, KEEP_ALIVE_INTERVAL_MS);
+
       req.signal.addEventListener('abort', cleanup);
 
-      (controller as any)._cleanup = cleanup;
+      (controller as SSEController)._cleanup = cleanup;
     },
-    cancel(controller: ReadableStreamDefaultController<Uint8Array>) {
-      if ((controller as any)._cleanup) {
-        (controller as any)._cleanup();
+    cancel(controller) {
+      const ctrl = controller as SSEController;
+      if (ctrl._cleanup) {
+        ctrl._cleanup();
       }
     },
   });
-
-  console.log(
-    `[SSE Route] Total clients for org ${orgId}:`,
-    sseEmitter.getClientCount(orgId)
-  );
 
   return new Response(stream, {
     headers: {
