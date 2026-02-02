@@ -16,8 +16,6 @@ interface SSEEvent {
 }
 
 export function useSSE(orgId?: string) {
-  console.log('[useSSE] Hook called with orgId:', orgId);
-
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -27,47 +25,32 @@ export function useSSE(orgId?: string) {
   const maxReconnectAttempts = 5;
 
   useEffect(() => {
-    console.log('[useSSE] Effect triggered', {
-      orgId,
-      hasSession: !!session?.user?.id,
-    });
-
     if (!orgId || !session?.user?.id) {
-      console.log('[useSSE] Skipping connection - missing orgId or session');
       setIsConnected(false);
       return;
     }
 
     const connect = () => {
-      // Close existing connection
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
 
-      console.log(`[useSSE] Connecting to /api/events/${orgId}...`);
       const eventSource = new EventSource(`/api/events/${orgId}`);
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
-        console.log('[SSE] Connection opened');
         setIsConnected(true);
-        reconnectAttemptsRef.current = 0; // Reset attempts on successful connection
+        reconnectAttemptsRef.current = 0;
       };
 
       eventSource.onmessage = (event) => {
-        console.log('[SSE] Raw event received:', event.data);
         try {
           const data: SSEEvent = JSON.parse(event.data);
 
           if (data.type === 'connected') {
-            console.log('[SSE] Connected to SSE stream for org:', data.orgId);
             return;
           }
-
-          console.log('[SSE] Received event:', data.type, data);
-          console.log('[SSE] Invalidating queries for orgId:', orgId);
-          console.log('[SSE] Event data:', JSON.stringify(data, null, 2));
 
           // Invalidate queries based on event type
           switch (data.type) {
@@ -91,12 +74,8 @@ export function useSSE(orgId?: string) {
       };
 
       eventSource.onerror = (error) => {
-        console.error('[SSE] Connection error - full error object:', error);
-        console.error('[SSE] EventSource readyState:', eventSource.readyState);
-        console.error('[SSE] EventSource url:', eventSource.url);
         setIsConnected(false);
 
-        // Close the connection
         if (eventSourceRef.current) {
           eventSourceRef.current.close();
           eventSourceRef.current = null;
@@ -107,9 +86,6 @@ export function useSSE(orgId?: string) {
           const delay = Math.min(
             1000 * Math.pow(2, reconnectAttemptsRef.current),
             30000
-          );
-          console.log(
-            `[SSE] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})...`
           );
 
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -125,7 +101,6 @@ export function useSSE(orgId?: string) {
     connect();
 
     return () => {
-      console.log('[SSE] Cleaning up connection...');
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;

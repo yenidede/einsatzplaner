@@ -1,15 +1,10 @@
-export { redisEventEmitter as sseEmitter } from './redisEventEmitter';
-export type { RedisSSEEvent as SSEEvent } from './redisEventEmitter';
-
-/* export { supabaseEventEmitter as sseEmitter } from './supabaseEventEmitter';
-export type { SupabaseSSEEvent as SSEEvent } from './supabaseEventEmitter'; */
 type EventType =
   | 'einsatz:created'
   | 'einsatz:updated'
   | 'einsatz:deleted'
   | 'einsatz:assignment';
 
-interface SSEEvent {
+export interface SSEEvent {
   type: EventType;
   data: any;
   orgId: string;
@@ -23,8 +18,6 @@ class SSEEventEmitter {
       this.clients.set(orgId, new Set());
     }
     this.clients.get(orgId)!.add(callback);
-
-    // Return unsubscribe function
     return () => {
       this.clients.get(orgId)?.delete(callback);
       if (this.clients.get(orgId)?.size === 0) {
@@ -34,17 +27,9 @@ class SSEEventEmitter {
   }
 
   emit(event: SSEEvent) {
-    console.log(
-      `[SSE Emitter] Emitting event type: ${event.type} for org: ${event.orgId}`
-    );
     const callbacks = this.clients.get(event.orgId);
-    console.log(
-      `[SSE Emitter] Found ${callbacks?.size || 0} clients for org ${event.orgId}`
-    );
     if (callbacks) {
       callbacks.forEach((callback) => callback(event));
-    } else {
-      console.log(`[SSE Emitter] No clients subscribed for org ${event.orgId}`);
     }
   }
 
@@ -53,4 +38,13 @@ class SSEEventEmitter {
   }
 }
 
-//export const sseEmitter = new SSEEventEmitter();
+// Global Singleton Pattern für Next.js
+declare global {
+  var __sseEmitter: SSEEventEmitter | undefined;
+}
+
+export const sseEmitter = global.__sseEmitter ?? new SSEEventEmitter();
+
+if (process.env.NODE_ENV !== 'production') {
+  global.__sseEmitter = sseEmitter;
+}

@@ -2,9 +2,19 @@ import { NextRequest } from 'next/server';
 import { sseEmitter } from '@/lib/sse/eventEmitter';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth.config';
+import {
+  ForbiddenError,
+  InternalServerError,
+  UnauthorizedError,
+} from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+interface ConnectedMessage {
+  type: 'connected';
+  orgId: string;
+}
 
 export async function GET(
   req: NextRequest,
@@ -13,50 +23,42 @@ export async function GET(
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    return new Response('Unauthorized', { status: 401 });
+    return new UnauthorizedError('User is not authenticated');
   }
 
-  const { orgId } = await params;
-
-  console.log('[SSE Route] Connection request for orgId:', orgId);
-  console.log('[SSE Route] User orgIds:', session.user.orgIds);
+  const { orgId } = params;
 
   if (!session.user.orgIds?.includes(orgId)) {
-    return new Response('Forbidden', { status: 403 });
+    return new ForbiddenError('You do not have access to this organization');
   }
 
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
-    start(controller) {
+    start(controller: ReadableStreamDefaultController<Uint8Array>) {
       let keepAliveInterval: NodeJS.Timeout | null = null;
       let unsubscribe: (() => void) | null = null;
 
       try {
+        const connectedMsg: ConnectedMessage = { type: 'connected', orgId };
         const data = encoder.encode(
-          `data: ${JSON.stringify({ type: 'connected', orgId })}\n\n`
+          `data: ${JSON.stringify(connectedMsg)}\n\n`
         );
         controller.enqueue(data);
-        console.log(
-          `[SSE Route] Client connected and subscribed to org ${orgId}`
-        );
       } catch (error) {
-        console.error('Error sending initial message:', error);
         controller.close();
-        return;
+        return new InternalServerError(
+          `Error initializing SSE connection: ${error}`
+        );
       }
 
       unsubscribe = sseEmitter.subscribe(orgId, (event) => {
-        console.log(
-          `[SSE Route] Sending event to client for org ${orgId}:`,
-          event.type
-        );
         try {
           const message = `data: ${JSON.stringify(event)}\n\n`;
           controller.enqueue(encoder.encode(message));
         } catch (error) {
-          console.error('Error sending SSE event:', error);
           cleanup();
+          return new InternalServerError(`Error sending SSE event: ${error}`);
         }
       });
 
@@ -64,12 +66,12 @@ export async function GET(
         try {
           controller.enqueue(encoder.encode(': keep-alive\n\n'));
         } catch (error) {
-          console.error('Error sending keep-alive:', error);
           cleanup();
+          return new InternalServerError(`Error sending keep-alive: ${error}`);
         }
       }, 30000);
 
-      const cleanup = () => {
+      const cleanup = (): void => {
         if (keepAliveInterval) {
           clearInterval(keepAliveInterval);
           keepAliveInterval = null;
@@ -82,17 +84,15 @@ export async function GET(
           controller.close();
         } catch (error) {
           // Controller might already be closed
+          return;
         }
       };
 
-      // Cleanup on connection abort
       req.signal.addEventListener('abort', cleanup);
 
-      // Store cleanup function for cancel callback
       (controller as any)._cleanup = cleanup;
     },
-    cancel(controller) {
-      // Called when the stream is cancelled/closed by the client
+    cancel(controller: ReadableStreamDefaultController<Uint8Array>) {
       if ((controller as any)._cleanup) {
         (controller as any)._cleanup();
       }
@@ -109,7 +109,7 @@ export async function GET(
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no', // Disable nginx buffering
+      'X-Accel-Buffering': 'no',
     },
   });
 }
