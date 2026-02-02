@@ -7,8 +7,9 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import type { OrganizationForPDF } from '@/features/organization/types';
 import { hasPermission } from '@/lib/auth/authGuard';
-import { BadRequestError } from '@/lib/errors';
+import { BadRequestError, ForbiddenError } from '@/lib/errors';
 import { getAllRoles } from '../roles/roles-dal';
+import { redirect } from 'next/dist/server/api-utils';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -177,7 +178,7 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
   });
 
   if (!membership) {
-    throw new Error('Forbidden - No access to this organization');
+    throw new ForbiddenError('You are not a member of this organization');
   }
 
   const org = await prisma.organization.findUnique({
