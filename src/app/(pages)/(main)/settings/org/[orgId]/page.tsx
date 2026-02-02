@@ -27,7 +27,7 @@ import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationD
 import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
 import { UsersManagementSection } from '@/components/settings/org/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
-import { TemplatesOverviewSection } from '@/features/template/components/TemplatesOverviewSection';
+import { TemplatesOverviewSection } from '@/components/template/TemplatesOverviewSection';
 import { OrganizationPdfExportForm } from '@/components/settings/org/OrganizationPdfExportForm';
 import { PageHeader } from '@/components/settings/PageHeader';
 import {

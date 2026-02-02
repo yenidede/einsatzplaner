@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { TemplateForm } from '@/features/template/components/TemplateForm';
+import { TemplateForm } from '@/components/template/TemplateForm';
 
 export default function NewTemplatePage() {
   const searchParams = useSearchParams();
@@ -23,9 +23,6 @@ export default function NewTemplatePage() {
   }
 
   return (
-    <TemplateForm
-      orgId={orgId}
-      backHref={`/settings/org/${orgId}#vorlagen`}
-    />
+    <TemplateForm orgId={orgId} backHref={`/settings/org/${orgId}#vorlagen`} />
   );
 }
