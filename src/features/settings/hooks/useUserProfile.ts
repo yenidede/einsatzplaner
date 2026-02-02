@@ -1,7 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { settingsQueryKeys } from '../queryKeys/queryKey';
-import { getUserProfileAction, getSalutationsAction } from '../settings-action';
-import { getUserOrganizationByIdAction } from '../organization-action';
+import {
+  getUserProfileAction,
+  getSalutationsAction,
+  getUserProfileByIdAction,
+} from '../settings-action';
+import {
+  getUserOrganizationByIdAction,
+  getUserManagedOrganizationsAction,
+} from '../organization-action';
 import { getAllUserOrgRolesAction } from '../users-action';
 import { getUserPropertyValuesAction } from '@/features/user_properties/user_property-actions';
 
@@ -11,7 +18,7 @@ export function useUserProfile(userId: string | undefined) {
     enabled: !!userId,
     queryFn: async () => {
       const res = await getUserProfileAction();
-      if (!res) throw new Error('Fehler beim Laden');
+      if (!res) throw new Error('Fehler beim Laden der Benutzerdaten.');
       return res;
     },
   });
@@ -52,7 +59,8 @@ export function useUserProfileById(
       organizationId ?? '',
       userId ?? ''
     ),
-    queryFn: async () => await getUserProfileAction(),
+    queryFn: async () =>
+      await getUserProfileByIdAction(userId || '', organizationId || ''),
     enabled: !!userId && !!organizationId,
     staleTime: 30000,
     gcTime: 5 * 60 * 1000,
@@ -72,5 +80,16 @@ export function useUserPropertyValues(
       getUserPropertyValuesAction(userId ?? '', organizationId ?? ''),
     enabled: !!userId && !!organizationId,
     staleTime: 30000,
+  });
+}
+
+export function useManagedOrganizations(userId: string | undefined) {
+  return useQuery({
+    queryKey: settingsQueryKeys.managedOrganizations(userId || ''),
+    enabled: !!userId,
+    queryFn: async () => {
+      const res = await getUserManagedOrganizationsAction();
+      return res;
+    },
   });
 }

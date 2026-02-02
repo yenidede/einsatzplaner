@@ -346,12 +346,6 @@ export function SignUpForm({
               onClick={async (e) => {
                 e.preventDefault();
                 const valid = await form.trigger();
-                console.log(
-                  'Form valid:',
-                  valid,
-                  form.formState.errors,
-                  form.getValues('userId')
-                );
                 if (valid) {
                   setTab('register2');
                 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 import { EventCalendar } from '@/components/event-calendar';
 import { CalendarMode, CalendarEvent } from './types';
@@ -22,8 +22,32 @@ import {
 } from '@/features/einsatz/hooks/useEinsatzMutations';
 import { useUserPropertiesByOrg } from '@/features/user_properties/hooks/use-user-property-queries';
 import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
-import type { EinsatzCreate } from '@/features/einsatz/types';
+import type {
+  EinsatzCreate,
+  EinsatzUserProperty,
+} from '@/features/einsatz/types';
 import { useEventDialogFromContext } from '@/contexts/EventDialogContext';
+import type { UserPropertyWithField } from '@/features/user_properties/user_property-dal';
+
+interface UserWithProperties {
+  id: string;
+  firstname: string | null;
+  lastname: string | null;
+  email: string;
+  user_organization_role: Array<{
+    id: string;
+    role: {
+      id: string;
+      name: string | null;
+      abbreviation: string | null;
+    };
+  }>;
+  user_property_value: Array<{
+    id: string;
+    user_property_id: string;
+    value: string | null;
+  }>;
+}
 
 interface ValidationResult {
   blocking: string[];
@@ -31,9 +55,9 @@ interface ValidationResult {
 }
 
 interface ValidateUserAssignmentParams {
-  requiredProperties: any[];
-  userProperties: any[];
-  allUsers: any[];
+  requiredProperties: EinsatzUserProperty[];
+  userProperties: UserPropertyWithField[];
+  allUsers: UserWithProperties[];
   currentAssignedUsers: string[];
   userIdToAdd: string;
   helpersNeeded: number;
@@ -104,11 +128,20 @@ function validateUserAssignment({
         return String(propertyValue.value).trim() !== '';
       }).length;
 
-    const msg = `Eigenschaft "${propName}": mindestens ${minRequired} Helfer benötigt (aktuell: ${matchingCount})`;
+    // If Input -1: Every assigned user must have this property
+    let msg: string;
+    let isViolation: boolean;
 
-    if (matchingCount < minRequired) {
-      // If slots are filled, this is a blocking error
-      // Otherwise, it's just a warning
+    if (minRequired === -1) {
+      const totalAssigned = assignedAfterAdd.length;
+      msg = `Eigenschaft "${propName}": ALLE Helfer müssen diese Eigenschaft haben (aktuell: ${matchingCount}/${totalAssigned})`;
+      isViolation = matchingCount < totalAssigned;
+    } else {
+      msg = `Eigenschaft "${propName}": mindestens ${minRequired} Helfer benötigt (aktuell: ${matchingCount})`;
+      isViolation = matchingCount < minRequired;
+    }
+
+    if (isViolation) {
       if (slotsFilledAfterAdd) {
         blocking.push(msg);
       } else {
@@ -145,9 +178,25 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     activeOrgId
   );
 
+  // Stable callback for conflict cancellation
+  const handleConflictCancel = useCallback(
+    (einsatzId: string) => {
+      setEinsatz(einsatzId);
+    },
+    [setEinsatz]
+  );
+
   // Mutations with optimistic update
-  const createMutation = useCreateEinsatz(activeOrgId, einsatz_singular);
-  const updateMutation = useUpdateEinsatz(activeOrgId, einsatz_singular);
+  const createMutation = useCreateEinsatz(
+    activeOrgId,
+    einsatz_singular,
+    handleConflictCancel
+  );
+  const updateMutation = useUpdateEinsatz(
+    activeOrgId,
+    einsatz_singular,
+    handleConflictCancel
+  );
   const toggleUserAssignToEvent = useToggleUserAssignment(
     activeOrgId,
     session?.user.id,
@@ -239,7 +288,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       });
 
       // Handle blocking errors
-      if (validationResult.blocking.length > 0) {
+      /*       if (validationResult.blocking.length > 0) {
         await showDialog({
           title: 'Eintragung nicht möglich',
           description:
@@ -250,7 +299,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
           variant: 'destructive',
         });
         return;
-      }
+      } */
 
       // Handle warnings
       if (validationResult.warnings.length > 0) {
@@ -290,11 +339,14 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     return <div>Lade Daten...</div>;
   }
 
+  const calendarEvents = Array.isArray(events) ? events : [];
   return (
     <>
       {AlertDialogComponent}
+      {createMutation.AlertDialogComponent}
+      {updateMutation.AlertDialogComponent}
       <EventCalendar
-        events={events as CalendarEvent[]}
+        events={calendarEvents}
         onEventAdd={handleEventAdd}
         onEventUpdate={handleEventUpdate}
         onAssignToggleEvent={handleAssignToggleEvent}

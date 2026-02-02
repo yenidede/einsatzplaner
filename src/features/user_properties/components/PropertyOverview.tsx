@@ -2,7 +2,7 @@
 
 import { PlusIcon, Pencil, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-import { Button } from '@/components/SimpleFormComponents';
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
@@ -35,22 +35,16 @@ export function PropertyOverview({
 
   return (
     <div className="flex flex-col items-start justify-start gap-2 self-stretch">
-      <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
-        <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
-          Personeneigenschaften
-        </div>
-      </div>
-
       <div className="flex flex-col items-start justify-start gap-4 self-stretch border-t border-slate-200 py-4">
         {isLoading && (
-          <div className="self-stretch px-4 text-center text-slate-600">
+          <div className="self-stretch text-center text-slate-600">
             Lade Eigenschaften...
           </div>
         )}
 
         {/* Bild nur anzeigen wenn keine Eigenschaften vorhanden sind */}
         {!isLoading && !hasProperties && (
-          <div className="flex flex-col items-start justify-start gap-4 self-stretch px-4">
+          <div className="flex flex-col items-start justify-start gap-4 self-stretch">
             <div className="inline-flex items-center justify-center gap-2.5 self-stretch">
               <div className="flex-1 justify-start font-['Inter'] text-sm leading-tight font-medium text-slate-600">
                 Erstelle ein neues Eigenschaftsfeld, um Personen deiner
@@ -59,7 +53,7 @@ export function PropertyOverview({
                 Schlüssel erfordert.
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center gap-2.5 self-stretch px-4">
+            <div className="flex flex-col items-center justify-center gap-2.5 self-stretch">
               <Image
                 src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/undraw_instant-analysis_vm8x%201.svg"
                 alt="Illustration für Personeneigenschaften"
@@ -73,7 +67,7 @@ export function PropertyOverview({
 
         {/* Property Liste immer anzeigen wenn vorhanden */}
         {!isLoading && hasProperties && (
-          <div className="flex flex-col gap-2 self-stretch px-4">
+          <div className="flex flex-col gap-2 self-stretch">
             <div className="text-sm font-medium text-slate-900">
               Vorhandene Eigenschaften ({properties.length})
             </div>
@@ -129,37 +123,11 @@ export function PropertyOverview({
         {!hideActions && (
           <>
             {!showCreateForm && (
-              <div className="inline-flex items-start justify-start gap-4 self-stretch px-4">
-                <div
-                  onClick={onCreateNew}
-                  className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-slate-50 px-4 py-5 outline outline-1 outline-offset-[-1px] outline-slate-200 transition-colors hover:bg-slate-100"
-                >
-                  <PlusIcon className="relative h-4 w-4 overflow-hidden" />
-                  <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-900">
-                    Neue Eigenschaft Anlegen
-                  </div>
-                </div>
-              </div>
+              <Button onClick={onCreateNew}>
+                <PlusIcon size={16} />
+                Neue Eigenschaft anlegen
+              </Button>
             )}
-
-            <div className="inline-flex items-start justify-end gap-2 self-stretch px-4 pt-2">
-              <Button
-                onClick={onCancel}
-                className="flex items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2 outline outline-1 outline-offset-[-1px] outline-slate-200"
-              >
-                <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-900">
-                  Abbrechen
-                </div>
-              </Button>
-              <Button
-                onClick={onCreateNew}
-                className="flex items-center justify-center gap-2.5 rounded-md bg-slate-900 px-4 py-2"
-              >
-                <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-white">
-                  Speichern
-                </div>
-              </Button>
-            </div>
           </>
         )}
       </div>
