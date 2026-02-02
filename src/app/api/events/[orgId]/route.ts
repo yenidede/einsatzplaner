@@ -25,8 +25,7 @@ export async function GET(
   if (!session?.user?.id) {
     return new UnauthorizedError('User is not authenticated');
   }
-
-  const { orgId } = params;
+  const { orgId } = await params;
 
   if (!session.user.orgIds?.includes(orgId)) {
     return new ForbiddenError('You do not have access to this organization');
