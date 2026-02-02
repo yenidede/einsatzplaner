@@ -20,10 +20,15 @@ export function useTemplateMutations() {
   const createMutation = useMutation({
     mutationFn: (input: CreateTemplateInput) => createTemplateAction(input),
     onSuccess: (data) => {
+      queryClient.setQueryData(templateQueryKeys.template(data.id), {
+        ...data,
+        template_icon: null,
+        template_field: [],
+      });
       queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
-      void queryClient.refetchQueries({ queryKey: templateQueryKeys.all });
+      queryClient.refetchQueries({ queryKey: templateQueryKeys.all });
       toast.success('Vorlage erstellt');
-      router.push(`/settings/vorlage/${data.id}`);
+      router.replace(`/settings/vorlage/${data.id}`);
     },
     onError: (err) => {
       toast.error(
