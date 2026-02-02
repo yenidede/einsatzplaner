@@ -51,7 +51,6 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.24",
     "ical-generator": "^9.0.0",
-    "ioredis": "^5.9.2",
     "jose": "^6.1.2",
     "libphonenumber-js": "^1.12.33",
     "lodash": "^4.17.21",
