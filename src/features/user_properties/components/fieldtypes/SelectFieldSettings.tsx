@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { GripVertical, X, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/SimpleFormComponents';
+import { Button } from '@/components/ui/button';
 
 interface SelectFieldSettingsProps {
   options: string[];
@@ -104,12 +104,7 @@ export function SelectFieldSettings({
             placeholder="Option eingeben..."
             className="flex-1"
           />
-          <Button
-            onClick={handleAddOption}
-            className="rounded-md bg-slate-900 px-4 py-2 text-white"
-          >
-            Hinzufügen
-          </Button>
+          <Button onClick={handleAddOption}>Hinzufügen</Button>
         </div>
 
         {errors.length > 0 && (
@@ -143,29 +138,32 @@ export function SelectFieldSettings({
                 <GripVertical className="h-4 w-4 cursor-grab text-slate-400 active:cursor-grabbing" />
                 <span className="flex-1 text-sm">{option}</span>
                 <div className="flex gap-1">
-                  <button
+                  <Button
                     onClick={() => handleMoveOption(index, 'up')}
                     disabled={index === 0}
-                    className="rounded p-1 hover:bg-slate-200 disabled:opacity-30"
                     title="Nach oben"
+                    variant="ghost"
                   >
                     ↑
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => handleMoveOption(index, 'down')}
                     disabled={index === options.length - 1}
                     className="rounded p-1 hover:bg-slate-200 disabled:opacity-30"
                     title="Nach unten"
+                    variant="ghost"
                   >
                     ↓
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => handleRemoveOption(index)}
                     className="rounded p-1 text-red-600 hover:bg-red-100"
                     title="Löschen"
+                    variant="destructive"
+                    size="icon"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}

@@ -88,12 +88,13 @@ export function PropertyOverview({
                 <div className="flex items-center gap-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
+                      <Button
                         onClick={() => onEdit?.(property.id)}
-                        className="rounded-md p-2 transition-colors hover:bg-slate-100"
+                        variant="ghost"
+                        size="icon"
                       >
-                        <Pencil className="h-4 w-4 text-slate-600" />
-                      </button>
+                        <Pencil />
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Eigenschaft bearbeiten</p>
@@ -102,12 +103,13 @@ export function PropertyOverview({
 
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
+                      <Button
                         onClick={() => onDelete?.(property.id)}
-                        className="rounded-md p-2 transition-colors hover:bg-red-50"
+                        variant="destructive"
+                        size="icon"
                       >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </button>
+                        <Trash2 />
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Eigenschaft löschen</p>

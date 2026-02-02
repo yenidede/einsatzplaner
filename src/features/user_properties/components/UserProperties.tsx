@@ -9,12 +9,9 @@ import { PropertyOverview } from './PropertyOverview';
 import { FieldTypeSelector } from './FieldTypeSelector';
 import { PropertyConfiguration } from './PropertyConfiguration';
 import {
-  getUserPropertiesAction,
-  getExistingPropertyNamesAction,
-  getUserCountAction,
   createUserPropertyAction,
   deleteUserPropertyAction,
-  updateUserPropertyAction,
+  updateUserPropertyAction
 } from '../user_property-actions';
 import { userPropertyQueryKeys } from '../queryKeys';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/SimpleFormComponents';
+import { Button } from '@/components/ui/button';
 import FormInputFieldCustom from '@/components/form/formInputFieldCustom';
 import { Input } from '@/components/ui/input';
 import type { PropertyConfig, ValidationError } from '../types';
@@ -22,6 +22,14 @@ interface PropertyConfigurationProps {
   onCancel: () => void;
   existingPropertyNames?: string[];
   existingUserCount?: number;
+  /** Optional title (default: "Neue Eigenschaft konfigurieren") */
+  title?: string;
+  /** Optional label for name field (default: "Name der Eigenschaft *") */
+  nameLabel?: string;
+  /** Optional save button text (default: "Speichern") */
+  saveButtonLabel?: string;
+  /** Optional: disable save button (e.g. while submitting) */
+  saveDisabled?: boolean;
 }
 
 export function PropertyConfiguration({
@@ -31,6 +39,10 @@ export function PropertyConfiguration({
   onCancel,
   existingPropertyNames = [],
   existingUserCount = 0,
+  title = 'Neue Eigenschaft konfigurieren',
+  nameLabel = 'Name der Eigenschaft *',
+  saveButtonLabel = 'Speichern',
+  saveDisabled = false,
 }: PropertyConfigurationProps) {
   const [errors, setErrors] = useState<ValidationError[]>([]);
 
@@ -67,7 +79,7 @@ export function PropertyConfiguration({
     <div className="flex flex-col items-start justify-start gap-2 self-stretch">
       <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
         <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
-          Neue Eigenschaft konfigurieren
+          {title}
         </div>
       </div>
 
@@ -78,7 +90,7 @@ export function PropertyConfiguration({
           </h3>
 
           <FormInputFieldCustom
-            name="Name der Eigenschaft *"
+            name={nameLabel}
             errors={getFieldError('name')}
           >
             <Input
@@ -149,22 +161,14 @@ export function PropertyConfiguration({
         />
 
         <div className="inline-flex items-start justify-end gap-2 self-stretch border-t border-slate-200 px-4 pt-2">
-          <Button
-            onClick={onCancel}
-            className="flex items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2 outline outline-1 outline-offset-[-1px] outline-slate-200"
-          >
-            <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-900">
-              Abbrechen
-            </div>
+          <Button variant="secondary" onClick={onCancel}>
+            Abbrechen
           </Button>
           <Button
             onClick={handleSave}
-            disabled={errors.length > 0}
-            className="flex items-center justify-center gap-2.5 rounded-md bg-slate-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={errors.length > 0 || saveDisabled}
           >
-            <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-white">
-              Speichern
-            </div>
+            {saveButtonLabel}
           </Button>
         </div>
       </div>

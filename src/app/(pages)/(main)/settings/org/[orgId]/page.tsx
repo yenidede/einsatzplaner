@@ -27,6 +27,7 @@ import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationD
 import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
 import { UsersManagementSection } from '@/components/settings/org/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
+import { TemplatesOverviewSection } from '@/features/template/components/TemplatesOverviewSection';
 import { OrganizationPdfExportForm } from '@/components/settings/org/OrganizationPdfExportForm';
 import { PageHeader } from '@/components/settings/PageHeader';
 import {
@@ -426,7 +427,7 @@ export default function OrganizationManagePage() {
   };
 
   if (isLoadingUser || orgLoading) {
-    return <SettingsLoadingSkeleton sidebarItems={6} />;
+    return <SettingsLoadingSkeleton sidebarItems={7} />;
   }
 
   if (orgError || !orgData) {
@@ -639,6 +640,17 @@ export default function OrganizationManagePage() {
               />
             </CardContent>
           </Card>
+        </section>
+
+        {/* Vorlagen (Templates) Section */}
+        <section
+          id="vorlagen"
+          ref={(el) => {
+            sectionRefs.current.vorlagen = el;
+          }}
+          aria-labelledby="vorlagen-heading"
+        >
+          <TemplatesOverviewSection orgId={orgId} />
         </section>
 
         {/* User Properties Section */}

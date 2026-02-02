@@ -3,7 +3,17 @@ import { queryKeys } from '@/features/einsatztemplate/queryKeys';
 import {
   getAllTemplatesWithIconByOrgId,
   getAllTemplatesByOrgIds,
+  getTemplateById,
+  getAllTemplateIcons,
 } from '@/features/template/template-dal';
+
+export function useTemplate(templateId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.template(templateId ?? ''),
+    queryFn: () => getTemplateById(templateId ?? ''),
+    enabled: !!templateId,
+  });
+}
 
 export function useTemplates(activeOrgId: string | null | undefined) {
   return useQuery({
@@ -18,5 +28,12 @@ export function useTemplatesByOrgIds(orgIds: string[]) {
     queryKey: queryKeys.templates(orgIds),
     queryFn: () => getAllTemplatesByOrgIds(orgIds),
     enabled: orgIds.length > 0,
+  });
+}
+
+export function useTemplateIcons() {
+  return useQuery({
+    queryKey: ['template', 'icons'] as const,
+    queryFn: () => getAllTemplateIcons(),
   });
 }
