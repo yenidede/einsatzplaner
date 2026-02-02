@@ -1,10 +1,23 @@
-// src/hooks/useSupabaseRealtime.ts
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/features/einsatz/queryKeys';
 import { supabaseRealtimeClient } from '@/lib/supabase-client';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+import type {
+  RealtimeChannel,
+  RealtimePostgresChangesPayload,
+} from '@supabase/supabase-js';
+
+type EinsatzPayload = RealtimePostgresChangesPayload<{
+  id: string;
+  org_id: string;
+  [key: string]: unknown;
+}>;
+
+type EinsatzHelperPayload = RealtimePostgresChangesPayload<{
+  einsatz_id: string;
+  [key: string]: unknown;
+}>;
 
 export function useSupabaseRealtime(orgId?: string) {
   const { data: session } = useSession();
@@ -27,22 +40,24 @@ export function useSupabaseRealtime(orgId?: string) {
     channelRef.current = channel;
 
     channel
-      .on(
-        'postgres_changes' as any,
+      .on<EinsatzPayload>(
+        'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'einsatz',
           filter: `org_id=eq.${orgId}`,
-        } as any,
-        (payload: any) => {
+        },
+        (payload) => {
           if (!isMountedRef.current) return;
 
           queryClient.invalidateQueries({
             queryKey: queryKeys.einsaetze(orgId),
           });
 
-          const einsatzId = payload.new?.id || payload.old?.id;
+          const einsatzId =
+            (payload.new as { id?: string })?.id ||
+            (payload.old as { id?: string })?.id;
           if (einsatzId) {
             queryClient.invalidateQueries({
               queryKey: queryKeys.detailedEinsatz(einsatzId),
@@ -50,17 +65,20 @@ export function useSupabaseRealtime(orgId?: string) {
           }
         }
       )
-      .on(
-        'postgres_changes' as any,
+      .on<EinsatzHelperPayload>(
+        'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'einsatz_helper',
-        } as any,
-        (payload: any) => {
+          filter: `einsatz_id=eq.${orgId}`,
+        },
+        (payload) => {
           if (!isMountedRef.current) return;
 
-          const einsatzId = payload.new?.einsatz_id || payload.old?.einsatz_id;
+          const einsatzId =
+            (payload.new as { einsatz_id?: string })?.einsatz_id ||
+            (payload.old as { einsatz_id?: string })?.einsatz_id;
 
           queryClient.invalidateQueries({
             queryKey: queryKeys.einsaetze(orgId),

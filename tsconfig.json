@@ -30,8 +30,7 @@
     "src/app/(pages)/(main)/helferansicht/einsaetze.js",
     "prettier.config.js",
     ".next/dev/types/**/*.ts",
-    ".next/types/**/*.ts",
-    "src/app/api/events/[orgId]/route.ts.old"
+    ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules", "src/generated", ".next"]
 }
