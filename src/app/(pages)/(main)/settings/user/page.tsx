@@ -67,6 +67,7 @@ import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSet
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import { optimizeImage } from '@/lib/utils';
 import { RolesList } from '@/components/Roles';
+import { usePermissionGuard } from '@/hooks/use-permission-guard';
 
 export default function SettingsPage() {
   const [showLogos, setShowLogos] = useState<boolean>(true);
@@ -105,6 +106,10 @@ export default function SettingsPage() {
     session?.user?.id
   );
   const { data: salutations = [] } = useSalutations();
+  const { isAuthorized, isLoading } = usePermissionGuard({
+    requiredPermissions: ['settings:read'],
+    requireAll: false,
+  });
 
   // Use shared section navigation hook
   const {
@@ -432,7 +437,13 @@ export default function SettingsPage() {
     signOut({ callbackUrl: '/signin' });
     return null;
   }
+  if (isLoading) {
+    return <div>Lade Nutzerdaten...</div>;
+  }
 
+  if (!isAuthorized) {
+    return <div>Keine Berechtigung. Weiterleitung...</div>;
+  }
   const initials =
     `${firstname?.[0] || ''}${lastname?.[0] || ''}`.toUpperCase();
 
