@@ -1,4 +1,3 @@
-// src/hooks/useSSE.ts
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
