@@ -7,10 +7,5 @@ export default function EditTemplatePage() {
   const params = useParams();
   const templateId = params?.templateId as string;
 
-  return (
-    <TemplateForm
-      templateId={templateId}
-      title="Vorlage bearbeiten"
-    />
-  );
+  return <TemplateForm templateId={templateId} />;
 }
