@@ -4,6 +4,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Type, Hash, Link2, Plus } from 'lucide-react';
+import {
+  getFieldTypeDefinition,
+  type FieldTypeKey,
+} from '@/features/user_properties/field-type-definitions';
 import { PageHeader } from '@/components/settings/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,8 +38,11 @@ import { FieldTypeSelector } from '@/features/user_properties/components/FieldTy
 import { PropertyConfiguration } from '@/features/user_properties/components/PropertyConfiguration';
 import type { PropertyConfig } from '@/features/user_properties/types';
 import { INITIAL_CONFIG } from '@/features/user_properties/types';
-import { useTemplate, useTemplateIcons } from '../hooks/use-template-queries';
-import { useTemplateMutations } from '../hooks/useTemplateMutations';
+import {
+  useTemplate,
+  useTemplateIcons,
+} from '../../features/template/hooks/use-template-queries';
+import { useTemplateMutations } from '../../features/template/hooks/useTemplateMutations';
 import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
 
 interface TemplateFormProps {
