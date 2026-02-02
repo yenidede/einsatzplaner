@@ -14,6 +14,9 @@ import {
   type UserPropertyWithField,
 } from './user_property-dal';
 import type { PropertyConfig } from './types';
+import {
+  propertyConfigToFieldInput,
+} from './utils/config-to-field-input';
 
 export async function getUserPropertiesAction(
   orgId: string
@@ -50,49 +53,7 @@ function configToCreateInput(
   config: PropertyConfig,
   orgId: string
 ): CreateUserPropertyInput {
-  // Bestimme datatype basierend auf fieldType
-  let datatype: 'text' | 'number' | 'boolean' | 'select';
-
-  switch (config.fieldType) {
-    case 'text':
-      datatype = 'text';
-      break;
-    case 'number':
-      datatype = 'number';
-      break;
-    case 'boolean':
-      datatype = 'boolean';
-      break;
-    case 'select':
-      datatype = 'select';
-      break;
-    default:
-      throw new Error(`Unknown field type: ${config.fieldType}`);
-  }
-
-  let defaultValue: string | undefined;
-
-  if (config.fieldType === 'boolean' && config.booleanDefaultValue !== null) {
-    defaultValue = config.booleanDefaultValue ? 'true' : 'false';
-  } else if (config.fieldType === 'select' && config.defaultOption) {
-    defaultValue = config.defaultOption;
-  } else if (config.defaultValue) {
-    defaultValue = config.defaultValue;
-  }
-
-  return {
-    name: config.name,
-    description: config.description,
-    datatype,
-    isRequired: config.isRequired,
-    placeholder: config.placeholder,
-    defaultValue,
-    isMultiline: config.isMultiline,
-    min: config.minValue,
-    max: config.maxValue,
-    allowedValues: config.options,
-    orgId,
-  };
+  return { ...propertyConfigToFieldInput(config), orgId };
 }
 
 export async function createUserPropertyAction(

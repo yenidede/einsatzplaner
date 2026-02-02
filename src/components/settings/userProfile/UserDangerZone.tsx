@@ -91,6 +91,7 @@ export function UserDangerZone({
             {!canRemoveUser && !isCurrentUserSuperadmin && (
               <div className="px-4 py-2 text-sm text-slate-500 italic">
                 Sie haben keine Berechtigung, diesen Benutzer zu entfernen.
+                Bitte fragen Sie einen Superadmin, diesen Benutzer zu entfernen.
               </div>
             )}
           </div>

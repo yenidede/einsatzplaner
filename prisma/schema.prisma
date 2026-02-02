@@ -91,23 +91,23 @@ model einsatz_helper {
 
 model einsatz_template {
   id                            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  org_id                        String?          @db.Uuid
-  name                          String?
+  org_id                        String           @db.Uuid
+  name                          String
   created_by                    String?          @db.Uuid
   created_at                    DateTime         @default(now())
   description                   String?
   icon_id                       String           @default(dbgenerated("'17effde3-bacb-4cd9-9303-c0467a6e437b'::uuid")) @db.Uuid
   participant_count_default     Int?             @db.SmallInt
-  participant_count_placeholder Int              @default(20) @db.SmallInt
+  participant_count_placeholder Int?             @default(20) @db.SmallInt
   price_person_default          Float?           @db.Real
-  price_person_placeholder      Float            @db.Real
+  price_person_placeholder      Float?           @db.Real
   helpers_needed_default        Int?             @db.SmallInt
-  helpers_needed_placeholder    Int              @default(1) @db.SmallInt
+  helpers_needed_placeholder    Int?             @default(1) @db.SmallInt
   all_day_default               Boolean?
   einsatz                       einsatz[]
   user                          user?            @relation(fields: [created_by], references: [id], onDelete: Cascade)
   template_icon                 template_icon    @relation(fields: [icon_id], references: [id], onDelete: Cascade)
-  organization                  organization?    @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  organization                  organization     @relation(fields: [org_id], references: [id], onDelete: Cascade)
   template_field                template_field[]
 }
 

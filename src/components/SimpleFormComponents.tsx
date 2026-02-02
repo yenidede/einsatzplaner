@@ -81,25 +81,6 @@ export function Alert({
   );
 }
 
-export function Button({
-  children,
-  type = 'button',
-  onClick,
-  disabled = false,
-  className = '',
-}: any) {
-  return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={`rounded px-4 py-2 focus:ring-2 focus:ring-offset-2 focus:outline-none ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function FormSection({
   title,
   children,

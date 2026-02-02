@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@/components/SimpleFormComponents';
+import { Button } from '@/components/ui/button';
 import type { FieldType } from '../types';
 
 interface FieldTypeSelectorProps {
@@ -120,14 +120,7 @@ export function FieldTypeSelector({
         </div>
 
         <div className="inline-flex items-start justify-end gap-2 self-stretch px-4 pt-2">
-          <Button
-            onClick={onBack}
-            className="flex items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2 outline outline-offset-1 outline-slate-200"
-          >
-            <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-900">
-              Zurück
-            </div>
-          </Button>
+          <Button onClick={onBack}>Zurück</Button>
         </div>
       </div>
     </div>
