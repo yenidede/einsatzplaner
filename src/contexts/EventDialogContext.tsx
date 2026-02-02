@@ -12,13 +12,15 @@ import {
 } from 'react';
 import { EinsatzCreate } from '@/features/einsatz/types';
 import { parseAsString, useQueryState } from 'nuqs';
+import { validateEinsatzIdFromUrl } from '@/utils/einsatzLinkUtils';
+import { toast } from 'sonner';
 
 interface EventDialogContextValue {
   isOpen: boolean;
   readonly selectedEinsatz: EinsatzCreate | string | null;
   openDialog: (einsatz: EinsatzCreate | string | null) => void;
   closeDialog: () => void;
-  setEinsatz: (einsatz: EinsatzCreate | string | null) => void;
+  setEinsatz: (einsatz: EinsatzCreate | string | null) => boolean;
 }
 
 const EventDialogContext = createContext<EventDialogContextValue | undefined>(
@@ -55,8 +57,29 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
     EinsatzCreate | string | null
   >(null);
 
+  // Validate einsatz ID from URL and show error if invalid
+  useEffect(() => {
+    if (einsatzFromUrl) {
+      const validatedId = validateEinsatzIdFromUrl(einsatzFromUrl);
+      if (!validatedId) {
+        toast.error('Ungültige Einsatz-ID in der URL', {
+          description: 'Die ID muss ein gültiges UUID-Format haben.',
+        });
+        // Clear invalid ID from URL
+        setEinsatzFromUrl(null);
+      }
+    }
+  }, [einsatzFromUrl, setEinsatzFromUrl]);
+
   // Compute the actual selectedEinsatz from both URL and local state
-  const selectedEinsatz = einsatzFromUrl || localSelectedEvent;
+  // Only use einsatzFromUrl if it's valid
+  const selectedEinsatz = useMemo(() => {
+    if (einsatzFromUrl) {
+      const validatedId = validateEinsatzIdFromUrl(einsatzFromUrl);
+      return validatedId || localSelectedEvent;
+    }
+    return localSelectedEvent;
+  }, [einsatzFromUrl, localSelectedEvent]);
 
   // Auto-open dialog when selectedEinsatz changes to non-null (e.g., from URL navigation)
   useEffect(() => {
@@ -67,24 +90,54 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
     }
   }, [selectedEinsatz, isOpen]);
 
-  const openDialog = useCallback(
-    (event: EinsatzCreate | string | null) => {
+  // Helper function to update einsatz state (URL or local)
+  // Returns true on success, false on validation failure
+  const updateEinsatzState = useCallback(
+    (event: EinsatzCreate | string | null): boolean => {
       if (typeof event === 'string') {
+        // Validate UUID before storing in URL
+        const validatedId = validateEinsatzIdFromUrl(event);
+        if (!validatedId) {
+          toast.error('Ungültige Einsatz-ID', {
+            description: 'Die ID muss ein gültiges UUID-Format haben.',
+          });
+          return false;
+        }
         // Store einsatz ID in URL
-        setEinsatzFromUrl(event);
+        setEinsatzFromUrl(validatedId);
         setLocalSelectedEvent(null);
+        return true;
       } else if (event && 'id' in event && event.id) {
+        // Validate UUID before storing in URL
+        const validatedId = validateEinsatzIdFromUrl(event.id);
+        if (!validatedId) {
+          toast.error('Ungültige Einsatz-ID', {
+            description: 'Die ID muss ein gültiges UUID-Format haben.',
+          });
+          return false;
+        }
         // Store einsatz ID in URL if it exists
-        setEinsatzFromUrl(event.id);
+        setEinsatzFromUrl(validatedId);
         setLocalSelectedEvent(null);
+        return true;
       } else {
         // New einsatz or null - store locally only
         setEinsatzFromUrl(null);
         setLocalSelectedEvent(event);
+        return true;
       }
-      setIsOpen(true);
     },
     [setEinsatzFromUrl, setLocalSelectedEvent]
+  );
+
+  const openDialog = useCallback(
+    (event: EinsatzCreate | string | null) => {
+      const success = updateEinsatzState(event);
+      if (success) {
+        setIsOpen(true);
+      }
+    },
+    [updateEinsatzState]
   );
 
   const closeDialog = useCallback(() => {
@@ -94,22 +147,10 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
   }, [setEinsatzFromUrl, setLocalSelectedEvent]);
 
   const setEinsatzFunc = useCallback(
-    (event: EinsatzCreate | string | null) => {
-      if (typeof event === 'string') {
-        // Store einsatz ID in URL
-        setEinsatzFromUrl(event);
-        setLocalSelectedEvent(null);
-      } else if (event && 'id' in event && event.id) {
-        // Store einsatz ID in URL if it exists
-        setEinsatzFromUrl(event.id);
-        setLocalSelectedEvent(null);
-      } else {
-        // New einsatz or null - store locally only
-        setEinsatzFromUrl(null);
-        setLocalSelectedEvent(event);
-      }
+    (event: EinsatzCreate | string | null): boolean => {
+      return updateEinsatzState(event);
     },
-    [setEinsatzFromUrl, setLocalSelectedEvent]
+    [updateEinsatzState]
   );
 
   const contextValue: EventDialogContextValue = useMemo(

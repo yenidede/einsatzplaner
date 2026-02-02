@@ -193,8 +193,6 @@ export function EventCalendar({
   };
 
   const handleEventCreate = (startTime: Date) => {
-    console.log('Creating new event at:', startTime); // Debug log
-
     // Snap to 15-minute intervals
     const minutes = startTime.getMinutes();
     const remainder = minutes % 15;
@@ -306,19 +304,8 @@ export function EventCalendar({
         </>
       );
     } else if (view === 'agenda') {
-      // Show the month range for agenda view
-      const start = currentDate;
-      const end = addDays(currentDate, AgendaDaysToShow - 1);
-
-      if (isSameMonth(start, end)) {
-        return format(start, 'MMMM yyyy', { locale: de });
-      } else {
-        return `${format(start, 'MMM', { locale: de })} - ${format(
-          end,
-          'MMM yyyy',
-          { locale: de }
-        )}`;
-      }
+      // Show "All Upcoming Events" for agenda view since it shows infinite future events
+      return 'Alle anstehenden Termine';
     } else {
       return format(currentDate, 'MMMM yyyy', { locale: de });
     }
@@ -348,41 +335,46 @@ export function EventCalendar({
         >
           {view !== 'list' && (
             <div className="flex items-center gap-1 sm:gap-4">
-              <Button
-                variant="outline"
-                className="max-[479px]:aspect-square max-[479px]:p-0!"
-                onClick={handleToday}
-              >
-                <RiCalendarCheckLine
-                  className="min-[480px]:hidden"
-                  size={16}
-                  aria-hidden="true"
-                />
-                <span className="max-[479px]:sr-only">Heute</span>
-              </Button>
-              <div className="flex items-center sm:gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handlePrevious}
-                  aria-label="Previous"
-                >
-                  <ChevronLeftIcon size={16} aria-hidden="true" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleNext}
-                  aria-label="Next"
-                >
-                  <ChevronRightIcon size={16} aria-hidden="true" />
-                </Button>
-              </div>
+              {view !== 'agenda' && (
+                <>
+                  <Button
+                    variant="outline"
+                    className="max-[479px]:aspect-square max-[479px]:p-0!"
+                    onClick={handleToday}
+                  >
+                    <RiCalendarCheckLine
+                      className="min-[480px]:hidden"
+                      size={16}
+                      aria-hidden="true"
+                    />
+                    <span className="max-[479px]:sr-only">Heute</span>
+                  </Button>
+                  <div className="flex items-center sm:gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handlePrevious}
+                      aria-label="Previous"
+                    >
+                      <ChevronLeftIcon size={16} aria-hidden="true" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleNext}
+                      aria-label="Next"
+                    >
+                      <ChevronRightIcon size={16} aria-hidden="true" />
+                    </Button>
+                  </div>
+                </>
+              )}
               <h2 className="text-sm font-semibold sm:text-lg md:text-xl">
                 {viewTitle}
               </h2>
             </div>
           )}
+
           {view === 'list' && <h2>Tabellenansicht</h2>}
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -476,7 +468,6 @@ export function EventCalendar({
           )}
           {view === 'agenda' && (
             <AgendaView
-              currentDate={currentDate}
               events={events}
               onEventSelect={handleEventSelect}
               mode={mode}

@@ -6,6 +6,7 @@ import {
   getOrCreateCalendarSubscription,
   rotateCalendarSubscription,
   deactivateCalendarSubscription,
+  activateCalendarSubscription,
   buildCalendarSubscriptionUrl,
   buildWebcalUrl,
 } from './calendarSubscription';
@@ -39,7 +40,7 @@ export async function getSubscriptionAction(orgId: string) {
 
 export async function rotateSubscriptionAction(id: string) {
   const session = await checkUserSession();
-  const response = await rotateCalendarSubscription(id);
+  const response = await rotateCalendarSubscription(id, session.user.id);
   if (!response) throw new Error('Failed to rotate calendar subscription');
 
   return {
@@ -53,8 +54,20 @@ export async function rotateSubscriptionAction(id: string) {
 export async function deactivateSubscriptionAction(id: string) {
   const session = await checkUserSession();
 
-  const response = await deactivateCalendarSubscription(id);
+  const response = await deactivateCalendarSubscription(id, session.user.id);
   if (!response) throw new Error('Failed to deactivate calendar subscription');
+
+  return {
+    id: response.id,
+    is_active: response.is_active,
+  };
+}
+
+export async function activateSubscriptionAction(id: string) {
+  const session = await checkUserSession();
+
+  const response = await activateCalendarSubscription(id, session.user.id);
+  if (!response) throw new Error('Failed to activate calendar subscription');
 
   return {
     id: response.id,

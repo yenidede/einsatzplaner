@@ -26,7 +26,9 @@ export function useDetailedEinsatz(
     queryFn: async () => {
       const res = await getEinsatzWithDetailsById(einsatzId as string);
       if (res instanceof Response) {
-        throw new Error(`Einsatz konnte nicht geladen werden: ${res.statusText}`);
+        throw new Error(
+          `Einsatz konnte nicht geladen werden: ${res.statusText}`
+        );
       }
       return res;
     },
