@@ -8,7 +8,7 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { ROLE_NAME_MAP } from '@/lib/auth/authGuard';
-import { useSSE } from '@/hooks/useSSE'; // ← HINZUFÜGEN
+import { useSSE } from '@/hooks/useSSE';
 
 export default function CalendarPageWrapper({
   mode,
@@ -51,9 +51,7 @@ export default function CalendarPageWrapper({
   const activeOrg =
     organizations?.find((org) => org.id === activeOrgId) ?? null;
 
-  // ← SSE-VERBINDUNG HERSTELLEN
   const { isConnected } = useSSE(activeOrgId);
-  console.log('[PageWrapper] SSE Connection status:', isConnected);
 
   const { einsatz_plural, helper_plural } = useOrganizationTerminology(
     organizations,
