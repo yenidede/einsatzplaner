@@ -2,11 +2,7 @@
   "compilerOptions": {
     "noErrorTruncation": true,
     "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -24,9 +20,7 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -36,11 +30,8 @@
     "src/app/(pages)/(main)/helferansicht/einsaetze.js",
     "prettier.config.js",
     ".next/dev/types/**/*.ts",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "src/app/api/events/[orgId]/route.ts.old"
   ],
-  "exclude": [
-    "node_modules",
-    "src/generated",
-    ".next"
-  ]
+  "exclude": ["node_modules", "src/generated", ".next"]
 }
