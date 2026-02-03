@@ -159,6 +159,10 @@ export function TemplateForm({
   const [selectedDefaultCategoryIds, setSelectedDefaultCategoryIds] = useState<
     string[]
   >([]);
+  /** Time range dialog: start/end strings and validation error. */
+  const [timeRangeStartValue, setTimeRangeStartValue] = useState('');
+  const [timeRangeEndValue, setTimeRangeEndValue] = useState('');
+  const [timeRangeError, setTimeRangeError] = useState<string | null>(null);
   /** Required user properties for this template (Überprüfungen). */
   const [requiredUserPropertyConfigs, setRequiredUserPropertyConfigs] =
     useState<
@@ -449,18 +453,12 @@ export function TemplateForm({
           setStandardFieldPlaceholderValue('');
           break;
         }
-        // time is handled differently as they dont need a placeholder
-        case 'time_start':
-          setStandardFieldDefaultValue(
+        case 'time_range':
+          setTimeRangeStartValue(
             formatTimeForInput(template.time_start_default)
           );
-          setStandardFieldPlaceholderValue(formatTimeForInput(undefined));
-          break;
-        case 'time_end':
-          setStandardFieldDefaultValue(
-            formatTimeForInput(template.time_end_default)
-          );
-          setStandardFieldPlaceholderValue(formatTimeForInput(undefined));
+          setTimeRangeEndValue(formatTimeForInput(template.time_end_default));
+          setTimeRangeError(null);
           break;
         case 'participant_count':
           setStandardFieldDefaultValue(
@@ -542,22 +540,22 @@ export function TemplateForm({
           }
         );
         return;
-      case 'time_start':
-        payload.time_start_default = parseTimeFromInput(
-          standardFieldDefaultValue
-        );
-        payload.time_start_placeholder = parseTimeFromInput(
-          standardFieldPlaceholderValue
-        );
+      case 'time_range': {
+        const startDate = parseTimeFromInput(timeRangeStartValue);
+        const endDate = parseTimeFromInput(timeRangeEndValue);
+        if (
+          startDate != null &&
+          endDate != null &&
+          endDate.getTime() <= startDate.getTime()
+        ) {
+          setTimeRangeError('Endzeit muss nach der Startzeit liegen.');
+          return;
+        }
+        setTimeRangeError(null);
+        payload.time_start_default = startDate;
+        payload.time_end_default = endDate;
         break;
-      case 'time_end':
-        payload.time_end_default = parseTimeFromInput(
-          standardFieldDefaultValue
-        );
-        payload.time_end_placeholder = parseTimeFromInput(
-          standardFieldPlaceholderValue
-        );
-        break;
+      }
       case 'participant_count':
         payload.participant_count_default = defaultNum(
           standardFieldDefaultValue
@@ -600,13 +598,18 @@ export function TemplateForm({
     editingStandardFieldKey,
     standardFieldDefaultValue,
     standardFieldPlaceholderValue,
+    timeRangeStartValue,
+    timeRangeEndValue,
     selectedDefaultCategoryIds,
     updateMutation,
     setDefaultCategoriesMutation,
   ]);
 
   const handleStandardFieldDialogClose = useCallback((open: boolean) => {
-    if (!open) setEditingStandardFieldKey(null);
+    if (!open) {
+      setEditingStandardFieldKey(null);
+      setTimeRangeError(null);
+    }
   }, []);
 
   const editingStandardFieldName =
@@ -968,10 +971,48 @@ export function TemplateForm({
                     </div>
                   </>
                 )}
+                {editingStandardFieldKey === 'time_range' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="time-range-start">
+                        Uhrzeit von (optional)
+                      </Label>
+                      <Input
+                        id="time-range-start"
+                        type="time"
+                        value={timeRangeStartValue}
+                        onChange={(e) => {
+                          setTimeRangeStartValue(e.target.value);
+                          setTimeRangeError(null);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="time-range-end">
+                        Uhrzeit bis (optional)
+                      </Label>
+                      <Input
+                        id="time-range-end"
+                        type="time"
+                        value={timeRangeEndValue}
+                        onChange={(e) => {
+                          setTimeRangeEndValue(e.target.value);
+                          setTimeRangeError(null);
+                        }}
+                      />
+                    </div>
+                    {timeRangeError && (
+                      <p className="text-destructive text-sm">
+                        {timeRangeError}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {editingStandardFieldKey !== 'all_day' &&
                   editingStandardFieldKey !== 'kategorie' &&
                   editingStandardFieldKey !== 'name' &&
-                  editingStandardFieldKey !== 'anmerkung' && (
+                  editingStandardFieldKey !== 'anmerkung' &&
+                  editingStandardFieldKey !== 'time_range' && (
                     <>
                       <div className="space-y-2">
                         <Label htmlFor="standard-field-default">
@@ -980,18 +1021,17 @@ export function TemplateForm({
                         <Input
                           id="standard-field-default"
                           type={
-                            editingStandardFieldKey === 'time_start' ||
-                            editingStandardFieldKey === 'time_end'
-                              ? 'time'
-                              : editingStandardFieldKey === 'price_person' ||
-                                  editingStandardFieldKey ===
-                                    'participant_count' ||
-                                  editingStandardFieldKey === 'helpers_needed'
-                                ? 'number'
-                                : 'text'
+                            editingStandardFieldKey === 'price_person' ||
+                            editingStandardFieldKey ===
+                              'participant_count' ||
+                            editingStandardFieldKey === 'helpers_needed' ||
+                            editingStandardFieldKey === 'total_price'
+                              ? 'number'
+                              : 'text'
                           }
                           step={
-                            editingStandardFieldKey === 'price_person'
+                            editingStandardFieldKey === 'price_person' ||
+                            editingStandardFieldKey === 'total_price'
                               ? '0.01'
                               : editingStandardFieldKey ===
                                     'participant_count' ||
@@ -1013,18 +1053,17 @@ export function TemplateForm({
                         <Input
                           id="standard-field-placeholder"
                           type={
-                            editingStandardFieldKey === 'time_start' ||
-                            editingStandardFieldKey === 'time_end'
-                              ? 'time'
-                              : editingStandardFieldKey === 'price_person' ||
-                                  editingStandardFieldKey ===
-                                    'participant_count' ||
-                                  editingStandardFieldKey === 'helpers_needed'
-                                ? 'number'
-                                : 'text'
+                            editingStandardFieldKey === 'price_person' ||
+                            editingStandardFieldKey ===
+                              'participant_count' ||
+                            editingStandardFieldKey === 'helpers_needed' ||
+                            editingStandardFieldKey === 'total_price'
+                              ? 'number'
+                              : 'text'
                           }
                           step={
-                            editingStandardFieldKey === 'price_person'
+                            editingStandardFieldKey === 'price_person' ||
+                            editingStandardFieldKey === 'total_price'
                               ? '0.01'
                               : editingStandardFieldKey ===
                                     'participant_count' ||
