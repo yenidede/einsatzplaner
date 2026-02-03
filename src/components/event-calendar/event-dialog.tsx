@@ -618,6 +618,35 @@ export function EventDialogVerwaltung({
     if (selectedTemplate) {
       const templateUpdates: Partial<EinsatzFormData> = {};
 
+      // Name (einsatzname_default)
+      const nameDefault = (selectedTemplate as { einsatzname_default?: string | null }).einsatzname_default;
+      if (nameDefault != null && nameDefault.trim() !== '') {
+        templateUpdates.title = nameDefault.trim();
+      }
+
+      // Default categories (template_to_category)
+      const defaultCategoryIds =
+        selectedTemplate.template_to_category
+          ?.map((t) => t.category_id)
+          .filter((id): id is string => id != null) ?? [];
+      if (defaultCategoryIds.length > 0) {
+        templateUpdates.einsatzCategoriesIds = defaultCategoryIds;
+      }
+
+      // Start and end time
+      if ((selectedTemplate as { time_start_default?: Date | null }).time_start_default) {
+        templateUpdates.startTime = formatOrgTimeForInput(
+          (selectedTemplate as { time_start_default?: Date | null }).time_start_default,
+          staticFormData.startTime
+        );
+      }
+      if ((selectedTemplate as { time_end_default?: Date | null }).time_end_default) {
+        templateUpdates.endTime = formatOrgTimeForInput(
+          (selectedTemplate as { time_end_default?: Date | null }).time_end_default,
+          staticFormData.endTime
+        );
+      }
+
       if (selectedTemplate.participant_count_default != null) {
         templateUpdates.participantCount =
           selectedTemplate.participant_count_default;
