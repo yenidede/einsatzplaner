@@ -95,6 +95,23 @@ export default function DynamicFormFields({
           />
         );
       case 'default':
+        if (field.isMultiline === true) {
+          return (
+            <FormTextareaField
+              {...commonProps}
+              placeholder={field.placeholder ?? ''}
+              value={controllerField.value ?? ''}
+              required={field.required}
+              onChange={(e) => {
+                const convertedValue = mapStringValueToType(
+                  e.target.value,
+                  field.dataType
+                );
+                controllerField.onChange(convertedValue);
+              }}
+            />
+          );
+        }
         return (
           <FormInput
             {...commonProps}

@@ -27,9 +27,7 @@ export type UpdateTemplateInput = {
   all_day_default?: boolean | null;
   einsatzname_default?: string | null;
   time_start_default?: Date | null;
-  time_start_placeholder?: Date | null;
   time_end_default?: Date | null;
-  time_end_placeholder?: Date | null;
 };
 
 export async function getAllTemplatesByIds(ids: string[]) {

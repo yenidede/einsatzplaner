@@ -8,8 +8,7 @@ import { TemplateFieldListItem } from './TemplateFieldListItem';
 export type StandardFieldKey =
   | 'name'
   | 'kategorie'
-  | 'time_start'
-  | 'time_end'
+  | 'time_range'
   | 'participant_count'
   | 'price_person'
   | 'helpers_needed'
@@ -38,16 +37,10 @@ export const STANDARD_FIELDS: Array<{
   },
   { name: 'Allgemein', typeKey: 'group' },
   {
-    name: 'Uhrzeit von',
+    name: 'Uhrzeit von – bis',
     typeKey: 'time',
     indent: true,
-    standardFieldKey: 'time_start',
-  },
-  {
-    name: 'Uhrzeit bis',
-    typeKey: 'time',
-    indent: true,
-    standardFieldKey: 'time_end',
+    standardFieldKey: 'time_range',
   },
   {
     name: 'Ganztag',
