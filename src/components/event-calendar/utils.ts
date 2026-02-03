@@ -110,8 +110,17 @@ export function generateDynamicSchema(
             .union([z.string(), z.null(), z.literal('')])
             .optional()
             .transform((s) => (s == null || s === '' ? '' : String(s)));
-          if (options.max)
-            fieldSchema = fieldSchema.pipe(z.string().max(options.max));
+          let postTransform = z.string();
+          if (options.min != null) {
+            postTransform = postTransform.refine(
+              (s) => s === '' || s.length >= options.min!,
+              { message: `Mindestlänge: ${options.min} Zeichen` }
+            );
+          }
+          if (options.max) {
+            postTransform = postTransform.max(options.max);
+          }
+          fieldSchema = fieldSchema.pipe(postTransform);
         }
         break;
       case 'number':
@@ -135,8 +144,8 @@ export function generateDynamicSchema(
       case 'currency':
         if (options.isRequired === true) {
           fieldSchema = z.float64();
-          if (options.min) fieldSchema = fieldSchema.gte(options.min);
-          if (options.max) fieldSchema = fieldSchema.lte(options.max);
+          if (options.min != null) fieldSchema = fieldSchema.gte(options.min);
+          if (options.max != null) fieldSchema = fieldSchema.lte(options.max);
         } else {
           fieldSchema = z
             .union([z.number(), z.nan(), z.null(), z.undefined()])
@@ -144,7 +153,7 @@ export function generateDynamicSchema(
             .transform((n) =>
               n == null || Number.isNaN(n) ? undefined : Number(n)
             );
-          let numSchema = z.number();
+          let numSchema = z.float64();
           if (options.min != null) numSchema = numSchema.gte(options.min);
           if (options.max != null) numSchema = numSchema.lte(options.max);
           fieldSchema = fieldSchema.pipe(numSchema.optional());
@@ -381,7 +390,7 @@ export function mapDbDataTypeToInputProps(
     if (datatype === 'currency') return { type: 'number', step: '0.10' };
     if (datatype === 'date') return { type: 'date' };
     if (datatype === 'time') return { type: 'time' };
-    if (datatype === 'group') return { type: 'group' };
+    // if (datatype === 'group') return { type: 'group' }; // not supported yet
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
