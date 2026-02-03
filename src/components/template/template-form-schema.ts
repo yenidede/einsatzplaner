@@ -6,7 +6,7 @@ export const templateFormBaseSchema = z.object({
     .string()
     .min(1, 'Template Bezeichnung ist erforderlich')
     .transform((s) => s.trim()),
-  icon_id: z.string().min(1, 'Bitte wähle ein Icon aus'),
+  icon_id: z.string().min(1, 'Bitte wählen Sie ein Icon aus'),
   description: z
     .string()
     .default('')

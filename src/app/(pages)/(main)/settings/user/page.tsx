@@ -522,7 +522,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle id="account-heading">Mein Account</CardTitle>
               <CardDescription>
-                Aktualisiere dein Profilbild und persönliche Informationen
+                Aktualisieren Sie Ihr Profilbild und Ihre persönlichen Informationen
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -661,7 +661,7 @@ export default function SettingsPage() {
                 Benachrichtigungen
               </CardTitle>
               <CardDescription>
-                Verwalte E-Mail-Benachrichtigungen für deine Organisationen
+                Verwalten Sie E-Mail-Benachrichtigungen für Ihre Organisationen
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -701,7 +701,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
                   <Bell className="text-muted-foreground/50 mb-4 h-12 w-12" />
                   <p className="text-muted-foreground text-sm">
-                    Du bist noch keiner Organisation beigetreten.
+                    Sie sind noch keiner Organisation beigetreten.
                   </p>
                 </div>
               )}
@@ -723,7 +723,7 @@ export default function SettingsPage() {
                 Kalender-Integrationen
               </CardTitle>
               <CardDescription>
-                Abonniere Kalender deiner Organisationen in externen Apps wie
+                Abonnieren Sie Kalender Ihrer Organisationen in externen Apps wie
                 Google Calendar, Apple Calendar oder Outlook
               </CardDescription>
             </CardHeader>
@@ -739,20 +739,20 @@ export default function SettingsPage() {
                         <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                           1
                         </span>
-                        Kopiere die URL oder klicke auf &quot;In Kalender
+                        Kopieren Sie die URL oder klicken Sie auf &quot;In Kalender
                         öffnen&quot;
                       </li>
                       <li className="flex gap-2">
                         <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                           2
                         </span>
-                        Füge die URL in deiner Kalender-App als Abonnement hinzu
+                        Fügen Sie die URL in Ihrer Kalender-App als Abonnement hinzu
                       </li>
                       <li className="flex gap-2">
                         <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                           3
                         </span>
-                        Dein Kalender synchronisiert automatisch alle Ereignisse
+                        Ihr Kalender synchronisiert automatisch alle Ereignisse
                       </li>
                     </ol>
                   </div>
@@ -767,11 +767,11 @@ export default function SettingsPage() {
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
                   <Calendar className="text-muted-foreground/50 mb-4 h-12 w-12" />
                   <p className="text-muted-foreground text-sm">
-                    Du bist noch keiner Organisation beigetreten.
+                    Sie sind noch keiner Organisation beigetreten.
                   </p>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Kalender-Integrationen werden verfügbar, sobald du einer
-                    Organisation beitrittst.
+                    Kalender-Integrationen werden verfügbar, sobald Sie einer
+                    Organisation beitreten.
                   </p>
                 </div>
               )}
@@ -793,7 +793,7 @@ export default function SettingsPage() {
                 Meine Organisationen
               </CardTitle>
               <CardDescription>
-                Übersicht deiner Mitgliedschaften und Rollen
+                Übersicht Ihrer Mitgliedschaften und Rollen
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -845,7 +845,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
                   <Building2 className="text-muted-foreground/50 mb-4 h-12 w-12" />
                   <p className="text-muted-foreground text-sm">
-                    Du bist noch keiner Organisation beigetreten.
+                    Sie sind noch keiner Organisation beigetreten.
                   </p>
                 </div>
               )}
