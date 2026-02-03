@@ -6,6 +6,9 @@ import { CalendarMode } from './types';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
+import { usePermissionGuard } from '@/hooks/use-permission-guard';
+import { ROLE_NAME_MAP } from '@/lib/auth/authGuard';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 export default function CalendarPageWrapper({
   mode,
@@ -19,9 +22,36 @@ export default function CalendarPageWrapper({
 
   const { data: organizations, isError: isOrgError } = useOrganizations(orgIds);
 
-  const activeOrgId = session?.user?.activeOrganization?.id;
+  const {
+    isAuthorized,
+    isLoading,
+    session: permissionSession,
+  } = usePermissionGuard(
+    mode === 'verwaltung'
+      ? {
+          requiredPermissions: [
+            'einsaetze:create',
+            'einsaetze:update',
+            'einsaetze:delete',
+          ],
+          requireAll: false,
+          customRedirect: (roleIds) => {
+            if (roleIds.includes(ROLE_NAME_MAP['Helfer'])) {
+              return '/helferansicht';
+            }
+            return '/';
+          },
+        }
+      : {
+          requiredPermissions: ['einsaetze:read'],
+        }
+  );
+
+  const activeOrgId = permissionSession?.user?.activeOrganization?.id;
   const activeOrg =
     organizations?.find((org) => org.id === activeOrgId) ?? null;
+
+  const { isConnected } = useSupabaseRealtime(activeOrgId);
 
   const { einsatz_plural, helper_plural } = useOrganizationTerminology(
     organizations,
@@ -43,6 +73,12 @@ export default function CalendarPageWrapper({
       : (activeOrg?.helferansicht_description ??
         `Hier sehen Sie alle ${einsatz_plural}. Bitte tragen Sie sich für die Termine ein, an denen Sie verfügbar sind.`);
 
+  if (isLoading) {
+    return <div>Lade Berechtigungen...</div>;
+  }
+  if (!isAuthorized) {
+    return <div>Keine Berechtigung. Weiterleitung...</div>;
+  }
   if (isOrgError) {
     return <div>Fehler beim Laden der Organisationen</div>;
   }

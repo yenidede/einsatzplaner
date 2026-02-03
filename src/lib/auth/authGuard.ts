@@ -20,7 +20,7 @@ export const ROLE_ID_MAP: Record<string, string> = {
   'd8c4c6ad-10bc-4947-bf16-1652f55298cc': 'Organisationsverwaltung',
 };
 
-const ROLE_PERMISSION_MAP: Record<string, string[]> = {
+export const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Superadmin: [
     // Einsätze
     permission('einsaetze', 'read'),
@@ -70,6 +70,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     // Organization
     permission('organization', 'read'),
     permission('organization', 'update'),
+    permission('organization', 'manage'),
     // Roles
     permission('roles', 'read'),
     permission('roles', 'assign'),
@@ -104,6 +105,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     permission('einsaetze', 'leave'),
 
     // Dashboard
+    permission('settings', 'read'),
     permission('dashboard', 'read'),
   ],
 };

@@ -158,6 +158,7 @@ function SettingsSidebarTreeContent({
   const handleItemClick = (itemId: string) => {
     const data = items[itemId];
     const action = data?.action;
+
     if (!action) return;
 
     switch (action.type) {
@@ -187,12 +188,21 @@ function SettingsSidebarTreeContent({
         break;
       }
       case 'org_section':
-        if (onOrgSectionChange) {
-          onOrgSectionChange(action.sectionId);
-        } else if (action.orgId) {
-          router.push(`/settings/org/${action.orgId}#${action.sectionId}`, {
-            scroll: false,
-          });
+        if (action.orgId !== currentOrgId) {
+          const url = `/settings/org/${action.orgId}#${action.sectionId}`;
+          if (onNavigate) {
+            onNavigate(url);
+          } else {
+            router.push(url);
+          }
+        } else {
+          if (onOrgSectionChange) {
+            onOrgSectionChange(action.sectionId);
+          } else if (action.orgId) {
+            router.push(`/settings/org/${action.orgId}#${action.sectionId}`, {
+              scroll: false,
+            });
+          }
         }
         break;
     }

@@ -145,8 +145,6 @@ export async function getUserForAuth(email: string) {
 
 export async function getUserForSession(userId: string) {
   try {
-    console.log('getUserForSession called with userId:', userId);
-
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -203,10 +201,10 @@ export async function createUserWithOrgAndRoles(data: {
     const assignRoleIds = data.roleIds
       ? data.roleIds
       : data.roleNames
-        ?.map(
-          (roleName) => roleRecords.find((role) => role.name === roleName)?.id
-        )
-        .filter((id): id is string => !!id) || [];
+          ?.map(
+            (roleName) => roleRecords.find((role) => role.name === roleName)?.id
+          )
+          .filter((id): id is string => !!id) || [];
 
     return prisma.user.create({
       data: {
