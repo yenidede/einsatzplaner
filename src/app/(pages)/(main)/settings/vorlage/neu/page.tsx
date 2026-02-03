@@ -15,7 +15,7 @@ export default function NewTemplatePage() {
     return (
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <p className="text-muted-foreground text-sm">
-          Bitte wähle eine Organisation aus oder öffne diese Seite über die
+          Bitte wählen Sie eine Organisation aus oder öffnen Sie diese Seite über die
           Einstellungen einer Organisation.
         </p>
       </div>

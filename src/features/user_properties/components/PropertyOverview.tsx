@@ -47,8 +47,8 @@ export function PropertyOverview({
           <div className="flex flex-col items-start justify-start gap-4 self-stretch">
             <div className="inline-flex items-center justify-center gap-2.5 self-stretch">
               <div className="flex-1 justify-start font-['Inter'] text-sm leading-tight font-medium text-slate-600">
-                Erstelle ein neues Eigenschaftsfeld, um Personen deiner
-                Organisation Eigenschaften zuzuweisen. Beispielsweise kannst du
+                Erstellen Sie ein neues Eigenschaftsfeld, um Personen Ihrer
+                Organisation Eigenschaften zuzuweisen. Beispielsweise können Sie
                 festlegen, dass jeder Einsatz mindestens eine Person mit
                 Schlüssel erfordert.
               </div>

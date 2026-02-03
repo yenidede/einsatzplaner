@@ -362,13 +362,13 @@ export function InviteUserForm({
                 <div className="mt-2 text-sm font-bold">
                   {evRole &&
                     ovRole &&
-                    `Diese Person erhält umfassende Verwaltungsrechte für ${einsatzNamePlural} (erstellen, bearbeiten und löschen) sowie für deine Organisation.`}
+                    `Diese Person erhält umfassende Verwaltungsrechte für ${einsatzNamePlural} (erstellen, bearbeiten und löschen) sowie für Ihre Organisation.`}
                   {evRole &&
                     !ovRole &&
                     `Diese Person kann ${einsatzNamePlural} erstellen, bearbeiten und löschen.`}
                   {!evRole &&
                     ovRole &&
-                    'Diese Person kann deine Organisation verwalten sowie Benutzer hinzufügen und entfernen.'}
+                    'Diese Person kann Ihre Organisation verwalten sowie Benutzer hinzufügen und entfernen.'}
                 </div>
               </div>
             </div>
