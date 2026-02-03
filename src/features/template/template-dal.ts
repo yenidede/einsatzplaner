@@ -25,11 +25,17 @@ export type UpdateTemplateInput = {
   helpers_needed_default?: number | null;
   helpers_needed_placeholder?: number | null;
   all_day_default?: boolean | null;
+  einsatzname_default?: string | null;
+  time_start_default?: Date | null;
+  time_start_placeholder?: Date | null;
+  time_end_default?: Date | null;
+  time_end_placeholder?: Date | null;
 };
 
 export async function getAllTemplatesByIds(ids: string[]) {
   const templates = await prisma.einsatz_template.findMany({
     where: { id: { in: ids } },
+    orderBy: { name: 'asc' },
   });
   return templates;
 }
@@ -37,6 +43,7 @@ export async function getAllTemplatesByIds(ids: string[]) {
 export async function getAllTemplatesByOrgIds(org_ids: string[]) {
   const templates = await prisma.einsatz_template.findMany({
     where: { org_id: { in: org_ids } },
+    orderBy: { name: 'asc' },
   });
   return templates;
 }
@@ -44,6 +51,7 @@ export async function getAllTemplatesByOrgIds(org_ids: string[]) {
 export async function getAllTemplatesWithIconByOrgId(org_id: string) {
   const templates = await prisma.einsatz_template.findMany({
     where: { org_id },
+    orderBy: { name: 'asc' },
     include: {
       template_icon: {
         select: {
@@ -81,6 +89,11 @@ export async function getTemplateById(id: string) {
               type: { select: { datatype: true } },
             },
           },
+        },
+      },
+      template_to_category: {
+        include: {
+          einsatz_category: true,
         },
       },
     },
@@ -150,7 +163,17 @@ export async function getAllTemplateIcons() {
 export type CreateTemplateFieldInput = {
   name: string;
   description?: string;
-  datatype: 'text' | 'number' | 'boolean' | 'select';
+  datatype:
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'currency'
+    | 'group'
+    | 'date'
+    | 'time'
+    | 'phone'
+    | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -245,7 +268,7 @@ export async function updateTemplateAction(
   templateId: string,
   input: UpdateTemplateInput
 ) {
-  return updateTemplate(templateId, {
+  const data: Partial<Omit<Template, 'id' | 'created_at'>> = {
     name: input.name ?? undefined,
     icon_id: input.icon_id,
     description: input.description ?? undefined,
@@ -257,11 +280,67 @@ export async function updateTemplateAction(
     helpers_needed_default: input.helpers_needed_default,
     helpers_needed_placeholder: input.helpers_needed_placeholder,
     all_day_default: input.all_day_default,
-  });
+    time_start_default: input.time_start_default,
+    time_start_placeholder: input.time_start_placeholder,
+    time_end_default: input.time_end_default,
+    time_end_placeholder: input.time_end_placeholder,
+  };
+  if (input.einsatzname_default !== undefined) {
+    (data as Record<string, unknown>).einsatzname_default =
+      input.einsatzname_default;
+  }
+  return updateTemplate(templateId, data);
 }
 
 export async function deleteTemplateAction(templateId: string) {
   return deleteTemplate(templateId);
+}
+
+/** Set default categories for a template (template_to_category). Replaces existing. No placeholder. */
+export async function setTemplateDefaultCategoriesAction(
+  templateId: string,
+  categoryIds: string[]
+) {
+  const { session } = await requireAuth();
+
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id: templateId },
+    select: { org_id: true },
+  });
+
+  if (!template?.org_id) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  if (!session.user.orgIds.includes(template.org_id)) {
+    throw new Error(
+      'Keine Berechtigung, Standard-Kategorien dieser Vorlage zu bearbeiten.'
+    );
+  }
+
+  const validCategories = await prisma.einsatz_category.findMany({
+    where: {
+      id: { in: categoryIds },
+      org_id: template.org_id,
+    },
+    select: { id: true },
+  });
+  const validIds = validCategories.map((c) => c.id);
+
+  await prisma.template_to_category.deleteMany({
+    where: { template_id: templateId },
+  });
+
+  if (validIds.length > 0) {
+    await prisma.template_to_category.createMany({
+      data: validIds.map((category_id) => ({
+        template_id: templateId,
+        category_id,
+      })),
+    });
+  }
+
+  return getTemplateById(templateId);
 }
 
 export type UpdateTemplateFieldInput = CreateTemplateFieldInput;

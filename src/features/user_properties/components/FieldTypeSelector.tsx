@@ -33,7 +33,7 @@ export function FieldTypeSelector({
       </div>
       <div className="flex flex-col items-start justify-start gap-4 self-stretch border-t border-slate-200 py-4">
         <div className="flex flex-col items-start justify-start gap-4 self-stretch">
-          <div className="grid grid-cols-2 gap-4 self-stretch">
+          <div className="grid grid-cols-2 gap-4 self-stretch sm:grid-cols-3">
             {typesToShow.map((def) => {
               const Icon = def.Icon;
               return (

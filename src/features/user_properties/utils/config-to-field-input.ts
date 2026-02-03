@@ -4,7 +4,17 @@ import type { PropertyConfig } from '../types';
 export type PropertyConfigFieldInput = {
   name: string;
   description?: string;
-  datatype: 'text' | 'number' | 'boolean' | 'select';
+  datatype:
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'currency'
+    | 'group'
+    | 'date'
+    | 'time'
+    | 'phone'
+    | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -17,7 +27,7 @@ export type PropertyConfigFieldInput = {
 export function propertyConfigToFieldInput(
   config: PropertyConfig
 ): PropertyConfigFieldInput {
-  let datatype: 'text' | 'number' | 'boolean' | 'select';
+  let datatype: PropertyConfigFieldInput['datatype'];
 
   switch (config.fieldType) {
     case 'text':
@@ -31,6 +41,24 @@ export function propertyConfigToFieldInput(
       break;
     case 'select':
       datatype = 'select';
+      break;
+    case 'currency':
+      datatype = 'currency';
+      break;
+    case 'group':
+      datatype = 'group';
+      break;
+    case 'date':
+      datatype = 'date';
+      break;
+    case 'time':
+      datatype = 'time';
+      break;
+    case 'phone':
+      datatype = 'phone';
+      break;
+    case 'mail':
+      datatype = 'mail';
       break;
     default:
       throw new Error(`Unknown field type: ${config.fieldType}`);
@@ -47,7 +75,11 @@ export function propertyConfigToFieldInput(
   }
 
   const max =
-    config.fieldType === 'text' ? config.maxLength : config.maxValue;
+    config.fieldType === 'text'
+      ? config.maxLength
+      : config.fieldType === 'number' || config.fieldType === 'currency'
+        ? config.maxValue
+        : undefined;
 
   return {
     name: config.name,

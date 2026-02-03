@@ -100,7 +100,11 @@ export function PropertyConfiguration({
             <Input
               value={config.name}
               onChange={(e) => onConfigChange({ name: e.target.value })}
-              placeholder="z.B. Hat Schlüssel"
+              placeholder={
+                context === 'person'
+                  ? 'Hat Schlüssel'
+                  : 'Eigene Feldbezeichnung'
+              }
               className="w-full"
             />
           </FormInputFieldCustom>
@@ -148,6 +152,29 @@ export function PropertyConfiguration({
             />
           )}
 
+          {(config.fieldType === 'currency' ||
+            config.fieldType === 'phone' ||
+            config.fieldType === 'mail' ||
+            config.fieldType === 'date' ||
+            config.fieldType === 'time') && (
+            <TextFieldSettings
+              placeholder={config.placeholder || ''}
+              maxLength={undefined}
+              isMultiline={false}
+              defaultValue={config.defaultValue}
+              onChange={onConfigChange}
+            />
+          )}
+
+          {config.fieldType === 'currency' && (
+            <NumberFieldSettings
+              isDecimal={true}
+              minValue={config.minValue}
+              maxValue={config.maxValue}
+              onChange={onConfigChange}
+            />
+          )}
+
           {context === 'vorlage' && (
             <div className="flex items-center gap-2">
               <Checkbox
@@ -163,7 +190,7 @@ export function PropertyConfiguration({
             </div>
           )}
 
-          {config.fieldType === 'number' &&
+          {(config.fieldType === 'number' || config.fieldType === 'currency') &&
             config.minValue !== undefined &&
             config.maxValue !== undefined &&
             config.minValue > config.maxValue && (

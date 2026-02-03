@@ -6,6 +6,10 @@ import { TemplateFieldListItem } from './TemplateFieldListItem';
 
 /** Keys for standard fields that have default/placeholder on the template and can be edited. */
 export type StandardFieldKey =
+  | 'name'
+  | 'kategorie'
+  | 'time_start'
+  | 'time_end'
   | 'participant_count'
   | 'price_person'
   | 'helpers_needed'
@@ -22,11 +26,31 @@ export const STANDARD_FIELDS: Array<{
   /** When set, clicking the row opens the edit view for default/placeholder. This is the exact spelling from database (_default, _placeholder will be added automatically). Checkboxes only have _default. */
   standardFieldKey?: StandardFieldKey;
 }> = [
-  { name: 'Name', typeKey: 'text' },
-  { name: 'Kategorie', typeKey: 'select' },
+  {
+    name: 'Name',
+    typeKey: 'text',
+    standardFieldKey: 'name',
+  },
+  {
+    name: 'Kategorie',
+    typeKey: 'select',
+    standardFieldKey: 'kategorie',
+  },
   { name: 'Allgemein', typeKey: 'group' },
-  { name: 'Uhrzeit von', typeKey: 'time', ispflichtfeld: true, indent: true },
-  { name: 'Uhrzeit bis', typeKey: 'time', ispflichtfeld: true, indent: true },
+  {
+    name: 'Uhrzeit von',
+    typeKey: 'time',
+    ispflichtfeld: true,
+    indent: true,
+    standardFieldKey: 'time_start',
+  },
+  {
+    name: 'Uhrzeit bis',
+    typeKey: 'time',
+    ispflichtfeld: true,
+    indent: true,
+    standardFieldKey: 'time_end',
+  },
   { name: 'Ganztag', typeKey: 'boolean', standardFieldKey: 'all_day' },
   {
     name: 'Benötigte Helfer',

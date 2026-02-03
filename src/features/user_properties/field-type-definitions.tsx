@@ -10,6 +10,7 @@ import {
   Phone,
   Mail,
   type LucideIcon,
+  ToggleRight,
 } from 'lucide-react';
 
 /** All known field type keys (selectable + display-only). */
@@ -36,24 +37,14 @@ export type FieldTypeDefinition = {
 export const FIELD_TYPE_DEFINITIONS: FieldTypeDefinition[] = [
   { key: 'text', label: 'Text', Icon: Type },
   { key: 'number', label: 'Zahl', Icon: Hash },
-  { key: 'boolean', label: 'Ja/Nein', Icon: CheckSquare },
-  {
-    key: 'select',
-    label: 'Auswahl',
-    subLabel: 'Dropdown mit Auswahlmöglichkeiten',
-    Icon: Layers,
-  },
   { key: 'currency', label: 'Währung', Icon: Euro },
-  {
-    key: 'group',
-    label: 'Feldgruppe',
-    subLabel: 'Gruppiert Felder in Erstellen-Ansicht',
-    Icon: LayoutDashboard,
-  },
-  { key: 'date', label: 'Datum', Icon: Calendar },
-  { key: 'time', label: 'Uhrzeit', Icon: Clock },
   { key: 'phone', label: 'Telefon', Icon: Phone },
   { key: 'mail', label: 'Mail', Icon: Mail },
+  { key: 'boolean', label: 'Ja/Nein', Icon: ToggleRight },
+  { key: 'date', label: 'Datum', Icon: Calendar },
+  { key: 'time', label: 'Uhrzeit', Icon: Clock },
+  { key: 'select', label: 'Auswahl', Icon: Layers },
+  { key: 'group', label: 'Feldgruppe', Icon: LayoutDashboard },
 ];
 
 const DEFINITIONS_BY_KEY = new Map(
@@ -70,3 +61,17 @@ export function getFieldTypeDefinition(
 export const DEFAULT_SELECTABLE_FIELD_TYPES: Array<
   'text' | 'number' | 'boolean' | 'select'
 > = ['text', 'number', 'boolean', 'select'];
+
+/** Field types available when creating a custom field in template (Vorlage) context. Matches FIELD_TYPE_DEFINITIONS. */
+export const VORLAGE_SELECTABLE_FIELD_TYPES: FieldTypeKey[] = [
+  'text',
+  'number',
+  'boolean',
+  'select',
+  'currency',
+  'group',
+  'date',
+  'time',
+  'phone',
+  'mail',
+];
