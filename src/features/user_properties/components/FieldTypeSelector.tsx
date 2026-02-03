@@ -6,13 +6,14 @@ import type { FieldType } from '../types';
 import {
   FIELD_TYPE_DEFINITIONS,
   DEFAULT_SELECTABLE_FIELD_TYPES,
+  type FieldTypeKey,
 } from '../field-type-definitions';
 
 interface FieldTypeSelectorProps {
   onSelectType: (type: FieldType) => void;
   onBack: () => void;
   /** Which field types to show. Defaults to text, number, boolean, select (same as legacy). */
-  enabledFieldTypes?: readonly FieldType[];
+  enabledFieldTypes?: readonly FieldTypeKey[];
 }
 
 export function FieldTypeSelector({
@@ -21,7 +22,7 @@ export function FieldTypeSelector({
   enabledFieldTypes = DEFAULT_SELECTABLE_FIELD_TYPES,
 }: FieldTypeSelectorProps) {
   const typesToShow = FIELD_TYPE_DEFINITIONS.filter((def) =>
-    enabledFieldTypes.includes(def.key as FieldType)
+    enabledFieldTypes.includes(def.key)
   );
 
   return (

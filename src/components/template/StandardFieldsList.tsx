@@ -51,27 +51,45 @@ export const STANDARD_FIELDS: Array<{
     indent: true,
     standardFieldKey: 'time_end',
   },
-  { name: 'Ganztag', typeKey: 'boolean', standardFieldKey: 'all_day' },
+  {
+    name: 'Ganztag',
+    typeKey: 'boolean',
+    standardFieldKey: 'all_day',
+    indent: true,
+  },
   {
     name: 'Benötigte Helfer',
     typeKey: 'number',
     standardFieldKey: 'helpers_needed',
     ispflichtfeld: true,
+    indent: true,
   },
   {
     name: 'Anzahl Teilnehmer',
     typeKey: 'number',
     standardFieldKey: 'participant_count',
     ispflichtfeld: true,
+    indent: true,
   },
   {
     name: 'Einzelpreis',
     typeKey: 'currency',
     standardFieldKey: 'price_person',
     ispflichtfeld: true,
+    indent: true,
   },
-  { name: 'Gesamtpreis', typeKey: 'currency', standardFieldKey: 'total_price' },
-  { name: 'Anmerkung', typeKey: 'text', standardFieldKey: 'anmerkung' },
+  {
+    name: 'Gesamtpreis',
+    typeKey: 'currency',
+    standardFieldKey: 'total_price',
+    indent: true,
+  },
+  {
+    name: 'Anmerkung',
+    typeKey: 'text',
+    standardFieldKey: 'anmerkung',
+    indent: true,
+  },
 ];
 
 export interface StandardFieldsListProps {

@@ -404,21 +404,18 @@ export function TemplateForm({
           setStandardFieldPlaceholderValue('');
           break;
         }
+        // time is handled differently as they dont need a placeholder
         case 'time_start':
           setStandardFieldDefaultValue(
             formatTimeForInput(template.time_start_default)
           );
-          setStandardFieldPlaceholderValue(
-            formatTimeForInput(template.time_start_placeholder)
-          );
+          setStandardFieldPlaceholderValue(formatTimeForInput(undefined));
           break;
         case 'time_end':
           setStandardFieldDefaultValue(
             formatTimeForInput(template.time_end_default)
           );
-          setStandardFieldPlaceholderValue(
-            formatTimeForInput(template.time_end_placeholder)
-          );
+          setStandardFieldPlaceholderValue(formatTimeForInput(undefined));
           break;
         case 'participant_count':
           setStandardFieldDefaultValue(
@@ -485,12 +482,20 @@ export function TemplateForm({
         );
         return;
       case 'time_start':
-        payload.time_start_default = parseTimeFromInput(standardFieldDefaultValue);
-        payload.time_start_placeholder = parseTimeFromInput(standardFieldPlaceholderValue);
+        payload.time_start_default = parseTimeFromInput(
+          standardFieldDefaultValue
+        );
+        payload.time_start_placeholder = parseTimeFromInput(
+          standardFieldPlaceholderValue
+        );
         break;
       case 'time_end':
-        payload.time_end_default = parseTimeFromInput(standardFieldDefaultValue);
-        payload.time_end_placeholder = parseTimeFromInput(standardFieldPlaceholderValue);
+        payload.time_end_default = parseTimeFromInput(
+          standardFieldDefaultValue
+        );
+        payload.time_end_placeholder = parseTimeFromInput(
+          standardFieldPlaceholderValue
+        );
         break;
       case 'participant_count':
         payload.participant_count_default = defaultNum(
@@ -752,10 +757,7 @@ export function TemplateForm({
                         </p>
                       ) : (
                         orgCategories.map((cat) => (
-                          <div
-                            key={cat.id}
-                            className="flex items-center gap-2"
-                          >
+                          <div key={cat.id} className="flex items-center gap-2">
                             <Checkbox
                               id={`kategorie-${cat.id}`}
                               checked={selectedDefaultCategoryIds.includes(
@@ -813,7 +815,8 @@ export function TemplateForm({
                             editingStandardFieldKey === 'time_end'
                               ? 'time'
                               : editingStandardFieldKey === 'price_person' ||
-                                  editingStandardFieldKey === 'participant_count' ||
+                                  editingStandardFieldKey ===
+                                    'participant_count' ||
                                   editingStandardFieldKey === 'helpers_needed'
                                 ? 'number'
                                 : 'text'
@@ -821,7 +824,8 @@ export function TemplateForm({
                           step={
                             editingStandardFieldKey === 'price_person'
                               ? '0.01'
-                              : editingStandardFieldKey === 'participant_count' ||
+                              : editingStandardFieldKey ===
+                                    'participant_count' ||
                                   editingStandardFieldKey === 'helpers_needed'
                                 ? '1'
                                 : undefined
@@ -844,7 +848,8 @@ export function TemplateForm({
                             editingStandardFieldKey === 'time_end'
                               ? 'time'
                               : editingStandardFieldKey === 'price_person' ||
-                                  editingStandardFieldKey === 'participant_count' ||
+                                  editingStandardFieldKey ===
+                                    'participant_count' ||
                                   editingStandardFieldKey === 'helpers_needed'
                                 ? 'number'
                                 : 'text'
@@ -852,7 +857,8 @@ export function TemplateForm({
                           step={
                             editingStandardFieldKey === 'price_person'
                               ? '0.01'
-                              : editingStandardFieldKey === 'participant_count' ||
+                              : editingStandardFieldKey ===
+                                    'participant_count' ||
                                   editingStandardFieldKey === 'helpers_needed'
                                 ? '1'
                                 : undefined

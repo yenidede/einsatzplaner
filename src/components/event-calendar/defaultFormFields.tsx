@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RiCalendarLine } from '@remixicon/react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Popover,
@@ -22,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { EndHour, StartHour } from '@/components/event-calendar/constants';
 import type { organization as Organization } from '@/generated/prisma';
 import FormGroup from '../form/formGroup';
 import FormField from '../form/formInputField';
@@ -177,20 +177,6 @@ export function DefaultFormFields({
     );
   }, [formData.startDate, formData.endDate]);
 
-  const timeOptions = useMemo(() => {
-    const options = [];
-    for (let hour = StartHour; hour <= EndHour - 1; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const formattedHour = hour.toString().padStart(2, '0');
-        const formattedMinute = minute.toString().padStart(2, '0');
-        const value = `${formattedHour}:${formattedMinute}`;
-        const label = `${formattedHour}:${formattedMinute}`;
-        options.push({ value, label });
-      }
-    }
-    return options;
-  }, []);
-
   const handleChange = (field: keyof EinsatzFormData, value: any) => {
     onFormDataChange({ [field]: value });
   };
@@ -230,6 +216,7 @@ export function DefaultFormFields({
                 <Button
                   id="start_datum"
                   variant={'outline'}
+                  size="lg"
                   className={cn(
                     'group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]',
                     !formData.startDate && 'text-muted-foreground'
@@ -283,21 +270,13 @@ export function DefaultFormFields({
                 name="Start Zeit"
                 errors={errors.fieldErrors['startTime'] || []}
               >
-                <Select
+                <Input
+                  id="start_time"
+                  type="time"
                   value={formData.startTime}
-                  onValueChange={(value) => handleChange('startTime', value)}
-                >
-                  <SelectTrigger id="start_time">
-                    <SelectValue placeholder="Select time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(e) => handleChange('startTime', e.target.value)}
+                  className="w-full"
+                />
               </FormInputFieldCustom>
             </div>
           )}
@@ -313,6 +292,7 @@ export function DefaultFormFields({
                 <Button
                   id="ende_datum"
                   variant={'outline'}
+                  size="lg"
                   className={cn(
                     'group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]',
                     !formData.endDate && 'text-muted-foreground'
@@ -359,21 +339,13 @@ export function DefaultFormFields({
                 name="Ende Zeit"
                 errors={errors.fieldErrors['endTime'] || []}
               >
-                <Select
+                <Input
+                  id="end_time"
+                  type="time"
                   value={formData.endTime}
-                  onValueChange={(value) => handleChange('endTime', value)}
-                >
-                  <SelectTrigger id="end_time">
-                    <SelectValue placeholder="Zeit auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(e) => handleChange('endTime', e.target.value)}
+                  className="w-full"
+                />
               </FormInputFieldCustom>
             </div>
           )}
