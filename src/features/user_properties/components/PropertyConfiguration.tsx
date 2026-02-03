@@ -14,6 +14,8 @@ import {
   validatePropertyConfig,
   getRequiredFieldWarning,
 } from '../utils/validation';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 export type FieldFormContext = 'person' | 'vorlage';
 
@@ -144,6 +146,21 @@ export function PropertyConfiguration({
               onChange={onConfigChange}
               errors={getFieldError('options')}
             />
+          )}
+
+          {context === 'vorlage' && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={config.isRequired}
+                onCheckedChange={(checked) =>
+                  onConfigChange({ isRequired: checked === true })
+                }
+                id="isRequired"
+              />
+              <Label htmlFor="isRequired" className="text-sm font-medium">
+                Pflichtfeld
+              </Label>
+            </div>
           )}
 
           {config.fieldType === 'number' &&
