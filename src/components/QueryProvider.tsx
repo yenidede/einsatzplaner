@@ -13,9 +13,7 @@ export default function QueryProvider({
     queryClientRef.current = new QueryClient({
       defaultOptions: {
         queries: {
-          refetchOnWindowFocus: false,
-          refetchOnMount: false,
-          refetchOnReconnect: false,
+          refetchOnMount: true,
           retry: 2,
           gcTime: 1000 * 60 * 5, // Cache for 5 minutes
           staleTime: 1000 * 60 * 2, // Data is fresh for 2 minutes

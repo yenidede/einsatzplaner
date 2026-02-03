@@ -271,10 +271,10 @@ export function useToggleUserAssignment(
     onSuccess: (data) => {
       if (!Object.hasOwn(data, 'deleted'))
         toast.success(
-          `Du hast dich erfolgreich bei '${data.title}' eingetragen`
+          `Sie haben sich erfolgreich bei '${data.title}' eingetragen`
         );
       else
-        toast.success(`Du hast dich erfolgreich von ${data.title} ausgetragen`);
+        toast.success(`Sie haben sich erfolgreich von ${data.title} ausgetragen`);
     },
     onSettled: (data) => {
       if (data?.id) {

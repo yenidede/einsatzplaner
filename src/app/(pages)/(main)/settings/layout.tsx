@@ -8,7 +8,7 @@ export default function SettingsLayout({
 }) {
   return (
     <Suspense fallback={<div>Lade Benutzerdaten ...</div>}>
-      <ChildrenWrapper children={children} />
+      <ChildrenWrapper>{children}</ChildrenWrapper>
     </Suspense>
   );
 }

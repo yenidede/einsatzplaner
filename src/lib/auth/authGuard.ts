@@ -79,6 +79,12 @@ export const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     permission('settings', 'read'),
     permission('settings', 'update'),
 
+    // Templates
+    permission('templates', 'read'),
+    permission('templates', 'create'),
+    permission('templates', 'update'),
+    permission('templates', 'delete'),
+
     // Dashboard
     permission('dashboard', 'read'),
   ],

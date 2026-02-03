@@ -26,7 +26,8 @@ export type FormFieldType =
   | 'textarea'
   | 'select'
   | 'multi-select'
-  | 'checkbox';
+  | 'checkbox'
+  | 'group';
 export type SupportedDataTypes =
   | 'text'
   | 'number'

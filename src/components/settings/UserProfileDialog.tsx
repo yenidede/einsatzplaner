@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 import {
   updateUserRoleAction,
   removeUserFromOrganizationAction,
@@ -26,6 +27,9 @@ import {
 import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
 import { useUserPropertiesByOrg } from '@/features/user_properties/hooks/use-user-property-queries';
 import { useSession } from 'next-auth/react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 interface UserProfileDialogProps {
   isOpen: boolean;
@@ -186,27 +190,6 @@ export function UserProfileDialog({
       }
     }
   }, [userPropertyValues]);
-
-  const getRoleColor = (role: any) => {
-    const roleName = role.name || '';
-    const roleAbbr = role.abbreviation || '';
-    if (roleName === 'Superadmin' || roleAbbr === 'SA') return 'bg-rose-400';
-    if (roleName === 'Organisationsverwaltung' || roleAbbr === 'OV')
-      return 'bg-red-300';
-    if (roleName === 'Einsatzverwaltung' || roleAbbr === 'EV')
-      return 'bg-orange-300';
-    if (
-      roleName === 'Helfer:in' ||
-      roleName === 'Helfer' ||
-      roleAbbr === 'Helfer'
-    )
-      return 'bg-cyan-200';
-    return 'bg-gray-300';
-  };
-
-  const getRoleDisplayName = (role: any) => {
-    return role.name || role.abbreviation || 'Unbekannt';
-  };
 
   const isSuperadmin = userOrgRoles.some(
     (userRole) =>
@@ -532,14 +515,14 @@ export function UserProfileDialog({
     return createPortal(
       <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
         <div className="fixed inset-0 bg-white/20 backdrop-blur-sm" />
-        <div className="relative rounded-xl border border-gray-200 bg-white p-8 shadow-2xl">
-          <div className="flex items-center gap-3">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
-            <span className="font-medium text-gray-700">
+        <Card className="relative p-8">
+          <CardContent className="flex items-center gap-3 p-0">
+            <Loader2 className="h-6 w-6 shrink-0 animate-spin text-primary" />
+            <span className="font-medium text-muted-foreground">
               Lädt Benutzerdaten...
             </span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>,
       document.body
     );
@@ -552,17 +535,16 @@ export function UserProfileDialog({
           className="fixed inset-0 bg-white/20 backdrop-blur-sm"
           onClick={onClose}
         />
-        <div className="relative rounded-xl border border-red-200 bg-white p-8 shadow-2xl">
-          <div className="font-medium text-red-600">
-            Fehler beim Laden der Benutzerdaten
-          </div>
-          <button
-            onClick={onClose}
-            className="mt-4 rounded-md bg-gray-100 px-4 py-2 hover:bg-gray-200"
-          >
-            Schließen
-          </button>
-        </div>
+        <Card className="relative border-destructive/50 p-8">
+          <CardContent className="flex flex-col gap-4 p-0">
+            <p className="font-medium text-destructive">
+              Fehler beim Laden der Benutzerdaten
+            </p>
+            <Button variant="secondary" onClick={onClose}>
+              Schließen
+            </Button>
+          </CardContent>
+        </Card>
       </div>,
       document.body
     );
@@ -588,38 +570,35 @@ export function UserProfileDialog({
         <div
           ref={dialogRef}
           onClick={(e) => e.stopPropagation()}
-          className="relative flex h-[90vh] w-full max-w-[90vw] flex-col rounded-lg bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] lg:max-w-[900px] xl:max-w-5xl"
+          className="relative mt-10 flex h-[90vh] w-full max-w-[90vw] flex-col rounded-lg bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] lg:max-w-[900px] xl:max-w-5xl"
         >
           {/* Fixed Header with Buttons */}
-          <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3 md:px-6 md:py-4">
+          <div className="shrink-0 bg-white px-4 py-3 md:px-6 md:py-4">
             <div className="flex items-center justify-end gap-2">
-              <button
-                onClick={handleClose}
-                className="flex items-center justify-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm outline outline-offset-1 outline-slate-200 transition-colors hover:bg-gray-50"
-              >
-                <span className="font-['Inter'] font-medium text-slate-800">
-                  {hasChanges ? 'Abbrechen' : 'Schließen'}
-                </span>
-              </button>
-              <button
+              <Button variant="outline" size="sm" onClick={handleClose}>
+                {hasChanges ? 'Abbrechen' : 'Schließen'}
+              </Button>
+              <Button
+                size="sm"
                 onClick={handleSaveAndClose}
                 disabled={saving}
-                className={`flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors disabled:opacity-50 ${
-                  hasChanges
-                    ? 'bg-blue-600 hover:bg-blue-700'
-                    : 'bg-slate-900 hover:bg-slate-800'
-                }`}
+                variant={hasChanges ? 'default' : 'secondary'}
               >
-                <span className="font-['Inter'] font-medium text-white">
-                  {saving
-                    ? 'Speichert...'
-                    : hasChanges
-                      ? 'Änderungen Speichern'
-                      : 'Speichern'}
-                </span>
-              </button>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Speichert...
+                  </>
+                ) : hasChanges ? (
+                  'Änderungen Speichern'
+                ) : (
+                  'Speichern'
+                )}
+              </Button>
             </div>
           </div>
+
+          <Separator />
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto">
@@ -630,8 +609,6 @@ export function UserProfileDialog({
                   lastname={userProfile.lastname}
                   pictureUrl={userProfile.picture_url}
                   userOrgRoles={userOrgRoles}
-                  getRoleColor={getRoleColor}
-                  getRoleDisplayName={getRoleDisplayName}
                 />
                 <UserContactInfo
                   email={userProfile.email}

@@ -41,7 +41,7 @@ export function PageHeader({
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={handleCancel}>
-            Abbrechen
+            Schließen
             <span className="ml-2 hidden sm:inline">
               <Kbd>ESC</Kbd>
             </span>

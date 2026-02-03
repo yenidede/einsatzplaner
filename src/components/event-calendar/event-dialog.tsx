@@ -50,7 +50,11 @@ import { DefaultFormFields } from '@/components/event-calendar/defaultFormFields
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { CustomFormField, SupportedDataTypes } from './types';
 import DynamicFormFields from './dynamicFormfields';
-import { buildInputProps } from '../form/utils';
+import {
+  buildInputProps,
+  calcTotal,
+  calcPricePerPersonFromTotal,
+} from '../form/utils';
 import TooltipCustom from '../tooltip-custom';
 
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
@@ -517,13 +521,17 @@ export function EventDialogVerwaltung({
             id: f.field.id,
             displayName: f.field.name || f.field.id,
             placeholder: f.field.placeholder,
-            defaultValue: f.field.default_value,
-            required: f.field.is_required,
+            defaultValue: f.field.default_value ?? null,
+            required: f.field.is_required === true,
+            groupName: f.field.group_name ?? null,
             isMultiline: f.field.is_multiline,
             min: f.field.min,
             max: f.field.max,
             allowedValues: f.field.allowed_values,
-            inputType: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+            inputType:
+              f.field.is_multiline === true
+                ? 'textarea'
+                : mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
             dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
             inputProps: buildInputProps(f.field.type?.datatype, {
               placeholder: f.field.placeholder,
@@ -533,7 +541,7 @@ export function EventDialogVerwaltung({
           }))
         );
 
-        // Populate React Hook Form with field values
+        // Populate React Hook Form with field values (saved einsatz data or template default_value)
         const formValues = fields.reduce(
           (acc, f) => {
             const value =
@@ -549,7 +557,7 @@ export function EventDialogVerwaltung({
           {} as Record<string, any>
         );
 
-        // Reset form with new values
+        // Reset form with new values so dynamic fields show saved or default values
         dynamicForm.reset(formValues);
       } catch (error) {
         console.error('Error generating schema: ' + error);
@@ -564,8 +572,8 @@ export function EventDialogVerwaltung({
 
   const formatTimeForInput = (date: Date) => {
     const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = Math.floor(date.getMinutes() / 15) * 15;
-    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   const checkIfFormIsModified = (o1: EinsatzFormData, o2: EinsatzFormData) => {
@@ -597,44 +605,116 @@ export function EventDialogVerwaltung({
       });
 
       if (dialogResult !== 'success') {
-        // User cancelled, do not load template
+        toast.info(
+          'Vorlage nicht geladen. Es wurden keine Änderungen vorgenommen.'
+        );
         return;
       }
     }
 
     setActiveTemplateId(templateId);
 
-    // Load template data and populate form
+    // Load template data and populate form (only template defaults; placeholders are visual only; fallbacks stay hardcoded)
     if (selectedTemplate) {
-      // Populate form with template data
       const templateUpdates: Partial<EinsatzFormData> = {};
 
-      // Set default values from template if available
-      if (selectedTemplate.participant_count_default !== null) {
+      // Name (einsatzname_default)
+      const nameDefault = (
+        selectedTemplate as { einsatzname_default?: string | null }
+      ).einsatzname_default;
+      if (nameDefault != null && nameDefault.trim() !== '') {
+        templateUpdates.title = nameDefault.trim();
+      }
+
+      // Default categories (template_to_category)
+      const defaultCategoryIds =
+        selectedTemplate.template_to_category
+          ?.map((t) => t.category_id)
+          .filter((id): id is string => id != null) ?? [];
+      if (defaultCategoryIds.length > 0) {
+        templateUpdates.einsatzCategoriesIds = defaultCategoryIds;
+      }
+
+      // Start and end time
+      if (
+        (selectedTemplate as { time_start_default?: Date | null })
+          .time_start_default
+      ) {
+        templateUpdates.startTime = formatOrgTimeForInput(
+          (selectedTemplate as { time_start_default?: Date | null })
+            .time_start_default,
+          staticFormData.startTime
+        );
+      }
+      if (
+        (selectedTemplate as { time_end_default?: Date | null })
+          .time_end_default
+      ) {
+        templateUpdates.endTime = formatOrgTimeForInput(
+          (selectedTemplate as { time_end_default?: Date | null })
+            .time_end_default,
+          staticFormData.endTime
+        );
+      }
+
+      if (selectedTemplate.participant_count_default != null) {
         templateUpdates.participantCount =
           selectedTemplate.participant_count_default;
       }
-      if (selectedTemplate.price_person_default !== null) {
-        templateUpdates.pricePerPerson = selectedTemplate.price_person_default;
-      }
-      if (selectedTemplate.helpers_needed_default !== null) {
+      if (selectedTemplate.helpers_needed_default != null) {
         templateUpdates.helpersNeeded = selectedTemplate.helpers_needed_default;
       }
-      if (selectedTemplate.all_day_default !== null) {
+      if (selectedTemplate.all_day_default != null) {
         templateUpdates.all_day = selectedTemplate.all_day_default;
       }
 
-      // Calculate total price after both participant count and price per person are set
       const finalParticipantCount =
         templateUpdates.participantCount ??
         staticFormData.participantCount ??
         DEFAULTFORMDATA.participantCount;
-      const finalPricePerPerson =
-        templateUpdates.pricePerPerson ??
-        staticFormData.pricePerPerson ??
-        DEFAULTFORMDATA.pricePerPerson;
 
-      templateUpdates.totalPrice = finalParticipantCount * finalPricePerPerson;
+      // Total price and price per person: use total_price_default when set (derive price per person), else use price_person_default (derive total)
+      const totalDefault = selectedTemplate.total_price_default;
+      const pricePerPersonDefault = selectedTemplate.price_person_default;
+
+      if (!!totalDefault && finalParticipantCount > 0) {
+        templateUpdates.totalPrice = totalDefault;
+        templateUpdates.pricePerPerson = calcPricePerPersonFromTotal(
+          totalDefault,
+          finalParticipantCount
+        );
+      } else if (!!pricePerPersonDefault) {
+        templateUpdates.pricePerPerson = pricePerPersonDefault;
+        templateUpdates.totalPrice = calcTotal(
+          pricePerPersonDefault,
+          finalParticipantCount
+        );
+      } else {
+        const finalPricePerPerson =
+          staticFormData.pricePerPerson ?? DEFAULTFORMDATA.pricePerPerson;
+        templateUpdates.totalPrice =
+          finalParticipantCount * finalPricePerPerson;
+      }
+
+      // Required user properties from template (Benötigte Personeneigenschaften)
+      const templateUserProps = (
+        selectedTemplate as {
+          template_user_property?: Array<{
+            user_property_id: string;
+            is_required: boolean;
+            min_matching_users: number | null;
+          }>;
+        }
+      ).template_user_property;
+      if (templateUserProps?.length) {
+        templateUpdates.requiredUserProperties = templateUserProps.map(
+          (prop) => ({
+            user_property_id: prop.user_property_id,
+            is_required: prop.is_required,
+            min_matching_users: prop.min_matching_users ?? null,
+          })
+        );
+      }
 
       // Apply template values to form
       handleFormDataChange(templateUpdates);
@@ -947,14 +1027,15 @@ export function EventDialogVerwaltung({
 
           <div className="flex-1 overflow-y-auto">
             <div className="grid gap-8 py-4">
-              <FormGroup>
-                {templatesQuery.isLoading ? (
-                  <div>Lade Vorlagen ...</div>
-                ) : !activeTemplateId ? (
-                  // template not yet set, show options
-                  <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
-                    <div className="mt-1.5 flex flex-wrap gap-4">
-                      {templatesQuery.data?.map((t) => (
+              {/* Template selection: single grid for options, no nested FormGroup grid */}
+              {templatesQuery.isLoading ? (
+                <div>Lade Vorlagen ...</div>
+              ) : !activeTemplateId ? (
+                <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
+                  <div className="mt-1.5 grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
+                    {templatesQuery.data
+                      ?.filter((t) => !t.is_paused)
+                      .map((t) => (
                         <ToggleItemBig
                           key={t.id}
                           text={t.name ?? 'Vorlage'}
@@ -963,12 +1044,12 @@ export function EventDialogVerwaltung({
                           onClick={() => {
                             handleTemplateSelect(t.id);
                           }}
-                          className="w-full sm:w-auto"
                         />
                       ))}
-                    </div>
-                  </FormInputFieldCustom>
-                ) : (
+                  </div>
+                </FormInputFieldCustom>
+              ) : (
+                <FormGroup>
                   <div className="flex justify-between">
                     <div>
                       Aktive Vorlage:{' '}
@@ -977,6 +1058,9 @@ export function EventDialogVerwaltung({
                           (t) => t.id === activeTemplateId
                         )?.name
                       }
+                      {templatesQuery.data?.find(
+                        (t) => t.id === activeTemplateId
+                      )?.is_paused && ' (pausiert)'}
                     </div>
                     <Select
                       value={activeTemplateId}
@@ -988,16 +1072,24 @@ export function EventDialogVerwaltung({
                         </Button>
                       </SelectTrigger>
                       <SelectContent>
-                        {templatesQuery.data?.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
+                        {templatesQuery.data
+                          ?.filter(
+                            (t) => !t.is_paused || t.id === activeTemplateId
+                          )
+                          .map((t) => (
+                            <SelectItem
+                              key={t.id}
+                              value={t.id}
+                              disabled={t.is_paused}
+                            >
+                              {t.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-              </FormGroup>
+                </FormGroup>
+              )}
               {/* Form Fields */}
               <DefaultFormFields
                 formData={staticFormData}

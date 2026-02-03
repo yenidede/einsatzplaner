@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/SimpleFormComponents';
+import { Button } from '@/components/ui/button';
 import FormInputFieldCustom from '@/components/form/formInputFieldCustom';
 import { Input } from '@/components/ui/input';
 import type { PropertyConfig, ValidationError } from '../types';
@@ -14,6 +14,10 @@ import {
   validatePropertyConfig,
   getRequiredFieldWarning,
 } from '../utils/validation';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+
+export type FieldFormContext = 'person' | 'vorlage';
 
 interface PropertyConfigurationProps {
   config: PropertyConfig;
@@ -22,6 +26,16 @@ interface PropertyConfigurationProps {
   onCancel: () => void;
   existingPropertyNames?: string[];
   existingUserCount?: number;
+  /** Whether this form is for a person property or a template (Vorlage) field. Affects visibility of "Eingabe-Regeln für Personen". */
+  context?: FieldFormContext;
+  /** Optional title (default: "Neue Eigenschaft konfigurieren") */
+  title?: string;
+  /** Optional label for name field (default: "Name der Eigenschaft *") */
+  nameLabel?: string;
+  /** Optional save button text (default: "Speichern") */
+  saveButtonLabel?: string;
+  /** Optional: disable save button (e.g. while submitting) */
+  saveDisabled?: boolean;
 }
 
 export function PropertyConfiguration({
@@ -31,6 +45,11 @@ export function PropertyConfiguration({
   onCancel,
   existingPropertyNames = [],
   existingUserCount = 0,
+  context = 'person',
+  title = 'Neue Eigenschaft konfigurieren',
+  nameLabel = 'Name der Eigenschaft *',
+  saveButtonLabel = 'Speichern',
+  saveDisabled = false,
 }: PropertyConfigurationProps) {
   const [errors, setErrors] = useState<ValidationError[]>([]);
 
@@ -54,10 +73,10 @@ export function PropertyConfiguration({
     }
   };
 
-  const warningMessage = getRequiredFieldWarning(
-    config.isRequired,
-    existingUserCount
-  );
+  const warningMessage =
+    context === 'person'
+      ? getRequiredFieldWarning(config.isRequired, existingUserCount)
+      : null;
 
   const getFieldError = (fieldName: string): string[] => {
     return errors.filter((e) => e.field === fieldName).map((e) => e.message);
@@ -65,32 +84,47 @@ export function PropertyConfiguration({
 
   return (
     <div className="flex flex-col items-start justify-start gap-2 self-stretch">
-      <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
+      <div className="inline-flex items-center justify-start gap-2.5 self-stretch pt-2">
         <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
-          Neue Eigenschaft konfigurieren
+          {title}
         </div>
       </div>
 
       <div className="flex flex-col items-start justify-start gap-6 self-stretch border-t border-slate-200 py-4">
-        <div className="flex flex-col gap-4 self-stretch px-4">
+        <div className="flex flex-col gap-4 self-stretch">
           <h3 className="text-sm font-semibold text-slate-700">
             Grundinformationen
           </h3>
 
-          <FormInputFieldCustom
-            name="Name der Eigenschaft *"
-            errors={getFieldError('name')}
-          >
+          <FormInputFieldCustom name={nameLabel} errors={getFieldError('name')}>
             <Input
               value={config.name}
               onChange={(e) => onConfigChange({ name: e.target.value })}
-              placeholder="z.B. Hat Schlüssel"
+              placeholder={
+                context === 'person'
+                  ? 'Hat Schlüssel'
+                  : 'Eigene Feldbezeichnung'
+              }
+              className="w-full"
+            />
+          </FormInputFieldCustom>
+
+          <FormInputFieldCustom
+            name="Beschreibung (optional)"
+            errors={getFieldError('description')}
+          >
+            <Input
+              value={config.description ?? ''}
+              onChange={(e) =>
+                onConfigChange({ description: e.target.value })
+              }
+              placeholder="Kurze Beschreibung des Feldes"
               className="w-full"
             />
           </FormInputFieldCustom>
         </div>
 
-        <div className="flex flex-col gap-4 self-stretch px-4">
+        <div className="flex flex-col gap-4 self-stretch">
           <h3 className="text-sm font-semibold text-slate-700">
             Feldeinstellungen
           </h3>
@@ -132,7 +166,45 @@ export function PropertyConfiguration({
             />
           )}
 
-          {config.fieldType === 'number' &&
+          {(config.fieldType === 'currency' ||
+            config.fieldType === 'phone' ||
+            config.fieldType === 'mail' ||
+            config.fieldType === 'date' ||
+            config.fieldType === 'time') && (
+            <TextFieldSettings
+              placeholder={config.placeholder || ''}
+              maxLength={undefined}
+              isMultiline={false}
+              defaultValue={config.defaultValue}
+              onChange={onConfigChange}
+            />
+          )}
+
+          {config.fieldType === 'currency' && (
+            <NumberFieldSettings
+              isDecimal={true}
+              minValue={config.minValue}
+              maxValue={config.maxValue}
+              onChange={onConfigChange}
+            />
+          )}
+
+          {context === 'vorlage' && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={config.isRequired}
+                onCheckedChange={(checked) =>
+                  onConfigChange({ isRequired: checked === true })
+                }
+                id="isRequired"
+              />
+              <Label htmlFor="isRequired" className="text-sm font-medium">
+                Pflichtfeld
+              </Label>
+            </div>
+          )}
+
+          {(config.fieldType === 'number' || config.fieldType === 'currency') &&
             config.minValue !== undefined &&
             config.maxValue !== undefined &&
             config.minValue > config.maxValue && (
@@ -142,29 +214,23 @@ export function PropertyConfiguration({
             )}
         </div>
 
-        <UsageSettings
-          isRequired={config.isRequired}
-          onChange={onConfigChange}
-          warningMessage={warningMessage}
-        />
+        {context === 'person' && (
+          <UsageSettings
+            isRequired={config.isRequired}
+            onChange={onConfigChange}
+            warningMessage={warningMessage}
+          />
+        )}
 
-        <div className="inline-flex items-start justify-end gap-2 self-stretch border-t border-slate-200 px-4 pt-2">
-          <Button
-            onClick={onCancel}
-            className="flex items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2 outline outline-1 outline-offset-[-1px] outline-slate-200"
-          >
-            <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-900">
-              Abbrechen
-            </div>
+        <div className="inline-flex items-start justify-end gap-2 self-stretch border-t border-slate-200 pt-2">
+          <Button variant="secondary" onClick={onCancel}>
+            Abbrechen
           </Button>
           <Button
             onClick={handleSave}
-            disabled={errors.length > 0}
-            className="flex items-center justify-center gap-2.5 rounded-md bg-slate-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={errors.length > 0 || saveDisabled}
           >
-            <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-white">
-              Speichern
-            </div>
+            {saveButtonLabel}
           </Button>
         </div>
       </div>

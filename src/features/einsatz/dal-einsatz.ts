@@ -355,16 +355,16 @@ export async function getEinsaetzeForTableView(
     ),
     user: einsatz.user
       ? {
-          id: einsatz.user.id,
-          firstname: einsatz.user.firstname ?? null,
-          lastname: einsatz.user.lastname ?? null,
-        }
+        id: einsatz.user.id,
+        firstname: einsatz.user.firstname ?? null,
+        lastname: einsatz.user.lastname ?? null,
+      }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-          id: einsatz.einsatz_template.id,
-          name: einsatz.einsatz_template.name ?? null,
-        }
+        id: einsatz.einsatz_template.id,
+        name: einsatz.einsatz_template.name ?? null,
+      }
       : null,
     _count: einsatz._count,
   }));
@@ -408,6 +408,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
     where: {
       org_id: useOrgId,
     },
+    orderBy: { name: 'asc' },
     include: {
       template_icon: {
         select: {
@@ -656,7 +657,7 @@ export async function toggleUserAssignmentToEinsatz(
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-    existingEinsatz.einsatz_helper.length + addOrRemoveOne
+      existingEinsatz.einsatz_helper.length + addOrRemoveOne
       ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
       : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
@@ -1048,6 +1049,7 @@ async function getAllEinsaetzeFromDb(
         },
       },
     },
+    orderBy: { start: 'asc', title: 'asc' },
   });
 }
 
@@ -1151,6 +1153,7 @@ async function getAllEinsatzeForCalendarFromDb(
         in: org_ids,
       },
     },
+    orderBy: [{ start: 'asc' }, { title: 'asc' }],
   });
 }
 

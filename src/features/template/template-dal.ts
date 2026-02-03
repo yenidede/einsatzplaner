@@ -2,10 +2,40 @@
 
 import prisma from '@/lib/prisma';
 import type { einsatz_template as Template } from '@/generated/prisma';
+import type { PropertyConfig } from '@/features/user_properties/types';
+import { propertyConfigToFieldInput } from '@/features/user_properties/utils/config-to-field-input';
+import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
+
+export type CreateTemplateInput = {
+  org_id: string;
+  name: string;
+  icon_id: string;
+  description?: string | null;
+};
+
+export type UpdateTemplateInput = {
+  name?: string | null;
+  icon_id?: string;
+  description?: string | null;
+  is_paused?: boolean;
+  participant_count_default?: number | null;
+  participant_count_placeholder?: number | null;
+  price_person_default?: number | null;
+  price_person_placeholder?: number | null;
+  helpers_needed_default?: number | null;
+  helpers_needed_placeholder?: number | null;
+  all_day_default?: boolean | null;
+  einsatzname_default?: string | null;
+  time_start_default?: Date | null;
+  time_start_placeholder?: Date | null;
+  time_end_default?: Date | null;
+  time_end_placeholder?: Date | null;
+};
 
 export async function getAllTemplatesByIds(ids: string[]) {
   const templates = await prisma.einsatz_template.findMany({
     where: { id: { in: ids } },
+    orderBy: { name: 'asc' },
   });
   return templates;
 }
@@ -13,6 +43,7 @@ export async function getAllTemplatesByIds(ids: string[]) {
 export async function getAllTemplatesByOrgIds(org_ids: string[]) {
   const templates = await prisma.einsatz_template.findMany({
     where: { org_id: { in: org_ids } },
+    orderBy: { name: 'asc' },
   });
   return templates;
 }
@@ -20,6 +51,7 @@ export async function getAllTemplatesByOrgIds(org_ids: string[]) {
 export async function getAllTemplatesWithIconByOrgId(org_id: string) {
   const templates = await prisma.einsatz_template.findMany({
     where: { org_id },
+    orderBy: { name: 'asc' },
     include: {
       template_icon: {
         select: {
@@ -27,26 +59,22 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
         },
       },
       template_field: {
-        select: {
+        include: {
           field: {
-            select: {
-              id: true,
-              name: true,
-              type: {
-                select: {
-                  datatype: true,
-                },
-              },
-              is_required: true,
-              placeholder: true,
-              default_value: true,
-              group_name: true,
-              is_multiline: true,
-              min: true,
-              max: true,
-              allowed_values: true,
+            include: {
+              type: { select: { datatype: true } },
             },
           },
+        },
+      },
+      template_to_category: {
+        select: { category_id: true },
+      },
+      template_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
         },
       },
     },
@@ -64,26 +92,24 @@ export async function getTemplateById(id: string) {
         },
       },
       template_field: {
-        select: {
+        include: {
           field: {
-            select: {
-              id: true,
-              name: true,
-              type: {
-                select: {
-                  datatype: true,
-                },
-              },
-              is_required: true,
-              placeholder: true,
-              default_value: true,
-              group_name: true,
-              is_multiline: true,
-              min: true,
-              max: true,
-              allowed_values: true,
+            include: {
+              type: { select: { datatype: true } },
             },
           },
+        },
+      },
+      template_to_category: {
+        include: {
+          einsatz_category: true,
+        },
+      },
+      template_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
         },
       },
     },
@@ -91,16 +117,21 @@ export async function getTemplateById(id: string) {
   return template;
 }
 
-// TODO: auth
-export async function createTemplate(data: Template) {
-  const template = await prisma.einsatz_template.create({
-    data,
-  });
-  return template;
-}
+/** Template as returned by getTemplateById (with relations). Use for typing components that consume this data. */
+export type TemplateWithRelations = NonNullable<
+  Awaited<ReturnType<typeof getTemplateById>>
+>;
 
-// TODO: auth
-export async function updateTemplate(id: string, data: Template) {
+export async function updateTemplate(
+  id: string,
+  data: Partial<Omit<Template, 'id' | 'created_at'>>
+) {
+  const { session, userIds } = await requireAuth();
+
+  if (!(await hasPermission(session, 'templates:update', userIds.orgId))) {
+    throw new Error('Fehlende Berechtigungen zum Aktualisieren der Vorlage.');
+  }
+
   const template = await prisma.einsatz_template.update({
     where: { id },
     data,
@@ -108,10 +139,370 @@ export async function updateTemplate(id: string, data: Template) {
   return template;
 }
 
-// TODO: auth
 export async function deleteTemplate(id: string) {
-  const template = await prisma.einsatz_template.delete({
+  const { session } = await requireAuth();
+
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id },
+    select: { org_id: true },
+  });
+
+  if (!template?.org_id) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  if (!(await hasPermission(session, 'templates:delete', template.org_id))) {
+    throw new Error('Keine Berechtigung, diese Vorlage zu löschen.');
+  }
+
+  return prisma.einsatz_template.delete({
     where: { id },
   });
-  return template;
+}
+
+export async function getAllTemplateIcons() {
+  return prisma.template_icon.findMany({
+    orderBy: { id: 'asc' },
+  });
+}
+
+export type CreateTemplateFieldInput = {
+  name: string;
+  description?: string;
+  datatype:
+  | 'text'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'currency'
+  | 'group'
+  | 'date'
+  | 'time'
+  | 'phone'
+  | 'mail';
+  isRequired: boolean;
+  placeholder?: string;
+  defaultValue?: string;
+  isMultiline?: boolean;
+  min?: number;
+  max?: number;
+  allowedValues?: string[];
+};
+
+async function ensureTypeExists(datatype: string): Promise<string> {
+  let type = await prisma.type.findFirst({
+    where: { datatype },
+  });
+
+  if (!type) {
+    type = await prisma.type.create({
+      data: {
+        name: datatype,
+        datatype: datatype,
+        description: `Auto-generated type for ${datatype}`,
+      },
+    });
+  }
+
+  return type.id;
+}
+
+export async function createTemplateField(
+  templateId: string,
+  input: CreateTemplateFieldInput
+) {
+  const { session } = await requireAuth();
+
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id: templateId },
+    select: { org_id: true },
+  });
+
+  if (!template) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  const orgId = template.org_id;
+  if (!orgId || !(await hasPermission(session, 'templates:create', orgId))) {
+    throw new Error('Keine Berechtigung, Felder zu dieser Vorlage hinzuzufügen.');
+  }
+
+  const typeId = await ensureTypeExists(input.datatype);
+
+  const field = await prisma.$transaction(async (tx) => {
+    const createdField = await tx.field.create({
+      data: {
+        name: input.name,
+        description: input.description ?? null,
+        type_id: typeId,
+        is_required: input.isRequired,
+        placeholder: input.placeholder,
+        default_value: input.defaultValue,
+        is_multiline: input.isMultiline,
+        min: input.min,
+        max: input.max,
+        allowed_values: input.allowedValues ?? [],
+      },
+    });
+
+    await tx.template_field.create({
+      data: {
+        template_id: templateId,
+        field_id: createdField.id,
+      },
+    });
+
+    return createdField;
+  });
+
+  return field;
+}
+
+export async function createTemplateAction(input: CreateTemplateInput) {
+  const { session, userIds } = await requireAuth();
+
+  if (!(await hasPermission(session, 'templates:create', userIds.orgId))) {
+    throw new Error('Fehlende Berechtigungen zum Erstellen der Vorlage.');
+  }
+
+  return prisma.einsatz_template.create({
+    data: {
+      org_id: input.org_id,
+      name: input.name,
+      icon_id: input.icon_id,
+      description: input.description ?? null,
+    },
+  });
+}
+
+export async function updateTemplateAction(
+  templateId: string,
+  input: UpdateTemplateInput
+) {
+  const data: Partial<Omit<Template, 'id' | 'created_at'>> = {
+    name: input.name ?? undefined,
+    icon_id: input.icon_id,
+    description: input.description ?? undefined,
+    is_paused: input.is_paused,
+    participant_count_default: input.participant_count_default,
+    participant_count_placeholder: input.participant_count_placeholder,
+    price_person_default: input.price_person_default,
+    price_person_placeholder: input.price_person_placeholder,
+    helpers_needed_default: input.helpers_needed_default,
+    helpers_needed_placeholder: input.helpers_needed_placeholder,
+    all_day_default: input.all_day_default,
+    time_start_default: input.time_start_default,
+    time_end_default: input.time_end_default,
+  };
+  if (input.einsatzname_default !== undefined) {
+    (data as Record<string, unknown>).einsatzname_default =
+      input.einsatzname_default;
+  }
+  return updateTemplate(templateId, data);
+}
+
+export async function deleteTemplateAction(templateId: string) {
+  return deleteTemplate(templateId);
+}
+
+/** Set default categories for a template (template_to_category). Replaces existing. No placeholder. */
+export async function setTemplateDefaultCategoriesAction(
+  templateId: string,
+  categoryIds: string[]
+) {
+  const { session } = await requireAuth();
+
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id: templateId },
+    select: { org_id: true },
+  });
+
+  if (!template?.org_id) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  if (!(await hasPermission(session, 'templates:update', template.org_id))) {
+    throw new Error(
+      'Keine Berechtigung, Standard-Kategorien dieser Vorlage zu bearbeiten.'
+    );
+  }
+
+  const validCategories = await prisma.einsatz_category.findMany({
+    where: {
+      id: { in: categoryIds },
+      org_id: template.org_id,
+    },
+    select: { id: true },
+  });
+  const validIds = validCategories.map((c) => c.id);
+
+  await prisma.template_to_category.deleteMany({
+    where: { template_id: templateId },
+  });
+
+  if (validIds.length > 0) {
+    await prisma.template_to_category.createMany({
+      data: validIds.map((category_id) => ({
+        template_id: templateId,
+        category_id,
+      })),
+    });
+  }
+
+  return getTemplateById(templateId);
+}
+
+export type TemplateRequiredUserPropertyInput = {
+  user_property_id: string;
+  is_required: boolean;
+  min_matching_users: number | null;
+};
+
+/** Set required user properties for a template (template_user_property). Replaces existing. */
+export async function setTemplateRequiredUserPropertiesAction(
+  templateId: string,
+  configs: TemplateRequiredUserPropertyInput[]
+) {
+  const { session } = await requireAuth();
+
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id: templateId },
+    select: { org_id: true },
+  });
+
+  if (!template?.org_id) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  if (!(await hasPermission(session, 'templates:update', template.org_id))) {
+    throw new Error(
+      'Keine Berechtigung, benötigte Personeneigenschaften dieser Vorlage zu bearbeiten.'
+    );
+  }
+
+  const validPropertyIds = await prisma.user_property.findMany({
+    where: {
+      id: { in: configs.map((c) => c.user_property_id) },
+      org_id: template.org_id,
+    },
+    select: { id: true },
+  });
+  const validIdSet = new Set(validPropertyIds.map((p) => p.id));
+  const filteredConfigs = configs.filter((c) =>
+    validIdSet.has(c.user_property_id)
+  );
+
+  await prisma.template_user_property.deleteMany({
+    where: { template_id: templateId },
+  });
+
+  if (filteredConfigs.length > 0) {
+    await prisma.template_user_property.createMany({
+      data: filteredConfigs.map((c) => ({
+        template_id: templateId,
+        user_property_id: c.user_property_id,
+        is_required: c.is_required,
+        min_matching_users: c.min_matching_users,
+      })),
+    });
+  }
+
+  return getTemplateById(templateId);
+}
+
+export type UpdateTemplateFieldInput = CreateTemplateFieldInput;
+
+async function checkTemplateFieldAccess(
+  templateId: string,
+  fieldId: string
+): Promise<{ orgId: string }> {
+  const { session } = await requireAuth();
+
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id: templateId },
+    select: { org_id: true },
+  });
+
+  if (!template?.org_id) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  if (!(await hasPermission(session, 'templates:update', template.org_id))) {
+    throw new Error(
+      'Keine Berechtigung, Felder dieser Vorlage zu bearbeiten oder zu löschen.'
+    );
+  }
+
+  const link = await prisma.template_field.findFirst({
+    where: { template_id: templateId, field_id: fieldId },
+  });
+
+  if (!link) {
+    throw new Error('Feld gehört nicht zu dieser Vorlage.');
+  }
+
+  return { orgId: template.org_id };
+}
+
+export async function updateTemplateField(
+  templateId: string,
+  fieldId: string,
+  input: UpdateTemplateFieldInput
+) {
+  await checkTemplateFieldAccess(templateId, fieldId);
+
+  const typeId = await ensureTypeExists(input.datatype);
+
+  return prisma.field.update({
+    where: { id: fieldId },
+    data: {
+      name: input.name,
+      description: input.description ?? null,
+      type_id: typeId,
+      is_required: input.isRequired,
+      placeholder: input.placeholder ?? null,
+      default_value: input.defaultValue ?? null,
+      is_multiline: input.isMultiline ?? null,
+      min: input.min ?? null,
+      max: input.max ?? null,
+      allowed_values: input.allowedValues ?? [],
+    },
+  });
+}
+
+/** Remove the field from the template only (unlink). Does not delete the field record,
+ * so existing Einsätze keep their dynamic field values (einsatz_field) unchanged. */
+export async function deleteTemplateField(
+  templateId: string,
+  fieldId: string
+): Promise<void> {
+  await checkTemplateFieldAccess(templateId, fieldId);
+
+  await prisma.template_field.deleteMany({
+    where: { template_id: templateId, field_id: fieldId },
+  });
+}
+
+export async function createTemplateFieldAction(
+  templateId: string,
+  config: PropertyConfig
+) {
+  const fieldInput = propertyConfigToFieldInput(config);
+  return createTemplateField(templateId, fieldInput);
+}
+
+export async function updateTemplateFieldAction(
+  templateId: string,
+  fieldId: string,
+  config: PropertyConfig
+) {
+  const fieldInput = propertyConfigToFieldInput(config);
+  return updateTemplateField(templateId, fieldId, fieldInput);
+}
+
+export async function deleteTemplateFieldAction(
+  templateId: string,
+  fieldId: string
+): Promise<void> {
+  return deleteTemplateField(templateId, fieldId);
 }

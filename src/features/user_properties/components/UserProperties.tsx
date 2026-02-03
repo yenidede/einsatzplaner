@@ -9,9 +9,6 @@ import { PropertyOverview } from './PropertyOverview';
 import { FieldTypeSelector } from './FieldTypeSelector';
 import { PropertyConfiguration } from './PropertyConfiguration';
 import {
-  getUserPropertiesAction,
-  getExistingPropertyNamesAction,
-  getUserCountAction,
   createUserPropertyAction,
   deleteUserPropertyAction,
   updateUserPropertyAction,
@@ -179,7 +176,7 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
 
     const editConfig: PropertyConfig = {
       name: property.field.name || '',
-      description: '',
+      description: property.field.description ?? '',
       fieldType,
       placeholder: property.field.placeholder || '',
       maxLength: property.field.max !== null ? property.field.max : undefined,
