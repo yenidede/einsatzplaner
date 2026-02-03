@@ -105,6 +105,10 @@ model einsatz_template {
   helpers_needed_placeholder    Int?             @default(1) @db.SmallInt
   all_day_default               Boolean?
   is_paused                     Boolean          @default(false)
+  anmerkung_default             String?
+  anmerkung_placeholder         String?
+  total_price_default           Float?           @db.Real
+  total_price_placeholder       Float?           @db.Real
   einsatz                       einsatz[]
   user                          user?            @relation(fields: [created_by], references: [id], onDelete: Cascade)
   template_icon                 template_icon    @relation(fields: [icon_id], references: [id], onDelete: Cascade)
