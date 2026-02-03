@@ -13,8 +13,10 @@ import {
   deleteTemplateAction,
   deleteTemplateFieldAction,
   setTemplateDefaultCategoriesAction,
+  setTemplateRequiredUserPropertiesAction,
   type CreateTemplateInput,
   type UpdateTemplateInput,
+  type TemplateRequiredUserPropertyInput,
 } from '../template-dal';
 
 export function useTemplateMutations() {
@@ -121,15 +123,15 @@ export function useTemplateMutations() {
       fieldId: string;
     }) => deleteTemplateFieldAction(templateId, fieldId),
     onMutate: () => ({
-      toastId: toast.loading('Feld wird gelöscht…'),
+      toastId: toast.loading('Feld wird von der Vorlage entfernt…'),
     }),
     onSuccess: (_data, _variables, context) => {
       queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
-      toast.success('Feld gelöscht', { id: context?.toastId });
+      toast.success('Feld von der Vorlage entfernt', { id: context?.toastId });
     },
     onError: (err, _variables, context) => {
       toast.error(
-        err instanceof Error ? err.message : 'Fehler beim Löschen des Feldes',
+        err instanceof Error ? err.message : 'Fehler beim Entfernen des Feldes',
         { id: context?.toastId }
       );
     },
@@ -149,6 +151,33 @@ export function useTemplateMutations() {
     onSuccess: (_data, _variables, context) => {
       queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
       toast.success('Standard-Kategorien gespeichert', { id: context?.toastId });
+    },
+    onError: (err, _variables, context) => {
+      toast.error(
+        err instanceof Error ? err.message : 'Fehler beim Speichern',
+        { id: context?.toastId }
+      );
+    },
+  });
+
+  const setTemplateRequiredUserPropertiesMutation = useMutation({
+    mutationFn: ({
+      templateId,
+      configs,
+    }: {
+      templateId: string;
+      configs: TemplateRequiredUserPropertyInput[];
+    }) => setTemplateRequiredUserPropertiesAction(templateId, configs),
+    onMutate: () => ({
+      toastId: toast.loading(
+        'Benötigte Personeneigenschaften werden gespeichert…'
+      ),
+    }),
+    onSuccess: (_data, _variables, context) => {
+      queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
+      toast.success('Personeneigenschaften gespeichert', {
+        id: context?.toastId,
+      });
     },
     onError: (err, _variables, context) => {
       toast.error(
@@ -188,6 +217,7 @@ export function useTemplateMutations() {
     updateTemplateFieldMutation,
     deleteTemplateFieldMutation,
     setDefaultCategoriesMutation,
+    setTemplateRequiredUserPropertiesMutation,
     deleteTemplateMutation,
     isSaving:
       createMutation.isPending ||
@@ -196,6 +226,7 @@ export function useTemplateMutations() {
       updateTemplateFieldMutation.isPending ||
       deleteTemplateFieldMutation.isPending ||
       setDefaultCategoriesMutation.isPending ||
+      setTemplateRequiredUserPropertiesMutation.isPending ||
       deleteTemplateMutation.isPending,
   };
 }

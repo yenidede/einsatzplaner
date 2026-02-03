@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Type, Hash, Link2, Plus, Trash, Pause, Play } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   getFieldTypeDefinition,
+  isFieldTypeKey,
   type FieldTypeKey,
 } from '@/features/user_properties/field-type-definitions';
 import { PageHeader } from '@/components/settings/PageHeader';
@@ -60,6 +61,9 @@ import {
   useTemplateIcons,
 } from '../../features/template/hooks/use-template-queries';
 import { useTemplateMutations } from '../../features/template/hooks/useTemplateMutations';
+import { useUserProperties } from '@/features/user_properties/hooks/use-user-property-queries';
+import { MultiSelect } from '@/components/form/multi-select';
+import { cn } from '@/lib/utils';
 import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
 import { useCategoriesByOrgIds } from '@/features/category/hooks/useCategories';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
@@ -104,6 +108,7 @@ export function TemplateForm({
     updateTemplateFieldMutation,
     deleteTemplateFieldMutation,
     setDefaultCategoriesMutation,
+    setTemplateRequiredUserPropertiesMutation,
     deleteTemplateMutation,
     isSaving,
   } = useTemplateMutations();
@@ -118,6 +123,9 @@ export function TemplateForm({
   const { data: org } = useOrganization(effectiveOrgId);
   const { data: orgCategories = [] } = useCategoriesByOrgIds(
     effectiveOrgId ? [effectiveOrgId] : []
+  );
+  const { data: availableUserProps } = useUserProperties(
+    effectiveOrgId ?? null
   );
 
   const form = useForm<TemplateFormInputValues, unknown, TemplateFormValues>({
@@ -152,6 +160,21 @@ export function TemplateForm({
   const [selectedDefaultCategoryIds, setSelectedDefaultCategoryIds] = useState<
     string[]
   >([]);
+  /** Required user properties for this template (Überprüfungen). */
+  const [requiredUserPropertyConfigs, setRequiredUserPropertyConfigs] =
+    useState<
+      Array<{
+        user_property_id: string;
+        is_required: boolean;
+        min_matching_users: number | null;
+      }>
+    >([]);
+  const requiredUserPropertyConfigsRef = useRef(requiredUserPropertyConfigs);
+  const personeneigenschaftenSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    requiredUserPropertyConfigsRef.current = requiredUserPropertyConfigs;
+  }, [requiredUserPropertyConfigs]);
 
   useEffect(() => {
     if (template) {
@@ -162,6 +185,22 @@ export function TemplateForm({
       });
     }
   }, [template, reset]);
+
+  useEffect(() => {
+    const raw = template?.template_user_property ?? [];
+    setRequiredUserPropertyConfigs(
+      raw.map((p) => ({
+        user_property_id: p.user_property_id,
+        is_required: p.is_required ?? true,
+        min_matching_users:
+          typeof p.min_matching_users === 'number'
+            ? p.min_matching_users
+            : p.min_matching_users == null
+              ? 1
+              : null,
+      }))
+    );
+  }, [template]);
 
   useEffect(() => {
     if (icons.length > 0 && !watch('icon_id')) {
@@ -387,10 +426,7 @@ export function TemplateForm({
       switch (editingStandardFieldKey) {
         case 'name':
           setStandardFieldDefaultValue(
-            String(
-              (template as { einsatzname_default?: string | null })
-                .einsatzname_default ?? ''
-            )
+            String(template.einsatzname_default ?? '')
           );
           setStandardFieldPlaceholderValue('');
           break;
@@ -558,9 +594,9 @@ export function TemplateForm({
       const tf = template?.template_field?.find((t) => t.field?.id === fieldId);
       const name = tf?.field?.name ?? 'Feld';
       const result = await showDialog({
-        title: 'Feld löschen?',
-        description: `Möchten Sie das Feld "${name}" wirklich löschen? Diese Aktion löscht auch alle verknüpften Datenfelder und kann nicht rückgängig gemacht werden.`,
-        confirmText: 'Löschen',
+        title: 'Feld von Vorlage entfernen?',
+        description: `Möchten Sie das Feld "${name}" von dieser Vorlage entfernen? Das Feld wird nur von der Vorlage getrennt. Bestehende Einsätze behalten ihre gespeicherten Werte für dieses Feld.`,
+        confirmText: 'Entfernen',
         cancelText: 'Abbrechen',
         variant: 'destructive',
       });
@@ -577,6 +613,81 @@ export function TemplateForm({
   );
 
   const maxParticipantsPerHelper = org?.max_participants_per_helper ?? 20;
+
+  const handleRequiredUserPropertySelectionChange = useCallback(
+    (selectedIds: string[]) => {
+      setRequiredUserPropertyConfigs((prev) =>
+        selectedIds.map((id) => {
+          const existing = prev.find((c) => c.user_property_id === id);
+          return (
+            existing ?? {
+              user_property_id: id,
+              is_required: true,
+              min_matching_users: 1,
+            }
+          );
+        })
+      );
+    },
+    []
+  );
+
+  const handleRequiredUserPropertyConfigChange = useCallback(
+    (
+      propertyId: string,
+      updates: { is_required?: boolean; min_matching_users?: number | null }
+    ) => {
+      setRequiredUserPropertyConfigs((prev) =>
+        prev.map((config) =>
+          config.user_property_id === propertyId
+            ? { ...config, ...updates }
+            : config
+        )
+      );
+    },
+    []
+  );
+
+  /** Valid: every config has user_property_id; when is_required, min_matching_users is a number. */
+  const areRequiredUserPropertyConfigsValid = useCallback(
+    (
+      configs: Array<{
+        user_property_id: string;
+        is_required: boolean;
+        min_matching_users: number | null;
+      }>
+    ) =>
+      configs.every(
+        (c) =>
+          c.user_property_id &&
+          (!c.is_required || typeof c.min_matching_users === 'number')
+      ),
+    []
+  );
+
+  const saveRequiredUserPropertiesOnBlur = useCallback(() => {
+    if (!templateId) return;
+    const configs = requiredUserPropertyConfigsRef.current;
+    if (!areRequiredUserPropertyConfigsValid(configs)) return;
+    setTemplateRequiredUserPropertiesMutation.mutate({ templateId, configs });
+  }, [
+    templateId,
+    areRequiredUserPropertyConfigsValid,
+    setTemplateRequiredUserPropertiesMutation,
+  ]);
+
+  const handlePersoneneigenschaftenSectionBlur = useCallback(
+    (e: React.FocusEvent<HTMLDivElement>) => {
+      const wrapper = personeneigenschaftenSectionRef.current;
+      const nextTarget = e.relatedTarget ?? document.activeElement;
+      if (wrapper?.contains(nextTarget as Node)) return;
+      requestAnimationFrame(() => {
+        if (wrapper?.contains(document.activeElement)) return;
+        saveRequiredUserPropertiesOnBlur();
+      });
+    },
+    [saveRequiredUserPropertiesOnBlur]
+  );
 
   const header = (
     <PageHeader
@@ -950,9 +1061,8 @@ export function TemplateForm({
                 <ul className="space-y-2">
                   {template.template_field.map((tf) => {
                     const datatype = tf.field?.type?.datatype ?? 'text';
-                    const fieldDef = getFieldTypeDefinition(
-                      datatype as FieldTypeKey
-                    );
+                    const key = isFieldTypeKey(datatype) ? datatype : 'text';
+                    const fieldDef = getFieldTypeDefinition(key);
                     const fieldId = tf.field?.id ?? '';
                     return (
                       <TemplateFieldListItem
@@ -1026,7 +1136,7 @@ export function TemplateForm({
                 Regeln für Teilnehmer und Personeneigenschaften
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-4">
               <ul className="space-y-2">
                 <TemplateFieldListItem
                   name={
@@ -1043,17 +1153,119 @@ export function TemplateForm({
                   typeLabel="Feld"
                   icon={Hash}
                 />
-                <TemplateFieldListItem
-                  name={
-                    <>
-                      Person hat Schlüssel mindestens{' '}
-                      <span className="text-primary font-semibold">1</span>
-                    </>
-                  }
-                  typeLabel="Personeneigenschaft"
-                  icon={Link2}
-                />
               </ul>
+              <div
+                ref={personeneigenschaftenSectionRef}
+                onBlur={handlePersoneneigenschaftenSectionBlur}
+                className="space-y-3"
+              >
+                <Label className="text-sm font-medium">
+                  Benötigte Personeneigenschaften
+                </Label>
+                <MultiSelect
+                  options={
+                    availableUserProps
+                      ?.filter((p) => p.field?.name != null)
+                      .map((prop) => ({
+                        value: prop.id,
+                        label: String(prop.field.name),
+                      })) ?? []
+                  }
+                  value={requiredUserPropertyConfigs.map(
+                    (c) => c.user_property_id
+                  )}
+                  onValueChange={handleRequiredUserPropertySelectionChange}
+                  placeholder="Eigenschaften auswählen..."
+                  disabled={!templateId}
+                />
+                {requiredUserPropertyConfigs.length > 0 && (
+                  <div className="border-muted space-y-2 border-l-2 pl-4">
+                    {requiredUserPropertyConfigs.map((config) => {
+                      const prop = availableUserProps?.find(
+                        (p) => p.id === config.user_property_id
+                      );
+                      if (!prop) return null;
+                      return (
+                        <div
+                          key={config.user_property_id}
+                          className="bg-muted/50 flex items-center gap-3 rounded-md p-2"
+                        >
+                          <div className="flex-1 text-sm font-medium">
+                            {prop.field.name}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`required-${config.user_property_id}`}
+                              checked={config.is_required}
+                              onCheckedChange={(checked) =>
+                                handleRequiredUserPropertyConfigChange(
+                                  config.user_property_id,
+                                  { is_required: checked === true }
+                                )
+                              }
+                            />
+                            <Label
+                              htmlFor={`required-${config.user_property_id}`}
+                              className="cursor-pointer text-xs"
+                            >
+                              Erforderlich
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label
+                              htmlFor={`min-${config.user_property_id}`}
+                              className="text-xs whitespace-nowrap"
+                            >
+                              Min:
+                            </Label>
+                            <div className="relative">
+                              <input
+                                id={`min-${config.user_property_id}`}
+                                type="number"
+                                min={0}
+                                disabled={!config.is_required}
+                                className={cn(
+                                  'h-8 w-20 rounded-md border px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50',
+                                  config.is_required &&
+                                    config.min_matching_users === -1 &&
+                                    'text-transparent'
+                                )}
+                                value={
+                                  !config.is_required
+                                    ? ''
+                                    : config.min_matching_users === -1
+                                      ? 0
+                                      : (config.min_matching_users ?? 1)
+                                }
+                                onChange={(e) => {
+                                  if (!config.is_required) return;
+                                  const value = parseInt(e.target.value, 10);
+                                  if (!Number.isNaN(value) && value >= 0) {
+                                    handleRequiredUserPropertyConfigChange(
+                                      config.user_property_id,
+                                      {
+                                        min_matching_users:
+                                          value === 0 ? -1 : value,
+                                      }
+                                    );
+                                  }
+                                }}
+                                placeholder={config.is_required ? '1' : '-'}
+                              />
+                              {config.is_required &&
+                                config.min_matching_users === -1 && (
+                                  <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-sm">
+                                    Alle
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

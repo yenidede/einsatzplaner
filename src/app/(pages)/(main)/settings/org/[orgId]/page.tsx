@@ -599,7 +599,8 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="preferences-heading">Präferenzen</CardTitle>
               <CardDescription>
-                Passen Sie die Terminologie und Präferenzen Ihrer Organisation an
+                Passen Sie die Terminologie und Präferenzen Ihrer Organisation
+                an
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -679,7 +680,8 @@ export default function OrganizationManagePage() {
               </CardTitle>
               <CardDescription>
                 Verwalte die benutzerdefinierten Eigenschaften für Benutzer in
-                dieser Organisation. Diese können für Personenbasierte Überprüfungen verwendet werden.
+                dieser Organisation. Diese können für personenbasierte
+                Überprüfungen verwendet werden.
               </CardDescription>
             </CardHeader>
             <CardContent>

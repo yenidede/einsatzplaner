@@ -70,6 +70,13 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
       template_to_category: {
         select: { category_id: true },
       },
+      template_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
+        },
+      },
     },
   });
   return templates;
@@ -98,10 +105,22 @@ export async function getTemplateById(id: string) {
           einsatz_category: true,
         },
       },
+      template_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
+        },
+      },
     },
   });
   return template;
 }
+
+/** Template as returned by getTemplateById (with relations). Use for typing components that consume this data. */
+export type TemplateWithRelations = NonNullable<
+  Awaited<ReturnType<typeof getTemplateById>>
+>;
 
 // TODO: auth
 export async function createTemplate(data: Template) {
@@ -343,6 +362,64 @@ export async function setTemplateDefaultCategoriesAction(
   return getTemplateById(templateId);
 }
 
+export type TemplateRequiredUserPropertyInput = {
+  user_property_id: string;
+  is_required: boolean;
+  min_matching_users: number | null;
+};
+
+/** Set required user properties for a template (template_user_property). Replaces existing. */
+export async function setTemplateRequiredUserPropertiesAction(
+  templateId: string,
+  configs: TemplateRequiredUserPropertyInput[]
+) {
+  const { session } = await requireAuth();
+
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id: templateId },
+    select: { org_id: true },
+  });
+
+  if (!template?.org_id) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  if (!session.user.orgIds.includes(template.org_id)) {
+    throw new Error(
+      'Keine Berechtigung, benötigte Personeneigenschaften dieser Vorlage zu bearbeiten.'
+    );
+  }
+
+  const validPropertyIds = await prisma.user_property.findMany({
+    where: {
+      id: { in: configs.map((c) => c.user_property_id) },
+      org_id: template.org_id,
+    },
+    select: { id: true },
+  });
+  const validIdSet = new Set(validPropertyIds.map((p) => p.id));
+  const filteredConfigs = configs.filter((c) =>
+    validIdSet.has(c.user_property_id)
+  );
+
+  await prisma.template_user_property.deleteMany({
+    where: { template_id: templateId },
+  });
+
+  if (filteredConfigs.length > 0) {
+    await prisma.template_user_property.createMany({
+      data: filteredConfigs.map((c) => ({
+        template_id: templateId,
+        user_property_id: c.user_property_id,
+        is_required: c.is_required,
+        min_matching_users: c.min_matching_users,
+      })),
+    });
+  }
+
+  return getTemplateById(templateId);
+}
+
 export type UpdateTemplateFieldInput = CreateTemplateFieldInput;
 
 async function checkTemplateFieldAccess(
@@ -402,6 +479,8 @@ export async function updateTemplateField(
   });
 }
 
+/** Remove the field from the template only (unlink). Does not delete the field record,
+ * so existing Einsätze keep their dynamic field values (einsatz_field) unchanged. */
 export async function deleteTemplateField(
   templateId: string,
   fieldId: string
@@ -410,10 +489,6 @@ export async function deleteTemplateField(
 
   await prisma.template_field.deleteMany({
     where: { template_id: templateId, field_id: fieldId },
-  });
-
-  await prisma.field.delete({
-    where: { id: fieldId },
   });
 }
 

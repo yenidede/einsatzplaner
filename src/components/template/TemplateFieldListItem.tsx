@@ -61,7 +61,7 @@ export function TemplateFieldListItem({
         </TooltipCustom>
       )}
       {onDelete != null && (
-        <TooltipCustom text="Feld löschen">
+        <TooltipCustom text="Feld von Vorlage entfernen">
           <Button
             type="button"
             variant="ghost"

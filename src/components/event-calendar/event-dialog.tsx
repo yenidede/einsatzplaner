@@ -619,7 +619,9 @@ export function EventDialogVerwaltung({
       const templateUpdates: Partial<EinsatzFormData> = {};
 
       // Name (einsatzname_default)
-      const nameDefault = (selectedTemplate as { einsatzname_default?: string | null }).einsatzname_default;
+      const nameDefault = (
+        selectedTemplate as { einsatzname_default?: string | null }
+      ).einsatzname_default;
       if (nameDefault != null && nameDefault.trim() !== '') {
         templateUpdates.title = nameDefault.trim();
       }
@@ -634,15 +636,23 @@ export function EventDialogVerwaltung({
       }
 
       // Start and end time
-      if ((selectedTemplate as { time_start_default?: Date | null }).time_start_default) {
+      if (
+        (selectedTemplate as { time_start_default?: Date | null })
+          .time_start_default
+      ) {
         templateUpdates.startTime = formatOrgTimeForInput(
-          (selectedTemplate as { time_start_default?: Date | null }).time_start_default,
+          (selectedTemplate as { time_start_default?: Date | null })
+            .time_start_default,
           staticFormData.startTime
         );
       }
-      if ((selectedTemplate as { time_end_default?: Date | null }).time_end_default) {
+      if (
+        (selectedTemplate as { time_end_default?: Date | null })
+          .time_end_default
+      ) {
         templateUpdates.endTime = formatOrgTimeForInput(
-          (selectedTemplate as { time_end_default?: Date | null }).time_end_default,
+          (selectedTemplate as { time_end_default?: Date | null })
+            .time_end_default,
           staticFormData.endTime
         );
       }
@@ -684,6 +694,26 @@ export function EventDialogVerwaltung({
           staticFormData.pricePerPerson ?? DEFAULTFORMDATA.pricePerPerson;
         templateUpdates.totalPrice =
           finalParticipantCount * finalPricePerPerson;
+      }
+
+      // Required user properties from template (Benötigte Personeneigenschaften)
+      const templateUserProps = (
+        selectedTemplate as {
+          template_user_property?: Array<{
+            user_property_id: string;
+            is_required: boolean;
+            min_matching_users: number | null;
+          }>;
+        }
+      ).template_user_property;
+      if (templateUserProps?.length) {
+        templateUpdates.requiredUserProperties = templateUserProps.map(
+          (prop) => ({
+            user_property_id: prop.user_property_id,
+            is_required: prop.is_required,
+            min_matching_users: prop.min_matching_users ?? null,
+          })
+        );
       }
 
       // Apply template values to form
