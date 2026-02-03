@@ -43,7 +43,7 @@ export function FieldTypeSelector({
                   icon={<Icon />}
                   title={def.label}
                   description={def.subLabel}
-                  onClick={() => onSelectType(def.key as FieldType)}
+                  onClick={() => onSelectType(def.key)}
                 />
               );
             })}
