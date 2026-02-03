@@ -19,20 +19,6 @@ export default function DynamicFormFields({
   control,
   errors = {},
 }: DynamicFormFieldsProps) {
-  fields.map((f) =>
-    console.log(
-      f.displayName +
-        ' ' +
-        f.defaultValue +
-        ' ' +
-        f.inputType +
-        ' ' +
-        f.dataType +
-        ' ' +
-        f.required
-    )
-  );
-
   const getDefaultValue = (field: CustomFormField) => {
     switch (field.inputType) {
       case 'checkbox':
