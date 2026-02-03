@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Type, Hash, Link2, Plus } from 'lucide-react';
+import { Type, Hash, Link2, Plus, Trash, Pause, Play } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -29,13 +29,19 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { StandardFieldsList } from './StandardFieldsList';
+import {
+  StandardFieldsList,
+  STANDARD_FIELDS,
+  type StandardFieldKey,
+} from './StandardFieldsList';
+import { TemplateFieldListItem } from './TemplateFieldListItem';
 import {
   templateFormSchema,
   type TemplateFormValues,
@@ -43,7 +49,10 @@ import {
 } from './template-form-schema';
 import { FieldTypeSelector } from '@/features/user_properties/components/FieldTypeSelector';
 import { PropertyConfiguration } from '@/features/user_properties/components/PropertyConfiguration';
-import type { PropertyConfig } from '@/features/user_properties/types';
+import type {
+  PropertyConfig,
+  FieldType,
+} from '@/features/user_properties/types';
 import { INITIAL_CONFIG } from '@/features/user_properties/types';
 import {
   useTemplate,
@@ -51,6 +60,8 @@ import {
 } from '../../features/template/hooks/use-template-queries';
 import { useTemplateMutations } from '../../features/template/hooks/useTemplateMutations';
 import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import TooltipCustom from '../tooltip-custom';
 
 interface TemplateFormProps {
   /** Required for create; in edit mode derived from loaded template if omitted */
@@ -67,8 +78,16 @@ export function TemplateForm({
 }: TemplateFormProps) {
   const router = useRouter();
   const isEdit = !!templateId;
-  const { createMutation, updateMutation, addTemplateFieldMutation, isSaving } =
-    useTemplateMutations();
+  const {
+    createMutation,
+    updateMutation,
+    addTemplateFieldMutation,
+    updateTemplateFieldMutation,
+    deleteTemplateFieldMutation,
+    deleteTemplateMutation,
+    isSaving,
+  } = useTemplateMutations();
+  const { showDialog, AlertDialogComponent } = useAlertDialog();
 
   const { data: template, isLoading: templateLoading } = useTemplate(
     isEdit ? templateId : null
@@ -97,6 +116,15 @@ export function TemplateForm({
   >('typeSelection');
   const [customFieldConfig, setCustomFieldConfig] =
     useState<PropertyConfig>(INITIAL_CONFIG);
+  /** When set, dialog is in edit mode for this field id */
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+  /** When set, dialog is open for editing this standard field's default/placeholder */
+  const [editingStandardFieldKey, setEditingStandardFieldKey] =
+    useState<StandardFieldKey | null>(null);
+  const [standardFieldDefaultValue, setStandardFieldDefaultValue] =
+    useState('');
+  const [standardFieldPlaceholderValue, setStandardFieldPlaceholderValue] =
+    useState('');
 
   useEffect(() => {
     if (template) {
@@ -136,17 +164,6 @@ export function TemplateForm({
     [isEdit, templateId, effectiveOrgId, icons, createMutation, updateMutation]
   );
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        form.handleSubmit(onSubmit)();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [form, onSubmit]);
-
   const computedBackHref =
     isEdit && template?.org_id
       ? `/settings/org/${template.org_id}#vorlagen`
@@ -155,6 +172,54 @@ export function TemplateForm({
   const handleCancel = useCallback(() => {
     router.push(computedBackHref);
   }, [router, computedBackHref]);
+
+  const handleDelete = useCallback(async () => {
+    const result = await showDialog({
+      title: 'Vorlage löschen?',
+      description:
+        'Diese Vorlage wird unwiderruflich gelöscht. Bestehende Einsätze bleiben unverändert.',
+      confirmText: 'Löschen',
+      cancelText: 'Abbrechen',
+      variant: 'destructive',
+    });
+    if (result === 'success' && templateId) {
+      deleteTemplateMutation.mutate({
+        templateId,
+        redirectTo: computedBackHref,
+      });
+    }
+  }, [showDialog, templateId, computedBackHref, deleteTemplateMutation]);
+
+  const handlePause = useCallback(async () => {
+    const isPaused = template?.is_paused ?? false;
+    const result = await showDialog({
+      title: isPaused ? 'Vorlage reaktivieren?' : 'Vorlage pausieren?',
+      description: isPaused
+        ? 'Die Vorlage wird wieder für neue Einsätze verfügbar gemacht.'
+        : 'Pausierte Vorlagen können nicht für neue Einsätze verwendet werden. Bestehende Einsätze bleiben unverändert.',
+      confirmText: isPaused ? 'Reaktivieren' : 'Pausieren',
+      cancelText: 'Abbrechen',
+    });
+    if (result === 'success' && templateId) {
+      updateMutation.mutate({ templateId, is_paused: !isPaused });
+    }
+  }, [showDialog, template?.is_paused, templateId, updateMutation]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleCancel();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        form.handleSubmit(onSubmit)();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [form, onSubmit, handleCancel]);
 
   const formName = watch('name');
   const pageTitle = isEdit
@@ -169,6 +234,51 @@ export function TemplateForm({
       .filter(Boolean)
       .map((n) => String(n).toLowerCase()) ?? [];
 
+  /** Names of other fields (for edit mode: exclude the field being edited so same name is allowed) */
+  const editingFieldName =
+    editingFieldId &&
+    template?.template_field?.find((tf) => tf.field?.id === editingFieldId)
+      ?.field?.name;
+  const existingTemplateFieldNamesForDialog = editingFieldName
+    ? existingTemplateFieldNames.filter(
+        (n) => n !== String(editingFieldName).toLowerCase()
+      )
+    : existingTemplateFieldNames;
+
+  type TemplateFieldItem = NonNullable<
+    NonNullable<typeof template>['template_field']
+  >[number];
+  const templateFieldToPropertyConfig = useCallback(
+    (tf: TemplateFieldItem): PropertyConfig | null => {
+      const f = tf?.field;
+      if (!f) return null;
+      const datatype = f.type?.datatype;
+      const isValidFieldType = (v: unknown): v is FieldType =>
+        typeof v === 'string' &&
+        ['text', 'number', 'boolean', 'select'].includes(v);
+      if (!datatype || !isValidFieldType(datatype)) return null;
+      return {
+        name: f.name ?? '',
+        description: '',
+        fieldType: datatype,
+        placeholder: f.placeholder ?? '',
+        maxLength: f.max != null ? f.max : undefined,
+        isMultiline: f.is_multiline ?? false,
+        minValue: f.min != null ? f.min : undefined,
+        maxValue: f.max != null ? f.max : undefined,
+        isDecimal: false,
+        trueLabel: 'Ja',
+        falseLabel: 'Nein',
+        booleanDefaultValue: null,
+        options: f.allowed_values ?? [],
+        defaultOption: f.default_value ?? undefined,
+        isRequired: f.is_required,
+        defaultValue: f.default_value ?? '',
+      };
+    },
+    []
+  );
+
   const handleCustomFieldTypeSelect = (type: PropertyConfig['fieldType']) => {
     if (!type) return;
     setCustomFieldConfig((prev) => ({ ...prev, fieldType: type }));
@@ -179,27 +289,197 @@ export function TemplateForm({
     setCustomFieldConfig((prev) => ({ ...prev, ...updates }));
   };
 
-  const handleCustomFieldSave = () => {
-    if (!templateId || !customFieldConfig.fieldType) return;
-    addTemplateFieldMutation.mutate(
-      { templateId, config: customFieldConfig },
-      {
-        onSuccess: () => {
-          setCustomFieldDialogOpen(false);
-          setCustomFieldStep('typeSelection');
-          setCustomFieldConfig(INITIAL_CONFIG);
-        },
-      }
-    );
-  };
+  const handleOpenCreateField = useCallback(() => {
+    setEditingFieldId(null);
+    setCustomFieldConfig(INITIAL_CONFIG);
+    setCustomFieldStep('typeSelection');
+    setCustomFieldDialogOpen(true);
+  }, []);
 
-  const handleCustomFieldDialogClose = (open: boolean) => {
+  const handleOpenEditField = useCallback(
+    (tf: TemplateFieldItem) => {
+      const config = templateFieldToPropertyConfig(tf);
+      if (!config) return;
+      setCustomFieldConfig(config);
+      setEditingFieldId(tf.field?.id ?? null);
+      setCustomFieldStep('configuration');
+      setCustomFieldDialogOpen(true);
+    },
+    [templateFieldToPropertyConfig, template?.template_field]
+  );
+
+  const handleCustomFieldSave = useCallback(() => {
+    if (!templateId || !customFieldConfig.fieldType) return;
+    if (editingFieldId) {
+      updateTemplateFieldMutation.mutate(
+        {
+          templateId,
+          fieldId: editingFieldId,
+          config: customFieldConfig,
+        },
+        {
+          onSuccess: () => {
+            setCustomFieldDialogOpen(false);
+            setCustomFieldStep('typeSelection');
+            setCustomFieldConfig(INITIAL_CONFIG);
+            setEditingFieldId(null);
+          },
+        }
+      );
+    } else {
+      addTemplateFieldMutation.mutate(
+        { templateId, config: customFieldConfig },
+        {
+          onSuccess: () => {
+            setCustomFieldDialogOpen(false);
+            setCustomFieldStep('typeSelection');
+            setCustomFieldConfig(INITIAL_CONFIG);
+          },
+        }
+      );
+    }
+  }, [
+    templateId,
+    customFieldConfig,
+    editingFieldId,
+    addTemplateFieldMutation,
+    updateTemplateFieldMutation,
+  ]);
+
+  const handleCustomFieldDialogClose = useCallback((open: boolean) => {
     if (!open) {
       setCustomFieldDialogOpen(false);
       setCustomFieldStep('typeSelection');
       setCustomFieldConfig(INITIAL_CONFIG);
+      setEditingFieldId(null);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (editingStandardFieldKey && template) {
+      switch (editingStandardFieldKey) {
+        case 'participant_count':
+          setStandardFieldDefaultValue(
+            String(template.participant_count_default ?? '')
+          );
+          setStandardFieldPlaceholderValue(
+            String(template.participant_count_placeholder ?? '')
+          );
+          break;
+        case 'price_person':
+          setStandardFieldDefaultValue(
+            String(template.price_person_default ?? '')
+          );
+          setStandardFieldPlaceholderValue(
+            String(template.price_person_placeholder ?? '')
+          );
+          break;
+        case 'helpers_needed':
+          setStandardFieldDefaultValue(
+            String(template.helpers_needed_default ?? '')
+          );
+          setStandardFieldPlaceholderValue(
+            String(template.helpers_needed_placeholder ?? '')
+          );
+          break;
+        case 'all_day':
+          setStandardFieldDefaultValue(
+            template.all_day_default === true ? 'true' : 'false'
+          );
+          setStandardFieldPlaceholderValue('');
+          break;
+      }
+    }
+  }, [editingStandardFieldKey, template]);
+
+  const handleOpenStandardField = useCallback((key: StandardFieldKey) => {
+    setEditingStandardFieldKey(key);
+  }, []);
+
+  const handleSaveStandardField = useCallback(() => {
+    if (!templateId || !editingStandardFieldKey) return;
+    const payload: Record<string, number | null | boolean> = {};
+    const defaultNum = (v: string) =>
+      v === '' || v === undefined ? null : Number(v);
+    const defaultFloat = (v: string) =>
+      v === '' || v === undefined ? null : Number(v);
+    switch (editingStandardFieldKey) {
+      case 'participant_count':
+        payload.participant_count_default = defaultNum(
+          standardFieldDefaultValue
+        );
+        payload.participant_count_placeholder = defaultNum(
+          standardFieldPlaceholderValue
+        );
+        break;
+      case 'price_person':
+        payload.price_person_default = defaultFloat(standardFieldDefaultValue);
+        payload.price_person_placeholder = defaultFloat(
+          standardFieldPlaceholderValue
+        );
+        break;
+      case 'helpers_needed':
+        payload.helpers_needed_default = defaultNum(standardFieldDefaultValue);
+        payload.helpers_needed_placeholder = defaultNum(
+          standardFieldPlaceholderValue
+        );
+        break;
+      case 'all_day':
+        payload.all_day_default =
+          standardFieldDefaultValue === 'true'
+            ? true
+            : standardFieldDefaultValue === 'false'
+              ? false
+              : null;
+        break;
+    }
+    updateMutation.mutate(
+      { templateId, ...payload },
+      {
+        onSuccess: () => {
+          setEditingStandardFieldKey(null);
+        },
+      }
+    );
+  }, [
+    templateId,
+    editingStandardFieldKey,
+    standardFieldDefaultValue,
+    standardFieldPlaceholderValue,
+    updateMutation,
+  ]);
+
+  const handleStandardFieldDialogClose = useCallback((open: boolean) => {
+    if (!open) setEditingStandardFieldKey(null);
+  }, []);
+
+  const editingStandardFieldName =
+    editingStandardFieldKey &&
+    STANDARD_FIELDS.find((f) => f.standardFieldKey === editingStandardFieldKey)
+      ?.name;
+
+  const handleDeleteField = useCallback(
+    async (fieldId: string) => {
+      const tf = template?.template_field?.find((t) => t.field?.id === fieldId);
+      const name = tf?.field?.name ?? 'Feld';
+      const result = await showDialog({
+        title: 'Feld löschen?',
+        description: `Möchten Sie das Feld "${name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
+        confirmText: 'Löschen',
+        cancelText: 'Abbrechen',
+        variant: 'destructive',
+      });
+      if (result === 'success' && templateId) {
+        deleteTemplateFieldMutation.mutate({ templateId, fieldId });
+      }
+    },
+    [
+      template?.template_field,
+      templateId,
+      showDialog,
+      deleteTemplateFieldMutation,
+    ]
+  );
 
   const maxParticipantsPerHelper = org?.max_participants_per_helper ?? 20;
 
@@ -238,136 +518,221 @@ export function TemplateForm({
 
   const formContent = (
     <>
-      <div className="grid gap-8">
-        {/* Template info */}
-        <Card>
+      {template?.is_paused ? (
+        <Card className="bg-red-200">
           <CardHeader>
-            <CardTitle>Template-Informationen</CardTitle>
-            <CardDescription>Bezeichnung und Icon der Vorlage.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="template-name">
-                Template Bezeichnung <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="template-name"
-                placeholder="Einsatzname"
-                {...register('name')}
-              />
-              {errors.name && (
-                <p className="text-destructive text-sm">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="template-icon">
-                Template Icon <span className="text-destructive">*</span>
-              </Label>
-              <Controller
-                name="icon_id"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value || (icons[0]?.id ?? '')}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger id="template-icon">
-                      <SelectValue placeholder="Icon auswählen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {icons.map((icon, index) => (
-                        <SelectItem key={icon.id} value={icon.id}>
-                          <span className="flex items-center gap-2">
-                            {icon.icon_url?.trim() ? (
-                              <Image
-                                src={icon.icon_url.trim()}
-                                alt=""
-                                width={18}
-                                height={18}
-                                unoptimized
-                              />
-                            ) : (
-                              <span className="bg-muted h-[18px] w-[18px] rounded" />
-                            )}
-                            Icon {index + 1}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.icon_id && (
-                <p className="text-destructive text-sm">
-                  {errors.icon_id.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="template-description">
-                Beschreibung (optional)
-              </Label>
-              <Input
-                id="template-description"
-                placeholder="Kurze Beschreibung der Vorlage"
-                {...register('description')}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Standard fields */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Standardfelder</CardTitle>
+            <CardTitle>Vorlage is pausiert</CardTitle>
             <CardDescription>
-              Von uns vordefinierte Felder für jeden Einsatz. Diese können nicht
-              bearbeitet werden. Können durch eigene Felder (siehe unten)
-              ergänzt werden.
+              Die Vorlage ist pausiert. Sie kann nicht für neue Einsätze
+              verwendet werden.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <StandardFieldsList />
+            <Button variant="destructive" onClick={handlePause}>
+              {template?.is_paused ? 'Reaktivieren' : 'Pausieren'}
+            </Button>
           </CardContent>
         </Card>
-
-        {/* Custom fields */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Eigene Felder</CardTitle>
-            <CardDescription>
-              Wähle einen Feldtyp aus. Eigene Felder ergänzen die von uns
-              erstellten Standardfelder.
-            </CardDescription>
-            <CardAction>
-              <Button
-                variant="default"
-                onClick={() => setCustomFieldDialogOpen(true)}
-                disabled={!templateId}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                {!!templateId
-                  ? 'Eigenes Feld hinzufügen'
-                  : 'Zuerst Vorlage speichern (⌘S)'}
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            {!template?.template_field?.length ? (
-              <div className="flex flex-col items-center gap-4 py-8">
-                <Image
-                  src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/undraw_instant-analysis_vm8x%201.svg"
-                  alt="Eigene Felder"
-                  width={245}
-                  height={210}
-                  unoptimized
+      ) : (
+        <div className="grid gap-8">
+          {/* Template info */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Template-Informationen</CardTitle>
+              <CardDescription>
+                Bezeichnung und Icon der Vorlage.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="template-name">
+                  Template Bezeichnung{' '}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="template-name"
+                  placeholder="Einsatzname"
+                  {...register('name')}
                 />
+                {errors.name && (
+                  <p className="text-destructive text-sm">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="template-icon">
+                  Template Icon <span className="text-destructive">*</span>
+                </Label>
+                <Controller
+                  name="icon_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || (icons[0]?.id ?? '')}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger id="template-icon">
+                        <SelectValue placeholder="Icon auswählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {icons.map((icon, index) => (
+                          <SelectItem key={icon.id} value={icon.id}>
+                            <span className="flex items-center gap-2">
+                              {icon.icon_url?.trim() ? (
+                                <Image
+                                  src={icon.icon_url.trim()}
+                                  alt=""
+                                  width={18}
+                                  height={18}
+                                  unoptimized
+                                />
+                              ) : (
+                                <span className="bg-muted h-[18px] w-[18px] rounded" />
+                              )}
+                              Icon {index + 1}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.icon_id && (
+                  <p className="text-destructive text-sm">
+                    {errors.icon_id.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="template-description">
+                  Beschreibung (optional)
+                </Label>
+                <Input
+                  id="template-description"
+                  placeholder="Kurze Beschreibung der Vorlage"
+                  {...register('description')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Standard fields */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Standardfelder</CardTitle>
+              <CardDescription>
+                Von uns vordefinierte Felder für jeden Einsatz. Diese können
+                nicht bearbeitet werden. Können durch eigene Felder (siehe
+                unten) ergänzt werden.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StandardFieldsList
+                onOpenStandardField={
+                  templateId && template ? handleOpenStandardField : undefined
+                }
+              />
+            </CardContent>
+          </Card>
+
+          {/* Standard field edit dialog: default + placeholder */}
+          <Dialog
+            open={editingStandardFieldKey != null}
+            onOpenChange={handleStandardFieldDialogClose}
+          >
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  Standardfeld bearbeiten: {editingStandardFieldName ?? ''}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                {editingStandardFieldKey !== 'all_day' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="standard-field-default">
+                        Standardwert (optional)
+                      </Label>
+                      <Input
+                        id="standard-field-default"
+                        type="number"
+                        step={
+                          editingStandardFieldKey === 'price_person'
+                            ? '0.01'
+                            : '1'
+                        }
+                        value={standardFieldDefaultValue}
+                        onChange={(e) =>
+                          setStandardFieldDefaultValue(e.target.value)
+                        }
+                        placeholder="Leer = kein Standard"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="standard-field-placeholder">
+                        Platzhalter (optional)
+                      </Label>
+                      <Input
+                        id="standard-field-placeholder"
+                        type="number"
+                        step={
+                          editingStandardFieldKey === 'price_person'
+                            ? '0.01'
+                            : '1'
+                        }
+                        value={standardFieldPlaceholderValue}
+                        onChange={(e) =>
+                          setStandardFieldPlaceholderValue(e.target.value)
+                        }
+                        placeholder="Leer = kein Platzhalter"
+                      />
+                    </div>
+                  </>
+                )}
+                {editingStandardFieldKey === 'all_day' && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="standard-field-all-day"
+                      checked={standardFieldDefaultValue === 'true'}
+                      onCheckedChange={(checked) =>
+                        setStandardFieldDefaultValue(
+                          checked === true ? 'true' : 'false'
+                        )
+                      }
+                    />
+                    <Label htmlFor="standard-field-all-day">
+                      Ganztägig als Standard
+                    </Label>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
                 <Button
-                  variant="outline"
-                  className="w-full max-w-xs"
-                  onClick={() => setCustomFieldDialogOpen(true)}
+                  variant="ghost"
+                  onClick={() => handleStandardFieldDialogClose(false)}
+                >
+                  Abbrechen
+                </Button>
+                <Button onClick={handleSaveStandardField} disabled={isSaving}>
+                  {isSaving ? 'Speichert…' : 'Speichern'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Custom fields */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Eigene Felder</CardTitle>
+              <CardDescription>
+                Wähle einen Feldtyp aus. Eigene Felder ergänzen die von uns
+                erstellten Standardfelder.
+              </CardDescription>
+              <CardAction>
+                <Button
+                  variant="default"
+                  onClick={handleOpenCreateField}
                   disabled={!templateId}
                 >
                   <Plus className="mr-2 h-4 w-4" />
@@ -375,117 +740,190 @@ export function TemplateForm({
                     ? 'Eigenes Feld hinzufügen'
                     : 'Zuerst Vorlage speichern (⌘S)'}
                 </Button>
-              </div>
-            ) : (
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              {!template?.template_field?.length ? (
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <Image
+                    src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/undraw_instant-analysis_vm8x%201.svg"
+                    alt="Eigene Felder"
+                    width={245}
+                    height={210}
+                    unoptimized
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full max-w-xs"
+                    onClick={handleOpenCreateField}
+                    disabled={!templateId}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {!!templateId
+                      ? 'Eigenes Feld hinzufügen'
+                      : 'Zuerst Vorlage speichern (⌘S)'}
+                  </Button>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {template.template_field.map((tf) => {
+                    const datatype = tf.field?.type?.datatype ?? 'text';
+                    const fieldDef = getFieldTypeDefinition(
+                      datatype as FieldTypeKey
+                    );
+                    const fieldId = tf.field?.id ?? '';
+                    return (
+                      <TemplateFieldListItem
+                        key={fieldId}
+                        name={tf.field?.name ?? 'Feld'}
+                        typeLabel={tf.field?.type?.datatype ?? '—'}
+                        icon={fieldDef?.Icon ?? Type}
+                        isPflichtfeld={tf.field?.is_required}
+                        onOpen={() => handleOpenEditField(tf)}
+                        onDelete={() => handleDeleteField(fieldId)}
+                        deleteDisabled={isSaving}
+                      />
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Custom field dialog: type selection + configuration (same flow as UserProperties) */}
+          <Dialog
+            open={customFieldDialogOpen}
+            onOpenChange={handleCustomFieldDialogClose}
+          >
+            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingFieldId
+                    ? 'Eigenes Feld bearbeiten'
+                    : 'Eigenes Feld erstellen'}
+                </DialogTitle>
+              </DialogHeader>
+              {customFieldStep === 'typeSelection' ? (
+                <FieldTypeSelector
+                  onSelectType={handleCustomFieldTypeSelect}
+                  onBack={() => handleCustomFieldDialogClose(false)}
+                />
+              ) : (
+                <PropertyConfiguration
+                  config={customFieldConfig}
+                  onConfigChange={handleCustomFieldConfigChange}
+                  onSave={handleCustomFieldSave}
+                  onCancel={() =>
+                    editingFieldId
+                      ? handleCustomFieldDialogClose(false)
+                      : setCustomFieldStep('typeSelection')
+                  }
+                  existingPropertyNames={existingTemplateFieldNamesForDialog}
+                  existingUserCount={0}
+                  context="vorlage"
+                  title="Feld konfigurieren"
+                  nameLabel="Label *"
+                  saveButtonLabel={
+                    editingFieldId ? 'Änderungen speichern' : 'Feld Speichern'
+                  }
+                  saveDisabled={
+                    addTemplateFieldMutation.isPending ||
+                    updateTemplateFieldMutation.isPending
+                  }
+                />
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Verifications */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Überprüfungen</CardTitle>
+              <CardDescription>
+                Regeln für Teilnehmer und Personeneigenschaften
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
               <ul className="space-y-2">
-                {template.template_field.map((tf) => {
-                  const datatype = tf.field?.type?.datatype ?? 'text';
-                  const fieldDef = getFieldTypeDefinition(
-                    datatype as FieldTypeKey
-                  );
-                  const FieldIcon = fieldDef?.Icon ?? Type;
-                  return (
-                    <li
-                      key={tf.field.id}
-                      className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-2"
-                    >
-                      <FieldIcon className="text-muted-foreground h-4 w-4 shrink-0" />
-                      <span className="text-sm font-medium">
-                        {tf.field?.name ?? 'Feld'}
+                <TemplateFieldListItem
+                  name={
+                    <>
+                      Anzahl Teilnehmer:innen maximal{' '}
+                      <span className="text-primary font-semibold">
+                        {maxParticipantsPerHelper}
+                      </span>{' '}
+                      <span className="text-muted-foreground">
+                        pro Helfer:in
                       </span>
-                      <span className="text-muted-foreground text-xs">
-                        ({tf.field?.type?.datatype ?? '—'})
-                      </span>
-                      {tf.field?.is_required && (
-                        <span className="text-muted-foreground ml-auto text-xs">
-                          Pflichtfeld
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
+                    </>
+                  }
+                  typeLabel="Feld"
+                  icon={Hash}
+                />
+                <TemplateFieldListItem
+                  name={
+                    <>
+                      Person hat Schlüssel mindestens{' '}
+                      <span className="text-primary font-semibold">1</span>
+                    </>
+                  }
+                  typeLabel="Personeneigenschaft"
+                  icon={Link2}
+                />
               </ul>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-        {/* Custom field dialog: type selection + configuration (same flow as UserProperties) */}
-        <Dialog
-          open={customFieldDialogOpen}
-          onOpenChange={handleCustomFieldDialogClose}
-        >
-          <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Feldtyp auswählen</DialogTitle>
-            </DialogHeader>
-            {customFieldStep === 'typeSelection' ? (
-              <FieldTypeSelector
-                onSelectType={handleCustomFieldTypeSelect}
-                onBack={() => handleCustomFieldDialogClose(false)}
-              />
-            ) : (
-              <PropertyConfiguration
-                config={customFieldConfig}
-                onConfigChange={handleCustomFieldConfigChange}
-                onSave={handleCustomFieldSave}
-                onCancel={() => setCustomFieldStep('typeSelection')}
-                existingPropertyNames={existingTemplateFieldNames}
-                existingUserCount={0}
-                title="Feld konfigurieren"
-                nameLabel="Label *"
-                saveButtonLabel="Feld Speichern"
-                saveDisabled={addTemplateFieldMutation.isPending}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Verifications */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Überprüfungen</CardTitle>
-            <CardDescription>
-              Regeln für Teilnehmer und Personeneigenschaften
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-2">
-              <Hash className="text-muted-foreground h-4 w-4 shrink-0" />
-              <span className="text-sm">
-                Anzahl Teilnehmer:innen maximal{' '}
-                <span className="text-primary font-semibold">
-                  {maxParticipantsPerHelper}
-                </span>{' '}
-                <span className="text-muted-foreground">pro Helfer:in</span>
-              </span>
-              <span className="text-muted-foreground ml-auto text-xs">
-                Feld
-              </span>
-            </div>
-            <div className="bg-muted/30 flex items-center gap-2 rounded-md border px-3 py-2">
-              <Link2 className="text-muted-foreground h-4 w-4 shrink-0" />
-              <span className="text-sm">
-                Person hat Schlüssel mindestens{' '}
-                <span className="text-primary font-semibold">1</span>
-              </span>
-              <span className="text-muted-foreground ml-auto text-xs">
-                Personeneigenschaft
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <footer className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky bottom-0 z-40 flex items-center justify-end gap-2 border-t py-4">
-        <Button variant="ghost" onClick={handleCancel}>
-          Schließen (ESC)
-        </Button>
-        <Button
-          onClick={() => form.handleSubmit(onSubmit)()}
-          disabled={isSaving}
-        >
-          {isSaving ? 'Speichert…' : 'Speichern'}
-        </Button>
+      <footer className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky bottom-0 z-40 flex items-center justify-between gap-2 border-t py-4 backdrop-blur-md">
+        <div className="flex items-center gap-2">
+          {isEdit && (
+            <>
+              {/* <TooltipCustom text="Vorlage löschen">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleDelete}
+                  disabled={isSaving}
+                >
+                  <Trash className="size-4" />
+                </Button>
+              </TooltipCustom> */}
+              <TooltipCustom
+                text={
+                  template?.is_paused
+                    ? 'Vorlage reaktivieren'
+                    : 'Vorlage pausieren'
+                }
+              >
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handlePause}
+                  disabled={isSaving}
+                >
+                  {template?.is_paused ? (
+                    <Play className="size-4" />
+                  ) : (
+                    <Pause className="size-4" />
+                  )}
+                </Button>
+              </TooltipCustom>
+            </>
+          )}
+        </div>
+        <div>
+          <Button variant="ghost" onClick={handleCancel}>
+            Schließen (ESC)
+          </Button>
+          <Button
+            onClick={() => form.handleSubmit(onSubmit)()}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Speichert…' : 'Speichern'}
+          </Button>
+        </div>
       </footer>
     </>
   );
@@ -496,6 +934,7 @@ export function TemplateForm({
         {header}
         {formContent}
       </div>
+      {AlertDialogComponent}
     </div>
   );
 }

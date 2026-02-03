@@ -149,7 +149,6 @@ export function SelectFieldSettings({
                   <Button
                     onClick={() => handleMoveOption(index, 'down')}
                     disabled={index === options.length - 1}
-                    className="rounded p-1 hover:bg-slate-200 disabled:opacity-30"
                     title="Nach unten"
                     variant="ghost"
                   >
@@ -157,7 +156,6 @@ export function SelectFieldSettings({
                   </Button>
                   <Button
                     onClick={() => handleRemoveOption(index)}
-                    className="rounded p-1 text-red-600 hover:bg-red-100"
                     title="Löschen"
                     variant="destructive"
                     size="icon"

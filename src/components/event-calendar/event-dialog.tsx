@@ -597,19 +597,19 @@ export function EventDialogVerwaltung({
       });
 
       if (dialogResult !== 'success') {
-        // User cancelled, do not load template
+        toast.info(
+          'Vorlage nicht geladen. Es wurden keine Änderungen vorgenommen.'
+        );
         return;
       }
     }
 
     setActiveTemplateId(templateId);
 
-    // Load template data and populate form
+    // Load template data and populate form (only template defaults; placeholders are visual only; fallbacks stay hardcoded)
     if (selectedTemplate) {
-      // Populate form with template data
       const templateUpdates: Partial<EinsatzFormData> = {};
 
-      // Set default values from template if available
       if (selectedTemplate.participant_count_default !== null) {
         templateUpdates.participantCount =
           selectedTemplate.participant_count_default;

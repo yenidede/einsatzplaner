@@ -17,6 +17,14 @@ export type UpdateTemplateInput = {
   name?: string | null;
   icon_id?: string;
   description?: string | null;
+  is_paused?: boolean;
+  participant_count_default?: number | null;
+  participant_count_placeholder?: number | null;
+  price_person_default?: number | null;
+  price_person_placeholder?: number | null;
+  helpers_needed_default?: number | null;
+  helpers_needed_placeholder?: number | null;
+  all_day_default?: boolean | null;
 };
 
 export async function getAllTemplatesByIds(ids: string[]) {
@@ -139,12 +147,25 @@ export async function updateTemplate(
   return template;
 }
 
-// TODO: auth
 export async function deleteTemplate(id: string) {
-  const template = await prisma.einsatz_template.delete({
+  const { session } = await requireAuth();
+
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id },
+    select: { org_id: true },
+  });
+
+  if (!template?.org_id) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  if (!session.user.orgIds.includes(template.org_id)) {
+    throw new Error('Keine Berechtigung, diese Vorlage zu löschen.');
+  }
+
+  return prisma.einsatz_template.delete({
     where: { id },
   });
-  return template;
 }
 
 export async function getAllTemplateIcons() {
@@ -255,6 +276,92 @@ export async function updateTemplateAction(
     name: input.name ?? undefined,
     icon_id: input.icon_id,
     description: input.description ?? undefined,
+    is_paused: input.is_paused,
+    participant_count_default: input.participant_count_default,
+    participant_count_placeholder: input.participant_count_placeholder,
+    price_person_default: input.price_person_default,
+    price_person_placeholder: input.price_person_placeholder,
+    helpers_needed_default: input.helpers_needed_default,
+    helpers_needed_placeholder: input.helpers_needed_placeholder,
+    all_day_default: input.all_day_default,
+  });
+}
+
+export async function deleteTemplateAction(templateId: string) {
+  return deleteTemplate(templateId);
+}
+
+export type UpdateTemplateFieldInput = CreateTemplateFieldInput;
+
+async function checkTemplateFieldAccess(
+  templateId: string,
+  fieldId: string
+): Promise<{ orgId: string }> {
+  const { session } = await requireAuth();
+
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id: templateId },
+    select: { org_id: true },
+  });
+
+  if (!template?.org_id) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  if (!session.user.orgIds.includes(template.org_id)) {
+    throw new Error(
+      'Keine Berechtigung, Felder dieser Vorlage zu bearbeiten oder zu löschen.'
+    );
+  }
+
+  const link = await prisma.template_field.findFirst({
+    where: { template_id: templateId, field_id: fieldId },
+  });
+
+  if (!link) {
+    throw new Error('Feld gehört nicht zu dieser Vorlage.');
+  }
+
+  return { orgId: template.org_id };
+}
+
+export async function updateTemplateField(
+  templateId: string,
+  fieldId: string,
+  input: UpdateTemplateFieldInput
+) {
+  await checkTemplateFieldAccess(templateId, fieldId);
+
+  const typeId = await ensureTypeExists(input.datatype);
+
+  return prisma.field.update({
+    where: { id: fieldId },
+    data: {
+      name: input.name,
+      type_id: typeId,
+      is_required: input.isRequired,
+      placeholder: input.placeholder ?? null,
+      default_value: input.defaultValue ?? null,
+      is_multiline: input.isMultiline ?? null,
+      min: input.min ?? null,
+      max: input.max ?? null,
+      allowed_values: input.allowedValues ?? [],
+    },
+  });
+}
+
+export async function deleteTemplateField(
+  templateId: string,
+  fieldId: string
+): Promise<void> {
+  await checkTemplateFieldAccess(templateId, fieldId);
+
+  await prisma.template_field.deleteMany({
+    where: { template_id: templateId, field_id: fieldId },
+  });
+
+  await prisma.field.delete({
+    where: { id: fieldId },
   });
 }
 
@@ -264,4 +371,20 @@ export async function createTemplateFieldAction(
 ) {
   const fieldInput = propertyConfigToFieldInput(config);
   return createTemplateField(templateId, fieldInput);
+}
+
+export async function updateTemplateFieldAction(
+  templateId: string,
+  fieldId: string,
+  config: PropertyConfig
+) {
+  const fieldInput = propertyConfigToFieldInput(config);
+  return updateTemplateField(templateId, fieldId, fieldInput);
+}
+
+export async function deleteTemplateFieldAction(
+  templateId: string,
+  fieldId: string
+): Promise<void> {
+  return deleteTemplateField(templateId, fieldId);
 }
