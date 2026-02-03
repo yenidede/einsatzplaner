@@ -677,13 +677,14 @@ export function EventDialogVerwaltung({
       const totalDefault = selectedTemplate.total_price_default;
       const pricePerPersonDefault = selectedTemplate.price_person_default;
 
-      if (!!totalDefault && finalParticipantCount > 0) {
+      // use !== null instead of !! to not falsly flag 0
+      if (totalDefault != null && finalParticipantCount > 0) {
         templateUpdates.totalPrice = totalDefault;
         templateUpdates.pricePerPerson = calcPricePerPersonFromTotal(
           totalDefault,
           finalParticipantCount
         );
-      } else if (!!pricePerPersonDefault) {
+      } else if (pricePerPersonDefault != null) {
         templateUpdates.pricePerPerson = pricePerPersonDefault;
         templateUpdates.totalPrice = calcTotal(
           pricePerPersonDefault,
