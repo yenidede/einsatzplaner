@@ -236,20 +236,20 @@ export class EmailService {
           <body>
             <div class="container">
               <div class="header">
-                <h2>⏰ Erinnerung: Deine Einladung läuft bald ab</h2>
+                <h2>⏰ Erinnerung: Ihre Einladung läuft bald ab</h2>
               </div>
               
               <div class="content">
                 <p>Hallo,</p>
                 
                 <div class="warning">
-                  <strong>⚠️ Wichtig:</strong> Deine Einladung zu <strong>${organizationName}</strong> 
+                  <strong>⚠️ Wichtig:</strong> Ihre Einladung zu <strong>${organizationName}</strong> 
                   läuft am <strong>${expiryDate}</strong> ab.
                 </div>
                 
-                <p>${inviterName} hat dich eingeladen, der Organisation <strong>${organizationName}</strong> beizutreten.</p>
+                <p>${inviterName} hat Sie eingeladen, der Organisation <strong>${organizationName}</strong> beizutreten.</p>
                 
-                <p>Wenn du die Einladung annehmen möchtest, klicke bitte auf den folgenden Link:</p>
+                <p>Wenn Sie die Einladung annehmen möchten, klicken Sie bitte auf den folgenden Link:</p>
                 
                 <div style="text-align: center;">
                   <a href="${acceptUrl}" class="button">
@@ -258,21 +258,21 @@ export class EmailService {
                 </div>
                 
                 <p style="margin-top: 30px;">
-                  Oder kopiere diesen Link in deinen Browser:<br>
+                  Oder kopieren Sie diesen Link in Ihren Browser:<br>
                   <a href="${acceptUrl}">${acceptUrl}</a>
                 </p>
                 
                 <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                  <strong>Hinweis:</strong> Nach Ablauf der Einladung musst du eine neue Einladung anfordern.
+                  <strong>Hinweis:</strong> Nach Ablauf der Einladung müssen Sie eine neue Einladung anfordern.
                 </p>
               </div>
               
               <div class="footer">
                 <p>
-                  Diese E-Mail wurde automatisch generiert. Bitte antworte nicht auf diese E-Mail.
+                  Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-Mail.
                 </p>
                 <p>
-                  Wenn du diese Einladung nicht erwartet hast, kannst du diese E-Mail ignorieren.
+                  Wenn Sie diese Einladung nicht erwartet haben, können Sie diese E-Mail ignorieren.
                 </p>
                 <p style="margin-top: 10px;">
                   © ${new Date().getFullYear()} Einsatzplaner - Alle Rechte vorbehalten

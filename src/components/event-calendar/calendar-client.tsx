@@ -294,7 +294,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
           description:
             'Die Eintragung würde die Anforderungen nicht erfüllen:\n\n' +
             validationResult.blocking.join('\n\n') +
-            '\n\nBitte wende dich an die Einsatzleitung.',
+            '\n\nBitte wenden Sie sich an die Einsatzleitung.',
           confirmText: 'OK',
           variant: 'destructive',
         });

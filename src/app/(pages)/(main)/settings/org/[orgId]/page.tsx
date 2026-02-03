@@ -27,6 +27,7 @@ import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationD
 import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
 import { UsersManagementSection } from '@/components/settings/org/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
+import { TemplatesOverviewSection } from '@/components/template/TemplatesOverviewSection';
 import { OrganizationPdfExportForm } from '@/components/settings/org/OrganizationPdfExportForm';
 import { PageHeader } from '@/components/settings/PageHeader';
 import {
@@ -436,7 +437,7 @@ export default function OrganizationManagePage() {
     return <div>Keine Berechtigung. Weiterleitung...</div>;
   }
   if (isLoadingUser || orgLoading) {
-    return <SettingsLoadingSkeleton sidebarItems={6} />;
+    return <SettingsLoadingSkeleton sidebarItems={7} />;
   }
 
   if (orgError || !orgData) {
@@ -456,7 +457,7 @@ export default function OrganizationManagePage() {
   const header = (
     <PageHeader
       title={`${name} verwalten`}
-      description="Verwalte die Einstellungen und Details deiner Organisation"
+      description="Verwalten Sie die Einstellungen und Details Ihrer Organisation"
       onSave={handleSave}
       isSaving={updateMutation.isPending}
       onCancel={() => router.push('/')}
@@ -492,7 +493,7 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="details-heading">Organisationsdetails</CardTitle>
               <CardDescription>
-                Grundlegende Informationen und Logo deiner Organisation
+                Grundlegende Informationen und Logo Ihrer Organisation
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -500,7 +501,7 @@ export default function OrganizationManagePage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Logo</label>
                   <p className="text-muted-foreground text-sm">
-                    Das Hauptlogo deiner Organisation, wird in verschiedenen
+                    Das Hauptlogo Ihrer Organisation wird in verschiedenen
                     Bereichen angezeigt.
                   </p>
                   <FileUpload
@@ -598,7 +599,8 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="preferences-heading">Präferenzen</CardTitle>
               <CardDescription>
-                Passe die Terminologie und Präferenzen deiner Organisation an
+                Passen Sie die Terminologie und Präferenzen Ihrer Organisation
+                an
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -632,7 +634,7 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="pdf-export-heading">PDF-Export</CardTitle>
               <CardDescription>
-                Einstellungen für den PDF-Export deiner Organisation
+                Einstellungen für den PDF-Export Ihrer Organisation
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -652,6 +654,17 @@ export default function OrganizationManagePage() {
           </Card>
         </section>
 
+        {/* Vorlagen (Templates) Section */}
+        <section
+          id="vorlagen"
+          ref={(el) => {
+            sectionRefs.current.vorlagen = el;
+          }}
+          aria-labelledby="vorlagen-heading"
+        >
+          <TemplatesOverviewSection orgId={orgId} />
+        </section>
+
         {/* User Properties Section */}
         <section
           id="user-properties"
@@ -667,7 +680,8 @@ export default function OrganizationManagePage() {
               </CardTitle>
               <CardDescription>
                 Verwalte die benutzerdefinierten Eigenschaften für Benutzer in
-                dieser Organisation
+                dieser Organisation. Diese können für personenbasierte
+                Überprüfungen verwendet werden.
               </CardDescription>
             </CardHeader>
             <CardContent>

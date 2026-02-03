@@ -41,9 +41,22 @@ export function UserListItem({
         </Avatar>
         <div className="inline-flex flex-col items-start justify-center gap-0.5">
           <div className="justify-start font-['Inter'] text-xl leading-7 font-normal text-slate-800">
-            {user.firstname && user.lastname
-              ? `${user.firstname} ${user.lastname}`
-              : user.email || 'Unbekannt'}
+            {user.firstname && user.lastname ? (
+              user.email ? (
+                <>
+                  {user.firstname} {user.lastname}{' '}
+                  <span className="text-muted-foreground text-sm">
+                    ({user.email})
+                  </span>
+                </>
+              ) : (
+                `${user.firstname} ${user.lastname}`
+              )
+            ) : (
+              <span className="text-muted-foreground text-sm">
+                Unbekannter Benutzer
+              </span>
+            )}
           </div>
           <RolesList unsortedRoles={roles} />
         </div>

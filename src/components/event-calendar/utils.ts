@@ -101,22 +101,60 @@ export function generateDynamicSchema(
 
     switch (type) {
       case 'text':
-        fieldSchema = z.string().min(1, 'Text darf nicht leer sein');
-        if (options.min) fieldSchema = fieldSchema.min(options.min);
-        if (options.max) fieldSchema = fieldSchema.max(options.max);
+        if (options.isRequired === true) {
+          fieldSchema = z.string().min(1, 'Text darf nicht leer sein');
+          if (options.min) fieldSchema = fieldSchema.min(options.min);
+          if (options.max) fieldSchema = fieldSchema.max(options.max);
+        } else {
+          fieldSchema = z
+            .union([z.string(), z.null(), z.literal('')])
+            .optional()
+            .transform((s) => (s == null || s === '' ? '' : String(s)));
+          if (options.max)
+            fieldSchema = fieldSchema.pipe(z.string().max(options.max));
+        }
         break;
       case 'number':
-        fieldSchema = z.int();
-        if (options.min) fieldSchema = fieldSchema.gte(options.min);
-        if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        if (options.isRequired === true) {
+          fieldSchema = z.int();
+          if (options.min) fieldSchema = fieldSchema.gte(options.min);
+          if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        } else {
+          fieldSchema = z
+            .union([z.number(), z.nan(), z.null(), z.undefined()])
+            .optional()
+            .transform((n) =>
+              n == null || Number.isNaN(n) ? undefined : Number(n)
+            );
+          let numSchema = z.number();
+          if (options.min != null) numSchema = numSchema.gte(options.min);
+          if (options.max != null) numSchema = numSchema.lte(options.max);
+          fieldSchema = fieldSchema.pipe(numSchema.optional());
+        }
         break;
       case 'currency':
-        fieldSchema = z.float64();
-        if (options.min) fieldSchema = fieldSchema.gte(options.min);
-        if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        if (options.isRequired === true) {
+          fieldSchema = z.float64();
+          if (options.min) fieldSchema = fieldSchema.gte(options.min);
+          if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        } else {
+          fieldSchema = z
+            .union([z.number(), z.nan(), z.null(), z.undefined()])
+            .optional()
+            .transform((n) =>
+              n == null || Number.isNaN(n) ? undefined : Number(n)
+            );
+          let numSchema = z.number();
+          if (options.min != null) numSchema = numSchema.gte(options.min);
+          if (options.max != null) numSchema = numSchema.lte(options.max);
+          fieldSchema = fieldSchema.pipe(numSchema.optional());
+        }
         break;
       case 'boolean':
-        fieldSchema = z.boolean();
+        fieldSchema = z
+          .union([z.boolean(), z.null(), z.undefined()])
+          .optional()
+          .transform((v) => v ?? false);
         break;
       case 'phone':
         fieldSchema = z
@@ -148,7 +186,7 @@ export function generateDynamicSchema(
       default:
         throw new Error('Feldtyp ' + type + ' wird nicht unterstützt');
     }
-    if (options.isRequired !== true && type !== 'select')
+    if (options.isRequired !== true && type !== 'select' && type !== 'boolean')
       fieldSchema = fieldSchema?.optional();
 
     if (fieldSchema) schemaShape[fieldId] = fieldSchema;
@@ -193,8 +231,8 @@ export const mapEinsatzToCalendarEvent = (
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(', ')})`
+        .map((c) => c.einsatz_category.abbreviation)
+        .join(', ')})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
@@ -216,6 +254,9 @@ export function mapStringValueToType(
     case 'text':
     case 'phone':
     case 'mail':
+    case 'date':
+    case 'time':
+    case 'group':
       result = value;
       break;
     case 'number':
@@ -285,7 +326,7 @@ export function mapFieldsForSchema(fields: fieldsForSchema) {
       type: f.field.type?.datatype,
       options: {
         isMultiline: f.field.is_multiline,
-        isRequired: f.field.is_required,
+        isRequired: f.field.is_required === true,
         min: f.field.min,
         max: f.field.max,
         allowedValues: f.field.allowed_values,
@@ -297,35 +338,55 @@ export function mapFieldsForSchema(fields: fieldsForSchema) {
 export function mapDbDataTypeToFormFieldType(
   datatype: string | null | undefined
 ): FormFieldType {
-  const defaultTypes = ['text', 'number', 'currency', 'phone', 'mail'];
+  const defaultTypes = [
+    'text',
+    'number',
+    'currency',
+    'phone',
+    'mail',
+    'date',
+    'time',
+  ];
   if (datatype) {
     if (defaultTypes.includes(datatype)) return 'default';
     if (datatype === 'boolean') return 'checkbox';
     if (datatype === 'select') return 'select';
+    if (datatype === 'group') return 'group';
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 
 export function mapDbDataTypeToInputProps(
   datatype: string | null | undefined
 ): React.ComponentProps<'input'> | null {
-  const defaultTypes = ['text', 'number', 'currency', 'phone', 'mail'];
+  const defaultTypes = [
+    'text',
+    'number',
+    'currency',
+    'phone',
+    'mail',
+    'date',
+    'time',
+  ];
   if (datatype) {
-    if (!defaultTypes.includes(datatype)) return null;
+    if (!defaultTypes.includes(datatype) && datatype !== 'group') return null;
     if (datatype === 'text') return { type: 'text' };
     if (datatype === 'phone') return { type: 'tel' };
     if (datatype === 'mail') return { type: 'email' };
     if (datatype === 'number') return { type: 'number' };
     if (datatype === 'currency') return { type: 'number', step: '0.10' };
+    if (datatype === 'date') return { type: 'date' };
+    if (datatype === 'time') return { type: 'time' };
+    if (datatype === 'group') return { type: 'group' };
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 

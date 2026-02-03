@@ -62,12 +62,13 @@ model einsatz {
 }
 
 model einsatz_category {
-  value               String
-  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  abbreviation        String                @default("")
-  org_id              String                @db.Uuid
-  organization        organization          @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  einsatz_to_category einsatz_to_category[]
+  value                String
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  abbreviation         String                 @default("")
+  org_id               String                 @db.Uuid
+  organization         organization           @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  einsatz_to_category  einsatz_to_category[]
+  template_to_category template_to_category[]
 }
 
 model einsatz_comment {
@@ -90,25 +91,35 @@ model einsatz_helper {
 }
 
 model einsatz_template {
-  id                            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  org_id                        String           @db.Uuid
+  id                            String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id                        String                   @db.Uuid
   name                          String
-  created_by                    String?          @db.Uuid
-  created_at                    DateTime         @default(now())
+  created_by                    String?                  @db.Uuid
+  created_at                    DateTime                 @default(now())
   description                   String?
-  icon_id                       String           @default(dbgenerated("'17effde3-bacb-4cd9-9303-c0467a6e437b'::uuid")) @db.Uuid
-  participant_count_default     Int?             @db.SmallInt
-  participant_count_placeholder Int?             @default(20) @db.SmallInt
-  price_person_default          Float?           @db.Real
-  price_person_placeholder      Float?           @db.Real
-  helpers_needed_default        Int?             @db.SmallInt
-  helpers_needed_placeholder    Int?             @default(1) @db.SmallInt
+  icon_id                       String                   @default(dbgenerated("'17effde3-bacb-4cd9-9303-c0467a6e437b'::uuid")) @db.Uuid
+  participant_count_default     Int?                     @db.SmallInt
+  participant_count_placeholder Int?                     @default(20) @db.SmallInt
+  price_person_default          Float?                   @db.Real
+  price_person_placeholder      Float?                   @db.Real
+  helpers_needed_default        Int?                     @db.SmallInt
+  helpers_needed_placeholder    Int?                     @default(1) @db.SmallInt
   all_day_default               Boolean?
+  is_paused                     Boolean                  @default(false)
+  anmerkung_default             String?
+  anmerkung_placeholder         String?
+  total_price_default           Float?                   @db.Real
+  total_price_placeholder       Float?                   @db.Real
+  time_start_default            DateTime?                @db.Time(6)
+  time_end_default              DateTime?                @db.Time(6)
+  einsatzname_default           String?
   einsatz                       einsatz[]
-  user                          user?            @relation(fields: [created_by], references: [id], onDelete: Cascade)
-  template_icon                 template_icon    @relation(fields: [icon_id], references: [id], onDelete: Cascade)
-  organization                  organization     @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  user                          user?                    @relation(fields: [created_by], references: [id], onDelete: Cascade)
+  template_icon                 template_icon            @relation(fields: [icon_id], references: [id], onDelete: Cascade)
+  organization                  organization             @relation(fields: [org_id], references: [id], onDelete: Cascade)
   template_field                template_field[]
+  template_to_category          template_to_category[]
+  template_user_property        template_user_property[]
 }
 
 model organization {
@@ -201,13 +212,14 @@ model user_organization_role {
 }
 
 model user_property {
-  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  field_id              String                  @db.Uuid
-  org_id                String                  @db.Uuid
-  einsatz_user_property einsatz_user_property[]
-  field                 field                   @relation(fields: [field_id], references: [id], onDelete: Cascade)
-  organization          organization            @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  user_property_value   user_property_value[]
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  field_id               String                   @db.Uuid
+  org_id                 String                   @db.Uuid
+  einsatz_user_property  einsatz_user_property[]
+  template_user_property template_user_property[]
+  field                  field                    @relation(fields: [field_id], references: [id], onDelete: Cascade)
+  organization           organization             @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  user_property_value    user_property_value[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -250,6 +262,7 @@ model field {
   min            Int?             @db.SmallInt
   max            Int?             @db.SmallInt
   allowed_values String[]
+  description    String?
   einsatz_field  einsatz_field[]
   type           type?            @relation(fields: [type_id], references: [id], onDelete: Cascade, map: "custom_field_type_id_fkey")
   template_field template_field[]
@@ -389,4 +402,24 @@ model einsatz_user_property {
   min_matching_users Int?          @db.SmallInt
   einsatz            einsatz       @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user_property      user_property @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model template_to_category {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  template_id      String            @db.Uuid
+  category_id      String?           @db.Uuid
+  einsatz_category einsatz_category? @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  einsatz_template einsatz_template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model template_user_property {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  template_id        String           @db.Uuid
+  user_property_id   String           @db.Uuid
+  is_required        Boolean          @default(false)
+  min_matching_users Int?             @db.SmallInt
+  einsatz_template   einsatz_template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user_property      user_property    @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
 }

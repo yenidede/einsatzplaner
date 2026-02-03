@@ -2,9 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import type {
-  field,
   type as FieldType,
-  user_property,
 } from '@/generated/prisma';
 import { requireAuth } from '@/lib/auth/authGuard';
 
@@ -15,6 +13,7 @@ export interface UserPropertyWithField {
   field: {
     id: string;
     name: string | null;
+    description: string | null;
     type_id: string | null;
     is_required: boolean;
     placeholder: string | null;
@@ -44,6 +43,7 @@ export async function getUserPropertiesByOrgId(
 
   const properties = await prisma.user_property.findMany({
     where: { org_id: orgId },
+    orderBy: { field: { name: 'asc' } },
     include: {
       field: {
         include: {
@@ -84,6 +84,7 @@ export async function getExistingPropertyNames(
 
   const properties = await prisma.user_property.findMany({
     where: { org_id: orgId },
+    orderBy: { field: { name: 'asc' } },
     include: {
       field: {
         select: {
@@ -146,7 +147,17 @@ async function ensureTypeExists(datatype: string): Promise<string> {
 export interface CreateUserPropertyInput {
   name: string;
   description?: string;
-  datatype: 'text' | 'number' | 'boolean' | 'select';
+  datatype:
+  | 'text'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'currency'
+  | 'group'
+  | 'date'
+  | 'time'
+  | 'phone'
+  | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -171,6 +182,7 @@ export async function createUserProperty(
   const field = await prisma.field.create({
     data: {
       name: input.name,
+      description: input.description ?? null,
       type_id: typeId,
       is_required: input.isRequired,
       placeholder: input.placeholder,
@@ -246,6 +258,7 @@ export async function updateUserProperty(
     where: { id: userProperty.field_id },
     data: {
       name: input.name,
+      description: input.description ?? null,
       is_required: input.isRequired,
       placeholder: input.placeholder,
       default_value: input.defaultValue,
@@ -342,6 +355,7 @@ export async function getUserPropertyValues(
         org_id: orgId,
       },
     },
+    orderBy: { user_property: { field: { name: 'asc' } } },
     include: {
       user_property: {
         include: {
@@ -404,8 +418,7 @@ export async function upsertUserPropertyValue(
 
   if (userProperty.field.is_required && (!value || value.trim() === '')) {
     throw new Error(
-      `Das Feld "${
-        userProperty.field.name || 'Unbekannt'
+      `Das Feld "${userProperty.field.name || 'Unbekannt'
       }" ist ein Pflichtfeld und darf nicht leer sein.`
     );
   }
