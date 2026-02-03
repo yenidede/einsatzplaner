@@ -5,7 +5,8 @@ import prisma from '@/lib/prisma';
 import type { einsatz_status as EinsatzStatus } from '@/generated/prisma';
 
 const getStatusesCached = cache(
-  async (): Promise<EinsatzStatus[]> => prisma.einsatz_status.findMany(),
+  async (): Promise<EinsatzStatus[]> =>
+    prisma.einsatz_status.findMany({ orderBy: { helper_text: 'asc' } }),
   ['status'],
   { tags: ['status'], revalidate: 3600 } // 1h TTL
 );
