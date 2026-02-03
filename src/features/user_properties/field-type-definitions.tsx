@@ -51,6 +51,17 @@ const DEFINITIONS_BY_KEY = new Map(
   FIELD_TYPE_DEFINITIONS.map((d) => [d.key, d])
 );
 
+const FIELD_TYPE_KEYS: ReadonlySet<string> = new Set(
+  FIELD_TYPE_DEFINITIONS.map((d) => d.key)
+);
+
+/** Type guard: narrows string to FieldTypeKey so callers can avoid "as" casts. */
+export function isFieldTypeKey(
+  s: string | null | undefined
+): s is FieldTypeKey {
+  return typeof s === 'string' && FIELD_TYPE_KEYS.has(s);
+}
+
 export function getFieldTypeDefinition(
   key: FieldTypeKey
 ): FieldTypeDefinition | undefined {

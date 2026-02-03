@@ -29,6 +29,10 @@ export function TemplatesOverviewSection({
   const router = useRouter();
   const { data: templates, isLoading } = useTemplates(orgId);
 
+  const { data: session } = useSession();
+  const { data: organizations } = useOrganizations(session?.user?.orgIds);
+  const { einsatz_plural } = useOrganizationTerminology(organizations, orgId);
+
   const handleCreate = () => {
     router.push(`/settings/vorlage/neu?orgId=${orgId}`);
   };
@@ -44,7 +48,7 @@ export function TemplatesOverviewSection({
       <CardHeader>
         <CardTitle id="vorlagen-heading">Vorlagen</CardTitle>
         <CardDescription>
-          {`Übersicht aller Vorlagen. Bearbeiten durch Linksklick.`}
+          {`Vorlagen helfen, Standardwerte, eigene Felder und automatische Prüfungen festzulegen. Änderungen betreffen keine bestehenden ${einsatz_plural}.`}
         </CardDescription>
         <CardAction>
           <Button onClick={handleCreate}>
@@ -63,7 +67,7 @@ export function TemplatesOverviewSection({
         {!isLoading && !hasTemplates && (
           <div className="flex flex-col items-center gap-4 py-8">
             <p className="text-muted-foreground text-center text-sm">
-              Noch keine Vorlagen vorhanden. Erstelle deine erste Vorlage.
+              Noch keine Vorlagen vorhanden. Erstellen Sie Ihre erste Vorlage.
             </p>
             <div className="flex flex-col items-center justify-center">
               <Image
