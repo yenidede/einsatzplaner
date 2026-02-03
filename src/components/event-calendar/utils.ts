@@ -117,7 +117,7 @@ export function generateDynamicSchema(
               { message: `Mindestlänge: ${options.min} Zeichen` }
             );
           }
-          if (options.max) {
+          if (options.max != null) {
             postTransform = postTransform.max(options.max);
           }
           fieldSchema = fieldSchema.pipe(postTransform);

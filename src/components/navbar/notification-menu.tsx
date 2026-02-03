@@ -270,9 +270,8 @@ export default function NotificationMenu() {
         onOpenChange={setAllActivitiesModalOpen}
         openDialog={openDialog}
         readIds={readIds}
-        onMarkAsRead={function (id: string): void {
-          handleMarkAsRead(id);
-        }}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
       />
     </Popover>
   );
