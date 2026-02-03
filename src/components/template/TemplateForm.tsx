@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Type, Hash, Plus, Pause, Play } from 'lucide-react';
+import { Type, Hash, Plus, Pause, Play, AlertCircle } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -973,6 +973,15 @@ export function TemplateForm({
                 )}
                 {editingStandardFieldKey === 'time_range' && (
                   <div className="space-y-4">
+                    {template?.all_day_default === true && (
+                      <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <p>
+                          Die Uhrzeit wird bei Einsätzen nicht angezeigt, wenn
+                          Ganztägig aktiviert ist.
+                        </p>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="time-range-start">
                         Uhrzeit von (optional)

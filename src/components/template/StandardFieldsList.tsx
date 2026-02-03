@@ -36,6 +36,7 @@ export const STANDARD_FIELDS: Array<{
     standardFieldKey: 'kategorie',
   },
   { name: 'Allgemein', typeKey: 'group' },
+  // this is for uhrzeit start and uhrzeit end (they can be edited together this way)
   {
     name: 'Uhrzeit von – bis',
     typeKey: 'time',
