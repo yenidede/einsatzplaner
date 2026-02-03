@@ -16,7 +16,7 @@ export function UsageSettings({
   warningMessage,
 }: UsageSettingsProps) {
   return (
-    <div className="flex flex-col gap-4 self-stretch px-4">
+    <div className="flex flex-col gap-4 self-stretch">
       <h3 className="text-sm font-semibold text-slate-700">
         Eingabe-Regeln für Personen
       </h3>

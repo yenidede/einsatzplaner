@@ -14,6 +14,10 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TemplateCard } from '@/components/template/TemplateCard';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useSession } from 'next-auth/react';
+import { cn } from '@/lib/utils';
 
 interface TemplatesOverviewSectionProps {
   orgId: string;
@@ -40,8 +44,7 @@ export function TemplatesOverviewSection({
       <CardHeader>
         <CardTitle id="vorlagen-heading">Vorlagen</CardTitle>
         <CardDescription>
-          Übersicht aller Vorlagen für Einsätze. Klicke auf eine Vorlage zum
-          Bearbeiten oder erstelle eine neue.
+          {`Übersicht aller Vorlagen. Bearbeiten durch Linksklick.`}
         </CardDescription>
         <CardAction>
           <Button onClick={handleCreate}>
@@ -93,12 +96,19 @@ export function TemplatesOverviewSection({
                       unoptimized
                     />
                   ) : (
-                    <div className="h-6 w-6 rounded bg-slate-200" />
+                    <div className="h-6 w-6 rounded border-dashed border-red-200 bg-slate-200" />
                   )
                 }
-                title={template.name ?? 'Unbenannte Vorlage'}
+                title={
+                  (template.name ?? 'Unbenannte Vorlage') +
+                  (template.is_paused ? ' (pausiert)' : '')
+                }
                 description={template.description}
                 onClick={() => handleEdit(template.id)}
+                className={cn(
+                  template.is_paused &&
+                    'border-dashed border-red-200 bg-red-50 opacity-60 hover:border-red-300 hover:bg-red-100'
+                )}
               />
             ))}
             <TemplateCard

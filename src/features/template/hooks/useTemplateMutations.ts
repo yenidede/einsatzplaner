@@ -9,6 +9,9 @@ import {
   createTemplateAction,
   updateTemplateAction,
   createTemplateFieldAction,
+  updateTemplateFieldAction,
+  deleteTemplateAction,
+  deleteTemplateFieldAction,
   type CreateTemplateInput,
   type UpdateTemplateInput,
 } from '../template-dal';
@@ -19,20 +22,23 @@ export function useTemplateMutations() {
 
   const createMutation = useMutation({
     mutationFn: (input: CreateTemplateInput) => createTemplateAction(input),
-    onSuccess: (data) => {
+    onMutate: () => ({
+      toastId: toast.loading('Vorlage wird erstellt…'),
+    }),
+    onSuccess: (data, _variables, context) => {
       queryClient.setQueryData(templateQueryKeys.template(data.id), {
         ...data,
         template_icon: null,
         template_field: [],
       });
       queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
-      queryClient.refetchQueries({ queryKey: templateQueryKeys.all });
-      toast.success('Vorlage erstellt');
+      toast.success('Vorlage erstellt', { id: context?.toastId });
       router.replace(`/settings/vorlage/${data.id}`);
     },
-    onError: (err) => {
+    onError: (err, _variables, context) => {
       toast.error(
-        err instanceof Error ? err.message : 'Fehler beim Erstellen der Vorlage'
+        err instanceof Error ? err.message : 'Fehler beim Erstellen der Vorlage',
+        { id: context?.toastId }
       );
     },
   });
@@ -43,13 +49,17 @@ export function useTemplateMutations() {
       ...input
     }: { templateId: string } & UpdateTemplateInput) =>
       updateTemplateAction(templateId, input),
-    onSuccess: () => {
+    onMutate: () => ({
+      toastId: toast.loading('Vorlage wird gespeichert…'),
+    }),
+    onSuccess: (_data, _variables, context) => {
       queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
-      void queryClient.refetchQueries({ queryKey: templateQueryKeys.all });
-      toast.success('Vorlage gespeichert');
+      toast.success('Vorlage gespeichert', { id: context?.toastId });
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Fehler beim Speichern');
+    onError: (err, _variables, context) => {
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Speichern', {
+        id: context?.toastId,
+      });
     },
   });
 
@@ -61,14 +71,88 @@ export function useTemplateMutations() {
       templateId: string;
       config: PropertyConfig;
     }) => createTemplateFieldAction(templateId, config),
-    onSuccess: () => {
+    onMutate: () => ({
+      toastId: toast.loading('Feld wird hinzugefügt…'),
+    }),
+    onSuccess: (_data, _variables, context) => {
       queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
-      void queryClient.refetchQueries({ queryKey: templateQueryKeys.all });
-      toast.success('Feld hinzugefügt');
+      toast.success('Feld hinzugefügt', { id: context?.toastId });
     },
-    onError: (err) => {
+    onError: (err, _variables, context) => {
       toast.error(
-        err instanceof Error ? err.message : 'Fehler beim Hinzufügen des Feldes'
+        err instanceof Error ? err.message : 'Fehler beim Hinzufügen des Feldes',
+        { id: context?.toastId }
+      );
+    },
+  });
+
+  const updateTemplateFieldMutation = useMutation({
+    mutationFn: ({
+      templateId,
+      fieldId,
+      config,
+    }: {
+      templateId: string;
+      fieldId: string;
+      config: PropertyConfig;
+    }) => updateTemplateFieldAction(templateId, fieldId, config),
+    onMutate: () => ({
+      toastId: toast.loading('Feld wird gespeichert…'),
+    }),
+    onSuccess: (_data, _variables, context) => {
+      queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
+      toast.success('Feld gespeichert', { id: context?.toastId });
+    },
+    onError: (err, _variables, context) => {
+      toast.error(
+        err instanceof Error ? err.message : 'Fehler beim Speichern des Feldes',
+        { id: context?.toastId }
+      );
+    },
+  });
+
+  const deleteTemplateFieldMutation = useMutation({
+    mutationFn: ({
+      templateId,
+      fieldId,
+    }: {
+      templateId: string;
+      fieldId: string;
+    }) => deleteTemplateFieldAction(templateId, fieldId),
+    onMutate: () => ({
+      toastId: toast.loading('Feld wird gelöscht…'),
+    }),
+    onSuccess: (_data, _variables, context) => {
+      queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
+      toast.success('Feld gelöscht', { id: context?.toastId });
+    },
+    onError: (err, _variables, context) => {
+      toast.error(
+        err instanceof Error ? err.message : 'Fehler beim Löschen des Feldes',
+        { id: context?.toastId }
+      );
+    },
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: ({
+      templateId,
+    }: {
+      templateId: string;
+      redirectTo: string;
+    }) => deleteTemplateAction(templateId),
+    onMutate: () => ({
+      toastId: toast.loading('Vorlage wird gelöscht…'),
+    }),
+    onSuccess: (_, { redirectTo }, context) => {
+      queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
+      toast.success('Vorlage gelöscht', { id: context?.toastId });
+      router.replace(redirectTo);
+    },
+    onError: (err, _variables, context) => {
+      toast.error(
+        err instanceof Error ? err.message : 'Fehler beim Löschen der Vorlage',
+        { id: context?.toastId }
       );
     },
   });
@@ -77,6 +161,15 @@ export function useTemplateMutations() {
     createMutation,
     updateMutation,
     addTemplateFieldMutation,
-    isSaving: createMutation.isPending || updateMutation.isPending,
+    updateTemplateFieldMutation,
+    deleteTemplateFieldMutation,
+    deleteTemplateMutation,
+    isSaving:
+      createMutation.isPending ||
+      updateMutation.isPending ||
+      addTemplateFieldMutation.isPending ||
+      updateTemplateFieldMutation.isPending ||
+      deleteTemplateFieldMutation.isPending ||
+      deleteTemplateMutation.isPending,
   };
 }

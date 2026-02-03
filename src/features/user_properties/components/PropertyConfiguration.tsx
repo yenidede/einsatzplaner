@@ -15,6 +15,8 @@ import {
   getRequiredFieldWarning,
 } from '../utils/validation';
 
+export type FieldFormContext = 'person' | 'vorlage';
+
 interface PropertyConfigurationProps {
   config: PropertyConfig;
   onConfigChange: (updates: Partial<PropertyConfig>) => void;
@@ -22,6 +24,8 @@ interface PropertyConfigurationProps {
   onCancel: () => void;
   existingPropertyNames?: string[];
   existingUserCount?: number;
+  /** Whether this form is for a person property or a template (Vorlage) field. Affects visibility of "Eingabe-Regeln für Personen". */
+  context?: FieldFormContext;
   /** Optional title (default: "Neue Eigenschaft konfigurieren") */
   title?: string;
   /** Optional label for name field (default: "Name der Eigenschaft *") */
@@ -39,6 +43,7 @@ export function PropertyConfiguration({
   onCancel,
   existingPropertyNames = [],
   existingUserCount = 0,
+  context = 'person',
   title = 'Neue Eigenschaft konfigurieren',
   nameLabel = 'Name der Eigenschaft *',
   saveButtonLabel = 'Speichern',
@@ -66,10 +71,10 @@ export function PropertyConfiguration({
     }
   };
 
-  const warningMessage = getRequiredFieldWarning(
-    config.isRequired,
-    existingUserCount
-  );
+  const warningMessage =
+    context === 'person'
+      ? getRequiredFieldWarning(config.isRequired, existingUserCount)
+      : null;
 
   const getFieldError = (fieldName: string): string[] => {
     return errors.filter((e) => e.field === fieldName).map((e) => e.message);
@@ -77,22 +82,19 @@ export function PropertyConfiguration({
 
   return (
     <div className="flex flex-col items-start justify-start gap-2 self-stretch">
-      <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
+      <div className="inline-flex items-center justify-start gap-2.5 self-stretch pt-2">
         <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
           {title}
         </div>
       </div>
 
       <div className="flex flex-col items-start justify-start gap-6 self-stretch border-t border-slate-200 py-4">
-        <div className="flex flex-col gap-4 self-stretch px-4">
+        <div className="flex flex-col gap-4 self-stretch">
           <h3 className="text-sm font-semibold text-slate-700">
             Grundinformationen
           </h3>
 
-          <FormInputFieldCustom
-            name={nameLabel}
-            errors={getFieldError('name')}
-          >
+          <FormInputFieldCustom name={nameLabel} errors={getFieldError('name')}>
             <Input
               value={config.name}
               onChange={(e) => onConfigChange({ name: e.target.value })}
@@ -102,7 +104,7 @@ export function PropertyConfiguration({
           </FormInputFieldCustom>
         </div>
 
-        <div className="flex flex-col gap-4 self-stretch px-4">
+        <div className="flex flex-col gap-4 self-stretch">
           <h3 className="text-sm font-semibold text-slate-700">
             Feldeinstellungen
           </h3>
@@ -154,13 +156,15 @@ export function PropertyConfiguration({
             )}
         </div>
 
-        <UsageSettings
-          isRequired={config.isRequired}
-          onChange={onConfigChange}
-          warningMessage={warningMessage}
-        />
+        {context === 'person' && (
+          <UsageSettings
+            isRequired={config.isRequired}
+            onChange={onConfigChange}
+            warningMessage={warningMessage}
+          />
+        )}
 
-        <div className="inline-flex items-start justify-end gap-2 self-stretch border-t border-slate-200 px-4 pt-2">
+        <div className="inline-flex items-start justify-end gap-2 self-stretch border-t border-slate-200 pt-2">
           <Button variant="secondary" onClick={onCancel}>
             Abbrechen
           </Button>

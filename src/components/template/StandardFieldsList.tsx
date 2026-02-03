@@ -1,62 +1,86 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import type { FieldTypeKey } from '@/features/user_properties/field-type-definitions';
 import { getFieldTypeDefinition } from '@/features/user_properties/field-type-definitions';
+import { TemplateFieldListItem } from './TemplateFieldListItem';
+
+/** Keys for standard fields that have default/placeholder on the template and can be edited. */
+export type StandardFieldKey =
+  | 'participant_count'
+  | 'price_person'
+  | 'helpers_needed'
+  | 'all_day'
+  | 'anmerkung'
+  | 'total_price';
 
 /** Standard field rows shown in the template form. Uses typeKey from shared field-type-definitions. */
 export const STANDARD_FIELDS: Array<{
   name: string;
   typeKey: FieldTypeKey;
-  required?: boolean;
+  ispflichtfeld?: boolean;
   indent?: boolean;
+  /** When set, clicking the row opens the edit view for default/placeholder. This is the exact spelling from database (_default, _placeholder will be added automatically). Checkboxes only have _default. */
+  standardFieldKey?: StandardFieldKey;
 }> = [
   { name: 'Name', typeKey: 'text' },
-  { name: 'Kategorie', typeKey: 'select', required: true },
+  { name: 'Kategorie', typeKey: 'select' },
   { name: 'Allgemein', typeKey: 'group' },
-  { name: 'Datum', typeKey: 'date', required: true, indent: true },
-  { name: 'Uhrzeit von', typeKey: 'time', required: true, indent: true },
-  { name: 'Uhrzeit bis', typeKey: 'time', required: true, indent: true },
-  { name: 'Anzahl Teilnehmer', typeKey: 'number' },
-  { name: 'Einzelpreis', typeKey: 'currency' },
-  { name: 'Gesamtpreis', typeKey: 'currency' },
+  { name: 'Uhrzeit von', typeKey: 'time', ispflichtfeld: true, indent: true },
+  { name: 'Uhrzeit bis', typeKey: 'time', ispflichtfeld: true, indent: true },
+  { name: 'Ganztag', typeKey: 'boolean', standardFieldKey: 'all_day' },
+  {
+    name: 'Benötigte Helfer',
+    typeKey: 'number',
+    standardFieldKey: 'helpers_needed',
+    ispflichtfeld: true,
+  },
+  {
+    name: 'Anzahl Teilnehmer',
+    typeKey: 'number',
+    standardFieldKey: 'participant_count',
+    ispflichtfeld: true,
+  },
+  {
+    name: 'Einzelpreis',
+    typeKey: 'currency',
+    standardFieldKey: 'price_person',
+    ispflichtfeld: true,
+  },
+  { name: 'Gesamtpreis', typeKey: 'currency', standardFieldKey: 'total_price' },
+  { name: 'Anmerkung', typeKey: 'text', standardFieldKey: 'anmerkung' },
 ];
 
-export function StandardFieldsList() {
+export interface StandardFieldsListProps {
+  /** When provided, standard fields with standardFieldKey become clickable and open this callback with the key. */
+  onOpenStandardField?: (key: StandardFieldKey) => void;
+}
+
+export function StandardFieldsList({
+  onOpenStandardField,
+}: StandardFieldsListProps = {}) {
   return (
-    <div className="space-y-2">
-      <h3 className="font-semibold">Standardfelder</h3>
-      <ul className="space-y-1.5">
-        {STANDARD_FIELDS.map((field) => {
-          const def = getFieldTypeDefinition(field.typeKey);
-          const Icon = def?.Icon;
-          const typeLabel = def?.label ?? field.typeKey;
-          return (
-            <li
-              key={field.name}
-              className={cn(
-                'bg-muted/30 flex items-center justify-between gap-2 rounded-md border border-transparent px-3 py-2',
-                field.indent && 'ml-4'
-              )}
-            >
-              <div className="flex items-center gap-2">
-                {Icon && (
-                  <Icon className="text-muted-foreground h-4 w-4 shrink-0" />
-                )}
-                <span className="text-sm font-medium">{field.name}</span>
-                <span className="text-muted-foreground text-xs">
-                  ({typeLabel})
-                </span>
-              </div>
-              {field.required && (
-                <span className="text-muted-foreground shrink-0 text-xs">
-                  Pflichtfeld
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <ul className="space-y-2">
+      {STANDARD_FIELDS.map((field) => {
+        const def = getFieldTypeDefinition(field.typeKey);
+        const typeLabel = def?.label ?? field.typeKey;
+        const canOpen =
+          field.standardFieldKey != null && onOpenStandardField != null;
+        return (
+          <TemplateFieldListItem
+            key={field.name}
+            name={field.name}
+            typeLabel={typeLabel}
+            icon={def?.Icon ?? undefined}
+            isPflichtfeld={field.ispflichtfeld}
+            indent={field.indent}
+            onOpen={
+              canOpen
+                ? () => onOpenStandardField!(field.standardFieldKey!)
+                : undefined
+            }
+          />
+        );
+      })}
+    </ul>
   );
 }

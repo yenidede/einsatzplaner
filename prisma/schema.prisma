@@ -104,6 +104,7 @@ model einsatz_template {
   helpers_needed_default        Int?             @db.SmallInt
   helpers_needed_placeholder    Int?             @default(1) @db.SmallInt
   all_day_default               Boolean?
+  is_paused                     Boolean          @default(false)
   einsatz                       einsatz[]
   user                          user?            @relation(fields: [created_by], references: [id], onDelete: Cascade)
   template_icon                 template_icon    @relation(fields: [icon_id], references: [id], onDelete: Cascade)
