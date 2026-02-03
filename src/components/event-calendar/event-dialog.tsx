@@ -528,7 +528,10 @@ export function EventDialogVerwaltung({
             min: f.field.min,
             max: f.field.max,
             allowedValues: f.field.allowed_values,
-            inputType: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+            inputType:
+              f.field.is_multiline === true
+                ? 'textarea'
+                : mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
             dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
             inputProps: buildInputProps(f.field.type?.datatype, {
               placeholder: f.field.placeholder,
@@ -965,30 +968,29 @@ export function EventDialogVerwaltung({
 
           <div className="flex-1 overflow-y-auto">
             <div className="grid gap-8 py-4">
-              <FormGroup>
-                {templatesQuery.isLoading ? (
-                  <div>Lade Vorlagen ...</div>
-                ) : !activeTemplateId ? (
-                  // template not yet set, show options
-                  <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
-                    <div className="mt-1.5 flex flex-wrap gap-4">
-                      {templatesQuery.data
-                        ?.filter((t) => !t.is_paused)
-                        .map((t) => (
-                          <ToggleItemBig
-                            key={t.id}
-                            text={t.name ?? 'Vorlage'}
-                            description={t.description ?? ''}
-                            iconUrl={t.template_icon.icon_url.trim()}
-                            onClick={() => {
-                              handleTemplateSelect(t.id);
-                            }}
-                            className="w-full sm:w-auto"
-                          />
-                        ))}
-                    </div>
-                  </FormInputFieldCustom>
-                ) : (
+              {/* Template selection: single grid for options, no nested FormGroup grid */}
+              {templatesQuery.isLoading ? (
+                <div>Lade Vorlagen ...</div>
+              ) : !activeTemplateId ? (
+                <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
+                  <div className="mt-1.5 grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
+                    {templatesQuery.data
+                      ?.filter((t) => !t.is_paused)
+                      .map((t) => (
+                        <ToggleItemBig
+                          key={t.id}
+                          text={t.name ?? 'Vorlage'}
+                          description={t.description ?? ''}
+                          iconUrl={t.template_icon.icon_url.trim()}
+                          onClick={() => {
+                            handleTemplateSelect(t.id);
+                          }}
+                        />
+                      ))}
+                  </div>
+                </FormInputFieldCustom>
+              ) : (
+                <FormGroup>
                   <div className="flex justify-between">
                     <div>
                       Aktive Vorlage:{' '}
@@ -1027,8 +1029,8 @@ export function EventDialogVerwaltung({
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-              </FormGroup>
+                </FormGroup>
+              )}
               {/* Form Fields */}
               <DefaultFormFields
                 formData={staticFormData}
