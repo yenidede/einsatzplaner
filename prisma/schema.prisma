@@ -112,8 +112,7 @@ model einsatz_template {
   total_price_placeholder       Float?                 @db.Real
   time_start_default            DateTime?              @db.Time(6)
   time_end_default              DateTime?              @db.Time(6)
-  time_start_placeholder        DateTime?              @db.Time(6)
-  time_end_placeholder          DateTime?              @db.Time(6)
+  einsatzname_default           String?
   einsatz                       einsatz[]
   user                          user?                  @relation(fields: [created_by], references: [id], onDelete: Cascade)
   template_icon                 template_icon          @relation(fields: [icon_id], references: [id], onDelete: Cascade)
