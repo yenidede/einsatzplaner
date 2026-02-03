@@ -229,26 +229,30 @@ export async function createTemplateField(
 
   const typeId = await ensureTypeExists(input.datatype);
 
-  const field = await prisma.field.create({
-    data: {
-      name: input.name,
-      description: input.description ?? null,
-      type_id: typeId,
-      is_required: input.isRequired,
-      placeholder: input.placeholder,
-      default_value: input.defaultValue,
-      is_multiline: input.isMultiline,
-      min: input.min,
-      max: input.max,
-      allowed_values: input.allowedValues ?? [],
-    },
-  });
+  const field = await prisma.$transaction(async (tx) => {
+    const createdField = await tx.field.create({
+      data: {
+        name: input.name,
+        description: input.description ?? null,
+        type_id: typeId,
+        is_required: input.isRequired,
+        placeholder: input.placeholder,
+        default_value: input.defaultValue,
+        is_multiline: input.isMultiline,
+        min: input.min,
+        max: input.max,
+        allowed_values: input.allowedValues ?? [],
+      },
+    });
 
-  await prisma.template_field.create({
-    data: {
-      template_id: templateId,
-      field_id: field.id,
-    },
+    await tx.template_field.create({
+      data: {
+        template_id: templateId,
+        field_id: createdField.id,
+      },
+    });
+
+    return createdField;
   });
 
   return field;
