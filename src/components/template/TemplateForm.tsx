@@ -559,7 +559,7 @@ export function TemplateForm({
       const name = tf?.field?.name ?? 'Feld';
       const result = await showDialog({
         title: 'Feld löschen?',
-        description: `Möchten Sie das Feld "${name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
+        description: `Möchten Sie das Feld "${name}" wirklich löschen? Diese Aktion löscht auch alle verknüpften Datenfelder und kann nicht rückgängig gemacht werden.`,
         confirmText: 'Löschen',
         cancelText: 'Abbrechen',
         variant: 'destructive',
