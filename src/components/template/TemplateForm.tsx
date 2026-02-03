@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/settings/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -272,6 +273,9 @@ export function TemplateForm({
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (customFieldDialogOpen || editingStandardFieldKey != null) {
+          return;
+        }
         e.preventDefault();
         handleCancel();
         return;
@@ -283,7 +287,13 @@ export function TemplateForm({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [form, onSubmit, handleCancel]);
+  }, [
+    form,
+    onSubmit,
+    handleCancel,
+    customFieldDialogOpen,
+    editingStandardFieldKey,
+  ]);
 
   const formName = watch('name');
   const trimmedFormName = typeof formName === 'string' ? formName.trim() : '';
@@ -468,6 +478,14 @@ export function TemplateForm({
             String(template.price_person_placeholder ?? '')
           );
           break;
+        case 'total_price':
+          setStandardFieldDefaultValue(
+            String(template.total_price_default ?? '')
+          );
+          setStandardFieldPlaceholderValue(
+            String(template.total_price_placeholder ?? '')
+          );
+          break;
         case 'helpers_needed':
           setStandardFieldDefaultValue(
             String(template.helpers_needed_default ?? '')
@@ -481,6 +499,14 @@ export function TemplateForm({
             template.all_day_default === true ? 'true' : 'false'
           );
           setStandardFieldPlaceholderValue('');
+          break;
+        case 'anmerkung':
+          setStandardFieldDefaultValue(
+            String(template.anmerkung_default ?? '')
+          );
+          setStandardFieldPlaceholderValue(
+            String(template.anmerkung_placeholder ?? '')
+          );
           break;
       }
     }
@@ -910,9 +936,42 @@ export function TemplateForm({
                     />
                   </div>
                 )}
+                {editingStandardFieldKey === 'anmerkung' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="standard-field-default">
+                        Standardwert (optional)
+                      </Label>
+                      <Textarea
+                        id="standard-field-default"
+                        value={standardFieldDefaultValue}
+                        onChange={(e) =>
+                          setStandardFieldDefaultValue(e.target.value)
+                        }
+                        placeholder="Leer = kein Standard"
+                        rows={4}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="standard-field-placeholder">
+                        Platzhalter (optional)
+                      </Label>
+                      <Textarea
+                        id="standard-field-placeholder"
+                        value={standardFieldPlaceholderValue}
+                        onChange={(e) =>
+                          setStandardFieldPlaceholderValue(e.target.value)
+                        }
+                        placeholder="Leer = kein Platzhalter"
+                        rows={4}
+                      />
+                    </div>
+                  </>
+                )}
                 {editingStandardFieldKey !== 'all_day' &&
                   editingStandardFieldKey !== 'kategorie' &&
-                  editingStandardFieldKey !== 'name' && (
+                  editingStandardFieldKey !== 'name' &&
+                  editingStandardFieldKey !== 'anmerkung' && (
                     <>
                       <div className="space-y-2">
                         <Label htmlFor="standard-field-default">
