@@ -67,9 +67,11 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
           },
         },
       },
+      template_to_category: {
+        select: { category_id: true },
+      },
     },
   });
-  console.log(templates.map(t => t.anmerkung_default));
   return templates;
 }
 
@@ -164,16 +166,16 @@ export type CreateTemplateFieldInput = {
   name: string;
   description?: string;
   datatype:
-    | 'text'
-    | 'number'
-    | 'boolean'
-    | 'select'
-    | 'currency'
-    | 'group'
-    | 'date'
-    | 'time'
-    | 'phone'
-    | 'mail';
+  | 'text'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'currency'
+  | 'group'
+  | 'date'
+  | 'time'
+  | 'phone'
+  | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -281,9 +283,7 @@ export async function updateTemplateAction(
     helpers_needed_placeholder: input.helpers_needed_placeholder,
     all_day_default: input.all_day_default,
     time_start_default: input.time_start_default,
-    time_start_placeholder: input.time_start_placeholder,
     time_end_default: input.time_end_default,
-    time_end_placeholder: input.time_end_placeholder,
   };
   if (input.einsatzname_default !== undefined) {
     (data as Record<string, unknown>).einsatzname_default =
