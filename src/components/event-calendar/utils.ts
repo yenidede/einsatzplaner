@@ -151,7 +151,10 @@ export function generateDynamicSchema(
         }
         break;
       case 'boolean':
-        fieldSchema = z.boolean();
+        fieldSchema = z
+          .union([z.boolean(), z.null(), z.undefined()])
+          .optional()
+          .transform((v) => v ?? false);
         break;
       case 'phone':
         fieldSchema = z
@@ -183,7 +186,7 @@ export function generateDynamicSchema(
       default:
         throw new Error('Feldtyp ' + type + ' wird nicht unterstützt');
     }
-    if (options.isRequired !== true && type !== 'select')
+    if (options.isRequired !== true && type !== 'select' && type !== 'boolean')
       fieldSchema = fieldSchema?.optional();
 
     if (fieldSchema) schemaShape[fieldId] = fieldSchema;
