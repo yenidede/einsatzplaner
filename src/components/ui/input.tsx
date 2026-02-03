@@ -6,9 +6,16 @@ function stripLeadingZeros(value: string): string {
   return value.replace(/^0+(?=\d)/, '');
 }
 
-function Input({ className, type, onChange, value, ...props }: React.ComponentProps<'input'>) {
+function Input({
+  className,
+  type,
+  onChange,
+  value,
+  isStripLeadingZeros = true,
+  ...props
+}: React.ComponentProps<'input'> & { isStripLeadingZeros?: boolean }) {
   const displayValue =
-    type === 'number' && value != null && value !== ''
+    type === 'number' && isStripLeadingZeros && value != null && value !== ''
       ? stripLeadingZeros(String(value))
       : value;
 
