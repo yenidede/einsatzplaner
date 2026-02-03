@@ -584,6 +584,18 @@ export function TemplateForm({
               ? false
               : null;
         break;
+      case 'total_price':
+        payload.total_price_default = defaultFloat(standardFieldDefaultValue);
+        payload.total_price_placeholder = defaultFloat(
+          standardFieldPlaceholderValue
+        );
+        break;
+      case 'anmerkung':
+        payload.anmerkung_default = defaultStr(standardFieldDefaultValue);
+        payload.anmerkung_placeholder = defaultStr(
+          standardFieldPlaceholderValue
+        );
+        break;
     }
     updateMutation.mutate(
       { templateId, ...payload },
