@@ -3,22 +3,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import {
-  Type,
-  Hash,
-  Link2,
-  Plus,
-  Trash,
-  Pause,
-  Play,
-  Icon,
-} from 'lucide-react';
+import { Type, Hash, Plus, Pause, Play } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   getFieldTypeDefinition,
   isFieldTypeKey,
-  type FieldTypeKey,
 } from '@/features/user_properties/field-type-definitions';
 import { PageHeader } from '@/components/settings/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -146,8 +136,7 @@ export function TemplateForm({
     },
   });
 
-  const { register, control, handleSubmit, formState, watch, setValue, reset } =
-    form;
+  const { register, control, formState, watch, setValue, reset } = form;
   const { errors } = formState;
 
   const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
@@ -297,11 +286,12 @@ export function TemplateForm({
   }, [form, onSubmit, handleCancel]);
 
   const formName = watch('name');
+  const trimmedFormName = typeof formName === 'string' ? formName.trim() : '';
   const pageTitle = isEdit
     ? template
-      ? `'${formName.trim()}' bearbeiten`
+      ? `'${trimmedFormName}' bearbeiten`
       : 'Vorlage erstellen'
-    : `Erstelle Vorlage ${formName?.trim() ? `'${formName.trim()}'` : ''}`;
+    : `Erstelle Vorlage ${trimmedFormName ? `'${trimmedFormName}'` : ''}`;
 
   const existingTemplateFieldNames =
     template?.template_field
