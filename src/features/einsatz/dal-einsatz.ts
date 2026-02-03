@@ -62,7 +62,7 @@ async function checkEinsatzConflicts(
     return [];
   }
 
-  // Find all Einsatz assignments for these users that overlap with the given time range
+  // Find all Einsätze assignments for these users that overlap with the given time range
   const conflictingAssignments = await prisma.einsatz_helper.findMany({
     where: {
       user_id: { in: userIds },
@@ -275,6 +275,7 @@ export async function getEinsaetzeForTableView(
             select: {
               type: {
                 select: {
+                  name: true,
                   datatype: true,
                 },
               },
@@ -354,16 +355,16 @@ export async function getEinsaetzeForTableView(
     ),
     user: einsatz.user
       ? {
-        id: einsatz.user.id,
-        firstname: einsatz.user.firstname ?? null,
-        lastname: einsatz.user.lastname ?? null,
-      }
+          id: einsatz.user.id,
+          firstname: einsatz.user.firstname ?? null,
+          lastname: einsatz.user.lastname ?? null,
+        }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-        id: einsatz.einsatz_template.id,
-        name: einsatz.einsatz_template.name ?? null,
-      }
+          id: einsatz.einsatz_template.id,
+          name: einsatz.einsatz_template.name ?? null,
+        }
       : null,
     _count: einsatz._count,
   }));
@@ -463,11 +464,15 @@ export async function createEinsatz({
 
   // Check for conflicts when creating with assigned users (unless disabled)
   let conflicts: EinsatzConflict[] = [];
-  if (!disableTimeConflicts && data.assignedUsers && data.assignedUsers.length > 0) {
+  if (
+    !disableTimeConflicts &&
+    data.assignedUsers &&
+    data.assignedUsers.length > 0
+  ) {
     conflicts = await checkEinsatzConflicts(
       data.assignedUsers,
       data.start,
-      data.end,
+      data.end
     );
 
     // Return early if conflicts exist - do not create the einsatz
@@ -543,7 +548,12 @@ export async function updateEinsatzTime(data: {
     disableTimeConflicts: z.boolean().optional(),
   });
 
-  const { id, start, end, disableTimeConflicts = false } = dataSchema.parse(data);
+  const {
+    id,
+    start,
+    end,
+    disableTimeConflicts = false,
+  } = dataSchema.parse(data);
 
   // Get assigned users for this Einsatz
   const existingEinsatz = await prisma.einsatz.findUnique({
@@ -557,20 +567,17 @@ export async function updateEinsatzTime(data: {
 
   let conflicts: EinsatzConflict[] = [];
 
-  if (!disableTimeConflicts && existingEinsatz && existingEinsatz.einsatz_helper.length > 0) {
+  if (
+    !disableTimeConflicts &&
+    existingEinsatz &&
+    existingEinsatz.einsatz_helper.length > 0
+  ) {
     const assignedUserIds = Array.from(
-      new Set(
-        existingEinsatz.einsatz_helper.map((helper) => helper.user_id)
-      )
+      new Set(existingEinsatz.einsatz_helper.map((helper) => helper.user_id))
     );
 
     // Check if the new time causes conflicts with already assigned users
-    conflicts = await checkEinsatzConflicts(
-      assignedUserIds,
-      start,
-      end,
-      id
-    );
+    conflicts = await checkEinsatzConflicts(assignedUserIds, start, end, id);
 
     // Return early if conflicts exist - do not update the time
     if (conflicts.length > 0) {
@@ -649,7 +656,7 @@ export async function toggleUserAssignmentToEinsatz(
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-      existingEinsatz.einsatz_helper.length + addOrRemoveOne
+    existingEinsatz.einsatz_helper.length + addOrRemoveOne
       ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
       : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
@@ -858,7 +865,7 @@ export async function updateEinsatz({
       conflicts: [],
     };
   } catch (error) {
-    throw new Response(`Failed to update Einsatz with ID ${id}: ${error}`, {
+    throw new Response(`Failed to update Einsaetze with ID ${id}: ${error}`, {
       status: 500,
     });
   }
@@ -896,7 +903,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
     });
   } catch (error) {
     throw new Response(
-      `Failed to delete Einsatz with ID ${einsatzId}: ${error}`,
+      `Failed to delete Einsaetze with ID ${einsatzId}: ${error}`,
       { status: 500 }
     );
   }

@@ -87,7 +87,6 @@ export function usePdfGenerator() {
           return null;
         }
 
-        console.log('PDF generated successfully:', result.filename);
         return result;
       } catch (error) {
         const errorMessage =

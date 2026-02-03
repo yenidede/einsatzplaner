@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { usePermissionGuard } from '@/hooks/use-permission-guard';
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -108,7 +109,10 @@ export default function OrganizationManagePage() {
   useSettingsSessionValidation();
 
   const { isLoading: isLoadingUser } = useUserProfile(session?.user?.id);
-
+  const { isAuthorized, isLoading: isLoadingPermission } = usePermissionGuard({
+    requiredPermissions: ['organization:update'],
+    requireAll: false,
+  });
   const {
     data: orgData,
     isLoading: orgLoading,
@@ -244,7 +248,6 @@ export default function OrganizationManagePage() {
       smallLogoFile !== null
     );
   })();
-
   const handleSave = useCallback(async () => {
     try {
       await updateMutation.mutateAsync({
@@ -426,6 +429,13 @@ export default function OrganizationManagePage() {
     setSelectedUserId(null);
   };
 
+  if (isLoadingPermission) {
+    return <div>Lade Nutzerdaten...</div>;
+  }
+
+  if (!isAuthorized) {
+    return <div>Keine Berechtigung. Weiterleitung...</div>;
+  }
   if (isLoadingUser || orgLoading) {
     return <SettingsLoadingSkeleton sidebarItems={7} />;
   }
@@ -464,6 +474,7 @@ export default function OrganizationManagePage() {
   return (
     <>
       <SettingsPageLayout
+        key={orgId}
         header={header}
         mobileNav={mobileNav}
         currentOrgId={orgId}

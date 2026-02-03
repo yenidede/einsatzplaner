@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { settingsQueryKeys } from '../queryKeys/queryKey';
-import { getUserProfileAction, getSalutationsAction } from '../settings-action';
+import {
+  getUserProfileAction,
+  getSalutationsAction,
+  getUserProfileByIdAction,
+} from '../settings-action';
 import {
   getUserOrganizationByIdAction,
   getUserManagedOrganizationsAction,
@@ -55,7 +59,8 @@ export function useUserProfileById(
       organizationId ?? '',
       userId ?? ''
     ),
-    queryFn: async () => await getUserProfileAction(),
+    queryFn: async () =>
+      await getUserProfileByIdAction(userId || '', organizationId || ''),
     enabled: !!userId && !!organizationId,
     staleTime: 30000,
     gcTime: 5 * 60 * 1000,
