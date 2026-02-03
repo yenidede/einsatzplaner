@@ -11,7 +11,7 @@ import { PropertyConfiguration } from './PropertyConfiguration';
 import {
   createUserPropertyAction,
   deleteUserPropertyAction,
-  updateUserPropertyAction
+  updateUserPropertyAction,
 } from '../user_property-actions';
 import { userPropertyQueryKeys } from '../queryKeys';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
@@ -176,7 +176,7 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
 
     const editConfig: PropertyConfig = {
       name: property.field.name || '',
-      description: '',
+      description: property.field.description ?? '',
       fieldType,
       placeholder: property.field.placeholder || '',
       maxLength: property.field.max !== null ? property.field.max : undefined,

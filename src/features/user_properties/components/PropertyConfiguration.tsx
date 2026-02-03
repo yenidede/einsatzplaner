@@ -108,6 +108,20 @@ export function PropertyConfiguration({
               className="w-full"
             />
           </FormInputFieldCustom>
+
+          <FormInputFieldCustom
+            name="Beschreibung (optional)"
+            errors={getFieldError('description')}
+          >
+            <Input
+              value={config.description ?? ''}
+              onChange={(e) =>
+                onConfigChange({ description: e.target.value })
+              }
+              placeholder="Kurze Beschreibung des Feldes"
+              className="w-full"
+            />
+          </FormInputFieldCustom>
         </div>
 
         <div className="flex flex-col gap-4 self-stretch">

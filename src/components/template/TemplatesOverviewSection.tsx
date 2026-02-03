@@ -27,7 +27,13 @@ export function TemplatesOverviewSection({
   orgId,
 }: TemplatesOverviewSectionProps) {
   const router = useRouter();
-  const { data: templates, isLoading } = useTemplates(orgId);
+  const {
+    data: templates,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useTemplates(orgId);
 
   const { data: session } = useSession();
   const { data: organizations } = useOrganizations(session?.user?.orgIds);
@@ -64,7 +70,19 @@ export function TemplatesOverviewSection({
           </div>
         )}
 
-        {!isLoading && !hasTemplates && (
+        {!isLoading && isError && (
+          <div className="flex flex-col items-center gap-4 py-8">
+            <p className="text-destructive text-center text-sm">
+              {error?.message ??
+                'Vorlagen konnten nicht geladen werden. Bitte versuchen Sie es erneut.'}
+            </p>
+            <Button variant="outline" onClick={() => refetch()}>
+              Erneut versuchen
+            </Button>
+          </div>
+        )}
+
+        {!isLoading && !isError && !hasTemplates && (
           <div className="flex flex-col items-center gap-4 py-8">
             <p className="text-muted-foreground text-center text-sm">
               Noch keine Vorlagen vorhanden. Erstellen Sie Ihre erste Vorlage.
@@ -85,7 +103,7 @@ export function TemplatesOverviewSection({
           </div>
         )}
 
-        {!isLoading && hasTemplates && (
+        {!isLoading && !isError && hasTemplates && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((template) => (
               <TemplateCard

@@ -10,14 +10,14 @@ import { useEffect } from 'react';
 export default function VorlagenOverviewRedirect() {
   const params = useParams();
   const router = useRouter();
-  const orgId = params?.orgId as string;
+  const orgId = params?.orgId;
 
   useEffect(() => {
     router.replace(`/settings/org/${orgId}#vorlagen`);
   }, [router, orgId]);
 
   return (
-    <div className="flex min-h-[200px] items-center justify-center text-muted-foreground text-sm">
+    <div className="text-muted-foreground flex min-h-[200px] items-center justify-center text-sm">
       Weiterleitung…
     </div>
   );
