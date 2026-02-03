@@ -162,7 +162,7 @@ model type {
   description String?
   icon_url    String?
   sort_order  Int?    @db.SmallInt
-  datatype    String?
+  datatype    String  @unique
   field       field[]
 }
 
