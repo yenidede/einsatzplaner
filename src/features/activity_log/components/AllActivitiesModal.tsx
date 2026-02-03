@@ -1,7 +1,14 @@
 'use client';
 
-import { useState, useMemo, useEffect, memo } from 'react';
+import {
+  useState,
+  useMemo,
+  useEffect,
+  memo,
+  useDeferredValue,
+} from 'react';
 import Image from 'next/image';
+import { Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
@@ -153,6 +160,14 @@ export function AllActivitiesModal({
     { id: 'created_at', desc: true },
   ]);
 
+  const deferredFilters = useDeferredValue(filters);
+  const isFiltering =
+    filters.orgId !== deferredFilters.orgId ||
+    filters.typeId !== deferredFilters.typeId ||
+    filters.startDate !== deferredFilters.startDate ||
+    filters.endDate !== deferredFilters.endDate ||
+    filters.unreadOnly !== deferredFilters.unreadOnly;
+
   const { data: session } = useSession();
   const orgIds = session?.user.orgIds;
   const { data: orgsData } = useOrganizations(
@@ -170,28 +185,28 @@ export function AllActivitiesModal({
   const filteredActivities = useMemo(() => {
     let list = allActivities;
 
-    if (filters.orgId) {
-      list = list.filter((a) => a.einsatz.org_id === filters.orgId);
+    if (deferredFilters.orgId) {
+      list = list.filter((a) => a.einsatz.org_id === deferredFilters.orgId);
     }
-    if (filters.typeId) {
-      list = list.filter((a) => a.change_type.id === filters.typeId);
+    if (deferredFilters.typeId) {
+      list = list.filter((a) => a.change_type.id === deferredFilters.typeId);
     }
-    if (filters.startDate) {
-      const start = new Date(filters.startDate);
+    if (deferredFilters.startDate) {
+      const start = new Date(deferredFilters.startDate);
       start.setHours(0, 0, 0, 0);
       list = list.filter((a) => new Date(a.created_at) >= start);
     }
-    if (filters.endDate) {
-      const end = new Date(filters.endDate);
+    if (deferredFilters.endDate) {
+      const end = new Date(deferredFilters.endDate);
       end.setHours(23, 59, 59, 999);
       list = list.filter((a) => new Date(a.created_at) <= end);
     }
-    if (filters.unreadOnly) {
+    if (deferredFilters.unreadOnly) {
       list = list.filter((a) => !readIds.has(a.id));
     }
 
     return list;
-  }, [allActivities, filters, readIds]);
+  }, [allActivities, deferredFilters, readIds]);
 
   const hasMultipleOrgs = (orgsData?.length ?? 0) > 1;
 
@@ -422,72 +437,96 @@ export function AllActivitiesModal({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col rounded-md border">
+        <div className="relative flex min-h-0 flex-1 flex-col rounded-md border">
           {isLoading ? (
             <div className="text-muted-foreground flex flex-1 items-center justify-center py-12 text-sm">
               Lade Aktivitäten...
             </div>
-          ) : filteredActivities.length === 0 ? (
+          ) : filteredActivities.length === 0 && !isFiltering ? (
             <div className="text-muted-foreground flex flex-1 items-center justify-center py-12 text-sm">
               Keine Aktivitäten gefunden
             </div>
           ) : (
             <>
-              <div className="min-h-0 flex-1 overflow-auto">
-                <Table>
-                  <TableHeader className="bg-background sticky top-0">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                          <TableHead
-                            key={header.id}
-                            className="whitespace-nowrap"
+              {filteredActivities.length === 0 && isFiltering ? (
+                <div className="text-muted-foreground flex flex-1 items-center justify-center gap-2 py-12 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Filter wird angewendet...
+                </div>
+              ) : (
+                <>
+                  <div className="min-h-0 flex-1 overflow-auto">
+                    <Table>
+                      <TableHeader className="bg-background sticky top-0">
+                        {table.getHeaderGroups().map((headerGroup) => (
+                          <TableRow key={headerGroup.id}>
+                            {headerGroup.headers.map((header) => (
+                              <TableHead
+                                key={header.id}
+                                className="whitespace-nowrap"
+                              >
+                                {header.isPlaceholder
+                                  ? null
+                                  : flexRender(
+                                      header.column.columnDef.header,
+                                      header.getContext()
+                                    )}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableHeader>
+                      <TableBody>
+                        {table.getRowModel().rows.map((row) => (
+                          <TableRow
+                            key={row.id}
+                            className="cursor-pointer"
+                            onClick={() => onMarkAsRead(row.original.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                onMarkAsRead(row.original.id);
+                              }
+                            }}
+                            tabIndex={0}
+                            role="button"
                           >
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell
+                                key={cell.id}
+                                className="py-2 align-top"
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
                                 )}
-                          </TableHead>
+                              </TableCell>
+                            ))}
+                          </TableRow>
                         ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        className="cursor-pointer"
-                        onClick={() => onMarkAsRead(row.original.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            onMarkAsRead(row.original.id);
-                          }
-                        }}
-                        tabIndex={0}
-                        role="button"
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id} className="py-2 align-top">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="shrink-0 border-t px-2">
-                <DataTablePagination
-                  table={table}
-                  pageSizeOptions={[10, 20, 50, 200]}
-                />
-              </div>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="shrink-0 border-t px-2">
+                    <DataTablePagination
+                      table={table}
+                      pageSizeOptions={[10, 20, 50, 200]}
+                    />
+                  </div>
+                  {isFiltering && (
+                    <div
+                      className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-background/80"
+                      aria-live="polite"
+                      aria-busy="true"
+                    >
+                      <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Filter wird angewendet...
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
         </div>
