@@ -101,19 +101,54 @@ export function generateDynamicSchema(
 
     switch (type) {
       case 'text':
-        fieldSchema = z.string().min(1, 'Text darf nicht leer sein');
-        if (options.min) fieldSchema = fieldSchema.min(options.min);
-        if (options.max) fieldSchema = fieldSchema.max(options.max);
+        if (options.isRequired === true) {
+          fieldSchema = z.string().min(1, 'Text darf nicht leer sein');
+          if (options.min) fieldSchema = fieldSchema.min(options.min);
+          if (options.max) fieldSchema = fieldSchema.max(options.max);
+        } else {
+          fieldSchema = z
+            .union([z.string(), z.null(), z.literal('')])
+            .optional()
+            .transform((s) => (s == null || s === '' ? '' : String(s)));
+          if (options.max)
+            fieldSchema = fieldSchema.pipe(z.string().max(options.max));
+        }
         break;
       case 'number':
-        fieldSchema = z.int();
-        if (options.min) fieldSchema = fieldSchema.gte(options.min);
-        if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        if (options.isRequired === true) {
+          fieldSchema = z.int();
+          if (options.min) fieldSchema = fieldSchema.gte(options.min);
+          if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        } else {
+          fieldSchema = z
+            .union([z.number(), z.nan(), z.null(), z.undefined()])
+            .optional()
+            .transform((n) =>
+              n == null || Number.isNaN(n) ? undefined : Number(n)
+            );
+          let numSchema = z.number();
+          if (options.min != null) numSchema = numSchema.gte(options.min);
+          if (options.max != null) numSchema = numSchema.lte(options.max);
+          fieldSchema = fieldSchema.pipe(numSchema.optional());
+        }
         break;
       case 'currency':
-        fieldSchema = z.float64();
-        if (options.min) fieldSchema = fieldSchema.gte(options.min);
-        if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        if (options.isRequired === true) {
+          fieldSchema = z.float64();
+          if (options.min) fieldSchema = fieldSchema.gte(options.min);
+          if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        } else {
+          fieldSchema = z
+            .union([z.number(), z.nan(), z.null(), z.undefined()])
+            .optional()
+            .transform((n) =>
+              n == null || Number.isNaN(n) ? undefined : Number(n)
+            );
+          let numSchema = z.number();
+          if (options.min != null) numSchema = numSchema.gte(options.min);
+          if (options.max != null) numSchema = numSchema.lte(options.max);
+          fieldSchema = fieldSchema.pipe(numSchema.optional());
+        }
         break;
       case 'boolean':
         fieldSchema = z.boolean();
@@ -285,7 +320,7 @@ export function mapFieldsForSchema(fields: fieldsForSchema) {
       type: f.field.type?.datatype,
       options: {
         isMultiline: f.field.is_multiline,
-        isRequired: f.field.is_required,
+        isRequired: f.field.is_required === true,
         min: f.field.min,
         max: f.field.max,
         allowedValues: f.field.allowed_values,

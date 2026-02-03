@@ -50,7 +50,11 @@ import { DefaultFormFields } from '@/components/event-calendar/defaultFormFields
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { CustomFormField, SupportedDataTypes } from './types';
 import DynamicFormFields from './dynamicFormfields';
-import { buildInputProps } from '../form/utils';
+import {
+  buildInputProps,
+  calcTotal,
+  calcPricePerPersonFromTotal,
+} from '../form/utils';
 import TooltipCustom from '../tooltip-custom';
 
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
@@ -517,8 +521,9 @@ export function EventDialogVerwaltung({
             id: f.field.id,
             displayName: f.field.name || f.field.id,
             placeholder: f.field.placeholder,
-            defaultValue: f.field.default_value,
-            required: f.field.is_required,
+            defaultValue: f.field.default_value ?? null,
+            required: f.field.is_required === true,
+            groupName: f.field.group_name ?? null,
             isMultiline: f.field.is_multiline,
             min: f.field.min,
             max: f.field.max,
@@ -533,7 +538,7 @@ export function EventDialogVerwaltung({
           }))
         );
 
-        // Populate React Hook Form with field values
+        // Populate React Hook Form with field values (saved einsatz data or template default_value)
         const formValues = fields.reduce(
           (acc, f) => {
             const value =
@@ -549,7 +554,7 @@ export function EventDialogVerwaltung({
           {} as Record<string, any>
         );
 
-        // Reset form with new values
+        // Reset form with new values so dynamic fields show saved or default values
         dynamicForm.reset(formValues);
       } catch (error) {
         console.error('Error generating schema: ' + error);
@@ -610,31 +615,44 @@ export function EventDialogVerwaltung({
     if (selectedTemplate) {
       const templateUpdates: Partial<EinsatzFormData> = {};
 
-      if (selectedTemplate.participant_count_default !== null) {
+      if (selectedTemplate.participant_count_default != null) {
         templateUpdates.participantCount =
           selectedTemplate.participant_count_default;
       }
-      if (selectedTemplate.price_person_default !== null) {
-        templateUpdates.pricePerPerson = selectedTemplate.price_person_default;
-      }
-      if (selectedTemplate.helpers_needed_default !== null) {
+      if (selectedTemplate.helpers_needed_default != null) {
         templateUpdates.helpersNeeded = selectedTemplate.helpers_needed_default;
       }
-      if (selectedTemplate.all_day_default !== null) {
+      if (selectedTemplate.all_day_default != null) {
         templateUpdates.all_day = selectedTemplate.all_day_default;
       }
 
-      // Calculate total price after both participant count and price per person are set
       const finalParticipantCount =
         templateUpdates.participantCount ??
         staticFormData.participantCount ??
         DEFAULTFORMDATA.participantCount;
-      const finalPricePerPerson =
-        templateUpdates.pricePerPerson ??
-        staticFormData.pricePerPerson ??
-        DEFAULTFORMDATA.pricePerPerson;
 
-      templateUpdates.totalPrice = finalParticipantCount * finalPricePerPerson;
+      // Total price and price per person: use total_price_default when set (derive price per person), else use price_person_default (derive total)
+      const totalDefault = selectedTemplate.total_price_default;
+      const pricePerPersonDefault = selectedTemplate.price_person_default;
+
+      if (!!totalDefault && finalParticipantCount > 0) {
+        templateUpdates.totalPrice = totalDefault;
+        templateUpdates.pricePerPerson = calcPricePerPersonFromTotal(
+          totalDefault,
+          finalParticipantCount
+        );
+      } else if (!!pricePerPersonDefault) {
+        templateUpdates.pricePerPerson = pricePerPersonDefault;
+        templateUpdates.totalPrice = calcTotal(
+          pricePerPersonDefault,
+          finalParticipantCount
+        );
+      } else {
+        const finalPricePerPerson =
+          staticFormData.pricePerPerson ?? DEFAULTFORMDATA.pricePerPerson;
+        templateUpdates.totalPrice =
+          finalParticipantCount * finalPricePerPerson;
+      }
 
       // Apply template values to form
       handleFormDataChange(templateUpdates);
@@ -954,18 +972,20 @@ export function EventDialogVerwaltung({
                   // template not yet set, show options
                   <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
                     <div className="mt-1.5 flex flex-wrap gap-4">
-                      {templatesQuery.data?.map((t) => (
-                        <ToggleItemBig
-                          key={t.id}
-                          text={t.name ?? 'Vorlage'}
-                          description={t.description ?? ''}
-                          iconUrl={t.template_icon.icon_url.trim()}
-                          onClick={() => {
-                            handleTemplateSelect(t.id);
-                          }}
-                          className="w-full sm:w-auto"
-                        />
-                      ))}
+                      {templatesQuery.data
+                        ?.filter((t) => !t.is_paused)
+                        .map((t) => (
+                          <ToggleItemBig
+                            key={t.id}
+                            text={t.name ?? 'Vorlage'}
+                            description={t.description ?? ''}
+                            iconUrl={t.template_icon.icon_url.trim()}
+                            onClick={() => {
+                              handleTemplateSelect(t.id);
+                            }}
+                            className="w-full sm:w-auto"
+                          />
+                        ))}
                     </div>
                   </FormInputFieldCustom>
                 ) : (
@@ -977,6 +997,9 @@ export function EventDialogVerwaltung({
                           (t) => t.id === activeTemplateId
                         )?.name
                       }
+                      {templatesQuery.data?.find(
+                        (t) => t.id === activeTemplateId
+                      )?.is_paused && ' (pausiert)'}
                     </div>
                     <Select
                       value={activeTemplateId}
@@ -988,11 +1011,19 @@ export function EventDialogVerwaltung({
                         </Button>
                       </SelectTrigger>
                       <SelectContent>
-                        {templatesQuery.data?.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
+                        {templatesQuery.data
+                          ?.filter(
+                            (t) => !t.is_paused || t.id === activeTemplateId
+                          )
+                          .map((t) => (
+                            <SelectItem
+                              key={t.id}
+                              value={t.id}
+                              disabled={t.is_paused}
+                            >
+                              {t.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>

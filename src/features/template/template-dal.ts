@@ -51,30 +51,17 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
         },
       },
       template_field: {
-        select: {
+        include: {
           field: {
-            select: {
-              id: true,
-              name: true,
-              type: {
-                select: {
-                  datatype: true,
-                },
-              },
-              is_required: true,
-              placeholder: true,
-              default_value: true,
-              group_name: true,
-              is_multiline: true,
-              min: true,
-              max: true,
-              allowed_values: true,
+            include: {
+              type: { select: { datatype: true } },
             },
           },
         },
       },
     },
   });
+  console.log(templates.map(t => t.anmerkung_default));
   return templates;
 }
 
@@ -88,24 +75,10 @@ export async function getTemplateById(id: string) {
         },
       },
       template_field: {
-        select: {
+        include: {
           field: {
-            select: {
-              id: true,
-              name: true,
-              type: {
-                select: {
-                  datatype: true,
-                },
-              },
-              is_required: true,
-              placeholder: true,
-              default_value: true,
-              group_name: true,
-              is_multiline: true,
-              min: true,
-              max: true,
-              allowed_values: true,
+            include: {
+              type: { select: { datatype: true } },
             },
           },
         },
