@@ -6,6 +6,7 @@ import {
   getActivityLogs,
   getEinsatzActivityLogs,
   createChangeLog,
+  getChangeTypes,
 } from './activity_log-dal';
 import type { CreateChangeLogInput, ActivityLogFilters } from './types';
 
@@ -127,6 +128,20 @@ export async function createActivityLogAction(input: CreateChangeLogInput) {
     return { success: true, data: log };
   } catch (error) {
     console.error('Error creating activity log:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unbekannter Fehler',
+    };
+  }
+}
+
+export async function getChangeTypesAction() {
+  try {
+    await requireAuth();
+    const types = await getChangeTypes();
+    return { success: true, data: types };
+  } catch (error) {
+    console.error('Error fetching change types:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unbekannter Fehler',
