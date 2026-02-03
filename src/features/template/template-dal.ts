@@ -122,28 +122,13 @@ export type TemplateWithRelations = NonNullable<
   Awaited<ReturnType<typeof getTemplateById>>
 >;
 
-// TODO: auth
-export async function createTemplate(data: Template) {
-  const { session, userIds } = await requireAuth();
-
-  if (!hasPermission(session, 'templates:create', userIds.orgId)) {
-    throw new Error("Fehlende Berechtigungen zum Erstellen der Vorlage.")
-  }
-
-  const template = await prisma.einsatz_template.create({
-    data,
-  });
-  return template;
-}
-
-// TODO: auth
 export async function updateTemplate(
   id: string,
   data: Partial<Omit<Template, 'id' | 'created_at'>>
 ) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, 'templates:update', userIds.orgId)) {
+  if (!(await hasPermission(session, 'templates:update', userIds.orgId))) {
     throw new Error('Fehlende Berechtigungen zum Aktualisieren der Vorlage.');
   }
 
@@ -166,7 +151,7 @@ export async function deleteTemplate(id: string) {
     throw new Error('Vorlage nicht gefunden.');
   }
 
-  if (!session.user.orgIds.includes(template.org_id)) {
+  if (!(await hasPermission(session, 'templates:delete', template.org_id))) {
     throw new Error('Keine Berechtigung, diese Vorlage zu löschen.');
   }
 
@@ -238,7 +223,7 @@ export async function createTemplateField(
   }
 
   const orgId = template.org_id;
-  if (!orgId || !session.user.orgIds.includes(orgId)) {
+  if (!orgId || !(await hasPermission(session, 'templates:create', orgId))) {
     throw new Error('Keine Berechtigung, Felder zu dieser Vorlage hinzuzufügen.');
   }
 
@@ -247,6 +232,7 @@ export async function createTemplateField(
   const field = await prisma.field.create({
     data: {
       name: input.name,
+      description: input.description ?? null,
       type_id: typeId,
       is_required: input.isRequired,
       placeholder: input.placeholder,
@@ -271,7 +257,7 @@ export async function createTemplateField(
 export async function createTemplateAction(input: CreateTemplateInput) {
   const { session, userIds } = await requireAuth();
 
-  if (!hasPermission(session, 'templates:create', userIds.orgId)) {
+  if (!(await hasPermission(session, 'templates:create', userIds.orgId))) {
     throw new Error('Fehlende Berechtigungen zum Erstellen der Vorlage.');
   }
 
@@ -331,7 +317,7 @@ export async function setTemplateDefaultCategoriesAction(
     throw new Error('Vorlage nicht gefunden.');
   }
 
-  if (!session.user.orgIds.includes(template.org_id)) {
+  if (!(await hasPermission(session, 'templates:update', template.org_id))) {
     throw new Error(
       'Keine Berechtigung, Standard-Kategorien dieser Vorlage zu bearbeiten.'
     );
@@ -384,7 +370,7 @@ export async function setTemplateRequiredUserPropertiesAction(
     throw new Error('Vorlage nicht gefunden.');
   }
 
-  if (!session.user.orgIds.includes(template.org_id)) {
+  if (!(await hasPermission(session, 'templates:update', template.org_id))) {
     throw new Error(
       'Keine Berechtigung, benötigte Personeneigenschaften dieser Vorlage zu bearbeiten.'
     );
@@ -437,7 +423,7 @@ async function checkTemplateFieldAccess(
     throw new Error('Vorlage nicht gefunden.');
   }
 
-  if (!session.user.orgIds.includes(template.org_id)) {
+  if (!(await hasPermission(session, 'templates:update', template.org_id))) {
     throw new Error(
       'Keine Berechtigung, Felder dieser Vorlage zu bearbeiten oder zu löschen.'
     );
@@ -467,6 +453,7 @@ export async function updateTemplateField(
     where: { id: fieldId },
     data: {
       name: input.name,
+      description: input.description ?? null,
       type_id: typeId,
       is_required: input.isRequired,
       placeholder: input.placeholder ?? null,
