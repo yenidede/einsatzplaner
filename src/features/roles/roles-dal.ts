@@ -7,7 +7,8 @@ import type { role as Role } from '@/generated/prisma';
 export async function getAllRoles() {
   try {
     return cache(
-      async (): Promise<Role[]> => prisma.role.findMany(),
+      async (): Promise<Role[]> =>
+        prisma.role.findMany({ orderBy: { name: 'asc' } }),
       ['roles'],
       { tags: ['roles'], revalidate: 3600 } // 1h TTL
     )();
