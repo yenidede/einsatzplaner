@@ -1059,7 +1059,7 @@ export function TemplateForm({
         </div>
       )}
 
-      <footer className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky bottom-0 z-40 flex items-center justify-between gap-2 border-t py-4 backdrop-blur-md">
+      <footer className="bg-background/95 supports-backdrop-filter:bg-background/10 sticky bottom-0 z-40 flex items-center justify-between gap-2 border-t py-4 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           {isEdit && (
             <>
@@ -1112,7 +1112,7 @@ export function TemplateForm({
   );
 
   return (
-    <div className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+    <div className="bg-card mx-auto max-w-7xl rounded-xl py-6 sm:px-6 lg:px-8">
       <div className="space-y-8">
         {header}
         {formContent}
