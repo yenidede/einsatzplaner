@@ -48,6 +48,7 @@ import {
   type TemplateFormInputValues,
 } from './template-form-schema';
 import { FieldTypeSelector } from '@/features/user_properties/components/FieldTypeSelector';
+import { VORLAGE_SELECTABLE_FIELD_TYPES } from '@/features/user_properties/field-type-definitions';
 import { PropertyConfiguration } from '@/features/user_properties/components/PropertyConfiguration';
 import type {
   PropertyConfig,
@@ -60,8 +61,26 @@ import {
 } from '../../features/template/hooks/use-template-queries';
 import { useTemplateMutations } from '../../features/template/hooks/useTemplateMutations';
 import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
+import { useCategoriesByOrgIds } from '@/features/category/hooks/useCategories';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import TooltipCustom from '../tooltip-custom';
+
+/** Format a Date (time-only from DB) to "HH:mm" for input[type="time"]. */
+function formatTimeForInput(d: Date | null | undefined): string {
+  if (!d) return '';
+  const date = d instanceof Date ? d : new Date(d);
+  const h = date.getHours();
+  const m = date.getMinutes();
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** Parse "HH:mm" string to a Date (fixed calendar day, local time) for Prisma Time. */
+function parseTimeFromInput(s: string): Date | null {
+  if (!s || !/^\d{1,2}:\d{2}$/.test(s.trim())) return null;
+  const [h, m] = s.trim().split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return new Date(2000, 0, 1, h, m);
+}
 
 interface TemplateFormProps {
   /** Required for create; in edit mode derived from loaded template if omitted */
@@ -84,6 +103,7 @@ export function TemplateForm({
     addTemplateFieldMutation,
     updateTemplateFieldMutation,
     deleteTemplateFieldMutation,
+    setDefaultCategoriesMutation,
     deleteTemplateMutation,
     isSaving,
   } = useTemplateMutations();
@@ -96,6 +116,9 @@ export function TemplateForm({
     isEdit && template ? (template.org_id ?? undefined) : orgIdProp;
   const { data: icons = [] } = useTemplateIcons();
   const { data: org } = useOrganization(effectiveOrgId);
+  const { data: orgCategories = [] } = useCategoriesByOrgIds(
+    effectiveOrgId ? [effectiveOrgId] : []
+  );
 
   const form = useForm<TemplateFormInputValues, unknown, TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
@@ -125,6 +148,10 @@ export function TemplateForm({
     useState('');
   const [standardFieldPlaceholderValue, setStandardFieldPlaceholderValue] =
     useState('');
+  /** Selected category IDs for Kategorie standard field (default categories, no placeholder). */
+  const [selectedDefaultCategoryIds, setSelectedDefaultCategoryIds] = useState<
+    string[]
+  >([]);
 
   useEffect(() => {
     if (template) {
@@ -358,6 +385,41 @@ export function TemplateForm({
   useEffect(() => {
     if (editingStandardFieldKey && template) {
       switch (editingStandardFieldKey) {
+        case 'name':
+          setStandardFieldDefaultValue(
+            String(
+              (template as { einsatzname_default?: string | null })
+                .einsatzname_default ?? ''
+            )
+          );
+          setStandardFieldPlaceholderValue('');
+          break;
+        case 'kategorie': {
+          const ids =
+            template.template_to_category
+              ?.map((t) => t.category_id)
+              .filter((id): id is string => id != null) ?? [];
+          setSelectedDefaultCategoryIds(ids);
+          setStandardFieldDefaultValue('');
+          setStandardFieldPlaceholderValue('');
+          break;
+        }
+        case 'time_start':
+          setStandardFieldDefaultValue(
+            formatTimeForInput(template.time_start_default)
+          );
+          setStandardFieldPlaceholderValue(
+            formatTimeForInput(template.time_start_placeholder)
+          );
+          break;
+        case 'time_end':
+          setStandardFieldDefaultValue(
+            formatTimeForInput(template.time_end_default)
+          );
+          setStandardFieldPlaceholderValue(
+            formatTimeForInput(template.time_end_placeholder)
+          );
+          break;
         case 'participant_count':
           setStandardFieldDefaultValue(
             String(template.participant_count_default ?? '')
@@ -398,12 +460,38 @@ export function TemplateForm({
 
   const handleSaveStandardField = useCallback(() => {
     if (!templateId || !editingStandardFieldKey) return;
-    const payload: Record<string, number | null | boolean> = {};
+    const payload: Record<
+      string,
+      number | null | boolean | string | Date | undefined
+    > = {};
     const defaultNum = (v: string) =>
       v === '' || v === undefined ? null : Number(v);
     const defaultFloat = (v: string) =>
       v === '' || v === undefined ? null : Number(v);
+    const defaultStr = (v: string) =>
+      v === '' || v === undefined ? null : v.trim() || null;
     switch (editingStandardFieldKey) {
+      case 'name':
+        payload.einsatzname_default = defaultStr(standardFieldDefaultValue);
+        break;
+      case 'kategorie':
+        setDefaultCategoriesMutation.mutate(
+          { templateId, categoryIds: selectedDefaultCategoryIds },
+          {
+            onSuccess: () => {
+              setEditingStandardFieldKey(null);
+            },
+          }
+        );
+        return;
+      case 'time_start':
+        payload.time_start_default = parseTimeFromInput(standardFieldDefaultValue);
+        payload.time_start_placeholder = parseTimeFromInput(standardFieldPlaceholderValue);
+        break;
+      case 'time_end':
+        payload.time_end_default = parseTimeFromInput(standardFieldDefaultValue);
+        payload.time_end_placeholder = parseTimeFromInput(standardFieldPlaceholderValue);
+        break;
       case 'participant_count':
         payload.participant_count_default = defaultNum(
           standardFieldDefaultValue
@@ -446,7 +534,9 @@ export function TemplateForm({
     editingStandardFieldKey,
     standardFieldDefaultValue,
     standardFieldPlaceholderValue,
+    selectedDefaultCategoryIds,
     updateMutation,
+    setDefaultCategoriesMutation,
   ]);
 
   const handleStandardFieldDialogClose = useCallback((open: boolean) => {
@@ -648,48 +738,134 @@ export function TemplateForm({
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-2">
-                {editingStandardFieldKey !== 'all_day' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="standard-field-default">
-                        Standardwert (optional)
-                      </Label>
-                      <Input
-                        id="standard-field-default"
-                        type="number"
-                        step={
-                          editingStandardFieldKey === 'price_person'
-                            ? '0.01'
-                            : '1'
-                        }
-                        value={standardFieldDefaultValue}
-                        onChange={(e) =>
-                          setStandardFieldDefaultValue(e.target.value)
-                        }
-                        placeholder="Leer = kein Standard"
-                      />
+                {editingStandardFieldKey === 'kategorie' && (
+                  <div className="space-y-2">
+                    <Label>Standard-Kategorien (optional)</Label>
+                    <p className="text-muted-foreground text-sm">
+                      Kategorien, die bei neuen Einsätzen mit dieser Vorlage
+                      vorausgewählt werden.
+                    </p>
+                    <div className="border-muted max-h-48 space-y-2 overflow-y-auto rounded-md border p-2">
+                      {orgCategories.length === 0 ? (
+                        <p className="text-muted-foreground text-sm">
+                          Keine Kategorien für diese Organisation angelegt.
+                        </p>
+                      ) : (
+                        orgCategories.map((cat) => (
+                          <div
+                            key={cat.id}
+                            className="flex items-center gap-2"
+                          >
+                            <Checkbox
+                              id={`kategorie-${cat.id}`}
+                              checked={selectedDefaultCategoryIds.includes(
+                                cat.id
+                              )}
+                              onCheckedChange={(checked) => {
+                                setSelectedDefaultCategoryIds((prev) =>
+                                  checked
+                                    ? [...prev, cat.id]
+                                    : prev.filter((id) => id !== cat.id)
+                                );
+                              }}
+                            />
+                            <Label
+                              htmlFor={`kategorie-${cat.id}`}
+                              className="font-normal"
+                            >
+                              {cat.value}
+                              {cat.abbreviation ? ` (${cat.abbreviation})` : ''}
+                            </Label>
+                          </div>
+                        ))
+                      )}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="standard-field-placeholder">
-                        Platzhalter (optional)
-                      </Label>
-                      <Input
-                        id="standard-field-placeholder"
-                        type="number"
-                        step={
-                          editingStandardFieldKey === 'price_person'
-                            ? '0.01'
-                            : '1'
-                        }
-                        value={standardFieldPlaceholderValue}
-                        onChange={(e) =>
-                          setStandardFieldPlaceholderValue(e.target.value)
-                        }
-                        placeholder="Leer = kein Platzhalter"
-                      />
-                    </div>
-                  </>
+                  </div>
                 )}
+                {editingStandardFieldKey === 'name' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="standard-field-default">
+                      Standardwert (optional)
+                    </Label>
+                    <Input
+                      id="standard-field-default"
+                      type="text"
+                      value={standardFieldDefaultValue}
+                      onChange={(e) =>
+                        setStandardFieldDefaultValue(e.target.value)
+                      }
+                      placeholder="Leer = kein Standard"
+                    />
+                  </div>
+                )}
+                {editingStandardFieldKey !== 'all_day' &&
+                  editingStandardFieldKey !== 'kategorie' &&
+                  editingStandardFieldKey !== 'name' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="standard-field-default">
+                          Standardwert (optional)
+                        </Label>
+                        <Input
+                          id="standard-field-default"
+                          type={
+                            editingStandardFieldKey === 'time_start' ||
+                            editingStandardFieldKey === 'time_end'
+                              ? 'time'
+                              : editingStandardFieldKey === 'price_person' ||
+                                  editingStandardFieldKey === 'participant_count' ||
+                                  editingStandardFieldKey === 'helpers_needed'
+                                ? 'number'
+                                : 'text'
+                          }
+                          step={
+                            editingStandardFieldKey === 'price_person'
+                              ? '0.01'
+                              : editingStandardFieldKey === 'participant_count' ||
+                                  editingStandardFieldKey === 'helpers_needed'
+                                ? '1'
+                                : undefined
+                          }
+                          value={standardFieldDefaultValue}
+                          onChange={(e) =>
+                            setStandardFieldDefaultValue(e.target.value)
+                          }
+                          placeholder="Leer = kein Standard"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="standard-field-placeholder">
+                          Platzhalter (optional)
+                        </Label>
+                        <Input
+                          id="standard-field-placeholder"
+                          type={
+                            editingStandardFieldKey === 'time_start' ||
+                            editingStandardFieldKey === 'time_end'
+                              ? 'time'
+                              : editingStandardFieldKey === 'price_person' ||
+                                  editingStandardFieldKey === 'participant_count' ||
+                                  editingStandardFieldKey === 'helpers_needed'
+                                ? 'number'
+                                : 'text'
+                          }
+                          step={
+                            editingStandardFieldKey === 'price_person'
+                              ? '0.01'
+                              : editingStandardFieldKey === 'participant_count' ||
+                                  editingStandardFieldKey === 'helpers_needed'
+                                ? '1'
+                                : undefined
+                          }
+                          value={standardFieldPlaceholderValue}
+                          onChange={(e) =>
+                            setStandardFieldPlaceholderValue(e.target.value)
+                          }
+                          placeholder="Leer = kein Platzhalter"
+                        />
+                      </div>
+                    </>
+                  )}
                 {editingStandardFieldKey === 'all_day' && (
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -807,6 +983,7 @@ export function TemplateForm({
                 <FieldTypeSelector
                   onSelectType={handleCustomFieldTypeSelect}
                   onBack={() => handleCustomFieldDialogClose(false)}
+                  enabledFieldTypes={VORLAGE_SELECTABLE_FIELD_TYPES}
                 />
               ) : (
                 <PropertyConfiguration

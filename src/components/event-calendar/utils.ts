@@ -228,8 +228,8 @@ export const mapEinsatzToCalendarEvent = (
     id: einsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(', ')})`
+        .map((c) => c.einsatz_category.abbreviation)
+        .join(', ')})`
       : einsatz.title,
     start: einsatz.start,
     end: einsatz.end,
@@ -251,6 +251,9 @@ export function mapStringValueToType(
     case 'text':
     case 'phone':
     case 'mail':
+    case 'date':
+    case 'time':
+    case 'group':
       result = value;
       break;
     case 'number':
@@ -332,35 +335,55 @@ export function mapFieldsForSchema(fields: fieldsForSchema) {
 export function mapDbDataTypeToFormFieldType(
   datatype: string | null | undefined
 ): FormFieldType {
-  const defaultTypes = ['text', 'number', 'currency', 'phone', 'mail'];
+  const defaultTypes = [
+    'text',
+    'number',
+    'currency',
+    'phone',
+    'mail',
+    'date',
+    'time',
+  ];
   if (datatype) {
     if (defaultTypes.includes(datatype)) return 'default';
     if (datatype === 'boolean') return 'checkbox';
     if (datatype === 'select') return 'select';
+    if (datatype === 'group') return 'group';
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 
 export function mapDbDataTypeToInputProps(
   datatype: string | null | undefined
 ): React.ComponentProps<'input'> | null {
-  const defaultTypes = ['text', 'number', 'currency', 'phone', 'mail'];
+  const defaultTypes = [
+    'text',
+    'number',
+    'currency',
+    'phone',
+    'mail',
+    'date',
+    'time',
+  ];
   if (datatype) {
-    if (!defaultTypes.includes(datatype)) return null;
+    if (!defaultTypes.includes(datatype) && datatype !== 'group') return null;
     if (datatype === 'text') return { type: 'text' };
     if (datatype === 'phone') return { type: 'tel' };
     if (datatype === 'mail') return { type: 'email' };
     if (datatype === 'number') return { type: 'number' };
     if (datatype === 'currency') return { type: 'number', step: '0.10' };
+    if (datatype === 'date') return { type: 'date' };
+    if (datatype === 'time') return { type: 'time' };
+    if (datatype === 'group') return { type: 'group' };
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 

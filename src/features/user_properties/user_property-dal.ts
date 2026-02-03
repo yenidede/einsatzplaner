@@ -44,6 +44,7 @@ export async function getUserPropertiesByOrgId(
 
   const properties = await prisma.user_property.findMany({
     where: { org_id: orgId },
+    orderBy: { field: { name: 'asc' } },
     include: {
       field: {
         include: {
@@ -84,6 +85,7 @@ export async function getExistingPropertyNames(
 
   const properties = await prisma.user_property.findMany({
     where: { org_id: orgId },
+    orderBy: { field: { name: 'asc' } },
     include: {
       field: {
         select: {
@@ -146,7 +148,17 @@ async function ensureTypeExists(datatype: string): Promise<string> {
 export interface CreateUserPropertyInput {
   name: string;
   description?: string;
-  datatype: 'text' | 'number' | 'boolean' | 'select';
+  datatype:
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'currency'
+    | 'group'
+    | 'date'
+    | 'time'
+    | 'phone'
+    | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -342,6 +354,7 @@ export async function getUserPropertyValues(
         org_id: orgId,
       },
     },
+    orderBy: { user_property: { field: { name: 'asc' } } },
     include: {
       user_property: {
         include: {

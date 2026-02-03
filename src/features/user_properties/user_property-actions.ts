@@ -77,7 +77,10 @@ export async function updateUserPropertyAction(
     let maxValue: number | undefined;
     if (config.fieldType === 'text') {
       maxValue = config.maxLength;
-    } else if (config.fieldType === 'number') {
+    } else if (
+      config.fieldType === 'number' ||
+      config.fieldType === 'currency'
+    ) {
       maxValue = config.maxValue;
     }
 

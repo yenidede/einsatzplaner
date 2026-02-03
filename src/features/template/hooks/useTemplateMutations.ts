@@ -12,6 +12,7 @@ import {
   updateTemplateFieldAction,
   deleteTemplateAction,
   deleteTemplateFieldAction,
+  setTemplateDefaultCategoriesAction,
   type CreateTemplateInput,
   type UpdateTemplateInput,
 } from '../template-dal';
@@ -134,6 +135,29 @@ export function useTemplateMutations() {
     },
   });
 
+  const setDefaultCategoriesMutation = useMutation({
+    mutationFn: ({
+      templateId,
+      categoryIds,
+    }: {
+      templateId: string;
+      categoryIds: string[];
+    }) => setTemplateDefaultCategoriesAction(templateId, categoryIds),
+    onMutate: () => ({
+      toastId: toast.loading('Standard-Kategorien werden gespeichert…'),
+    }),
+    onSuccess: (_data, _variables, context) => {
+      queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
+      toast.success('Standard-Kategorien gespeichert', { id: context?.toastId });
+    },
+    onError: (err, _variables, context) => {
+      toast.error(
+        err instanceof Error ? err.message : 'Fehler beim Speichern',
+        { id: context?.toastId }
+      );
+    },
+  });
+
   const deleteTemplateMutation = useMutation({
     mutationFn: ({
       templateId,
@@ -163,6 +187,7 @@ export function useTemplateMutations() {
     addTemplateFieldMutation,
     updateTemplateFieldMutation,
     deleteTemplateFieldMutation,
+    setDefaultCategoriesMutation,
     deleteTemplateMutation,
     isSaving:
       createMutation.isPending ||
@@ -170,6 +195,7 @@ export function useTemplateMutations() {
       addTemplateFieldMutation.isPending ||
       updateTemplateFieldMutation.isPending ||
       deleteTemplateFieldMutation.isPending ||
+      setDefaultCategoriesMutation.isPending ||
       deleteTemplateMutation.isPending,
   };
 }
