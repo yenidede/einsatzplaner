@@ -3,7 +3,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Type, Hash, Link2, Plus, Trash, Pause, Play } from 'lucide-react';
+import {
+  Type,
+  Hash,
+  Link2,
+  Plus,
+  Trash,
+  Pause,
+  Play,
+  Icon,
+} from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -325,7 +334,7 @@ export function TemplateForm({
       if (!datatype || !isValidFieldType(datatype)) return null;
       return {
         name: f.name ?? '',
-        description: '',
+        description: f.description ?? '',
         fieldType: datatype,
         placeholder: f.placeholder ?? '',
         maxLength: f.max != null ? f.max : undefined,
@@ -778,7 +787,7 @@ export function TemplateForm({
                       value={field.value || (icons[0]?.id ?? '')}
                       onValueChange={field.onChange}
                     >
-                      <SelectTrigger id="template-icon">
+                      <SelectTrigger id="template-icon" className="h-10">
                         <SelectValue placeholder="Icon auswählen" />
                       </SelectTrigger>
                       <SelectContent>

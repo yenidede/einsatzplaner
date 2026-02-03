@@ -262,6 +262,7 @@ model field {
   min            Int?             @db.SmallInt
   max            Int?             @db.SmallInt
   allowed_values String[]
+  description    String?
   einsatz_field  einsatz_field[]
   type           type?            @relation(fields: [type_id], references: [id], onDelete: Cascade, map: "custom_field_type_id_fkey")
   template_field template_field[]

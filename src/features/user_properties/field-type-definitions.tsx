@@ -44,7 +44,7 @@ export const FIELD_TYPE_DEFINITIONS: FieldTypeDefinition[] = [
   { key: 'date', label: 'Datum', Icon: Calendar },
   { key: 'time', label: 'Uhrzeit', Icon: Clock },
   { key: 'select', label: 'Auswahl', Icon: Layers },
-  { key: 'group', label: 'Feldgruppe', Icon: LayoutDashboard },
+  // { key: 'group', label: 'Feldgruppe', Icon: LayoutDashboard },
 ];
 
 const DEFINITIONS_BY_KEY = new Map(

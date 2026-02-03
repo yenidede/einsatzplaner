@@ -9,8 +9,6 @@ interface UserProfileHeaderProps {
   lastname: string;
   pictureUrl: string | null;
   userOrgRoles: { role: RoleType }[];
-  /** When true, show full role name (e.g. "Organisationsverwaltung") instead of abbreviation ("OV"). Default false. */
-  displayFullRoleName?: boolean;
 }
 
 export function UserProfileHeader({
@@ -18,7 +16,6 @@ export function UserProfileHeader({
   lastname,
   pictureUrl,
   userOrgRoles,
-  displayFullRoleName = false,
 }: UserProfileHeaderProps) {
   const [imageError, setImageError] = useState(false);
   const initials =

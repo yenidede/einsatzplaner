@@ -40,14 +40,12 @@ export const STANDARD_FIELDS: Array<{
   {
     name: 'Uhrzeit von',
     typeKey: 'time',
-    ispflichtfeld: true,
     indent: true,
     standardFieldKey: 'time_start',
   },
   {
     name: 'Uhrzeit bis',
     typeKey: 'time',
-    ispflichtfeld: true,
     indent: true,
     standardFieldKey: 'time_end',
   },
@@ -61,21 +59,18 @@ export const STANDARD_FIELDS: Array<{
     name: 'Benötigte Helfer',
     typeKey: 'number',
     standardFieldKey: 'helpers_needed',
-    ispflichtfeld: true,
     indent: true,
   },
   {
     name: 'Anzahl Teilnehmer',
     typeKey: 'number',
     standardFieldKey: 'participant_count',
-    ispflichtfeld: true,
     indent: true,
   },
   {
     name: 'Einzelpreis',
     typeKey: 'currency',
     standardFieldKey: 'price_person',
-    ispflichtfeld: true,
     indent: true,
   },
   {
