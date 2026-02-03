@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, memo } from 'react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -64,6 +64,52 @@ function Dot({ className }: { className?: string }) {
     </svg>
   );
 }
+
+const ActivityTypeCell = memo(function ActivityTypeCell({
+  changeColor,
+  changeIconUrl,
+  changeName,
+}: {
+  changeColor: string;
+  changeIconUrl: string;
+  changeName: string;
+}) {
+  return (
+    <div
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+      style={{ backgroundColor: `${changeColor}15` }}
+    >
+      {changeIconUrl ? (
+        <Image
+          src={changeIconUrl}
+          alt={changeName}
+          className="h-4 w-4 object-contain"
+          width={32}
+          height={32}
+        />
+      ) : (
+        <div
+          className="h-3 w-3 rounded-full"
+          style={{ backgroundColor: changeColor }}
+        />
+      )}
+    </div>
+  );
+});
+
+const ActivityMessageCell = memo(function ActivityMessageCell({
+  activity,
+  openDialog,
+}: {
+  activity: ChangeLogEntry;
+  openDialog: (id: string) => void;
+}) {
+  return (
+    <div className="min-w-0 text-left">
+      {getFormattedMessage(activity, openDialog)}
+    </div>
+  );
+});
 
 /** Max activities fetched once when modal opens; filtering is then client-side. */
 const ACTIVITIES_FETCH_LIMIT = 500;
@@ -158,38 +204,21 @@ export function AllActivitiesModal({
         header: () => <span className="sr-only">Typ</span>,
         size: 48,
         cell: ({ row }) => (
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-            style={{
-              backgroundColor: `${row.original.change_type.change_color}15`,
-            }}
-          >
-            {row.original.change_type.change_icon_url ? (
-              <Image
-                src={row.original.change_type.change_icon_url}
-                alt={row.original.change_type.name}
-                className="h-4 w-4 object-contain"
-                width={32}
-                height={32}
-              />
-            ) : (
-              <div
-                className="h-3 w-3 rounded-full"
-                style={{
-                  backgroundColor: row.original.change_type.change_color,
-                }}
-              />
-            )}
-          </div>
+          <ActivityTypeCell
+            changeColor={row.original.change_type.change_color}
+            changeIconUrl={row.original.change_type.change_icon_url}
+            changeName={row.original.change_type.name}
+          />
         ),
       }),
       columnHelper.display({
         id: 'message',
         header: 'Aktivität',
         cell: ({ row }) => (
-          <div className="min-w-0 text-left">
-            {getFormattedMessage(row.original, openDialog)}
-          </div>
+          <ActivityMessageCell
+            activity={row.original}
+            openDialog={openDialog}
+          />
         ),
       }),
       columnHelper.accessor('created_at', {
