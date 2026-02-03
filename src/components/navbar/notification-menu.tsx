@@ -18,6 +18,7 @@ import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useSession } from 'next-auth/react';
 import { useActivityLogs } from '@/features/activity_log/hooks/useActivityLogs';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { AllActivitiesModal } from '@/features/activity_log/components/AllActivitiesModal';
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -80,6 +81,7 @@ const markAllActivitiesAsRead = (activityIds: string[]) => {
 export default function NotificationMenu() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [isOpen, setIsOpen] = useState(false);
+  const [allActivitiesModalOpen, setAllActivitiesModalOpen] = useState(false);
   const { openDialog } = useEventDialog();
   const queryClient = useQueryClient();
 
@@ -110,6 +112,12 @@ export default function NotificationMenu() {
 
   const handleViewAll = () => {
     setIsOpen(false);
+    setAllActivitiesModalOpen(true);
+  };
+
+  const handleMarkAsRead = (id: string) => {
+    markActivityAsRead(id);
+    setReadIds((prev) => new Set([...prev, id]));
   };
 
   const unreadIds = new Set(
@@ -124,8 +132,7 @@ export default function NotificationMenu() {
   };
 
   const handleNotificationClick = (id: string) => {
-    markActivityAsRead(id);
-    setReadIds((prev) => new Set([...prev, id]));
+    handleMarkAsRead(id);
   };
 
   return (
@@ -258,6 +265,14 @@ export default function NotificationMenu() {
           </>
         )}
       </PopoverContent>
+      <AllActivitiesModal
+        open={allActivitiesModalOpen}
+        onOpenChange={setAllActivitiesModalOpen}
+        openDialog={openDialog}
+        readIds={readIds}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+      />
     </Popover>
   );
 }
