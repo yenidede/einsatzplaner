@@ -1001,9 +1001,7 @@ export function EventDialogVerwaltung({
         createChangeLogAuto({
           einsatzId: currentEinsatz.id,
           userId: currentUserId,
-          ...(changeTypeName === 'E-Bestaetigt'
-            ? { typeName: 'E-Bestaetigt' }
-            : { typeName: changeTypeName }),
+          typeName: changeTypeName,
           affectedUserId: effectiveAffectedUserId,
         }).catch((error) => {
           toast.error('Failed to create activity log: ' + error);

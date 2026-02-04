@@ -232,7 +232,7 @@ export function useUpdateEinsatz(
 
 /** Minimal status shape for optimistic "bestätigt" display (verwalter_text/helper_text for colors). */
 const OPTIMISTIC_BESTAETIGT_STATUS = {
-  id: StatusValuePairs.vergeben,
+  id: StatusValuePairs.vergeben_bestaetigt,
   verwalter_text: 'bestätigt',
   helper_text: 'vergeben',
   verwalter_color: 'green',
