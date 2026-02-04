@@ -44,6 +44,7 @@ import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSet
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
 import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
+import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import {
   Card,
   CardAction,
@@ -126,6 +127,8 @@ export default function OrganizationManagePage() {
 
   // Load organization details separately (website, vat, zvr, authority)
   const { data: orgDetails } = useOrganizationDetails(orgId);
+
+  const { data: categories = [] } = useCategories(orgId);
 
   // Use shared section navigation hook
   const {
@@ -284,6 +287,7 @@ export default function OrganizationManagePage() {
       // But we also update them here immediately to prevent false positives
       if (initialValuesRef.current) {
         initialValuesRef.current = {
+          ...initialValuesRef.current,
           name,
           email,
           phone,
@@ -639,17 +643,17 @@ export default function OrganizationManagePage() {
           </Card>
         </section>
 
-        {/* Standardwerte Section */}
+        {/* Standardfelder Section */}
         <section
-          id="standardwerte"
+          id="standardfelder"
           ref={(el) => {
-            sectionRefs.current.standardwerte = el;
+            sectionRefs.current.standardfelder = el;
           }}
-          aria-labelledby="standardwerte-heading"
+          aria-labelledby="standardfelder-heading"
         >
           <Card>
             <CardHeader>
-              <CardTitle id="standardwerte-heading">Standardwerte</CardTitle>
+              <CardTitle id="standardfelder-heading">Standardfelder</CardTitle>
               <CardDescription>
                 Voreinstellungen für maximale Teilnehmende sowie Standard-Start-
                 und Endzeit
@@ -657,10 +661,16 @@ export default function OrganizationManagePage() {
             </CardHeader>
             <CardContent>
               <OrganizationDefaultValues
+                orgId={orgId}
                 helperSingular={helperSingular}
                 maxParticipantsPerHelper={maxParticipantsPerHelper}
                 defaultStarttime={defaultStarttime}
                 defaultEndtime={defaultEndtime}
+                categories={categories.map((c) => ({
+                  id: c.id,
+                  value: c.value,
+                  abbreviation: c.abbreviation ?? '',
+                }))}
                 onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
                 onDefaultStarttimeChange={setDefaultStarttime}
                 onDefaultEndtimeChange={setDefaultEndtime}
