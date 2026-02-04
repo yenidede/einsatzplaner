@@ -19,6 +19,7 @@ import {
 } from './utils';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -62,7 +63,6 @@ import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
 import { createChangeLogAuto } from '@/features/activity_log/activity_log-dal';
-
 import {
   detectChangeTypes,
   getAffectedUserId,
@@ -88,6 +88,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   helpersNeeded: 1,
   assignedUsers: [],
   requiredUserProperties: [],
+  confirmAsBestätigt: false,
 };
 
 function formatOrgTimeForInput(value: unknown, fallback: string): string {
@@ -159,6 +160,7 @@ export const ZodEinsatzFormData = z
       )
       .optional(),
     anmerkung: z.string().optional(),
+    confirmAsBestätigt: z.boolean().optional(),
   })
   .refine(
     (data) => {
@@ -497,6 +499,8 @@ export function EventDialogVerwaltung({
               min_matching_users: prop.min_matching_users ?? null,
             })) || [],
           anmerkung: einsatzDetailed.anmerkung || '',
+          confirmAsBestätigt:
+            einsatzDetailed.status_id === StatusValuePairs.vergeben_bestaetigt,
         });
         // Reset errors when opening dialog
         setErrors({
@@ -926,10 +930,12 @@ export function EventDialogVerwaltung({
       endDateFull.setHours(23, 59, 59, 999);
     }
 
-    // If einsatz was changed, always remove bestätigt status
+    // When vergeben (assigned >= needed), allow bestätigt if user checked it; otherwise offen
     const status =
       assignedUsers.length >= parsedDataStatic.data.helpersNeeded
-        ? StatusValuePairs.vergeben
+        ? staticFormData.confirmAsBestätigt === true
+          ? StatusValuePairs.vergeben_bestaetigt
+          : StatusValuePairs.vergeben
         : StatusValuePairs.offen;
 
     // Hole dynamische Felder aus React Hook Form
@@ -968,21 +974,36 @@ export function EventDialogVerwaltung({
       isNewEinsatz,
       previousAssignedUsers,
       currentAssignedUsers,
-      currentUserId
+      currentUserId,
+      status
     );
     const affectedUserId = getAffectedUserId(
       previousAssignedUsers,
       currentAssignedUsers
     );
+    // Only log E-Bestaetigt when status was manually changed to bestätigt (not when it was already bestätigt)
+    const previousStatusId =
+      currentEinsatz && 'status_id' in currentEinsatz
+        ? currentEinsatz.status_id
+        : undefined;
+    const statusJustChangedToBestaetigt =
+      status === StatusValuePairs.vergeben_bestaetigt &&
+      previousStatusId !== StatusValuePairs.vergeben_bestaetigt;
+    // detectChangeTypes returns 'E-Bearbeitet' in the fallback; replace with E-Bestaetigt only when status just changed to bestätigt
+    const activityTypeNames = statusJustChangedToBestaetigt
+      ? changeTypeNames.map((t) => (t === 'E-Bearbeitet' ? 'E-Bestaetigt' : t))
+      : changeTypeNames;
 
-    for (const changeTypeName of changeTypeNames) {
+    for (const changeTypeName of activityTypeNames) {
       const effectiveAffectedUserId =
-        changeTypeName === 'create' ? null : affectedUserId;
+        changeTypeName === 'E-Erstellt' ? null : affectedUserId;
       if (currentEinsatz?.id && currentUserId) {
         createChangeLogAuto({
           einsatzId: currentEinsatz.id,
           userId: currentUserId,
-          typeName: changeTypeName,
+          ...(changeTypeName === 'E-Bestaetigt'
+            ? { typeName: 'E-Bestaetigt' }
+            : { typeName: changeTypeName }),
           affectedUserId: effectiveAffectedUserId,
         }).catch((error) => {
           toast.error('Failed to create activity log: ' + error);
@@ -1232,11 +1253,35 @@ export function EventDialogVerwaltung({
                 <FileDown size={16} aria-hidden="true" />
               </Button>
             </TooltipCustom>
-            <div className="flex flex-1 justify-end gap-2">
-              <Button variant="outline" onClick={onClose}>
-                Abbrechen
-              </Button>
-              <Button onClick={handleSave}>Speichern</Button>
+            <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
+              {staticFormData.helpersNeeded > 0 &&
+                staticFormData.assignedUsers.length >=
+                  staticFormData.helpersNeeded && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="confirmAsBestätigt"
+                      checked={staticFormData.confirmAsBestätigt === true}
+                      onCheckedChange={(checked) =>
+                        handleFormDataChange({
+                          confirmAsBestätigt: checked === true,
+                        })
+                      }
+                      aria-label="Als bestätigt markieren"
+                    />
+                    <label
+                      htmlFor="confirmAsBestätigt"
+                      className="cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Als bestätigt markieren
+                    </label>
+                  </div>
+                )}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onClose}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleSave}>Speichern</Button>
+              </div>
             </div>
           </DialogFooter>
         </DialogContent>

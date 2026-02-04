@@ -25,6 +25,7 @@ export function useSectionNavigation<T extends string>({
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const hasScrolledRef = useRef(false); // Track if we've done initial scroll
   const isInitialMountRef = useRef(true); // Track initial mount
+  const navigationIdRef = useRef(0); // Cancellation token: increment on each new scroll request so stale retries abort
   const prevShouldSetDefaultRef = useRef(shouldSetDefault);
 
   // Store values in refs to avoid dependency array issues
@@ -50,15 +51,22 @@ export function useSectionNavigation<T extends string>({
       : null;
   }, []);
 
-  // Scroll to section with offset; retries when target element is not yet in DOM
+  // Scroll to section with offset; retries when target element is not yet in DOM.
+  // requestId gates all timeouts and scroll actions so stale retries from older navigations abort.
   const scrollToSection = useCallback(
-    (section: T, skipDelay = false, attempt = 0) => {
+    (section: T, skipDelay = false, attempt = 0, requestId?: number) => {
+      const myId =
+        attempt === 0 ? ++navigationIdRef.current : (requestId ?? 0);
+
       const element = sectionRefs.current[section];
       if (element) {
+        if (myId !== navigationIdRef.current) return;
+
         const elementPosition = element.getBoundingClientRect().top;
         const offsetPosition =
           elementPosition + window.scrollY - SCROLL_OFFSET;
         const scrollFn = () => {
+          if (myId !== navigationIdRef.current) return;
           window.scrollTo({
             top: offsetPosition,
             behavior: 'smooth',
@@ -72,8 +80,9 @@ export function useSectionNavigation<T extends string>({
           setTimeout(scrollFn, 100);
         }
       } else if (attempt < SCROLL_MAX_RETRIES) {
+        if (myId !== navigationIdRef.current) return;
         setTimeout(
-          () => scrollToSection(section, skipDelay, attempt + 1),
+          () => scrollToSection(section, skipDelay, attempt + 1, myId),
           SCROLL_RETRY_DELAY_MS
         );
       }
@@ -92,33 +101,30 @@ export function useSectionNavigation<T extends string>({
     [router, scrollToSection, onSectionChange]
   );
 
-  // Initial mount: Check hash first, then set default if needed - only scroll once
-  useEffect(() => {
-    if (typeof window === 'undefined' || !isInitialMountRef.current) return;
+  // Shared: resolve target section from hash or default, update URL/state, return section to scroll to (or null).
+  const resolveTargetSectionAndUpdateState = useCallback(
+    (setDefaultWhenNoHash: boolean): T | null => {
+      if (typeof window === 'undefined') return null;
+      const hashSection = getHashSection();
+      if (hashSection) {
+        setActiveSection(hashSection);
+        return hashSection;
+      }
+      if (setDefaultWhenNoHash) {
+        const def = defaultSectionRef.current;
+        window.history.replaceState(null, '', `${basePathRef.current}#${def}`);
+        setActiveSection(def);
+        return def;
+      }
+      return null;
+    },
+    [getHashSection]
+  );
 
-    const currentHash = window.location.hash.slice(1);
-    const hashSection = getHashSection();
-    let targetSection: T | null = null;
-
-    if (hashSection) {
-      // Hash exists and is valid - use it
-      targetSection = hashSection;
-      setActiveSection(hashSection);
-    } else if (shouldSetDefaultRef.current && !currentHash) {
-      // No hash - set default hash
-      targetSection = defaultSectionRef.current;
-      // Set hash directly to avoid router scroll behavior
-      window.history.replaceState(
-        null,
-        '',
-        `${basePathRef.current}#${defaultSectionRef.current}`
-      );
-      setActiveSection(defaultSectionRef.current);
-    }
-
-    // Only scroll once after DOM is ready
-    if (targetSection && !hasScrolledRef.current) {
-      // Use requestAnimationFrame to ensure DOM is ready
+  // Shared: schedule scroll to section after DOM is ready (double rAF), only if we haven't scrolled yet.
+  const scheduleScrollToSection = useCallback(
+    (targetSection: T | null) => {
+      if (!targetSection || hasScrolledRef.current) return;
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (!hasScrolledRef.current && targetSection) {
@@ -126,45 +132,41 @@ export function useSectionNavigation<T extends string>({
           }
         });
       });
-    }
+    },
+    [scrollToSection]
+  );
 
+  // Initial mount: Check hash first, then set default if needed - only scroll once
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isInitialMountRef.current) return;
+
+    const currentHash = window.location.hash.slice(1);
+    const setDefaultWhenNoHash =
+      Boolean(shouldSetDefaultRef.current) && !currentHash;
+    const targetSection =
+      resolveTargetSectionAndUpdateState(setDefaultWhenNoHash);
+    scheduleScrollToSection(targetSection);
     isInitialMountRef.current = false;
-  }, [getHashSection, scrollToSection]);
+  }, [resolveTargetSectionAndUpdateState, scheduleScrollToSection]);
 
   // When content becomes ready (shouldSetDefault flips false → true), set default and scroll
   useEffect(() => {
     const prev = prevShouldSetDefaultRef.current;
     prevShouldSetDefaultRef.current = shouldSetDefault;
 
-    if (prev === false && shouldSetDefault === true && typeof window !== 'undefined') {
-      const currentHash = window.location.hash.slice(1);
-      const hashSection = getHashSection();
-      let targetSection: T;
-
-      if (hashSection) {
-        targetSection = hashSection;
-        setActiveSection(hashSection);
-      } else {
-        targetSection = defaultSectionRef.current;
-        window.history.replaceState(
-          null,
-          '',
-          `${basePathRef.current}#${targetSection}`
-        );
-        setActiveSection(targetSection);
-      }
-
-      if (!hasScrolledRef.current) {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (!hasScrolledRef.current) {
-              scrollToSection(targetSection, false);
-            }
-          });
-        });
-      }
+    if (
+      prev === false &&
+      shouldSetDefault === true &&
+      typeof window !== 'undefined'
+    ) {
+      const targetSection = resolveTargetSectionAndUpdateState(true);
+      scheduleScrollToSection(targetSection);
     }
-  }, [shouldSetDefault, getHashSection, scrollToSection]);
+  }, [
+    shouldSetDefault,
+    resolveTargetSectionAndUpdateState,
+    scheduleScrollToSection,
+  ]);
 
   // Handle hash changes (after initial mount)
   useEffect(() => {
