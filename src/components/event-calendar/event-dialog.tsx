@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
 import { FileDown } from 'lucide-react';
@@ -19,6 +19,7 @@ import {
 } from './utils';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -62,7 +63,6 @@ import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
 import { createChangeLogAuto } from '@/features/activity_log/activity_log-dal';
-
 import {
   detectChangeTypes,
   getAffectedUserId,
@@ -70,6 +70,8 @@ import {
 import { Select, SelectContent, SelectItem } from '../ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
+import { RequiredUserProperties } from './RequiredUserProperties';
+import { Separator } from '../ui/separator';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -86,6 +88,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   helpersNeeded: 1,
   assignedUsers: [],
   requiredUserProperties: [],
+  confirmAsBestätigt: false,
 };
 
 function formatOrgTimeForInput(value: unknown, fallback: string): string {
@@ -157,6 +160,7 @@ export const ZodEinsatzFormData = z
       )
       .optional(),
     anmerkung: z.string().optional(),
+    confirmAsBestätigt: z.boolean().optional(),
   })
   .refine(
     (data) => {
@@ -495,6 +499,8 @@ export function EventDialogVerwaltung({
               min_matching_users: prop.min_matching_users ?? null,
             })) || [],
           anmerkung: einsatzDetailed.anmerkung || '',
+          confirmAsBestätigt:
+            einsatzDetailed.status_id === StatusValuePairs.vergeben_bestaetigt,
         });
         // Reset errors when opening dialog
         setErrors({
@@ -924,10 +930,12 @@ export function EventDialogVerwaltung({
       endDateFull.setHours(23, 59, 59, 999);
     }
 
-    // If einsatz was changed, always remove bestätigt status
+    // When vergeben (assigned >= needed), allow bestätigt if user checked it; otherwise offen
     const status =
       assignedUsers.length >= parsedDataStatic.data.helpersNeeded
-        ? StatusValuePairs.vergeben
+        ? staticFormData.confirmAsBestätigt === true
+          ? StatusValuePairs.vergeben_bestaetigt
+          : StatusValuePairs.vergeben
         : StatusValuePairs.offen;
 
     // Hole dynamische Felder aus React Hook Form
@@ -966,16 +974,29 @@ export function EventDialogVerwaltung({
       isNewEinsatz,
       previousAssignedUsers,
       currentAssignedUsers,
-      currentUserId
+      currentUserId,
+      status
     );
     const affectedUserId = getAffectedUserId(
       previousAssignedUsers,
       currentAssignedUsers
     );
+    // Only log E-Bestaetigt when status was manually changed to bestätigt (not when it was already bestätigt)
+    const previousStatusId =
+      currentEinsatz && 'status_id' in currentEinsatz
+        ? currentEinsatz.status_id
+        : undefined;
+    const statusJustChangedToBestaetigt =
+      status === StatusValuePairs.vergeben_bestaetigt &&
+      previousStatusId !== StatusValuePairs.vergeben_bestaetigt;
+    // detectChangeTypes returns 'E-Bearbeitet' in the fallback; replace with E-Bestaetigt only when status just changed to bestätigt
+    const activityTypeNames = statusJustChangedToBestaetigt
+      ? changeTypeNames.map((t) => (t === 'E-Bearbeitet' ? 'E-Bestaetigt' : t))
+      : changeTypeNames;
 
-    for (const changeTypeName of changeTypeNames) {
+    for (const changeTypeName of activityTypeNames) {
       const effectiveAffectedUserId =
-        changeTypeName === 'create' ? null : affectedUserId;
+        changeTypeName === 'E-Erstellt' ? null : affectedUserId;
       if (currentEinsatz?.id && currentUserId) {
         createChangeLogAuto({
           einsatzId: currentEinsatz.id,
@@ -1036,13 +1057,17 @@ export function EventDialogVerwaltung({
   //   }
   // };
 
+  const activeTemplate = useMemo(() => {
+    return templatesQuery.data?.find((t) => t.id === activeTemplateId);
+  }, [templatesQuery.data, activeTemplateId]);
+
   return (
     <>
       {AlertDialogComponent}
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="flex max-h-[90vh] max-w-220 flex-col">
-          <DialogHeader className="sticky top-0 z-10 shrink-0 border-b pb-4">
-            <DialogTitle>
+        <DialogContent className="flex max-h-[90vh] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden sm:max-w-220">
+          <DialogHeader className="bg-background sticky top-0 z-10 shrink-0 border-b pb-4">
+            <DialogTitle className="pr-8 wrap-break-word">
               {isLoading
                 ? 'Laden...'
                 : isFetching && !isLoading
@@ -1071,16 +1096,16 @@ export function EventDialogVerwaltung({
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-x-hidden overflow-y-auto">
             <div className="grid gap-8 py-4">
               {/* Template selection: single grid for options, no nested FormGroup grid */}
               {templatesQuery.isLoading ? (
                 <div>Lade Vorlagen ...</div>
               ) : !activeTemplateId ? (
                 <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
-                  <div className="mt-1.5 grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
+                  <div className="mt-1.5 grid grid-cols-[repeat(auto-fill,minmax(min(12rem,100%),1fr))] gap-4">
                     {templatesQuery.data
-                      ?.filter((t) => !t.is_paused)
+                      ?.filter((t) => t && !t.is_paused)
                       .map((t) => (
                         <ToggleItemBig
                           key={t.id}
@@ -1096,25 +1121,22 @@ export function EventDialogVerwaltung({
                 </FormInputFieldCustom>
               ) : (
                 <FormGroup>
-                  <div className="flex justify-between">
-                    <div>
-                      Aktive Vorlage:{' '}
-                      {
-                        templatesQuery.data?.find(
-                          (t) => t.id === activeTemplateId
-                        )?.name
-                      }
-                      {templatesQuery.data?.find(
-                        (t) => t.id === activeTemplateId
-                      )?.is_paused && ' (pausiert)'}
+                  <div className="flex flex-col justify-start gap-2 sm:flex-row sm:justify-between">
+                    <div className="min-w-0 wrap-break-word">
+                      Aktive Vorlage: {activeTemplate?.name}
+                      {activeTemplate?.is_paused && ' (pausiert)'}
                     </div>
                     <Select
                       value={activeTemplateId}
                       onValueChange={handleTemplateSelect}
                     >
-                      <SelectTrigger>
-                        <Button asChild variant="outline">
-                          <div>Aktive Vorlage ändern</div>
+                      <SelectTrigger className="w-full sm:w-auto">
+                        <Button
+                          asChild
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                        >
+                          <div className="truncate">Aktive Vorlage ändern</div>
                         </Button>
                       </SelectTrigger>
                       <SelectContent>
@@ -1160,6 +1182,18 @@ export function EventDialogVerwaltung({
                 activeOrg={
                   organizations?.find((org) => org.id === activeOrgId) ?? null
                 }
+              />
+              <DynamicFormFields
+                fields={dynamicFormFields}
+                control={dynamicForm.control}
+                errors={dynamicForm.formState.errors}
+              />
+
+              <Separator />
+
+              <RequiredUserProperties
+                formData={staticFormData}
+                onFormDataChange={handleFormDataChange}
                 availableProps={
                   availableProps?.filter((prop) => prop.field.name !== null) as
                     | { id: string; field: { name: string } }[]
@@ -1167,11 +1201,6 @@ export function EventDialogVerwaltung({
                 }
               />
 
-              <DynamicFormFields
-                fields={dynamicFormFields}
-                control={dynamicForm.control}
-                errors={dynamicForm.formState.errors}
-              />
               <div className="border-b"></div>
               <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
             </div>
@@ -1222,11 +1251,35 @@ export function EventDialogVerwaltung({
                 <FileDown size={16} aria-hidden="true" />
               </Button>
             </TooltipCustom>
-            <div className="flex flex-1 justify-end gap-2">
-              <Button variant="outline" onClick={onClose}>
-                Abbrechen
-              </Button>
-              <Button onClick={handleSave}>Speichern</Button>
+            <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
+              {staticFormData.helpersNeeded > 0 &&
+                staticFormData.assignedUsers.length >=
+                  staticFormData.helpersNeeded && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="confirmAsBestätigt"
+                      checked={staticFormData.confirmAsBestätigt === true}
+                      onCheckedChange={(checked) =>
+                        handleFormDataChange({
+                          confirmAsBestätigt: checked === true,
+                        })
+                      }
+                      aria-label="Als bestätigt markieren"
+                    />
+                    <label
+                      htmlFor="confirmAsBestätigt"
+                      className="cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Als bestätigt markieren
+                    </label>
+                  </div>
+                )}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onClose}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleSave}>Speichern</Button>
+              </div>
             </div>
           </DialogFooter>
         </DialogContent>

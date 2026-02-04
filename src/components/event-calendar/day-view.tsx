@@ -36,6 +36,7 @@ interface DayViewProps {
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
   mode: CalendarMode;
+  onEventConfirm?: (eventId: string) => void;
 }
 
 interface PositionedEvent {
@@ -53,6 +54,7 @@ export function DayView({
   onEventSelect,
   onEventCreate,
   mode,
+  onEventConfirm,
 }: DayViewProps) {
   const dayEvents = useMemo(() => {
     const eventsForDay: CalendarEvent[] = [];
@@ -295,6 +297,7 @@ export function DayView({
                     isFirstDay={isFirstDay}
                     isLastDay={isLastDay}
                     mode={mode}
+                    onConfirm={onEventConfirm}
                   >
                     {/* Always show the title in day view for better usability */}
                     <div>{event.title}</div>
@@ -344,6 +347,7 @@ export function DayView({
                   showTime
                   height={positionedEvent.height}
                   mode={mode}
+                  onConfirm={onEventConfirm}
                 />
               </div>
             </div>

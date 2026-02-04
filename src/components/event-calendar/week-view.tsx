@@ -41,6 +41,7 @@ interface WeekViewProps {
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
   mode: CalendarMode;
+  onEventConfirm?: (eventId: string) => void;
 }
 
 interface PositionedEvent {
@@ -58,6 +59,7 @@ export function WeekView({
   onEventSelect,
   onEventCreate,
   mode,
+  onEventConfirm,
 }: WeekViewProps) {
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -383,6 +385,7 @@ export function WeekView({
                         isFirstDay={isFirstDay}
                         isLastDay={isLastDay}
                         mode={mode}
+                        onConfirm={onEventConfirm}
                       >
                         {/* Show title if it's the first day of the event or the first visible day in the week */}
                         <div
@@ -448,6 +451,7 @@ export function WeekView({
                     showTime
                     height={positionedEvent.height}
                     mode={mode}
+                    onConfirm={onEventConfirm}
                   />
                 </div>
               </div>

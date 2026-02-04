@@ -33,7 +33,7 @@ export type UpdateTemplateInput = {
 export async function getAllTemplatesByIds(ids: string[]) {
   const templates = await prisma.einsatz_template.findMany({
     where: { id: { in: ids } },
-    orderBy: { name: 'asc' },
+    orderBy: [{ is_paused: 'asc' }, { name: 'asc' }],
   });
   return templates;
 }
@@ -41,7 +41,7 @@ export async function getAllTemplatesByIds(ids: string[]) {
 export async function getAllTemplatesByOrgIds(org_ids: string[]) {
   const templates = await prisma.einsatz_template.findMany({
     where: { org_id: { in: org_ids } },
-    orderBy: { name: 'asc' },
+    orderBy: [{ is_paused: 'asc' }, { name: 'asc' }],
   });
   return templates;
 }
@@ -49,7 +49,7 @@ export async function getAllTemplatesByOrgIds(org_ids: string[]) {
 export async function getAllTemplatesWithIconByOrgId(org_id: string) {
   const templates = await prisma.einsatz_template.findMany({
     where: { org_id },
-    orderBy: { name: 'asc' },
+    orderBy: [{ is_paused: 'asc' }, { name: 'asc' }],
     include: {
       template_icon: {
         select: {
