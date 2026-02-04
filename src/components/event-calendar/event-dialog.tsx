@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
 import { FileDown } from 'lucide-react';
@@ -1036,13 +1036,17 @@ export function EventDialogVerwaltung({
   //   }
   // };
 
+  const activeTemplate = useMemo(() => {
+    return templatesQuery.data?.find((t) => t.id === activeTemplateId);
+  }, [templatesQuery.data, activeTemplateId]);
+
   return (
     <>
       {AlertDialogComponent}
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="flex max-h-[90vh] max-w-220 flex-col">
-          <DialogHeader className="sticky top-0 z-10 shrink-0 border-b pb-4">
-            <DialogTitle>
+        <DialogContent className="flex max-h-[90vh] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden sm:max-w-220">
+          <DialogHeader className="bg-background sticky top-0 z-10 shrink-0 border-b pb-4">
+            <DialogTitle className="pr-8 wrap-break-word">
               {isLoading
                 ? 'Laden...'
                 : isFetching && !isLoading
@@ -1078,9 +1082,9 @@ export function EventDialogVerwaltung({
                 <div>Lade Vorlagen ...</div>
               ) : !activeTemplateId ? (
                 <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
-                  <div className="mt-1.5 grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
+                  <div className="mt-1.5 grid grid-cols-[repeat(auto-fill,minmax(min(12rem,100%),1fr))] gap-4">
                     {templatesQuery.data
-                      ?.filter((t) => !t.is_paused)
+                      ?.filter((t) => t && !t.is_paused)
                       .map((t) => (
                         <ToggleItemBig
                           key={t.id}
@@ -1096,25 +1100,22 @@ export function EventDialogVerwaltung({
                 </FormInputFieldCustom>
               ) : (
                 <FormGroup>
-                  <div className="flex justify-between">
-                    <div>
-                      Aktive Vorlage:{' '}
-                      {
-                        templatesQuery.data?.find(
-                          (t) => t.id === activeTemplateId
-                        )?.name
-                      }
-                      {templatesQuery.data?.find(
-                        (t) => t.id === activeTemplateId
-                      )?.is_paused && ' (pausiert)'}
+                  <div className="flex flex-col justify-start gap-2 sm:flex-row sm:justify-between">
+                    <div className="min-w-0 wrap-break-word">
+                      Aktive Vorlage: {activeTemplate?.name}
+                      {activeTemplate?.is_paused && ' (pausiert)'}
                     </div>
                     <Select
                       value={activeTemplateId}
                       onValueChange={handleTemplateSelect}
                     >
-                      <SelectTrigger>
-                        <Button asChild variant="outline">
-                          <div>Aktive Vorlage ändern</div>
+                      <SelectTrigger className="w-full sm:w-auto">
+                        <Button
+                          asChild
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                        >
+                          <div className="truncate">Aktive Vorlage ändern</div>
                         </Button>
                       </SelectTrigger>
                       <SelectContent>
