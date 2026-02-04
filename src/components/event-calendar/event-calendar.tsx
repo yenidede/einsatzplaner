@@ -377,7 +377,7 @@ export function EventCalendar({
 
           {view === 'list' && <h2>Tabellenansicht</h2>}
           <div className="flex items-center gap-2">
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
                   <span>

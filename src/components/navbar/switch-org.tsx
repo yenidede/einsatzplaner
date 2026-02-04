@@ -12,6 +12,7 @@ import {
 import { useSession } from 'next-auth/react';
 import { setUserActiveOrganization } from '@/features/user/user-dal';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 type Props = {
   organizations: OrganizationBasicVisualize[];
@@ -61,8 +62,18 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
     }
   };
   return (
-    <Select value={activeOrgId} onValueChange={handleSetOrg} name="orgSwitch">
-      <SelectTrigger className="w-46">
+    <Select
+      value={activeOrgId}
+      onValueChange={handleSetOrg}
+      name="orgSwitch"
+      disabled={organizations.length <= 1}
+    >
+      <SelectTrigger
+        className={cn(
+          'w-46 max-md:w-auto max-md:min-w-0',
+          organizations.length <= 1 && 'max-md:hidden'
+        )}
+      >
         <SelectValue
           placeholder={
             session?.user?.activeOrganization?.name || 'Organisation wählen'

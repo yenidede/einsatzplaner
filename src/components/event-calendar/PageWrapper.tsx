@@ -89,12 +89,12 @@ export default function CalendarPageWrapper({
 
   return (
     <>
-      <h1>
+      <h1 className="leading-relaxed">
         {mode === 'verwaltung'
           ? `Verwaltungsansicht`
           : `${helper_plural}ansicht`}
       </h1>
-      <p className="text-muted-foreground leading-4">{descriptionText}</p>
+      <p className="text-muted-foreground leading-6">{descriptionText}</p>
       <div className="mt-6">
         <Calendar mode={mode} />
       </div>

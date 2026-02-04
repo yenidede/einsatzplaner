@@ -193,7 +193,7 @@ export default function NotificationMenu() {
                     <div
                       className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                       style={{
-                        backgroundColor: `${activity.change_type.change_color}15`,
+                        backgroundColor: `${activity.change_type.change_color}40`,
                       }}
                     >
                       {activity.change_type.change_icon_url ? (
