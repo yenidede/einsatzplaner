@@ -47,6 +47,10 @@ export async function updateCategory(
   id: string,
   input: UpdateCategoryInput
 ): Promise<EinsatzCategory> {
+  if (input.value?.trim() === '') {
+    throw new Error('Kategoriename darf nicht leer sein');
+  }
+
   return prisma.einsatz_category.update({
     where: { id },
     data: {
