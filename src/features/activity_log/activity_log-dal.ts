@@ -18,7 +18,7 @@ export async function createChangeLogAuto({
   einsatzId: string;
   userId: string;
   typeName?: string;
-  typeId?: string;
+  typeId: string;
   affectedUserId?: string | null;
 }): Promise<ChangeLogEntry | null> {
   try {
