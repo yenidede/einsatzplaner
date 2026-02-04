@@ -1,12 +1,61 @@
-import { JSX } from 'react';
+import { Fragment, JSX } from 'react';
 import { ChangeLogEntry } from './types';
 import { Einsatz } from '../einsatz/types';
 import TooltipCustom from '@/components/tooltip-custom';
+import Link from 'next/link';
 
 type smallActivity = Pick<
   ChangeLogEntry,
   'change_type' | 'user' | 'affected_user_data'
-> & { einsatz: Pick<Einsatz, 'title' | 'id'> };
+> & {
+  einsatz: Pick<Einsatz, 'title' | 'id' | 'start' | 'end'> & {
+    all_day?: boolean;
+  };
+};
+
+/** Compiled once; used by getFormattedMessage to split message template. */
+const MESSAGE_PLACEHOLDER_REGEX = /\b(Username|AffectedUsername|Einsatz)\b/;
+
+const UNDERLINE_STYLE = { textDecoration: 'underline' as const };
+
+const dateOpts: Intl.DateTimeFormatOptions = {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+};
+const timeOpts: Intl.DateTimeFormatOptions = {
+  hour: '2-digit',
+  minute: '2-digit',
+};
+
+const dateFormatter = new Intl.DateTimeFormat('de-DE', dateOpts);
+const timeFormatter = new Intl.DateTimeFormat('de-DE', {
+  ...timeOpts,
+  hour12: false,
+});
+
+function formatEinsatzTooltipDateRange(
+  start: Date,
+  end: Date,
+  allDay: boolean
+): string {
+  const s = new Date(start);
+  const e = new Date(end);
+  const sameDay =
+    s.getFullYear() === e.getFullYear() &&
+    s.getMonth() === e.getMonth() &&
+    s.getDate() === e.getDate();
+
+  const dateStr = (d: Date) => dateFormatter.format(d);
+  const timeStr = (d: Date) => timeFormatter.format(d);
+
+  if (sameDay) {
+    if (allDay) return `${dateStr(s)}, Ganztägig`;
+    return `${dateStr(s)}, ${timeStr(s)} – ${timeStr(e)}`;
+  }
+  if (allDay) return `${dateStr(s)} – ${dateStr(e)}, Ganztägig`;
+  return `${dateStr(s)}, ${timeStr(s)} – ${dateStr(e)}, ${timeStr(e)}`;
+}
 
 export function getFormattedMessage(
   activity: smallActivity,
@@ -24,49 +73,45 @@ export function getFormattedMessage(
         `'${activity.einsatz.title}'`
       );
 
+  const parts = message.split(MESSAGE_PLACEHOLDER_REGEX);
+  const { user, affected_user_data, einsatz } = activity;
+
   return (
     <>
-      {/* In database dynamic values are typed as static: 'Username' => user.name */}
-      {message
-        .split(/\b(Username|AffectedUsername|Einsatz)\b/)
-        .map((part, index) => {
-          if (part === 'Username') {
-            return (
-              <TooltipCustom
-                text={activity.user.email}
-                key={activity.user.email}
+      {parts.map((part, index) => {
+        if (part === 'Username') {
+          return (
+            <TooltipCustom text={user.email} key={user.email}>
+              <span style={UNDERLINE_STYLE}>{actorName}</span>
+            </TooltipCustom>
+          );
+        }
+        if (part === 'AffectedUsername') {
+          return (
+            <TooltipCustom
+              text={affected_user_data?.email ?? ''}
+              key={`aff-${index}`}
+            >
+              <span style={UNDERLINE_STYLE}>{affectedName}</span>
+            </TooltipCustom>
+          );
+        }
+        if (part === 'Einsatz') {
+          const tooltipText = `'${einsatz.title}' (${formatEinsatzTooltipDateRange(einsatz.start, einsatz.end, einsatz.all_day ?? false)}) öffnen`;
+          return (
+            <TooltipCustom text={tooltipText} key={einsatz.id}>
+              <Link
+                href={`/einsatz/${einsatz.id}`}
+                className="cursor-pointer"
+                style={UNDERLINE_STYLE}
               >
-                <span key={index} style={{ textDecoration: 'underline' }}>
-                  {actorName}
-                </span>
-              </TooltipCustom>
-            );
-          }
-          if (part === 'AffectedUsername') {
-            return (
-              <TooltipCustom
-                text={activity.affected_user_data?.email || ''}
-                key={index}
-              >
-                <span key={index} style={{ textDecoration: 'underline' }}>
-                  {affectedName}
-                </span>
-              </TooltipCustom>
-            );
-          }
-          if (part === 'Einsatz') {
-            return (
-              <span
-                className="cursor-pointer underline"
-                onClick={() => openDialog && openDialog(activity.einsatz.id)}
-                key={index}
-              >
-                &apos;{activity.einsatz.title}&apos;
-              </span>
-            );
-          }
-          return part;
-        })}
+                &apos;{einsatz.title}&apos;
+              </Link>
+            </TooltipCustom>
+          );
+        }
+        return <Fragment key={index}>{part}</Fragment>;
+      })}
     </>
   );
 }
@@ -113,21 +158,15 @@ export function getAffectedUserId(
   previousAssignedUsers: string[],
   currentAssignedUsers: string[]
 ): string | null {
-  const addedUsers = currentAssignedUsers.filter(
-    (id) => !previousAssignedUsers.includes(id)
-  );
-  if (addedUsers.length > 0) {
-    return addedUsers[0];
+  const prevSet = new Set(previousAssignedUsers);
+  const currSet = new Set(currentAssignedUsers);
+  for (const id of currentAssignedUsers) {
+    if (!prevSet.has(id)) return id;
   }
-
-  const removedUsers = previousAssignedUsers.filter(
-    (id) => !currentAssignedUsers.includes(id)
-  );
-  if (removedUsers.length > 0) {
-    return removedUsers[0];
+  for (const id of previousAssignedUsers) {
+    if (!currSet.has(id)) return id;
   }
-
-  return currentAssignedUsers[0] || null;
+  return currentAssignedUsers[0] ?? null;
 }
 
 export function detectChangeTypes(
@@ -185,21 +224,11 @@ export function getAffectedUserIds(
   previousAssignedUsers: string[],
   currentAssignedUsers: string[]
 ): string[] {
-  const addedUsers = currentAssignedUsers.filter(
-    (id) => !previousAssignedUsers.includes(id)
-  );
-
-  if (addedUsers.length > 0) {
-    return addedUsers;
-  }
-
-  const removedUsers = previousAssignedUsers.filter(
-    (id) => !currentAssignedUsers.includes(id)
-  );
-
-  if (removedUsers.length > 0) {
-    return removedUsers;
-  }
-
+  const prevSet = new Set(previousAssignedUsers);
+  const currSet = new Set(currentAssignedUsers);
+  const added = currentAssignedUsers.filter((id) => !prevSet.has(id));
+  if (added.length > 0) return added;
+  const removed = previousAssignedUsers.filter((id) => !currSet.has(id));
+  if (removed.length > 0) return removed;
   return currentAssignedUsers.length > 0 ? [currentAssignedUsers[0]] : [];
 }

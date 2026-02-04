@@ -104,7 +104,7 @@ export function SelectFieldSettings({
             placeholder="Option eingeben..."
             className="flex-1"
           />
-          <Button onClick={handleAddOption}>Hinzufügen</Button>
+          <Button type="button" onClick={handleAddOption}>Hinzufügen</Button>
         </div>
 
         {errors.length > 0 && (
@@ -139,6 +139,7 @@ export function SelectFieldSettings({
                 <span className="flex-1 text-sm">{option}</span>
                 <div className="flex gap-1">
                   <Button
+                    type="button"
                     onClick={() => handleMoveOption(index, 'up')}
                     disabled={index === 0}
                     title="Nach oben"
@@ -147,6 +148,7 @@ export function SelectFieldSettings({
                     ↑
                   </Button>
                   <Button
+                    type="button"
                     onClick={() => handleMoveOption(index, 'down')}
                     disabled={index === options.length - 1}
                     title="Nach unten"
@@ -155,6 +157,7 @@ export function SelectFieldSettings({
                     ↓
                   </Button>
                   <Button
+                    type="button"
                     onClick={() => handleRemoveOption(index)}
                     title="Löschen"
                     variant="destructive"

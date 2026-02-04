@@ -5,16 +5,16 @@ export type PropertyConfigFieldInput = {
   name: string;
   description?: string;
   datatype:
-    | 'text'
-    | 'number'
-    | 'boolean'
-    | 'select'
-    | 'currency'
-    | 'group'
-    | 'date'
-    | 'time'
-    | 'phone'
-    | 'mail';
+  | 'text'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'currency'
+  | 'group'
+  | 'date'
+  | 'time'
+  | 'phone'
+  | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -90,6 +90,7 @@ export function propertyConfigToFieldInput(
     defaultValue,
     isMultiline: config.isMultiline,
     min: config.minValue,
+    /** @note max is used for both text and number/currency fields */
     max,
     allowedValues: config.options,
   };
