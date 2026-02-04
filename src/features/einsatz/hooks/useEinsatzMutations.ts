@@ -1,27 +1,43 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryKey } from '@tanstack/react-query';
-import { addMonths, subMonths } from 'date-fns';
-import { format } from 'date-fns';
+import { addMonths, eachDayOfInterval, format, startOfDay, subMonths } from 'date-fns';
 import { queryKeys } from '../queryKeys';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
 import type { CalendarRangeData } from '@/components/event-calendar/utils';
 
-/** Returns the 3 monthKeys that overlap the 3-month window centered on the given date. */
-function getMonthKeysForDate(date: Date): string[] {
+/** If isOverlap is true, returns the 3 monthKeys that overlap the 3-month window centered on the given date. Otherwise, returns the 1 monthKey for the given date. */
+export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
   const d = new Date(date);
-  return [
-    format(subMonths(d, 1), 'yyyy-MM'),
-    format(d, 'yyyy-MM'),
-    format(addMonths(d, 1), 'yyyy-MM'),
-  ];
+  if (isOverlap) {
+    return [
+      format(subMonths(d, 1), 'yyyy-MM'),
+      format(d, 'yyyy-MM'),
+      format(addMonths(d, 1), 'yyyy-MM'),
+    ];
+  } else {
+    return [format(d, 'yyyy-MM')];
+  }
+}
+
+/** Object with start and optional end (Date or ISO string). Used for multi-day event invalidation. */
+type WithStartEnd = { start: Date | string; end?: Date | string };
+
+/** Returns one Date per calendar day from start through end (inclusive). If end is missing or before start, returns [startOfDay(start)]. */
+function getDatesSpanningEvent(event: WithStartEnd): Date[] {
+  const start = startOfDay(new Date(event.start));
+  const endRaw = event.end != null ? new Date(event.end) : start;
+  const end = startOfDay(endRaw);
+  if (end < start) return [start];
+  return eachDayOfInterval({ start, end });
 }
 
 function invalidateCalendarMonthsForDate(
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
-  date: Date
+  dates: Date[]
 ) {
-  const monthKeys = getMonthKeysForDate(date);
+  if (dates.length === 0) return;
+  const monthKeys = Array.from(new Set(dates.flatMap((date) => getMonthKeysForDate(date, false))));
   monthKeys.forEach((monthKey) => {
     queryClient.invalidateQueries({
       queryKey: queryKeys.einsaetzeForCalendar(orgId, monthKey),
@@ -66,6 +82,14 @@ function rollbackCalendarCache(
   });
 }
 
+/** Type guard: object has a defined start (Date or string). Used for update response that may be raw einsatz. */
+function hasDefinedStart(obj: unknown): obj is { start: Date | string } {
+  if (obj === null || typeof obj !== 'object') return false;
+  if (!('start' in obj)) return false;
+  const start = (obj as Record<string, unknown>).start;
+  return typeof start === 'string' || start instanceof Date;
+}
+
 // Helper function to format conflict messages
 function formatConflictMessages(conflicts: EinsatzConflict[]): string {
   return conflicts
@@ -98,7 +122,13 @@ export function useCreateEinsatz(
     onMutate: async ({ event }) => {
       await queryClient.cancelQueries({ queryKey: calendarPrefixKey });
       if (!activeOrgId) return {};
-      const monthKeys = getMonthKeysForDate(event.start);
+      const dates = getDatesSpanningEvent({
+        start: event.start,
+        end: event.end != null ? event.end : undefined,
+      });
+      const monthKeys = Array.from(
+        new Set(dates.flatMap((d) => getMonthKeysForDate(d, false)))
+      );
       const optimisticEvent: CalendarEvent = {
         id: `temp-${Date.now()}`,
         title: event.title,
@@ -159,12 +189,13 @@ export function useCreateEinsatz(
       }
     },
     onSettled: (data, _error, vars) => {
-      const date =
-        data?.einsatz && typeof data.einsatz.start !== 'undefined'
-          ? new Date(data.einsatz.start)
-          : vars?.event?.start;
-      if (activeOrgId && date) {
-        invalidateCalendarMonthsForDate(queryClient, activeOrgId, date);
+      const event = data?.einsatz ?? vars?.event;
+      if (activeOrgId && event && hasDefinedStart(event)) {
+        const dates = getDatesSpanningEvent({
+          start: event.start,
+          end: 'end' in event && event.end != null ? event.end : undefined,
+        });
+        invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
@@ -233,8 +264,8 @@ export function useUpdateEinsatz(
           ...(start && { start }),
           ...('end' in event &&
             event.end !== undefined && {
-              end: event.end instanceof Date ? event.end : new Date(event.end),
-            }),
+            end: event.end instanceof Date ? event.end : new Date(event.end),
+          }),
         };
         if ('title' in event && event.title !== undefined) updated.title = event.title;
         if ('all_day' in event && event.all_day !== undefined) updated.allDay = event.all_day;
@@ -304,16 +335,20 @@ export function useUpdateEinsatz(
       }
     },
     onSettled: (data, _error, vars) => {
-      const date =
-        data && 'einsatz' in data && data.einsatz && typeof data.einsatz.start !== 'undefined'
-          ? new Date(data.einsatz.start)
-          : data && !('conflicts' in data) && data && typeof (data as { start?: Date }).start !== 'undefined'
-            ? new Date((data as { start: Date }).start)
-            : vars?.event && ('start' in vars.event && typeof vars.event.start !== 'undefined')
-              ? new Date(vars.event.start)
+      const event =
+        data && 'einsatz' in data && data.einsatz
+          ? data.einsatz
+          : data && hasDefinedStart(data)
+            ? data
+            : vars?.event && 'start' in vars.event
+              ? vars.event
               : null;
-      if (activeOrgId && date) {
-        invalidateCalendarMonthsForDate(queryClient, activeOrgId, date);
+      if (activeOrgId && event && hasDefinedStart(event)) {
+        const dates = getDatesSpanningEvent({
+          start: event.start,
+          end: 'end' in event && event.end != null ? event.end : undefined,
+        });
+        invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
@@ -354,6 +389,9 @@ export function useConfirmEinsatz(
     onMutate: async (eventId) => {
       await queryClient.cancelQueries({
         queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
+      });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.detailedEinsatz(eventId),
       });
       if (!activeOrgId) return {};
       const previousData: CalendarCacheSnapshot = [];
@@ -398,12 +436,12 @@ export function useConfirmEinsatz(
           queryKey: activityLogQueryKeys.allEinsatz(eventId),
         });
       }
-      if (activeOrgId && data && typeof (data as { start?: Date }).start !== 'undefined') {
-        invalidateCalendarMonthsForDate(
-          queryClient,
-          activeOrgId,
-          new Date((data as { start: Date }).start)
-        );
+      if (activeOrgId && data && hasDefinedStart(data)) {
+        const dates = getDatesSpanningEvent({
+          start: data.start,
+          end: 'end' in data && data.end != null ? data.end : undefined,
+        });
+        invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
@@ -471,16 +509,12 @@ export function useToggleUserAssignment(
           queryKey: queryKeys.detailedEinsatz(data.id),
         });
       }
-      const start =
-        data && typeof (data as { start?: Date }).start !== 'undefined'
-          ? (data as { start: Date }).start
-          : null;
-      if (activeOrgId && start) {
-        invalidateCalendarMonthsForDate(
-          queryClient,
-          activeOrgId,
-          new Date(start)
-        );
+      if (activeOrgId && data && hasDefinedStart(data)) {
+        const dates = getDatesSpanningEvent({
+          start: data.start,
+          end: 'end' in data && data.end != null ? data.end : undefined,
+        });
+        invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
