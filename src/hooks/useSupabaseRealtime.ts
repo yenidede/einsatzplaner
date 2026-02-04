@@ -1,21 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { addMonths, subMonths } from 'date-fns';
-import { format } from 'date-fns';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/features/einsatz/queryKeys';
 import { supabaseRealtimeClient } from '@/lib/supabase-client';
+import { getMonthKeysForDate } from '@/features/einsatz/hooks/useEinsatzMutations';
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
 } from '@supabase/supabase-js';
-
-function getMonthKeysForDate(date: Date): string[] {
-  const d = new Date(date);
-  return [
-    format(d, 'yyyy-MM'),
-  ];
-}
 
 type EinsatzPayload = RealtimePostgresChangesPayload<{
   id: string;
@@ -65,7 +57,7 @@ export function useSupabaseRealtime(orgId?: string) {
           const record = (payload.new as { start?: string }) ?? (payload.old as { start?: string });
           const start = record?.start;
           if (orgId && start) {
-            const monthKeys = getMonthKeysForDate(new Date(start));
+            const monthKeys = getMonthKeysForDate(new Date(start), false);
             monthKeys.forEach((monthKey) => {
               queryClient.invalidateQueries({
                 queryKey: queryKeys.einsaetzeForCalendar(orgId, monthKey),
