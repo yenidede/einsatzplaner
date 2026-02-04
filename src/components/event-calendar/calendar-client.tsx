@@ -170,6 +170,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     data: calendarData,
     isError: isCalendarError,
     error: calendarError,
+    isLoading: isCalendarLoading,
   } = useEinsaetzeForCalendar(activeOrgId, currentDate);
   const prefetchEinsaetzeForCalendar =
     usePrefetchEinsaetzeForCalendar(activeOrgId);
@@ -371,12 +372,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     return <div>Fehler beim Laden der Einsätze: {msg}</div>;
   }
 
-  if (!calendarData) {
-    return <div>Lade Daten...</div>;
-  }
+  // if (!calendarData) {
+  //   return <div>Lade Daten...</div>;
+  // }
 
-  const calendarEvents = calendarData.events;
-  console.log('cachedDetailedEinsatz', cachedDetailedEinsatz);
+  const calendarEvents = calendarData?.events ?? [];
   return (
     <>
       {AlertDialogComponent}
@@ -384,6 +384,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       {updateMutation.AlertDialogComponent}
       <EventCalendar
         events={calendarEvents}
+        isEventsLoading={isCalendarLoading}
         currentDate={currentDate}
         setCurrentDate={setCurrentDate}
         cachedDetailedEinsatz={cachedDetailedEinsatz}

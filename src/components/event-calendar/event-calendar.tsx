@@ -21,6 +21,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   PlusIcon,
+  Loader,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,8 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
+  /** True while the events query is loading (no data yet). Used to show loader vs empty state. */
+  isEventsLoading?: boolean;
   /** When provided, calendar uses these instead of internal state (e.g. from CalendarClient). */
   currentDate?: Date;
   setCurrentDate?: (date: Date) => void;
@@ -76,6 +79,7 @@ export interface EventCalendarProps {
 // TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
   events = [],
+  isEventsLoading = false,
   currentDate: currentDateProp,
   setCurrentDate: setCurrentDateProp,
   cachedDetailedEinsatz,
@@ -450,9 +454,15 @@ export function EventCalendar({
         </div>
 
         <div className="flex flex-1 flex-col">
-          {events.length === 0 && (
-            <div className="m-4 rounded-md bg-yellow-50 p-4 text-sm text-yellow-800">
-              Noch keine {einsatz_plural} vorhanden.
+          {events.length === 0 && view !== 'list' && (
+            <div className="text-muted-foreground mx-2 flex items-center gap-2">
+              {isEventsLoading ? (
+                <>
+                  Lade {einsatz_plural}... <Loader className="animate-spin" />
+                </>
+              ) : (
+                <>Noch keine {einsatz_plural} vorhanden.</>
+              )}
             </div>
           )}
           {view === 'month' && (
