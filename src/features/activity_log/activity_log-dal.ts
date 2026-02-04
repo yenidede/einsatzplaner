@@ -46,8 +46,14 @@ export async function createChangeLog(
   input: CreateChangeLogInput
 ): Promise<ChangeLogEntry> {
 
-  if (!input.einsatzId || !input.userId || !input.typeId) {
-    throw new Error('Invalid input');
+  const missingFields: string[] = [];
+  if (!input.einsatzId) missingFields.push('einsatzId');
+  if (!input.userId) missingFields.push('userId');
+  if (!input.typeId) missingFields.push('typeId');
+  if (missingFields.length > 0) {
+    throw new Error(
+      `Ungültige Eingabe: folgende Pflichtfelder fehlen: ${missingFields.join(', ')}.`
+    );
   }
 
   const changeLog = await prisma.change_log.create({
