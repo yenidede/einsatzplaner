@@ -1,5 +1,3 @@
-// src/features/invitations/digbiz-constants.ts
-
 /**
  * DigBiz Award Configuration
  *
