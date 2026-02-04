@@ -182,7 +182,7 @@ export function AllActivitiesModal({
     let list = allActivities;
 
     if (deferredFilters.orgId) {
-      list = list.filter((a) => a.einsatz.org_id === deferredFilters.orgId);
+      list = list.filter((a) => a.einsatz?.org_id === deferredFilters.orgId);
     }
     if (deferredFilters.typeId) {
       list = list.filter((a) => a.change_type.id === deferredFilters.typeId);
@@ -256,9 +256,11 @@ export function AllActivitiesModal({
               header: () => <span className="max-md:hidden">Organisation</span>,
               cell: ({ row }) => (
                 <span className="text-muted-foreground truncate text-xs max-md:hidden">
-                  {orgsData?.find(
-                    (org) => org.id === row.original.einsatz.org_id
-                  )?.name ?? '–'}
+                  {row.original.einsatz
+                    ? (orgsData?.find(
+                        (org) => org.id === row.original.einsatz?.org_id
+                      )?.name ?? '–')
+                    : '-'}
                 </span>
               ),
             }),

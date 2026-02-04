@@ -230,9 +230,11 @@ export default function NotificationMenu() {
 
                         {orgsData && orgsData.length > 1 && (
                           <span className="ms-2 min-w-0 truncate">
-                            {orgsData.find(
-                              (org) => org.id === activity.einsatz.org_id
-                            )?.name ?? 'Ladefehler'}
+                            {activity.einsatz
+                              ? orgsData.find(
+                                  (org) => org.id === activity.einsatz?.org_id
+                                )?.name ?? '–'
+                              : '–'}
                           </span>
                         )}
                       </div>

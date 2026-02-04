@@ -3,8 +3,8 @@ export type ActivityCategory = 'ungelesen' | 'gelesen';
 
 export interface ChangeLogEntry {
   id: string;
-  einsatz_id: string;
-  user_id: string;
+  einsatz_id: string | null;
+  user_id: string | null;
   type_id: string;
   created_at: Date;
   affected_user: string | null;
@@ -17,12 +17,13 @@ export interface ChangeLogEntry {
     change_color: string;
   };
 
+  /** null when the user was deleted */
   user: {
     id: string;
     firstname: string;
     lastname: string;
     email: string;
-  };
+  } | null;
 
   affected_user_data?: {
     id: string;
@@ -31,6 +32,7 @@ export interface ChangeLogEntry {
     email: string;
   } | null;
 
+  /** null when the einsatz was deleted */
   einsatz: {
     id: string;
     title: string;
@@ -47,7 +49,7 @@ export interface ChangeLogEntry {
         abbreviation: string;
       };
     }>;
-  };
+  } | null;
 }
 
 export interface CreateChangeLogInput {
