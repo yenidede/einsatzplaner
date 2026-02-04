@@ -81,12 +81,12 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
     return localSelectedEvent;
   }, [einsatzFromUrl, localSelectedEvent]);
 
-  // Auto-open dialog when selectedEinsatz changes to non-null (e.g., from URL navigation)
+  // Auto-open dialog when selectedEinsatz changes to non-null (e.g., from URL navigation).
+  // Do not auto-close when selectedEinsatz is null: null means "create new" and the dialog
+  // should stay open; closing is handled by closeDialog().
   useEffect(() => {
     if (selectedEinsatz !== null && !isOpen) {
       setIsOpen(true);
-    } else if (selectedEinsatz === null && isOpen) {
-      setIsOpen(false);
     }
   }, [selectedEinsatz, isOpen]);
 
