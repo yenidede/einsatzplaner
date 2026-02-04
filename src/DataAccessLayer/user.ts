@@ -1,5 +1,6 @@
 import { unstable_cache as cache } from 'next/cache';
 import prisma from '@/lib/prisma';
+import { DIGBIZ_CONFIG } from '@/features/invitations/constants';
 
 type UserSettingsUpdate = {
   email?: string;
@@ -699,4 +700,133 @@ export async function getUsersWithRolesByOrgIdOptimized(orgId: string) {
     );
   }
 }
-//#endregion
+
+/**
+ * Spezielle Funktion für DigBiz Award Event
+ * Kann nach dem Event gelöscht werden
+ * Behandelt Race Conditions bei gleichzeitigen Registrierungen
+ */
+export async function createDigbizUserWithOrgAndRoles(data: {
+  email: string;
+  firstname: string;
+  lastname: string;
+  password: string;
+  phone?: string;
+  orgId: string;
+  roleIds: string[];
+  profilePictureUrl?: string;
+  salutationId?: string;
+  userId?: string;
+}) {
+  try {
+    if (!data.roleIds || data.roleIds.length === 0) {
+      throw new Error('Mindestens eine Rolle muss zugewiesen werden.');
+    }
+
+    // DigBiz Race Condition Handling: innerhalb einer Transaktion
+    return await prisma.$transaction(async (tx) => {
+      let emailToUse = data.email;
+      let userIdToUse = data.userId;
+
+      // Check if user already exists (collision handling for concurrent registrations)
+      const existingUser = await tx.user.findUnique({
+        where: { email: emailToUse },
+      });
+
+      if (existingUser) {
+        // Check if this is a DigBiz email pattern
+        const isDigbizEmail =
+          emailToUse.startsWith(DIGBIZ_CONFIG.EMAIL_PREFIX) &&
+          emailToUse.endsWith(DIGBIZ_CONFIG.EMAIL_DOMAIN);
+
+        if (isDigbizEmail) {
+          // Generate next available email within transaction (atomic count)
+          const existingCount = await tx.user.count({
+            where: {
+              email: {
+                startsWith: DIGBIZ_CONFIG.EMAIL_PREFIX,
+                endsWith: DIGBIZ_CONFIG.EMAIL_DOMAIN,
+              },
+            },
+          });
+
+          emailToUse = `${DIGBIZ_CONFIG.EMAIL_PREFIX}${existingCount + 1}${DIGBIZ_CONFIG.EMAIL_DOMAIN}`;
+
+          // Update ALL invitations with the old email to use the new email
+          // This ensures consistency across all invitation records
+          await tx.invitation.updateMany({
+            where: {
+              email: data.email,
+              org_id: data.orgId,
+            },
+            data: { email: emailToUse },
+          });
+
+          // Generate new user ID since the old one might be associated with old email
+          userIdToUse = undefined;
+        } else {
+          throw new Error(
+            'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
+          );
+        }
+      }
+
+      // Create user with potentially updated email
+      const newUser = await tx.user.create({
+        data: {
+          id: userIdToUse,
+          email: emailToUse,
+          firstname: data.firstname,
+          lastname: data.lastname,
+          password: data.password,
+          phone: data.phone,
+          picture_url: data.profilePictureUrl,
+          active_org: data.orgId,
+          salutationId: data.salutationId,
+          user_organization_role: {
+            create: data.roleIds.map((roleId) => ({
+              organization: {
+                connect: { id: data.orgId },
+              },
+              role: {
+                connect: {
+                  id: roleId,
+                },
+              },
+            })),
+          },
+        },
+        include: {
+          user_organization_role: {
+            include: {
+              organization: {
+                select: {
+                  id: true,
+                  name: true,
+                  helper_name_singular: true,
+                  helper_name_plural: true,
+                },
+              },
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                  abbreviation: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return newUser;
+    });
+  } catch (error: unknown) {
+    console.error('createDigbizUserWithOrgAndRoles error:', error);
+
+    if (error instanceof Error) {
+      throw new Error(`Fehler beim Erstellen des Benutzers: ${error.message}`);
+    }
+    throw new Error('Unbekannter Fehler beim Erstellen des Benutzers');
+  }
+}

@@ -110,7 +110,7 @@ export function SignUpForm({
       }
       toast.success(res.data?.message);
       signIn('credentials', {
-        email: form.getValues('email'),
+        email: res.data.email || form.getValues('email'),
         password: form.getValues('passwort'),
         redirect: true,
         callbackUrl: '/',
