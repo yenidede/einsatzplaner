@@ -15,3 +15,47 @@ export async function getCategoriesByOrgIds(
     },
   });
 }
+
+export type CreateCategoryInput = {
+  org_id: string;
+  value: string;
+  abbreviation?: string;
+};
+
+export type UpdateCategoryInput = {
+  value?: string;
+  abbreviation?: string;
+};
+
+export async function createCategory(
+  input: CreateCategoryInput
+): Promise<EinsatzCategory> {
+  return prisma.einsatz_category.create({
+    data: {
+      org_id: input.org_id,
+      value: input.value.trim(),
+      abbreviation: (input.abbreviation ?? '').trim(),
+    },
+  });
+}
+
+export async function updateCategory(
+  id: string,
+  input: UpdateCategoryInput
+): Promise<EinsatzCategory> {
+  return prisma.einsatz_category.update({
+    where: { id },
+    data: {
+      ...(input.value !== undefined && { value: input.value.trim() }),
+      ...(input.abbreviation !== undefined && {
+        abbreviation: input.abbreviation.trim(),
+      }),
+    },
+  });
+}
+
+export async function deleteCategory(id: string): Promise<EinsatzCategory> {
+  return prisma.einsatz_category.delete({
+    where: { id },
+  });
+}

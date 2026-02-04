@@ -65,7 +65,7 @@ import { useUserProperties } from '@/features/user_properties/hooks/use-user-pro
 import { MultiSelect } from '@/components/form/multi-select';
 import { cn } from '@/lib/utils';
 import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
-import { useCategoriesByOrgIds } from '@/features/category/hooks/useCategories';
+import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import TooltipCustom from '../tooltip-custom';
 
@@ -121,9 +121,7 @@ export function TemplateForm({
     isEdit && template ? (template.org_id ?? undefined) : orgIdProp;
   const { data: icons = [] } = useTemplateIcons();
   const { data: org } = useOrganization(effectiveOrgId);
-  const { data: orgCategories = [] } = useCategoriesByOrgIds(
-    effectiveOrgId ? [effectiveOrgId] : []
-  );
+  const { data: orgCategories = [] } = useCategories(effectiveOrgId);
   const { data: availableUserProps } = useUserProperties(
     effectiveOrgId ?? null
   );
