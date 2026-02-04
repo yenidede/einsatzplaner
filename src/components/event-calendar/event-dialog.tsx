@@ -223,7 +223,7 @@ export const ZodEinsatzFormData = z
 export type EinsatzFormData = z.infer<typeof ZodEinsatzFormData>;
 
 interface EventDialogProps {
-  einsatz: EinsatzCreate | string | null;
+  einsatz: EinsatzCreate | EinsatzDetailed | string | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (einsatz: EinsatzCreate) => void;
