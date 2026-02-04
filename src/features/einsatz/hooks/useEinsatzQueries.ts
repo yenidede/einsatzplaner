@@ -115,6 +115,15 @@ export function useCategories(activeOrgId: string | null | undefined) {
   });
 }
 
+/** Categories for multiple orgs (e.g. list view showing events from all user orgs). */
+export function useCategoriesByOrgIds(orgIds: string[] | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.categoriesByOrgIds(orgIds ?? []),
+    queryFn: () => getCategoriesByOrgIds(orgIds ?? []),
+    enabled: !!orgIds && orgIds.length > 0,
+  });
+}
+
 export function useEinsaetzeTableView(userOrgIds: string[] | null | undefined) {
   return useQuery<ETV[]>({
     queryKey: [...queryKeys.einsaetzeTableView(userOrgIds ?? [])],

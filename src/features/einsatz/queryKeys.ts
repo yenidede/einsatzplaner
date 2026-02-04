@@ -11,4 +11,8 @@ export const queryKeys = {
   detailedEinsatz: (id: string) => ['einsatz', id, 'detail'] as const,
   einsatzHelpers: (id: string) => ['einsatz', id, 'detail', 'helpers'] as const,
   categories: (activeOrgId: string) => ['categories', activeOrgId] as const,
+  categoriesByOrgIds: (orgIds: string[]) =>
+    ['categories', 'byOrgIds', orgIds] as const,
+  /** Prefix to invalidate all categoriesByOrgIds caches (e.g. after category create/update/delete). */
+  categoriesByOrgIdsPrefix: () => ['categories', 'byOrgIds'] as const,
 };

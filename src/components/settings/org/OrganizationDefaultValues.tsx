@@ -60,6 +60,9 @@ export function OrganizationDefaultValues({
       queryClient.invalidateQueries({
         queryKey: queryKeys.categories(orgId),
       });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.categoriesByOrgIdsPrefix(),
+      });
       toast.success('Kategorie hinzugefügt');
       setNewValue('');
       setNewAbbreviation('');
@@ -88,6 +91,9 @@ export function OrganizationDefaultValues({
       queryClient.invalidateQueries({
         queryKey: queryKeys.categories(orgId),
       });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.categoriesByOrgIdsPrefix(),
+      });
       toast.success('Kategorie aktualisiert');
       setEditingId(null);
     },
@@ -97,11 +103,13 @@ export function OrganizationDefaultValues({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (categoryId: string) =>
-      deleteCategoryAction(categoryId, orgId),
+    mutationFn: (categoryId: string) => deleteCategoryAction(categoryId, orgId),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.categories(orgId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.categoriesByOrgIdsPrefix(),
       });
       toast.success('Kategorie gelöscht');
     },
@@ -268,7 +276,7 @@ export function OrganizationDefaultValues({
                         disabled={deleteMutation.isPending}
                         aria-label={`${cat.value} löschen`}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="text-destructive h-4 w-4" />
                       </Button>
                     </div>
                   </>
