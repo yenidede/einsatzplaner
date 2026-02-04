@@ -205,7 +205,14 @@ export function EventCalendar({
   };
 
   const handleEventSelect = (event: CalendarEvent | string) => {
-    openDialog(typeof event === 'string' ? event : event.id);
+    const eventId = typeof event === 'string' ? event : event.id;
+    if (eventId.includes('temp')) {
+      toast.info(
+        `${einsatz_singular} wird gespeichert und muss erst aktualisiert werden. Bitte warten Sie ein paar Sekunden und versuchen Sie es erneut.`
+      );
+      return;
+    }
+    openDialog(eventId);
   };
 
   const handleEventCreate = (startTime: Date) => {
