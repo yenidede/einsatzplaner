@@ -1077,7 +1077,7 @@ export function EventDialogVerwaltung({
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-x-hidden overflow-y-auto">
             <div className="grid gap-8 py-4">
               {/* Template selection: single grid for options, no nested FormGroup grid */}
               {templatesQuery.isLoading ? (
