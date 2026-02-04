@@ -476,17 +476,20 @@ export function DefaultFormFields({
           name="Benötigte Personeneigenschaften"
           errors={[]}
         >
-          <MultiSelect
-            options={
-              availableProps?.map((prop) => ({
-                value: prop.id,
-                label: String(prop.field.name),
-              })) ?? []
-            }
-            value={propertyConfigs.map((c) => c.user_property_id)}
-            onValueChange={handlePropertySelectionChange}
-            placeholder="Eigenschaften auswählen..."
-          />
+          <div className="min-w-0 overflow-x-hidden">
+            <MultiSelect
+              options={
+                availableProps?.map((prop) => ({
+                  value: prop.id,
+                  label: String(prop.field.name),
+                })) ?? []
+              }
+              value={propertyConfigs.map((c) => c.user_property_id)}
+              onValueChange={handlePropertySelectionChange}
+              placeholder="Eigenschaften auswählen..."
+              className="min-w-0"
+            />
+          </div>
         </FormInputFieldCustom>
 
         {/* Per-property configuration */}
@@ -501,13 +504,13 @@ export function DefaultFormFields({
               return (
                 <div
                   key={config.user_property_id}
-                  className="bg-muted/50 flex items-center gap-3 rounded-md p-2"
+                  className="bg-muted/50 flex flex-col gap-2 rounded-md p-2 sm:flex-row sm:items-center sm:gap-3"
                 >
-                  <div className="flex-1 text-sm font-medium">
+                  <div className="min-w-0 flex-1 text-sm font-medium wrap-break-word">
                     {property.field.name}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     <Checkbox
                       id={`required-${config.user_property_id}`}
                       checked={config.is_required}
@@ -519,13 +522,13 @@ export function DefaultFormFields({
                     />
                     <Label
                       htmlFor={`required-${config.user_property_id}`}
-                      className="cursor-pointer text-xs"
+                      className="cursor-pointer text-xs whitespace-nowrap"
                     >
                       Erforderlich
                     </Label>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     <Label
                       htmlFor={`min-${config.user_property_id}`}
                       className="text-xs whitespace-nowrap"
