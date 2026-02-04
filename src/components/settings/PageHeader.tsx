@@ -39,7 +39,7 @@ export function PageHeader({
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-semibold sm:text-xl">{title}</h1>
           {description && (
-            <p className="mt-0.5 hidden truncate text-sm text-muted-foreground sm:block">
+            <p className="text-muted-foreground mt-0.5 hidden truncate text-sm sm:block">
               {description}
             </p>
           )}
@@ -50,6 +50,7 @@ export function PageHeader({
             onClick={handleCancel}
             size="sm"
             className="min-h-10 min-w-11 touch-manipulation sm:min-h-9"
+            type="button"
           >
             Schließen
             <span className="ml-2 hidden sm:inline">
@@ -61,6 +62,7 @@ export function PageHeader({
             disabled={isSaving}
             size="sm"
             className="min-h-10 min-w-11 touch-manipulation sm:min-h-9"
+            type="button"
           >
             {isSaving ? 'Speichert...' : 'Speichern'}
             <KbdGroup className="ml-2 hidden sm:flex">
