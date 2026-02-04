@@ -30,6 +30,10 @@ export type UpdateCategoryInput = {
 export async function createCategory(
   input: CreateCategoryInput
 ): Promise<EinsatzCategory> {
+  if (input.value.trim() === '') {
+    throw new Error('Kategoriename darf nicht leer sein');
+  }
+
   return prisma.einsatz_category.create({
     data: {
       org_id: input.org_id,
