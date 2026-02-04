@@ -37,22 +37,25 @@ export function SettingsPageLayout({
   );
 
   return (
-    <div className="bg-background -mt-20 min-h-screen overflow-clip rounded-l">
+    <div className="bg-background min-h-screen overflow-clip rounded-l sm:-mt-20">
       {/* Header */}
       {header}
 
       {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex gap-8">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className="flex gap-6 lg:gap-8">
           {/* Sidebar Navigation */}
           <aside className="hidden w-64 shrink-0 lg:block">{sidebar}</aside>
 
           {/* Main Content */}
-          <main className="mt-8 flex-1 space-y-8" role="main">
+          <main
+            className="mt-4 min-w-0 flex-1 space-y-6 sm:mt-8 sm:space-y-8"
+            role="main"
+          >
             {/* Mobile Navigation */}
             {mobileNav && (
               <div
-                className="flex gap-2 overflow-x-auto pb-2 lg:hidden"
+                className="-mx-3 flex gap-2 overflow-x-auto overflow-y-hidden px-3 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0 lg:hidden"
                 role="tablist"
               >
                 {mobileNav}

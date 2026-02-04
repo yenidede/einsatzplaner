@@ -35,18 +35,33 @@ export function PageHeader({
 
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-16 z-40 border-b backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <div>
-          <h1>{title}</h1>
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4 lg:px-8">
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-lg font-semibold sm:text-xl">{title}</h1>
+          {description && (
+            <p className="mt-0.5 hidden truncate text-sm text-muted-foreground sm:block">
+              {description}
+            </p>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={handleCancel}>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={handleCancel}
+            size="sm"
+            className="min-h-10 min-w-11 touch-manipulation sm:min-h-9"
+          >
             Schließen
             <span className="ml-2 hidden sm:inline">
               <Kbd>ESC</Kbd>
             </span>
           </Button>
-          <Button onClick={onSave} disabled={isSaving}>
+          <Button
+            onClick={onSave}
+            disabled={isSaving}
+            size="sm"
+            className="min-h-10 min-w-11 touch-manipulation sm:min-h-9"
+          >
             {isSaving ? 'Speichert...' : 'Speichern'}
             <KbdGroup className="ml-2 hidden sm:flex">
               <Kbd>⌘</Kbd>

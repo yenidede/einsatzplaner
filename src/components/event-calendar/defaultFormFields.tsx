@@ -98,7 +98,7 @@ export function DefaultFormFields({
       </FormGroup>
 
       <div className="flex flex-col gap-4">
-        <FormGroup className="flex flex-row">
+        <FormGroup className="flex flex-col sm:flex-row">
           <FormInputFieldCustom
             className="flex-1"
             name="Start Datum"
@@ -158,7 +158,7 @@ export function DefaultFormFields({
             </Popover>
           </FormInputFieldCustom>
           {!formData.all_day && (
-            <div className="min-w-28 *:not-first:mt-1.5">
+            <div className="*:not-first:mt-1.5 sm:min-w-28">
               <FormInputFieldCustom
                 name="Start Zeit"
                 errors={errors.fieldErrors['startTime'] || []}
@@ -174,7 +174,7 @@ export function DefaultFormFields({
             </div>
           )}
         </FormGroup>
-        <FormGroup className="flex flex-row">
+        <FormGroup className="flex flex-col sm:flex-row">
           <FormInputFieldCustom
             className="flex-1"
             name="Ende Datum"
