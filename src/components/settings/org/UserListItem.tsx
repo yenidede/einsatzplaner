@@ -1,5 +1,6 @@
 'use client';
 
+import { Pencil } from 'lucide-react';
 import { RolesList, type RoleType } from '@/components/Roles';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -62,8 +63,15 @@ export function UserListItem({
         </div>
       </div>
 
-      <Button onClick={onProfileClick} variant="ghost" size="sm">
-        Profil Verwalten
+      <Button
+        onClick={onProfileClick}
+        variant="ghost"
+        size="sm"
+        aria-label="Profil Verwalten"
+        className="min-h-10 min-w-10 shrink-0 touch-manipulation sm:min-h-9 sm:min-w-0 sm:px-3"
+      >
+        <Pencil className="h-4 w-4 sm:hidden" aria-hidden />
+        <span className="hidden sm:inline">Profil Verwalten</span>
       </Button>
     </div>
   );
