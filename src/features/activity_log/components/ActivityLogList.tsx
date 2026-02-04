@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useMemo,
-  memo,
-} from 'react';
+import { Dispatch, SetStateAction, useCallback, useMemo, memo } from 'react';
 import type { ChangeLogEntry } from '../types';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -82,7 +76,7 @@ const ActivityItem = memo(function ActivityItem({
     <>
       <div className="flex items-center justify-between gap-3">
         <div
-          className="relative flex h-6 w-6 items-center justify-center rounded-full"
+          className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: activity.change_type.change_color }}
         >
           <Image

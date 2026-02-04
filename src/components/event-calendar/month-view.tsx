@@ -42,6 +42,7 @@ interface MonthViewProps {
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
   mode: CalendarMode;
+  onEventConfirm?: (eventId: string) => void;
 }
 
 export function MonthView({
@@ -50,6 +51,7 @@ export function MonthView({
   onEventSelect,
   onEventCreate,
   mode,
+  onEventConfirm,
 }: MonthViewProps) {
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
@@ -216,6 +218,7 @@ export function MonthView({
                                 isFirstDay={isFirstDay}
                                 isLastDay={isLastDay}
                                 mode={mode}
+                                onConfirm={onEventConfirm}
                               />
                             </div>
                           );
@@ -234,6 +237,7 @@ export function MonthView({
                               isFirstDay={isFirstDay}
                               isLastDay={isLastDay}
                               mode={mode}
+                              onConfirm={onEventConfirm}
                             />
                           </div>
                         );
@@ -283,6 +287,7 @@ export function MonthView({
                                       isFirstDay={isFirstDay}
                                       isLastDay={isLastDay}
                                       mode={mode}
+                                      onConfirm={onEventConfirm}
                                     />
                                   );
                                 })}

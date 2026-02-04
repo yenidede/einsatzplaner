@@ -61,6 +61,7 @@ export interface EventCalendarProps {
   onAssignToggleEvent: (eventId: string) => void;
   onEventTimeUpdate: (event: CalendarEvent) => void;
   onEventDelete: (eventId: string, eventTitle: string) => void;
+  onEventConfirm?: (eventId: string) => void;
   onMultiEventDelete: (eventIds: string[]) => void;
   className?: string;
   initialView?: CalendarView;
@@ -75,6 +76,7 @@ export function EventCalendar({
   onAssignToggleEvent,
   onEventTimeUpdate,
   onEventDelete,
+  onEventConfirm,
   onMultiEventDelete,
   className,
   initialView = 'month',
@@ -260,6 +262,10 @@ export function EventCalendar({
     closeDialog();
   };
 
+  const handleEventConfirm = (eventId: string) => {
+    onEventConfirm?.(eventId);
+  };
+
   const handleMultiEventDelete = (eventIds: string[]) => {
     onMultiEventDelete?.(eventIds);
     closeDialog();
@@ -377,7 +383,7 @@ export function EventCalendar({
 
           {view === 'list' && <h2>Tabellenansicht</h2>}
           <div className="flex items-center gap-2">
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
                   <span>
@@ -446,6 +452,7 @@ export function EventCalendar({
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
             />
           )}
           {view === 'week' && (
@@ -455,6 +462,7 @@ export function EventCalendar({
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
             />
           )}
           {view === 'day' && (
@@ -464,6 +472,7 @@ export function EventCalendar({
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
             />
           )}
           {view === 'agenda' && (
@@ -471,6 +480,7 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
             />
           )}
           {view === 'list' && (

@@ -241,8 +241,8 @@ export const MultiSelect = React.forwardRef<
             )}
           >
             {selectedValues.length > 0 ? (
-              <div className="flex w-full items-center justify-between">
-                <div className="flex flex-wrap items-center">
+              <div className="flex min-w-0 w-full items-center justify-between gap-1">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
                   {selectedValues.slice(0, maxCount).map((value) => {
                     const option = options.find((o) => o.value === value);
                     const IconComponent = option?.icon;
@@ -251,7 +251,8 @@ export const MultiSelect = React.forwardRef<
                         key={value}
                         className={cn(
                           isAnimating ? 'animate-bounce' : '',
-                          multiSelectVariants({ variant })
+                          multiSelectVariants({ variant }),
+                          'max-w-full truncate'
                         )}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -260,17 +261,17 @@ export const MultiSelect = React.forwardRef<
                         style={{ animationDuration: `${animation}s` }}
                       >
                         {IconComponent && (
-                          <IconComponent className="mr-2 h-4 w-4" />
+                          <IconComponent className="mr-1 h-4 w-4 shrink-0" />
                         )}
-                        {option?.label}
-                        <XCircle className="ml-2 h-4 w-4 cursor-pointer" />
+                        <span className="truncate">{option?.label}</span>
+                        <XCircle className="ml-1 h-4 w-4 shrink-0 cursor-pointer" />
                       </Badge>
                     );
                   })}
                   {selectedValues.length > maxCount && (
                     <Badge
                       className={cn(
-                        'text-foreground border-foreground/1 bg-transparent hover:bg-transparent',
+                        'text-foreground border-foreground/1 bg-transparent hover:bg-transparent shrink-0',
                         isAnimating ? 'animate-bounce' : '',
                         multiSelectVariants({ variant })
                       )}
@@ -278,7 +279,7 @@ export const MultiSelect = React.forwardRef<
                     >
                       {`+ ${selectedValues.length - maxCount} more`}
                       <XCircle
-                        className="ml-2 h-4 w-4 cursor-pointer"
+                        className="ml-1 h-4 w-4 shrink-0 cursor-pointer"
                         onClick={(event) => {
                           event.stopPropagation();
                           clearExtraOptions();
@@ -287,9 +288,9 @@ export const MultiSelect = React.forwardRef<
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex shrink-0 items-center justify-between">
                   <XIcon
-                    className="text-muted-foreground mx-2 h-4 cursor-pointer"
+                    className="text-muted-foreground mx-1 h-4 shrink-0 cursor-pointer"
                     onClick={(event) => {
                       event.stopPropagation();
                       handleClear();
@@ -297,9 +298,9 @@ export const MultiSelect = React.forwardRef<
                   />
                   <Separator
                     orientation="vertical"
-                    className="flex h-full min-h-6"
+                    className="flex h-full min-h-6 shrink-0"
                   />
-                  <ChevronDown className="text-muted-foreground mx-2 h-4 cursor-pointer" />
+                  <ChevronDown className="text-muted-foreground mx-1 h-4 shrink-0 cursor-pointer" />
                 </div>
               </div>
             ) : (

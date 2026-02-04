@@ -248,6 +248,7 @@ export const mapEinsatzToCalendarEvent = (
     allDay: einsatz.all_day,
     status: einsatz.einsatz_status,
     assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
+    helpersNeeded: einsatz.helpers_needed,
   };
 };
 

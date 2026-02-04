@@ -1043,8 +1043,7 @@ export function TemplateForm({
                           id="standard-field-default"
                           type={
                             editingStandardFieldKey === 'price_person' ||
-                            editingStandardFieldKey ===
-                              'participant_count' ||
+                            editingStandardFieldKey === 'participant_count' ||
                             editingStandardFieldKey === 'helpers_needed' ||
                             editingStandardFieldKey === 'total_price'
                               ? 'number'
@@ -1075,8 +1074,7 @@ export function TemplateForm({
                           id="standard-field-placeholder"
                           type={
                             editingStandardFieldKey === 'price_person' ||
-                            editingStandardFieldKey ===
-                              'participant_count' ||
+                            editingStandardFieldKey === 'participant_count' ||
                             editingStandardFieldKey === 'helpers_needed' ||
                             editingStandardFieldKey === 'total_price'
                               ? 'number'
