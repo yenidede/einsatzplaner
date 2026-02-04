@@ -70,6 +70,8 @@ import {
 import { Select, SelectContent, SelectItem } from '../ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
+import { RequiredUserProperties } from './RequiredUserProperties';
+import { Separator } from '../ui/separator';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -1161,6 +1163,18 @@ export function EventDialogVerwaltung({
                 activeOrg={
                   organizations?.find((org) => org.id === activeOrgId) ?? null
                 }
+              />
+              <DynamicFormFields
+                fields={dynamicFormFields}
+                control={dynamicForm.control}
+                errors={dynamicForm.formState.errors}
+              />
+
+              <Separator />
+
+              <RequiredUserProperties
+                formData={staticFormData}
+                onFormDataChange={handleFormDataChange}
                 availableProps={
                   availableProps?.filter((prop) => prop.field.name !== null) as
                     | { id: string; field: { name: string } }[]
@@ -1168,11 +1182,6 @@ export function EventDialogVerwaltung({
                 }
               />
 
-              <DynamicFormFields
-                fields={dynamicFormFields}
-                control={dynamicForm.control}
-                errors={dynamicForm.formState.errors}
-              />
               <div className="border-b"></div>
               <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
             </div>
