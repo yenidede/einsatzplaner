@@ -24,6 +24,7 @@ import { UserProfileDialog } from '@/components/settings/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
 import { FileUpload, PreviewAspectRatio } from '@/components/form/file-upload';
 import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationDetailsForm';
+import { OrganizationDefaultValues } from '@/components/settings/org/OrganizationDefaultValues';
 import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
 import { UsersManagementSection } from '@/components/settings/org/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
@@ -631,12 +632,6 @@ export default function OrganizationManagePage() {
                 einsatzPlural={einsatzPlural}
                 onEinsatzSingularChange={setEinsatzSingular}
                 onEinsatzPluralChange={setEinsatzPlural}
-                maxParticipantsPerHelper={maxParticipantsPerHelper}
-                onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
-                defaultStarttime={defaultStarttime}
-                defaultEndtime={defaultEndtime}
-                onDefaultStarttimeChange={setDefaultStarttime}
-                onDefaultEndtimeChange={setDefaultEndtime}
                 allowSelfSignOut={allowSelfSignOut}
                 onAllowSelfSignOutChange={setAllowSelfSignOut}
               />
@@ -644,33 +639,31 @@ export default function OrganizationManagePage() {
           </Card>
         </section>
 
-        {/* PDF-Export Section */}
+        {/* Standardwerte Section */}
         <section
-          id="pdf-export"
+          id="standardwerte"
           ref={(el) => {
-            sectionRefs.current['pdf-export'] = el;
+            sectionRefs.current.standardwerte = el;
           }}
-          aria-labelledby="pdf-export-heading"
+          aria-labelledby="standardwerte-heading"
         >
           <Card>
             <CardHeader>
-              <CardTitle id="pdf-export-heading">PDF-Export</CardTitle>
+              <CardTitle id="standardwerte-heading">Standardwerte</CardTitle>
               <CardDescription>
-                Einstellungen für den PDF-Export Ihrer Organisation
+                Voreinstellungen für maximale Teilnehmende sowie Standard-Start-
+                und Endzeit
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <OrganizationPdfExportForm
-                organizationId={orgId}
-                website={website}
-                vat={vat}
-                zvr={zvr}
-                authority={authority}
-                onWebsiteChange={setWebsite}
-                onVatChange={setVat}
-                onZvrChange={setZvr}
-                onAuthorityChange={setAuthority}
-                isSuperadmin={isSuperadmin}
+              <OrganizationDefaultValues
+                helperSingular={helperSingular}
+                maxParticipantsPerHelper={maxParticipantsPerHelper}
+                defaultStarttime={defaultStarttime}
+                defaultEndtime={defaultEndtime}
+                onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+                onDefaultStarttimeChange={setDefaultStarttime}
+                onDefaultEndtimeChange={setDefaultEndtime}
               />
             </CardContent>
           </Card>
@@ -741,6 +734,38 @@ export default function OrganizationManagePage() {
                 currentUserEmail={session?.user?.email || ''}
                 onUserProfileClick={handleUserProfileClick}
                 onInviteClick={() => setIsInviteModalOpen(true)}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* PDF-Export Section */}
+        <section
+          id="pdf-export"
+          ref={(el) => {
+            sectionRefs.current['pdf-export'] = el;
+          }}
+          aria-labelledby="pdf-export-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="pdf-export-heading">PDF-Export</CardTitle>
+              <CardDescription>
+                Einstellungen für den PDF-Export Ihrer Organisation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OrganizationPdfExportForm
+                organizationId={orgId}
+                website={website}
+                vat={vat}
+                zvr={zvr}
+                authority={authority}
+                onWebsiteChange={setWebsite}
+                onVatChange={setVat}
+                onZvrChange={setZvr}
+                onAuthorityChange={setAuthority}
+                isSuperadmin={isSuperadmin}
               />
             </CardContent>
           </Card>
