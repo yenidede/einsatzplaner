@@ -63,6 +63,7 @@ import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
 import { createChangeLogAuto } from '@/features/activity_log/activity_log-dal';
+import { ChangeTypeIds } from '@/features/activity_log/changeTypeIds';
 import {
   detectChangeTypes,
   getAffectedUserId,
@@ -1001,7 +1002,7 @@ export function EventDialogVerwaltung({
         createChangeLogAuto({
           einsatzId: currentEinsatz.id,
           userId: currentUserId,
-          typeName: changeTypeName,
+          typeId: ChangeTypeIds[changeTypeName],
           affectedUserId: effectiveAffectedUserId,
         }).catch((error) => {
           toast.error('Failed to create activity log: ' + error);

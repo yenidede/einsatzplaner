@@ -18,6 +18,7 @@ import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
 import { createChangeLogAuto } from '../activity_log/activity_log-dal';
 import { BadRequestError, ForbiddenError } from '@/lib/errors';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
+import { ChangeTypeIds } from '../activity_log/changeTypeIds';
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -535,13 +536,13 @@ export async function createEinsatz({
 
       for (const typeName of changeTypeNames) {
         const affectedUserId =
-          typeName === 'E-Erstellt' ? null : affectedUserIds[0] || null;
+          typeName === 'E-Erstellt' ? null : affectedUserIds[0] ?? null;
 
         await createChangeLogAuto({
           einsatzId: createdEinsatz.id,
           userId: userIds.userId,
-          typeName: typeName,
-          affectedUserId: affectedUserId,
+          typeId: ChangeTypeIds[typeName],
+          affectedUserId,
         });
       }
     } catch (error) {
@@ -720,7 +721,7 @@ export async function toggleUserAssignmentToEinsatz(
       await createChangeLogAuto({
         einsatzId: einsatzId,
         userId: session.user.id,
-        typeName: 'N-Abgesagt',
+        typeId: ChangeTypeIds['N-Abgesagt'],
         affectedUserId: session.user.id,
       });
     } catch (error) {
@@ -754,7 +755,7 @@ export async function toggleUserAssignmentToEinsatz(
       await createChangeLogAuto({
         einsatzId: einsatzId,
         userId: session.user.id,
-        typeName: 'takeover',
+        typeId: ChangeTypeIds['N-Eingetragen'],
         affectedUserId: session.user.id, // as the user is assigning themselves they are also the affected user
       });
     } catch (error) {
@@ -949,7 +950,7 @@ export async function updateEinsatzStatus(
     await createChangeLogAuto({
       einsatzId,
       userId: session.user.id,
-      typeName: 'E-Bestaetigt',
+      typeId: ChangeTypeIds['E-Bestaetigt'],
     });
   }
 
@@ -1290,10 +1291,10 @@ function mapRawEinsatzToDetailedForCalendar(
       affected_user: log.affected_user,
       user: log.user
         ? {
-            id: log.user.id,
-            firstname: log.user.firstname,
-            lastname: log.user.lastname,
-          }
+          id: log.user.id,
+          firstname: log.user.firstname,
+          lastname: log.user.lastname,
+        }
         : null,
     })),
     category_abbreviations,
