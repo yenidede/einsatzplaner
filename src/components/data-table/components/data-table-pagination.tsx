@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils';
 interface DataTablePaginationProps<TData> extends React.ComponentProps<'div'> {
   table: Table<TData>;
   pageSizeOptions?: number[];
+  /** Hide the "X von Y Zeile(n) ausgewählt" text on mobile (max-md). */
+  hideRowCountOnMobile?: boolean;
 }
 
 export const FirstPageAlias = 0.1;
@@ -26,6 +28,7 @@ export const FirstPageAlias = 0.1;
 export function DataTablePagination<TData>({
   table,
   pageSizeOptions = [10, 20, 30, 40, 50],
+  hideRowCountOnMobile,
   className,
   ...props
 }: DataTablePaginationProps<TData>) {
@@ -37,7 +40,12 @@ export function DataTablePagination<TData>({
       )}
       {...props}
     >
-      <div className="text-muted-foreground flex-1 text-sm whitespace-nowrap">
+      <div
+        className={cn(
+          'text-muted-foreground flex-1 text-sm whitespace-nowrap',
+          hideRowCountOnMobile && 'max-md:hidden'
+        )}
+      >
         {table.getFilteredSelectedRowModel().rows.length} von{' '}
         {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.
       </div>
@@ -64,58 +72,60 @@ export function DataTablePagination<TData>({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center justify-center text-sm font-medium">
-          Seite {table.getState().pagination.pageIndex + 1} von{' '}
-          {table.getPageCount()}
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            aria-label="Springe zur ersten Seite"
-            variant="outline"
-            size="icon"
-            className="hidden size-8 lg:flex"
-            onClick={() => table.setPageIndex(FirstPageAlias)}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <ChevronsLeft />
-          </Button>
-          <Button
-            aria-label="Springe zur vorherigen Seite"
-            variant="outline"
-            size="icon"
-            className="size-8"
-            onClick={() => {
-              // bug: pageIndex is always reset to 1, so 1 is now disabled. First page is aliased. If curr page is 2, set to FirstPageAlias
-              table.setPageIndex(
-                table.getState().pagination.pageIndex === 1
-                  ? FirstPageAlias
-                  : table.getState().pagination.pageIndex - 1
-              );
-            }}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <ChevronLeft />
-          </Button>
-          <Button
-            aria-label="Springe zur nächsten Seite"
-            variant="outline"
-            size="icon"
-            className="size-8"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            <ChevronRight />
-          </Button>
-          <Button
-            aria-label="Springe zur letzten Seite"
-            variant="outline"
-            size="icon"
-            className="hidden size-8 lg:flex"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-          >
-            <ChevronsRight />
-          </Button>
+        <div className="flex flex-row gap-4">
+          <div className="flex items-center justify-center text-sm font-medium">
+            Seite {table.getState().pagination.pageIndex + 1} von{' '}
+            {table.getPageCount()}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              aria-label="Springe zur ersten Seite"
+              variant="outline"
+              size="icon"
+              className="hidden size-8 lg:flex"
+              onClick={() => table.setPageIndex(FirstPageAlias)}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <ChevronsLeft />
+            </Button>
+            <Button
+              aria-label="Springe zur vorherigen Seite"
+              variant="outline"
+              size="icon"
+              className="size-8"
+              onClick={() => {
+                // bug: pageIndex is always reset to 1, so 1 is now disabled. First page is aliased. If curr page is 2, set to FirstPageAlias
+                table.setPageIndex(
+                  table.getState().pagination.pageIndex === 1
+                    ? FirstPageAlias
+                    : table.getState().pagination.pageIndex - 1
+                );
+              }}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <ChevronLeft />
+            </Button>
+            <Button
+              aria-label="Springe zur nächsten Seite"
+              variant="outline"
+              size="icon"
+              className="size-8"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              <ChevronRight />
+            </Button>
+            <Button
+              aria-label="Springe zur letzten Seite"
+              variant="outline"
+              size="icon"
+              className="hidden size-8 lg:flex"
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+              disabled={!table.getCanNextPage()}
+            >
+              <ChevronsRight />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

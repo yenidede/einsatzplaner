@@ -1,14 +1,8 @@
 'use client';
 
-import {
-  useState,
-  useMemo,
-  useEffect,
-  memo,
-  useDeferredValue,
-} from 'react';
+import { useState, useMemo, useEffect, memo, useDeferredValue } from 'react';
 import Image from 'next/image';
-import { Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
@@ -47,6 +41,7 @@ import {
 } from '@/components/ui/table';
 import { DataTableColumnHeader } from '@/components/data-table/components/data-table-column-header';
 import { DataTablePagination } from '@/components/data-table/components/data-table-pagination';
+import { cn } from '@/lib/utils';
 import { getFormattedMessage } from '../utils';
 import {
   useActivityLogsFiltered,
@@ -84,7 +79,7 @@ const ActivityTypeCell = memo(function ActivityTypeCell({
   return (
     <div
       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-      style={{ backgroundColor: `${changeColor}15` }}
+      style={{ backgroundColor: `${changeColor}40` }}
     >
       {changeIconUrl ? (
         <Image
@@ -155,6 +150,7 @@ export function AllActivitiesModal({
   onMarkAsRead,
   onMarkAllAsRead,
 }: AllActivitiesModalProps) {
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'created_at', desc: true },
@@ -230,10 +226,12 @@ export function AllActivitiesModal({
         id: 'message',
         header: 'Aktivität',
         cell: ({ row }) => (
-          <ActivityMessageCell
-            activity={row.original}
-            openDialog={openDialog}
-          />
+          <div className="max-md:min-w-0 max-md:wrap-break-word">
+            <ActivityMessageCell
+              activity={row.original}
+              openDialog={openDialog}
+            />
+          </div>
         ),
       }),
       columnHelper.accessor('created_at', {
@@ -255,9 +253,9 @@ export function AllActivitiesModal({
         ? [
             columnHelper.display({
               id: 'organisation',
-              header: 'Organisation',
+              header: () => <span className="max-md:hidden">Organisation</span>,
               cell: ({ row }) => (
-                <span className="text-muted-foreground truncate text-xs">
+                <span className="text-muted-foreground truncate text-xs max-md:hidden">
                   {orgsData?.find(
                     (org) => org.id === row.original.einsatz.org_id
                   )?.name ?? '–'}
@@ -322,104 +320,140 @@ export function AllActivitiesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden">
-        <DialogHeader className="shrink-0">
+      <DialogContent className="flex flex-col overflow-hidden max-md:max-h-full md:max-h-[90vh]">
+        <DialogHeader className="shrink-0 max-md:pb-2">
           <DialogTitle>Alle Aktivitäten</DialogTitle>
         </DialogHeader>
 
-        <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {hasMultipleOrgs && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Organisation</Label>
-              <Select
-                value={filters.orgId || 'all'}
-                onValueChange={(v) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    orgId: v === 'all' ? '' : v,
-                  }))
-                }
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Alle" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle</SelectItem>
-                  {orgsData?.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="shrink-0 space-y-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex w-full items-center justify-between gap-2 px-0 hover:bg-transparent"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+          >
+            <span className="text-muted-foreground text-sm font-medium">
+              Filter
+              {hasActiveFilters && (
+                <span className="text-primary ml-1.5">(aktiv)</span>
+              )}
+            </span>
+            {filtersOpen ? (
+              <ChevronUp className="h-4 w-4 shrink-0" aria-hidden />
+            ) : (
+              <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
+            )}
+          </Button>
+          {filtersOpen && (
+            <>
+              <div className="grid gap-2 max-md:gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {hasMultipleOrgs && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Organisation</Label>
+                    <Select
+                      value={filters.orgId || 'all'}
+                      onValueChange={(v) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          orgId: v === 'all' ? '' : v,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Alle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Alle</SelectItem>
+                        {orgsData?.map((org) => (
+                          <SelectItem key={org.id} value={org.id}>
+                            {org.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Aktivitätstyp</Label>
+                  <Select
+                    value={filters.typeId || 'all'}
+                    onValueChange={(v) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        typeId: v === 'all' ? '' : v,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Alle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle</SelectItem>
+                      {changeTypes.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Von</Label>
+                  <Input
+                    type="date"
+                    className="h-9"
+                    value={filters.startDate}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        startDate: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Bis</Label>
+                  <Input
+                    type="date"
+                    className="h-9"
+                    value={filters.endDate}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        endDate: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 max-md:gap-2 sm:flex-row sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2 max-md:gap-2 sm:gap-4">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={filters.unreadOnly}
+                      onCheckedChange={(checked) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          unreadOnly: checked === true,
+                        }))
+                      }
+                      aria-label="Nur Ungelesene anzeigen"
+                    />
+                    <span>Nur Ungelesene</span>
+                  </label>
+                </div>
+              </div>
+            </>
           )}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Aktivitätstyp</Label>
-            <Select
-              value={filters.typeId || 'all'}
-              onValueChange={(v) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  typeId: v === 'all' ? '' : v,
-                }))
-              }
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Alle" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle</SelectItem>
-                {changeTypes.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Von</Label>
-            <Input
-              type="date"
-              className="h-9"
-              value={filters.startDate}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, startDate: e.target.value }))
-              }
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Bis</Label>
-            <Input
-              type="date"
-              className="h-9"
-              value={filters.endDate}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, endDate: e.target.value }))
-              }
-            />
-          </div>
-        </div>
-        <div className="flex justify-between">
-          <div className="flex shrink-0 flex-wrap items-center gap-4">
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <Checkbox
-                checked={filters.unreadOnly}
-                onCheckedChange={(checked) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    unreadOnly: checked === true,
-                  }))
-                }
-                aria-label="Nur Ungelesene anzeigen"
-              />
-              <span>Nur Ungelesene</span>
-            </label>
-          </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap gap-4 max-md:gap-1.5 md:justify-end">
             {hasActiveFilters && (
-              <Button variant="outline" size="sm" onClick={handleResetFilters}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetFilters}
+                className="max-md:h-8 max-md:text-xs"
+              >
                 Filter zurücksetzen
               </Button>
             )}
@@ -430,6 +464,7 @@ export function AllActivitiesModal({
                   variant="default"
                   size="sm"
                   onClick={handleMarkAllAsRead}
+                  className="max-md:h-8 max-md:text-xs"
                 >
                   Alle als gelesen markieren
                 </Button>
@@ -437,25 +472,25 @@ export function AllActivitiesModal({
           </div>
         </div>
 
-        <div className="relative flex min-h-0 flex-1 flex-col rounded-md border">
+        <div className="relative flex min-h-0 flex-1 flex-col rounded-md border max-md:min-h-[60vh]">
           {isLoading ? (
-            <div className="text-muted-foreground flex flex-1 items-center justify-center py-12 text-sm">
+            <div className="text-muted-foreground flex flex-1 items-center justify-center py-12 text-sm max-md:py-8">
               Lade Aktivitäten...
             </div>
           ) : filteredActivities.length === 0 && !isFiltering ? (
-            <div className="text-muted-foreground flex flex-1 items-center justify-center py-12 text-sm">
+            <div className="text-muted-foreground flex flex-1 items-center justify-center py-12 text-sm max-md:py-8">
               Keine Aktivitäten gefunden
             </div>
           ) : (
             <>
               {filteredActivities.length === 0 && isFiltering ? (
-                <div className="text-muted-foreground flex flex-1 items-center justify-center gap-2 py-12 text-sm">
+                <div className="text-muted-foreground flex flex-1 items-center justify-center gap-2 py-12 text-sm max-md:py-8">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Filter wird angewendet...
                 </div>
               ) : (
                 <>
-                  <div className="min-h-0 flex-1 overflow-auto">
+                  <div className="min-h-0 flex-1 overflow-auto max-md:min-h-[50vh]">
                     <Table>
                       <TableHeader className="bg-background sticky top-0">
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -494,7 +529,11 @@ export function AllActivitiesModal({
                             {row.getVisibleCells().map((cell) => (
                               <TableCell
                                 key={cell.id}
-                                className="py-2 align-top"
+                                className={cn(
+                                  'py-2 align-top max-md:px-1 max-md:py-1.5',
+                                  cell.column.id === 'message' &&
+                                    'max-md:max-w-[min(55vw,260px)] max-md:min-w-0 max-md:whitespace-normal'
+                                )}
                               >
                                 {flexRender(
                                   cell.column.columnDef.cell,
@@ -507,15 +546,16 @@ export function AllActivitiesModal({
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="shrink-0 border-t px-2">
+                  <div className="shrink-0 border-t px-2 max-md:px-1">
                     <DataTablePagination
                       table={table}
                       pageSizeOptions={[10, 20, 50, 200]}
+                      hideRowCountOnMobile
                     />
                   </div>
                   {isFiltering && (
                     <div
-                      className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-background/80"
+                      className="bg-background/80 absolute inset-0 z-10 flex items-center justify-center rounded-md"
                       aria-live="polite"
                       aria-busy="true"
                     >
