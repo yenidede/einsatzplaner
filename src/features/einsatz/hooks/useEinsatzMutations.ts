@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { QueryKey } from '@tanstack/react-query';
 import { addMonths, subMonths } from 'date-fns';
 import { format } from 'date-fns';
 import { queryKeys } from '../queryKeys';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
+import type { CalendarRangeData } from '@/components/event-calendar/utils';
 
 /** Returns the 3 monthKeys that overlap the 3-month window centered on the given date. */
 function getMonthKeysForDate(date: Date): string[] {
@@ -52,6 +54,18 @@ import { CalendarEvent } from '@/components/event-calendar/types';
 import { toast } from 'sonner';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 
+/** Snapshot of calendar cache entries for optimistic rollback. */
+type CalendarCacheSnapshot = Array<[QueryKey, CalendarRangeData | undefined]>;
+
+function rollbackCalendarCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshot: CalendarCacheSnapshot
+) {
+  snapshot.forEach(([key, data]) => {
+    queryClient.setQueryData(key, data);
+  });
+}
+
 // Helper function to format conflict messages
 function formatConflictMessages(conflicts: EinsatzConflict[]): string {
   return conflicts
@@ -83,9 +97,35 @@ export function useCreateEinsatz(
     },
     onMutate: async ({ event }) => {
       await queryClient.cancelQueries({ queryKey: calendarPrefixKey });
-      return {};
+      if (!activeOrgId) return {};
+      const monthKeys = getMonthKeysForDate(event.start);
+      const optimisticEvent: CalendarEvent = {
+        id: `temp-${Date.now()}`,
+        title: event.title,
+        start: event.start instanceof Date ? event.start : new Date(event.start),
+        end: event.end instanceof Date ? event.end : new Date(event.end),
+        allDay: event.all_day ?? false,
+        assignedUsers: event.assignedUsers ?? [],
+        helpersNeeded: event.helpers_needed,
+      };
+      const previousData: CalendarCacheSnapshot = [];
+      for (const monthKey of monthKeys) {
+        const key = queryKeys.einsaetzeForCalendar(activeOrgId, monthKey);
+        const data = queryClient.getQueryData<CalendarRangeData>(key);
+        if (data) {
+          previousData.push([key, data]);
+          queryClient.setQueryData<CalendarRangeData>(key, {
+            ...data,
+            events: [...data.events, optimisticEvent],
+          });
+        }
+      }
+      return { previousData };
     },
-    onError: (error) => {
+    onError: (error, _vars, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht erstellt werden: ${errorMessage}`);
     },
@@ -167,11 +207,54 @@ export function useUpdateEinsatz(
         });
       }
     },
-    onMutate: async () => {
+    onMutate: async ({ event }) => {
       await queryClient.cancelQueries({ queryKey: calendarPrefixKey });
-      return {};
+      if (!activeOrgId) return {};
+      const eventId = event.id;
+      if (!eventId) return {};
+      const start =
+        'start' in event && event.start
+          ? event.start instanceof Date
+            ? event.start
+            : new Date(event.start)
+          : null;
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: calendarPrefixKey,
+      });
+      for (const [key, data] of queries) {
+        if (!data) continue;
+        const idx = data.events.findIndex((e) => e.id === eventId);
+        if (idx === -1) continue;
+        previousData.push([key, data]);
+        const prev = data.events[idx];
+        const updated: CalendarEvent = {
+          ...prev,
+          ...(start && { start }),
+          ...('end' in event &&
+            event.end !== undefined && {
+              end: event.end instanceof Date ? event.end : new Date(event.end),
+            }),
+        };
+        if ('title' in event && event.title !== undefined) updated.title = event.title;
+        if ('all_day' in event && event.all_day !== undefined) updated.allDay = event.all_day;
+        if ('assignedUsers' in event && event.assignedUsers !== undefined)
+          updated.assignedUsers = event.assignedUsers;
+        if ('helpersNeeded' in event && event.helpersNeeded !== undefined)
+          updated.helpersNeeded = event.helpersNeeded;
+        const newEvents = [...data.events];
+        newEvents[idx] = updated;
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: newEvents,
+        });
+      }
+      return { previousData };
     },
-    onError: (error) => {
+    onError: (error, _vars, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(
         `${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`
@@ -268,13 +351,36 @@ export function useConfirmEinsatz(
         StatusValuePairs.vergeben_bestaetigt
       );
     },
-    onMutate: async () => {
+    onMutate: async (eventId) => {
       await queryClient.cancelQueries({
         queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
       });
-      return {};
+      if (!activeOrgId) return {};
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data) continue;
+        const idx = data.events.findIndex((e) => e.id === eventId);
+        if (idx === -1) continue;
+        previousData.push([key, data]);
+        const newEvents = [...data.events];
+        newEvents[idx] = {
+          ...newEvents[idx],
+          status: OPTIMISTIC_BESTAETIGT_STATUS,
+        };
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: newEvents,
+        });
+      }
+      return { previousData };
     },
-    onError: (error) => {
+    onError: (error, _eventId, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(
         `${einsatzSingular} konnte nicht bestätigt werden: ${errorMessage}`
@@ -316,13 +422,38 @@ export function useToggleUserAssignment(
     mutationFn: async (eventId: string) => {
       return await toggleUserAssignmentToEinsatz(eventId);
     },
-    onMutate: async () => {
+    onMutate: async (eventId) => {
       await queryClient.cancelQueries({
         queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
       });
-      return {};
+      if (!activeOrgId || !userId) return {};
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data) continue;
+        const idx = data.events.findIndex((e) => e.id === eventId);
+        if (idx === -1) continue;
+        previousData.push([key, data]);
+        const prev = data.events[idx];
+        const isAssigned = prev.assignedUsers?.includes(userId) ?? false;
+        const newAssigned = isAssigned
+          ? (prev.assignedUsers ?? []).filter((id) => id !== userId)
+          : [...(prev.assignedUsers ?? []), userId];
+        const newEvents = [...data.events];
+        newEvents[idx] = { ...prev, assignedUsers: newAssigned };
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: newEvents,
+        });
+      }
+      return { previousData };
     },
-    onError: (error) => {
+    onError: (error, _eventId, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`);
     },
@@ -372,13 +503,29 @@ export function useDeleteEinsatz(
     }) => {
       return deleteEinsatzById(eventId);
     },
-    onMutate: async () => {
+    onMutate: async ({ eventId }) => {
       await queryClient.cancelQueries({
         queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
       });
-      return {};
+      if (!activeOrgId) return {};
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data || !data.events.some((e) => e.id === eventId)) continue;
+        previousData.push([key, data]);
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: data.events.filter((e) => e.id !== eventId),
+        });
+      }
+      return { previousData };
     },
-    onError: (error) => {
+    onError: (error, _vars, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
     },
@@ -410,13 +557,30 @@ export function useDeleteMultipleEinsaetze(
     mutationFn: async ({ eventIds }: { eventIds: string[] }) => {
       return deleteEinsaetzeByIds(eventIds);
     },
-    onMutate: async () => {
+    onMutate: async ({ eventIds }) => {
       await queryClient.cancelQueries({
         queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
       });
-      return {};
+      if (!activeOrgId) return {};
+      const idSet = new Set(eventIds);
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data || !data.events.some((e) => idSet.has(e.id))) continue;
+        previousData.push([key, data]);
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: data.events.filter((e) => !idSet.has(e.id)),
+        });
+      }
+      return { previousData };
     },
-    onError: (error) => {
+    onError: (error, _vars, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
     },

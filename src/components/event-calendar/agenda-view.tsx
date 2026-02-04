@@ -10,6 +10,7 @@ import { CalendarMode } from './types';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useSession } from 'next-auth/react';
+import { Loader } from 'lucide-react';
 
 interface AgendaViewProps {
   events: CalendarEvent[];
@@ -96,8 +97,8 @@ export function AgendaView({
           <h3 className="text-lg font-medium">
             Keine geplanten {einsatz_plural}
           </h3>
-          <p className="text-muted-foreground">
-            Es sind noch keine {einsatz_plural} eingetragen.
+          <p className="text-muted-foreground flex items-center gap-2">
+            Lade {einsatz_plural}... <Loader className="animate-spin" />
           </p>
         </div>
       ) : (
