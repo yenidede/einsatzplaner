@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 const SCROLL_OFFSET = 240;
+const SCROLL_RETRY_DELAY_MS = 60;
+const SCROLL_MAX_RETRIES = 20;
 
 interface UseSectionNavigationOptions<T extends string> {
   navItems: readonly { id: T }[];
@@ -23,6 +25,7 @@ export function useSectionNavigation<T extends string>({
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const hasScrolledRef = useRef(false); // Track if we've done initial scroll
   const isInitialMountRef = useRef(true); // Track initial mount
+  const prevShouldSetDefaultRef = useRef(shouldSetDefault);
 
   // Store values in refs to avoid dependency array issues
   const navItemsRef = useRef(navItems);
@@ -47,27 +50,36 @@ export function useSectionNavigation<T extends string>({
       : null;
   }, []);
 
-  // Scroll to section with offset
-  const scrollToSection = useCallback((section: T, skipDelay = false) => {
-    const element = sectionRefs.current[section];
-    if (element) {
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.scrollY - SCROLL_OFFSET;
-      const scrollFn = () => {
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth',
-        });
-        hasScrolledRef.current = true;
-      };
+  // Scroll to section with offset; retries when target element is not yet in DOM
+  const scrollToSection = useCallback(
+    (section: T, skipDelay = false, attempt = 0) => {
+      const element = sectionRefs.current[section];
+      if (element) {
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition =
+          elementPosition + window.scrollY - SCROLL_OFFSET;
+        const scrollFn = () => {
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth',
+          });
+          hasScrolledRef.current = true;
+        };
 
-      if (skipDelay) {
-        scrollFn();
-      } else {
-        setTimeout(scrollFn, 100);
+        if (skipDelay) {
+          scrollFn();
+        } else {
+          setTimeout(scrollFn, 100);
+        }
+      } else if (attempt < SCROLL_MAX_RETRIES) {
+        setTimeout(
+          () => scrollToSection(section, skipDelay, attempt + 1),
+          SCROLL_RETRY_DELAY_MS
+        );
       }
-    }
-  }, []);
+    },
+    []
+  );
 
   // Handle section change
   const handleSectionChange = useCallback(
@@ -118,6 +130,41 @@ export function useSectionNavigation<T extends string>({
 
     isInitialMountRef.current = false;
   }, [getHashSection, scrollToSection]);
+
+  // When content becomes ready (shouldSetDefault flips false → true), set default and scroll
+  useEffect(() => {
+    const prev = prevShouldSetDefaultRef.current;
+    prevShouldSetDefaultRef.current = shouldSetDefault;
+
+    if (prev === false && shouldSetDefault === true && typeof window !== 'undefined') {
+      const currentHash = window.location.hash.slice(1);
+      const hashSection = getHashSection();
+      let targetSection: T;
+
+      if (hashSection) {
+        targetSection = hashSection;
+        setActiveSection(hashSection);
+      } else {
+        targetSection = defaultSectionRef.current;
+        window.history.replaceState(
+          null,
+          '',
+          `${basePathRef.current}#${targetSection}`
+        );
+        setActiveSection(targetSection);
+      }
+
+      if (!hasScrolledRef.current) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (!hasScrolledRef.current) {
+              scrollToSection(targetSection, false);
+            }
+          });
+        });
+      }
+    }
+  }, [shouldSetDefault, getHashSection, scrollToSection]);
 
   // Handle hash changes (after initial mount)
   useEffect(() => {
