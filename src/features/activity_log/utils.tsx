@@ -4,13 +4,18 @@ import { Einsatz } from '../einsatz/types';
 import TooltipCustom from '@/components/tooltip-custom';
 import Link from 'next/link';
 
+const USER_NOT_FOUND_LABEL = 'Nutzer nicht gefunden';
+const EINSATZ_NOT_FOUND_LABEL = 'Einsatz nicht gefunden';
+
 type smallActivity = Pick<
   ChangeLogEntry,
   'change_type' | 'user' | 'affected_user_data'
 > & {
-  einsatz: Pick<Einsatz, 'title' | 'id' | 'start' | 'end'> & {
-    all_day?: boolean;
-  };
+  einsatz:
+    | (Pick<Einsatz, 'title' | 'id' | 'start' | 'end'> & {
+        all_day?: boolean;
+      })
+    | null;
 };
 
 /** Compiled once; used by getFormattedMessage to split message template. */
@@ -61,17 +66,17 @@ export function getFormattedMessage(
   activity: smallActivity,
   openDialog?: (id: string) => void
 ): JSX.Element {
-  const actorName = getFullName(activity.user);
+  const actorName = activity.user
+    ? getFullName(activity.user)
+    : USER_NOT_FOUND_LABEL;
   const affectedName = getFullName(
     activity.affected_user_data ?? { firstname: '', lastname: '' }
   );
 
+  const einsatzTitle = activity.einsatz?.title ?? EINSATZ_NOT_FOUND_LABEL;
   const message = openDialog
     ? activity.change_type.message
-    : activity.change_type.message.replace(
-        /Einsatz/g,
-        `'${activity.einsatz.title}'`
-      );
+    : activity.change_type.message.replace(/Einsatz/g, `'${einsatzTitle}'`);
 
   const parts = message.split(MESSAGE_PLACEHOLDER_REGEX);
   const { user, affected_user_data, einsatz } = activity;
@@ -81,7 +86,10 @@ export function getFormattedMessage(
       {parts.map((part, index) => {
         if (part === 'Username') {
           return (
-            <TooltipCustom text={user.email} key={user.email}>
+            <TooltipCustom
+              text={user?.email ?? USER_NOT_FOUND_LABEL}
+              key={user?.email ?? `user-${index}`}
+            >
               <span style={UNDERLINE_STYLE}>{actorName}</span>
             </TooltipCustom>
           );
@@ -97,6 +105,13 @@ export function getFormattedMessage(
           );
         }
         if (part === 'Einsatz') {
+          if (!einsatz) {
+            return (
+              <span key={`einsatz-${index}`} title={EINSATZ_NOT_FOUND_LABEL}>
+                &apos;{EINSATZ_NOT_FOUND_LABEL}&apos;
+              </span>
+            );
+          }
           const tooltipText = `'${einsatz.title}' (${formatEinsatzTooltipDateRange(einsatz.start, einsatz.end, einsatz.all_day ?? false)}) öffnen`;
           return (
             <TooltipCustom text={tooltipText} key={einsatz.id}>

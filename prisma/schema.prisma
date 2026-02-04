@@ -12,15 +12,15 @@ datasource db {
 
 model change_log {
   id                                  String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  einsatz_id                          String      @db.Uuid
-  user_id                             String      @db.Uuid
+  einsatz_id                          String?     @db.Uuid
+  user_id                             String?     @db.Uuid
   type_id                             String      @db.Uuid
   created_at                          DateTime    @default(now())
   affected_user                       String?     @db.Uuid
   user_change_log_affected_userTouser user?       @relation("change_log_affected_userTouser", fields: [affected_user], references: [id])
-  einsatz                             einsatz     @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
+  einsatz                             einsatz?    @relation(fields: [einsatz_id], references: [id])
   change_type                         change_type @relation(fields: [type_id], references: [id], onDelete: NoAction)
-  user                                user        @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  user                                user?       @relation(fields: [user_id], references: [id])
 }
 
 model change_type {
@@ -193,7 +193,7 @@ model user {
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
   organization                              organization?            @relation(fields: [active_org], references: [id], onDelete: Cascade)
-  salutation                                salutation?              @relation(fields: [salutationId], references: [id], onDelete: Cascade)
+  salutation                                salutation?              @relation(fields: [salutationId], references: [id], onDelete: Restrict)
   user_organization_role                    user_organization_role[]
   user_property_value                       user_property_value[]
   user_session                              user_session[]
@@ -207,7 +207,7 @@ model user_organization_role {
   role_id                String       @db.Uuid
   hasGetMailNotification Boolean?
   organization           organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  role                   role         @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  role                   role         @relation(fields: [role_id], references: [id], onDelete: NoAction)
   user                   user         @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 

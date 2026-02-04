@@ -185,11 +185,11 @@ export async function getEinsatzWithDetailsById(
       type_id: log.type_id,
       created_at: log.created_at,
       affected_user: log.affected_user,
-      user: {
+      user: log.user ? {
         id: log.user.id,
         firstname: log.user.firstname,
         lastname: log.user.lastname,
-      },
+      } : null,
     })),
   };
 }
