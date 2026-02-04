@@ -84,6 +84,8 @@ export function useUpdateOrganization(orgId: string | undefined) {
       einsatz_name_singular?: string;
       einsatz_name_plural?: string;
       max_participants_per_helper?: number;
+      default_starttime?: string;
+      default_endtime?: string;
       allow_self_sign_out?: boolean;
     }) => {
       if (!orgId) {
@@ -101,6 +103,8 @@ export function useUpdateOrganization(orgId: string | undefined) {
         helper_name_plural: data.helper_name_plural,
         einsatz_name_singular: data.einsatz_name_singular,
         einsatz_name_plural: data.einsatz_name_plural,
+        default_starttime: data.default_starttime,
+        default_endtime: data.default_endtime,
         allow_self_sign_out: data.allow_self_sign_out,
       };
 

@@ -74,6 +74,8 @@ export default function OrganizationManagePage() {
   const [einsatzSingular, setEinsatzSingular] = useState('');
   const [einsatzPlural, setEinsatzPlural] = useState('');
   const [maxParticipantsPerHelper, setMaxParticipantsPerHelper] = useState('');
+  const [defaultStarttime, setDefaultStarttime] = useState('09:00');
+  const [defaultEndtime, setDefaultEndtime] = useState('10:00');
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [smallLogoUrl, setSmallLogoUrl] = useState<string>('');
@@ -99,6 +101,8 @@ export default function OrganizationManagePage() {
     einsatzSingular: string;
     einsatzPlural: string;
     maxParticipantsPerHelper: string;
+    defaultStarttime: string;
+    defaultEndtime: string;
     website: string;
     vat: string;
     zvr: string;
@@ -148,6 +152,8 @@ export default function OrganizationManagePage() {
       setMaxParticipantsPerHelper(
         orgData.max_participants_per_helper?.toString() ?? ''
       );
+      setDefaultStarttime(orgData.default_starttime ?? '09:00');
+      setDefaultEndtime(orgData.default_endtime ?? '10:00');
       setEinsatzSingular(orgData.einsatz_name_singular ?? 'Einsatz');
       setEinsatzPlural(orgData.einsatz_name_plural ?? 'Einsätze');
 
@@ -164,6 +170,8 @@ export default function OrganizationManagePage() {
         einsatzPlural: orgData.einsatz_name_plural ?? 'Einsätze',
         maxParticipantsPerHelper:
           orgData.max_participants_per_helper?.toString() ?? '',
+        defaultStarttime: orgData.default_starttime ?? '09:00',
+        defaultEndtime: orgData.default_endtime ?? '10:00',
         website: '', // Loaded separately via useOrganizationDetails
         vat: '', // Loaded separately via useOrganizationDetails
         zvr: '', // Loaded separately via useOrganizationDetails
@@ -193,6 +201,8 @@ export default function OrganizationManagePage() {
         einsatzPlural: orgData?.einsatz_name_plural ?? 'Einsätze',
         maxParticipantsPerHelper:
           orgData?.max_participants_per_helper?.toString() ?? '',
+        defaultStarttime: orgData?.default_starttime ?? '09:00',
+        defaultEndtime: orgData?.default_endtime ?? '10:00',
         website: '',
         vat: '',
         zvr: '',
@@ -240,6 +250,8 @@ export default function OrganizationManagePage() {
       einsatzSingular !== initial.einsatzSingular ||
       einsatzPlural !== initial.einsatzPlural ||
       maxParticipantsPerHelper !== initial.maxParticipantsPerHelper ||
+      defaultStarttime !== initial.defaultStarttime ||
+      defaultEndtime !== initial.defaultEndtime ||
       website !== initial.website ||
       vat !== initial.vat ||
       zvr !== initial.zvr ||
@@ -262,6 +274,8 @@ export default function OrganizationManagePage() {
           ? parseInt(maxParticipantsPerHelper)
           : undefined,
         einsatz_name_plural: einsatzPlural,
+        default_starttime: defaultStarttime,
+        default_endtime: defaultEndtime,
         allow_self_sign_out: allowSelfSignOut,
       });
 
@@ -279,6 +293,8 @@ export default function OrganizationManagePage() {
           einsatzSingular,
           einsatzPlural,
           maxParticipantsPerHelper,
+          defaultStarttime,
+          defaultEndtime,
           website,
           vat,
           zvr,
@@ -300,6 +316,8 @@ export default function OrganizationManagePage() {
     einsatzSingular,
     einsatzPlural,
     maxParticipantsPerHelper,
+    defaultStarttime,
+    defaultEndtime,
     logoFile,
     website,
     vat,
@@ -615,6 +633,10 @@ export default function OrganizationManagePage() {
                 onEinsatzPluralChange={setEinsatzPlural}
                 maxParticipantsPerHelper={maxParticipantsPerHelper}
                 onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+                defaultStarttime={defaultStarttime}
+                defaultEndtime={defaultEndtime}
+                onDefaultStarttimeChange={setDefaultStarttime}
+                onDefaultEndtimeChange={setDefaultEndtime}
                 allowSelfSignOut={allowSelfSignOut}
                 onAllowSelfSignOutChange={setAllowSelfSignOut}
               />

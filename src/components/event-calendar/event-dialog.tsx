@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
 import { FileDown } from 'lucide-react';
@@ -267,6 +267,10 @@ export function EventDialogVerwaltung({
     formErrors: [],
   });
 
+  // Track last programmatically synced start/end times so we don't overwrite user edits
+  const lastSyncedStartRef = useRef<string | null>(null);
+  const lastSyncedEndRef = useRef<string | null>(null);
+
   // Update form resolver when dynamicSchema changes
   useEffect(() => {
     if (dynamicSchema) {
@@ -318,8 +322,16 @@ export function EventDialogVerwaltung({
       let nextFormData: EinsatzFormData | undefined;
 
       setStaticFormData((prev) => {
-        nextFormData = { ...prev, ...updates };
-        return nextFormData;
+        const merged = { ...prev, ...updates };
+        // When switching from "Ganztägig" to timed, reset start/end time to org defaults
+        if (prev.all_day === true && updates.all_day === false) {
+          merged.startTime = orgDefaultStartTime;
+          merged.endTime = orgDefaultEndTime;
+          lastSyncedStartRef.current = orgDefaultStartTime;
+          lastSyncedEndRef.current = orgDefaultEndTime;
+        }
+        nextFormData = merged;
+        return merged;
       });
 
       // Validate just the updated fields using partial schema
@@ -406,7 +418,7 @@ export function EventDialogVerwaltung({
         });
       }
     },
-    []
+    [orgDefaultStartTime, orgDefaultEndTime]
   );
 
   const getDefaultStaticFormData = useCallback((): EinsatzFormData => {
@@ -434,28 +446,25 @@ export function EventDialogVerwaltung({
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
-        // Ensure we start from org-specific defaults each time
-        setStaticFormData(getDefaultStaticFormData());
-        setActiveTemplateId(createEinsatz.template_id || null);
-        handleFormDataChange({ title: createEinsatz.title || '' });
-        if (createEinsatz.start) {
-          const start = createEinsatz.start;
-          handleFormDataChange({
-            startDate: start,
-            startTime: formatTimeForInput(start),
-          });
-        }
-        if (createEinsatz.end) {
-          const end = createEinsatz.end;
-          handleFormDataChange({
-            endDate: end,
-            endTime: formatTimeForInput(end),
-          });
-        }
-        handleFormDataChange({
-          title: createEinsatz.title || '',
-          all_day: createEinsatz.all_day || false,
-        });
+        // Use org defaults once organizations are available so we don't show 09:00/10:00 and only update after close
+        const base = getDefaultStaticFormData();
+        const createFormData: EinsatzFormData = {
+          ...base,
+          title: createEinsatz.title ?? '',
+          all_day: createEinsatz.all_day ?? false,
+          ...(createEinsatz.start && {
+            startDate: createEinsatz.start,
+            startTime: formatTimeForInput(createEinsatz.start),
+          }),
+          ...(createEinsatz.end && {
+            endDate: createEinsatz.end,
+            endTime: formatTimeForInput(createEinsatz.end),
+          }),
+        };
+        setStaticFormData(createFormData);
+        lastSyncedStartRef.current = createFormData.startTime;
+        lastSyncedEndRef.current = createFormData.endTime;
+        setActiveTemplateId(createEinsatz.template_id ?? null);
         // Reset errors when opening dialog
         setErrors({
           fieldErrors: {},
@@ -502,6 +511,42 @@ export function EventDialogVerwaltung({
     resetForm,
     isOpen,
     getDefaultStaticFormData,
+    orgDefaultStartTime,
+    orgDefaultEndTime,
+    organizations,
+  ]);
+
+  // When in create mode and org defaults become available, sync start/end time only if user hasn't edited them
+  useEffect(() => {
+    if (
+      isOpen &&
+      currentEinsatz &&
+      typeof currentEinsatz === 'object' &&
+      !currentEinsatz.id &&
+      activeOrg
+    ) {
+      setStaticFormData((prev) => {
+        const userHasEditedTimes =
+          lastSyncedStartRef.current !== null &&
+          lastSyncedEndRef.current !== null &&
+          (prev.startTime !== lastSyncedStartRef.current ||
+            prev.endTime !== lastSyncedEndRef.current);
+        if (userHasEditedTimes) {
+          return prev;
+        }
+        lastSyncedStartRef.current = orgDefaultStartTime;
+        lastSyncedEndRef.current = orgDefaultEndTime;
+        return {
+          ...prev,
+          startTime: orgDefaultStartTime,
+          endTime: orgDefaultEndTime,
+        };
+      });
+    }
+  }, [
+    isOpen,
+    currentEinsatz,
+    activeOrg,
     orgDefaultStartTime,
     orgDefaultEndTime,
   ]);
