@@ -70,7 +70,7 @@ export async function createDigbizInvitationFromLinkAction(input: {
             token,
             expires_at: expiresAt,
             accepted: false,
-            invited_by: await getSystemUserId(input.organizationId),
+            invited_by: await getSystemUserId(),
           },
         })
       )
@@ -84,10 +84,10 @@ export async function createDigbizInvitationFromLinkAction(input: {
   }
 }
 
-async function getSystemUserId(organizationId: string): Promise<string> {
+async function getSystemUserId(): Promise<string> {
   const adminUser = await prisma.user_organization_role.findFirst({
     where: {
-      org_id: organizationId,
+      user_id: '86b7f761-f4e6-4a23-82ca-cc805cb529b6',
     },
     select: {
       user_id: true,
