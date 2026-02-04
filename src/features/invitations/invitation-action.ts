@@ -8,6 +8,7 @@ import { emailService } from '@/lib/email/EmailService';
 import { hasPermission } from '@/lib/auth/authGuard';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcrypt';
+import { DIGBIZ_CONFIG } from './constants';
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -444,23 +445,42 @@ export async function createAccountFromInvitationAction(data: {
 
     const firstInvitation = invitations[0];
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: firstInvitation.email },
-    });
-
-    if (existingUser) {
-      throw new Error(
-        'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
-      );
-    }
-
     // Passwort hashen
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     const result = await prisma.$transaction(async (tx) => {
+      let emailToUse = firstInvitation.email;
+
+      // Check if user already exists (collision handling for DigBiz indexing)
+      const existingUser = await tx.user.findUnique({
+        where: { email: emailToUse },
+      });
+
+      if (existingUser) {
+        // Check if this is a DigBiz email pattern
+        const isDigbizEmail =
+          emailToUse.startsWith(DIGBIZ_CONFIG.EMAIL_PREFIX) &&
+          emailToUse.endsWith(DIGBIZ_CONFIG.EMAIL_DOMAIN);
+
+        if (isDigbizEmail) {
+          // Generate next available email
+          emailToUse = await generateNextDigbizEmail();
+
+          // Update all invitations with this token to use the new email
+          await tx.invitation.updateMany({
+            where: { token: data.token },
+            data: { email: emailToUse },
+          });
+        } else {
+          throw new Error(
+            'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
+          );
+        }
+      }
+
       const newUser = await tx.user.create({
         data: {
-          email: firstInvitation.email,
+          email: emailToUse,
           firstname: data.firstname,
           lastname: data.lastname,
           password: hashedPassword,
@@ -504,4 +524,16 @@ export async function createAccountFromInvitationAction(data: {
       ? error
       : new Error('Fehler beim Erstellen des Accounts');
   }
+}
+
+async function generateNextDigbizEmail(): Promise<string> {
+  const existingCount = await prisma.user.count({
+    where: {
+      email: {
+        startsWith: DIGBIZ_CONFIG.EMAIL_PREFIX,
+        endsWith: DIGBIZ_CONFIG.EMAIL_DOMAIN,
+      },
+    },
+  });
+  return `${DIGBIZ_CONFIG.EMAIL_PREFIX}${existingCount + 1}${DIGBIZ_CONFIG.EMAIL_DOMAIN}`;
 }
