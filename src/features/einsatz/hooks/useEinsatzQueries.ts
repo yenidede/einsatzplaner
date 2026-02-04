@@ -6,7 +6,6 @@ import {
   getEinsaetzeForTableView,
 } from '@/features/einsatz/dal-einsatz';
 import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
-import { toast } from 'sonner';
 import type { ETV } from '@/features/einsatz/types';
 
 export function useEinsaetze(activeOrgId: string | null | undefined) {
