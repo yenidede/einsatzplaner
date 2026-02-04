@@ -6,11 +6,13 @@ import {
   createEinsatz,
   updateEinsatz,
   updateEinsatzTime,
+  updateEinsatzStatus,
   deleteEinsatzById,
   toggleUserAssignmentToEinsatz,
   deleteEinsaetzeByIds,
   type EinsatzConflict,
 } from '../dal-einsatz';
+import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { EinsatzCreate } from '../types';
 import { CalendarEvent } from '@/components/event-calendar/types';
 import { EinsatzCreateToCalendarEvent } from '@/components/event-calendar/einsatz-service';
@@ -226,6 +228,73 @@ export function useUpdateEinsatz(
     mutateAsync: (event: EinsatzCreate | CalendarEvent) =>
       mutation.mutateAsync({ event }),
   };
+}
+
+/** Minimal status shape for optimistic "bestätigt" display (verwalter_text/helper_text for colors). */
+const OPTIMISTIC_BESTAETIGT_STATUS = {
+  id: StatusValuePairs.vergeben_bestaetigt,
+  verwalter_text: 'bestätigt',
+  helper_text: 'vergeben',
+  verwalter_color: 'green',
+  helper_color: 'red',
+} as const;
+
+export function useConfirmEinsatz(
+  activeOrgId: string | undefined,
+  einsatzSingular: string = 'Einsatz'
+) {
+  const queryClient = useQueryClient();
+  const queryKey = queryKeys.einsaetze(activeOrgId ?? '');
+
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      return updateEinsatzStatus(
+        eventId,
+        StatusValuePairs.vergeben_bestaetigt
+      );
+    },
+    onMutate: async (eventId) => {
+      await queryClient.cancelQueries({ queryKey });
+
+      const previous =
+        queryClient.getQueryData<CalendarEvent[]>(queryKey) ?? [];
+
+      const updated = previous.map((event) => {
+        if (event.id !== eventId) return event;
+        return {
+          ...event,
+          status: { ...(event.status ?? {}), ...OPTIMISTIC_BESTAETIGT_STATUS },
+        };
+      });
+
+      queryClient.setQueryData<CalendarEvent[]>(queryKey, updated);
+
+      return { previous };
+    },
+    onError: (error, _eventId, ctx) => {
+      if (ctx?.previous != null) {
+        queryClient.setQueryData(queryKey, ctx.previous);
+      }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(
+        `${einsatzSingular} konnte nicht bestätigt werden: ${errorMessage}`
+      );
+    },
+    onSuccess: (data) => {
+      toast.success(`${einsatzSingular} '${data.title}' wurde bestätigt.`);
+    },
+    onSettled: (_data, _error, eventId) => {
+      queryClient.invalidateQueries({ queryKey });
+      if (eventId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.detailedEinsatz(eventId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: activityLogQueryKeys.allEinsatz(eventId),
+        });
+      }
+    },
+  });
 }
 
 export function useToggleUserAssignment(

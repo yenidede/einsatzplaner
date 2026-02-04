@@ -15,9 +15,15 @@ interface AgendaViewProps {
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   mode: CalendarMode;
+  onEventConfirm?: (eventId: string) => void;
 }
 
-export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
+export function AgendaView({
+  events,
+  onEventSelect,
+  mode,
+  onEventConfirm,
+}: AgendaViewProps) {
   const { data: session } = useSession();
   const activeOrgId = session?.user?.activeOrganization?.id;
   const { data: organizations } = useOrganizations(session?.user.orgIds);
@@ -114,6 +120,7 @@ export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
                   view="agenda"
                   onClick={(e) => handleEventClick(event, e)}
                   mode={mode}
+                  onConfirm={onEventConfirm}
                 />
               ))}
             </div>

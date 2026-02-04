@@ -15,6 +15,7 @@ import z from 'zod';
 import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
 import { createChangeLogAuto } from '../activity_log/activity_log-dal';
 import { BadRequestError, ForbiddenError } from '@/lib/errors';
+import { StatusValuePairs } from '@/components/event-calendar/constants';
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -505,7 +506,7 @@ export async function createEinsatz({
 
       for (const typeName of changeTypeNames) {
         const affectedUserId =
-          typeName === 'create' ? null : affectedUserIds[0] || null;
+          typeName === 'E-Erstellt' ? null : affectedUserIds[0] || null;
 
         await createChangeLogAuto({
           einsatzId: createdEinsatz.id,
@@ -690,7 +691,7 @@ export async function toggleUserAssignmentToEinsatz(
       await createChangeLogAuto({
         einsatzId: einsatzId,
         userId: session.user.id,
-        typeName: 'cancel',
+        typeName: 'N-Abgesagt',
         affectedUserId: session.user.id,
       });
     } catch (error) {
@@ -870,6 +871,60 @@ export async function updateEinsatz({
       status: 500,
     });
   }
+}
+
+export async function updateEinsatzStatus(
+  einsatzId: string,
+  statusId: string
+): Promise<Einsatz> {
+  const { session, userIds } = await requireAuth();
+
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:update',
+      session.user.activeOrganization?.id
+    ))
+  ) {
+    throw new ForbiddenError('Fehlende Berechtigungen');
+  }
+
+  const existingEinsatz = await prisma.einsatz.findUnique({
+    where: { id: einsatzId },
+    select: { id: true, org_id: true },
+  });
+
+  if (!existingEinsatz) {
+    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
+      status: 404,
+    });
+  }
+
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  if (!userOrgIds.includes(existingEinsatz.org_id)) {
+    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
+  }
+
+  const updatedEinsatz = await prisma.einsatz.update({
+    where: { id: einsatzId },
+    data: {
+      status_id: statusId,
+      updated_at: new Date(),
+    },
+  });
+
+  if (
+    statusId === StatusValuePairs.vergeben_bestaetigt &&
+    session?.user?.id
+  ) {
+    await createChangeLogAuto({
+      einsatzId,
+      userId: session.user.id,
+      typeName: 'E-Bestaetigt',
+    });
+  }
+
+  return updatedEinsatz;
 }
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {

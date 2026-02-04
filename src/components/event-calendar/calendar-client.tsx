@@ -16,6 +16,7 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 import {
   useCreateEinsatz,
   useUpdateEinsatz,
+  useConfirmEinsatz,
   useToggleUserAssignment,
   useDeleteEinsatz,
   useDeleteMultipleEinsaetze,
@@ -197,6 +198,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     einsatz_singular,
     handleConflictCancel
   );
+  const confirmMutation = useConfirmEinsatz(activeOrgId, einsatz_singular);
   const toggleUserAssignToEvent = useToggleUserAssignment(
     activeOrgId,
     session?.user.id,
@@ -238,6 +240,10 @@ export default function Component({ mode }: { mode: CalendarMode }) {
 
   const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
     updateMutation.mutate(updatedEvent);
+  };
+
+  const handleEventConfirm = (eventId: string) => {
+    confirmMutation.mutate(eventId);
   };
 
   const handleAssignToggleEvent = async (eventId: string) => {
@@ -352,6 +358,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         onAssignToggleEvent={handleAssignToggleEvent}
         onEventTimeUpdate={handleEventTimeUpdate}
         onEventDelete={handleEventDelete}
+        onEventConfirm={handleEventConfirm}
         onMultiEventDelete={handleMultiEventDelete}
         mode={mode}
         activeOrgId={activeOrgId}

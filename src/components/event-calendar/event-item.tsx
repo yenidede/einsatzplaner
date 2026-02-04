@@ -16,6 +16,7 @@ import {
 import { CalendarMode } from './types';
 import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
 import { ContextMenuEventRightClick } from '../context-menu';
+import { StatusValuePairs } from './constants';
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -117,6 +118,7 @@ interface EventItemProps {
   onMouseEnter?: (e: React.MouseEvent) => void;
   mode: CalendarMode;
   onDelete?: (eventId: string, eventTitle: string) => void;
+  onConfirm?: (eventId: string) => void;
 }
 
 export function EventItem({
@@ -137,7 +139,12 @@ export function EventItem({
   onMouseEnter: onMouseEnterProp,
   mode,
   onDelete,
+  onConfirm,
 }: EventItemProps) {
+  const canConfirm =
+    (event.helpersNeeded ?? 0) > 0 &&
+    (event.assignedUsers?.length ?? 0) >= (event.helpersNeeded ?? 0) &&
+    event.status?.id !== StatusValuePairs.vergeben_bestaetigt;
   const prefetchDetailedEinsatz = usePrefetchDetailedEinsatz();
 
   const handleMouseEnter = useCallback(
@@ -232,6 +239,8 @@ export function EventItem({
         eventId={event.id}
         eventTitle={event.title}
         onDelete={onDelete || (() => {})}
+        canConfirm={canConfirm}
+        onConfirm={onConfirm}
       />
     );
   }
@@ -275,6 +284,8 @@ export function EventItem({
         eventId={event.id}
         eventTitle={event.title}
         onDelete={onDelete || (() => {})}
+        canConfirm={canConfirm}
+        onConfirm={onConfirm}
       />
     );
   }
@@ -317,6 +328,8 @@ export function EventItem({
       eventId={event.id}
       eventTitle={event.title}
       onDelete={onDelete || (() => {})}
+      canConfirm={canConfirm}
+      onConfirm={onConfirm}
     />
   );
 }
