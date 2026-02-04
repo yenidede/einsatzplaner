@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { format, isPast } from 'date-fns';
 import { useSession } from 'next-auth/react';
 
 import { cn } from '@/lib/utils';
-import { usePrefetchDetailedEinsatz } from '@/features/einsatz/hooks/useEinsatzQueries';
 import {
   getBorderRadiusClasses,
   getEventColorClasses,
@@ -38,7 +37,6 @@ interface EventWrapperProps {
   dndAttributes?: DraggableAttributes;
   onMouseDown?: (e: React.MouseEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
-  onMouseEnter?: (e: React.MouseEvent) => void;
   mode: CalendarMode;
 }
 
@@ -56,7 +54,6 @@ function EventWrapper({
   dndAttributes,
   onMouseDown,
   onTouchStart,
-  onMouseEnter,
   mode,
 }: EventWrapperProps) {
   // Always use the currentTime (if provided) to determine if the event is in the past
@@ -91,7 +88,6 @@ function EventWrapper({
       onClick={onClick}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
-      onMouseEnter={onMouseEnter}
       {...dndListeners}
       {...dndAttributes}
     >
@@ -115,7 +111,6 @@ interface EventItemProps {
   dndAttributes?: DraggableAttributes;
   onMouseDown?: (e: React.MouseEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
-  onMouseEnter?: (e: React.MouseEvent) => void;
   mode: CalendarMode;
   onDelete?: (eventId: string, eventTitle: string) => void;
   onConfirm?: (eventId: string) => void;
@@ -136,7 +131,6 @@ export function EventItem({
   dndAttributes,
   onMouseDown,
   onTouchStart,
-  onMouseEnter: onMouseEnterProp,
   mode,
   onDelete,
   onConfirm,
@@ -145,15 +139,6 @@ export function EventItem({
     (event.helpersNeeded ?? 0) > 0 &&
     (event.assignedUsers?.length ?? 0) >= (event.helpersNeeded ?? 0) &&
     event.status?.id !== StatusValuePairs.vergeben_bestaetigt;
-  const prefetchDetailedEinsatz = usePrefetchDetailedEinsatz();
-
-  const handleMouseEnter = useCallback(
-    (e: React.MouseEvent) => {
-      prefetchDetailedEinsatz(event.id);
-      onMouseEnterProp?.(e);
-    },
-    [prefetchDetailedEinsatz, event.id, onMouseEnterProp]
-  );
 
   // Use the provided currentTime (for dragging) or the event's actual time
   const userId = useSession().data?.user?.id;
@@ -207,7 +192,6 @@ export function EventItem({
         dndAttributes={dndAttributes}
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
-        onMouseEnter={handleMouseEnter}
         mode={mode}
       >
         {children || (
@@ -263,7 +247,6 @@ export function EventItem({
         dndAttributes={dndAttributes}
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
-        onMouseEnter={handleMouseEnter}
         mode={mode}
       >
         <div className="leading-tight font-medium wrap-break-word">
@@ -302,7 +285,6 @@ export function EventItem({
       onClick={onClick}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
-      onMouseEnter={handleMouseEnter}
       {...dndListeners}
       {...dndAttributes}
     >

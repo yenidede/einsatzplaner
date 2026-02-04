@@ -6,8 +6,10 @@ import type {
   EinsatzForCalendar,
   EinsatzCreate,
   EinsatzDetailed,
+  EinsatzDetailedForCalendar,
   ETV,
 } from '@/features/einsatz/types';
+import { addMonths, endOfMonth, subMonths, startOfMonth } from 'date-fns';
 import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
 
 import { ValidateEinsatzCreate } from './validation-service';
@@ -235,6 +237,33 @@ export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
 
 export async function getEinsatzForCalendar(id: string) {
   return getEinsatzForCalendarFromDb(id);
+}
+
+export async function getDetailedEinsaetzeForCalendarRange(
+  org_ids: string[],
+  focusDate: Date
+): Promise<EinsatzDetailedForCalendar[] | Response> {
+  const { session, userIds } = await requireAuth();
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:read',
+      session.user.activeOrganization?.id
+    ))
+  ) {
+    return new Response('Unauthorized', { status: 403 });
+  }
+  const userOrgIds = userIds?.orgIds ?? (userIds?.orgId ? [userIds.orgId] : []);
+  const filterOrgIds =
+    org_ids.length > 0 ? org_ids : userOrgIds;
+  const rangeStart = startOfMonth(subMonths(focusDate, 1));
+  const rangeEnd = endOfMonth(addMonths(focusDate, 1));
+  const rows = await getDetailedEinsaetzeForCalendarRangeFromDb(
+    filterOrgIds,
+    rangeStart,
+    rangeEnd
+  );
+  return rows.map((row) => mapRawEinsatzToDetailedForCalendar(row));
 }
 
 export async function getEinsaetzeForTableView(
@@ -1206,6 +1235,157 @@ async function getAllEinsatzeForCalendarFromDb(
     where: {
       org_id: {
         in: org_ids,
+      },
+    },
+    orderBy: [{ start: 'asc' }, { title: 'asc' }],
+  });
+}
+
+type RawEinsatzWithDetails = Awaited<
+  ReturnType<typeof getEinsatzWithDetailsByIdFromDb>
+>;
+
+function mapRawEinsatzToDetailedForCalendar(
+  row: NonNullable<RawEinsatzWithDetails>
+): EinsatzDetailedForCalendar {
+  const {
+    einsatz_status,
+    einsatz_helper,
+    einsatz_to_category,
+    change_log,
+    einsatz_field,
+    einsatz_user_property,
+    ...rest
+  } = row;
+  const category_abbreviations = einsatz_to_category.map(
+    (c) => c.einsatz_category.abbreviation ?? ''
+  );
+  return {
+    ...rest,
+    einsatz_status,
+    assigned_users: Array.from(
+      new Set(einsatz_helper.map((helper) => helper.user_id))
+    ),
+    einsatz_fields: einsatz_field.map((field) => ({
+      id: field.id,
+      field_name: field.field.name,
+      einsatz_id: field.einsatz_id,
+      field_id: field.field_id,
+      value: field.value,
+      group_name: field.field.group_name,
+      field_type: { datatype: field.field.type?.datatype ?? null },
+    })),
+    categories: einsatz_to_category.map((cat) => cat.einsatz_category.id),
+    user_properties: einsatz_user_property.map((prop) => ({
+      user_property_id: prop.user_property_id,
+      is_required: prop.is_required,
+      min_matching_users: prop.min_matching_users,
+    })),
+    change_log: change_log.map((log) => ({
+      id: log.id,
+      einsatz_id: log.einsatz_id,
+      user_id: log.user_id,
+      type_id: log.type_id,
+      created_at: log.created_at,
+      affected_user: log.affected_user,
+      user: log.user
+        ? {
+            id: log.user.id,
+            firstname: log.user.firstname,
+            lastname: log.user.lastname,
+          }
+        : null,
+    })),
+    category_abbreviations,
+  };
+}
+
+async function getDetailedEinsaetzeForCalendarRangeFromDb(
+  org_ids: string[],
+  rangeStart: Date,
+  rangeEnd: Date
+) {
+  if (!org_ids.length) return [];
+  return prisma.einsatz.findMany({
+    where: {
+      org_id: { in: org_ids },
+      start: { lt: rangeEnd },
+      end: { gt: rangeStart },
+    },
+    include: {
+      einsatz_helper: {
+        select: {
+          id: true,
+          einsatz_id: true,
+          user_id: true,
+          joined_at: true,
+          user: {
+            select: {
+              id: true,
+              firstname: true,
+              lastname: true,
+            },
+          },
+        },
+      },
+      einsatz_to_category: {
+        include: {
+          einsatz_category: true,
+        },
+      },
+      einsatz_status: true,
+      einsatz_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
+        },
+      },
+      change_log: {
+        select: {
+          id: true,
+          einsatz_id: true,
+          created_at: true,
+          user_id: true,
+          type_id: true,
+          affected_user: true,
+          user: {
+            select: {
+              id: true,
+              firstname: true,
+              lastname: true,
+            },
+          },
+          change_type: true,
+        },
+      },
+      einsatz_field: {
+        select: {
+          id: true,
+          einsatz_id: true,
+          field_id: true,
+          value: true,
+          field: {
+            select: {
+              id: true,
+              name: true,
+              type_id: true,
+              is_required: true,
+              placeholder: true,
+              default_value: true,
+              group_name: true,
+              is_multiline: true,
+              min: true,
+              max: true,
+              type: {
+                select: {
+                  name: true,
+                  datatype: true,
+                },
+              },
+            },
+          },
+        },
       },
     },
     orderBy: [{ start: 'asc' }, { title: 'asc' }],

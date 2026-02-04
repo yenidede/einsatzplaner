@@ -1,7 +1,12 @@
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { queryKeys } from '@/features/einsatz/queryKeys';
-import { getEinsaetzeData } from '@/components/event-calendar/utils';
+import {
+  getEinsaetzeData,
+  getEinsaetzeDataForCalendarRange,
+} from '@/components/event-calendar/utils';
+import type { CalendarRangeData } from '@/components/event-calendar/utils';
 import {
   getEinsatzWithDetailsById,
   getEinsaetzeForTableView,
@@ -15,6 +20,52 @@ export function useEinsaetze(activeOrgId: string | null | undefined) {
     queryFn: () => getEinsaetzeData(activeOrgId),
     enabled: !!activeOrgId,
   });
+}
+
+const calendarRangeQueryFn = async (
+  activeOrgId: string | undefined,
+  focusDate: Date
+): Promise<CalendarRangeData> => {
+  const result = await getEinsaetzeDataForCalendarRange(
+    activeOrgId,
+    focusDate
+  );
+  if (result instanceof Response) {
+    throw new Error(`Einsätze konnten nicht geladen werden: ${result.statusText}`);
+  }
+  return result;
+};
+
+export function useEinsaetzeForCalendar(
+  activeOrgId: string | null | undefined,
+  focusDate: Date
+) {
+  const monthKey = format(focusDate, 'yyyy-MM');
+  return useQuery<CalendarRangeData>({
+    queryKey: queryKeys.einsaetzeForCalendar(activeOrgId ?? '', monthKey),
+    queryFn: () =>
+      calendarRangeQueryFn(activeOrgId ?? undefined, focusDate),
+    enabled: !!activeOrgId,
+  });
+}
+
+/** Prefetch a calendar month's 3-month window (e.g. for adjacent-month navigation). */
+export function usePrefetchEinsaetzeForCalendar(
+  activeOrgId: string | null | undefined
+) {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (focusDate: Date) => {
+      if (!activeOrgId) return;
+      const monthKey = format(focusDate, 'yyyy-MM');
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.einsaetzeForCalendar(activeOrgId, monthKey),
+        queryFn: () =>
+          calendarRangeQueryFn(activeOrgId, focusDate),
+      });
+    },
+    [activeOrgId, queryClient]
+  );
 }
 
 export function useDetailedEinsatz(

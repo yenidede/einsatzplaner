@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { addMonths, subMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/features/einsatz/queryKeys';
@@ -8,9 +10,18 @@ import type {
   RealtimePostgresChangesPayload,
 } from '@supabase/supabase-js';
 
+function getMonthKeysForDate(date: Date): string[] {
+  const d = new Date(date);
+  return [
+    format(d, 'yyyy-MM'),
+  ];
+}
+
 type EinsatzPayload = RealtimePostgresChangesPayload<{
   id: string;
   org_id: string;
+  start?: string;
+  end?: string;
   [key: string]: unknown;
 }>;
 
@@ -51,9 +62,20 @@ export function useSupabaseRealtime(orgId?: string) {
         (payload) => {
           if (!isMountedRef.current) return;
 
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.einsaetze(orgId),
-          });
+          const record = (payload.new as { start?: string }) ?? (payload.old as { start?: string });
+          const start = record?.start;
+          if (orgId && start) {
+            const monthKeys = getMonthKeysForDate(new Date(start));
+            monthKeys.forEach((monthKey) => {
+              queryClient.invalidateQueries({
+                queryKey: queryKeys.einsaetzeForCalendar(orgId, monthKey),
+              });
+            });
+          } else if (orgId) {
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+            });
+          }
 
           const einsatzId =
             (payload.new as { id?: string })?.id ||
@@ -80,9 +102,11 @@ export function useSupabaseRealtime(orgId?: string) {
             (payload.new as { einsatz_id?: string })?.einsatz_id ||
             (payload.old as { einsatz_id?: string })?.einsatz_id;
 
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.einsaetze(orgId),
-          });
+          if (orgId) {
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+            });
+          }
 
           if (einsatzId) {
             queryClient.invalidateQueries({

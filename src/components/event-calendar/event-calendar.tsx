@@ -47,7 +47,7 @@ import {
   ListView,
 } from '@/components/event-calendar';
 import { CalendarEvent, CalendarMode } from './types';
-import { EinsatzCreate } from '@/features/einsatz/types';
+import { EinsatzCreate, EinsatzDetailed } from '@/features/einsatz/types';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { useEventDialog } from '@/hooks/use-event-dialog';
@@ -56,6 +56,11 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
+  /** When provided, calendar uses these instead of internal state (e.g. from CalendarClient). */
+  currentDate?: Date;
+  setCurrentDate?: (date: Date) => void;
+  /** Cached detailed einsatz for the selected id; dialogs use this to avoid refetch. */
+  cachedDetailedEinsatz?: EinsatzDetailed | null;
   onEventAdd: (event: EinsatzCreate) => void;
   onEventUpdate: (event: EinsatzCreate) => void;
   onAssignToggleEvent: (eventId: string) => void;
@@ -71,6 +76,9 @@ export interface EventCalendarProps {
 // TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
   events = [],
+  currentDate: currentDateProp,
+  setCurrentDate: setCurrentDateProp,
+  cachedDetailedEinsatz,
   onEventAdd,
   onEventUpdate,
   onAssignToggleEvent,
@@ -83,7 +91,9 @@ export function EventCalendar({
   mode,
   activeOrgId,
 }: EventCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [internalDate, setInternalDate] = useState(new Date());
+  const currentDate = currentDateProp ?? internalDate;
+  const setCurrentDate = setCurrentDateProp ?? setInternalDate;
   const {
     isOpen: isEventDialogOpen,
     selectedEinsatz,
@@ -496,7 +506,7 @@ export function EventCalendar({
 
         {mode === 'verwaltung' ? (
           <EventDialogVerwaltung
-            einsatz={selectedEinsatz}
+            einsatz={cachedDetailedEinsatz ?? selectedEinsatz}
             isOpen={isEventDialogOpen}
             onClose={closeDialog}
             onSave={handleEventSave}
@@ -509,6 +519,7 @@ export function EventCalendar({
                 ? selectedEinsatz
                 : selectedEinsatz?.id || null
             }
+            cachedDetailedEinsatz={cachedDetailedEinsatz}
             isOpen={isEventDialogOpen}
             onClose={closeDialog}
             onAssignToggleEvent={handleAssignToggleEvent}
