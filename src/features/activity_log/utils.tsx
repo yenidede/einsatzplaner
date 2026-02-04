@@ -117,7 +117,7 @@ export function getFormattedMessage(
           return (
             <TooltipCustom text={tooltipText} key={einsatz.id}>
               <Link
-                href={`/einsatz/${einsatz.id}`}
+                href={`/?einsatz=${einsatz.id}`}
                 className="cursor-pointer"
                 style={UNDERLINE_STYLE}
               >
