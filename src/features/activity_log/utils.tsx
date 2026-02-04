@@ -3,6 +3,7 @@ import { ChangeLogEntry } from './types';
 import { Einsatz } from '../einsatz/types';
 import TooltipCustom from '@/components/tooltip-custom';
 import Link from 'next/link';
+import { StatusValuePairs } from '@/components/event-calendar/constants';
 
 const USER_NOT_FOUND_LABEL = 'Nutzer nicht gefunden';
 const EINSATZ_NOT_FOUND_LABEL = 'Einsatz nicht gefunden';
@@ -139,34 +140,46 @@ export function detectChangeType(
   isNew: boolean,
   previousAssignedUsers: string[],
   currentAssignedUsers: string[],
-  currentUserId?: string
+  currentUserId?: string,
+  currentStatusId?: string
 ): string {
   if (isNew) {
-    return 'create';
+    return 'E-Erstellt';
   }
 
   if (previousAssignedUsers.length === 0 && currentAssignedUsers.length > 0) {
-    return 'assign';
+    return 'N-Zugewiesen';
   }
   if (previousAssignedUsers.length > 0 && currentAssignedUsers.length === 0) {
-    return 'cancel';
+    return currentUserId && previousAssignedUsers.includes(currentUserId)
+      ? 'N-Abgesagt'
+      : 'N-Entfernt';
   }
   if (
     currentUserId &&
     !previousAssignedUsers.includes(currentUserId) &&
     currentAssignedUsers.includes(currentUserId)
   ) {
-    return 'takeover';
+    return 'N-Eingetragen';
   }
   if (currentAssignedUsers.length > previousAssignedUsers.length) {
-    return 'assign';
+    return 'N-Zugewiesen';
   }
 
   if (currentAssignedUsers.length < previousAssignedUsers.length) {
-    return 'cancel';
+    const removedUsers = previousAssignedUsers.filter(
+      (id) => !currentAssignedUsers.includes(id)
+    );
+    return currentUserId && removedUsers.includes(currentUserId)
+      ? 'N-Abgesagt'
+      : 'N-Entfernt';
   }
 
-  return 'edit';
+  if (currentStatusId === StatusValuePairs.vergeben_bestaetigt) {
+    return 'E-Bestaetigt';
+  }
+
+  return 'E-Bearbeitet';
 }
 
 export function getAffectedUserId(
@@ -188,20 +201,21 @@ export function detectChangeTypes(
   isNew: boolean,
   previousAssignedUsers: string[],
   currentAssignedUsers: string[],
-  currentUserId?: string
+  currentUserId?: string,
+  currentStatusId?: string
 ): string[] {
   const changeTypes: string[] = [];
 
   if (isNew) {
-    changeTypes.push('create');
+    changeTypes.push('E-Erstellt');
     if (currentAssignedUsers.length > 0) {
-      changeTypes.push('assign');
+      changeTypes.push('N-Zugewiesen');
     }
     return changeTypes;
   }
 
   if (previousAssignedUsers.length === 0 && currentAssignedUsers.length > 0) {
-    changeTypes.push('assign');
+    changeTypes.push('N-Zugewiesen');
     return changeTypes;
   }
 
@@ -210,7 +224,7 @@ export function detectChangeTypes(
     !previousAssignedUsers.includes(currentUserId) &&
     currentAssignedUsers.includes(currentUserId)
   ) {
-    changeTypes.push('takeover');
+    changeTypes.push('N-Eingetragen');
     return changeTypes;
   }
 
@@ -220,18 +234,24 @@ export function detectChangeTypes(
     );
 
     if (currentUserId && removedUsers.includes(currentUserId)) {
-      changeTypes.push('cancel');
+      changeTypes.push('N-Abgesagt');
     } else {
-      changeTypes.push('remove');
+      changeTypes.push('N-Entfernt');
     }
     return changeTypes;
   }
 
   if (currentAssignedUsers.length > previousAssignedUsers.length) {
-    changeTypes.push('assign');
+    changeTypes.push('N-Zugewiesen');
     return changeTypes;
   }
-  changeTypes.push('edit');
+
+  if (currentStatusId === StatusValuePairs.vergeben_bestaetigt) {
+    changeTypes.push('E-Bestaetigt');
+    return changeTypes;
+  }
+
+  changeTypes.push('E-Bearbeitet');
   return changeTypes;
 }
 

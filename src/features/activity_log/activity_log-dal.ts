@@ -13,27 +13,35 @@ export async function createChangeLogAuto({
   einsatzId,
   userId,
   typeName,
+  typeId,
   affectedUserId,
 }: {
   einsatzId: string;
   userId: string;
-  typeName: string;
+  typeName?: string;
+  typeId?: string;
   affectedUserId?: string | null;
 }): Promise<ChangeLogEntry | null> {
   try {
-    const changeType = await prisma.change_type.findFirst({
-      where: { name: typeName },
-    });
+    const resolvedTypeId =
+      typeId ??
+      (typeName
+        ? (await prisma.change_type.findFirst({
+            where: { name: typeName },
+          }))?.id
+        : undefined);
 
-    if (!changeType) {
-      console.warn(`Change type "${typeName}" not found in database`);
+    if (!resolvedTypeId) {
+      console.warn(
+        `Change type not found: ${typeId != null ? 'typeId' : 'typeName'} "${typeId ?? typeName}"`
+      );
       return null;
     }
 
     return await createChangeLog({
       einsatzId,
       userId,
-      typeId: changeType.id,
+      typeId: resolvedTypeId,
       affectedUserId,
     });
   } catch (error) {
@@ -46,8 +54,14 @@ export async function createChangeLog(
   input: CreateChangeLogInput
 ): Promise<ChangeLogEntry> {
 
-  if (!input.einsatzId || !input.userId || !input.typeId) {
-    throw new Error('Invalid input');
+  const missingFields: string[] = [];
+  if (!input.einsatzId) missingFields.push('einsatzId');
+  if (!input.userId) missingFields.push('userId');
+  if (!input.typeId) missingFields.push('typeId');
+  if (missingFields.length > 0) {
+    throw new Error(
+      `Ungültige Eingabe: folgende Pflichtfelder fehlen: ${missingFields.join(', ')}.`
+    );
   }
 
   const changeLog = await prisma.change_log.create({

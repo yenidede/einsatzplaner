@@ -17,6 +17,8 @@ interface ContextMenuEventRightClickProps {
   eventTitle: string;
   onDelete: (eventId: string, eventTitle: string) => void;
   einsatzSingular?: string;
+  canConfirm?: boolean;
+  onConfirm?: (eventId: string) => void;
 }
 
 export function ContextMenuEventRightClick({
@@ -27,6 +29,8 @@ export function ContextMenuEventRightClick({
   eventTitle,
   onDelete,
   einsatzSingular = 'Einsatz',
+  canConfirm = false,
+  onConfirm,
 }: ContextMenuEventRightClickProps) {
   const { showDialog } = useAlertDialog();
   const { generatePdf } = usePdfGenerator();
@@ -50,6 +54,11 @@ export function ContextMenuEventRightClick({
     );
   };
 
+  const handleConfirmClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onConfirm?.(eventId);
+  };
+
   return (
     <ContextMenu>
       <ContextMenuTrigger
@@ -60,6 +69,11 @@ export function ContextMenuEventRightClick({
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52" onClick={(e) => e.stopPropagation()}>
         {heading && <ContextMenuLabel>{heading}</ContextMenuLabel>}
+        {canConfirm && onConfirm && (
+          <ContextMenuItem onClick={handleConfirmClick}>
+            Als bestätigt markieren
+          </ContextMenuItem>
+        )}
         <ContextMenuItem onClick={handlePDFClick}>
           PDF Generieren
         </ContextMenuItem>

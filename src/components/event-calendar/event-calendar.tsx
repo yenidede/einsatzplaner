@@ -61,6 +61,7 @@ export interface EventCalendarProps {
   onAssignToggleEvent: (eventId: string) => void;
   onEventTimeUpdate: (event: CalendarEvent) => void;
   onEventDelete: (eventId: string, eventTitle: string) => void;
+  onEventConfirm?: (eventId: string) => void;
   onMultiEventDelete: (eventIds: string[]) => void;
   className?: string;
   initialView?: CalendarView;
@@ -75,6 +76,7 @@ export function EventCalendar({
   onAssignToggleEvent,
   onEventTimeUpdate,
   onEventDelete,
+  onEventConfirm,
   onMultiEventDelete,
   className,
   initialView = 'month',
@@ -258,6 +260,10 @@ export function EventCalendar({
   const handleEventDelete = (eventId: string, eventTitle: string) => {
     onEventDelete?.(eventId, eventTitle);
     closeDialog();
+  };
+
+  const handleEventConfirm = (eventId: string) => {
+    onEventConfirm?.(eventId);
   };
 
   const handleMultiEventDelete = (eventIds: string[]) => {
@@ -446,6 +452,7 @@ export function EventCalendar({
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
             />
           )}
           {view === 'week' && (
@@ -455,6 +462,7 @@ export function EventCalendar({
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
             />
           )}
           {view === 'day' && (
@@ -464,6 +472,7 @@ export function EventCalendar({
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
             />
           )}
           {view === 'agenda' && (
@@ -471,6 +480,7 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
             />
           )}
           {view === 'list' && (

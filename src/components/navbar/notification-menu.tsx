@@ -125,10 +125,14 @@ export default function NotificationMenu() {
   );
   const unreadCount = unreadIds.size;
 
-  const handleMarkAllAsRead = () => {
-    const activityIds = activities.map((a) => a.id);
-    markAllActivitiesAsRead(activityIds);
-    setReadIds(new Set([...readIds, ...activityIds]));
+  const handleMarkAllAsRead = (
+    activityIdsOrEvent?: string[] | React.MouseEvent
+  ) => {
+    const ids = Array.isArray(activityIdsOrEvent)
+      ? activityIdsOrEvent
+      : activities.map((a) => a.id);
+    markAllActivitiesAsRead(ids);
+    setReadIds((prev) => new Set([...prev, ...ids]));
   };
 
   const handleNotificationClick = (id: string) => {
@@ -231,9 +235,9 @@ export default function NotificationMenu() {
                         {orgsData && orgsData.length > 1 && (
                           <span className="ms-2 min-w-0 truncate">
                             {activity.einsatz
-                              ? orgsData.find(
+                              ? (orgsData.find(
                                   (org) => org.id === activity.einsatz?.org_id
-                                )?.name ?? '–'
+                                )?.name ?? '–')
                               : '–'}
                           </span>
                         )}
