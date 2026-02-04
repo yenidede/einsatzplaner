@@ -45,6 +45,11 @@ export async function createChangeLogAuto({
 export async function createChangeLog(
   input: CreateChangeLogInput
 ): Promise<ChangeLogEntry> {
+
+  if (!input.einsatzId || !input.userId || !input.typeId) {
+    throw new Error('Invalid input');
+  }
+
   const changeLog = await prisma.change_log.create({
     data: {
       einsatz_id: input.einsatzId,
@@ -104,7 +109,7 @@ export async function createChangeLog(
     change_type: changeLog.change_type,
     user: changeLog.user,
     affected_user_data: changeLog.user_change_log_affected_userTouser,
-    einsatz: {
+    einsatz: changeLog.einsatz ? {
       id: changeLog.einsatz.id,
       title: changeLog.einsatz.title,
       start: changeLog.einsatz.start,
@@ -120,7 +125,7 @@ export async function createChangeLog(
           abbreviation: etc.einsatz_category.abbreviation,
         },
       })),
-    },
+    } : null,
   };
 }
 
@@ -182,34 +187,40 @@ export async function getActivities(
     skip: offset,
   });
 
-  return logs.map((log) => ({
-    id: log.id,
-    einsatz_id: log.einsatz_id,
-    user_id: log.user_id,
-    type_id: log.type_id,
-    created_at: log.created_at,
-    affected_user: log.affected_user,
-    change_type: log.change_type,
-    user: log.user,
-    affected_user_data: log.user_change_log_affected_userTouser,
-    einsatz: {
-      id: log.einsatz.id,
-      title: log.einsatz.title,
-      start: log.einsatz.start,
-      end: log.einsatz.end,
-      all_day: log.einsatz.all_day,
-      org_id: log.einsatz.org_id,
-      einsatz_to_category: log.einsatz.einsatz_to_category.map((etc) => ({
-        id: etc.id,
-        category_id: etc.category_id,
-        einsatz_category: {
-          id: etc.einsatz_category.id,
-          value: etc.einsatz_category.value,
-          abbreviation: etc.einsatz_category.abbreviation,
-        },
-      })),
-    },
-  }));
+  return logs.map((log) => {
+    const einsatz = log.einsatz
+      ? {
+        id: log.einsatz.id,
+        title: log.einsatz.title,
+        start: log.einsatz.start,
+        end: log.einsatz.end,
+        all_day: log.einsatz.all_day,
+        org_id: log.einsatz.org_id,
+        einsatz_to_category: log.einsatz.einsatz_to_category.map((etc) => ({
+          id: etc.id,
+          category_id: etc.category_id,
+          einsatz_category: {
+            id: etc.einsatz_category.id,
+            value: etc.einsatz_category.value,
+            abbreviation: etc.einsatz_category.abbreviation,
+          },
+        })),
+      }
+      : null;
+
+    return {
+      id: log.id,
+      einsatz_id: log.einsatz_id,
+      user_id: log.user_id,
+      type_id: log.type_id,
+      created_at: log.created_at,
+      affected_user: log.affected_user,
+      change_type: log.change_type,
+      user: log.user,
+      affected_user_data: log.user_change_log_affected_userTouser,
+      einsatz,
+    };
+  });
 }
 
 export async function getActivityLogs(
@@ -310,36 +321,42 @@ export async function getActivityLogs(
   ]);
 
   return {
-    activities: activities.map((activity) => ({
-      id: activity.id,
-      einsatz_id: activity.einsatz_id,
-      user_id: activity.user_id,
-      type_id: activity.type_id,
-      created_at: activity.created_at,
-      affected_user: activity.affected_user,
-      change_type: activity.change_type,
-      user: activity.user,
-      affected_user_data: activity.user_change_log_affected_userTouser,
-      einsatz: {
-        id: activity.einsatz.id,
-        title: activity.einsatz.title,
-        start: activity.einsatz.start,
-        end: activity.einsatz.end,
-        all_day: activity.einsatz.all_day,
-        org_id: activity.einsatz.org_id,
-        einsatz_to_category: activity.einsatz.einsatz_to_category.map(
-          (etc) => ({
-            id: etc.id,
-            category_id: etc.category_id,
-            einsatz_category: {
-              id: etc.einsatz_category.id,
-              value: etc.einsatz_category.value,
-              abbreviation: etc.einsatz_category.abbreviation,
-            },
-          })
-        ),
-      },
-    })),
+    activities: activities.map((activity) => {
+      const einsatz = activity.einsatz
+        ? {
+          id: activity.einsatz.id,
+          title: activity.einsatz.title,
+          start: activity.einsatz.start,
+          end: activity.einsatz.end,
+          all_day: activity.einsatz.all_day,
+          org_id: activity.einsatz.org_id,
+          einsatz_to_category: activity.einsatz.einsatz_to_category.map(
+            (etc) => ({
+              id: etc.id,
+              category_id: etc.category_id,
+              einsatz_category: {
+                id: etc.einsatz_category.id,
+                value: etc.einsatz_category.value,
+                abbreviation: etc.einsatz_category.abbreviation,
+              },
+            })
+          ),
+        }
+        : null;
+
+      return {
+        id: activity.id,
+        einsatz_id: activity.einsatz_id,
+        user_id: activity.user_id,
+        type_id: activity.type_id,
+        created_at: activity.created_at,
+        affected_user: activity.affected_user,
+        change_type: activity.change_type,
+        user: activity.user,
+        affected_user_data: activity.user_change_log_affected_userTouser,
+        einsatz,
+      };
+    }),
     total,
     hasMore: offset + limit < total,
   };
