@@ -2,15 +2,22 @@ import { z } from 'zod';
 
 /** Base schema for template metadata. Extend this when adding validation for custom fields etc. */
 export const templateFormBaseSchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Template Bezeichnung ist erforderlich')
-    .transform((s) => s.trim()),
+  name: z.preprocess(
+    (val) => (typeof val === 'string' ? val.trim() : val),
+    z.string().min(1, 'Template Bezeichnung ist erforderlich')
+  ),
   icon_id: z.string().min(1, 'Bitte wählen Sie ein Icon aus'),
-  description: z
-    .string()
-    .default('')
-    .transform((s) => (s.trim() === '' ? null : s)),
+  description: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null) return null;
+      if (typeof val === 'string') {
+        const t = val.trim();
+        return t === '' ? null : t;
+      }
+      return val;
+    },
+    z.union([z.string(), z.null()])
+  ),
 });
 
 export type TemplateFormBaseValues = z.infer<typeof templateFormBaseSchema>;

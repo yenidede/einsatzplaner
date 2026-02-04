@@ -27,9 +27,7 @@ export type UpdateTemplateInput = {
   all_day_default?: boolean | null;
   einsatzname_default?: string | null;
   time_start_default?: Date | null;
-  time_start_placeholder?: Date | null;
   time_end_default?: Date | null;
-  time_end_placeholder?: Date | null;
 };
 
 export async function getAllTemplatesByIds(ids: string[]) {
@@ -195,13 +193,7 @@ async function ensureTypeExists(datatype: string): Promise<string> {
   });
 
   if (!type) {
-    type = await prisma.type.create({
-      data: {
-        name: datatype,
-        datatype: datatype,
-        description: `Auto-generated type for ${datatype}`,
-      },
-    });
+    throw new Error(`Typ ${datatype} nicht gefunden.`);
   }
 
   return type.id;
@@ -392,20 +384,21 @@ export async function setTemplateRequiredUserPropertiesAction(
     validIdSet.has(c.user_property_id)
   );
 
-  await prisma.template_user_property.deleteMany({
-    where: { template_id: templateId },
-  });
-
-  if (filteredConfigs.length > 0) {
-    await prisma.template_user_property.createMany({
-      data: filteredConfigs.map((c) => ({
-        template_id: templateId,
-        user_property_id: c.user_property_id,
-        is_required: c.is_required,
-        min_matching_users: c.min_matching_users,
-      })),
+  await prisma.$transaction(async (tx) => {
+    await tx.template_user_property.deleteMany({
+      where: { template_id: templateId },
     });
-  }
+    if (filteredConfigs.length > 0) {
+      await tx.template_user_property.createMany({
+        data: filteredConfigs.map((c) => ({
+          template_id: templateId,
+          user_property_id: c.user_property_id,
+          is_required: c.is_required,
+          min_matching_users: c.min_matching_users,
+        })),
+      });
+    }
+  });
 
   return getTemplateById(templateId);
 }

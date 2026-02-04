@@ -35,7 +35,7 @@ function CopyableContactItem({
       <button
         type="button"
         onClick={handleCopy}
-        className="hover:bg-muted focus-visible:ring-ring flex cursor-pointer items-center justify-start gap-2 rounded-md px-1 py-0.5 transition-colors focus-visible:ring-2 focus-visible:outline"
+        className="hover:bg-muted focus-visible:ring-ring flex cursor-pointer items-center justify-start gap-2 rounded-md px-1 py-0.5 transition-colors focus-visible:ring-2"
         aria-label={`${label} in Zwischenablage kopieren`}
       >
         <Icon className="h-4 w-4 shrink-0 text-slate-600" />

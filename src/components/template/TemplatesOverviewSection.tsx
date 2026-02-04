@@ -52,7 +52,7 @@ export function TemplatesOverviewSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle id="vorlagen-heading">Vorlagen</CardTitle>
+        <CardTitle>Vorlagen</CardTitle>
         <CardDescription>
           {`Vorlagen helfen, Standardwerte, eigene Felder und automatische Prüfungen festzulegen. Änderungen betreffen keine bestehenden ${einsatz_plural}.`}
         </CardDescription>

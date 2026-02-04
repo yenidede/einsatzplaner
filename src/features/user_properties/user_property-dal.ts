@@ -132,13 +132,7 @@ async function ensureTypeExists(datatype: string): Promise<string> {
   });
 
   if (!type) {
-    type = await prisma.type.create({
-      data: {
-        name: datatype,
-        datatype: datatype,
-        description: `Auto-generated type for ${datatype}`,
-      },
-    });
+    throw new Error(`Type with datatype ${datatype} not found`);
   }
 
   return type.id;

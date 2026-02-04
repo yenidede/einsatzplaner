@@ -662,6 +662,9 @@ export default function OrganizationManagePage() {
           }}
           aria-labelledby="vorlagen-heading"
         >
+          <h2 id="vorlagen-heading" className="sr-only">
+            Vorlagen
+          </h2>
           <TemplatesOverviewSection orgId={orgId} />
         </section>
 
