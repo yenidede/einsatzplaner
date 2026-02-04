@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
 import { FileDown } from 'lucide-react';
@@ -267,6 +267,10 @@ export function EventDialogVerwaltung({
     formErrors: [],
   });
 
+  // Track last programmatically synced start/end times so we don't overwrite user edits
+  const lastSyncedStartRef = useRef<string | null>(null);
+  const lastSyncedEndRef = useRef<string | null>(null);
+
   // Update form resolver when dynamicSchema changes
   useEffect(() => {
     if (dynamicSchema) {
@@ -323,6 +327,8 @@ export function EventDialogVerwaltung({
         if (prev.all_day === true && updates.all_day === false) {
           merged.startTime = orgDefaultStartTime;
           merged.endTime = orgDefaultEndTime;
+          lastSyncedStartRef.current = orgDefaultStartTime;
+          lastSyncedEndRef.current = orgDefaultEndTime;
         }
         nextFormData = merged;
         return merged;
@@ -456,6 +462,8 @@ export function EventDialogVerwaltung({
           }),
         };
         setStaticFormData(createFormData);
+        lastSyncedStartRef.current = createFormData.startTime;
+        lastSyncedEndRef.current = createFormData.endTime;
         setActiveTemplateId(createEinsatz.template_id ?? null);
         // Reset errors when opening dialog
         setErrors({
@@ -508,7 +516,7 @@ export function EventDialogVerwaltung({
     organizations,
   ]);
 
-  // When in create mode and org defaults become available, sync start/end time so the form shows correct values
+  // When in create mode and org defaults become available, sync start/end time only if user hasn't edited them
   useEffect(() => {
     if (
       isOpen &&
@@ -518,12 +526,16 @@ export function EventDialogVerwaltung({
       activeOrg
     ) {
       setStaticFormData((prev) => {
-        if (
-          prev.startTime === orgDefaultStartTime &&
-          prev.endTime === orgDefaultEndTime
-        ) {
+        const userHasEditedTimes =
+          lastSyncedStartRef.current !== null &&
+          lastSyncedEndRef.current !== null &&
+          (prev.startTime !== lastSyncedStartRef.current ||
+            prev.endTime !== lastSyncedEndRef.current);
+        if (userHasEditedTimes) {
           return prev;
         }
+        lastSyncedStartRef.current = orgDefaultStartTime;
+        lastSyncedEndRef.current = orgDefaultEndTime;
         return {
           ...prev,
           startTime: orgDefaultStartTime,
