@@ -25,7 +25,7 @@ model change_log {
 
 model change_type {
   id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String
+  name            String       @unique
   message         String
   change_icon_url String
   change_color    String
