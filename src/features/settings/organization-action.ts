@@ -198,6 +198,8 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
       created_at: true,
       max_participants_per_helper: true,
       allow_self_sign_out: true,
+      default_starttime: true,
+      default_endtime: true,
       user_organization_role: {
         include: {
           user: {
@@ -245,7 +247,25 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
       role: uor.role,
     })),
     allow_self_sign_out: org.allow_self_sign_out,
+    default_starttime: formatTimeToHHMM(org.default_starttime),
+    default_endtime: formatTimeToHHMM(org.default_endtime),
   };
+}
+
+function formatTimeToHHMM(date: Date | null | undefined): string {
+  if (!date || !(date instanceof Date) || Number.isNaN(date.getTime()))
+    return '09:00';
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function parseHHMMToDate(value: string): Date {
+  const match = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return new Date(1970, 0, 1, 9, 0, 0);
+  const hours = Math.min(23, Math.max(0, parseInt(match[1], 10)));
+  const minutes = Math.min(59, Math.max(0, parseInt(match[2], 10)));
+  return new Date(1970, 0, 1, hours, minutes, 0);
 }
 
 export type OrganizationUpdateData = {
@@ -261,6 +281,10 @@ export type OrganizationUpdateData = {
   einsatz_name_plural?: string;
   logo_url?: string;
   allow_self_sign_out?: boolean;
+  /** Time as "HH:mm" (e.g. "09:00") */
+  default_starttime?: string;
+  /** Time as "HH:mm" (e.g. "17:00") */
+  default_endtime?: string;
 };
 
 export async function updateOrganizationAction(data: OrganizationUpdateData) {
@@ -308,9 +332,19 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
   if (data.allow_self_sign_out !== undefined)
     dataToUpdate.allow_self_sign_out = data.allow_self_sign_out;
 
+  const prismaData = {
+    ...dataToUpdate,
+    ...(data.default_starttime !== undefined && {
+      default_starttime: parseHHMMToDate(data.default_starttime),
+    }),
+    ...(data.default_endtime !== undefined && {
+      default_endtime: parseHHMMToDate(data.default_endtime),
+    }),
+  };
+
   const updated = await prisma.organization.update({
     where: { id: data.id },
-    data: dataToUpdate,
+    data: prismaData,
     select: {
       id: true,
       name: true,
