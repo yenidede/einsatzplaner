@@ -1,7 +1,8 @@
 'use client';
 
 import { toast } from 'sonner';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
+import { addMonths, subMonths } from 'date-fns';
 
 import { EventCalendar } from '@/components/event-calendar';
 import { CalendarMode, CalendarEvent } from './types';
@@ -10,7 +11,8 @@ import { useOrganizationTerminology } from '@/hooks/use-organization-terminology
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import {
   useDetailedEinsatz,
-  useEinsaetze,
+  useEinsaetzeForCalendar,
+  usePrefetchEinsaetzeForCalendar,
 } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import {
@@ -160,16 +162,37 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const userId = session?.user?.id;
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const { selectedEinsatz, setEinsatz } = useEventDialogFromContext();
   const currentEinsatzString =
     typeof selectedEinsatz === 'string' ? selectedEinsatz : undefined;
   const {
+    data: calendarData,
+    isError: isCalendarError,
+    error: calendarError,
+    isLoading: isCalendarLoading,
+  } = useEinsaetzeForCalendar(activeOrgId, currentDate);
+  const prefetchEinsaetzeForCalendar =
+    usePrefetchEinsaetzeForCalendar(activeOrgId);
+  const events = calendarData?.events;
+  const detailedEinsaetze = calendarData?.detailedEinsaetze ?? [];
+  const cachedDetailedEinsatz =
+    typeof selectedEinsatz === 'string'
+      ? detailedEinsaetze.find((e) => e.id === selectedEinsatz)
+      : undefined;
+
+  // Prefetch previous and next month so navigation to adjacent months is instant
+  useEffect(() => {
+    prefetchEinsaetzeForCalendar(subMonths(currentDate, 1));
+    prefetchEinsaetzeForCalendar(addMonths(currentDate, 1));
+  }, [currentDate, prefetchEinsaetzeForCalendar]);
+
+  const {
     data: detailedEinsatz,
     error: detailedEinsatzError,
     isError: isDetailedEinsatzError,
-  } = useDetailedEinsatz(currentEinsatzString);
-
-  const { data: events } = useEinsaetze(activeOrgId);
+  } = useDetailedEinsatz(cachedDetailedEinsatz ? null : currentEinsatzString);
+  const effectiveDetailedEinsatz = cachedDetailedEinsatz ?? detailedEinsatz;
   const { data: organizations } = useOrganizations(session?.user.orgIds);
   const { data: userProperties } = useUserPropertiesByOrg(activeOrgId);
   const { data: orgUsers } = useUsersByOrgIds(activeOrgId ? [activeOrgId] : []);
@@ -270,12 +293,12 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     }
 
     try {
-      if (!currentEinsatzString || !detailedEinsatz) {
+      if (!currentEinsatzString || !effectiveDetailedEinsatz) {
         throw new Error(`${einsatz_singular} konnte nicht geladen werden.`);
       }
       toggleUserAssignToEvent.mutate(currentEinsatzString);
 
-      const requiredProperties = detailedEinsatz.user_properties || [];
+      const requiredProperties = effectiveDetailedEinsatz.user_properties || [];
 
       // No requirements? Proceed without validation
       if (requiredProperties.length === 0) {
@@ -290,7 +313,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         allUsers: orgUsers || [],
         currentAssignedUsers: event.assignedUsers || [],
         userIdToAdd: userId,
-        helpersNeeded: detailedEinsatz.helpers_needed ?? -1,
+        helpersNeeded: effectiveDetailedEinsatz.helpers_needed ?? -1,
       });
 
       // Handle blocking errors
@@ -341,11 +364,15 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     deleteMultipleMutation.mutate({ eventIds });
   };
 
-  if (!events) {
-    return <div>Lade Daten...</div>;
+  if (isCalendarError) {
+    const msg =
+      calendarError instanceof Error
+        ? calendarError.message
+        : 'Unbekannter Fehler';
+    return <div>Fehler beim Laden der Einsätze: {msg}</div>;
   }
 
-  const calendarEvents = Array.isArray(events) ? events : [];
+  const calendarEvents = calendarData?.events ?? [];
   return (
     <>
       {AlertDialogComponent}
@@ -353,6 +380,10 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       {updateMutation.AlertDialogComponent}
       <EventCalendar
         events={calendarEvents}
+        isEventsLoading={isCalendarLoading}
+        currentDate={currentDate}
+        setCurrentDate={setCurrentDate}
+        cachedDetailedEinsatz={cachedDetailedEinsatz}
         onEventAdd={handleEventAdd}
         onEventUpdate={handleEventUpdate}
         onAssignToggleEvent={handleAssignToggleEvent}

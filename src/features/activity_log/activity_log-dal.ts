@@ -12,36 +12,19 @@ import { Prisma } from '@/generated/prisma';
 export async function createChangeLogAuto({
   einsatzId,
   userId,
-  typeName,
   typeId,
   affectedUserId,
 }: {
   einsatzId: string;
   userId: string;
-  typeName?: string;
-  typeId?: string;
+  typeId: string;
   affectedUserId?: string | null;
 }): Promise<ChangeLogEntry | null> {
   try {
-    const resolvedTypeId =
-      typeId ??
-      (typeName
-        ? (await prisma.change_type.findFirst({
-            where: { name: typeName },
-          }))?.id
-        : undefined);
-
-    if (!resolvedTypeId) {
-      console.warn(
-        `Change type not found: ${typeId != null ? 'typeId' : 'typeName'} "${typeId ?? typeName}"`
-      );
-      return null;
-    }
-
     return await createChangeLog({
       einsatzId,
       userId,
-      typeId: resolvedTypeId,
+      typeId,
       affectedUserId,
     });
   } catch (error) {

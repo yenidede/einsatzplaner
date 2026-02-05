@@ -21,6 +21,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   PlusIcon,
+  Loader,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -47,15 +48,23 @@ import {
   ListView,
 } from '@/components/event-calendar';
 import { CalendarEvent, CalendarMode } from './types';
-import { EinsatzCreate } from '@/features/einsatz/types';
+import { EinsatzCreate, EinsatzDetailed } from '@/features/einsatz/types';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useEinsaetzeForAgenda } from '@/features/einsatz/hooks/useEinsatzQueries';
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
+  /** True while the events query is loading (no data yet). Used to show loader vs empty state. */
+  isEventsLoading?: boolean;
+  /** When provided, calendar uses these instead of internal state (e.g. from CalendarClient). */
+  currentDate?: Date;
+  setCurrentDate?: (date: Date) => void;
+  /** Cached detailed einsatz for the selected id; dialogs use this to avoid refetch. */
+  cachedDetailedEinsatz?: EinsatzDetailed | null;
   onEventAdd: (event: EinsatzCreate) => void;
   onEventUpdate: (event: EinsatzCreate) => void;
   onAssignToggleEvent: (eventId: string) => void;
@@ -71,6 +80,10 @@ export interface EventCalendarProps {
 // TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
   events = [],
+  isEventsLoading = false,
+  currentDate: currentDateProp,
+  setCurrentDate: setCurrentDateProp,
+  cachedDetailedEinsatz,
   onEventAdd,
   onEventUpdate,
   onAssignToggleEvent,
@@ -83,7 +96,9 @@ export function EventCalendar({
   mode,
   activeOrgId,
 }: EventCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [internalDate, setInternalDate] = useState(new Date());
+  const currentDate = currentDateProp ?? internalDate;
+  const setCurrentDate = setCurrentDateProp ?? setInternalDate;
   const {
     isOpen: isEventDialogOpen,
     selectedEinsatz,
@@ -101,6 +116,14 @@ export function EventCalendar({
       'list',
     ]).withDefault(initialView)
   );
+
+  const { data: agendaData, isLoading: isAgendaLoading } =
+    useEinsaetzeForAgenda(activeOrgId, view === 'agenda');
+
+  const effectiveEvents =
+    view === 'agenda' ? (agendaData?.events ?? []) : events;
+  const effectiveIsEventsLoading =
+    view === 'agenda' ? isAgendaLoading : isEventsLoading;
 
   // German view names mapping
   const viewLabels = {
@@ -191,7 +214,14 @@ export function EventCalendar({
   };
 
   const handleEventSelect = (event: CalendarEvent | string) => {
-    openDialog(typeof event === 'string' ? event : event.id);
+    const eventId = typeof event === 'string' ? event : event.id;
+    if (eventId.includes('temp-')) {
+      toast.info(
+        `${einsatz_singular} wird gespeichert und muss erst aktualisiert werden. Bitte warten Sie ein paar Sekunden und versuchen Sie es erneut.`
+      );
+      return;
+    }
+    openDialog(eventId);
   };
 
   const handleEventCreate = (startTime: Date) => {
@@ -440,15 +470,21 @@ export function EventCalendar({
         </div>
 
         <div className="flex flex-1 flex-col">
-          {events.length === 0 && (
-            <div className="m-4 rounded-md bg-yellow-50 p-4 text-sm text-yellow-800">
-              Noch keine {einsatz_plural} vorhanden.
+          {effectiveEvents.length === 0 && view !== 'list' && (
+            <div className="text-muted-foreground mx-2 flex items-center gap-2">
+              {effectiveIsEventsLoading ? (
+                <>
+                  Lade {einsatz_plural}... <Loader className="animate-spin" />
+                </>
+              ) : (
+                <>Noch keine {einsatz_plural} vorhanden.</>
+              )}
             </div>
           )}
           {view === 'month' && (
             <MonthView
               currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
@@ -458,7 +494,7 @@ export function EventCalendar({
           {view === 'week' && (
             <WeekView
               currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
@@ -468,7 +504,7 @@ export function EventCalendar({
           {view === 'day' && (
             <DayView
               currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
@@ -477,7 +513,8 @@ export function EventCalendar({
           )}
           {view === 'agenda' && (
             <AgendaView
-              events={events}
+              events={effectiveEvents}
+              isEventsLoading={effectiveIsEventsLoading}
               onEventSelect={handleEventSelect}
               mode={mode}
               onEventConfirm={handleEventConfirm}
@@ -496,7 +533,7 @@ export function EventCalendar({
 
         {mode === 'verwaltung' ? (
           <EventDialogVerwaltung
-            einsatz={selectedEinsatz}
+            einsatz={cachedDetailedEinsatz ?? selectedEinsatz}
             isOpen={isEventDialogOpen}
             onClose={closeDialog}
             onSave={handleEventSave}
@@ -509,6 +546,7 @@ export function EventCalendar({
                 ? selectedEinsatz
                 : selectedEinsatz?.id || null
             }
+            cachedDetailedEinsatz={cachedDetailedEinsatz}
             isOpen={isEventDialogOpen}
             onClose={closeDialog}
             onAssignToggleEvent={handleAssignToggleEvent}

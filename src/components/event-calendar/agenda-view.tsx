@@ -10,9 +10,12 @@ import { CalendarMode } from './types';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useSession } from 'next-auth/react';
+import { Loader } from 'lucide-react';
 
 interface AgendaViewProps {
   events: CalendarEvent[];
+  /** True while the events query is loading. When false and list is empty, show empty state instead of loading. */
+  isEventsLoading?: boolean;
   onEventSelect: (event: CalendarEvent) => void;
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
@@ -20,6 +23,7 @@ interface AgendaViewProps {
 
 export function AgendaView({
   events,
+  isEventsLoading = false,
   onEventSelect,
   mode,
   onEventConfirm,
@@ -94,11 +98,13 @@ export function AgendaView({
             className="text-muted-foreground/50 mb-2"
           />
           <h3 className="text-lg font-medium">
-            Keine geplanten {einsatz_plural}
+            {isEventsLoading ? `Lade ${einsatz_plural}...` : `Keine geplanten ${einsatz_plural}`}
           </h3>
-          <p className="text-muted-foreground">
-            Es sind noch keine {einsatz_plural} eingetragen.
-          </p>
+          {isEventsLoading && (
+            <p className="text-muted-foreground flex items-center gap-2">
+              <Loader className="animate-spin" />
+            </p>
+          )}
         </div>
       ) : (
         futureEventsByDay.map(({ date, events: dayEvents }) => (

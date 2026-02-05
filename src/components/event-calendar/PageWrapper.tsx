@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react';
 import { CalendarMode } from './types';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
-import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { ROLE_NAME_MAP } from '@/lib/auth/authGuard';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
@@ -58,8 +57,6 @@ export default function CalendarPageWrapper({
     activeOrgId
   );
 
-  const { isError: isEventError } = useEinsaetze(activeOrgId);
-
   // Show loading state while session is being fetched
   if (sessionStatus === 'loading') {
     return <div>Lade Nutzerdaten...</div>;
@@ -81,10 +78,6 @@ export default function CalendarPageWrapper({
   }
   if (isOrgError) {
     return <div>Fehler beim Laden der Organisationen</div>;
-  }
-
-  if (isEventError) {
-    return <div>Fehler beim Laden der Einsätze.</div>;
   }
 
   return (

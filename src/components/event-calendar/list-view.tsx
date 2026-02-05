@@ -20,7 +20,7 @@ import { useStatuses } from '@/features/einsatz_status/hooks/useStatuses';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useTemplatesByOrgIds } from '@/features/template/hooks/use-template-queries';
 import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
-import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
+import { useCategoriesByOrgIds } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { Checkbox } from '../ui/checkbox';
 import { CalendarMode } from './types';
@@ -85,7 +85,7 @@ export function ListView({
     useUsersByOrgIds(userOrgIds);
 
   const { data: categoriesData, isLoading: isCategoriesLoading } =
-    useCategories(activeOrgId);
+    useCategoriesByOrgIds(userOrgIds);
 
   // Ensure data is defined before accessing its elements
 
