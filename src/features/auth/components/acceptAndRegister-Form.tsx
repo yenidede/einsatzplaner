@@ -34,7 +34,7 @@ import {
 import { FileUpload } from '@/components/form/file-upload';
 import { cn } from '@/lib/utils';
 import { useSalutations } from '@/features/settings/hooks/useUserProfile';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { TabsContent } from '@/components/ui/tabs';
 import {
@@ -61,6 +61,15 @@ export function SignUpForm({
 }) {
   const [anredePopoverOpen, setAnredePopoverOpen] = useState(false);
   const { data: salutations = [] } = useSalutations();
+  
+  // Refs for focus management
+  const vornameRef = useRef<HTMLInputElement>(null);
+  const nachnameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwortRef = useRef<HTMLInputElement>(null);
+  const passwort2Ref = useRef<HTMLInputElement>(null);
+  const telefonRef = useRef<HTMLInputElement>(null);
+  const anredeButtonRef = useRef<HTMLButtonElement>(null);
 
   const generateAppleStylePassword = (): string => {
     // Generate Apple-style password: "huvsoj-tUfqyh-1bupxy"
@@ -191,6 +200,120 @@ export function SignUpForm({
     }
   }, [hasSucceeded, setTab]);
 
+  // Focus management when tab changes
+  useEffect(() => {
+    if (tab === 'register1') {
+      // Focus first field when entering register1
+      setTimeout(() => {
+        vornameRef.current?.focus();
+      }, 100);
+    } else if (tab === 'register2') {
+      // Focus first field when entering register2
+      setTimeout(() => {
+        anredeButtonRef.current?.focus();
+      }, 100);
+    }
+  }, [tab]);
+
+  // Helper function to find input element by ID (for Password components)
+  const getInputById = (id: string): HTMLInputElement | null => {
+    return document.getElementById(id) as HTMLInputElement | null;
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = useCallback(
+    async (e: React.KeyboardEvent<HTMLFormElement>) => {
+      // Escape key: go back
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (tab === 'register2') {
+          setTab('register1');
+        } else if (tab === 'register1') {
+          setTab('accept');
+        }
+        return;
+      }
+
+      // Enter key on form fields (not in textareas or when popover is open)
+      if (e.key === 'Enter' && !e.shiftKey && !anredePopoverOpen) {
+        const target = e.target as HTMLElement;
+        
+        // Don't handle Enter if we're in a button or if it's a form submission
+        if (target.tagName === 'BUTTON' || target.closest('button')) {
+          return;
+        }
+
+        // Don't handle Enter if we're in the Command component (popover)
+        if (target.closest('[data-slot="command"]')) {
+          return;
+        }
+
+        e.preventDefault();
+
+        if (tab === 'register1') {
+          // Navigate through fields in register1
+          if (target.id === 'vorname') {
+            nachnameRef.current?.focus();
+          } else if (target.id === 'nachname') {
+            emailRef.current?.focus();
+          } else if (target.id === 'email') {
+            // For Password component, find the input element
+            const passwortInput = getInputById('passwort') || passwortRef.current;
+            passwortInput?.focus();
+          } else if (target.id === 'passwort') {
+            // For Password component, find the input element
+            const passwort2Input = getInputById('passwort2') || passwort2Ref.current;
+            passwort2Input?.focus();
+          } else if (target.id === 'passwort2') {
+            // Trigger "Weiter" button
+            const valid = await form.trigger();
+            if (valid) {
+              setTab('register2');
+            }
+          }
+        } else if (tab === 'register2') {
+          // Navigate through fields in register2
+          if (target.id === 'telefon') {
+            // Focus submit button
+            const submitButton = document.querySelector(
+              'button[type="submit"]'
+            ) as HTMLButtonElement;
+            submitButton?.focus();
+          }
+        }
+      }
+    },
+    [tab, form, anredePopoverOpen, setTab]
+  );
+
+  // Handle moving forward
+  const handleMoveForward = useCallback(async () => {
+    if (tab === 'register1') {
+      const valid = await form.trigger([
+        'vorname',
+        'nachname',
+        'email',
+        'passwort',
+        'passwort2',
+      ]);
+      if (valid) {
+        setTab('register2');
+      }
+    } else if (tab === 'register2') {
+      // Submit form
+      handleSubmit();
+    }
+  }, [tab, form, setTab, handleSubmit]);
+
+  // Handle moving backward
+  const handleMoveBackward = useCallback(() => {
+    if (tab === 'register2') {
+      setTab('register1');
+    } else if (tab === 'register1') {
+      setTab('accept');
+    }
+  }, [tab, setTab]);
+
   if (hasSucceeded) {
     return (
       <TabsContent value="other">
@@ -228,6 +351,7 @@ export function SignUpForm({
   return (
     <form
       onSubmit={handleSubmit}
+      onKeyDown={handleKeyDown}
       className={cn(
         'mx-auto w-full max-w-3xl gap-2 rounded-md border p-2 sm:p-5 md:p-8',
         tab === 'accept' ? 'hidden' : ''
@@ -250,6 +374,10 @@ export function SignUpForm({
                 <FieldLabel htmlFor="vorname">Vorname *</FieldLabel>
                 <Input
                   {...field}
+                  ref={(e) => {
+                    field.ref(e);
+                    vornameRef.current = e;
+                  }}
                   id="vorname"
                   type="text"
                   onChange={(e) => {
@@ -278,6 +406,10 @@ export function SignUpForm({
                 <FieldLabel htmlFor="nachname">Nachname *</FieldLabel>
                 <Input
                   {...field}
+                  ref={(e) => {
+                    field.ref(e);
+                    nachnameRef.current = e;
+                  }}
                   id="nachname"
                   type="text"
                   onChange={(e) => {
@@ -307,6 +439,10 @@ export function SignUpForm({
                 </FieldLabel>
                 <Input
                   {...field}
+                  ref={(e) => {
+                    field.ref(e);
+                    emailRef.current = e;
+                  }}
                   id="email"
                   name="email"
                   type="email"
@@ -341,6 +477,7 @@ export function SignUpForm({
                 </FieldContent>
                 <Password
                   {...field}
+                  ref={field.ref}
                   autoComplete="new-password"
                   aria-invalid={fieldState.invalid}
                   id="passwort"
@@ -369,6 +506,7 @@ export function SignUpForm({
                 </FieldContent>
                 <Password
                   {...field}
+                  ref={field.ref}
                   autoComplete="new-password"
                   aria-invalid={fieldState.invalid}
                   id="passwort2"
@@ -394,21 +532,17 @@ export function SignUpForm({
           <div className="col-span-full mt-4 flex items-center justify-end">
             <Button
               variant="link"
-              onClick={() => setTab('accept')}
+              onClick={handleMoveBackward}
               type="button"
+              aria-label="Zurück (Escape)"
             >
               <ChevronLeft />
               Zurück
             </Button>
             <Button
               type="button"
-              onClick={async (e) => {
-                e.preventDefault();
-                const valid = await form.trigger();
-                if (valid) {
-                  setTab('register2');
-                }
-              }}
+              onClick={handleMoveForward}
+              aria-label="Weiter (Enter)"
             >
               Weiter
             </Button>
@@ -439,10 +573,13 @@ export function SignUpForm({
                   >
                     <PopoverTrigger asChild>
                       <Button
+                        ref={anredeButtonRef}
                         id="anredeId"
                         variant="outline"
                         type="button"
                         role="combobox"
+                        aria-expanded={anredePopoverOpen}
+                        aria-haspopup="listbox"
                         className={cn(
                           'justify-between bg-transparent active:scale-100'
                         )}
@@ -513,6 +650,10 @@ export function SignUpForm({
                 <FieldLabel htmlFor="telefon">Telefon </FieldLabel>
                 <Input
                   {...field}
+                  ref={(e) => {
+                    field.ref(e);
+                    telefonRef.current = e;
+                  }}
                   id="telefon"
                   type="text"
                   onChange={(e) => {
@@ -590,13 +731,14 @@ export function SignUpForm({
           <div className="col-span-full mt-4 flex items-center justify-end">
             <Button
               variant="link"
-              onClick={() => setTab('register1')}
+              onClick={handleMoveBackward}
               type="button"
+              aria-label="Zurück (Escape)"
             >
               <ChevronLeft />
               Zurück
             </Button>
-            <Button type="submit">
+            <Button type="submit" aria-label="Account erstellen (Enter)">
               {isExecuting ? 'Account wird erstellt...' : 'Account erstellen'}
             </Button>
           </div>
