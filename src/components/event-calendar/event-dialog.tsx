@@ -1067,8 +1067,8 @@ export function EventDialogVerwaltung({
       {AlertDialogComponent}
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="flex max-h-[90vh] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden sm:max-w-220">
-          <DialogHeader className="bg-background sticky top-0 z-10 shrink-0 border-b pb-4">
-            <DialogTitle className="pr-8 wrap-break-word">
+          <DialogHeader className="sticky top-0 z-10 shrink-0 border-b pb-4">
+            <DialogTitle className="bg-background mr-8 wrap-break-word">
               {isLoading
                 ? 'Laden...'
                 : isFetching && !isLoading
