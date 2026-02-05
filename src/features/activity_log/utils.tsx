@@ -4,6 +4,7 @@ import { Einsatz } from '../einsatz/types';
 import TooltipCustom from '@/components/tooltip-custom';
 import Link from 'next/link';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
+import type { ChangeTypeName } from './changeTypeIds';
 
 const USER_NOT_FOUND_LABEL = 'Nutzer nicht gefunden';
 const EINSATZ_NOT_FOUND_LABEL = 'Einsatz nicht gefunden';
@@ -117,7 +118,7 @@ export function getFormattedMessage(
           return (
             <TooltipCustom text={tooltipText} key={einsatz.id}>
               <Link
-                href={`/einsatz/${einsatz.id}`}
+                href={`/?einsatz=${einsatz.id}`}
                 className="cursor-pointer"
                 style={UNDERLINE_STYLE}
               >
@@ -203,8 +204,8 @@ export function detectChangeTypes(
   currentAssignedUsers: string[],
   currentUserId?: string,
   currentStatusId?: string
-): string[] {
-  const changeTypes: string[] = [];
+): ChangeTypeName[] {
+  const changeTypes: ChangeTypeName[] = [];
 
   if (isNew) {
     changeTypes.push('E-Erstellt');

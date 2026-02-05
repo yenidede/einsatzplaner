@@ -63,6 +63,7 @@ import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
 import { createChangeLogAuto } from '@/features/activity_log/activity_log-dal';
+import { ChangeTypeIds } from '@/features/activity_log/changeTypeIds';
 import {
   detectChangeTypes,
   getAffectedUserId,
@@ -223,7 +224,7 @@ export const ZodEinsatzFormData = z
 export type EinsatzFormData = z.infer<typeof ZodEinsatzFormData>;
 
 interface EventDialogProps {
-  einsatz: EinsatzCreate | string | null;
+  einsatz: EinsatzCreate | EinsatzDetailed | string | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (einsatz: EinsatzCreate) => void;
@@ -499,8 +500,8 @@ export function EventDialogVerwaltung({
               min_matching_users: prop.min_matching_users ?? null,
             })) || [],
           anmerkung: einsatzDetailed.anmerkung || '',
-          confirmAsBestätigt:
-            einsatzDetailed.status_id === StatusValuePairs.vergeben_bestaetigt,
+          // this should always reset to false (if something were to be edited)
+          confirmAsBestätigt: false,
         });
         // Reset errors when opening dialog
         setErrors({
@@ -1001,7 +1002,7 @@ export function EventDialogVerwaltung({
         createChangeLogAuto({
           einsatzId: currentEinsatz.id,
           userId: currentUserId,
-          typeName: changeTypeName,
+          typeId: ChangeTypeIds[changeTypeName],
           affectedUserId: effectiveAffectedUserId,
         }).catch((error) => {
           toast.error('Failed to create activity log: ' + error);
