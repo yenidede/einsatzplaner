@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
   AlertCircleIcon,
   XIcon,
@@ -151,6 +151,7 @@ export function FileUpload({
       openFileDialog,
       removeFile,
       clearFiles,
+      clearErrors,
       getInputProps,
     },
   ] = useFileUpload({
@@ -163,6 +164,8 @@ export function FileUpload({
       // Only process files that are actually File instances (not FileMetadata)
       const newFiles = files.filter((f) => f.file instanceof File);
       if (newFiles.length > 0) {
+        // Clear any previous errors before processing
+        clearErrors();
         queueMicrotask(() => {
           optimizeFilesAndUpload(newFiles)
             .then((optimizedFiles) => {
@@ -174,6 +177,18 @@ export function FileUpload({
             })
             .catch((error) => {
               console.error('Error optimizing/uploading files:', error);
+              // Clear any errors and remove failed files from state
+              clearErrors();
+              setOptimizedFiles((prev) => {
+                const newMap = new Map(prev);
+                newFiles.forEach((file) => {
+                  newMap.delete(file.id);
+                });
+                return newMap;
+              });
+              newFiles.forEach((file) => {
+                removeFile(file.id);
+              });
             });
         });
       }
@@ -182,6 +197,10 @@ export function FileUpload({
 
   const lastUploadKeyRef = useRef<string | null>(null);
   const lastUploadValueRef = useRef<string | null>(null);
+  // Store optimized files to show optimized size in UI (using state to trigger re-render)
+  const [optimizedFiles, setOptimizedFiles] = useState<Map<string, File>>(
+    new Map()
+  );
 
   return (
     <div className="flex flex-col gap-2 pb-2">
@@ -251,9 +270,16 @@ export function FileUpload({
                     {file.file.name}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {file.file.size > 0
-                      ? formatBytes(file.file.size)
-                      : 'Lokal geladen'}
+                    {(() => {
+                      // Show optimized size if available, otherwise show original size
+                      const optimizedFile = optimizedFiles.get(file.id);
+                      const sizeToShow = optimizedFile
+                        ? optimizedFile.size
+                        : file.file.size;
+                      return sizeToShow > 0
+                        ? formatBytes(sizeToShow)
+                        : 'Lokal geladen';
+                    })()}
                   </p>
                 </div>
               </div>
@@ -263,6 +289,12 @@ export function FileUpload({
                 variant="ghost"
                 className="text-muted-foreground/80 hover:text-foreground -me-2 size-8 hover:bg-transparent"
                 onClick={async () => {
+                  // Remove optimized file reference
+                  setOptimizedFiles((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.delete(file.id);
+                    return newMap;
+                  });
                   removeFile(file.id);
                   // Check if it's a FileMetadata (existing file) or new File
                   if (!(file.file instanceof File)) {
@@ -301,12 +333,18 @@ export function FileUpload({
     files: FileWithPreview[]
   ): Promise<string[]> {
     return Promise.all(
-      files.map((file) => optimizeAndUploadIfImage(file.file))
+      files.map((file) =>
+        optimizeAndUploadIfImage(file.file, file.id, maxSize).then((path) => {
+          return path;
+        })
+      )
     );
   }
 
   async function optimizeAndUploadIfImage(
-    file: File | FileMetadata
+    file: File | FileMetadata,
+    fileId: string,
+    maxSizeBytes?: number
   ): Promise<string> {
     const fileKey = getFileUniqueKey(file);
     if (isFileMetadataType(file)) {
@@ -332,6 +370,18 @@ export function FileUpload({
 
       // Skip compression for SVG files (they're already vector graphics)
       if (isSvg) {
+        // Validate SVG size if maxSize is provided
+        if (maxSizeBytes !== undefined && fileObj.size > maxSizeBytes) {
+          throw new Error(
+            `Datei "${fileObj.name}" überschreitet nach der Komprimierung die maximale Größe von ${formatBytes(maxSizeBytes)}.`
+          );
+        }
+        // Store original file for display (no optimization for SVG)
+        setOptimizedFiles((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(fileId, fileObj);
+          return newMap;
+        });
         const uploadedPath = await onUpload(fileObj);
         lastUploadKeyRef.current = fileKey;
         lastUploadValueRef.current = uploadedPath;
@@ -343,6 +393,20 @@ export function FileUpload({
 
       // Use the optimized version if it's smaller, otherwise use original
       const fileToUpload = optimized.size < fileObj.size ? optimized : fileObj;
+
+      // Validate compressed file size if maxSize is provided
+      if (maxSizeBytes !== undefined && fileToUpload.size > maxSizeBytes) {
+        throw new Error(
+          `Datei "${fileObj.name}" überschreitet nach der Komprimierung die maximale Größe von ${formatBytes(maxSizeBytes)}.`
+        );
+      }
+
+      // Store optimized file for display
+      setOptimizedFiles((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(fileId, fileToUpload);
+        return newMap;
+      });
 
       const uploadedPath = await onUpload(fileToUpload);
       lastUploadKeyRef.current = fileKey;
