@@ -33,7 +33,7 @@ export const formSchema = z
       .optional()
       .refine(
         (value) => !value || isValidPhoneNumber(value),
-        'Bitte geben Sie eine gültige Telefonnummer ein'
+        'Bitte geben Sie eine gültige Telefonnummer im Format +436601234567 ein'
       )
       .transform((value) => {
         if (!value) return value;
