@@ -84,14 +84,19 @@ function CommandList({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
-    <CommandPrimitive.List
-      data-slot="command-list"
+    <div
       className={cn(
-        'max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto',
+        'max-h-[300px] overflow-x-hidden overflow-y-auto scroll-py-1',
         className
       )}
-      {...props}
-    />
+      onWheel={(e) => e.stopPropagation()}
+    >
+      <CommandPrimitive.List
+        data-slot="command-list"
+        className="overflow-visible"
+        {...props}
+      />
+    </div>
   );
 }
 

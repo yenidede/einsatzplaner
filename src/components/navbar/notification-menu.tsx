@@ -18,6 +18,7 @@ import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useSession } from 'next-auth/react';
 import { useActivityLogs } from '@/features/activity_log/hooks/useActivityLogs';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { AllActivitiesModal } from '@/features/activity_log/components/AllActivitiesModal';
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -80,6 +81,7 @@ const markAllActivitiesAsRead = (activityIds: string[]) => {
 export default function NotificationMenu() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [isOpen, setIsOpen] = useState(false);
+  const [allActivitiesModalOpen, setAllActivitiesModalOpen] = useState(false);
   const { openDialog } = useEventDialog();
   const queryClient = useQueryClient();
 
@@ -110,6 +112,12 @@ export default function NotificationMenu() {
 
   const handleViewAll = () => {
     setIsOpen(false);
+    setAllActivitiesModalOpen(true);
+  };
+
+  const handleMarkAsRead = (id: string) => {
+    markActivityAsRead(id);
+    setReadIds((prev) => new Set([...prev, id]));
   };
 
   const unreadIds = new Set(
@@ -117,15 +125,18 @@ export default function NotificationMenu() {
   );
   const unreadCount = unreadIds.size;
 
-  const handleMarkAllAsRead = () => {
-    const activityIds = activities.map((a) => a.id);
-    markAllActivitiesAsRead(activityIds);
-    setReadIds(new Set([...readIds, ...activityIds]));
+  const handleMarkAllAsRead = (
+    activityIdsOrEvent?: string[] | React.MouseEvent
+  ) => {
+    const ids = Array.isArray(activityIdsOrEvent)
+      ? activityIdsOrEvent
+      : activities.map((a) => a.id);
+    markAllActivitiesAsRead(ids);
+    setReadIds((prev) => new Set([...prev, ...ids]));
   };
 
   const handleNotificationClick = (id: string) => {
-    markActivityAsRead(id);
-    setReadIds((prev) => new Set([...prev, id]));
+    handleMarkAsRead(id);
   };
 
   return (
@@ -186,7 +197,7 @@ export default function NotificationMenu() {
                     <div
                       className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                       style={{
-                        backgroundColor: `${activity.change_type.change_color}15`,
+                        backgroundColor: `${activity.change_type.change_color}40`,
                       }}
                     >
                       {activity.change_type.change_icon_url ? (
@@ -223,9 +234,11 @@ export default function NotificationMenu() {
 
                         {orgsData && orgsData.length > 1 && (
                           <span className="ms-2 min-w-0 truncate">
-                            {orgsData.find(
-                              (org) => org.id === activity.einsatz.org_id
-                            )?.name ?? 'Ladefehler'}
+                            {activity.einsatz
+                              ? (orgsData.find(
+                                  (org) => org.id === activity.einsatz?.org_id
+                                )?.name ?? '–')
+                              : '–'}
                           </span>
                         )}
                       </div>
@@ -258,6 +271,14 @@ export default function NotificationMenu() {
           </>
         )}
       </PopoverContent>
+      <AllActivitiesModal
+        open={allActivitiesModalOpen}
+        onOpenChange={setAllActivitiesModalOpen}
+        openDialog={openDialog}
+        readIds={readIds}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+      />
     </Popover>
   );
 }

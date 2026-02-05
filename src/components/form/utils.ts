@@ -42,8 +42,14 @@ export function buildInputProps(
       return { type: 'number', step: 1, min, max };
     case 'currency':
       return { type: 'number', step: 0.01, inputMode: 'decimal', min, max };
+    case 'phone':
+      return { type: 'tel', placeholder };
+    case 'mail':
+      return { type: 'email', placeholder };
     case 'date':
-      return { type: 'date' };
+      return { type: 'date', placeholder };
+    case 'time':
+      return { type: 'time', placeholder };
     case 'datetime':
       return { type: 'datetime-local' };
     default:

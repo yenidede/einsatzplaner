@@ -24,9 +24,11 @@ import { UserProfileDialog } from '@/components/settings/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
 import { FileUpload, PreviewAspectRatio } from '@/components/form/file-upload';
 import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationDetailsForm';
+import { OrganizationDefaultValues } from '@/components/settings/org/OrganizationDefaultValues';
 import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
 import { UsersManagementSection } from '@/components/settings/org/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
+import { TemplatesOverviewSection } from '@/components/template/TemplatesOverviewSection';
 import { OrganizationPdfExportForm } from '@/components/settings/org/OrganizationPdfExportForm';
 import { PageHeader } from '@/components/settings/PageHeader';
 import {
@@ -42,6 +44,7 @@ import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSet
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
 import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
+import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import {
   Card,
   CardAction,
@@ -73,6 +76,8 @@ export default function OrganizationManagePage() {
   const [einsatzSingular, setEinsatzSingular] = useState('');
   const [einsatzPlural, setEinsatzPlural] = useState('');
   const [maxParticipantsPerHelper, setMaxParticipantsPerHelper] = useState('');
+  const [defaultStarttime, setDefaultStarttime] = useState('09:00');
+  const [defaultEndtime, setDefaultEndtime] = useState('10:00');
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [smallLogoUrl, setSmallLogoUrl] = useState<string>('');
@@ -98,6 +103,8 @@ export default function OrganizationManagePage() {
     einsatzSingular: string;
     einsatzPlural: string;
     maxParticipantsPerHelper: string;
+    defaultStarttime: string;
+    defaultEndtime: string;
     website: string;
     vat: string;
     zvr: string;
@@ -120,6 +127,8 @@ export default function OrganizationManagePage() {
 
   // Load organization details separately (website, vat, zvr, authority)
   const { data: orgDetails } = useOrganizationDetails(orgId);
+
+  const { data: categories = [] } = useCategories(orgId);
 
   // Use shared section navigation hook
   const {
@@ -147,6 +156,8 @@ export default function OrganizationManagePage() {
       setMaxParticipantsPerHelper(
         orgData.max_participants_per_helper?.toString() ?? ''
       );
+      setDefaultStarttime(orgData.default_starttime ?? '09:00');
+      setDefaultEndtime(orgData.default_endtime ?? '10:00');
       setEinsatzSingular(orgData.einsatz_name_singular ?? 'Einsatz');
       setEinsatzPlural(orgData.einsatz_name_plural ?? 'Einsätze');
 
@@ -163,6 +174,8 @@ export default function OrganizationManagePage() {
         einsatzPlural: orgData.einsatz_name_plural ?? 'Einsätze',
         maxParticipantsPerHelper:
           orgData.max_participants_per_helper?.toString() ?? '',
+        defaultStarttime: orgData.default_starttime ?? '09:00',
+        defaultEndtime: orgData.default_endtime ?? '10:00',
         website: '', // Loaded separately via useOrganizationDetails
         vat: '', // Loaded separately via useOrganizationDetails
         zvr: '', // Loaded separately via useOrganizationDetails
@@ -192,6 +205,8 @@ export default function OrganizationManagePage() {
         einsatzPlural: orgData?.einsatz_name_plural ?? 'Einsätze',
         maxParticipantsPerHelper:
           orgData?.max_participants_per_helper?.toString() ?? '',
+        defaultStarttime: orgData?.default_starttime ?? '09:00',
+        defaultEndtime: orgData?.default_endtime ?? '10:00',
         website: '',
         vat: '',
         zvr: '',
@@ -239,6 +254,8 @@ export default function OrganizationManagePage() {
       einsatzSingular !== initial.einsatzSingular ||
       einsatzPlural !== initial.einsatzPlural ||
       maxParticipantsPerHelper !== initial.maxParticipantsPerHelper ||
+      defaultStarttime !== initial.defaultStarttime ||
+      defaultEndtime !== initial.defaultEndtime ||
       website !== initial.website ||
       vat !== initial.vat ||
       zvr !== initial.zvr ||
@@ -261,6 +278,8 @@ export default function OrganizationManagePage() {
           ? parseInt(maxParticipantsPerHelper)
           : undefined,
         einsatz_name_plural: einsatzPlural,
+        default_starttime: defaultStarttime,
+        default_endtime: defaultEndtime,
         allow_self_sign_out: allowSelfSignOut,
       });
 
@@ -268,6 +287,7 @@ export default function OrganizationManagePage() {
       // But we also update them here immediately to prevent false positives
       if (initialValuesRef.current) {
         initialValuesRef.current = {
+          ...initialValuesRef.current,
           name,
           email,
           phone,
@@ -278,6 +298,8 @@ export default function OrganizationManagePage() {
           einsatzSingular,
           einsatzPlural,
           maxParticipantsPerHelper,
+          defaultStarttime,
+          defaultEndtime,
           website,
           vat,
           zvr,
@@ -299,6 +321,8 @@ export default function OrganizationManagePage() {
     einsatzSingular,
     einsatzPlural,
     maxParticipantsPerHelper,
+    defaultStarttime,
+    defaultEndtime,
     logoFile,
     website,
     vat,
@@ -436,7 +460,7 @@ export default function OrganizationManagePage() {
     return <div>Keine Berechtigung. Weiterleitung...</div>;
   }
   if (isLoadingUser || orgLoading) {
-    return <SettingsLoadingSkeleton sidebarItems={6} />;
+    return <SettingsLoadingSkeleton sidebarItems={7} />;
   }
 
   if (orgError || !orgData) {
@@ -456,7 +480,7 @@ export default function OrganizationManagePage() {
   const header = (
     <PageHeader
       title={`${name} verwalten`}
-      description="Verwalte die Einstellungen und Details deiner Organisation"
+      description="Verwalten Sie die Einstellungen und Details Ihrer Organisation"
       onSave={handleSave}
       isSaving={updateMutation.isPending}
       onCancel={() => router.push('/')}
@@ -492,7 +516,7 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="details-heading">Organisationsdetails</CardTitle>
               <CardDescription>
-                Grundlegende Informationen und Logo deiner Organisation
+                Grundlegende Informationen und Logo Ihrer Organisation
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -500,7 +524,7 @@ export default function OrganizationManagePage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Logo</label>
                   <p className="text-muted-foreground text-sm">
-                    Das Hauptlogo deiner Organisation, wird in verschiedenen
+                    Das Hauptlogo Ihrer Organisation wird in verschiedenen
                     Bereichen angezeigt.
                   </p>
                   <FileUpload
@@ -598,7 +622,8 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="preferences-heading">Präferenzen</CardTitle>
               <CardDescription>
-                Passe die Terminologie und Präferenzen deiner Organisation an
+                Passen Sie die Terminologie und Präferenzen Ihrer Organisation
+                an
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -611,8 +636,6 @@ export default function OrganizationManagePage() {
                 einsatzPlural={einsatzPlural}
                 onEinsatzSingularChange={setEinsatzSingular}
                 onEinsatzPluralChange={setEinsatzPlural}
-                maxParticipantsPerHelper={maxParticipantsPerHelper}
-                onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
                 allowSelfSignOut={allowSelfSignOut}
                 onAllowSelfSignOutChange={setAllowSelfSignOut}
               />
@@ -620,36 +643,54 @@ export default function OrganizationManagePage() {
           </Card>
         </section>
 
-        {/* PDF-Export Section */}
+        {/* Standardfelder Section */}
         <section
-          id="pdf-export"
+          id="standardfelder"
           ref={(el) => {
-            sectionRefs.current['pdf-export'] = el;
+            sectionRefs.current.standardfelder = el;
           }}
-          aria-labelledby="pdf-export-heading"
+          aria-labelledby="standardfelder-heading"
         >
           <Card>
             <CardHeader>
-              <CardTitle id="pdf-export-heading">PDF-Export</CardTitle>
+              <CardTitle id="standardfelder-heading">Standardfelder</CardTitle>
               <CardDescription>
-                Einstellungen für den PDF-Export deiner Organisation
+                Voreinstellungen für maximale Teilnehmende sowie Standard-Start-
+                und Endzeit
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <OrganizationPdfExportForm
-                organizationId={orgId}
-                website={website}
-                vat={vat}
-                zvr={zvr}
-                authority={authority}
-                onWebsiteChange={setWebsite}
-                onVatChange={setVat}
-                onZvrChange={setZvr}
-                onAuthorityChange={setAuthority}
-                isSuperadmin={isSuperadmin}
+              <OrganizationDefaultValues
+                orgId={orgId}
+                helperSingular={helperSingular}
+                maxParticipantsPerHelper={maxParticipantsPerHelper}
+                defaultStarttime={defaultStarttime}
+                defaultEndtime={defaultEndtime}
+                categories={categories.map((c) => ({
+                  id: c.id,
+                  value: c.value,
+                  abbreviation: c.abbreviation ?? '',
+                }))}
+                onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+                onDefaultStarttimeChange={setDefaultStarttime}
+                onDefaultEndtimeChange={setDefaultEndtime}
               />
             </CardContent>
           </Card>
+        </section>
+
+        {/* Vorlagen (Templates) Section */}
+        <section
+          id="vorlagen"
+          ref={(el) => {
+            sectionRefs.current.vorlagen = el;
+          }}
+          aria-labelledby="vorlagen-heading"
+        >
+          <h2 id="vorlagen-heading" className="sr-only">
+            Vorlagen
+          </h2>
+          <TemplatesOverviewSection orgId={orgId} />
         </section>
 
         {/* User Properties Section */}
@@ -667,7 +708,8 @@ export default function OrganizationManagePage() {
               </CardTitle>
               <CardDescription>
                 Verwalte die benutzerdefinierten Eigenschaften für Benutzer in
-                dieser Organisation
+                dieser Organisation. Diese können für personenbasierte
+                Überprüfungen verwendet werden.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -702,6 +744,38 @@ export default function OrganizationManagePage() {
                 currentUserEmail={session?.user?.email || ''}
                 onUserProfileClick={handleUserProfileClick}
                 onInviteClick={() => setIsInviteModalOpen(true)}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* PDF-Export Section */}
+        <section
+          id="pdf-export"
+          ref={(el) => {
+            sectionRefs.current['pdf-export'] = el;
+          }}
+          aria-labelledby="pdf-export-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="pdf-export-heading">PDF-Export</CardTitle>
+              <CardDescription>
+                Einstellungen für den PDF-Export Ihrer Organisation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OrganizationPdfExportForm
+                organizationId={orgId}
+                website={website}
+                vat={vat}
+                zvr={zvr}
+                authority={authority}
+                onWebsiteChange={setWebsite}
+                onVatChange={setVat}
+                onZvrChange={setZvr}
+                onAuthorityChange={setAuthority}
+                isSuperadmin={isSuperadmin}
               />
             </CardContent>
           </Card>

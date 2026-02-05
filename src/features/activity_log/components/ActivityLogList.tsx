@@ -1,6 +1,6 @@
 'use client';
 
-import { Dispatch, SetStateAction, useMemo } from 'react';
+import { Dispatch, SetStateAction, useCallback, useMemo, memo } from 'react';
 import type { ChangeLogEntry } from '../types';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -67,12 +67,16 @@ function formatDate(date: Date): string {
   });
 }
 
-function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
+const ActivityItem = memo(function ActivityItem({
+  activity,
+}: {
+  activity: ChangeLogEntry;
+}) {
   return (
     <>
       <div className="flex items-center justify-between gap-3">
         <div
-          className="relative flex h-6 w-6 items-center justify-center rounded-full"
+          className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: activity.change_type.change_color }}
         >
           <Image
@@ -82,7 +86,7 @@ function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
             height={14}
             unoptimized
             className="text-foreground h-3 w-3"
-          ></Image>
+          />
         </div>
         <div className="grow">{getFormattedMessage(activity)}</div>
         <time className="text-muted-foreground text-sm whitespace-nowrap">
@@ -90,13 +94,13 @@ function ActivityItem({ activity }: { activity: ChangeLogEntry }) {
         </time>
       </div>
       <div className="flex h-4 w-6 items-center justify-center">
-        <div className="h-3 border-l"></div>
+        <div className="h-3 border-l" />
       </div>
     </>
   );
-}
+});
 
-function ActivityGroup({
+const ActivityGroup = memo(function ActivityGroup({
   title,
   activities,
   button,
@@ -118,7 +122,7 @@ function ActivityGroup({
       ))}
     </div>
   );
-}
+});
 
 export function ActivityLogList({
   activities,
@@ -140,23 +144,26 @@ export function ActivityLogList({
     );
   }
 
-  const handleLoadAll = () => {
+  const handleLoadAll = useCallback(() => {
     setShowAll((prev) => !prev);
-  };
+  }, [setShowAll]);
 
-  const toggleButton = (
-    <Button
-      variant={'link'}
-      onClick={handleLoadAll}
-      disabled={isRemainingLoading}
-      className="p-0"
-    >
-      {isRemainingLoading
-        ? 'Lade...'
-        : showAll
-          ? 'Weniger anzeigen'
-          : 'Alle anzeigen'}
-    </Button>
+  const toggleButton = useMemo(
+    () => (
+      <Button
+        variant="link"
+        onClick={handleLoadAll}
+        disabled={isRemainingLoading}
+        className="p-0"
+      >
+        {isRemainingLoading
+          ? 'Lade...'
+          : showAll
+            ? 'Weniger anzeigen'
+            : 'Alle anzeigen'}
+      </Button>
+    ),
+    [handleLoadAll, isRemainingLoading, showAll]
   );
 
   return (

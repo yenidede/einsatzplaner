@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
-import { differenceInMinutes, format, isPast } from 'date-fns';
+import { format, isPast } from 'date-fns';
 import { useSession } from 'next-auth/react';
 
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ import {
 import { CalendarMode } from './types';
 import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
 import { ContextMenuEventRightClick } from '../context-menu';
+import { StatusValuePairs } from './constants';
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -112,6 +113,7 @@ interface EventItemProps {
   onTouchStart?: (e: React.TouchEvent) => void;
   mode: CalendarMode;
   onDelete?: (eventId: string, eventTitle: string) => void;
+  onConfirm?: (eventId: string) => void;
 }
 
 export function EventItem({
@@ -131,7 +133,13 @@ export function EventItem({
   onTouchStart,
   mode,
   onDelete,
+  onConfirm,
 }: EventItemProps) {
+  const canConfirm =
+    (event.helpersNeeded ?? 0) > 0 &&
+    (event.assignedUsers?.length ?? 0) >= (event.helpersNeeded ?? 0) &&
+    event.status?.id !== StatusValuePairs.vergeben_bestaetigt;
+
   // Use the provided currentTime (for dragging) or the event's actual time
   const userId = useSession().data?.user?.id;
   let statusForColor: EinsatzStatus | string = event.status || 'fallback';
@@ -156,11 +164,6 @@ export function EventItem({
         )
       : new Date(event.end);
   }, [currentTime, event.start, event.end]);
-
-  // Calculate event duration in minutes
-  const durationMinutes = useMemo(() => {
-    return differenceInMinutes(displayEnd, displayStart);
-  }, [displayStart, displayEnd]);
 
   const getEventTime = () => {
     if (event.allDay) return 'All day';
@@ -195,12 +198,19 @@ export function EventItem({
           <div className="flex w-full flex-col">
             {!event.allDay && (
               <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
-                {formatTimeWithOptionalMinutes(displayStart)}
-                {'-'}
-                {formatTimeWithOptionalMinutes(displayEnd)}
+                <span className="sm:hidden">
+                  {formatTimeWithOptionalMinutes(displayStart)}
+                </span>
+                <span className="hidden sm:inline">
+                  {formatTimeWithOptionalMinutes(displayStart)}
+                  {'-'}
+                  {formatTimeWithOptionalMinutes(displayEnd)}
+                </span>
               </div>
             )}
-            <div className="leading-tight wrap-break-word">{event.title}</div>
+            <div className="leading-tight wrap-break-word max-md:line-clamp-2">
+              {event.title}
+            </div>
           </div>
         )}
       </EventWrapper>
@@ -213,6 +223,8 @@ export function EventItem({
         eventId={event.id}
         eventTitle={event.title}
         onDelete={onDelete || (() => {})}
+        canConfirm={canConfirm}
+        onConfirm={onConfirm}
       />
     );
   }
@@ -255,6 +267,8 @@ export function EventItem({
         eventId={event.id}
         eventTitle={event.title}
         onDelete={onDelete || (() => {})}
+        canConfirm={canConfirm}
+        onConfirm={onConfirm}
       />
     );
   }
@@ -280,9 +294,9 @@ export function EventItem({
           <span>Ganztägig</span>
         ) : (
           <span className="uppercase">
-            {formatTimeWithOptionalMinutes(displayStart)}
-            {'-'}
-            {formatTimeWithOptionalMinutes(displayEnd)}
+            {formatTimeWithOptionalMinutes(displayStart) +
+              ' - ' +
+              formatTimeWithOptionalMinutes(displayEnd)}
           </span>
         )}
       </div>
@@ -296,6 +310,8 @@ export function EventItem({
       eventId={event.id}
       eventTitle={event.title}
       onDelete={onDelete || (() => {})}
+      canConfirm={canConfirm}
+      onConfirm={onConfirm}
     />
   );
 }
