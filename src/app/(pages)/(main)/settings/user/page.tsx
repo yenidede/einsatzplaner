@@ -522,7 +522,8 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle id="account-heading">Mein Account</CardTitle>
               <CardDescription>
-                Aktualisieren Sie Ihr Profilbild und Ihre persönlichen Informationen
+                Aktualisieren Sie Ihr Profilbild und Ihre persönlichen
+                Informationen
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -616,7 +617,7 @@ export default function SettingsPage() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+49 123 456789"
+                    placeholder="+43 123 456789"
                     autoComplete="tel"
                   />
                 </div>
@@ -723,8 +724,8 @@ export default function SettingsPage() {
                 Kalender-Integrationen
               </CardTitle>
               <CardDescription>
-                Abonnieren Sie Kalender Ihrer Organisationen in externen Apps wie
-                Google Calendar, Apple Calendar oder Outlook
+                Abonnieren Sie Kalender Ihrer Organisationen in externen Apps
+                wie Google Calendar, Apple Calendar oder Outlook
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -739,14 +740,15 @@ export default function SettingsPage() {
                         <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                           1
                         </span>
-                        Kopieren Sie die URL oder klicken Sie auf &quot;In Kalender
-                        öffnen&quot;
+                        Kopieren Sie die URL oder klicken Sie auf &quot;In
+                        Kalender öffnen&quot;
                       </li>
                       <li className="flex gap-2">
                         <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                           2
                         </span>
-                        Fügen Sie die URL in Ihrer Kalender-App als Abonnement hinzu
+                        Fügen Sie die URL in Ihrer Kalender-App als Abonnement
+                        hinzu
                       </li>
                       <li className="flex gap-2">
                         <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
