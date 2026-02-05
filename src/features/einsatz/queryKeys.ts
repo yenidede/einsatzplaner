@@ -6,6 +6,9 @@ export const queryKeys = {
   /** One cache entry per (orgId, monthKey); invalidate only affected months. */
   einsaetzeForCalendar: (orgId: string, monthKey: string) =>
     ['einsatz', 'calendar', orgId, monthKey] as const,
+  /** All future events for agenda view. Invalidate with einsaetzeForCalendarPrefix(orgId). */
+  einsaetzeForAgenda: (orgId: string) =>
+    ['einsatz', 'calendar', orgId, 'agenda'] as const,
   einsaetzeForCalendarPrefix: (orgId: string) =>
     ['einsatz', 'calendar', orgId] as const,
   detailedEinsatz: (id: string) => ['einsatz', id, 'detail'] as const,

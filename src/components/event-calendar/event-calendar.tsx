@@ -54,6 +54,7 @@ import { toast } from 'sonner';
 import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useEinsaetzeForAgenda } from '@/features/einsatz/hooks/useEinsatzQueries';
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -115,6 +116,14 @@ export function EventCalendar({
       'list',
     ]).withDefault(initialView)
   );
+
+  const { data: agendaData, isLoading: isAgendaLoading } =
+    useEinsaetzeForAgenda(activeOrgId, view === 'agenda');
+
+  const effectiveEvents =
+    view === 'agenda' ? (agendaData?.events ?? []) : events;
+  const effectiveIsEventsLoading =
+    view === 'agenda' ? isAgendaLoading : isEventsLoading;
 
   // German view names mapping
   const viewLabels = {
@@ -461,9 +470,9 @@ export function EventCalendar({
         </div>
 
         <div className="flex flex-1 flex-col">
-          {events.length === 0 && view !== 'list' && (
+          {effectiveEvents.length === 0 && view !== 'list' && (
             <div className="text-muted-foreground mx-2 flex items-center gap-2">
-              {isEventsLoading ? (
+              {effectiveIsEventsLoading ? (
                 <>
                   Lade {einsatz_plural}... <Loader className="animate-spin" />
                 </>
@@ -475,7 +484,7 @@ export function EventCalendar({
           {view === 'month' && (
             <MonthView
               currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
@@ -485,7 +494,7 @@ export function EventCalendar({
           {view === 'week' && (
             <WeekView
               currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
@@ -495,7 +504,7 @@ export function EventCalendar({
           {view === 'day' && (
             <DayView
               currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
@@ -504,7 +513,8 @@ export function EventCalendar({
           )}
           {view === 'agenda' && (
             <AgendaView
-              events={events}
+              events={effectiveEvents}
+              isEventsLoading={effectiveIsEventsLoading}
               onEventSelect={handleEventSelect}
               mode={mode}
               onEventConfirm={handleEventConfirm}

@@ -9,7 +9,14 @@ import type {
   EinsatzDetailedForCalendar,
   ETV,
 } from '@/features/einsatz/types';
-import { addMonths, endOfMonth, subMonths, startOfMonth } from 'date-fns';
+import {
+  addMonths,
+  addYears,
+  endOfMonth,
+  startOfDay,
+  startOfMonth,
+  subMonths,
+} from 'date-fns';
 import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
 
 import { ValidateEinsatzCreate } from './validation-service';
@@ -259,6 +266,32 @@ export async function getDetailedEinsaetzeForCalendarRange(
     org_ids.length > 0 ? org_ids : userOrgIds;
   const rangeStart = startOfMonth(subMonths(focusDate, 1));
   const rangeEnd = endOfMonth(addMonths(focusDate, 1));
+  const rows = await getDetailedEinsaetzeForCalendarRangeFromDb(
+    filterOrgIds,
+    rangeStart,
+    rangeEnd
+  );
+  return rows.map((row) => mapRawEinsatzToDetailedForCalendar(row));
+}
+
+/** All future events from today onwards (for agenda view). Uses same DB helper as calendar range. */
+export async function getDetailedEinsaetzeForAgenda(
+  org_ids: string[]
+): Promise<EinsatzDetailedForCalendar[] | Response> {
+  const { session, userIds } = await requireAuth();
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:read',
+      session.user.activeOrganization?.id
+    ))
+  ) {
+    return new Response('Unauthorized', { status: 403 });
+  }
+  const userOrgIds = userIds?.orgIds ?? (userIds?.orgId ? [userIds.orgId] : []);
+  const filterOrgIds = org_ids.length > 0 ? org_ids : userOrgIds;
+  const rangeStart = startOfDay(new Date());
+  const rangeEnd = endOfMonth(addYears(rangeStart, 2));
   const rows = await getDetailedEinsaetzeForCalendarRangeFromDb(
     filterOrgIds,
     rangeStart,

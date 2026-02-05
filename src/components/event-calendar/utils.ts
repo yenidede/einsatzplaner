@@ -14,6 +14,7 @@ import {
 import React from 'react';
 import {
   getAllEinsaetzeForCalendar,
+  getDetailedEinsaetzeForAgenda,
   getDetailedEinsaetzeForCalendarRange,
 } from '@/features/einsatz/dal-einsatz';
 import { ShowDialogFn } from '@/contexts/AlertDialogContext';
@@ -290,6 +291,22 @@ export async function getEinsaetzeDataForCalendarRange(
   const raw = await getDetailedEinsaetzeForCalendarRange(
     activeOrgId ? [activeOrgId] : [],
     focusDate
+  );
+  if (raw instanceof Response) {
+    return raw;
+  }
+  const events = raw
+    .map(mapDetailedEinsatzToCalendarEvent)
+    .filter((e): e is CalendarEvent => e !== null);
+  return { events, detailedEinsaetze: raw };
+}
+
+/** All future events for agenda view (from today onwards). */
+export async function getEinsaetzeDataForAgenda(
+  activeOrgId: string | null | undefined
+): Promise<CalendarRangeData | Response> {
+  const raw = await getDetailedEinsaetzeForAgenda(
+    activeOrgId ? [activeOrgId] : []
   );
   if (raw instanceof Response) {
     return raw;
