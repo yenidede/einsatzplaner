@@ -194,7 +194,16 @@ export function SignUpForm({
   const profilePictureUploadFromClient = async (
     optimizedFile: File
   ): Promise<string> => {
-    const loadingToastId = toast.loading('Profilbild wird hochgeladen...');
+    // Use a unique toast ID to prevent duplicate toasts
+    const toastId = 'profile-picture-upload';
+    
+    // Dismiss any existing toast with this ID before showing a new one
+    toast.dismiss(toastId);
+    
+    const loadingToastId = toast.loading('Profilbild wird hochgeladen...', {
+      id: toastId,
+    });
+    
     const { uploadUrl, path } = await createAvatarUploadUrl(
       userId,
       invitationId
@@ -211,7 +220,9 @@ export function SignUpForm({
     toast.dismiss(loadingToastId);
     if (!res.ok) {
       toast.error('Failed to upload profile picture.', { id: 'upload-failed' });
-    } else toast.success('Profilbild erfolgreich hochgeladen!');
+    } else {
+      toast.success('Profilbild erfolgreich hochgeladen!', { id: toastId });
+    }
 
     return path;
   };
