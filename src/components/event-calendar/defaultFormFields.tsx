@@ -261,6 +261,7 @@ export function DefaultFormFields({
           <FormField
             name="Teilnehmeranzahl"
             type="number"
+            min={0}
             value={formData.participantCount || ''}
             placeholder=""
             errors={errors.fieldErrors['participantCount'] || []}
