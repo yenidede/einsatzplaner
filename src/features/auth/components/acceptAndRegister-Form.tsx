@@ -61,7 +61,7 @@ export function SignUpForm({
 }) {
   const [anredePopoverOpen, setAnredePopoverOpen] = useState(false);
   const { data: salutations = [] } = useSalutations();
-  
+
   // Refs for focus management
   const vornameRef = useRef<HTMLInputElement>(null);
   const nachnameRef = useRef<HTMLInputElement>(null);
@@ -109,25 +109,37 @@ export function SignUpForm({
 
   const handleGeneratePassword = () => {
     const generatedPassword = generateAppleStylePassword();
-    
+
     // Find the actual input elements within Password components
     // Password component wraps InputGroupInput, so we need to find the input inside
-    const passwortInput = document.getElementById('passwort') as HTMLInputElement;
-    const passwort2Input = document.getElementById('passwort2') as HTMLInputElement;
-    
+    const passwortInput = document.getElementById(
+      'passwort'
+    ) as HTMLInputElement;
+    const passwort2Input = document.getElementById(
+      'passwort2'
+    ) as HTMLInputElement;
+
     // Helper to set value and trigger events that password managers listen for
-    const setPasswordValue = (input: HTMLInputElement, value: string, fieldName: 'passwort' | 'passwort2') => {
+    const setPasswordValue = (
+      input: HTMLInputElement,
+      value: string,
+      fieldName: 'passwort' | 'passwort2'
+    ) => {
       if (!input) return;
-      
+
       // Focus the input first (password managers need focus to detect changes)
       input.focus();
-      
+
       // Update form state first through react-hook-form
-      form.setValue(fieldName, value, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-      
+      form.setValue(fieldName, value, {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+
       // Set the value directly on the DOM element
       input.value = value;
-      
+
       // Create InputEvent with proper properties for password managers
       // Password managers typically listen for 'input' events with inputType 'insertText'
       const inputEvent = new InputEvent('input', {
@@ -136,37 +148,37 @@ export function SignUpForm({
         inputType: 'insertText',
         data: value,
       });
-      
+
       // Create change event
       const changeEvent = new Event('change', {
         bubbles: true,
         cancelable: true,
       });
-      
+
       // Dispatch events that password managers listen for
       // Order matters: input first, then change
       input.dispatchEvent(inputEvent);
       input.dispatchEvent(changeEvent);
-      
+
       // Blur and refocus to ensure password managers detect the change
       setTimeout(() => {
         input.blur();
         input.focus();
       }, 50);
     };
-    
+
     // Set password values with proper event dispatching
     if (passwortInput) {
       setPasswordValue(passwortInput, generatedPassword, 'passwort');
     }
-    
+
     // Small delay between fields to help password managers detect both
     setTimeout(() => {
       if (passwort2Input) {
         setPasswordValue(passwort2Input, generatedPassword, 'passwort2');
       }
     }, 100);
-    
+
     toast.success('Passwort generiert');
   };
 
@@ -293,7 +305,7 @@ export function SignUpForm({
       // Enter key on form fields (not in textareas or when popover is open)
       if (e.key === 'Enter' && !e.shiftKey && !anredePopoverOpen) {
         const target = e.target as HTMLElement;
-        
+
         // Don't handle Enter if we're in a button or if it's a form submission
         if (target.tagName === 'BUTTON' || target.closest('button')) {
           return;
@@ -314,11 +326,13 @@ export function SignUpForm({
             emailRef.current?.focus();
           } else if (target.id === 'email') {
             // For Password component, find the input element
-            const passwortInput = getInputById('passwort') || passwortRef.current;
+            const passwortInput =
+              getInputById('passwort') || passwortRef.current;
             passwortInput?.focus();
           } else if (target.id === 'passwort') {
             // For Password component, find the input element
-            const passwort2Input = getInputById('passwort2') || passwort2Ref.current;
+            const passwort2Input =
+              getInputById('passwort2') || passwort2Ref.current;
             passwort2Input?.focus();
           } else if (target.id === 'passwort2') {
             // Trigger "Weiter" button
@@ -761,7 +775,7 @@ export function SignUpForm({
                     }}
                     onFileRemove={deleteAvatarFromStorage}
                     name="pictureUrl"
-                    placeholder="PNG, JPEG oder Gif (max. 5MB)"
+                    placeholder="PNG, JPEG oder Gif. Bilder werden vor dem Upload automatisch komprimiert."
                     accept={`image/png, image/jpeg, image/gif`}
                     maxFiles={1}
                     // maxSize={500000} // approx 480kB, 500kB max allowed in db
