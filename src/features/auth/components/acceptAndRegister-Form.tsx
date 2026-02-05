@@ -17,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Password } from '@/components/password';
-import { Check, ChevronLeft, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronLeft, ChevronsUpDown, Key, Sparkle } from 'lucide-react';
 import {
   Command,
   CommandEmpty,
@@ -61,6 +61,50 @@ export function SignUpForm({
 }) {
   const [anredePopoverOpen, setAnredePopoverOpen] = useState(false);
   const { data: salutations = [] } = useSalutations();
+
+  const generateAppleStylePassword = (): string => {
+    // Generate Apple-style password: "huvsoj-tUfqyh-1bupxy"
+    // Format: lowercase-lowercase+uppercase-number+lowercase
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+
+    // First part: 6 lowercase letters
+    const part1 = Array.from(
+      { length: 6 },
+      () => lowercase[Math.floor(Math.random() * lowercase.length)]
+    ).join('');
+
+    // Second part: starts lowercase, has uppercase mixed in (6 chars)
+    const part2Chars = Array.from({ length: 6 }, (_, i) => {
+      if (i === 0) {
+        // First char is lowercase
+        return lowercase[Math.floor(Math.random() * lowercase.length)];
+      } else {
+        // Mix of lowercase and uppercase
+        const pool = Math.random() < 0.5 ? lowercase : uppercase;
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+    }).join('');
+
+    // Third part: starts with number, then lowercase (6 chars)
+    const part3 =
+      numbers[Math.floor(Math.random() * numbers.length)] +
+      Array.from(
+        { length: 5 },
+        () => lowercase[Math.floor(Math.random() * lowercase.length)]
+      ).join('');
+
+    return `${part1}-${part2Chars}-${part3}`;
+  };
+
+  const handleGeneratePassword = () => {
+    const generatedPassword = generateAppleStylePassword();
+    form.setValue('passwort', generatedPassword);
+    form.setValue('passwort2', generatedPassword);
+    toast.success('Passwort generiert');
+  };
+
   const profilePictureUploadFromClient = async (
     optimizedFile: File
   ): Promise<string> => {
@@ -336,6 +380,17 @@ export function SignUpForm({
               </Field>
             )}
           />
+          <div className="col-span-full flex justify-start">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleGeneratePassword}
+              className="gap-2"
+            >
+              <Sparkle className="size-4" />
+              Passwort generieren
+            </Button>
+          </div>
           <div className="col-span-full mt-4 flex items-center justify-end">
             <Button
               variant="link"
