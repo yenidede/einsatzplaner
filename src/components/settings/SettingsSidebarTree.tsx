@@ -55,7 +55,9 @@ function SettingsSidebarTreeContent({
   const router = useRouter();
 
   const isUserSettingsPage = pathname === '/settings/user';
-  const isOrgSettingsPage = pathname?.startsWith('/settings/org/');
+  const isOrgSettingsPage =
+    pathname?.startsWith('/settings/org/') ||
+    pathname?.startsWith('/settings/vorlage/');
 
   // Tree node IDs must be unique across the whole tree. Raw IDs (org.id, section ids, etc.)
   // can collide, so we namespace all tree item ids while keeping action payloads "real".

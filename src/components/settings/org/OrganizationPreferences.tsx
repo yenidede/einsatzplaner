@@ -9,9 +9,7 @@ interface OrganizationPreferencesProps {
   helperPlural: string;
   einsatzSingular: string;
   einsatzPlural: string;
-  maxParticipantsPerHelper: string;
   allowSelfSignOut: boolean;
-  onMaxParticipantsPerHelperChange: (value: string) => void;
   onEinsatzSingularChange: (value: string) => void;
   onEinsatzPluralChange: (value: string) => void;
   onHelperSingularChange: (value: string) => void;
@@ -26,11 +24,9 @@ export function OrganizationPreferences({
   onHelperPluralChange,
   einsatzSingular,
   einsatzPlural,
-  maxParticipantsPerHelper,
   allowSelfSignOut,
   onEinsatzSingularChange,
   onEinsatzPluralChange,
-  onMaxParticipantsPerHelperChange,
   onAllowSelfSignOutChange,
 }: OrganizationPreferencesProps) {
   return (
@@ -82,20 +78,6 @@ export function OrganizationPreferences({
             aria-label="Einsatz Plural"
           />
         </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="max-participants">
-          Maximale Teilnehmende pro {helperSingular}
-        </Label>
-        <Input
-          id="max-participants"
-          type="number"
-          value={maxParticipantsPerHelper}
-          onChange={(e) => onMaxParticipantsPerHelperChange(e.target.value)}
-          placeholder="z.B. 25"
-          aria-label={`Maximale Teilnehmende pro ${helperSingular}`}
-          min="0"
-        />
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-2">

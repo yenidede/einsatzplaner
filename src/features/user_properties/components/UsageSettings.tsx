@@ -16,7 +16,7 @@ export function UsageSettings({
   warningMessage,
 }: UsageSettingsProps) {
   return (
-    <div className="flex flex-col gap-4 self-stretch px-4">
+    <div className="flex flex-col gap-4 self-stretch">
       <h3 className="text-sm font-semibold text-slate-700">
         Eingabe-Regeln für Personen
       </h3>
@@ -37,7 +37,7 @@ export function UsageSettings({
 
         {warningMessage && (
           <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3">
-            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
             <p className="text-sm text-amber-800">{warningMessage}</p>
           </div>
         )}

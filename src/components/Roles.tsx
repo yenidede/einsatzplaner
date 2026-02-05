@@ -23,9 +23,16 @@ export function sortRolesByPriority(roles: RoleType[]): RoleType[] {
     .map((x) => x.r);
 }
 
-export function OrganizationRoleBadge({ role }: { role: RoleType }) {
-  const label =
-    role?.abbreviation && role.abbreviation.trim().length > 0
+export function OrganizationRoleBadge({
+  role,
+  displayFullRoleName = false,
+}: {
+  role: RoleType;
+  displayFullRoleName?: boolean;
+}) {
+  const label = displayFullRoleName
+    ? (role?.name ?? role?.abbreviation ?? '')
+    : role?.abbreviation && role.abbreviation.trim().length > 0
       ? role.abbreviation
       : (role?.name ?? '');
 
@@ -48,13 +55,23 @@ export function OrganizationRoleBadge({ role }: { role: RoleType }) {
   );
 }
 
-export const RolesList = ({ unsortedRoles }: { unsortedRoles: RoleType[] }) => {
+export const RolesList = ({
+  unsortedRoles,
+  displayFullRoleName = false,
+}: {
+  unsortedRoles: RoleType[];
+  displayFullRoleName?: boolean;
+}) => {
   const sortedRoles = unsortedRoles ? sortRolesByPriority(unsortedRoles) : [];
 
   return (
     <div className="flex flex-wrap gap-2">
       {sortedRoles.map((role, i) => (
-        <OrganizationRoleBadge key={i} role={role}></OrganizationRoleBadge>
+        <OrganizationRoleBadge
+          key={i}
+          role={role}
+          displayFullRoleName={displayFullRoleName}
+        />
       ))}
     </div>
   );

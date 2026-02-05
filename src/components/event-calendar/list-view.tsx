@@ -20,7 +20,7 @@ import { useStatuses } from '@/features/einsatz_status/hooks/useStatuses';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useTemplatesByOrgIds } from '@/features/template/hooks/use-template-queries';
 import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
-import { useCategoriesByOrgIds } from '@/features/category/hooks/useCategories';
+import { useCategoriesByOrgIds } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { Checkbox } from '../ui/checkbox';
 import { CalendarMode } from './types';

@@ -115,15 +115,15 @@ export default function Component() {
                 </svg>
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-36 p-1 md:hidden">
-              <NavigationMenu className="max-w-none *:w-full">
+            <PopoverContent align="start" className="w-auto p-1 md:hidden">
+              <NavigationMenu className="max-w-none">
                 <NavigationMenuList className="flex-col items-start gap-0 md:gap-2">
                   {navigationLinks
                     .filter((link) => !link.hidden)
                     .map((link, index) => {
                       const isActive = pathname === link.href;
                       return (
-                        <NavigationMenuItem key={index} className="w-full">
+                        <NavigationMenuItem key={index}>
                           <NavigationMenuLink
                             href={link.href}
                             className={cn(

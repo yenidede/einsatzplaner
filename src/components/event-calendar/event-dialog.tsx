@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
 import { FileDown } from 'lucide-react';
@@ -19,6 +19,7 @@ import {
 } from './utils';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -50,7 +51,11 @@ import { DefaultFormFields } from '@/components/event-calendar/defaultFormFields
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { CustomFormField, SupportedDataTypes } from './types';
 import DynamicFormFields from './dynamicFormfields';
-import { buildInputProps } from '../form/utils';
+import {
+  buildInputProps,
+  calcTotal,
+  calcPricePerPersonFromTotal,
+} from '../form/utils';
 import TooltipCustom from '../tooltip-custom';
 
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
@@ -58,7 +63,7 @@ import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
 import { createChangeLogAuto } from '@/features/activity_log/activity_log-dal';
-
+import { ChangeTypeIds } from '@/features/activity_log/changeTypeIds';
 import {
   detectChangeTypes,
   getAffectedUserId,
@@ -66,6 +71,8 @@ import {
 import { Select, SelectContent, SelectItem } from '../ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
+import { RequiredUserProperties } from './RequiredUserProperties';
+import { Separator } from '../ui/separator';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -82,6 +89,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   helpersNeeded: 1,
   assignedUsers: [],
   requiredUserProperties: [],
+  confirmAsBestätigt: false,
 };
 
 function formatOrgTimeForInput(value: unknown, fallback: string): string {
@@ -153,6 +161,7 @@ export const ZodEinsatzFormData = z
       )
       .optional(),
     anmerkung: z.string().optional(),
+    confirmAsBestätigt: z.boolean().optional(),
   })
   .refine(
     (data) => {
@@ -215,7 +224,7 @@ export const ZodEinsatzFormData = z
 export type EinsatzFormData = z.infer<typeof ZodEinsatzFormData>;
 
 interface EventDialogProps {
-  einsatz: EinsatzCreate | string | null;
+  einsatz: EinsatzCreate | EinsatzDetailed | string | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (einsatz: EinsatzCreate) => void;
@@ -262,6 +271,10 @@ export function EventDialogVerwaltung({
     fieldErrors: {},
     formErrors: [],
   });
+
+  // Track last programmatically synced start/end times so we don't overwrite user edits
+  const lastSyncedStartRef = useRef<string | null>(null);
+  const lastSyncedEndRef = useRef<string | null>(null);
 
   // Update form resolver when dynamicSchema changes
   useEffect(() => {
@@ -314,8 +327,16 @@ export function EventDialogVerwaltung({
       let nextFormData: EinsatzFormData | undefined;
 
       setStaticFormData((prev) => {
-        nextFormData = { ...prev, ...updates };
-        return nextFormData;
+        const merged = { ...prev, ...updates };
+        // When switching from "Ganztägig" to timed, reset start/end time to org defaults
+        if (prev.all_day === true && updates.all_day === false) {
+          merged.startTime = orgDefaultStartTime;
+          merged.endTime = orgDefaultEndTime;
+          lastSyncedStartRef.current = orgDefaultStartTime;
+          lastSyncedEndRef.current = orgDefaultEndTime;
+        }
+        nextFormData = merged;
+        return merged;
       });
 
       // Validate just the updated fields using partial schema
@@ -402,7 +423,7 @@ export function EventDialogVerwaltung({
         });
       }
     },
-    []
+    [orgDefaultStartTime, orgDefaultEndTime]
   );
 
   const getDefaultStaticFormData = useCallback((): EinsatzFormData => {
@@ -430,28 +451,25 @@ export function EventDialogVerwaltung({
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
-        // Ensure we start from org-specific defaults each time
-        setStaticFormData(getDefaultStaticFormData());
-        setActiveTemplateId(createEinsatz.template_id || null);
-        handleFormDataChange({ title: createEinsatz.title || '' });
-        if (createEinsatz.start) {
-          const start = createEinsatz.start;
-          handleFormDataChange({
-            startDate: start,
-            startTime: formatTimeForInput(start),
-          });
-        }
-        if (createEinsatz.end) {
-          const end = createEinsatz.end;
-          handleFormDataChange({
-            endDate: end,
-            endTime: formatTimeForInput(end),
-          });
-        }
-        handleFormDataChange({
-          title: createEinsatz.title || '',
-          all_day: createEinsatz.all_day || false,
-        });
+        // Use org defaults once organizations are available so we don't show 09:00/10:00 and only update after close
+        const base = getDefaultStaticFormData();
+        const createFormData: EinsatzFormData = {
+          ...base,
+          title: createEinsatz.title ?? '',
+          all_day: createEinsatz.all_day ?? false,
+          ...(createEinsatz.start && {
+            startDate: createEinsatz.start,
+            startTime: formatTimeForInput(createEinsatz.start),
+          }),
+          ...(createEinsatz.end && {
+            endDate: createEinsatz.end,
+            endTime: formatTimeForInput(createEinsatz.end),
+          }),
+        };
+        setStaticFormData(createFormData);
+        lastSyncedStartRef.current = createFormData.startTime;
+        lastSyncedEndRef.current = createFormData.endTime;
+        setActiveTemplateId(createEinsatz.template_id ?? null);
         // Reset errors when opening dialog
         setErrors({
           fieldErrors: {},
@@ -482,6 +500,8 @@ export function EventDialogVerwaltung({
               min_matching_users: prop.min_matching_users ?? null,
             })) || [],
           anmerkung: einsatzDetailed.anmerkung || '',
+          // this should always reset to false (if something were to be edited)
+          confirmAsBestätigt: false,
         });
         // Reset errors when opening dialog
         setErrors({
@@ -498,6 +518,42 @@ export function EventDialogVerwaltung({
     resetForm,
     isOpen,
     getDefaultStaticFormData,
+    orgDefaultStartTime,
+    orgDefaultEndTime,
+    organizations,
+  ]);
+
+  // When in create mode and org defaults become available, sync start/end time only if user hasn't edited them
+  useEffect(() => {
+    if (
+      isOpen &&
+      currentEinsatz &&
+      typeof currentEinsatz === 'object' &&
+      !currentEinsatz.id &&
+      activeOrg
+    ) {
+      setStaticFormData((prev) => {
+        const userHasEditedTimes =
+          lastSyncedStartRef.current !== null &&
+          lastSyncedEndRef.current !== null &&
+          (prev.startTime !== lastSyncedStartRef.current ||
+            prev.endTime !== lastSyncedEndRef.current);
+        if (userHasEditedTimes) {
+          return prev;
+        }
+        lastSyncedStartRef.current = orgDefaultStartTime;
+        lastSyncedEndRef.current = orgDefaultEndTime;
+        return {
+          ...prev,
+          startTime: orgDefaultStartTime,
+          endTime: orgDefaultEndTime,
+        };
+      });
+    }
+  }, [
+    isOpen,
+    currentEinsatz,
+    activeOrg,
     orgDefaultStartTime,
     orgDefaultEndTime,
   ]);
@@ -517,13 +573,17 @@ export function EventDialogVerwaltung({
             id: f.field.id,
             displayName: f.field.name || f.field.id,
             placeholder: f.field.placeholder,
-            defaultValue: f.field.default_value,
-            required: f.field.is_required,
+            defaultValue: f.field.default_value ?? null,
+            required: f.field.is_required === true,
+            groupName: f.field.group_name ?? null,
             isMultiline: f.field.is_multiline,
             min: f.field.min,
             max: f.field.max,
             allowedValues: f.field.allowed_values,
-            inputType: mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+            inputType:
+              f.field.is_multiline === true
+                ? 'textarea'
+                : mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
             dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
             inputProps: buildInputProps(f.field.type?.datatype, {
               placeholder: f.field.placeholder,
@@ -533,7 +593,7 @@ export function EventDialogVerwaltung({
           }))
         );
 
-        // Populate React Hook Form with field values
+        // Populate React Hook Form with field values (saved einsatz data or template default_value)
         const formValues = fields.reduce(
           (acc, f) => {
             const value =
@@ -549,7 +609,7 @@ export function EventDialogVerwaltung({
           {} as Record<string, any>
         );
 
-        // Reset form with new values
+        // Reset form with new values so dynamic fields show saved or default values
         dynamicForm.reset(formValues);
       } catch (error) {
         console.error('Error generating schema: ' + error);
@@ -564,8 +624,8 @@ export function EventDialogVerwaltung({
 
   const formatTimeForInput = (date: Date) => {
     const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = Math.floor(date.getMinutes() / 15) * 15;
-    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   const checkIfFormIsModified = (o1: EinsatzFormData, o2: EinsatzFormData) => {
@@ -597,44 +657,117 @@ export function EventDialogVerwaltung({
       });
 
       if (dialogResult !== 'success') {
-        // User cancelled, do not load template
+        toast.info(
+          'Vorlage nicht geladen. Es wurden keine Änderungen vorgenommen.'
+        );
         return;
       }
     }
 
     setActiveTemplateId(templateId);
 
-    // Load template data and populate form
+    // Load template data and populate form (only template defaults; placeholders are visual only; fallbacks stay hardcoded)
     if (selectedTemplate) {
-      // Populate form with template data
       const templateUpdates: Partial<EinsatzFormData> = {};
 
-      // Set default values from template if available
-      if (selectedTemplate.participant_count_default !== null) {
+      // Name (einsatzname_default)
+      const nameDefault = (
+        selectedTemplate as { einsatzname_default?: string | null }
+      ).einsatzname_default;
+      if (nameDefault != null && nameDefault.trim() !== '') {
+        templateUpdates.title = nameDefault.trim();
+      }
+
+      // Default categories (template_to_category)
+      const defaultCategoryIds =
+        selectedTemplate.template_to_category
+          ?.map((t) => t.category_id)
+          .filter((id): id is string => id != null) ?? [];
+      if (defaultCategoryIds.length > 0) {
+        templateUpdates.einsatzCategoriesIds = defaultCategoryIds;
+      }
+
+      // Start and end time
+      if (
+        (selectedTemplate as { time_start_default?: Date | null })
+          .time_start_default
+      ) {
+        templateUpdates.startTime = formatOrgTimeForInput(
+          (selectedTemplate as { time_start_default?: Date | null })
+            .time_start_default,
+          staticFormData.startTime
+        );
+      }
+      if (
+        (selectedTemplate as { time_end_default?: Date | null })
+          .time_end_default
+      ) {
+        templateUpdates.endTime = formatOrgTimeForInput(
+          (selectedTemplate as { time_end_default?: Date | null })
+            .time_end_default,
+          staticFormData.endTime
+        );
+      }
+
+      if (selectedTemplate.participant_count_default != null) {
         templateUpdates.participantCount =
           selectedTemplate.participant_count_default;
       }
-      if (selectedTemplate.price_person_default !== null) {
-        templateUpdates.pricePerPerson = selectedTemplate.price_person_default;
-      }
-      if (selectedTemplate.helpers_needed_default !== null) {
+      if (selectedTemplate.helpers_needed_default != null) {
         templateUpdates.helpersNeeded = selectedTemplate.helpers_needed_default;
       }
-      if (selectedTemplate.all_day_default !== null) {
+      if (selectedTemplate.all_day_default != null) {
         templateUpdates.all_day = selectedTemplate.all_day_default;
       }
 
-      // Calculate total price after both participant count and price per person are set
       const finalParticipantCount =
         templateUpdates.participantCount ??
         staticFormData.participantCount ??
         DEFAULTFORMDATA.participantCount;
-      const finalPricePerPerson =
-        templateUpdates.pricePerPerson ??
-        staticFormData.pricePerPerson ??
-        DEFAULTFORMDATA.pricePerPerson;
 
-      templateUpdates.totalPrice = finalParticipantCount * finalPricePerPerson;
+      // Total price and price per person: use total_price_default when set (derive price per person), else use price_person_default (derive total)
+      const totalDefault = selectedTemplate.total_price_default;
+      const pricePerPersonDefault = selectedTemplate.price_person_default;
+
+      // use !== null instead of !! to not falsely flag 0
+      if (totalDefault != null && finalParticipantCount > 0) {
+        templateUpdates.totalPrice = totalDefault;
+        templateUpdates.pricePerPerson = calcPricePerPersonFromTotal(
+          totalDefault,
+          finalParticipantCount
+        );
+      } else if (pricePerPersonDefault != null) {
+        templateUpdates.pricePerPerson = pricePerPersonDefault;
+        templateUpdates.totalPrice = calcTotal(
+          pricePerPersonDefault,
+          finalParticipantCount
+        );
+      } else {
+        const finalPricePerPerson =
+          staticFormData.pricePerPerson ?? DEFAULTFORMDATA.pricePerPerson;
+        templateUpdates.totalPrice =
+          finalParticipantCount * finalPricePerPerson;
+      }
+
+      // Required user properties from template (Benötigte Personeneigenschaften)
+      const templateUserProps = (
+        selectedTemplate as {
+          template_user_property?: Array<{
+            user_property_id: string;
+            is_required: boolean;
+            min_matching_users: number | null;
+          }>;
+        }
+      ).template_user_property;
+      if (templateUserProps?.length) {
+        templateUpdates.requiredUserProperties = templateUserProps.map(
+          (prop) => ({
+            user_property_id: prop.user_property_id,
+            is_required: prop.is_required,
+            min_matching_users: prop.min_matching_users ?? null,
+          })
+        );
+      }
 
       // Apply template values to form
       handleFormDataChange(templateUpdates);
@@ -798,10 +931,12 @@ export function EventDialogVerwaltung({
       endDateFull.setHours(23, 59, 59, 999);
     }
 
-    // If einsatz was changed, always remove bestätigt status
+    // When vergeben (assigned >= needed), allow bestätigt if user checked it; otherwise offen
     const status =
       assignedUsers.length >= parsedDataStatic.data.helpersNeeded
-        ? StatusValuePairs.vergeben
+        ? staticFormData.confirmAsBestätigt === true
+          ? StatusValuePairs.vergeben_bestaetigt
+          : StatusValuePairs.vergeben
         : StatusValuePairs.offen;
 
     // Hole dynamische Felder aus React Hook Form
@@ -840,21 +975,34 @@ export function EventDialogVerwaltung({
       isNewEinsatz,
       previousAssignedUsers,
       currentAssignedUsers,
-      currentUserId
+      currentUserId,
+      status
     );
     const affectedUserId = getAffectedUserId(
       previousAssignedUsers,
       currentAssignedUsers
     );
+    // Only log E-Bestaetigt when status was manually changed to bestätigt (not when it was already bestätigt)
+    const previousStatusId =
+      currentEinsatz && 'status_id' in currentEinsatz
+        ? currentEinsatz.status_id
+        : undefined;
+    const statusJustChangedToBestaetigt =
+      status === StatusValuePairs.vergeben_bestaetigt &&
+      previousStatusId !== StatusValuePairs.vergeben_bestaetigt;
+    // detectChangeTypes returns 'E-Bearbeitet' in the fallback; replace with E-Bestaetigt only when status just changed to bestätigt
+    const activityTypeNames = statusJustChangedToBestaetigt
+      ? changeTypeNames.map((t) => (t === 'E-Bearbeitet' ? 'E-Bestaetigt' : t))
+      : changeTypeNames;
 
-    for (const changeTypeName of changeTypeNames) {
+    for (const changeTypeName of activityTypeNames) {
       const effectiveAffectedUserId =
-        changeTypeName === 'create' ? null : affectedUserId;
+        changeTypeName === 'E-Erstellt' ? null : affectedUserId;
       if (currentEinsatz?.id && currentUserId) {
         createChangeLogAuto({
           einsatzId: currentEinsatz.id,
           userId: currentUserId,
-          typeName: changeTypeName,
+          typeId: ChangeTypeIds[changeTypeName],
           affectedUserId: effectiveAffectedUserId,
         }).catch((error) => {
           toast.error('Failed to create activity log: ' + error);
@@ -910,13 +1058,17 @@ export function EventDialogVerwaltung({
   //   }
   // };
 
+  const activeTemplate = useMemo(() => {
+    return templatesQuery.data?.find((t) => t.id === activeTemplateId);
+  }, [templatesQuery.data, activeTemplateId]);
+
   return (
     <>
       {AlertDialogComponent}
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="flex max-h-[90vh] max-w-220 flex-col">
-          <DialogHeader className="sticky top-0 z-10 shrink-0 border-b pb-4">
-            <DialogTitle>
+        <DialogContent className="flex max-h-[90vh] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden sm:max-w-220">
+          <DialogHeader className="bg-background sticky top-0 z-10 shrink-0 border-b pb-4">
+            <DialogTitle className="pr-8 wrap-break-word">
               {isLoading
                 ? 'Laden...'
                 : isFetching && !isLoading
@@ -945,16 +1097,17 @@ export function EventDialogVerwaltung({
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-x-hidden overflow-y-auto">
             <div className="grid gap-8 py-4">
-              <FormGroup>
-                {templatesQuery.isLoading ? (
-                  <div>Lade Vorlagen ...</div>
-                ) : !activeTemplateId ? (
-                  // template not yet set, show options
-                  <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
-                    <div className="mt-1.5 flex flex-wrap gap-4">
-                      {templatesQuery.data?.map((t) => (
+              {/* Template selection: single grid for options, no nested FormGroup grid */}
+              {templatesQuery.isLoading ? (
+                <div>Lade Vorlagen ...</div>
+              ) : !activeTemplateId ? (
+                <FormInputFieldCustom name="Vorlage auswählen" errors={[]}>
+                  <div className="mt-1.5 grid grid-cols-[repeat(auto-fill,minmax(min(12rem,100%),1fr))] gap-4">
+                    {templatesQuery.data
+                      ?.filter((t) => t && !t.is_paused)
+                      .map((t) => (
                         <ToggleItemBig
                           key={t.id}
                           text={t.name ?? 'Vorlage'}
@@ -963,41 +1116,49 @@ export function EventDialogVerwaltung({
                           onClick={() => {
                             handleTemplateSelect(t.id);
                           }}
-                          className="w-full sm:w-auto"
                         />
                       ))}
-                    </div>
-                  </FormInputFieldCustom>
-                ) : (
-                  <div className="flex justify-between">
-                    <div>
-                      Aktive Vorlage:{' '}
-                      {
-                        templatesQuery.data?.find(
-                          (t) => t.id === activeTemplateId
-                        )?.name
-                      }
+                  </div>
+                </FormInputFieldCustom>
+              ) : (
+                <FormGroup>
+                  <div className="flex flex-col justify-start gap-2 sm:flex-row sm:justify-between">
+                    <div className="min-w-0 wrap-break-word">
+                      Aktive Vorlage: {activeTemplate?.name}
+                      {activeTemplate?.is_paused && ' (pausiert)'}
                     </div>
                     <Select
                       value={activeTemplateId}
                       onValueChange={handleTemplateSelect}
                     >
-                      <SelectTrigger>
-                        <Button asChild variant="outline">
-                          <div>Aktive Vorlage ändern</div>
+                      <SelectTrigger className="w-full sm:w-auto">
+                        <Button
+                          asChild
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                        >
+                          <div className="truncate">Aktive Vorlage ändern</div>
                         </Button>
                       </SelectTrigger>
                       <SelectContent>
-                        {templatesQuery.data?.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
+                        {templatesQuery.data
+                          ?.filter(
+                            (t) => !t.is_paused || t.id === activeTemplateId
+                          )
+                          .map((t) => (
+                            <SelectItem
+                              key={t.id}
+                              value={t.id}
+                              disabled={t.is_paused}
+                            >
+                              {t.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-              </FormGroup>
+                </FormGroup>
+              )}
               {/* Form Fields */}
               <DefaultFormFields
                 formData={staticFormData}
@@ -1022,6 +1183,18 @@ export function EventDialogVerwaltung({
                 activeOrg={
                   organizations?.find((org) => org.id === activeOrgId) ?? null
                 }
+              />
+              <DynamicFormFields
+                fields={dynamicFormFields}
+                control={dynamicForm.control}
+                errors={dynamicForm.formState.errors}
+              />
+
+              <Separator />
+
+              <RequiredUserProperties
+                formData={staticFormData}
+                onFormDataChange={handleFormDataChange}
                 availableProps={
                   availableProps?.filter((prop) => prop.field.name !== null) as
                     | { id: string; field: { name: string } }[]
@@ -1029,11 +1202,6 @@ export function EventDialogVerwaltung({
                 }
               />
 
-              <DynamicFormFields
-                fields={dynamicFormFields}
-                control={dynamicForm.control}
-                errors={dynamicForm.formState.errors}
-              />
               <div className="border-b"></div>
               <EinsatzActivityLog einsatzId={currentEinsatz?.id ?? null} />
             </div>
@@ -1084,11 +1252,35 @@ export function EventDialogVerwaltung({
                 <FileDown size={16} aria-hidden="true" />
               </Button>
             </TooltipCustom>
-            <div className="flex flex-1 justify-end gap-2">
-              <Button variant="outline" onClick={onClose}>
-                Abbrechen
-              </Button>
-              <Button onClick={handleSave}>Speichern</Button>
+            <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
+              {staticFormData.helpersNeeded > 0 &&
+                staticFormData.assignedUsers.length >=
+                  staticFormData.helpersNeeded && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="confirmAsBestätigt"
+                      checked={staticFormData.confirmAsBestätigt === true}
+                      onCheckedChange={(checked) =>
+                        handleFormDataChange({
+                          confirmAsBestätigt: checked === true,
+                        })
+                      }
+                      aria-label="Als bestätigt markieren"
+                    />
+                    <label
+                      htmlFor="confirmAsBestätigt"
+                      className="cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Als bestätigt markieren
+                    </label>
+                  </div>
+                )}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onClose}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleSave}>Speichern</Button>
+              </div>
             </div>
           </DialogFooter>
         </DialogContent>

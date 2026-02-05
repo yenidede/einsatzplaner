@@ -30,6 +30,7 @@ import {
   useDetailedEinsatz,
   useCategories,
 } from '@/features/einsatz/hooks/useEinsatzQueries';
+import type { EinsatzDetailed } from '@/features/einsatz/types';
 import { useUsers } from '@/features/user/hooks/use-user-queries';
 import { useUserProperties } from '@/features/user_properties/hooks/use-user-property-queries';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
@@ -37,6 +38,8 @@ import { useStatuses } from '@/features/einsatz_status/hooks/useStatuses';
 
 interface EventDialogProps {
   einsatz: string | null;
+  /** When provided and id matches einsatz, used instead of fetching (e.g. from calendar cache). */
+  cachedDetailedEinsatz?: EinsatzDetailed | null;
   isOpen: boolean;
   onClose: () => void;
   onAssignToggleEvent: (einsatzId: string) => void;
@@ -44,6 +47,7 @@ interface EventDialogProps {
 
 export function EventDialogHelfer({
   einsatz,
+  cachedDetailedEinsatz,
   isOpen,
   onClose,
   onAssignToggleEvent,
@@ -57,11 +61,15 @@ export function EventDialogHelfer({
 
   const { generatePdf } = usePdfGenerator();
 
-  // Fetch detailed einsatz data when einsatz is a string (UUID)
-  const { data: detailedEinsatz, isLoading } = useDetailedEinsatz(
-    typeof einsatz === 'string' ? einsatz : null,
+  const useCache =
+    !!cachedDetailedEinsatz &&
+    !!einsatz &&
+    cachedDetailedEinsatz.id === einsatz;
+  const { data: fetchedDetailedEinsatz, isLoading } = useDetailedEinsatz(
+    useCache ? null : einsatz,
     isOpen
   );
+  const detailedEinsatz = useCache ? cachedDetailedEinsatz : fetchedDetailedEinsatz;
 
   const categoriesQuery = useCategories(activeOrgId);
 

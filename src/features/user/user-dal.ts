@@ -22,6 +22,7 @@ export async function getAllUsersWithRolesByOrgIds(
         },
       },
     },
+    orderBy: [{ lastname: 'asc' }, { firstname: 'asc' }],
     select: {
       id: true,
       firstname: true,
@@ -75,6 +76,7 @@ export async function getAllUsersWithRolesByOrgId(
         },
       },
     },
+    orderBy: [{ lastname: 'asc' }, { firstname: 'asc' }],
     select: {
       id: true,
       firstname: true,

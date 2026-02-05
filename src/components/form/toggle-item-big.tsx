@@ -1,4 +1,3 @@
-import React from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -40,7 +39,9 @@ export default function ToggleItemBig({
         />
       )}
       <div className="font-medium">{text}</div>
-      <div className="text-xs text-slate-600">{description}</div>
+      <div className="max-w-full text-xs text-wrap wrap-break-word text-slate-600">
+        {description}
+      </div>
     </Toggle>
   );
 }

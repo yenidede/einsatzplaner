@@ -54,8 +54,8 @@ export function InviteUserForm({
 
   // Rollen-States (default alle aktiviert)
   const [helferRole, setHelferRole] = useState(true);
-  const [evRole, setEvRole] = useState(true);
-  const [ovRole, setOvRole] = useState(true);
+  const [evRole, setEvRole] = useState(false);
+  const [ovRole, setOvRole] = useState(false);
 
   // Bestätigungs-Dialog State
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -238,7 +238,7 @@ export function InviteUserForm({
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="beispiel@email.de"
                   disabled={isSubmitting}
-                  autoComplete="email"
+                  aria-autocomplete="none"
                 />
                 <p className="text-muted-foreground text-xs">
                   Die Person erhält eine E-Mail mit einem Einladungslink
@@ -362,13 +362,13 @@ export function InviteUserForm({
                 <div className="mt-2 text-sm font-bold">
                   {evRole &&
                     ovRole &&
-                    `Diese Person erhält umfassende Verwaltungsrechte für ${einsatzNamePlural} (erstellen, bearbeiten und löschen) sowie für deine Organisation.`}
+                    `Diese Person erhält umfassende Verwaltungsrechte für ${einsatzNamePlural} (erstellen, bearbeiten und löschen) sowie für Ihre Organisation.`}
                   {evRole &&
                     !ovRole &&
                     `Diese Person kann ${einsatzNamePlural} erstellen, bearbeiten und löschen.`}
                   {!evRole &&
                     ovRole &&
-                    'Diese Person kann deine Organisation verwalten sowie Benutzer hinzufügen und entfernen.'}
+                    'Diese Person kann Ihre Organisation verwalten sowie Benutzer hinzufügen und entfernen.'}
                 </div>
               </div>
             </div>

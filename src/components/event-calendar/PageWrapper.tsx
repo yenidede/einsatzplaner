@@ -5,9 +5,9 @@ import { useSession } from 'next-auth/react';
 import { CalendarMode } from './types';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
-import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { ROLE_NAME_MAP } from '@/lib/auth/authGuard';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 export default function CalendarPageWrapper({
   mode,
@@ -33,7 +33,7 @@ export default function CalendarPageWrapper({
             'einsaetze:update',
             'einsaetze:delete',
           ],
-          requireAll: false, // User needs at least one of these
+          requireAll: false,
           customRedirect: (roleIds) => {
             if (roleIds.includes(ROLE_NAME_MAP['Helfer'])) {
               return '/helferansicht';
@@ -50,12 +50,12 @@ export default function CalendarPageWrapper({
   const activeOrg =
     organizations?.find((org) => org.id === activeOrgId) ?? null;
 
+  const { isConnected } = useSupabaseRealtime(activeOrgId);
+
   const { einsatz_plural, helper_plural } = useOrganizationTerminology(
     organizations,
     activeOrgId
   );
-
-  const { isError: isEventError } = useEinsaetze(activeOrgId);
 
   // Show loading state while session is being fetched
   if (sessionStatus === 'loading') {
@@ -80,18 +80,14 @@ export default function CalendarPageWrapper({
     return <div>Fehler beim Laden der Organisationen</div>;
   }
 
-  if (isEventError) {
-    return <div>Fehler beim Laden der Einsätze.</div>;
-  }
-
   return (
     <>
-      <h1>
+      <h1 className="leading-relaxed">
         {mode === 'verwaltung'
           ? `Verwaltungsansicht`
           : `${helper_plural}ansicht`}
       </h1>
-      <p className="text-muted-foreground leading-4">{descriptionText}</p>
+      <p className="text-muted-foreground leading-6">{descriptionText}</p>
       <div className="mt-6">
         <Calendar mode={mode} />
       </div>

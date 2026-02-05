@@ -31,7 +31,7 @@ export function validatePropertyConfig(
     }
   }
 
-  if (config.fieldType === 'number') {
+  if (config.fieldType === 'number' || config.fieldType === 'currency') {
     if (
       config.minValue !== undefined &&
       config.maxValue !== undefined &&

@@ -6,8 +6,17 @@ import type {
   EinsatzForCalendar,
   EinsatzCreate,
   EinsatzDetailed,
+  EinsatzDetailedForCalendar,
   ETV,
 } from '@/features/einsatz/types';
+import {
+  addMonths,
+  addYears,
+  endOfMonth,
+  startOfDay,
+  startOfMonth,
+  subMonths,
+} from 'date-fns';
 import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
 
 import { ValidateEinsatzCreate } from './validation-service';
@@ -15,6 +24,8 @@ import z from 'zod';
 import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
 import { createChangeLogAuto } from '../activity_log/activity_log-dal';
 import { BadRequestError, ForbiddenError } from '@/lib/errors';
+import { StatusValuePairs } from '@/components/event-calendar/constants';
+import { ChangeTypeIds } from '../activity_log/changeTypeIds';
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -62,7 +73,7 @@ async function checkEinsatzConflicts(
     return [];
   }
 
-  // Find all Einsatz assignments for these users that overlap with the given time range
+  // Find all Einsätze assignments for these users that overlap with the given time range
   const conflictingAssignments = await prisma.einsatz_helper.findMany({
     where: {
       user_id: { in: userIds },
@@ -185,11 +196,11 @@ export async function getEinsatzWithDetailsById(
       type_id: log.type_id,
       created_at: log.created_at,
       affected_user: log.affected_user,
-      user: {
+      user: log.user ? {
         id: log.user.id,
         firstname: log.user.firstname,
         lastname: log.user.lastname,
-      },
+      } : null,
     })),
   };
 }
@@ -236,6 +247,59 @@ export async function getEinsatzForCalendar(id: string) {
   return getEinsatzForCalendarFromDb(id);
 }
 
+export async function getDetailedEinsaetzeForCalendarRange(
+  org_ids: string[],
+  focusDate: Date
+): Promise<EinsatzDetailedForCalendar[] | Response> {
+  const { session, userIds } = await requireAuth();
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:read',
+      session.user.activeOrganization?.id
+    ))
+  ) {
+    return new Response('Unauthorized', { status: 403 });
+  }
+  const userOrgIds = userIds?.orgIds ?? (userIds?.orgId ? [userIds.orgId] : []);
+  const filterOrgIds =
+    org_ids.length > 0 ? org_ids : userOrgIds;
+  const rangeStart = startOfMonth(subMonths(focusDate, 1));
+  const rangeEnd = endOfMonth(addMonths(focusDate, 1));
+  const rows = await getDetailedEinsaetzeForCalendarRangeFromDb(
+    filterOrgIds,
+    rangeStart,
+    rangeEnd
+  );
+  return rows.map((row) => mapRawEinsatzToDetailedForCalendar(row));
+}
+
+/** All future events from today onwards (for agenda view). Uses same DB helper as calendar range. */
+export async function getDetailedEinsaetzeForAgenda(
+  org_ids: string[]
+): Promise<EinsatzDetailedForCalendar[] | Response> {
+  const { session, userIds } = await requireAuth();
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:read',
+      session.user.activeOrganization?.id
+    ))
+  ) {
+    return new Response('Unauthorized', { status: 403 });
+  }
+  const userOrgIds = userIds?.orgIds ?? (userIds?.orgId ? [userIds.orgId] : []);
+  const filterOrgIds = org_ids.length > 0 ? org_ids : userOrgIds;
+  const rangeStart = startOfDay(new Date());
+  const rangeEnd = endOfMonth(addYears(rangeStart, 2));
+  const rows = await getDetailedEinsaetzeForCalendarRangeFromDb(
+    filterOrgIds,
+    rangeStart,
+    rangeEnd
+  );
+  return rows.map((row) => mapRawEinsatzToDetailedForCalendar(row));
+}
+
 export async function getEinsaetzeForTableView(
   active_org_ids: string[]
 ): Promise<ETV[]> {
@@ -275,6 +339,7 @@ export async function getEinsaetzeForTableView(
             select: {
               type: {
                 select: {
+                  name: true,
                   datatype: true,
                 },
               },
@@ -407,6 +472,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
     where: {
       org_id: useOrgId,
     },
+    orderBy: { name: 'asc' },
     include: {
       template_icon: {
         select: {
@@ -463,11 +529,15 @@ export async function createEinsatz({
 
   // Check for conflicts when creating with assigned users (unless disabled)
   let conflicts: EinsatzConflict[] = [];
-  if (!disableTimeConflicts && data.assignedUsers && data.assignedUsers.length > 0) {
+  if (
+    !disableTimeConflicts &&
+    data.assignedUsers &&
+    data.assignedUsers.length > 0
+  ) {
     conflicts = await checkEinsatzConflicts(
       data.assignedUsers,
       data.start,
-      data.end,
+      data.end
     );
 
     // Return early if conflicts exist - do not create the einsatz
@@ -499,13 +569,13 @@ export async function createEinsatz({
 
       for (const typeName of changeTypeNames) {
         const affectedUserId =
-          typeName === 'create' ? null : affectedUserIds[0] || null;
+          typeName === 'E-Erstellt' ? null : affectedUserIds[0] ?? null;
 
         await createChangeLogAuto({
           einsatzId: createdEinsatz.id,
           userId: userIds.userId,
-          typeName: typeName,
-          affectedUserId: affectedUserId,
+          typeId: ChangeTypeIds[typeName],
+          affectedUserId,
         });
       }
     } catch (error) {
@@ -543,7 +613,12 @@ export async function updateEinsatzTime(data: {
     disableTimeConflicts: z.boolean().optional(),
   });
 
-  const { id, start, end, disableTimeConflicts = false } = dataSchema.parse(data);
+  const {
+    id,
+    start,
+    end,
+    disableTimeConflicts = false,
+  } = dataSchema.parse(data);
 
   // Get assigned users for this Einsatz
   const existingEinsatz = await prisma.einsatz.findUnique({
@@ -557,20 +632,17 @@ export async function updateEinsatzTime(data: {
 
   let conflicts: EinsatzConflict[] = [];
 
-  if (!disableTimeConflicts && existingEinsatz && existingEinsatz.einsatz_helper.length > 0) {
+  if (
+    !disableTimeConflicts &&
+    existingEinsatz &&
+    existingEinsatz.einsatz_helper.length > 0
+  ) {
     const assignedUserIds = Array.from(
-      new Set(
-        existingEinsatz.einsatz_helper.map((helper) => helper.user_id)
-      )
+      new Set(existingEinsatz.einsatz_helper.map((helper) => helper.user_id))
     );
 
     // Check if the new time causes conflicts with already assigned users
-    conflicts = await checkEinsatzConflicts(
-      assignedUserIds,
-      start,
-      end,
-      id
-    );
+    conflicts = await checkEinsatzConflicts(assignedUserIds, start, end, id);
 
     // Return early if conflicts exist - do not update the time
     if (conflicts.length > 0) {
@@ -682,7 +754,7 @@ export async function toggleUserAssignmentToEinsatz(
       await createChangeLogAuto({
         einsatzId: einsatzId,
         userId: session.user.id,
-        typeName: 'cancel',
+        typeId: ChangeTypeIds['N-Abgesagt'],
         affectedUserId: session.user.id,
       });
     } catch (error) {
@@ -716,7 +788,7 @@ export async function toggleUserAssignmentToEinsatz(
       await createChangeLogAuto({
         einsatzId: einsatzId,
         userId: session.user.id,
-        typeName: 'takeover',
+        typeId: ChangeTypeIds['N-Eingetragen'],
         affectedUserId: session.user.id, // as the user is assigning themselves they are also the affected user
       });
     } catch (error) {
@@ -858,10 +930,64 @@ export async function updateEinsatz({
       conflicts: [],
     };
   } catch (error) {
-    throw new Response(`Failed to update Einsatz with ID ${id}: ${error}`, {
+    throw new Response(`Failed to update Einsaetze with ID ${id}: ${error}`, {
       status: 500,
     });
   }
+}
+
+export async function updateEinsatzStatus(
+  einsatzId: string,
+  statusId: string
+): Promise<Einsatz> {
+  const { session, userIds } = await requireAuth();
+
+  if (
+    !(await hasPermission(
+      session,
+      'einsaetze:update',
+      session.user.activeOrganization?.id
+    ))
+  ) {
+    throw new ForbiddenError('Fehlende Berechtigungen');
+  }
+
+  const existingEinsatz = await prisma.einsatz.findUnique({
+    where: { id: einsatzId },
+    select: { id: true, org_id: true },
+  });
+
+  if (!existingEinsatz) {
+    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
+      status: 404,
+    });
+  }
+
+  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
+  if (!userOrgIds.includes(existingEinsatz.org_id)) {
+    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
+  }
+
+  const updatedEinsatz = await prisma.einsatz.update({
+    where: { id: einsatzId },
+    data: {
+      status_id: statusId,
+      updated_at: new Date(),
+    },
+  });
+
+  if (
+    statusId === StatusValuePairs.vergeben_bestaetigt &&
+    session?.user?.id
+  ) {
+    await createChangeLogAuto({
+      einsatzId,
+      userId: session.user.id,
+      typeId: ChangeTypeIds['E-Bestaetigt'],
+    });
+  }
+
+  return updatedEinsatz;
 }
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
@@ -896,7 +1022,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
     });
   } catch (error) {
     throw new Response(
-      `Failed to delete Einsatz with ID ${einsatzId}: ${error}`,
+      `Failed to delete Einsaetze with ID ${einsatzId}: ${error}`,
       { status: 500 }
     );
   }
@@ -1041,6 +1167,7 @@ async function getAllEinsaetzeFromDb(
         },
       },
     },
+    orderBy: { start: 'asc', title: 'asc' },
   });
 }
 
@@ -1144,6 +1271,158 @@ async function getAllEinsatzeForCalendarFromDb(
         in: org_ids,
       },
     },
+    orderBy: [{ start: 'asc' }, { title: 'asc' }],
+  });
+}
+
+type RawEinsatzWithDetails = Awaited<
+  ReturnType<typeof getEinsatzWithDetailsByIdFromDb>
+>;
+
+function mapRawEinsatzToDetailedForCalendar(
+  row: NonNullable<RawEinsatzWithDetails>
+): EinsatzDetailedForCalendar {
+  const {
+    einsatz_status,
+    einsatz_helper,
+    einsatz_to_category,
+    change_log,
+    einsatz_field,
+    einsatz_user_property,
+    ...rest
+  } = row;
+  const category_abbreviations = einsatz_to_category.map(
+    (c) => c.einsatz_category.abbreviation ?? ''
+  );
+  return {
+    ...rest,
+    einsatz_status,
+    assigned_users: Array.from(
+      new Set(einsatz_helper.map((helper) => helper.user_id))
+    ),
+    einsatz_fields: einsatz_field.map((field) => ({
+      id: field.id,
+      field_name: field.field.name,
+      einsatz_id: field.einsatz_id,
+      field_id: field.field_id,
+      value: field.value,
+      group_name: field.field.group_name,
+      field_type: { datatype: field.field.type?.datatype ?? null },
+    })),
+    categories: einsatz_to_category.map((cat) => cat.einsatz_category.id),
+    user_properties: einsatz_user_property.map((prop) => ({
+      user_property_id: prop.user_property_id,
+      is_required: prop.is_required,
+      min_matching_users: prop.min_matching_users,
+    })),
+    change_log: change_log.map((log) => ({
+      id: log.id,
+      einsatz_id: log.einsatz_id,
+      user_id: log.user_id,
+      type_id: log.type_id,
+      created_at: log.created_at,
+      affected_user: log.affected_user,
+      user: log.user
+        ? {
+          id: log.user.id,
+          firstname: log.user.firstname,
+          lastname: log.user.lastname,
+        }
+        : null,
+    })),
+    category_abbreviations,
+  };
+}
+
+async function getDetailedEinsaetzeForCalendarRangeFromDb(
+  org_ids: string[],
+  rangeStart: Date,
+  rangeEnd: Date
+) {
+  if (!org_ids.length) return [];
+  return prisma.einsatz.findMany({
+    where: {
+      org_id: { in: org_ids },
+      start: { lt: rangeEnd },
+      end: { gt: rangeStart },
+    },
+    include: {
+      einsatz_helper: {
+        select: {
+          id: true,
+          einsatz_id: true,
+          user_id: true,
+          joined_at: true,
+          user: {
+            select: {
+              id: true,
+              firstname: true,
+              lastname: true,
+            },
+          },
+        },
+      },
+      einsatz_to_category: {
+        include: {
+          einsatz_category: true,
+        },
+      },
+      einsatz_status: true,
+      einsatz_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
+        },
+      },
+      change_log: {
+        select: {
+          id: true,
+          einsatz_id: true,
+          created_at: true,
+          user_id: true,
+          type_id: true,
+          affected_user: true,
+          user: {
+            select: {
+              id: true,
+              firstname: true,
+              lastname: true,
+            },
+          },
+          change_type: true,
+        },
+      },
+      einsatz_field: {
+        select: {
+          id: true,
+          einsatz_id: true,
+          field_id: true,
+          value: true,
+          field: {
+            select: {
+              id: true,
+              name: true,
+              type_id: true,
+              is_required: true,
+              placeholder: true,
+              default_value: true,
+              group_name: true,
+              is_multiline: true,
+              min: true,
+              max: true,
+              type: {
+                select: {
+                  name: true,
+                  datatype: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ start: 'asc' }, { title: 'asc' }],
   });
 }
 

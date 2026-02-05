@@ -10,14 +10,24 @@ import { CalendarMode } from './types';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useSession } from 'next-auth/react';
+import { Loader } from 'lucide-react';
 
 interface AgendaViewProps {
   events: CalendarEvent[];
+  /** True while the events query is loading. When false and list is empty, show empty state instead of loading. */
+  isEventsLoading?: boolean;
   onEventSelect: (event: CalendarEvent) => void;
   mode: CalendarMode;
+  onEventConfirm?: (eventId: string) => void;
 }
 
-export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
+export function AgendaView({
+  events,
+  isEventsLoading = false,
+  onEventSelect,
+  mode,
+  onEventConfirm,
+}: AgendaViewProps) {
   const { data: session } = useSession();
   const activeOrgId = session?.user?.activeOrganization?.id;
   const { data: organizations } = useOrganizations(session?.user.orgIds);
@@ -88,11 +98,13 @@ export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
             className="text-muted-foreground/50 mb-2"
           />
           <h3 className="text-lg font-medium">
-            Keine geplanten {einsatz_plural}
+            {isEventsLoading ? `Lade ${einsatz_plural}...` : `Keine geplanten ${einsatz_plural}`}
           </h3>
-          <p className="text-muted-foreground">
-            Es sind noch keine {einsatz_plural} eingetragen.
-          </p>
+          {isEventsLoading && (
+            <p className="text-muted-foreground flex items-center gap-2">
+              <Loader className="animate-spin" />
+            </p>
+          )}
         </div>
       ) : (
         futureEventsByDay.map(({ date, events: dayEvents }) => (
@@ -114,6 +126,7 @@ export function AgendaView({ events, onEventSelect, mode }: AgendaViewProps) {
                   view="agenda"
                   onClick={(e) => handleEventClick(event, e)}
                   mode={mode}
+                  onConfirm={onEventConfirm}
                 />
               ))}
             </div>
