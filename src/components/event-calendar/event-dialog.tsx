@@ -500,7 +500,7 @@ export function EventDialogVerwaltung({
               min_matching_users: prop.min_matching_users ?? null,
             })) || [],
           anmerkung: einsatzDetailed.anmerkung || '',
-          //** this should always reset to false (if something were to be edited) */
+          // this should always reset to false (if something were to be edited)
           confirmAsBestätigt: false,
         });
         // Reset errors when opening dialog
