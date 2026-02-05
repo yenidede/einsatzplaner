@@ -215,7 +215,7 @@ export function EventCalendar({
 
   const handleEventSelect = (event: CalendarEvent | string) => {
     const eventId = typeof event === 'string' ? event : event.id;
-    if (eventId.includes('temp')) {
+    if (eventId.includes('temp-')) {
       toast.info(
         `${einsatz_singular} wird gespeichert und muss erst aktualisiert werden. Bitte warten Sie ein paar Sekunden und versuchen Sie es erneut.`
       );

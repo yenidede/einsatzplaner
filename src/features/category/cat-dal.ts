@@ -30,7 +30,7 @@ export type UpdateCategoryInput = {
 export async function createCategory(
   input: CreateCategoryInput
 ): Promise<EinsatzCategory> {
-  if (input.value.trim() === '') {
+  if (input?.value?.trim() === '') {
     throw new Error('Kategoriename darf nicht leer sein');
   }
 
