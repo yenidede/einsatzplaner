@@ -72,7 +72,7 @@ export function SignUpForm({
   const anredeButtonRef = useRef<HTMLButtonElement>(null);
 
   const generateAppleStylePassword = (): string => {
-    // Generate Apple-style password: "huvsoj-tUfqyh-1bupxy"
+    // Generate Apple-style password
     // Format: lowercase-lowercase+uppercase-number+lowercase
     // Uses Web Crypto API for cryptographically secure randomness
     const lowercase = 'abcdefghijklmnopqrstuvwxyz';
