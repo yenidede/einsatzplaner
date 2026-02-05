@@ -109,8 +109,64 @@ export function SignUpForm({
 
   const handleGeneratePassword = () => {
     const generatedPassword = generateAppleStylePassword();
-    form.setValue('passwort', generatedPassword);
-    form.setValue('passwort2', generatedPassword);
+    
+    // Find the actual input elements within Password components
+    // Password component wraps InputGroupInput, so we need to find the input inside
+    const passwortInput = document.getElementById('passwort') as HTMLInputElement;
+    const passwort2Input = document.getElementById('passwort2') as HTMLInputElement;
+    
+    // Helper to set value and trigger events that password managers listen for
+    const setPasswordValue = (input: HTMLInputElement, value: string, fieldName: 'passwort' | 'passwort2') => {
+      if (!input) return;
+      
+      // Focus the input first (password managers need focus to detect changes)
+      input.focus();
+      
+      // Update form state first through react-hook-form
+      form.setValue(fieldName, value, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      
+      // Set the value directly on the DOM element
+      input.value = value;
+      
+      // Create InputEvent with proper properties for password managers
+      // Password managers typically listen for 'input' events with inputType 'insertText'
+      const inputEvent = new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: value,
+      });
+      
+      // Create change event
+      const changeEvent = new Event('change', {
+        bubbles: true,
+        cancelable: true,
+      });
+      
+      // Dispatch events that password managers listen for
+      // Order matters: input first, then change
+      input.dispatchEvent(inputEvent);
+      input.dispatchEvent(changeEvent);
+      
+      // Blur and refocus to ensure password managers detect the change
+      setTimeout(() => {
+        input.blur();
+        input.focus();
+      }, 50);
+    };
+    
+    // Set password values with proper event dispatching
+    if (passwortInput) {
+      setPasswordValue(passwortInput, generatedPassword, 'passwort');
+    }
+    
+    // Small delay between fields to help password managers detect both
+    setTimeout(() => {
+      if (passwort2Input) {
+        setPasswordValue(passwort2Input, generatedPassword, 'passwort2');
+      }
+    }, 100);
+    
     toast.success('Passwort generiert');
   };
 
