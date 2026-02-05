@@ -17,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Password } from '@/components/password';
-import { Check, ChevronLeft, ChevronsUpDown, Key, Sparkle } from 'lucide-react';
+import { Check, ChevronLeft, ChevronsUpDown, Sparkle } from 'lucide-react';
 import {
   Command,
   CommandEmpty,
@@ -74,35 +74,44 @@ export function SignUpForm({
   const generateAppleStylePassword = (): string => {
     // Generate Apple-style password: "huvsoj-tUfqyh-1bupxy"
     // Format: lowercase-lowercase+uppercase-number+lowercase
+    // Uses Web Crypto API for cryptographically secure randomness
     const lowercase = 'abcdefghijklmnopqrstuvwxyz';
     const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const numbers = '0123456789';
 
+    // Helper function to get cryptographically secure random integer in range [0, max)
+    const getSecureRandomInt = (max: number): number => {
+      const randomValues = new Uint32Array(1);
+      crypto.getRandomValues(randomValues);
+      return randomValues[0] % max;
+    };
+
+    // Helper function to get a random character from a string
+    const getRandomChar = (chars: string): string => {
+      return chars[getSecureRandomInt(chars.length)];
+    };
+
     // First part: 6 lowercase letters
-    const part1 = Array.from(
-      { length: 6 },
-      () => lowercase[Math.floor(Math.random() * lowercase.length)]
+    const part1 = Array.from({ length: 6 }, () =>
+      getRandomChar(lowercase)
     ).join('');
 
     // Second part: starts lowercase, has uppercase mixed in (6 chars)
     const part2Chars = Array.from({ length: 6 }, (_, i) => {
       if (i === 0) {
         // First char is lowercase
-        return lowercase[Math.floor(Math.random() * lowercase.length)];
+        return getRandomChar(lowercase);
       } else {
-        // Mix of lowercase and uppercase
-        const pool = Math.random() < 0.5 ? lowercase : uppercase;
-        return pool[Math.floor(Math.random() * pool.length)];
+        // Mix of lowercase and uppercase (50/50 chance)
+        const pool = getSecureRandomInt(2) === 0 ? lowercase : uppercase;
+        return getRandomChar(pool);
       }
     }).join('');
 
     // Third part: starts with number, then lowercase (6 chars)
     const part3 =
-      numbers[Math.floor(Math.random() * numbers.length)] +
-      Array.from(
-        { length: 5 },
-        () => lowercase[Math.floor(Math.random() * lowercase.length)]
-      ).join('');
+      getRandomChar(numbers) +
+      Array.from({ length: 5 }, () => getRandomChar(lowercase)).join('');
 
     return `${part1}-${part2Chars}-${part3}`;
   };
