@@ -337,7 +337,11 @@ export function SignUpForm({
             )}
           />
           <div className="col-span-full mt-4 flex items-center justify-end">
-            <Button variant="link" onClick={() => setTab('accept')}>
+            <Button
+              variant="link"
+              onClick={() => setTab('accept')}
+              type="button"
+            >
               <ChevronLeft />
               Zurück
             </Button>
@@ -508,7 +512,7 @@ export function SignUpForm({
                     placeholder="PNG, JPEG oder Gif (max. 5MB)"
                     accept={`image/png, image/jpeg, image/gif`}
                     maxFiles={1}
-                    maxSize={500000} // approx 480kB, 500kB max allowed in db
+                    // maxSize={500000} // approx 480kB, 500kB max allowed in db
                   />
                 </Field>
                 {Array.isArray(fieldState.error) ? (
@@ -529,7 +533,11 @@ export function SignUpForm({
             )}
           />
           <div className="col-span-full mt-4 flex items-center justify-end">
-            <Button variant="link" onClick={() => setTab('register1')}>
+            <Button
+              variant="link"
+              onClick={() => setTab('register1')}
+              type="button"
+            >
               <ChevronLeft />
               Zurück
             </Button>
