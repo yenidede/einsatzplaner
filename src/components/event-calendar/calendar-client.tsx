@@ -372,10 +372,6 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     return <div>Fehler beim Laden der Einsätze: {msg}</div>;
   }
 
-  // if (!calendarData) {
-  //   return <div>Lade Daten...</div>;
-  // }
-
   const calendarEvents = calendarData?.events ?? [];
   return (
     <>

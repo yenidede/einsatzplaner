@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { queryKeys } from '@/features/einsatz/queryKeys';
 import {
   getEinsaetzeData,
+  getEinsaetzeDataForAgenda,
   getEinsaetzeDataForCalendarRange,
 } from '@/components/event-calendar/utils';
 import type { CalendarRangeData } from '@/components/event-calendar/utils';
@@ -66,6 +67,28 @@ export function usePrefetchEinsaetzeForCalendar(
     },
     [activeOrgId, queryClient]
   );
+}
+
+const agendaQueryFn = async (
+  activeOrgId: string | undefined
+): Promise<CalendarRangeData> => {
+  const result = await getEinsaetzeDataForAgenda(activeOrgId);
+  if (result instanceof Response) {
+    throw new Error(`Einsätze konnten nicht geladen werden: ${result.statusText}`);
+  }
+  return result;
+};
+
+/** All future events for agenda view. Invalidated with einsaetzeForCalendarPrefix(orgId). */
+export function useEinsaetzeForAgenda(
+  activeOrgId: string | null | undefined,
+  enabled: boolean
+) {
+  return useQuery<CalendarRangeData>({
+    queryKey: queryKeys.einsaetzeForAgenda(activeOrgId ?? ''),
+    queryFn: () => agendaQueryFn(activeOrgId ?? undefined),
+    enabled: !!activeOrgId && enabled,
+  });
 }
 
 export function useDetailedEinsatz(
