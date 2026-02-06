@@ -1,6 +1,58 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { QueryKey } from '@tanstack/react-query';
+import { addMonths, eachDayOfInterval, format, startOfDay, subMonths } from 'date-fns';
 import { queryKeys } from '../queryKeys';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
+import type { CalendarRangeData } from '@/components/event-calendar/utils';
+
+/** If isOverlap is true, returns the 3 monthKeys that overlap the 3-month window centered on the given date. Otherwise, returns the 1 monthKey for the given date. */
+export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
+  const d = new Date(date);
+  if (isOverlap) {
+    return [
+      format(subMonths(d, 1), 'yyyy-MM'),
+      format(d, 'yyyy-MM'),
+      format(addMonths(d, 1), 'yyyy-MM'),
+    ];
+  } else {
+    return [format(d, 'yyyy-MM')];
+  }
+}
+
+/** Object with start and optional end (Date or ISO string). Used for multi-day event invalidation. */
+type WithStartEnd = { start: Date | string; end?: Date | string };
+
+/** Returns one Date per calendar day from start through end (inclusive). If end is missing or before start, returns [startOfDay(start)]. */
+function getDatesSpanningEvent(event: WithStartEnd): Date[] {
+  const start = startOfDay(new Date(event.start));
+  const endRaw = event.end != null ? new Date(event.end) : start;
+  const end = startOfDay(endRaw);
+  if (end < start) return [start];
+  return eachDayOfInterval({ start, end });
+}
+
+function invalidateCalendarMonthsForDate(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  dates: Date[]
+) {
+  if (dates.length === 0) return;
+  const monthKeys = Array.from(new Set(dates.flatMap((date) => getMonthKeysForDate(date, false))));
+  monthKeys.forEach((monthKey) => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.einsaetzeForCalendar(orgId, monthKey),
+    });
+  });
+}
+
+function invalidateAllCalendarMonthsForOrg(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string
+) {
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+  });
+}
 
 import {
   createEinsatz,
@@ -15,9 +67,28 @@ import {
 import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { EinsatzCreate } from '../types';
 import { CalendarEvent } from '@/components/event-calendar/types';
-import { EinsatzCreateToCalendarEvent } from '@/components/event-calendar/einsatz-service';
 import { toast } from 'sonner';
 import { useAlertDialog } from '@/hooks/use-alert-dialog';
+
+/** Snapshot of calendar cache entries for optimistic rollback. */
+type CalendarCacheSnapshot = Array<[QueryKey, CalendarRangeData | undefined]>;
+
+function rollbackCalendarCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshot: CalendarCacheSnapshot
+) {
+  snapshot.forEach(([key, data]) => {
+    queryClient.setQueryData(key, data);
+  });
+}
+
+/** Type guard: object has a defined start (Date or string). Used for update response that may be raw einsatz. */
+function hasDefinedStart(obj: unknown): obj is { start: Date | string } {
+  if (obj === null || typeof obj !== 'object') return false;
+  if (!('start' in obj)) return false;
+  const start = (obj as Record<string, unknown>).start;
+  return typeof start === 'string' || start instanceof Date;
+}
 
 // Helper function to format conflict messages
 function formatConflictMessages(conflicts: EinsatzConflict[]): string {
@@ -35,7 +106,7 @@ export function useCreateEinsatz(
   onConflictCancel?: (eventId: string) => void
 ) {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.einsaetze(activeOrgId ?? '');
+  const calendarPrefixKey = queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? '');
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
   const mutation = useMutation({
@@ -49,32 +120,47 @@ export function useCreateEinsatz(
       return createEinsatz({ data: event, disableTimeConflicts });
     },
     onMutate: async ({ event }) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const previous = queryClient.getQueryData<CalendarEvent[]>(queryKey);
-
-      // if we create a new einsatz, assign a temporary id. After the server response, all data will be refetched.
-      const id = event.id ?? 'temp-' + crypto.randomUUID();
-      const optimisticVars: EinsatzCreate = { ...event, id };
-      const calendarEvent = await EinsatzCreateToCalendarEvent(optimisticVars);
-
-      queryClient.setQueryData<CalendarEvent[]>(queryKey, (old = []) => [
-        ...old,
-        calendarEvent,
-      ]);
-
-      return { previous };
+      await queryClient.cancelQueries({ queryKey: calendarPrefixKey });
+      if (!activeOrgId) return {};
+      const dates = getDatesSpanningEvent({
+        start: event.start,
+        end: event.end != null ? event.end : undefined,
+      });
+      const monthKeys = Array.from(
+        new Set(dates.flatMap((d) => getMonthKeysForDate(d, false)))
+      );
+      const optimisticEvent: CalendarEvent = {
+        id: `temp-${Date.now()}`,
+        title: event.title,
+        start: event.start instanceof Date ? event.start : new Date(event.start),
+        end: event.end instanceof Date ? event.end : new Date(event.end),
+        allDay: event.all_day ?? false,
+        assignedUsers: event.assignedUsers ?? [],
+        helpersNeeded: event.helpers_needed,
+      };
+      const previousData: CalendarCacheSnapshot = [];
+      for (const monthKey of monthKeys) {
+        const key = queryKeys.einsaetzeForCalendar(activeOrgId, monthKey);
+        const data = queryClient.getQueryData<CalendarRangeData>(key);
+        if (data) {
+          previousData.push([key, data]);
+          queryClient.setQueryData<CalendarRangeData>(key, {
+            ...data,
+            events: [...data.events, optimisticEvent],
+          });
+        }
+      }
+      return { previousData };
     },
-    onError: (error, _vars, ctx) => {
-      queryClient.setQueryData(queryKey, ctx?.previous);
+    onError: (error, _vars, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht erstellt werden: ${errorMessage}`);
     },
-    onSuccess: async (data, vars, ctx) => {
+    onSuccess: async (data, vars, _ctx) => {
       if (data.conflicts && data.conflicts.length > 0) {
-        // Roll back optimistic update if there are conflicts
-        queryClient.setQueryData(queryKey, ctx?.previous);
-
         // Show confirmation dialog
         const dialogResult = await showDialog({
           title: 'Warnung: Zeitkonflikte erkannt',
@@ -102,8 +188,17 @@ export function useCreateEinsatz(
         toast.success(`${einsatzSingular} '${vars.event.title}' wurde erstellt.`);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+    onSettled: (data, _error, vars) => {
+      const event = data?.einsatz ?? vars?.event;
+      if (activeOrgId && event && hasDefinedStart(event)) {
+        const dates = getDatesSpanningEvent({
+          start: event.start,
+          end: 'end' in event && event.end != null ? event.end : undefined,
+        });
+        invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
+      } else if (activeOrgId) {
+        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
+      }
     },
   });
 
@@ -121,7 +216,7 @@ export function useUpdateEinsatz(
   onConflictCancel?: (eventId: string) => void
 ) {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.einsaetze(activeOrgId ?? '');
+  const calendarPrefixKey = queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? '');
   const { showDialog, AlertDialogComponent } = useAlertDialog();
 
   const mutation = useMutation({
@@ -143,41 +238,65 @@ export function useUpdateEinsatz(
         });
       }
     },
-    onMutate: async ({ event: updatedEvent }) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const previous =
-        queryClient.getQueryData<CalendarEvent[]>(queryKey) || [];
-
-      let calendarEvent: CalendarEvent | null = null;
-      if ('org_id' in updatedEvent) {
-        calendarEvent = await EinsatzCreateToCalendarEvent(updatedEvent);
-      } else {
-        calendarEvent = updatedEvent;
+    onMutate: async ({ event }) => {
+      await queryClient.cancelQueries({ queryKey: calendarPrefixKey });
+      if (!activeOrgId) return {};
+      const eventId = event.id;
+      if (!eventId) return {};
+      const start =
+        'start' in event && event.start
+          ? event.start instanceof Date
+            ? event.start
+            : new Date(event.start)
+          : null;
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: calendarPrefixKey,
+      });
+      for (const [key, data] of queries) {
+        if (!data) continue;
+        const idx = data.events.findIndex((e) => e.id === eventId);
+        if (idx === -1) continue;
+        previousData.push([key, data]);
+        const prev = data.events[idx];
+        const updated: CalendarEvent = {
+          ...prev,
+          ...(start && { start }),
+          ...('end' in event &&
+            event.end !== undefined && {
+            end: event.end instanceof Date ? event.end : new Date(event.end),
+          }),
+        };
+        if ('title' in event && event.title !== undefined) updated.title = event.title;
+        if ('all_day' in event && event.all_day !== undefined) updated.allDay = event.all_day;
+        if ('assignedUsers' in event && event.assignedUsers !== undefined)
+          updated.assignedUsers = event.assignedUsers;
+        if ('helpersNeeded' in event && event.helpersNeeded !== undefined)
+          updated.helpersNeeded = event.helpersNeeded;
+        const newEvents = [...data.events];
+        newEvents[idx] = updated;
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: newEvents,
+        });
       }
-
-      queryClient.setQueryData<CalendarEvent[]>(queryKey, (old = []) =>
-        old.map((e) => (e.id === calendarEvent.id ? calendarEvent! : e))
-      );
-
-      return { previous };
+      return { previousData };
     },
-    onError: (error, _vars, ctx) => {
-      queryClient.setQueryData(queryKey, ctx?.previous);
+    onError: (error, _vars, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(
         `${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`
       );
     },
-    onSuccess: async (data, vars, ctx) => {
+    onSuccess: async (data, vars) => {
       const einsatz = 'einsatz' in data ? data.einsatz : data;
       const conflicts = 'conflicts' in data ? data.conflicts : [];
       const einsatzId = einsatz && 'id' in einsatz ? einsatz.id : undefined;
 
       if (conflicts && conflicts.length > 0) {
-        // Roll back optimistic update if there are conflicts
-        queryClient.setQueryData(queryKey, ctx?.previous);
-
         // Show confirmation dialog
         const dialogResult = await showDialog({
           title: 'Warnung: Zeitkonflikte erkannt',
@@ -206,17 +325,32 @@ export function useUpdateEinsatz(
         toast.success(`${einsatzSingular} '${title}' wurde aktualisiert.`);
       }
 
-      // Only invalidate queries if the update was successful
       if (einsatzId) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.allLists(),
-        });
         queryClient.invalidateQueries({
           queryKey: queryKeys.detailedEinsatz(einsatzId),
         });
         queryClient.invalidateQueries({
           queryKey: activityLogQueryKeys.allEinsatz(einsatzId),
         });
+      }
+    },
+    onSettled: (data, _error, vars) => {
+      const event =
+        data && 'einsatz' in data && data.einsatz
+          ? data.einsatz
+          : data && hasDefinedStart(data)
+            ? data
+            : vars?.event && 'start' in vars.event
+              ? vars.event
+              : null;
+      if (activeOrgId && event && hasDefinedStart(event)) {
+        const dates = getDatesSpanningEvent({
+          start: event.start,
+          end: 'end' in event && event.end != null ? event.end : undefined,
+        });
+        invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
+      } else if (activeOrgId) {
+        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
   });
@@ -232,7 +366,7 @@ export function useUpdateEinsatz(
 
 /** Minimal status shape for optimistic "bestätigt" display (verwalter_text/helper_text for colors). */
 const OPTIMISTIC_BESTAETIGT_STATUS = {
-  id: StatusValuePairs.vergeben_bestaetigt,
+  id: StatusValuePairs.vergeben,
   verwalter_text: 'bestätigt',
   helper_text: 'vergeben',
   verwalter_color: 'green',
@@ -244,7 +378,6 @@ export function useConfirmEinsatz(
   einsatzSingular: string = 'Einsatz'
 ) {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.einsaetze(activeOrgId ?? '');
 
   return useMutation({
     mutationFn: async (eventId: string) => {
@@ -254,26 +387,37 @@ export function useConfirmEinsatz(
       );
     },
     onMutate: async (eventId) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const previous =
-        queryClient.getQueryData<CalendarEvent[]>(queryKey) ?? [];
-
-      const updated = previous.map((event) => {
-        if (event.id !== eventId) return event;
-        return {
-          ...event,
-          status: { ...(event.status ?? {}), ...OPTIMISTIC_BESTAETIGT_STATUS },
-        };
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
       });
-
-      queryClient.setQueryData<CalendarEvent[]>(queryKey, updated);
-
-      return { previous };
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.detailedEinsatz(eventId),
+      });
+      if (!activeOrgId) return {};
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data) continue;
+        const idx = data.events.findIndex((e) => e.id === eventId);
+        if (idx === -1) continue;
+        previousData.push([key, data]);
+        const newEvents = [...data.events];
+        newEvents[idx] = {
+          ...newEvents[idx],
+          status: OPTIMISTIC_BESTAETIGT_STATUS,
+        };
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: newEvents,
+        });
+      }
+      return { previousData };
     },
-    onError: (error, _eventId, ctx) => {
-      if (ctx?.previous != null) {
-        queryClient.setQueryData(queryKey, ctx.previous);
+    onError: (error, _eventId, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
       }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(
@@ -283,8 +427,7 @@ export function useConfirmEinsatz(
     onSuccess: (data) => {
       toast.success(`${einsatzSingular} '${data.title}' wurde bestätigt.`);
     },
-    onSettled: (_data, _error, eventId) => {
-      queryClient.invalidateQueries({ queryKey });
+    onSettled: (data, _error, eventId) => {
       if (eventId) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.detailedEinsatz(eventId),
@@ -292,6 +435,15 @@ export function useConfirmEinsatz(
         queryClient.invalidateQueries({
           queryKey: activityLogQueryKeys.allEinsatz(eventId),
         });
+      }
+      if (activeOrgId && data && hasDefinedStart(data)) {
+        const dates = getDatesSpanningEvent({
+          start: data.start,
+          end: 'end' in data && data.end != null ? data.end : undefined,
+        });
+        invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
+      } else if (activeOrgId) {
+        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
   });
@@ -303,37 +455,43 @@ export function useToggleUserAssignment(
   einsatzSingular: string = 'Einsatz'
 ) {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.einsaetze(activeOrgId ?? '');
 
   return useMutation({
     mutationFn: async (eventId: string) => {
       return await toggleUserAssignmentToEinsatz(eventId);
     },
     onMutate: async (eventId) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const previous =
-        queryClient.getQueryData<CalendarEvent[]>(queryKey) ?? [];
-
-      if (!userId) return { previous };
-
-      const updated = previous.map((event) => {
-        if (event.id !== eventId) return event;
-
-        const isAssigned = event.assignedUsers.includes(userId);
-        const newAssignedUsers = isAssigned
-          ? event.assignedUsers.filter((id) => id !== userId)
-          : [...event.assignedUsers, userId];
-
-        return { ...event, assignedUsers: newAssignedUsers };
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
       });
-
-      queryClient.setQueryData<CalendarEvent[]>(queryKey, updated);
-
-      return { previous };
+      if (!activeOrgId || !userId) return {};
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data) continue;
+        const idx = data.events.findIndex((e) => e.id === eventId);
+        if (idx === -1) continue;
+        previousData.push([key, data]);
+        const prev = data.events[idx];
+        const isAssigned = prev.assignedUsers?.includes(userId) ?? false;
+        const newAssigned = isAssigned
+          ? (prev.assignedUsers ?? []).filter((id) => id !== userId)
+          : [...(prev.assignedUsers ?? []), userId];
+        const newEvents = [...data.events];
+        newEvents[idx] = { ...prev, assignedUsers: newAssigned };
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: newEvents,
+        });
+      }
+      return { previousData };
     },
-    onError: (error, _vars, ctx) => {
-      queryClient.setQueryData(queryKey, ctx?.previous);
+    onError: (error, _eventId, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`);
     },
@@ -351,9 +509,15 @@ export function useToggleUserAssignment(
           queryKey: queryKeys.detailedEinsatz(data.id),
         });
       }
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.einsaetze(activeOrgId ?? ''),
-      });
+      if (activeOrgId && data && hasDefinedStart(data)) {
+        const dates = getDatesSpanningEvent({
+          start: data.start,
+          end: 'end' in data && data.end != null ? data.end : undefined,
+        });
+        invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
+      } else if (activeOrgId) {
+        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
+      }
     },
   });
 }
@@ -363,7 +527,6 @@ export function useDeleteEinsatz(
   einsatzSingular: string = 'Einsatz'
 ) {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.einsaetze(activeOrgId ?? '');
 
   return useMutation({
     mutationFn: async ({
@@ -375,25 +538,33 @@ export function useDeleteEinsatz(
       return deleteEinsatzById(eventId);
     },
     onMutate: async ({ eventId }) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const previous =
-        queryClient.getQueryData<CalendarEvent[]>(queryKey) || [];
-      const toDelete = previous.find((e) => e.id === eventId);
-
-      queryClient.setQueryData<CalendarEvent[]>(queryKey, (old = []) =>
-        old.filter((e) => e.id !== eventId)
-      );
-
-      return { previous, toDelete };
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
+      });
+      if (!activeOrgId) return {};
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data || !data.events.some((e) => e.id === eventId)) continue;
+        previousData.push([key, data]);
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: data.events.filter((e) => e.id !== eventId),
+        });
+      }
+      return { previousData };
     },
-    onError: (error, _vars, ctx) => {
-      queryClient.setQueryData(queryKey, ctx?.previous);
+    onError: (error, _vars, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
     },
-    onSuccess: (_data, vars, ctx) => {
-      const title = ctx?.toDelete?.title || vars.eventTitle || 'Unbenannt';
+    onSuccess: (_data, vars) => {
+      const title = vars.eventTitle || 'Unbenannt';
       toast.success(`${einsatzSingular} '${title}' wurde gelöscht.`);
     },
     onSettled: (_data, _error, variables) => {
@@ -402,9 +573,9 @@ export function useDeleteEinsatz(
           queryKey: queryKeys.detailedEinsatz(variables.eventId),
         });
       }
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.einsaetze(activeOrgId ?? ''),
-      });
+      if (activeOrgId) {
+        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
+      }
     },
   });
 }
@@ -415,27 +586,35 @@ export function useDeleteMultipleEinsaetze(
   einsatzPlural: string = 'Einsätze'
 ) {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.einsaetze(activeOrgId ?? '');
 
   return useMutation({
     mutationFn: async ({ eventIds }: { eventIds: string[] }) => {
       return deleteEinsaetzeByIds(eventIds);
     },
     onMutate: async ({ eventIds }) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const previous =
-        queryClient.getQueryData<CalendarEvent[]>(queryKey) || [];
-      const toDelete = previous.filter((e) => eventIds.includes(e.id));
-
-      queryClient.setQueryData<CalendarEvent[]>(queryKey, (old = []) =>
-        old.filter((e) => !eventIds.includes(e.id))
-      );
-
-      return { previous, toDelete };
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
+      });
+      if (!activeOrgId) return {};
+      const idSet = new Set(eventIds);
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data || !data.events.some((e) => idSet.has(e.id))) continue;
+        previousData.push([key, data]);
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: data.events.filter((e) => !idSet.has(e.id)),
+        });
+      }
+      return { previousData };
     },
-    onError: (error, _vars, ctx) => {
-      queryClient.setQueryData(queryKey, ctx?.previous);
+    onError: (error, _vars, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
     },
@@ -452,9 +631,9 @@ export function useDeleteMultipleEinsaetze(
           });
         });
       }
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.einsaetze(activeOrgId ?? ''),
-      });
+      if (activeOrgId) {
+        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
+      }
     },
   });
 }

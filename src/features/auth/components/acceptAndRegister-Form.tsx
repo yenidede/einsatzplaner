@@ -17,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Password } from '@/components/password';
-import { Check, ChevronLeft, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronLeft, ChevronsUpDown, Sparkle } from 'lucide-react';
 import {
   Command,
   CommandEmpty,
@@ -34,7 +34,7 @@ import {
 import { FileUpload } from '@/components/form/file-upload';
 import { cn } from '@/lib/utils';
 import { useSalutations } from '@/features/settings/hooks/useUserProfile';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { TabsContent } from '@/components/ui/tabs';
 import {
@@ -61,10 +61,149 @@ export function SignUpForm({
 }) {
   const [anredePopoverOpen, setAnredePopoverOpen] = useState(false);
   const { data: salutations = [] } = useSalutations();
+
+  // Refs for focus management
+  const vornameRef = useRef<HTMLInputElement>(null);
+  const nachnameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwortRef = useRef<HTMLInputElement>(null);
+  const passwort2Ref = useRef<HTMLInputElement>(null);
+  const telefonRef = useRef<HTMLInputElement>(null);
+  const anredeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const generateAppleStylePassword = (): string => {
+    // Generate Apple-style password
+    // Format: lowercase-lowercase+uppercase-number+lowercase
+    // Uses Web Crypto API for cryptographically secure randomness
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+
+    // Helper function to get cryptographically secure random integer in range [0, max)
+    const getSecureRandomInt = (max: number): number => {
+      const randomValues = new Uint32Array(1);
+      crypto.getRandomValues(randomValues);
+      return randomValues[0] % max;
+    };
+
+    // Helper function to get a random character from a string
+    const getRandomChar = (chars: string): string => {
+      return chars[getSecureRandomInt(chars.length)];
+    };
+
+    // First part: 6 lowercase letters
+    const part1 = Array.from({ length: 6 }, () =>
+      getRandomChar(lowercase)
+    ).join('');
+
+    // Second part: starts lowercase, has uppercase mixed in (6 chars)
+    const part2Chars = Array.from({ length: 6 }, (_, i) => {
+      if (i === 0) {
+        // First char is lowercase
+        return getRandomChar(lowercase);
+      } else {
+        // Mix of lowercase and uppercase (50/50 chance)
+        const pool = getSecureRandomInt(2) === 0 ? lowercase : uppercase;
+        return getRandomChar(pool);
+      }
+    }).join('');
+
+    // Third part: starts with number, then lowercase (6 chars)
+    const part3 =
+      getRandomChar(numbers) +
+      Array.from({ length: 5 }, () => getRandomChar(lowercase)).join('');
+
+    return `${part1}-${part2Chars}-${part3}`;
+  };
+
+  const handleGeneratePassword = () => {
+    const generatedPassword = generateAppleStylePassword();
+
+    // Find the actual input elements within Password components
+    // Password component wraps InputGroupInput, so we need to find the input inside
+    const passwortInput = document.getElementById(
+      'passwort'
+    ) as HTMLInputElement;
+    const passwort2Input = document.getElementById(
+      'passwort2'
+    ) as HTMLInputElement;
+
+    // Helper to set value and trigger events that password managers listen for
+    const setPasswordValue = (
+      input: HTMLInputElement,
+      value: string,
+      fieldName: 'passwort' | 'passwort2'
+    ) => {
+      if (!input) return;
+
+      // Focus the input first (password managers need focus to detect changes)
+      input.focus();
+
+      // Update form state first through react-hook-form
+      form.setValue(fieldName, value, {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+
+      // Set the value directly on the DOM element
+      input.value = value;
+
+      // Create InputEvent with proper properties for password managers
+      // Password managers typically listen for 'input' events with inputType 'insertText'
+      const inputEvent = new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: value,
+      });
+
+      // Create change event
+      const changeEvent = new Event('change', {
+        bubbles: true,
+        cancelable: true,
+      });
+
+      // Dispatch events that password managers listen for
+      // Order matters: input first, then change
+      input.dispatchEvent(inputEvent);
+      input.dispatchEvent(changeEvent);
+
+      // Blur and refocus to ensure password managers detect the change
+      setTimeout(() => {
+        input.blur();
+        input.focus();
+      }, 50);
+    };
+
+    // Set password values with proper event dispatching
+    if (passwortInput) {
+      setPasswordValue(passwortInput, generatedPassword, 'passwort');
+    }
+
+    // Small delay between fields to help password managers detect both
+    setTimeout(() => {
+      if (passwort2Input) {
+        setPasswordValue(passwort2Input, generatedPassword, 'passwort2');
+      }
+    }, 100);
+
+    toast.success('Passwort generiert');
+  };
+
   const profilePictureUploadFromClient = async (
     optimizedFile: File
   ): Promise<string> => {
-    const loadingToastId = toast.loading('Profilbild wird hochgeladen...');
+    // Use a unique toast ID to prevent duplicate toasts
+    const toastId = 'profile-picture-upload';
+    
+    // Dismiss any existing toast with this ID before showing a new one
+    toast.dismiss(toastId);
+    
+    const loadingToastId = toast.loading('Profilbild wird hochgeladen...', {
+      id: toastId,
+    });
+    
     const { uploadUrl, path } = await createAvatarUploadUrl(
       userId,
       invitationId
@@ -81,7 +220,9 @@ export function SignUpForm({
     toast.dismiss(loadingToastId);
     if (!res.ok) {
       toast.error('Failed to upload profile picture.', { id: 'upload-failed' });
-    } else toast.success('Profilbild erfolgreich hochgeladen!');
+    } else {
+      toast.success('Profilbild erfolgreich hochgeladen!', { id: toastId });
+    }
 
     return path;
   };
@@ -147,6 +288,122 @@ export function SignUpForm({
     }
   }, [hasSucceeded, setTab]);
 
+  // Focus management when tab changes
+  useEffect(() => {
+    if (tab === 'register1') {
+      // Focus first field when entering register1
+      setTimeout(() => {
+        vornameRef.current?.focus();
+      }, 100);
+    } else if (tab === 'register2') {
+      // Focus first field when entering register2
+      setTimeout(() => {
+        anredeButtonRef.current?.focus();
+      }, 100);
+    }
+  }, [tab]);
+
+  // Helper function to find input element by ID (for Password components)
+  const getInputById = (id: string): HTMLInputElement | null => {
+    return document.getElementById(id) as HTMLInputElement | null;
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = useCallback(
+    async (e: React.KeyboardEvent<HTMLFormElement>) => {
+      // Escape key: go back
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (tab === 'register2') {
+          setTab('register1');
+        } else if (tab === 'register1') {
+          setTab('accept');
+        }
+        return;
+      }
+
+      // Enter key on form fields (not in textareas or when popover is open)
+      if (e.key === 'Enter' && !e.shiftKey && !anredePopoverOpen) {
+        const target = e.target as HTMLElement;
+
+        // Don't handle Enter if we're in a button or if it's a form submission
+        if (target.tagName === 'BUTTON' || target.closest('button')) {
+          return;
+        }
+
+        // Don't handle Enter if we're in the Command component (popover)
+        if (target.closest('[data-slot="command"]')) {
+          return;
+        }
+
+        e.preventDefault();
+
+        if (tab === 'register1') {
+          // Navigate through fields in register1
+          if (target.id === 'vorname') {
+            nachnameRef.current?.focus();
+          } else if (target.id === 'nachname') {
+            emailRef.current?.focus();
+          } else if (target.id === 'email') {
+            // For Password component, find the input element
+            const passwortInput =
+              getInputById('passwort') || passwortRef.current;
+            passwortInput?.focus();
+          } else if (target.id === 'passwort') {
+            // For Password component, find the input element
+            const passwort2Input =
+              getInputById('passwort2') || passwort2Ref.current;
+            passwort2Input?.focus();
+          } else if (target.id === 'passwort2') {
+            // Trigger "Weiter" button
+            const valid = await form.trigger();
+            if (valid) {
+              setTab('register2');
+            }
+          }
+        } else if (tab === 'register2') {
+          // Navigate through fields in register2
+          if (target.id === 'telefon') {
+            // Focus submit button
+            const submitButton = document.querySelector(
+              'button[type="submit"]'
+            ) as HTMLButtonElement;
+            submitButton?.focus();
+          }
+        }
+      }
+    },
+    [tab, form, anredePopoverOpen, setTab]
+  );
+
+  // Handle moving forward
+  const handleMoveForward = useCallback(async () => {
+    if (tab === 'register1') {
+      const valid = await form.trigger([
+        'vorname',
+        'nachname',
+        'email',
+        'passwort',
+        'passwort2',
+      ]);
+      if (valid) {
+        setTab('register2');
+      }
+    } else if (tab === 'register2') {
+      // Submit form
+      handleSubmit();
+    }
+  }, [tab, form, setTab, handleSubmit]);
+
+  // Handle moving backward
+  const handleMoveBackward = useCallback(() => {
+    if (tab === 'register2') {
+      setTab('register1');
+    } else if (tab === 'register1') {
+      setTab('accept');
+    }
+  }, [tab, setTab]);
+
   if (hasSucceeded) {
     return (
       <TabsContent value="other">
@@ -184,6 +441,7 @@ export function SignUpForm({
   return (
     <form
       onSubmit={handleSubmit}
+      onKeyDown={handleKeyDown}
       className={cn(
         'mx-auto w-full max-w-3xl gap-2 rounded-md border p-2 sm:p-5 md:p-8',
         tab === 'accept' ? 'hidden' : ''
@@ -206,6 +464,10 @@ export function SignUpForm({
                 <FieldLabel htmlFor="vorname">Vorname *</FieldLabel>
                 <Input
                   {...field}
+                  ref={(e) => {
+                    field.ref(e);
+                    vornameRef.current = e;
+                  }}
                   id="vorname"
                   type="text"
                   onChange={(e) => {
@@ -234,6 +496,10 @@ export function SignUpForm({
                 <FieldLabel htmlFor="nachname">Nachname *</FieldLabel>
                 <Input
                   {...field}
+                  ref={(e) => {
+                    field.ref(e);
+                    nachnameRef.current = e;
+                  }}
                   id="nachname"
                   type="text"
                   onChange={(e) => {
@@ -263,6 +529,10 @@ export function SignUpForm({
                 </FieldLabel>
                 <Input
                   {...field}
+                  ref={(e) => {
+                    field.ref(e);
+                    emailRef.current = e;
+                  }}
                   id="email"
                   name="email"
                   type="email"
@@ -297,6 +567,7 @@ export function SignUpForm({
                 </FieldContent>
                 <Password
                   {...field}
+                  ref={field.ref}
                   autoComplete="new-password"
                   aria-invalid={fieldState.invalid}
                   id="passwort"
@@ -325,6 +596,7 @@ export function SignUpForm({
                 </FieldContent>
                 <Password
                   {...field}
+                  ref={field.ref}
                   autoComplete="new-password"
                   aria-invalid={fieldState.invalid}
                   id="passwort2"
@@ -336,20 +608,31 @@ export function SignUpForm({
               </Field>
             )}
           />
+          <div className="col-span-full flex justify-start">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleGeneratePassword}
+              className="gap-2"
+            >
+              <Sparkle className="size-4" />
+              Passwort generieren
+            </Button>
+          </div>
           <div className="col-span-full mt-4 flex items-center justify-end">
-            <Button variant="link" onClick={() => setTab('accept')}>
+            <Button
+              variant="link"
+              onClick={handleMoveBackward}
+              type="button"
+              aria-label="Zurück (Escape)"
+            >
               <ChevronLeft />
               Zurück
             </Button>
             <Button
               type="button"
-              onClick={async (e) => {
-                e.preventDefault();
-                const valid = await form.trigger();
-                if (valid) {
-                  setTab('register2');
-                }
-              }}
+              onClick={handleMoveForward}
+              aria-label="Weiter (Enter)"
             >
               Weiter
             </Button>
@@ -380,10 +663,13 @@ export function SignUpForm({
                   >
                     <PopoverTrigger asChild>
                       <Button
+                        ref={anredeButtonRef}
                         id="anredeId"
                         variant="outline"
                         type="button"
                         role="combobox"
+                        aria-expanded={anredePopoverOpen}
+                        aria-haspopup="listbox"
                         className={cn(
                           'justify-between bg-transparent active:scale-100'
                         )}
@@ -454,6 +740,10 @@ export function SignUpForm({
                 <FieldLabel htmlFor="telefon">Telefon </FieldLabel>
                 <Input
                   {...field}
+                  ref={(e) => {
+                    field.ref(e);
+                    telefonRef.current = e;
+                  }}
                   id="telefon"
                   type="text"
                   onChange={(e) => {
@@ -505,10 +795,10 @@ export function SignUpForm({
                     }}
                     onFileRemove={deleteAvatarFromStorage}
                     name="pictureUrl"
-                    placeholder="PNG, JPEG oder Gif (max. 5MB)"
+                    placeholder="PNG, JPEG oder Gif. Bilder werden vor dem Upload automatisch komprimiert."
                     accept={`image/png, image/jpeg, image/gif`}
                     maxFiles={1}
-                    maxSize={500000} // approx 480kB, 500kB max allowed in db
+                    // maxSize={500000} // approx 480kB, 500kB max allowed in db
                   />
                 </Field>
                 {Array.isArray(fieldState.error) ? (
@@ -529,11 +819,16 @@ export function SignUpForm({
             )}
           />
           <div className="col-span-full mt-4 flex items-center justify-end">
-            <Button variant="link" onClick={() => setTab('register1')}>
+            <Button
+              variant="link"
+              onClick={handleMoveBackward}
+              type="button"
+              aria-label="Zurück (Escape)"
+            >
               <ChevronLeft />
               Zurück
             </Button>
-            <Button type="submit">
+            <Button type="submit" aria-label="Account erstellen (Enter)">
               {isExecuting ? 'Account wird erstellt...' : 'Account erstellen'}
             </Button>
           </div>
