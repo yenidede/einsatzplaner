@@ -8,10 +8,15 @@ import { CalendarEvent, CalendarMode, FormFieldType } from './types';
 import { z } from 'zod';
 import {
   EinsatzCustomizable,
+  EinsatzDetailedForCalendar,
   EinsatzForCalendar,
 } from '@/features/einsatz/types';
 import React from 'react';
-import { getAllEinsaetzeForCalendar } from '@/features/einsatz/dal-einsatz';
+import {
+  getAllEinsaetzeForCalendar,
+  getDetailedEinsaetzeForAgenda,
+  getDetailedEinsaetzeForCalendarRange,
+} from '@/features/einsatz/dal-einsatz';
 import { ShowDialogFn } from '@/contexts/AlertDialogContext';
 import { toast } from 'sonner';
 import { PdfGenerationRequest } from '@/features/pdf/types/types';
@@ -251,6 +256,66 @@ export const mapEinsatzToCalendarEvent = (
     helpersNeeded: einsatz.helpers_needed,
   };
 };
+
+export const mapDetailedEinsatzToCalendarEvent = (
+  einsatz: EinsatzDetailedForCalendar | null
+): CalendarEvent | null => {
+  if (!einsatz) {
+    return null;
+  }
+  const abbr = einsatz.category_abbreviations;
+  const hasCategories = abbr && abbr.length > 0;
+  return {
+    id: einsatz.id,
+    title: hasCategories
+      ? `${einsatz.title} (${abbr.join(', ')})`
+      : einsatz.title,
+    start: einsatz.start,
+    end: einsatz.end,
+    allDay: einsatz.all_day,
+    status: einsatz.einsatz_status,
+    assignedUsers: einsatz.assigned_users ?? [],
+    helpersNeeded: einsatz.helpers_needed ?? undefined,
+  };
+};
+
+export type CalendarRangeData = {
+  events: CalendarEvent[];
+  detailedEinsaetze: EinsatzDetailedForCalendar[];
+};
+
+export async function getEinsaetzeDataForCalendarRange(
+  activeOrgId: string | null | undefined,
+  focusDate: Date
+): Promise<CalendarRangeData | Response> {
+  const raw = await getDetailedEinsaetzeForCalendarRange(
+    activeOrgId ? [activeOrgId] : [],
+    focusDate
+  );
+  if (raw instanceof Response) {
+    return raw;
+  }
+  const events = raw
+    .map(mapDetailedEinsatzToCalendarEvent)
+    .filter((e): e is CalendarEvent => e !== null);
+  return { events, detailedEinsaetze: raw };
+}
+
+/** All future events for agenda view (from today onwards). */
+export async function getEinsaetzeDataForAgenda(
+  activeOrgId: string | null | undefined
+): Promise<CalendarRangeData | Response> {
+  const raw = await getDetailedEinsaetzeForAgenda(
+    activeOrgId ? [activeOrgId] : []
+  );
+  if (raw instanceof Response) {
+    return raw;
+  }
+  const events = raw
+    .map(mapDetailedEinsatzToCalendarEvent)
+    .filter((e): e is CalendarEvent => e !== null);
+  return { events, detailedEinsaetze: raw };
+}
 
 export function mapStringValueToType(
   value: string | null | undefined,

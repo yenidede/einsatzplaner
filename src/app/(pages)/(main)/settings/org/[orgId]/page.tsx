@@ -24,6 +24,7 @@ import { UserProfileDialog } from '@/components/settings/UserProfileDialog';
 import { InviteUserForm } from '@/features/invitations/components/InviteUserForm';
 import { FileUpload, PreviewAspectRatio } from '@/components/form/file-upload';
 import { OrganizationDetailsForm } from '@/components/settings/org/OrganizationDetailsForm';
+import { OrganizationDefaultValues } from '@/components/settings/org/OrganizationDefaultValues';
 import { OrganizationPreferences } from '@/components/settings/org/OrganizationPreferences';
 import { UsersManagementSection } from '@/components/settings/org/UserManagement';
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
@@ -43,6 +44,7 @@ import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSet
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
 import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
+import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import {
   Card,
   CardAction,
@@ -125,6 +127,8 @@ export default function OrganizationManagePage() {
 
   // Load organization details separately (website, vat, zvr, authority)
   const { data: orgDetails } = useOrganizationDetails(orgId);
+
+  const { data: categories = [] } = useCategories(orgId);
 
   // Use shared section navigation hook
   const {
@@ -283,6 +287,7 @@ export default function OrganizationManagePage() {
       // But we also update them here immediately to prevent false positives
       if (initialValuesRef.current) {
         initialValuesRef.current = {
+          ...initialValuesRef.current,
           name,
           email,
           phone,
@@ -631,12 +636,6 @@ export default function OrganizationManagePage() {
                 einsatzPlural={einsatzPlural}
                 onEinsatzSingularChange={setEinsatzSingular}
                 onEinsatzPluralChange={setEinsatzPlural}
-                maxParticipantsPerHelper={maxParticipantsPerHelper}
-                onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
-                defaultStarttime={defaultStarttime}
-                defaultEndtime={defaultEndtime}
-                onDefaultStarttimeChange={setDefaultStarttime}
-                onDefaultEndtimeChange={setDefaultEndtime}
                 allowSelfSignOut={allowSelfSignOut}
                 onAllowSelfSignOutChange={setAllowSelfSignOut}
               />
@@ -644,33 +643,37 @@ export default function OrganizationManagePage() {
           </Card>
         </section>
 
-        {/* PDF-Export Section */}
+        {/* Standardfelder Section */}
         <section
-          id="pdf-export"
+          id="standardfelder"
           ref={(el) => {
-            sectionRefs.current['pdf-export'] = el;
+            sectionRefs.current.standardfelder = el;
           }}
-          aria-labelledby="pdf-export-heading"
+          aria-labelledby="standardfelder-heading"
         >
           <Card>
             <CardHeader>
-              <CardTitle id="pdf-export-heading">PDF-Export</CardTitle>
+              <CardTitle id="standardfelder-heading">Standardfelder</CardTitle>
               <CardDescription>
-                Einstellungen für den PDF-Export Ihrer Organisation
+                Voreinstellungen für maximale Teilnehmende sowie Standard-Start-
+                und Endzeit
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <OrganizationPdfExportForm
-                organizationId={orgId}
-                website={website}
-                vat={vat}
-                zvr={zvr}
-                authority={authority}
-                onWebsiteChange={setWebsite}
-                onVatChange={setVat}
-                onZvrChange={setZvr}
-                onAuthorityChange={setAuthority}
-                isSuperadmin={isSuperadmin}
+              <OrganizationDefaultValues
+                orgId={orgId}
+                helperSingular={helperSingular}
+                maxParticipantsPerHelper={maxParticipantsPerHelper}
+                defaultStarttime={defaultStarttime}
+                defaultEndtime={defaultEndtime}
+                categories={categories.map((c) => ({
+                  id: c.id,
+                  value: c.value,
+                  abbreviation: c.abbreviation ?? '',
+                }))}
+                onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
+                onDefaultStarttimeChange={setDefaultStarttime}
+                onDefaultEndtimeChange={setDefaultEndtime}
               />
             </CardContent>
           </Card>
@@ -741,6 +744,38 @@ export default function OrganizationManagePage() {
                 currentUserEmail={session?.user?.email || ''}
                 onUserProfileClick={handleUserProfileClick}
                 onInviteClick={() => setIsInviteModalOpen(true)}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* PDF-Export Section */}
+        <section
+          id="pdf-export"
+          ref={(el) => {
+            sectionRefs.current['pdf-export'] = el;
+          }}
+          aria-labelledby="pdf-export-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="pdf-export-heading">PDF-Export</CardTitle>
+              <CardDescription>
+                Einstellungen für den PDF-Export Ihrer Organisation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OrganizationPdfExportForm
+                organizationId={orgId}
+                website={website}
+                vat={vat}
+                zvr={zvr}
+                authority={authority}
+                onWebsiteChange={setWebsite}
+                onVatChange={setVat}
+                onZvrChange={setZvr}
+                onAuthorityChange={setAuthority}
+                isSuperadmin={isSuperadmin}
               />
             </CardContent>
           </Card>

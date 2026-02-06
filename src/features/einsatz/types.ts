@@ -72,6 +72,11 @@ export type EinsatzDetailed = EinsatzRawDb & {
   user_properties: EinsatzUserProperty[];
 };
 
+/** Detailed einsatz with category abbreviations for calendar event titles (no extra lookup). */
+export type EinsatzDetailedForCalendar = EinsatzDetailed & {
+  category_abbreviations: string[];
+};
+
 export type ETV = Einsatz & {
   einsatz_status: EinsatzStatus;
   organization: { id: string; name: string };
