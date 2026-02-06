@@ -1,5 +1,11 @@
 'use client';
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Crown, Trash } from 'lucide-react';
 
 interface UserDangerZoneProps {
@@ -14,6 +20,8 @@ interface UserDangerZoneProps {
   onRemoveUser: () => void;
   onDemoteFromSuperadmin: () => void;
   onPromoteToSuperadmin: () => void;
+  isCurrentUser: boolean;
+  superadminCount: number;
 }
 
 export function UserDangerZone({
@@ -28,6 +36,8 @@ export function UserDangerZone({
   onRemoveUser,
   onDemoteFromSuperadmin,
   onPromoteToSuperadmin,
+  isCurrentUser,
+  superadminCount,
 }: UserDangerZoneProps) {
   const isLoading = isDemoting || isPromoting;
 
@@ -38,6 +48,14 @@ export function UserDangerZone({
   const canRemoveUser =
     isCurrentUserSuperadmin ||
     (isCurrentUserOV && !isSuperadmin && !isTargetUserOV);
+
+  const canDemoteSelfFromSuperadmin =
+    isCurrentUserSuperadmin &&
+    isSuperadmin &&
+    (isCurrentUser ? superadminCount > 1 : true);
+
+  const isLastSuperadmin =
+    isCurrentUser && isSuperadmin && superadminCount <= 1;
 
   return (
     <div className="flex flex-col items-start justify-center self-stretch">
@@ -69,25 +87,42 @@ export function UserDangerZone({
               </button>
             )}
             {isCurrentUserSuperadmin && (
-              <button
-                onClick={
-                  isSuperadmin ? onDemoteFromSuperadmin : onPromoteToSuperadmin
-                }
-                disabled={isLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-red-500 px-4 py-2 transition-colors hover:bg-red-600 disabled:opacity-50 sm:w-auto"
-              >
-                <Crown className="shrink-0 text-white" size={20} />
-                <div className="font-['Inter'] text-sm leading-normal font-medium whitespace-nowrap text-white">
-                  {isLoading
-                    ? isSuperadmin
-                      ? 'Wird degradiert...'
-                      : 'Wird ernannt...'
-                    : isSuperadmin
-                      ? 'Superadmin-Rolle entfernen'
-                      : 'Zu Superadmin Ernennen'}
-                </div>
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={
+                        isSuperadmin
+                          ? onDemoteFromSuperadmin
+                          : onPromoteToSuperadmin
+                      }
+                      disabled={isLoading || isLastSuperadmin}
+                      className="flex w-full items-center justify-center gap-2 rounded-md bg-red-500 px-4 py-2 transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                    >
+                      <Crown className="shrink-0 text-white" size={20} />
+                      <div className="font-['Inter'] text-sm leading-normal font-medium whitespace-nowrap text-white">
+                        {isLoading
+                          ? isSuperadmin
+                            ? 'Wird degradiert...'
+                            : 'Wird ernannt...'
+                          : isSuperadmin
+                            ? 'Superadmin-Rolle entfernen'
+                            : 'Zu Superadmin Ernennen'}
+                      </div>
+                    </button>
+                  </TooltipTrigger>
+                  {isLastSuperadmin && (
+                    <TooltipContent>
+                      <p>
+                        Sie können sich nicht selbst die Superadmin-Rolle
+                        entfernen, da Sie der letzte Superadmin sind
+                      </p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             )}
+
             {!canRemoveUser && !isCurrentUserSuperadmin && (
               <div className="px-4 py-2 text-sm text-slate-500 italic">
                 Sie haben keine Berechtigung, diesen Benutzer zu entfernen.
