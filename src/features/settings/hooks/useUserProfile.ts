@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { settingsQueryKeys } from '../queryKeys/queryKey';
 import {
   getUserProfileAction,
@@ -11,6 +11,7 @@ import {
 } from '../organization-action';
 import { getAllUserOrgRolesAction } from '../users-action';
 import { getUserPropertyValuesAction } from '@/features/user_properties/user_property-actions';
+import { useEffect } from 'react';
 
 export function useUserProfile(userId: string | undefined) {
   return useQuery({
@@ -92,4 +93,32 @@ export function useManagedOrganizations(userId: string | undefined) {
       return res;
     },
   });
+}
+
+export function usePrefetchUserProfiles(
+  orgId: string | undefined,
+  userIds: string[]
+) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!orgId || userIds.length === 0) return;
+
+    // Prefetch all user profiles and their properties
+    userIds.forEach((userId) => {
+      // Prefetch user profile
+      queryClient.prefetchQuery({
+        queryKey: settingsQueryKeys.org.userProfile(orgId, userId),
+        queryFn: async () => await getUserProfileByIdAction(userId, orgId),
+        staleTime: 30000,
+      });
+
+      // Prefetch user property values
+      queryClient.prefetchQuery({
+        queryKey: settingsQueryKeys.org.userProperties(orgId, userId),
+        queryFn: () => getUserPropertyValuesAction(userId, orgId),
+        staleTime: 30000,
+      });
+    });
+  }, [orgId, userIds, queryClient]);
 }
