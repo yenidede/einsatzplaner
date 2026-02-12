@@ -26,6 +26,7 @@ import { createChangeLogAuto } from '../activity_log/activity_log-dal';
 import { BadRequestError, ForbiddenError } from '@/lib/errors';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { ChangeTypeIds } from '../activity_log/changeTypeIds';
+import { checkEinsatzRequirementsAfterAssignment } from '@/lib/email/email-helpers';
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -196,11 +197,13 @@ export async function getEinsatzWithDetailsById(
       type_id: log.type_id,
       created_at: log.created_at,
       affected_user: log.affected_user,
-      user: log.user ? {
-        id: log.user.id,
-        firstname: log.user.firstname,
-        lastname: log.user.lastname,
-      } : null,
+      user: log.user
+        ? {
+            id: log.user.id,
+            firstname: log.user.firstname,
+            lastname: log.user.lastname,
+          }
+        : null,
     })),
   };
 }
@@ -262,8 +265,7 @@ export async function getDetailedEinsaetzeForCalendarRange(
     return new Response('Unauthorized', { status: 403 });
   }
   const userOrgIds = userIds?.orgIds ?? (userIds?.orgId ? [userIds.orgId] : []);
-  const filterOrgIds =
-    org_ids.length > 0 ? org_ids : userOrgIds;
+  const filterOrgIds = org_ids.length > 0 ? org_ids : userOrgIds;
   const rangeStart = startOfMonth(subMonths(focusDate, 1));
   const rangeEnd = endOfMonth(addMonths(focusDate, 1));
   const rows = await getDetailedEinsaetzeForCalendarRangeFromDb(
@@ -419,16 +421,16 @@ export async function getEinsaetzeForTableView(
     ),
     user: einsatz.user
       ? {
-        id: einsatz.user.id,
-        firstname: einsatz.user.firstname ?? null,
-        lastname: einsatz.user.lastname ?? null,
-      }
+          id: einsatz.user.id,
+          firstname: einsatz.user.firstname ?? null,
+          lastname: einsatz.user.lastname ?? null,
+        }
       : null,
     einsatz_template: einsatz.einsatz_template
       ? {
-        id: einsatz.einsatz_template.id,
-        name: einsatz.einsatz_template.name ?? null,
-      }
+          id: einsatz.einsatz_template.id,
+          name: einsatz.einsatz_template.name ?? null,
+        }
       : null,
     _count: einsatz._count,
   }));
@@ -569,7 +571,7 @@ export async function createEinsatz({
 
       for (const typeName of changeTypeNames) {
         const affectedUserId =
-          typeName === 'E-Erstellt' ? null : affectedUserIds[0] ?? null;
+          typeName === 'E-Erstellt' ? null : (affectedUserIds[0] ?? null);
 
         await createChangeLogAuto({
           einsatzId: createdEinsatz.id,
@@ -721,7 +723,7 @@ export async function toggleUserAssignmentToEinsatz(
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-      existingEinsatz.einsatz_helper.length + addOrRemoveOne
+    existingEinsatz.einsatz_helper.length + addOrRemoveOne
       ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
       : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
@@ -793,6 +795,12 @@ export async function toggleUserAssignmentToEinsatz(
       });
     } catch (error) {
       console.error('Failed to create activity log for assignment:', error);
+    }
+
+    try {
+      checkEinsatzRequirementsAfterAssignment(einsatzId, session.user.id);
+    } catch (error) {
+      console.error('Failed to check einsatz requirements and notify:', error);
     }
   }
 
@@ -976,10 +984,7 @@ export async function updateEinsatzStatus(
     },
   });
 
-  if (
-    statusId === StatusValuePairs.vergeben_bestaetigt &&
-    session?.user?.id
-  ) {
+  if (statusId === StatusValuePairs.vergeben_bestaetigt && session?.user?.id) {
     await createChangeLogAuto({
       einsatzId,
       userId: session.user.id,
@@ -1324,10 +1329,10 @@ function mapRawEinsatzToDetailedForCalendar(
       affected_user: log.affected_user,
       user: log.user
         ? {
-          id: log.user.id,
-          firstname: log.user.firstname,
-          lastname: log.user.lastname,
-        }
+            id: log.user.id,
+            firstname: log.user.firstname,
+            lastname: log.user.lastname,
+          }
         : null,
     })),
     category_abbreviations,
