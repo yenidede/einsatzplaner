@@ -8,6 +8,10 @@ import { emailService } from '@/lib/email/EmailService';
 import { hasPermission } from '@/lib/auth/authGuard';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcrypt';
+import {
+  getAdminRecipientsForInvitation,
+  getAdminRecipientsForEinsatz,
+} from '@/lib/email/email-helpers';
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -274,6 +278,30 @@ export async function acceptInvitationAction(token: string) {
       if (activeOrgData) {
         activeOrganization = activeOrgData.organization;
       }
+    }
+
+    try {
+      const adminRecipients = await getAdminRecipientsForInvitation(
+        firstInvitation.org_id
+      );
+
+      if (adminRecipients.length > 0) {
+        await emailService.sendInvitationAcceptedNotificationEmail(
+          adminRecipients,
+          {
+            firstname: session.user.firstname || '',
+            lastname: session.user.lastname || '',
+            email: session.user.email || '',
+          },
+          { name: firstInvitation.organization.name },
+          invitations.map((inv) => inv.role.name)
+        );
+      }
+    } catch (emailError) {
+      console.error(
+        'Fehler beim Senden der Benachrichtigungs-E-Mail:',
+        emailError
+      );
     }
 
     // Falls keine aktive Organisation, setze die neue Organisation als aktiv
