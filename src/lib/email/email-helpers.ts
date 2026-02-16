@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { emailService } from '@/lib/email/EmailService';
 
 export async function getAdminRecipientsForInvitation(orgId: string) {
   const admins = await prisma.user_organization_role.findMany({
@@ -96,7 +97,6 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
 
   const recipientMap = new Map<string, { email: string; name: string }>();
 
-  // 1. Ersteller hinzufügen (falls vorhanden und hat E-Mail)
   if (einsatz.created_by) {
     const creator = await prisma.user.findUnique({
       where: { id: einsatz.created_by },
@@ -116,12 +116,10 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
     }
   }
 
-  // 2. Alle Bearbeiter mit Verwaltungsrolle hinzufügen
-  // SEPARATE Query für change_log!
   const changeLogs = await prisma.change_log.findMany({
     where: {
       einsatz_id: einsatzId,
-      type_id: '052f7f39-cf1c-439d-864d-24f3caa2cc07', // 'E-Bearbeitet'
+      type_id: '052f7f39-cf1c-439d-864d-24f3caa2cc07',
     },
     select: {
       user_id: true,
@@ -133,7 +131,6 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
   ] as string[];
 
   if (editorUserIds.length > 0) {
-    // Prüfe welche dieser User Verwaltungsrollen haben
     const editorsWithAdminRole = await prisma.user_organization_role.findMany({
       where: {
         user_id: { in: editorUserIds },
@@ -169,16 +166,10 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
   return recipients;
 }
 
-/**
- * Prüft NACH dem Eintragen ob Anforderungen erfüllt sind und sendet ggf. Warnung
- * Wird aufgerufen nachdem sich jemand eingetragen hat
- */
 export async function checkEinsatzRequirementsAfterAssignment(
   einsatzId: string,
   assignedUserId: string
 ) {
-  const { emailService } = await import('@/lib/email/EmailService');
-
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
     include: {
@@ -239,14 +230,12 @@ export async function checkEinsatzRequirementsAfterAssignment(
   const warnings: string[] = [];
   const assignedUsers = einsatz.einsatz_helper.map((h) => h.user);
 
-  // 1. Prüfe Mindestanzahl Helfer
   if (assignedUsers.length < einsatz.helpers_needed) {
     warnings.push(
       `Mindestanzahl Teilnehmer: ${einsatz.helpers_needed} benötigt (aktuell: ${assignedUsers.length})`
     );
   }
 
-  // 2. Prüfe erforderliche Personeneigenschaften
   for (const requirement of einsatz.einsatz_user_property) {
     if (requirement.is_required) {
       const minRequired = requirement.min_matching_users || 1;
@@ -266,7 +255,6 @@ export async function checkEinsatzRequirementsAfterAssignment(
     }
   }
 
-  // 3. Wenn Warnungen vorhanden, sende E-Mail
   if (warnings.length > 0) {
     const recipients = await getEinsatzWarningRecipients(einsatzId);
 

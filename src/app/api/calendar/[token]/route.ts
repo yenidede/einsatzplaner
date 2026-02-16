@@ -7,7 +7,6 @@ type RouteContext = {
 };
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  // good variable name for params extraction
   const prms = await context.params;
   const token = await prms.token;
 
@@ -31,7 +30,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       einsatz_field: { include: { field: true } },
     },
   });
-  const baseUrl = process.env.NEXTAUTH_URL ?? 'https://localhost:3000';
+
+  const baseUrl = process.env.NEXTAUTH_URL;
+  if (!baseUrl) {
+    return new NextResponse('Server configuration error', { status: 500 });
+  }
   const host = new URL(baseUrl).hostname;
   const calendar = ical({
     name: subscription.organization.name ?? 'Einsatzplaner - Kalender',
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .filter(Boolean) ?? [];
 
     const ortField = einsatz.einsatz_field.find((field) =>
-      (field.field.name ?? '').toLowerCase().match('/^(ort|location)$/')
+      (field.field.name ?? '').toLowerCase().match(/^(ort|location)$/)
     );
 
     const urlToHelferansichtPage = new URL(
@@ -66,10 +69,59 @@ export async function GET(request: NextRequest, context: RouteContext) {
       baseUrl
     ).toString();
 
-    const start = einsatz.start;
-    let end = einsatz.end;
+    const descriptionParts: string[] = [];
+
+    if (einsatz.anmerkung) {
+      descriptionParts.push(`Anmerkung: ${einsatz.anmerkung}`);
+    }
+
+    if (
+      einsatz.participant_count !== null &&
+      einsatz.participant_count !== undefined
+    ) {
+      descriptionParts.push(`Anzahl Teilnehmer: ${einsatz.participant_count}`);
+    }
+
+    if (
+      einsatz.price_per_person !== null &&
+      einsatz.price_per_person !== undefined
+    ) {
+      descriptionParts.push(`Preis pro Person: €${einsatz.price_per_person}`);
+    }
+    if (einsatz.total_price !== null && einsatz.total_price !== undefined) {
+      descriptionParts.push(`Gesamtpreis: €${einsatz.total_price}`);
+    }
+
+    if (einsatz.helpers_needed > 0) {
+      descriptionParts.push(`Benötigte Helfer: ${einsatz.helpers_needed}`);
+    }
+
+    const customFields = einsatz.einsatz_field.filter(
+      (field) =>
+        field.value &&
+        field.field.name?.toLowerCase() !== 'ort' &&
+        field.field.name?.toLowerCase() !== 'location' &&
+        field.field.type?.datatype !== 'fieldgroup'
+    );
+
+    if (customFields.length > 0) {
+      descriptionParts.push('');
+      descriptionParts.push('Weitere Informationen:');
+      customFields.forEach((field) => {
+        descriptionParts.push(`${field.field.name}: ${field.value}`);
+      });
+    }
+
+    descriptionParts.push('');
+    descriptionParts.push(`Details: ${urlToHelferansichtPage}`);
+
+    const description = descriptionParts.join('\n');
+
+    const start = new Date(einsatz.start);
+    let end = new Date(einsatz.end);
+
     if (isAllDay) {
-      end = new Date(einsatz.end);
+      end = new Date(end);
       end.setDate(end.getDate() + 1);
     }
 
@@ -78,16 +130,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
       end,
       allDay: isAllDay,
       summary: einsatz.title,
-      description: `Details und weitere Informationen unter: ${urlToHelferansichtPage}`,
-      /* url: urlToEinsatzPage, */
+      description,
       categories: categories.map((name) => ({ name })),
       location: ortField?.value,
       status: ICalEventStatus.CONFIRMED,
     });
+
     event.uid(`${einsatz.id}@${host}`);
+
     if (categories.length) {
       event.categories(categories.map((name) => ({ name })));
     }
+
     if (phone || subscription.organization.email) {
       event.organizer({
         name: einsatz.organization?.name,
