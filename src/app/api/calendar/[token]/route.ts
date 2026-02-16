@@ -100,8 +100,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       (field) =>
         field.value &&
         field.field.name?.toLowerCase() !== 'ort' &&
-        field.field.name?.toLowerCase() !== 'location' &&
-        field.field.type?.datatype !== 'fieldgroup'
+        field.field.name?.toLowerCase() !== 'location'
     );
 
     if (customFields.length > 0) {
