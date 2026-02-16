@@ -8,10 +8,7 @@ import { emailService } from '@/lib/email/EmailService';
 import { hasPermission } from '@/lib/auth/authGuard';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcrypt';
-import {
-  getAdminRecipientsForInvitation,
-  getAdminRecipientsForEinsatz,
-} from '@/lib/email/email-helpers';
+import { getAdminRecipientsForInvitation } from '@/lib/email/email-helpers';
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
