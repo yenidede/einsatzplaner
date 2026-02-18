@@ -120,5 +120,5 @@ export function usePrefetchUserProfiles(
         staleTime: 30000,
       });
     });
-  }, [orgId, userIds, queryClient]);
+  }, [orgId, userIds]);
 }

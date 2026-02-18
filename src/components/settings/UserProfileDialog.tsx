@@ -21,6 +21,7 @@ import { UserDangerZone } from './userProfile/UserDangerZone';
 import { upsertUserPropertyValueAction } from '@/features/user_properties/user_property-actions';
 import { queryKeys } from '@/features/user/queryKeys';
 import {
+  useOrganizationUserRoles,
   useUserProfileById,
   useUserPropertyValues,
 } from '@/features/settings/hooks/useUserProfile';
@@ -105,6 +106,21 @@ export function UserProfileDialog({
     isOpen ? userId : undefined,
     isOpen ? organizationId : undefined
   );
+  const { data: allOrgUserRoles = [] } = useOrganizationUserRoles(
+    isOpen ? organizationId : undefined
+  );
+
+  const superadminCount = Array.from(
+    new Set(
+      allOrgUserRoles
+        .filter(
+          (userRole) =>
+            userRole.role?.name === 'Superadmin' ||
+            userRole.role?.abbreviation === 'SA'
+        )
+        .map((userRole) => userRole.user.id)
+    )
+  ).length;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -642,13 +658,7 @@ export function UserProfileDialog({
                   onDemoteFromSuperadmin={handleDemoteFromSuperadmin}
                   onPromoteToSuperadmin={handlePromoteToSuperadmin}
                   isCurrentUser={currentUserId === userId}
-                  superadminCount={
-                    userOrgRoles.filter(
-                      (userRole) =>
-                        userRole.role?.name === 'Superadmin' ||
-                        userRole.role?.abbreviation === 'SA'
-                    ).length
-                  }
+                  superadminCount={superadminCount}
                 />
               </div>
             </div>
