@@ -2,6 +2,9 @@
 
 import prisma from '@/lib/prisma';
 import { emailService } from '@/lib/email/EmailService';
+import { ChangeTypeIds } from '@/features/activity_log/changeTypeIds';
+
+const einsatzCheckLocks = new Map<string, Promise<void>>();
 
 export async function getAdminRecipientsForInvitation(orgId: string) {
   const admins = await prisma.user_organization_role.findMany({
@@ -119,7 +122,7 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
   const changeLogs = await prisma.change_log.findMany({
     where: {
       einsatz_id: einsatzId,
-      type_id: '052f7f39-cf1c-439d-864d-24f3caa2cc07',
+      type_id: ChangeTypeIds['E-Bearbeitet'],
     },
     select: {
       user_id: true,
@@ -131,7 +134,7 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
   ] as string[];
 
   if (editorUserIds.length > 0) {
-    const editorsWithAdminRole = await prisma.user_organization_role.findMany({
+    const adminUserIds = await prisma.user_organization_role.findMany({
       where: {
         user_id: { in: editorUserIds },
         org_id: einsatz.org_id,
@@ -139,37 +142,63 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
           OR: [{ abbreviation: 'OV' }, { name: 'Superadmin' }],
         },
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstname: true,
-            lastname: true,
-          },
-        },
+      select: {
+        user_id: true,
       },
+      distinct: ['user_id'],
     });
 
-    for (const editor of editorsWithAdminRole) {
-      if (editor.user.email && !recipientMap.has(editor.user.id)) {
-        recipientMap.set(editor.user.id, {
-          email: editor.user.email,
-          name: `${editor.user.firstname} ${editor.user.lastname}`,
-        });
+    const uniqueAdminUserIds = adminUserIds.map((r) => r.user_id);
+
+    if (uniqueAdminUserIds.length > 0) {
+      const adminUsers = await prisma.user.findMany({
+        where: {
+          id: { in: uniqueAdminUserIds },
+        },
+        select: {
+          id: true,
+          email: true,
+          firstname: true,
+          lastname: true,
+        },
+      });
+
+      for (const user of adminUsers) {
+        if (user.email && !recipientMap.has(user.id)) {
+          recipientMap.set(user.id, {
+            email: user.email,
+            name: `${user.firstname} ${user.lastname}`,
+          });
+        }
       }
     }
   }
 
-  const recipients = Array.from(recipientMap.values());
-
-  return recipients;
+  return Array.from(recipientMap.values());
 }
 
 export async function checkEinsatzRequirementsAfterAssignment(
-  einsatzId: string,
-  assignedUserId: string
+  einsatzId: string
 ) {
+  const existingLock = einsatzCheckLocks.get(einsatzId);
+  if (existingLock) {
+    await existingLock;
+    return;
+  }
+
+  const checkPromise = performEinsatzCheck(einsatzId);
+  einsatzCheckLocks.set(einsatzId, checkPromise);
+
+  try {
+    await checkPromise;
+  } finally {
+    setTimeout(() => {
+      einsatzCheckLocks.delete(einsatzId);
+    }, 1000);
+  }
+}
+
+async function performEinsatzCheck(einsatzId: string) {
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
     include: {
@@ -278,12 +307,11 @@ export async function checkEinsatzRequirementsAfterAssignment(
               einsatz.organization.helper_name_plural || 'Helfer:innen',
           }
         );
-        console.log('Warn-E-Mail erfolgreich versendet');
       } catch (error) {
-        console.error('❌ Fehler beim Senden der Warn-E-Mail:', error);
+        console.error('Fehler beim Senden der Warn-E-Mail:', error);
       }
     } else {
-      console.log('Keine Empfänger gefunden - E-Mail nicht versendet');
+      console.log('ℹKeine Empfänger gefunden - E-Mail nicht versendet');
     }
   } else {
     console.log('Alle Anforderungen erfüllt - keine Warnung nötig');

@@ -798,7 +798,7 @@ export async function toggleUserAssignmentToEinsatz(
     }
 
     try {
-      checkEinsatzRequirementsAfterAssignment(einsatzId, session.user.id);
+      await checkEinsatzRequirementsAfterAssignment(einsatzId);
     } catch (error) {
       console.error('Failed to check einsatz requirements and notify:', error);
     }

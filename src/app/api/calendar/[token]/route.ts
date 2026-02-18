@@ -32,10 +32,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
   });
 
   const baseUrl = process.env.NEXTAUTH_URL;
+  let host: string;
   if (!baseUrl) {
     return new NextResponse('Server configuration error', { status: 500 });
   }
-  const host = new URL(baseUrl).hostname;
+  try {
+    host = new URL(baseUrl).hostname;
+  } catch (error) {
+    return new NextResponse('Server Configuration Error', { status: 500 });
+  }
+
   const calendar = ical({
     name: subscription.organization.name ?? 'Einsatzplaner - Kalender',
     timezone: 'Europe/Vienna',
@@ -89,7 +95,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       descriptionParts.push(`Preis pro Person: €${einsatz.price_per_person}`);
     }
     if (einsatz.total_price !== null && einsatz.total_price !== undefined) {
-      descriptionParts.push(`Gesamtpreis: €${einsatz.total_price}`);
+      descriptionParts.push(`Gesamtpreis: €${einsatz.total_price.toFixed(2)}`);
     }
 
     if (einsatz.helpers_needed > 0) {
@@ -103,7 +109,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
         field.field.name?.toLowerCase() !== 'location'
     );
 
-    if (customFields.length > 0) {
+    if (
+      customFields.length > 0 &&
+      customFields.some(
+        (field) => field.field.name !== null && field.field.name.trim() !== ''
+      )
+    ) {
       descriptionParts.push('');
       descriptionParts.push('Weitere Informationen:');
       customFields.forEach((field) => {

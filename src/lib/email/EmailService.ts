@@ -316,9 +316,6 @@ export class EmailService {
     roles: string[]
   ) {
     if (!this.transporter || recipients.length === 0) {
-      console.log(
-        'Benachrichtigung wird nicht versendet (kein Transporter oder Empfänger)'
-      );
       return;
     }
 
@@ -443,9 +440,6 @@ export class EmailService {
     }
   ) {
     if (!this.transporter || recipients.length === 0) {
-      console.log(
-        'Warnung wird nicht versendet (kein Transporter oder Empfänger)'
-      );
       return;
     }
 

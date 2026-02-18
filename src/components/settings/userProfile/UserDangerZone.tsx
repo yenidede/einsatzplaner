@@ -41,18 +41,9 @@ export function UserDangerZone({
 }: UserDangerZoneProps) {
   const isLoading = isDemoting || isPromoting;
 
-  // Kann der aktuelle User den Ziel-User entfernen?
-  // - Superadmin kann alle entfernen
-  // - OV kann nur EV und Helfer entfernen (nicht Superadmin oder andere OV)
-  // - Andere können niemanden entfernen
   const canRemoveUser =
     isCurrentUserSuperadmin ||
     (isCurrentUserOV && !isSuperadmin && !isTargetUserOV);
-
-  const canDemoteSelfFromSuperadmin =
-    isCurrentUserSuperadmin &&
-    isSuperadmin &&
-    (isCurrentUser ? superadminCount > 1 : true);
 
   const isLastSuperadmin =
     isCurrentUser && isSuperadmin && superadminCount <= 1;
