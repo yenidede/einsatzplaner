@@ -196,14 +196,14 @@ export function SignUpForm({
   ): Promise<string> => {
     // Use a unique toast ID to prevent duplicate toasts
     const toastId = 'profile-picture-upload';
-    
+
     // Dismiss any existing toast with this ID before showing a new one
     toast.dismiss(toastId);
-    
+
     const loadingToastId = toast.loading('Profilbild wird hochgeladen...', {
       id: toastId,
     });
-    
+
     const { uploadUrl, path } = await createAvatarUploadUrl(
       userId,
       invitationId
@@ -251,7 +251,7 @@ export function SignUpForm({
       }
       toast.success(res.data?.message);
       signIn('credentials', {
-        email: res.data.email || form.getValues('email'),
+        email: form.getValues('email'),
         password: form.getValues('passwort'),
         redirect: true,
         callbackUrl: '/',

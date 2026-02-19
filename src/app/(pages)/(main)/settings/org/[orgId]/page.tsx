@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import {
   useUserProfile,
   useOrganizationById,
   useOrganizationUserRoles,
+  usePrefetchUserProfiles,
 } from '@/features/settings/hooks/useUserProfile';
 import { useUpdateOrganization } from '@/features/settings/hooks/useSettingsMutations';
 
@@ -111,7 +112,6 @@ export default function OrganizationManagePage() {
     authority: string;
   } | null>(null);
 
-  // Use shared session validation hook
   useSettingsSessionValidation();
 
   const { isLoading: isLoadingUser } = useUserProfile(session?.user?.id);
@@ -124,13 +124,18 @@ export default function OrganizationManagePage() {
     isLoading: orgLoading,
     error: orgError,
   } = useOrganizationById(orgId);
+  const { data: userRolesData } = useOrganizationUserRoles(orgId);
 
-  // Load organization details separately (website, vat, zvr, authority)
+  const userIds = useMemo(
+    () => userRolesData?.map((userRole) => userRole.user.id) ?? [],
+    [userRolesData]
+  );
+
+  usePrefetchUserProfiles(orgId, userIds);
   const { data: orgDetails } = useOrganizationDetails(orgId);
 
   const { data: categories = [] } = useCategories(orgId);
 
-  // Use shared section navigation hook
   const {
     activeSection,
     sectionRefs,
@@ -238,7 +243,6 @@ export default function OrganizationManagePage() {
 
   const updateMutation = useUpdateOrganization(orgId);
 
-  // Check for unsaved changes
   const hasUnsavedChanges = (() => {
     if (!initialValuesRef.current) return false;
     const initial = initialValuesRef.current;
@@ -780,7 +784,6 @@ export default function OrganizationManagePage() {
             </CardContent>
           </Card>
         </section>
-
         {selectedUserId && (
           <UserProfileDialog
             isOpen={isProfileDialogOpen}
@@ -790,7 +793,6 @@ export default function OrganizationManagePage() {
             currentUserId={session?.user?.id}
           />
         )}
-
         <InviteUserForm
           organizationId={orgId}
           isOpen={isInviteModalOpen}

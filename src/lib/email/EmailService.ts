@@ -1,5 +1,12 @@
 import nodemailer from 'nodemailer';
 
+interface OrganizationTerminology {
+  einsatz_singular: string;
+  einsatz_plural: string;
+  helper_singular: string;
+  helper_plural: string;
+}
+
 export class EmailService {
   private transporter: nodemailer.Transporter | null;
 
@@ -136,8 +143,8 @@ export class EmailService {
         <div style="text-align: center; margin-top: 30px;">
           <h3 style="color: #333; margin: 0 0 15px 0;">Was ist der Einsatzplaner?</h3>
           <p style="color: #6c757d; font-size: 14px; line-height: 1.5; margin: 0;">
-            Eine moderne Plattform für die Verwaltung von Einsätzen, Helfern und Organisationen.
-            Koordinieren Sie Ihre Teams effizient und behalten Sie den Überblick.
+            Eine moderne Plattform für die Verwaltung und Koordination Ihrer Teams.
+            Behalten Sie den Überblick über alle Aktivitäten.
           </p>
         </div>
         
@@ -147,7 +154,7 @@ export class EmailService {
             können Sie diese E-Mail ignorieren.
           </p>
           <p style="color: #6c757d; font-size: 12px; margin: 10px 0 0 0;">
-            © ${new Date().getFullYear()} Einsatzplaner - Alle Rechte vorbehalten
+            ${new Date().getFullYear()} Einsatzplaner - Alle Rechte vorbehalten
           </p>
         </div>
       </div>
@@ -165,7 +172,7 @@ export class EmailService {
 
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('❌ Fehler beim Senden der Einladungs-E-Mail:', error);
+      console.error('Fehler beim Senden der Einladungs-E-Mail:', error);
       throw new Error(
         `E-Mail-Versand fehlgeschlagen: ${
           error instanceof Error ? error.message : 'Unbekannter Fehler'
@@ -174,7 +181,6 @@ export class EmailService {
     }
   }
 
-  //  Reminder Email Methode
   async sendInvitationReminderEmail(
     recipientEmail: string,
     inviterName: string,
@@ -198,7 +204,7 @@ export class EmailService {
     const mailOptions = {
       from: `"${organizationName} via Einsatzplaner" <${process.env.SMTP_USER}>`,
       to: recipientEmail,
-      subject: `⏰ Erinnerung: Einladung zu ${organizationName} läuft bald ab`,
+      subject: `Erinnerung: Einladung zu ${organizationName} läuft bald ab`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -236,14 +242,14 @@ export class EmailService {
           <body>
             <div class="container">
               <div class="header">
-                <h2>⏰ Erinnerung: Ihre Einladung läuft bald ab</h2>
+                <h2>Erinnerung: Ihre Einladung läuft bald ab</h2>
               </div>
               
               <div class="content">
                 <p>Hallo,</p>
                 
                 <div class="warning">
-                  <strong>⚠️ Wichtig:</strong> Ihre Einladung zu <strong>${organizationName}</strong> 
+                  <strong>Wichtig:</strong> Ihre Einladung zu <strong>${organizationName}</strong> 
                   läuft am <strong>${expiryDate}</strong> ab.
                 </div>
                 
@@ -275,7 +281,7 @@ export class EmailService {
                   Wenn Sie diese Einladung nicht erwartet haben, können Sie diese E-Mail ignorieren.
                 </p>
                 <p style="margin-top: 10px;">
-                  © ${new Date().getFullYear()} Einsatzplaner - Alle Rechte vorbehalten
+                  ${new Date().getFullYear()} Einsatzplaner - Alle Rechte vorbehalten
                 </p>
               </div>
             </div>
@@ -292,6 +298,280 @@ export class EmailService {
       throw new Error(
         `Failed to send invitation reminder email: ${
           error instanceof Error ? error.message : 'Unknown error'
+        }`
+      );
+    }
+  }
+
+  async sendInvitationAcceptedNotificationEmail(
+    recipients: { email: string; name: string }[],
+    acceptedUser: {
+      firstname: string;
+      lastname: string;
+      email: string;
+    },
+    organization: {
+      name: string;
+    },
+    roles: string[]
+  ) {
+    if (!this.transporter || recipients.length === 0) {
+      return;
+    }
+
+    const rolesList = roles.map((role) => `<li>${role}</li>`).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { 
+              background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+              color: white; 
+              padding: 20px; 
+              border-radius: 8px; 
+              margin-bottom: 20px; 
+            }
+            .content { padding: 20px 0; }
+            .info-box {
+              background: #f8f9fa;
+              padding: 20px;
+              border-radius: 8px;
+              margin: 20px 0;
+              border-left: 4px solid #28a745;
+            }
+            .user-info {
+              background: #e7f5ec;
+              padding: 15px;
+              border-radius: 5px;
+              margin: 15px 0;
+            }
+            .footer { 
+              margin-top: 30px; 
+              padding-top: 20px; 
+              border-top: 1px solid #ddd; 
+              font-size: 12px; 
+              color: #666; 
+            }
+            ul { margin: 10px 0; padding-left: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2 style="margin: 0;">Neues Mitglied beigetreten</h2>
+            </div>
+            
+            <div class="content">
+              <p>Hallo Verwaltungsteam,</p>
+              
+              <p>ein neues Mitglied hat die Einladung zu Ihrer Organisation angenommen:</p>
+              
+              <div class="info-box">
+                <div class="user-info">
+                  <strong>Name:</strong> ${acceptedUser.firstname} ${acceptedUser.lastname}<br>
+                  <strong>E-Mail:</strong> ${acceptedUser.email}
+                </div>
+                
+                <strong>Organisation:</strong> ${organization.name}<br>
+                <strong>Zugewiesene Rollen:</strong>
+                <ul>
+                  ${rolesList}
+                </ul>
+              </div>
+              
+              <p>Die Person ist nun Teil Ihrer Organisation und kann auf das System zugreifen.</p>
+            </div>
+            
+            <div class="footer">
+              <p>
+                Diese E-Mail wurde automatisch generiert, um die Verwaltung über neue Mitglieder zu informieren.
+              </p>
+              <p>
+                ${new Date().getFullYear()} Einsatzplaner - ${organization.name}
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    try {
+      const mailOptions = {
+        from: `"${organization.name} - Einsatzplaner" <${process.env.SMTP_USER}>`,
+        to: recipients.map((r) => r.email).join(', '),
+        subject: `${acceptedUser.firstname} ${acceptedUser.lastname} ist der Organisation beigetreten`,
+        html: htmlContent,
+      };
+
+      const info = await this.transporter.sendMail(mailOptions);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(
+        'Fehler beim Senden der Einladungs-Annahme-Benachrichtigung:',
+        error
+      );
+      throw new Error(
+        `E-Mail-Versand fehlgeschlagen: ${
+          error instanceof Error ? error.message : 'Unbekannter Fehler'
+        }`
+      );
+    }
+  }
+
+  async sendEinsatzWarningEmail(
+    recipients: { email: string; name: string }[],
+    einsatz: {
+      id: string;
+      title: string;
+      start: Date;
+    },
+    warnings: string[],
+    organization: {
+      name: string;
+      einsatz_name_singular: string;
+      einsatz_name_plural: string;
+      helper_name_singular: string;
+      helper_name_plural: string;
+    }
+  ) {
+    if (!this.transporter || recipients.length === 0) {
+      return;
+    }
+
+    const terminology = {
+      einsatz_singular: organization.einsatz_name_singular || 'Einsatz',
+      einsatz_plural: organization.einsatz_name_plural || 'Einsätze',
+      helper_singular: organization.helper_name_singular || 'Helfer:in',
+      helper_plural: organization.helper_name_plural || 'Helfer:innen',
+    };
+
+    const einsatzUrl = `${process.env.NEXTAUTH_URL}/einsatzverwaltung?einsatz=${einsatz.id}`;
+    const warningsList = warnings.map((w) => `<li>${w}</li>`).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { 
+              background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
+              color: white; 
+              padding: 20px; 
+              border-radius: 8px; 
+              margin-bottom: 20px; 
+            }
+            .content { padding: 20px 0; }
+            .warning-box {
+              background: #fff3cd;
+              border-left: 4px solid #ffc107;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .einsatz-info {
+              background: #f8f9fa;
+              padding: 15px;
+              border-radius: 5px;
+              margin: 20px 0;
+            }
+            .button { 
+              display: inline-block; 
+              padding: 12px 30px; 
+              background: #007bff; 
+              color: white; 
+              text-decoration: none; 
+              border-radius: 5px;
+              margin: 20px 0;
+            }
+            .footer { 
+              margin-top: 30px; 
+              padding-top: 20px; 
+              border-top: 1px solid #ddd; 
+              font-size: 12px; 
+              color: #666; 
+            }
+            ul { margin: 10px 0; padding-left: 20px; }
+            li { margin: 8px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2 style="margin: 0;">Dringende Überprüfung erforderlich</h2>
+            </div>
+            
+            <div class="content">
+              <p>Sehr geehrtes Verwaltungsteam,</p>
+              
+              <p>für ${terminology.einsatz_singular === 'Einsatz' ? 'den' : 'die'} folgende${terminology.einsatz_singular === 'Einsatz' ? 'n' : ''} ${terminology.einsatz_singular} sind wichtige Anforderungen nicht erfüllt:</p>
+              
+              <div class="einsatz-info">
+                <strong>${terminology.einsatz_singular}:</strong> ${einsatz.title}<br>
+                <strong>Zeitpunkt:</strong> ${einsatz.start.toLocaleString(
+                  'de-DE',
+                  {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }
+                )}
+              </div>
+              
+              <div class="warning-box">
+                <h3 style="margin-top: 0; color: #856404;">Folgende Kriterien sind nicht erfüllt:</h3>
+                <ul style="color: #856404;">
+                  ${warningsList}
+                </ul>
+              </div>
+              
+              <p>Bitte wenden Sie sich an die ${terminology.einsatz_singular}-Verwaltung, um die erforderlichen Personeneigenschaften zu klären.</p>
+              
+              <div style="text-align: center;">
+                <a href="${einsatzUrl}" class="button">
+                  ${terminology.einsatz_singular} öffnen und bearbeiten
+                </a>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p>
+                Diese E-Mail wurde automatisch generiert, weil Sie zur Verwaltungsrolle der Organisation "${organization.name}" gehören.
+              </p>
+              <p>
+                ${new Date().getFullYear()} Einsatzplaner
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    try {
+      const mailOptions = {
+        from: `"${organization.name} - Einsatzplaner" <${process.env.SMTP_USER}>`,
+        to: recipients.map((r) => r.email).join(', '),
+        subject: `Dringende Überprüfung: ${einsatz.title}`,
+        html: htmlContent,
+      };
+
+      const info = await this.transporter.sendMail(mailOptions);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('Fehler beim Senden der Einsatz-Warnung:', error);
+      throw new Error(
+        `E-Mail-Versand fehlgeschlagen: ${
+          error instanceof Error ? error.message : 'Unbekannter Fehler'
         }`
       );
     }
