@@ -111,25 +111,6 @@ export function useDetailedEinsatz(
   });
 }
 
-export function usePrefetchDetailedEinsatz() {
-  const queryClient = useQueryClient();
-  return useCallback((einsatzId: string) => {
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.detailedEinsatz(einsatzId),
-      queryFn: async () => {
-        const res = await getEinsatzWithDetailsById(einsatzId);
-        if (res instanceof Response) {
-          throw new Error(
-            `Einsatz konnte nicht geladen werden: ${res.statusText}`
-          );
-        }
-        return res;
-      },
-      retry: false,
-    });
-  }, [queryClient]);
-}
-
 export function useCategories(activeOrgId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.categories(activeOrgId ?? ''),
