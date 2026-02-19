@@ -63,6 +63,7 @@ export function usePrefetchEinsaetzeForCalendar(
         queryKey: queryKeys.einsaetzeForCalendar(activeOrgId, monthKey),
         queryFn: () =>
           calendarRangeQueryFn(activeOrgId, focusDate),
+        
       });
     },
     [activeOrgId, queryClient]
