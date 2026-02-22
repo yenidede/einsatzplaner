@@ -48,7 +48,7 @@ import { useUsers } from '@/features/user/hooks/use-user-queries';
 import { useUserProperties } from '@/features/user_properties/hooks/use-user-property-queries';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { DefaultFormFields } from '@/components/event-calendar/defaultFormFields';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-alert-dialog';
 import { CustomFormField, SupportedDataTypes } from './types';
 import DynamicFormFields from './dynamicFormfields';
 import {
@@ -238,7 +238,7 @@ export function EventDialogVerwaltung({
   onSave,
   onDelete,
 }: EventDialogProps) {
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDefault, showDestructive } = useConfirmDialog();
   const { data: session } = useSession();
 
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -651,12 +651,12 @@ export function EventDialogVerwaltung({
 
     // function checks if values that are set below in handleTemplateSelect have been modified - could add check if some data is undefined
     if (checkIfFormIsModified(DEFAULTFORMDATA, staticFormData)) {
-      const dialogResult = await showDialog({
-        title: `${selectedTemplate?.name || 'Vorlage'} laden?`,
-        description: `Ausgefüllte Felder werden möglicherweise Überschrieben.`,
-      });
+      const result = await showDefault(
+        `${selectedTemplate?.name || 'Vorlage'} laden?`,
+        'Ausgefüllte Felder werden möglicherweise Überschrieben.'
+      );
 
-      if (dialogResult !== 'success') {
+      if (result !== 'success') {
         toast.info(
           'Vorlage nicht geladen. Es wurden keine Änderungen vorgenommen.'
         );
@@ -877,16 +877,12 @@ export function EventDialogVerwaltung({
       }
     }
     if (warnings.length > 0) {
-      const confirmed = await showDialog({
-        title: 'Warnung: Kriterien nicht erfüllt',
-        description:
-          'Folgende Kriterien sind nicht erfüllt:\n\n' +
+      const confirmed = await showDestructive(
+        'Warnung: Kriterien nicht erfüllt',
+        'Folgende Kriterien sind nicht erfüllt:\n\n' +
           warnings.map((w) => `• ${w}`).join('\n') +
-          '\n\nTrotzdem speichern?',
-        confirmText: 'Trotzdem speichern',
-        cancelText: 'Abbrechen',
-        variant: 'destructive',
-      });
+          '\n\nTrotzdem speichern?'
+      );
 
       if (confirmed !== 'success') {
         return;
@@ -1064,7 +1060,6 @@ export function EventDialogVerwaltung({
 
   return (
     <>
-      {AlertDialogComponent}
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="flex max-h-[90vh] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden sm:max-w-220">
           <DialogHeader className="sticky top-0 z-10 shrink-0 border-b pb-4">
@@ -1223,7 +1218,7 @@ export function EventDialogVerwaltung({
                           staticFormData.title ??
                           einsatz_singular,
                       },
-                      showDialog,
+                      showDestructive,
                       onDelete
                     )
                   }
