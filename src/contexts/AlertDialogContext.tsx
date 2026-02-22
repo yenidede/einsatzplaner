@@ -1,7 +1,16 @@
 'use client';
 
 import { createContext, useState, ReactNode } from 'react';
-import { AlertDialogProvider } from '@/components/AlertDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export type AlertDialogOptions = {
   title: string;
@@ -63,13 +72,40 @@ export function AlertDialogContextProvider({
   return (
     <AlertDialogContext.Provider value={contextValue}>
       {children}
-      <AlertDialogProvider
-        isOpen={isOpen}
-        options={options}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-        setIsOpen={setIsOpen}
-      />
+      {options != null && (
+        <AlertDialog
+          open={isOpen}
+          onOpenChange={(open) => {
+            if (!open) handleCancel();
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle
+                className={
+                  options.variant === 'destructive' ? 'text-red-600' : ''
+                }
+              >
+                {options.title}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {options.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCancel}>
+                Abbrechen
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirm}
+                variant={options.variant ?? 'default'}
+              >
+                Bestätigen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </AlertDialogContext.Provider>
   );
 }
