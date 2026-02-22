@@ -8,7 +8,6 @@ import {
   Bell,
   Building2,
   LogOut,
-  Upload,
   Trash2,
   Calendar,
 } from 'lucide-react';
@@ -28,11 +27,12 @@ import {
   useLeaveOrganization,
 } from '@/features/settings/hooks/useSettingsMutations';
 import { toast } from 'sonner';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-alert-dialog';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
 import { OrganizationBase } from '@/features/settings/types';
 
 import { Button } from '@/components/ui/button';
+import { FileUpload } from '@/components/form/file-upload';
 import {
   Card,
   CardContent,
@@ -65,14 +65,13 @@ import { SettingsErrorCard } from '@/components/settings/SettingsErrorCard';
 import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavigation';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
-import { optimizeImage } from '@/lib/utils';
 import { RolesList } from '@/components/Roles';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 
 export default function SettingsPage() {
   const [showLogos, setShowLogos] = useState<boolean>(true);
   const { data: session, status, update } = useSession();
-  const { showDialog } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
 
   // Form state
   const [email, setEmail] = useState<string>('');
@@ -81,11 +80,7 @@ export default function SettingsPage() {
   const [lastname, setLastname] = useState<string>('');
   const [pictureUrl, setPictureUrl] = useState<string | null>(null);
   const [salutationId, setSalutationId] = useState<string>('');
-  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(
-    null
-  );
   const [organizations, setOrganizations] = useState<OrganizationBase[]>([]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // Initial values for change detection
   const initialValuesRef = useRef<{
@@ -99,7 +94,6 @@ export default function SettingsPage() {
     organizations: OrganizationBase[];
   } | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
   const { data: userData, isLoading: isLoadingUser } = useUserProfile(
@@ -125,16 +119,6 @@ export default function SettingsPage() {
 
   // Use shared session validation hook
   useSettingsSessionValidation();
-
-  useEffect(() => {
-    if (!profilePictureFile) {
-      setPreviewUrl(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(profilePictureFile);
-    setPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [profilePictureFile]);
 
   useEffect(() => {
     if (userData) {
@@ -166,8 +150,6 @@ export default function SettingsPage() {
               }))
             : [],
       };
-      // Clear profile picture file when data is refreshed
-      setProfilePictureFile(null);
     }
   }, [userData]);
 
@@ -187,7 +169,6 @@ export default function SettingsPage() {
       pictureUrl !== initial.pictureUrl ||
       salutationId !== initial.salutationId ||
       showLogos !== initial.showLogos ||
-      profilePictureFile !== null ||
       JSON.stringify(
         organizations.map((org) => ({
           id: org.id,
@@ -207,50 +188,7 @@ export default function SettingsPage() {
     if (!session?.user?.id) return;
 
     try {
-      let finalPictureUrl = pictureUrl;
-
-      if (profilePictureFile) {
-        const toastId = toast.loading('Profilbild wird komprimiert...');
-        try {
-          // Compress image before upload
-          let fileToUpload = profilePictureFile;
-          const originalSizeMB = profilePictureFile.size / (1024 * 1024);
-
-          // Only compress if file is larger than 1MB
-          if (originalSizeMB > 1) {
-            toast.loading('Profilbild wird komprimiert...', { id: toastId });
-            try {
-              fileToUpload = await optimizeImage(profilePictureFile, {
-                maxSizeMB: 0.8, // Target 800KB
-                maxWidthOrHeight: 1200,
-                useWebWorker: true,
-              });
-            } catch (compressError) {
-              console.warn(
-                'Image compression failed, using original:',
-                compressError
-              );
-              // Continue with original file if compression fails
-              fileToUpload = profilePictureFile;
-            }
-          }
-
-          toast.loading('Profilbild wird hochgeladen...', { id: toastId });
-          const formData = new FormData();
-          formData.append('file', fileToUpload);
-          const res = await uploadProfilePictureAction(formData);
-          if (!res) throw new Error('Upload fehlgeschlagen');
-          finalPictureUrl = res.picture_url;
-          toast.success('Profilbild erfolgreich hochgeladen!', { id: toastId });
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : 'Fehler beim Hochladen des Profilbilds';
-          toast.error(errorMessage, { id: toastId });
-          throw error;
-        }
-      }
+      const finalPictureUrl = pictureUrl;
 
       await mutation.mutateAsync({
         id: session.user.id,
@@ -311,7 +249,6 @@ export default function SettingsPage() {
           })),
         };
       }
-      setProfilePictureFile(null);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Unbekannter Fehler'
@@ -320,7 +257,6 @@ export default function SettingsPage() {
   }, [
     session,
     pictureUrl,
-    profilePictureFile,
     mutation,
     email,
     firstname,
@@ -348,22 +284,13 @@ export default function SettingsPage() {
     [handleSectionChangeWithCheck]
   );
 
-  const handleProfilePictureUpload = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (file) setProfilePictureFile(file);
-  };
-
   const handleRemoveProfilePicture = async () => {
     if (!session?.user?.id) return;
 
     const toastId = toast.loading('Profilbild wird entfernt...');
     try {
       await removeProfilePictureAction();
-      setProfilePictureFile(null);
       setPictureUrl(null);
-      setPreviewUrl(null);
 
       await update({
         user: { ...session.user, picture_url: null },
@@ -398,10 +325,10 @@ export default function SettingsPage() {
       organizations.find((org) => org.id === organizationId)?.name ||
       'Organisation';
 
-    const result = await showDialog({
-      title: 'Organisation verlassen',
-      description: `Möchten Sie wirklich ${orgName} verlassen? Sie verlieren den Zugriff auf alle Daten dieser Organisation.`,
-    });
+    const result = await showDestructive(
+      'Organisation verlassen',
+      `Möchten Sie wirklich ${orgName} verlassen? Sie verlieren den Zugriff auf alle Daten dieser Organisation.`
+    );
 
     if (result !== 'success') return;
 
@@ -531,7 +458,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-6">
                 <Avatar className="h-20 w-20">
                   <AvatarImage
-                    src={previewUrl || pictureUrl || undefined}
+                    src={pictureUrl || undefined}
                     alt={`Profilbild von ${firstname} ${lastname}`}
                   />
                   <AvatarFallback className="text-lg">
@@ -539,35 +466,47 @@ export default function SettingsPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={handleProfilePictureUpload}
-                      aria-label="Profilbild hochladen"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="mr-2 h-4 w-4" />
-                      Bild hochladen
-                    </Button>
-                    {(pictureUrl || previewUrl) && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleRemoveProfilePicture}
-                        className="text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Entfernen
-                      </Button>
-                    )}
-                  </div>
+                  <FileUpload
+                    id="profile-picture-upload"
+                    name="profilePicture"
+                    variant="buttons"
+                    accept="image/*"
+                    maxFiles={1}
+                    placeholder="JPG, PNG oder GIF. Große Bilder werden automatisch komprimiert."
+                    disabled={mutation.isPending}
+                    initialFiles={
+                      pictureUrl
+                        ? [
+                            {
+                              id: 'profile-picture',
+                              name: 'Profilbild',
+                              size: 0,
+                              type: 'image/*',
+                              url: pictureUrl,
+                            },
+                          ]
+                        : []
+                    }
+                    setValue={(_name, value) => {
+                      const nextUrl =
+                        Array.isArray(value) && typeof value[0] === 'string'
+                          ? value[0]
+                          : null;
+                      setPictureUrl(nextUrl);
+                    }}
+                    onUpload={async (optimizedFile) => {
+                      const formData = new FormData();
+                      formData.append('file', optimizedFile);
+                      const res = await uploadProfilePictureAction(formData);
+                      if (!res) throw new Error('Upload fehlgeschlagen');
+                      return res.picture_url;
+                    }}
+                    onFileRemove={async () => {
+                      await handleRemoveProfilePicture();
+                    }}
+                    uploadLabel="Bild hochladen"
+                    removeLabel="Entfernen"
+                  />
                   <p className="text-muted-foreground text-xs">
                     JPG, PNG oder GIF. Große Bilder werden automatisch
                     komprimiert.
