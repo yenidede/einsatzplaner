@@ -11,7 +11,13 @@ import {
 
 interface AlertDialogProviderProps {
   isOpen: boolean;
-  options: { title: string; description: string } | null;
+  options: {
+    title: string;
+    description: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'default' | 'destructive';
+  } | null;
   onConfirm: () => void;
   onCancel: () => void;
   setIsOpen: (open: boolean) => void;
@@ -30,12 +36,27 @@ export function AlertDialogProvider({
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{options.title}</AlertDialogTitle>
+          <AlertDialogTitle
+            className={options.variant === 'destructive' ? 'text-red-600' : ''}
+          >
+            {options.title}
+          </AlertDialogTitle>
           <AlertDialogDescription>{options.description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Abbrechen</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Bestätigen</AlertDialogAction>
+          <AlertDialogCancel onClick={onCancel}>
+            {options.cancelText ?? 'Abbrechen'}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className={
+              options.variant === 'destructive'
+                ? 'bg-red-600 hover:bg-red-700'
+                : ''
+            }
+          >
+            {options.confirmText ?? 'Bestätigen'}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
