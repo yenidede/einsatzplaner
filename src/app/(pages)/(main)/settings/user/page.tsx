@@ -28,7 +28,7 @@ import {
   useLeaveOrganization,
 } from '@/features/settings/hooks/useSettingsMutations';
 import { toast } from 'sonner';
-import { useAlertDialog } from '@/contexts/AlertDialogContext';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
 import { OrganizationBase } from '@/features/settings/types';
 

@@ -6,7 +6,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { handlePdfGenerate, handleDelete } from './event-calendar/utils';
-import { useAlertDialog } from '@/contexts/AlertDialogContext';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
 
 interface ContextMenuEventRightClickProps {

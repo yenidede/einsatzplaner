@@ -17,7 +17,7 @@ import {
   getDetailedEinsaetzeForAgenda,
   getDetailedEinsaetzeForCalendarRange,
 } from '@/features/einsatz/dal-einsatz';
-import { ShowDialogFn } from '@/contexts/AlertDialogContext';
+import { ShowDialogFn } from '@/hooks/use-alert-dialog';
 import { toast } from 'sonner';
 import { PdfGenerationRequest } from '@/features/pdf/types/types';
 import { UsePdfGeneratorReturn } from '@/features/pdf/hooks/usePdfGenerator';

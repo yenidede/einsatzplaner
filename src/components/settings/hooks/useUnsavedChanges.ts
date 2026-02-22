@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAlertDialog } from '@/contexts/AlertDialogContext';
+import { useAlertDialog } from '@/hooks/use-alert-dialog';
 
 interface UseUnsavedChangesOptions<T extends string = string> {
   hasUnsavedChanges: boolean;
