@@ -10,6 +10,7 @@ import {
   type DragEvent,
   type InputHTMLAttributes,
 } from 'react';
+import { useConfirmDialog } from '@/hooks/use-alert-dialog';
 
 export type FileMetadata = {
   name: string;
@@ -43,8 +44,13 @@ export type FileUploadState = {
 
 export type FileUploadActions = {
   addFiles: (files: FileList | File[]) => void;
-  removeFile: (id: string) => void;
-  clearFiles: () => void;
+  removeFile: (id: string) => Promise<'success' | 'cancel'>;
+  /** Removes file silently without prompting the user. Used eg. after image optimization */
+  removeFileSilently: (id: string) => void;
+  /** Clears all files after user confirmation. */
+  clearFiles: () => Promise<'success' | 'cancel'>;
+  /** Clears all files without prompting the user (internal use). */
+  clearFilesSilently: () => void;
   clearErrors: () => void;
   handleDragEnter: (e: DragEvent<HTMLElement>) => void;
   handleDragLeave: (e: DragEvent<HTMLElement>) => void;
@@ -81,6 +87,8 @@ export const useFileUpload = (
     isDragging: false,
     errors: [],
   });
+
+  const { showDestructive } = useConfirmDialog();
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -157,7 +165,7 @@ export const useFileUpload = (
     return file.id;
   }, []);
 
-  const clearFiles = useCallback(() => {
+  const clearFilesSilently = useCallback(() => {
     setState((prev) => {
       // Clean up object URLs
       prev.files.forEach((file) => {
@@ -185,6 +193,19 @@ export const useFileUpload = (
     });
   }, [onFilesChange]);
 
+  const clearFiles = useCallback(
+    async (): Promise<'success' | 'cancel'> => {
+      const result = await showDestructive(
+        'Alle Dateien entfernen',
+        'Möchten Sie wirklich alle Dateien entfernen?'
+      );
+      if (result !== 'success') return result;
+      clearFilesSilently();
+      return result;
+    },
+    [clearFilesSilently, showDestructive]
+  );
+
   const addFiles = useCallback(
     (newFiles: FileList | File[]) => {
       if (!newFiles || newFiles.length === 0) return;
@@ -197,7 +218,7 @@ export const useFileUpload = (
 
       // In single file mode, clear existing files first
       if (!multiple) {
-        clearFiles();
+        clearFilesSilently();
       }
 
       // Check if adding these files would exceed maxFiles (only in multiple mode)
@@ -290,23 +311,23 @@ export const useFileUpload = (
       validateFile,
       createPreview,
       generateUniqueId,
-      clearFiles,
+      clearFilesSilently,
       onFilesChange,
       onFilesAdded,
     ]
   );
 
-  const removeFile = useCallback(
+  const removeFileSilently = useCallback(
     (id: string) => {
       setState((prev) => {
-        const fileToRemove = prev.files.find((file) => file.id === id);
+        const fileToRemovePrev = prev.files.find((file) => file.id === id);
         if (
-          fileToRemove &&
-          fileToRemove.preview &&
-          fileToRemove.file instanceof File &&
-          fileToRemove.file.type.startsWith('image/')
+          fileToRemovePrev &&
+          fileToRemovePrev.preview &&
+          fileToRemovePrev.file instanceof File &&
+          fileToRemovePrev.file.type.startsWith('image/')
         ) {
-          URL.revokeObjectURL(fileToRemove.preview);
+          URL.revokeObjectURL(fileToRemovePrev.preview);
         }
 
         const newFiles = prev.files.filter((file) => file.id !== id);
@@ -320,6 +341,26 @@ export const useFileUpload = (
       });
     },
     [onFilesChange]
+  );
+
+  const removeFile = useCallback(
+    async (id: string): Promise<'success' | 'cancel'> => {
+      const fileToRemove = state.files.find((file) => file.id === id);
+      const filename =
+        fileToRemove?.file instanceof File
+          ? fileToRemove.file.name
+          : fileToRemove?.file?.name;
+
+      const result = await showDestructive(
+        'Datei entfernen',
+        `Möchten Sie "${filename ?? 'diese Datei'}" wirklich entfernen?`
+      );
+      if (result !== 'success') return result;
+
+      removeFileSilently(id);
+      return result;
+    },
+    [removeFileSilently, showDestructive, state.files]
   );
 
   const clearErrors = useCallback(() => {
@@ -409,7 +450,9 @@ export const useFileUpload = (
     {
       addFiles,
       removeFile,
+      removeFileSilently,
       clearFiles,
+      clearFilesSilently,
       clearErrors,
       handleDragEnter,
       handleDragLeave,
