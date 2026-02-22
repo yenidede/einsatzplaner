@@ -12,7 +12,7 @@ import {
   demoteFromSuperadminAction,
 } from '@/features/settings/users-action';
 import { settingsQueryKeys } from '../../features/settings/queryKeys/queryKey';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-alert-dialog';
 import { UserProfileHeader } from './userProfile/UserProfileHeader';
 import { UserContactInfo } from './userProfile/UserContactInfo';
 import { UserPersonalProperties } from './userProfile/UserPersonalProperties';
@@ -69,7 +69,7 @@ export function UserProfileDialog({
     Record<string, string>
   >({});
 
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDefault, showDestructive } = useConfirmDialog();
   const { data: session } = useSession();
 
   const {
@@ -265,12 +265,10 @@ export function UserProfileDialog({
         id: context?.toastId,
       });
 
-      await showDialog({
-        title: 'Fehler',
-        description: 'Fehler beim Speichern der Rollenänderungen',
-        confirmText: 'OK',
-        variant: 'destructive',
-      });
+      await showDestructive(
+        'Fehler',
+        'Fehler beim Speichern der Rollenänderungen'
+      );
     },
   });
 
@@ -329,12 +327,10 @@ export function UserProfileDialog({
         id: context?.toastId,
       });
 
-      await showDialog({
-        title: 'Fehler',
-        description: error.message || 'Fehler beim Ernennen zum Superadmin',
-        confirmText: 'OK',
-        variant: 'destructive',
-      });
+      await showDestructive(
+        'Fehler',
+        error.message || 'Fehler beim Ernennen zum Superadmin'
+      );
     },
   });
 
@@ -372,13 +368,10 @@ export function UserProfileDialog({
         }
       );
 
-      await showDialog({
-        title: 'Fehler',
-        description:
-          error.message || 'Fehler beim Entfernen der Superadmin-Rolle',
-        confirmText: 'OK',
-        variant: 'destructive',
-      });
+      await showDestructive(
+        'Fehler',
+        error.message || 'Fehler beim Entfernen der Superadmin-Rolle'
+      );
     },
   });
 
@@ -451,14 +444,10 @@ export function UserProfileDialog({
 
   const handleClose = async () => {
     if (hasChanges) {
-      const result = await showDialog({
-        title: 'Ungespeicherte Änderungen',
-        description:
-          'Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?',
-        confirmText: 'Schließen',
-        cancelText: 'Abbrechen',
-        variant: 'destructive',
-      });
+      const result = await showDefault(
+        'Ungespeicherte Änderungen',
+        'Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?'
+      );
       if (result === 'success') {
         setUserRoles([...originalRoles]);
         setPropertyValues({ ...originalPropertyValues });
@@ -471,38 +460,30 @@ export function UserProfileDialog({
   };
 
   const handleRemoveUser = async () => {
-    const result = await showDialog({
-      title: 'Benutzer entfernen',
-      description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich aus der Organisation entfernen?`,
-      confirmText: 'Entfernen',
-      cancelText: 'Abbrechen',
-      variant: 'destructive',
-    });
+    const result = await showDestructive(
+      'Benutzer entfernen',
+      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich aus der Organisation entfernen?`
+    );
     if (result === 'success') {
       removeUserMutation.mutate();
     }
   };
 
   const handlePromoteToSuperadmin = async () => {
-    const result = await showDialog({
-      title: 'Zum Superadmin ernennen',
-      description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen? Diese Person erhält dann alle Berechtigungen.`,
-      confirmText: 'Ernennen',
-      cancelText: 'Abbrechen',
-    });
+    const result = await showDestructive(
+      'Zum Superadmin ernennen',
+      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen? Diese Person erhält dann alle Berechtigungen.`
+    );
     if (result === 'success') {
       promoteToSuperadminMutation.mutate();
     }
   };
 
   const handleDemoteFromSuperadmin = async () => {
-    const result = await showDialog({
-      title: 'Superadmin-Rolle entfernen',
-      description: `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich die Superadmin-Rolle entziehen? Die Person behält alle anderen Rollen.`,
-      confirmText: 'Degradieren',
-      cancelText: 'Abbrechen',
-      variant: 'destructive',
-    });
+    const result = await showDestructive(
+      'Superadmin-Rolle entfernen',
+      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich die Superadmin-Rolle entziehen? Die Person behält alle anderen Rollen.`
+    );
     if (result === 'success') {
       demoteFromSuperadminMutation.mutate();
     }
@@ -517,8 +498,8 @@ export function UserProfileDialog({
         <div className="fixed inset-0 bg-white/20 backdrop-blur-sm" />
         <Card className="relative p-8">
           <CardContent className="flex items-center gap-3 p-0">
-            <Loader2 className="h-6 w-6 shrink-0 animate-spin text-primary" />
-            <span className="font-medium text-muted-foreground">
+            <Loader2 className="text-primary h-6 w-6 shrink-0 animate-spin" />
+            <span className="text-muted-foreground font-medium">
               Lädt Benutzerdaten...
             </span>
           </CardContent>
@@ -535,9 +516,9 @@ export function UserProfileDialog({
           className="fixed inset-0 bg-white/20 backdrop-blur-sm"
           onClick={onClose}
         />
-        <Card className="relative border-destructive/50 p-8">
+        <Card className="border-destructive/50 relative p-8">
           <CardContent className="flex flex-col gap-4 p-0">
-            <p className="font-medium text-destructive">
+            <p className="text-destructive font-medium">
               Fehler beim Laden der Benutzerdaten
             </p>
             <Button variant="secondary" onClick={onClose}>
@@ -557,7 +538,6 @@ export function UserProfileDialog({
 
   const content = (
     <>
-      {AlertDialogComponent}
       <div
         className="fixed inset-0 z-40 flex items-center justify-center p-4"
         aria-modal="true"

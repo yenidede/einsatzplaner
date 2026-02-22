@@ -66,7 +66,7 @@ import { MultiSelect } from '@/components/form/multi-select';
 import { cn } from '@/lib/utils';
 import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
 import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-alert-dialog';
 import TooltipCustom from '../tooltip-custom';
 
 /** Format a Date (time-only from DB) to "HH:mm" for input[type="time"]. */
@@ -112,7 +112,7 @@ export function TemplateForm({
     deleteTemplateMutation,
     isSaving,
   } = useTemplateMutations();
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDefault, showDestructive } = useConfirmDialog();
 
   const { data: template, isLoading: templateLoading } = useTemplate(
     isEdit ? templateId : null
@@ -240,37 +240,18 @@ export function TemplateForm({
     router.push(computedBackHref);
   }, [router, computedBackHref]);
 
-  const handleDelete = useCallback(async () => {
-    const result = await showDialog({
-      title: 'Vorlage löschen?',
-      description:
-        'Diese Vorlage wird unwiderruflich gelöscht. Bestehende Einsätze bleiben unverändert.',
-      confirmText: 'Löschen',
-      cancelText: 'Abbrechen',
-      variant: 'destructive',
-    });
-    if (result === 'success' && templateId) {
-      deleteTemplateMutation.mutate({
-        templateId,
-        redirectTo: computedBackHref,
-      });
-    }
-  }, [showDialog, templateId, computedBackHref, deleteTemplateMutation]);
-
   const handlePause = useCallback(async () => {
     const isPaused = template?.is_paused ?? false;
-    const result = await showDialog({
-      title: isPaused ? 'Vorlage reaktivieren?' : 'Vorlage pausieren?',
-      description: isPaused
+    const result = await showDefault(
+      isPaused ? 'Vorlage reaktivieren?' : 'Vorlage pausieren?',
+      isPaused
         ? 'Die Vorlage wird wieder für neue Einsätze verfügbar gemacht.'
-        : 'Pausierte Vorlagen können nicht für neue Einsätze verwendet werden. Bestehende Einsätze bleiben unverändert.',
-      confirmText: isPaused ? 'Reaktivieren' : 'Pausieren',
-      cancelText: 'Abbrechen',
-    });
+        : 'Pausierte Vorlagen können nicht für neue Einsätze verwendet werden. Bestehende Einsätze bleiben unverändert.'
+    );
     if (result === 'success' && templateId) {
       updateMutation.mutate({ templateId, is_paused: !isPaused });
     }
-  }, [showDialog, template?.is_paused, templateId, updateMutation]);
+  }, [showDefault, template?.is_paused, templateId, updateMutation]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -631,13 +612,10 @@ export function TemplateForm({
     async (fieldId: string) => {
       const tf = template?.template_field?.find((t) => t.field?.id === fieldId);
       const name = tf?.field?.name ?? 'Feld';
-      const result = await showDialog({
-        title: 'Feld von Vorlage entfernen?',
-        description: `Möchten Sie das Feld "${name}" von dieser Vorlage entfernen? Das Feld wird nur von der Vorlage getrennt. Bestehende Einsätze behalten ihre gespeicherten Werte für dieses Feld.`,
-        confirmText: 'Entfernen',
-        cancelText: 'Abbrechen',
-        variant: 'destructive',
-      });
+      const result = await showDestructive(
+        'Feld von Vorlage entfernen?',
+        `Möchten Sie das Feld "${name}" von dieser Vorlage entfernen? Das Feld wird nur von der Vorlage getrennt. Bestehende Einsätze behalten ihre gespeicherten Werte für dieses Feld.`
+      );
       if (result === 'success' && templateId) {
         deleteTemplateFieldMutation.mutate({ templateId, fieldId });
       }
@@ -645,7 +623,7 @@ export function TemplateForm({
     [
       template?.template_field,
       templateId,
-      showDialog,
+      showDestructive,
       deleteTemplateFieldMutation,
     ]
   );
@@ -1443,7 +1421,6 @@ export function TemplateForm({
         {header}
         {formContent}
       </div>
-      {AlertDialogComponent}
     </div>
   );
 }

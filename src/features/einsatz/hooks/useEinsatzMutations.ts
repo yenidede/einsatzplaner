@@ -68,7 +68,7 @@ import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { EinsatzCreate } from '../types';
 import { CalendarEvent } from '@/components/event-calendar/types';
 import { toast } from 'sonner';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-alert-dialog';
 
 /** Snapshot of calendar cache entries for optimistic rollback. */
 type CalendarCacheSnapshot = Array<[QueryKey, CalendarRangeData | undefined]>;
@@ -107,7 +107,7 @@ export function useCreateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const calendarPrefixKey = queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? '');
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -162,16 +162,12 @@ export function useCreateEinsatz(
     onSuccess: async (data, vars, _ctx) => {
       if (data.conflicts && data.conflicts.length > 0) {
         // Show confirmation dialog
-        const dialogResult = await showDialog({
-          title: 'Warnung: Zeitkonflikte erkannt',
-          description:
-            'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
-            formatConflictMessages(data.conflicts) +
-            '\n\nMöchten Sie trotzdem fortfahren?',
-          confirmText: 'Trotzdem fortfahren',
-          cancelText: 'Abbrechen',
-          variant: 'destructive',
-        });
+        const dialogResult = await showDestructive(
+          'Warnung: Zeitkonflikte erkannt',
+          'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
+          formatConflictMessages(data.conflicts) +
+          '\n\nMöchten Sie trotzdem fortfahren?'
+        );
 
         if (dialogResult === 'success') {
           // User confirmed, retry with conflicts disabled
@@ -204,7 +200,6 @@ export function useCreateEinsatz(
 
   return {
     ...mutation,
-    AlertDialogComponent,
     mutate: (event: EinsatzCreate) => mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate) => mutation.mutateAsync({ event }),
   };
@@ -217,7 +212,7 @@ export function useUpdateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const calendarPrefixKey = queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? '');
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDestructive, } = useConfirmDialog();
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -298,16 +293,12 @@ export function useUpdateEinsatz(
 
       if (conflicts && conflicts.length > 0) {
         // Show confirmation dialog
-        const dialogResult = await showDialog({
-          title: 'Warnung: Zeitkonflikte erkannt',
-          description:
-            'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
-            formatConflictMessages(conflicts) +
-            '\n\nMöchten Sie trotzdem fortfahren?',
-          confirmText: 'Trotzdem fortfahren',
-          cancelText: 'Abbrechen',
-          variant: 'destructive',
-        });
+        const dialogResult = await showDestructive(
+          'Warnung: Zeitkonflikte erkannt',
+          'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
+          formatConflictMessages(conflicts) +
+          '\n\nMöchten Sie trotzdem fortfahren?'
+        );
 
         if (dialogResult === 'success') {
           // User confirmed, retry with conflicts disabled
@@ -357,7 +348,6 @@ export function useUpdateEinsatz(
 
   return {
     ...mutation,
-    AlertDialogComponent,
     mutate: (event: EinsatzCreate | CalendarEvent) => mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate | CalendarEvent) =>
       mutation.mutateAsync({ event }),

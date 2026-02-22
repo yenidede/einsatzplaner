@@ -16,12 +16,16 @@ export type AlertDialogOptions = {
   title: string;
   description: string;
   variant?: 'default' | 'destructive';
+  confirmText?: string;
+  cancelText?: string;
 };
 
 export type AlertDialogResult = 'success' | 'cancel';
 
 interface AlertDialogContextValue {
-  showDialog: (options: AlertDialogOptions) => Promise<AlertDialogResult>;
+  showDialogFromContext: (
+    options: AlertDialogOptions
+  ) => Promise<AlertDialogResult>;
 }
 
 /** Exported for use in use-alert-dialog only. Do not use useContext directly. */
@@ -42,7 +46,7 @@ export function AlertDialogContextProvider({
     ((value: AlertDialogResult) => void) | null
   >(null);
 
-  const showDialog = (
+  const showDialogFromContext = (
     dialogOptions: AlertDialogOptions
   ): Promise<AlertDialogResult> => {
     setOptions(dialogOptions);
@@ -66,7 +70,7 @@ export function AlertDialogContextProvider({
   };
 
   const contextValue: AlertDialogContextValue = {
-    showDialog,
+    showDialogFromContext,
   };
 
   return (
@@ -94,13 +98,13 @@ export function AlertDialogContextProvider({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={handleCancel}>
-                Abbrechen
+                {options.cancelText ?? 'Abbrechen'}
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleConfirm}
                 variant={options.variant ?? 'default'}
               >
-                Bestätigen
+                {options.confirmText ?? 'Bestätigen'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

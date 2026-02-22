@@ -17,10 +17,10 @@ import {
   getDetailedEinsaetzeForAgenda,
   getDetailedEinsaetzeForCalendarRange,
 } from '@/features/einsatz/dal-einsatz';
-import { ShowDialogFn } from '@/hooks/use-alert-dialog';
 import { toast } from 'sonner';
 import { PdfGenerationRequest } from '@/features/pdf/types/types';
 import { UsePdfGeneratorReturn } from '@/features/pdf/hooks/usePdfGenerator';
+import { useConfirmDialog } from '@/hooks/use-alert-dialog';
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -40,14 +40,17 @@ type ValidationOptions = {
 export const handleDelete = async (
   einsatz_singular: string,
   einsatz: { id: string | undefined; title: string },
-  showDialog: ShowDialogFn,
+  showDestructive: (
+    title: string,
+    description: string
+  ) => Promise<'success' | 'cancel'>,
   onDelete: (id: string, title: string) => void
 ) => {
   if (einsatz?.id) {
-    const result = await showDialog({
-      title: einsatz_singular + ' löschen',
-      description: `Sind Sie sicher, dass Sie "${einsatz.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
-    });
+    const result = await showDestructive(
+      einsatz_singular + ' löschen',
+      `Sind Sie sicher, dass Sie "${einsatz.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`
+    );
 
     if (result === 'success') {
       onDelete(einsatz.id, einsatz.title);
