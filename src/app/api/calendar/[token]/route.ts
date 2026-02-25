@@ -28,6 +28,26 @@ export async function GET(request: NextRequest, context: RouteContext) {
       organization: { select: { name: true } },
       einsatz_to_category: { include: { einsatz_category: true } },
       einsatz_field: { include: { field: true } },
+      einsatz_user_property: {
+        include: {
+          user_property: {
+            include: {
+              field: true,
+            },
+          },
+        },
+      },
+      einsatz_helper: {
+        include: {
+          user: {
+            select: {
+              firstname: true,
+              lastname: true,
+            },
+          },
+        },
+      },
+      einsatz_status: true,
     },
   });
 
@@ -66,10 +86,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
         )
         .filter(Boolean) ?? [];
 
-    const ortField = einsatz.einsatz_field.find((field) =>
-      (field.field.name ?? '').toLowerCase().match(/^(ort|location)$/)
-    );
-
     const urlToHelferansichtPage = new URL(
       `/helferansicht?einsatz=${encodeURIComponent(einsatz.id)}`,
       baseUrl
@@ -77,53 +93,110 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const descriptionParts: string[] = [];
 
+    // Titel
+    descriptionParts.push(`=== ${einsatz.title} ===`);
+    descriptionParts.push('');
+
+    // Anmerkung
     if (einsatz.anmerkung) {
-      descriptionParts.push(`Anmerkung: ${einsatz.anmerkung}`);
+      descriptionParts.push(`📝 Anmerkung:`);
+      descriptionParts.push(einsatz.anmerkung);
+      descriptionParts.push('');
     }
 
+    // Kategorien
+    if (categories.length > 0) {
+      descriptionParts.push(`🏷️ Kategorien: ${categories.join(', ')}`);
+      descriptionParts.push('');
+    }
+
+    // Status
+    if (einsatz.einsatz_status) {
+      descriptionParts.push(
+        `📊 Status: ${einsatz.einsatz_status.verwalter_text}`
+      );
+      descriptionParts.push('');
+    }
+
+    // ALLE benutzerdefinierten Felder (dynamisch)
+    if (einsatz.einsatz_field.length > 0) {
+      const fieldsWithValues = einsatz.einsatz_field.filter(
+        (ef) => ef.value && ef.field.name
+      );
+
+      if (fieldsWithValues.length > 0) {
+        descriptionParts.push('📋 Einsatzinformationen:');
+        fieldsWithValues.forEach((ef) => {
+          descriptionParts.push(`   ${ef.field.name}: ${ef.value}`);
+        });
+        descriptionParts.push('');
+      }
+    }
+
+    // Teilnehmer und Preisinformationen
+    const participantInfo: string[] = [];
     if (
       einsatz.participant_count !== null &&
       einsatz.participant_count !== undefined
     ) {
-      descriptionParts.push(`Anzahl Teilnehmer: ${einsatz.participant_count}`);
+      participantInfo.push(`👥 Teilnehmeranzahl: ${einsatz.participant_count}`);
     }
-
     if (
       einsatz.price_per_person !== null &&
       einsatz.price_per_person !== undefined
     ) {
-      descriptionParts.push(`Preis pro Person: €${einsatz.price_per_person}`);
+      participantInfo.push(
+        `💶 Preis pro Person: €${einsatz.price_per_person.toFixed(2)}`
+      );
     }
     if (einsatz.total_price !== null && einsatz.total_price !== undefined) {
-      descriptionParts.push(`Gesamtpreis: €${einsatz.total_price.toFixed(2)}`);
+      participantInfo.push(
+        `💰 Gesamtpreis: €${einsatz.total_price.toFixed(2)}`
+      );
     }
-
-    if (einsatz.helpers_needed > 0) {
-      descriptionParts.push(`Benötigte Helfer: ${einsatz.helpers_needed}`);
-    }
-
-    const customFields = einsatz.einsatz_field.filter(
-      (field) =>
-        field.value &&
-        field.field.name?.toLowerCase() !== 'ort' &&
-        field.field.name?.toLowerCase() !== 'location'
-    );
-
-    if (
-      customFields.length > 0 &&
-      customFields.some(
-        (field) => field.field.name !== null && field.field.name.trim() !== ''
-      )
-    ) {
+    if (participantInfo.length > 0) {
+      descriptionParts.push(...participantInfo);
       descriptionParts.push('');
-      descriptionParts.push('Weitere Informationen:');
-      customFields.forEach((field) => {
-        descriptionParts.push(`${field.field.name}: ${field.value}`);
-      });
     }
 
-    descriptionParts.push('');
-    descriptionParts.push(`Details: ${urlToHelferansichtPage}`);
+    // Vermittler:innen
+    if (einsatz.helpers_needed > 0 || einsatz.einsatz_helper.length > 0) {
+      descriptionParts.push('👨‍🏫 Vermittler:innen:');
+      if (einsatz.helpers_needed > 0) {
+        descriptionParts.push(`   Benötigt: ${einsatz.helpers_needed}`);
+      }
+      if (einsatz.einsatz_helper.length > 0) {
+        descriptionParts.push(
+          `   Angemeldet: ${einsatz.einsatz_helper.length}`
+        );
+        einsatz.einsatz_helper.forEach((helper) => {
+          descriptionParts.push(
+            `   - ${helper.user.firstname} ${helper.user.lastname}`
+          );
+        });
+      }
+      descriptionParts.push('');
+    }
+
+    // Benötigte Personeneigenschaften
+    if (einsatz.einsatz_user_property.length > 0) {
+      descriptionParts.push('Benötigte Personeneigenschaften:');
+      einsatz.einsatz_user_property.forEach((prop) => {
+        const propertyName = prop.user_property.field.name ?? 'Unbekannt';
+        const required = prop.is_required ? ' ⚠️ (Erforderlich)' : '';
+        const minUsers =
+          prop.min_matching_users !== null &&
+          prop.min_matching_users !== undefined
+            ? ` - Min: ${prop.min_matching_users} Person(en)`
+            : '';
+        descriptionParts.push(`   - ${propertyName}${required}${minUsers}`);
+      });
+      descriptionParts.push('');
+    }
+
+    // Link zu Details
+    descriptionParts.push('─────────────────────────');
+    descriptionParts.push(`🔗 Weitere Details: ${urlToHelferansichtPage}`);
 
     const description = descriptionParts.join('\n');
 
@@ -134,6 +207,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       end = new Date(end);
       end.setDate(end.getDate() + 1);
     }
+
+    // Ort-Feld für Location verwenden
+    const ortField = einsatz.einsatz_field.find((field) =>
+      (field.field.name ?? '').toLowerCase().match(/^(ort|location)$/)
+    );
 
     const event = calendar.createEvent({
       start,
