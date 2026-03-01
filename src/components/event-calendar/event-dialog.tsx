@@ -566,7 +566,12 @@ export function EventDialogVerwaltung({
   // Generate or refresh dynamic schema/data when template or detailed fields change
   useEffect(() => {
     const isEditMode =
-      einsatz && typeof einsatz === 'object' && 'id' in einsatz && einsatz.id;
+      (einsatz &&
+        typeof einsatz === 'object' &&
+        'id' in einsatz &&
+        einsatz.id) ||
+      (typeof einsatz === 'string' && einsatz.trim() !== '');
+
     if (isEditMode && (isLoading || isFetching)) {
       return;
     }
@@ -575,7 +580,14 @@ export function EventDialogVerwaltung({
       return;
     }
 
-    const currentKey = `${einsatz && typeof einsatz === 'object' && 'id' in einsatz ? einsatz.id : 'new'}_${activeTemplateId || 'no-template'}`;
+    const einsatzId =
+      typeof einsatz === 'string'
+        ? einsatz
+        : einsatz && typeof einsatz === 'object' && 'id' in einsatz
+          ? einsatz.id
+          : 'new';
+
+    const currentKey = `${einsatzId}_${activeTemplateId || 'no-template'}`;
 
     if (dynamicFieldsInitializedRef.current === currentKey) {
       return;
@@ -638,7 +650,7 @@ export function EventDialogVerwaltung({
       dynamicForm.reset(formValues);
       dynamicFieldsInitializedRef.current = currentKey;
     } catch (error) {
-      console.error('❌ Error generating schema:', error);
+      toast.error('Fehler beim Laden der Felder für diesen Einsatz');
     }
   }, [
     activeTemplateId,

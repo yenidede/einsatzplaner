@@ -34,8 +34,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
   // Organisationsspezifische Bezeichnungen
   const helperNamePlural =
     subscription.organization.helper_name_plural ?? 'Vermittler:innen';
-  const helperNameSingular =
-    subscription.organization.helper_name_singular ?? 'Vermittler:in';
   const einsatzNameSingular =
     subscription.organization.einsatz_name_singular ?? 'Einsatz';
 
