@@ -1,12 +1,5 @@
 import nodemailer from 'nodemailer';
 
-interface OrganizationTerminology {
-  einsatz_singular: string;
-  einsatz_plural: string;
-  helper_singular: string;
-  helper_plural: string;
-}
-
 export class EmailService {
   private transporter: nodemailer.Transporter | null;
 
@@ -511,8 +504,7 @@ export class EmailService {
             <div class="content">
               <p>Sehr geehrtes Verwaltungsteam,</p>
               
-              <p>für ${terminology.einsatz_singular === 'Einsatz' ? 'den' : 'die'} folgende${terminology.einsatz_singular === 'Einsatz' ? 'n' : ''} ${terminology.einsatz_singular} sind wichtige Anforderungen nicht erfüllt:</p>
-              
+              <p>Für ${terminology.einsatz_singular} "${einsatz.title}" sind wichtige Anforderungen nicht erfüllt:</p>                
               <div class="einsatz-info">
                 <strong>${terminology.einsatz_singular}:</strong> ${einsatz.title}<br>
                 <strong>Zeitpunkt:</strong> ${einsatz.start.toLocaleString(

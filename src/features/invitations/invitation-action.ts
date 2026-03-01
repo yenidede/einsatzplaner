@@ -468,28 +468,43 @@ export async function createAccountFromInvitationAction(data: {
 
     const firstInvitation = invitations[0];
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: firstInvitation.email },
-    });
-
-    if (existingUser) {
-      throw new Error(
-        'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
-      );
-    }
-
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     const result = await prisma.$transaction(async (tx) => {
-      const newUser = await tx.user.create({
-        data: {
-          email: firstInvitation.email,
-          firstname: data.firstname,
-          lastname: data.lastname,
-          password: hashedPassword,
-          active_org: firstInvitation.org_id,
-        },
+      const existingUser = await tx.user.findUnique({
+        where: { email: firstInvitation.email },
       });
+
+      if (existingUser) {
+        throw new Error(
+          'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
+        );
+      }
+
+      let newUser;
+      try {
+        newUser = await tx.user.create({
+          data: {
+            email: firstInvitation.email,
+            firstname: data.firstname,
+            lastname: data.lastname,
+            password: hashedPassword,
+            active_org: firstInvitation.org_id,
+          },
+        });
+      } catch (createError) {
+        if (
+          createError &&
+          typeof createError === 'object' &&
+          'code' in createError &&
+          createError.code === 'P2002'
+        ) {
+          throw new Error(
+            'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
+          );
+        }
+        throw createError;
+      }
 
       await Promise.all(
         invitations.map((invitation) =>
