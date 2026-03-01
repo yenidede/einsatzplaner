@@ -27,12 +27,11 @@ const calendarRangeQueryFn = async (
   activeOrgId: string | undefined,
   focusDate: Date
 ): Promise<CalendarRangeData> => {
-  const result = await getEinsaetzeDataForCalendarRange(
-    activeOrgId,
-    focusDate
-  );
+  const result = await getEinsaetzeDataForCalendarRange(activeOrgId, focusDate);
   if (result instanceof Response) {
-    throw new Error(`Einsätze konnten nicht geladen werden: ${result.statusText}`);
+    throw new Error(
+      `Einsätze konnten nicht geladen werden: ${result.statusText}`
+    );
   }
   return result;
 };
@@ -44,8 +43,7 @@ export function useEinsaetzeForCalendar(
   const monthKey = format(focusDate, 'yyyy-MM');
   return useQuery<CalendarRangeData>({
     queryKey: queryKeys.einsaetzeForCalendar(activeOrgId ?? '', monthKey),
-    queryFn: () =>
-      calendarRangeQueryFn(activeOrgId ?? undefined, focusDate),
+    queryFn: () => calendarRangeQueryFn(activeOrgId ?? undefined, focusDate),
     enabled: !!activeOrgId,
   });
 }
@@ -61,8 +59,7 @@ export function usePrefetchEinsaetzeForCalendar(
       const monthKey = format(focusDate, 'yyyy-MM');
       queryClient.prefetchQuery({
         queryKey: queryKeys.einsaetzeForCalendar(activeOrgId, monthKey),
-        queryFn: () =>
-          calendarRangeQueryFn(activeOrgId, focusDate),
+        queryFn: () => calendarRangeQueryFn(activeOrgId, focusDate),
       });
     },
     [activeOrgId, queryClient]
@@ -74,7 +71,9 @@ const agendaQueryFn = async (
 ): Promise<CalendarRangeData> => {
   const result = await getEinsaetzeDataForAgenda(activeOrgId);
   if (result instanceof Response) {
-    throw new Error(`Einsätze konnten nicht geladen werden: ${result.statusText}`);
+    throw new Error(
+      `Einsätze konnten nicht geladen werden: ${result.statusText}`
+    );
   }
   return result;
 };
@@ -108,26 +107,30 @@ export function useDetailedEinsatz(
     },
     enabled: typeof einsatzId === 'string' && !!einsatzId && isOpen,
     retry: false,
+    refetchOnMount: 'always',
   });
 }
 
 export function usePrefetchDetailedEinsatz() {
   const queryClient = useQueryClient();
-  return useCallback((einsatzId: string) => {
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.detailedEinsatz(einsatzId),
-      queryFn: async () => {
-        const res = await getEinsatzWithDetailsById(einsatzId);
-        if (res instanceof Response) {
-          throw new Error(
-            `Einsatz konnte nicht geladen werden: ${res.statusText}`
-          );
-        }
-        return res;
-      },
-      retry: false,
-    });
-  }, [queryClient]);
+  return useCallback(
+    (einsatzId: string) => {
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.detailedEinsatz(einsatzId),
+        queryFn: async () => {
+          const res = await getEinsatzWithDetailsById(einsatzId);
+          if (res instanceof Response) {
+            throw new Error(
+              `Einsatz konnte nicht geladen werden: ${res.statusText}`
+            );
+          }
+          return res;
+        },
+        retry: false,
+      });
+    },
+    [queryClient]
+  );
 }
 
 export function useCategories(activeOrgId: string | null | undefined) {

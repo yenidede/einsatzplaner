@@ -9,13 +9,11 @@ import {
   getUserByEmail,
   updateUserResetToken,
   createUserWithOrgAndRoles,
-  createDigbizUserWithOrgAndRoles,
 } from '@/DataAccessLayer/user';
 import { emailService } from '@/lib/email/EmailService';
 import { actionClient } from '@/lib/safe-action';
 import { formSchema as registerFormSchema } from './register-schema';
 import prisma from '@/lib/prisma';
-import { DIGBIZ_CONFIG } from '@/features/invitations/constants';
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Token ist erforderlich'),
@@ -42,7 +40,6 @@ export const acceptInviteAndCreateNewAccount = actionClient
           token: true,
           new_user_id: true,
           organization: true,
-          email: true,
         },
       });
 
@@ -77,48 +74,22 @@ export const acceptInviteAndCreateNewAccount = actionClient
         };
       }
 
-      const roleIds = invitations.map((i) => i.role_id);
+      await createUserWithOrgAndRoles({
+        orgId: firstInvitation.organization.id,
+        email: parsedInput.email,
+        firstname: parsedInput.vorname,
+        lastname: parsedInput.nachname,
+        password: hashedPassword,
+        phone: parsedInput.telefon,
+        roleIds: invitations.map((i) => i.role_id),
+        salutationId: parsedInput.anredeId,
+        userId: firstInvitation.new_user_id || undefined,
+        profilePictureUrl: parsedInput.pictureUrl,
+      });
 
-      // Check if this is a DigBiz invitation (can be removed after event)
-      const isDigbizInvite =
-        firstInvitation.email.startsWith(DIGBIZ_CONFIG.EMAIL_PREFIX) &&
-        firstInvitation.email.endsWith(DIGBIZ_CONFIG.EMAIL_DOMAIN);
-
-      let newUser;
-
-      if (isDigbizInvite) {
-        // Use special DigBiz function with race condition handling
-        newUser = await createDigbizUserWithOrgAndRoles({
-          orgId: firstInvitation.organization.id,
-          email: parsedInput.email,
-          firstname: parsedInput.vorname,
-          lastname: parsedInput.nachname,
-          password: hashedPassword,
-          phone: parsedInput.telefon,
-          roleIds,
-          salutationId: parsedInput.anredeId,
-          userId: firstInvitation.new_user_id || undefined,
-          profilePictureUrl: parsedInput.pictureUrl,
-        });
-      } else {
-        // Use normal function for regular invitations
-        newUser = await createUserWithOrgAndRoles({
-          orgId: firstInvitation.organization.id,
-          email: parsedInput.email,
-          firstname: parsedInput.vorname,
-          lastname: parsedInput.nachname,
-          password: hashedPassword,
-          phone: parsedInput.telefon,
-          roleIds,
-          salutationId: parsedInput.anredeId,
-          userId: firstInvitation.new_user_id || undefined,
-          profilePictureUrl: parsedInput.pictureUrl,
-        });
-      }
-
-      // Delete invitations after successful user creation
       await prisma.invitation.deleteMany({
         where: {
+          email: parsedInput.email,
           token: firstInvitation.token,
         },
       });
@@ -126,7 +97,6 @@ export const acceptInviteAndCreateNewAccount = actionClient
       return {
         success: true,
         message: 'Account erfolgreich erstellt',
-        email: newUser.email,
       };
     } catch (error: unknown) {
       console.error('acceptInviteAndCreateNewAccount error:', error);

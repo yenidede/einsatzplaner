@@ -21,6 +21,7 @@ import { UserDangerZone } from './userProfile/UserDangerZone';
 import { upsertUserPropertyValueAction } from '@/features/user_properties/user_property-actions';
 import { queryKeys } from '@/features/user/queryKeys';
 import {
+  useOrganizationUserRoles,
   useUserProfileById,
   useUserPropertyValues,
 } from '@/features/settings/hooks/useUserProfile';
@@ -105,6 +106,21 @@ export function UserProfileDialog({
     isOpen ? userId : undefined,
     isOpen ? organizationId : undefined
   );
+  const { data: allOrgUserRoles = [] } = useOrganizationUserRoles(
+    isOpen ? organizationId : undefined
+  );
+
+  const superadminCount = Array.from(
+    new Set(
+      allOrgUserRoles
+        .filter(
+          (userRole) =>
+            userRole.role?.name === 'Superadmin' ||
+            userRole.role?.abbreviation === 'SA'
+        )
+        .map((userRole) => userRole.user.id)
+    )
+  ).length;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -517,8 +533,8 @@ export function UserProfileDialog({
         <div className="fixed inset-0 bg-white/20 backdrop-blur-sm" />
         <Card className="relative p-8">
           <CardContent className="flex items-center gap-3 p-0">
-            <Loader2 className="h-6 w-6 shrink-0 animate-spin text-primary" />
-            <span className="font-medium text-muted-foreground">
+            <Loader2 className="text-primary h-6 w-6 shrink-0 animate-spin" />
+            <span className="text-muted-foreground font-medium">
               Lädt Benutzerdaten...
             </span>
           </CardContent>
@@ -535,9 +551,9 @@ export function UserProfileDialog({
           className="fixed inset-0 bg-white/20 backdrop-blur-sm"
           onClick={onClose}
         />
-        <Card className="relative border-destructive/50 p-8">
+        <Card className="border-destructive/50 relative p-8">
           <CardContent className="flex flex-col gap-4 p-0">
-            <p className="font-medium text-destructive">
+            <p className="text-destructive font-medium">
               Fehler beim Laden der Benutzerdaten
             </p>
             <Button variant="secondary" onClick={onClose}>
@@ -641,6 +657,8 @@ export function UserProfileDialog({
                   onRemoveUser={handleRemoveUser}
                   onDemoteFromSuperadmin={handleDemoteFromSuperadmin}
                   onPromoteToSuperadmin={handlePromoteToSuperadmin}
+                  isCurrentUser={currentUserId === userId}
+                  superadminCount={superadminCount}
                 />
               </div>
             </div>
