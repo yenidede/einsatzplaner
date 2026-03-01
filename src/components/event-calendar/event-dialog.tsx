@@ -276,6 +276,9 @@ export function EventDialogVerwaltung({
   const lastSyncedStartRef = useRef<string | null>(null);
   const lastSyncedEndRef = useRef<string | null>(null);
 
+  // Track if dynamic form fields have been initialized to prevent overwriting
+  const dynamicFieldsInitializedRef = useRef<string | null>(null);
+
   // Update form resolver when dynamicSchema changes
   useEffect(() => {
     if (dynamicSchema) {
@@ -444,6 +447,8 @@ export function EventDialogVerwaltung({
       fieldErrors: {},
       formErrors: [],
     });
+    // Reset dynamic fields initialization tracker
+    dynamicFieldsInitializedRef.current = null;
   }, [handleFormDataChange, getDefaultStaticFormData]);
 
   useEffect(() => {
@@ -560,66 +565,88 @@ export function EventDialogVerwaltung({
 
   // Generate or refresh dynamic schema/data when template or detailed fields change
   useEffect(() => {
-    if (templatesQuery.data) {
-      const fields =
-        templatesQuery.data.find((t) => t.id === activeTemplateId)
-          ?.template_field || [];
-      try {
-        const mappedFields = mapFieldsForSchema(fields);
-        const schema = generateDynamicSchema(mappedFields);
-        setDynamicSchema(schema);
-        setDynamicFormFields(
-          fields.map((f) => ({
-            id: f.field.id,
-            displayName: f.field.name || f.field.id,
+    const isEditMode =
+      einsatz && typeof einsatz === 'object' && 'id' in einsatz && einsatz.id;
+    if (isEditMode && (isLoading || isFetching)) {
+      return;
+    }
+
+    if (isEditMode && currentEinsatz && !currentEinsatz.einsatz_fields) {
+      return;
+    }
+
+    const currentKey = `${einsatz && typeof einsatz === 'object' && 'id' in einsatz ? einsatz.id : 'new'}_${activeTemplateId || 'no-template'}`;
+
+    if (dynamicFieldsInitializedRef.current === currentKey) {
+      return;
+    }
+
+    if (!templatesQuery.data) {
+      return;
+    }
+
+    const fields =
+      templatesQuery.data.find((t) => t.id === activeTemplateId)
+        ?.template_field || [];
+
+    try {
+      const mappedFields = mapFieldsForSchema(fields);
+      const schema = generateDynamicSchema(mappedFields);
+      setDynamicSchema(schema);
+      setDynamicFormFields(
+        fields.map((f) => ({
+          id: f.field.id,
+          displayName: f.field.name || f.field.id,
+          placeholder: f.field.placeholder,
+          defaultValue: f.field.default_value ?? null,
+          required: f.field.is_required === true,
+          groupName: f.field.group_name ?? null,
+          isMultiline: f.field.is_multiline,
+          min: f.field.min,
+          max: f.field.max,
+          allowedValues: f.field.allowed_values,
+          inputType:
+            f.field.is_multiline === true
+              ? 'textarea'
+              : mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+          dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
+          inputProps: buildInputProps(f.field.type?.datatype, {
             placeholder: f.field.placeholder,
-            defaultValue: f.field.default_value ?? null,
-            required: f.field.is_required === true,
-            groupName: f.field.group_name ?? null,
-            isMultiline: f.field.is_multiline,
             min: f.field.min,
             max: f.field.max,
-            allowedValues: f.field.allowed_values,
-            inputType:
-              f.field.is_multiline === true
-                ? 'textarea'
-                : mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
-            dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
-            inputProps: buildInputProps(f.field.type?.datatype, {
-              placeholder: f.field.placeholder,
-              min: f.field.min,
-              max: f.field.max,
-            }) as InputHTMLAttributes<HTMLInputElement>,
-          }))
-        );
+          }) as InputHTMLAttributes<HTMLInputElement>,
+        }))
+      );
 
-        // Populate React Hook Form with field values (saved einsatz data or template default_value)
-        const formValues = fields.reduce(
-          (acc, f) => {
-            const value =
-              detailedEinsatz?.einsatz_fields?.find(
-                (ef) => ef.field_id === f.field.id
-              )?.value ?? f.field.default_value;
-            acc[f.field.id] = mapStringValueToType(
-              value,
-              f.field.type?.datatype || 'text'
-            );
-            return acc;
-          },
-          {} as Record<string, any>
-        );
+      // Populate React Hook Form with field values (saved einsatz data or template default_value)
+      const formValues = fields.reduce(
+        (acc, f) => {
+          const savedFieldEntry = currentEinsatz?.einsatz_fields?.find((ef) => {
+            return ef.field_id === f.field.id;
+          });
+          const value = savedFieldEntry?.value ?? f.field.default_value;
 
-        // Reset form with new values so dynamic fields show saved or default values
-        dynamicForm.reset(formValues);
-      } catch (error) {
-        console.error('Error generating schema: ' + error);
-      }
+          acc[f.field.id] = mapStringValueToType(
+            value,
+            f.field.type?.datatype || 'text'
+          );
+          return acc;
+        },
+        {} as Record<string, any>
+      );
+      // Reset form with new values so dynamic fields show saved or default values
+      dynamicForm.reset(formValues);
+      dynamicFieldsInitializedRef.current = currentKey;
+    } catch (error) {
+      console.error('❌ Error generating schema:', error);
     }
   }, [
     activeTemplateId,
     templatesQuery.data,
-    detailedEinsatz?.einsatz_fields,
-    dynamicForm,
+    currentEinsatz?.einsatz_fields,
+    isLoading,
+    isFetching,
+    einsatz,
   ]);
 
   const formatTimeForInput = (date: Date) => {
