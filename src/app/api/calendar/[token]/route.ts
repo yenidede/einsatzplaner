@@ -120,7 +120,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const calendar = ical({
     name: subscription.organization.name ?? 'Einsatzplaner - Kalender',
-    timezone: 'Europe/Vienna',
     method: ICalCalendarMethod.PUBLISH,
     ttl: 60 * 60 * 2,
     prodId: {
@@ -290,6 +289,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       categories: categories.map((name) => ({ name })),
       location: ortField?.value ?? undefined,
       status: ICalEventStatus.CONFIRMED,
+      timezone: 'Europe/Vienna',
     });
 
     event.uid(`${einsatz.id}@${host}`);
