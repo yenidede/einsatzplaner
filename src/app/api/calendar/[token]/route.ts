@@ -121,7 +121,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const calendar = ical({
     name: subscription.organization.name ?? 'Einsatzplaner - Kalender',
     method: ICalCalendarMethod.PUBLISH,
-    timezone: 'Europe/Vienna',
     ttl: 60 * 60 * 2,
     prodId: {
       company: 'Einsatzplaner',
@@ -265,13 +264,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const description = descriptionParts.join('\n');
 
+    // UTC zu lokaler Wiener Zeit konvertieren
     const start = new Date(einsatz.start);
-    let end = new Date(einsatz.end);
-
-    if (isAllDay) {
-      end = new Date(end);
-      end.setDate(end.getDate() + 1);
-    }
+    const end = new Date(einsatz.end);
 
     // Ort-Feld für Location verwenden
     const ortField = einsatz.einsatz_field.find(
@@ -281,18 +276,23 @@ export async function GET(request: NextRequest, context: RouteContext) {
           field.field.name.toLowerCase() === 'location')
     );
 
-    const event = calendar.createEvent({
-      start,
-      end,
+    // Wenn nicht ganztägig, Zeitzone explizit setzen
+    const eventData: any = {
+      start: isAllDay ? start : start.toISOString().replace('Z', ''),
+      end: isAllDay ? new Date(end.getTime() + 24 * 60 * 60 * 1000) : end.toISOString().replace('Z', ''),
       allDay: isAllDay,
       summary: einsatz.title,
       description,
       categories: categories.map((name) => ({ name })),
       location: ortField?.value ?? undefined,
       status: ICalEventStatus.CONFIRMED,
-      timezone: 'Europe/Vienna',
-    });
-    event.timezone('Europe/Vienna');
+    };
+
+    if (!isAllDay) {
+      eventData.timezone = 'Europe/Vienna';
+    }
+
+    const event = calendar.createEvent(eventData);
     event.uid(`${einsatz.id}@${host}`);
 
     if (phone || subscription.organization.email) {
