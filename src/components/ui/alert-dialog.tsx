@@ -147,6 +147,7 @@ function AlertDialogAction({
   Pick<React.ComponentProps<typeof Button>, 'variant' | 'size'>) {
   return (
     <AlertDialogPrimitive.Action
+      data-slot="alert-dialog-action"
       className={cn(
         buttonVariants({ variant, size }),
         'cursor-pointer',
