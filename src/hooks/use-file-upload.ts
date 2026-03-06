@@ -216,11 +216,6 @@ export const useFileUpload = (
       // Clear existing errors when new files are uploaded
       setState((prev) => ({ ...prev, errors: [] }));
 
-      // In single file mode, clear existing files first
-      if (!multiple) {
-        clearFilesSilently();
-      }
-
       // Check if adding these files would exceed maxFiles (only in multiple mode)
       if (
         multiple &&
@@ -277,13 +272,15 @@ export const useFileUpload = (
 
       // Only update state if we have valid files to add
       if (validFiles.length > 0) {
+        const filesToAdd = multiple ? validFiles : validFiles.slice(0, 1);
+
         // Call the onFilesAdded callback with the newly added valid files
-        onFilesAdded?.(validFiles);
+        onFilesAdded?.(filesToAdd);
 
         setState((prev) => {
-          const newFiles = !multiple
-            ? validFiles
-            : [...prev.files, ...validFiles];
+          const newFiles = multiple
+            ? [...prev.files, ...filesToAdd]
+            : [...prev.files, ...filesToAdd];
           onFilesChange?.(newFiles);
           return {
             ...prev,
@@ -311,7 +308,6 @@ export const useFileUpload = (
       validateFile,
       createPreview,
       generateUniqueId,
-      clearFilesSilently,
       onFilesChange,
       onFilesAdded,
     ]

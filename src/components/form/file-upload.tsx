@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn, optimizeImage } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 export enum PreviewAspectRatio {
   SQUARE = 'square', // 1:1
@@ -26,6 +27,8 @@ export enum PreviewAspectRatio {
   WIDE = 'wide', // 4:3
   TALL = 'tall', // 3:4
 }
+
+const { showDestructive } = useConfirmDialog();
 
 const getAspectRatioClass = (aspectRatio?: PreviewAspectRatio): string => {
   switch (aspectRatio) {
@@ -172,20 +175,31 @@ export function FileUpload({
     maxSize: maxSize ?? Infinity, // No size restriction - will compress instead
     accept,
     initialFiles,
-    onFilesChange: (files) => {
-      // Only process files that are actually File instances (not FileMetadata)
-      const newFiles = files.filter((f) => f.file instanceof File);
+    onFilesAdded: (newFiles) => {
       if (newFiles.length > 0) {
+        const previousFiles = maxFiles > 1 ? [] : files;
+
         // Clear any previous errors before processing
         clearErrors();
         queueMicrotask(() => {
           optimizeFilesAndUpload(newFiles)
-            .then((optimizedFiles) => {
+            .then(async (optimizedFiles) => {
               setValue(name, optimizedFiles, {
                 shouldValidate: true,
                 shouldDirty: true,
                 shouldTouch: true,
               });
+
+              if (previousFiles.length === 0) return;
+
+              const previousFileIds = previousFiles.map((file) => file.id);
+              const persistedFileIds = getPersistedFileIds(previousFiles);
+
+              clearOptimizedFileEntries(previousFileIds);
+              previousFileIds.forEach((fileId) => {
+                removeFileSilently(fileId);
+              });
+              await notifyRemovedFiles(persistedFileIds);
             })
             .catch((error) => {
               console.error('Error optimizing/uploading files:', error);
@@ -237,8 +251,15 @@ export function FileUpload({
   const notifyRemovedFiles = async (fileIds: string[]) => {
     if (!onFileRemove || fileIds.length === 0) return;
 
+    const res = await showDestructive(
+      'Dateien entfernen',
+      `Möchten Sie ${fileIds.length} Dateien wirklich entfernen? Diese Aktion kann nicht rückgängig gemacht werden.`
+    );
+
+    if (!res) return;
+
     for (const fileId of fileIds) {
-      await onFileRemove(fileId);
+      removeFileSilently(fileId);
     }
   };
 
