@@ -1,35 +1,37 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { AlertDialogProvider } from '@/components/AlertDialog';
+import { createContext, useState, ReactNode } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-type AlertDialogOptions = {
+export type AlertDialogOptions = {
   title: string;
   description: string;
+  variant?: 'default' | 'destructive';
+  confirmText?: string;
+  cancelText?: string;
 };
 
+export type AlertDialogResult = 'success' | 'cancel';
+
 interface AlertDialogContextValue {
-  showDialog: (options: AlertDialogOptions) => Promise<'success' | 'cancel'>;
+  showDialogFromContext: (
+    options: AlertDialogOptions
+  ) => Promise<AlertDialogResult>;
 }
 
-// Convenience exported function type for external helpers
-export type ShowDialogFn = (
-  options: AlertDialogOptions
-) => Promise<'success' | 'cancel'>;
-
-const AlertDialogContext = createContext<AlertDialogContextValue | undefined>(
-  undefined
-);
-
-export function useAlertDialog() {
-  const context = useContext(AlertDialogContext);
-  if (!context) {
-    throw new Error(
-      'useAlertDialog must be used within an AlertDialogContextProvider'
-    );
-  }
-  return context;
-}
+/** Exported for use in use-confirm-dialog only. Do not use useContext directly. */
+export const AlertDialogContext = createContext<
+  AlertDialogContextValue | undefined
+>(undefined);
 
 interface AlertDialogContextProviderProps {
   children: ReactNode;
@@ -41,12 +43,12 @@ export function AlertDialogContextProvider({
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<AlertDialogOptions | null>(null);
   const [resolver, setResolver] = useState<
-    ((value: 'success' | 'cancel') => void) | null
+    ((value: AlertDialogResult) => void) | null
   >(null);
 
-  const showDialog = (
+  const showDialogFromContext = (
     dialogOptions: AlertDialogOptions
-  ): Promise<'success' | 'cancel'> => {
+  ): Promise<AlertDialogResult> => {
     setOptions(dialogOptions);
     setIsOpen(true);
 
@@ -68,19 +70,53 @@ export function AlertDialogContextProvider({
   };
 
   const contextValue: AlertDialogContextValue = {
-    showDialog,
+    showDialogFromContext,
+  };
+
+  const AlertDialogWrapper = () => {
+    return (
+      (options && (
+        <AlertDialog
+          open={isOpen}
+          onOpenChange={(open) => {
+            if (!open) handleCancel();
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle
+                className={
+                  options.variant === 'destructive' ? 'text-red-600' : ''
+                }
+              >
+                {options.title}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="whitespace-pre-line">
+                {options.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCancel}>
+                {options.cancelText ?? 'Abbrechen'}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirm}
+                variant={options.variant ?? 'default'}
+              >
+                {options.confirmText ?? 'Bestätigen'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )) ||
+      null
+    );
   };
 
   return (
     <AlertDialogContext.Provider value={contextValue}>
       {children}
-      <AlertDialogProvider
-        isOpen={isOpen}
-        options={options}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-        setIsOpen={setIsOpen}
-      />
+      <AlertDialogWrapper />
     </AlertDialogContext.Provider>
   );
 }

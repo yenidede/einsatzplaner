@@ -136,14 +136,6 @@ export function ActivityLogList({
     [activities]
   );
 
-  if (activities.length === 0) {
-    return (
-      <div className={cn('text-muted-foreground py-8 text-center', className)}>
-        Noch keine Aktivitäten vorhanden
-      </div>
-    );
-  }
-
   const handleLoadAll = useCallback(() => {
     setShowAll((prev) => !prev);
   }, [setShowAll]);
@@ -165,6 +157,14 @@ export function ActivityLogList({
     ),
     [handleLoadAll, isRemainingLoading, showAll]
   );
+
+  if (activities.length === 0) {
+    return (
+      <div className={cn('text-muted-foreground py-8 text-center', className)}>
+        Noch keine Aktivitäten vorhanden
+      </div>
+    );
+  }
 
   return (
     <>

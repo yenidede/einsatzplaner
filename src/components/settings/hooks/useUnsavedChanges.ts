@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAlertDialog } from '@/contexts/AlertDialogContext';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 interface UseUnsavedChangesOptions<T extends string = string> {
   hasUnsavedChanges: boolean;
@@ -13,7 +13,7 @@ export function useUnsavedChanges<T extends string = string>({
 }: UseUnsavedChangesOptions<T>) {
   const router = useRouter();
   const pathname = usePathname();
-  const { showDialog } = useAlertDialog();
+  const { showDefault } = useConfirmDialog();
   const isNavigatingRef = useRef(false);
   const routerRef = useRef(router);
   const pathnameRef = useRef(pathname);
@@ -53,11 +53,10 @@ export function useUnsavedChanges<T extends string = string>({
       }
 
       // Different route - show dialog
-      const result = await showDialog({
-        title: 'Ungespeicherte Änderungen',
-        description:
-          'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
-      });
+      const result = await showDefault(
+        'Ungespeicherte Änderungen',
+        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?'
+      );
 
       if (result === 'success') {
         isNavigatingRef.current = true;
@@ -97,7 +96,7 @@ export function useUnsavedChanges<T extends string = string>({
       routerInstance.push = originalPush;
       routerInstance.replace = originalReplace;
     };
-  }, [router, hasUnsavedChanges, showDialog, pathname]);
+  }, [router, hasUnsavedChanges, showDefault, pathname]);
 
   // Intercept section changes
   const handleSectionChangeWithCheck = useCallback(
@@ -107,17 +106,16 @@ export function useUnsavedChanges<T extends string = string>({
         return;
       }
 
-      const result = await showDialog({
-        title: 'Ungespeicherte Änderungen',
-        description:
-          'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich zu einem anderen Bereich wechseln?',
-      });
+      const result = await showDefault(
+        'Ungespeicherte Änderungen',
+        'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich zu einem anderen Bereich wechseln?'
+      );
 
       if (result === 'success') {
         onSectionChange?.(section);
       }
     },
-    [hasUnsavedChanges, showDialog, onSectionChange]
+    [hasUnsavedChanges, showDefault, onSectionChange]
   );
 
   // Handle browser back/forward
@@ -158,12 +156,10 @@ export function useUnsavedChanges<T extends string = string>({
 
       if (!hasUnsavedChangesRef.current) return;
 
-      // Use existing confirmation flow when available
-      const result = await showDialog({
-        title: 'Ungespeicherte Änderungen',
-        description:
-          'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
-      });
+      const result = await showDefault(
+        'Ungespeicherte Änderungen',
+        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?'
+      );
 
       if (result === 'success') {
         // Allow the pop to proceed: go back once more to leave the guard entry.
@@ -188,7 +184,7 @@ export function useUnsavedChanges<T extends string = string>({
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [hasUnsavedChanges, showDialog]);
+  }, [hasUnsavedChanges, showDefault]);
 
   // Navigation guard function that can be used to intercept any navigation
   const navigateWithCheck = useCallback(
@@ -198,11 +194,10 @@ export function useUnsavedChanges<T extends string = string>({
         return;
       }
 
-      const result = await showDialog({
-        title: 'Ungespeicherte Änderungen',
-        description:
-          'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
-      });
+      const result = await showDefault(
+        'Ungespeicherte Änderungen',
+        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?'
+      );
 
       if (result === 'success') {
         isNavigatingRef.current = true;
@@ -215,7 +210,7 @@ export function useUnsavedChanges<T extends string = string>({
         }
       }
     },
-    [hasUnsavedChanges, showDialog, router]
+    [hasUnsavedChanges, showDefault, router]
   );
 
   return {

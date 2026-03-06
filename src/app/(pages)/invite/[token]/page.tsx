@@ -1,8 +1,8 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -18,19 +18,14 @@ export default function InviteAcceptPage() {
   const params = useParams();
   const token = params?.token as string;
   const { data: session, status: sessionStatus } = useSession();
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
 
   const [tab, setTab] = useState<AvailableTab>('accept');
 
   const { data: invitation, isLoading, error } = useInvitationVerify(token);
 
   const acceptMutation = useAcceptInvitation(token, async (error: Error) => {
-    await showDialog({
-      title: 'Fehler',
-      description: error.message,
-      confirmText: 'OK',
-      variant: 'destructive',
-    });
+    await showDestructive('Fehler', error.message);
   });
 
   const handleAcceptClick = async () => {
@@ -40,12 +35,10 @@ export default function InviteAcceptPage() {
 
     // Prüfen ob E-Mail übereinstimmt
     if (session.user.email !== invitation?.email) {
-      await showDialog({
-        title: 'E-Mail stimmt nicht überein',
-        description: `Diese Einladung ist für ${invitation?.email}, aber Sie sind als ${session.user.email} angemeldet. Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.`,
-        confirmText: 'OK',
-        variant: 'destructive',
-      });
+      await showDestructive(
+        'E-Mail stimmt nicht überein',
+        `Diese Einladung ist für ${invitation?.email}, aber Sie sind als ${session.user.email} angemeldet. Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.`
+      );
       return;
     }
 
@@ -107,7 +100,6 @@ export default function InviteAcceptPage() {
 
   return (
     <>
-      {AlertDialogComponent}
       <div className="flex grow items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           <Tabs value={tab} className="space-y-6">
