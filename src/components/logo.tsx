@@ -13,8 +13,8 @@ export default function Logo({ logoUrl }: LogoProps) {
           src={logoUrl}
           alt="Logo"
           className="h-full w-full object-contain"
-          width={56}
-          height={32}
+          width={224}
+          height={128}
         />
       </div>
     );

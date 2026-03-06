@@ -7,7 +7,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { queryKeys } from '@/features/einsatz/queryKeys';
 import {
   createCategoryAction,

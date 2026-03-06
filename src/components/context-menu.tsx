@@ -6,7 +6,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { handlePdfGenerate, handleDelete } from './event-calendar/utils';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
 
 interface ContextMenuEventRightClickProps {

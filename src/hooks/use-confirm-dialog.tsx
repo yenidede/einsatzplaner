@@ -3,21 +3,21 @@
 import { useContext, useCallback } from 'react';
 import { AlertDialogContext } from '@/contexts/AlertDialogContext';
 
+// interne Verwendung des shadcn Alert-Dialogs
 const useAlertDialog = () => {
   const context = useContext(AlertDialogContext);
   if (!context) {
     throw new Error(
-      'useAlertDialog must be used within an AlertDialogContextProvider'
+      'useConfirmDialog must be used within an AlertDialogContextProvider'
     );
   }
   return {
     showDialog: context.showDialogFromContext,
-    AlertDialogComponent: null,
   };
 };
 
 export const useConfirmDialog = () => {
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDialog } = useAlertDialog();
 
   const showDefault = useCallback(
     (title: string, description: string) => {
@@ -44,6 +44,5 @@ export const useConfirmDialog = () => {
   return {
     showDefault,
     showDestructive,
-    AlertDialogComponent,
   };
 };

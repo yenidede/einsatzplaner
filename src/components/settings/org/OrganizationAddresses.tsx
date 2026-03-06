@@ -10,7 +10,7 @@ import {
   deleteOrganizationAddressAction,
 } from '@/features/settings/organization-action';
 import { useOrganizationAddresses } from '@/features/organization/hooks/use-organization-queries';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
   Tooltip,
   TooltipContent,

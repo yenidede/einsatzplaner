@@ -20,7 +20,7 @@ import {
 import { toast } from 'sonner';
 import { PdfGenerationRequest } from '@/features/pdf/types/types';
 import { UsePdfGeneratorReturn } from '@/features/pdf/hooks/usePdfGenerator';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
