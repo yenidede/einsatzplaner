@@ -6,6 +6,8 @@ import {
   XIcon,
   CloudUpload,
   File as FileIcon,
+  Trash2,
+  Upload,
 } from 'lucide-react';
 import {
   FileMetadata,
@@ -117,6 +119,9 @@ export function FileUpload({
   onFileRemove,
   initialFiles,
   previewAspectRatio,
+  variant = 'default',
+  uploadLabel,
+  removeLabel,
 }: {
   maxFiles: number;
   maxSize?: number; // Optional - no size restriction, will compress instead
@@ -140,6 +145,12 @@ export function FileUpload({
   onFileRemove?: (id: string) => void | Promise<void>;
   initialFiles?: FileMetadata[];
   previewAspectRatio?: PreviewAspectRatio;
+  /** Visual/layout variant. */
+  variant?: 'default' | 'buttons';
+  /** Optional button label for upload in `buttons` variant. */
+  uploadLabel?: string;
+  /** Optional button label for remove in `buttons` variant. */
+  removeLabel?: string;
 }) {
   const [
     { files, isDragging, errors },
@@ -150,6 +161,7 @@ export function FileUpload({
       handleDrop,
       openFileDialog,
       removeFile,
+      removeFileSilently,
       clearFiles,
       clearErrors,
       getInputProps,
@@ -187,7 +199,7 @@ export function FileUpload({
                 return newMap;
               });
               newFiles.forEach((file) => {
-                removeFile(file.id);
+                removeFileSilently(file.id);
               });
             });
         });
@@ -201,6 +213,79 @@ export function FileUpload({
   const [optimizedFiles, setOptimizedFiles] = useState<Map<string, File>>(
     new Map()
   );
+
+  const resolvedUploadLabel =
+    uploadLabel ?? (accept?.startsWith('image/') ? 'Bild hochladen' : 'Datei hochladen');
+  const resolvedRemoveLabel = removeLabel ?? 'Entfernen';
+
+  if (variant === 'buttons') {
+    const firstFile = files[0];
+    const canRemove = files.length > 0;
+
+    return (
+      <div className="flex flex-col gap-2 pb-2">
+        <input
+          {...getInputProps()}
+          className="sr-only"
+          aria-label="Upload files"
+          required={required}
+          disabled={disabled}
+        />
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={openFileDialog}
+            disabled={disabled}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {resolvedUploadLabel}
+          </Button>
+
+          {canRemove && (
+            <Button
+              type="button"
+              variant="outline"
+              className="text-destructive hover:bg-destructive/10"
+              disabled={disabled}
+              onClick={async () => {
+                if (!firstFile) return;
+                // Remove optimized file reference
+                setOptimizedFiles((prev) => {
+                  const newMap = new Map(prev);
+                  newMap.delete(firstFile.id);
+                  return newMap;
+                });
+
+                const result =
+                  maxFiles > 1 ? await clearFiles() : await removeFile(firstFile.id);
+                if (result !== 'success') return;
+
+                // Existing file - call onFileRemove callback with file id
+                if (!(firstFile.file instanceof File)) {
+                  await onFileRemove?.(firstFile.id);
+                }
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {resolvedRemoveLabel}
+            </Button>
+          )}
+        </div>
+
+        {errors.length > 0 && (
+          <div
+            className="text-destructive flex items-center gap-1 text-xs"
+            role="alert"
+          >
+            <AlertCircleIcon className="size-3 shrink-0" />
+            <span>{errors[0]}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2 pb-2">
@@ -295,10 +380,9 @@ export function FileUpload({
                     newMap.delete(file.id);
                     return newMap;
                   });
-                  removeFile(file.id);
+                  const result = await removeFile(file.id);
                   // Check if it's a FileMetadata (existing file) or new File
-                  if (!(file.file instanceof File)) {
-                    // Existing file - call onFileRemove callback with file id
+                  if (result === 'success' && !(file.file instanceof File)) {
                     await onFileRemove?.(file.id);
                   }
                 }}
@@ -312,7 +396,13 @@ export function FileUpload({
           {/* Remove all files button */}
           {files.length > 1 && (
             <div className="flex justify-end">
-              <Button size="sm" variant="outline" onClick={clearFiles}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  await clearFiles();
+                }}
+              >
                 Alle Dateien entfernen
               </Button>
             </div>

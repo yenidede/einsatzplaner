@@ -7,7 +7,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { queryKeys } from '@/features/einsatz/queryKeys';
 import {
   createCategoryAction,
@@ -45,7 +45,7 @@ export function OrganizationDefaultValues({
   onDefaultEndtimeChange,
 }: OrganizationDefaultValuesProps) {
   const queryClient = useQueryClient();
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
   const [isAdding, setIsAdding] = useState(false);
   const [newValue, setNewValue] = useState('');
   const [newAbbreviation, setNewAbbreviation] = useState('');
@@ -149,13 +149,10 @@ export function OrganizationDefaultValues({
   };
 
   const handleDeleteCategory = async (cat: CategoryItem) => {
-    const result = await showDialog({
-      title: 'Kategorie löschen',
-      description: `Möchten Sie die Kategorie „${cat.value}" wirklich löschen?`,
-      confirmText: 'Löschen',
-      cancelText: 'Abbrechen',
-      variant: 'destructive',
-    });
+    const result = await showDestructive(
+      'Kategorie löschen',
+      `Möchten Sie die Kategorie „${cat.value}" wirklich löschen?`
+    );
     if (result === 'success') {
       deleteMutation.mutate(cat.id);
     }
@@ -163,7 +160,6 @@ export function OrganizationDefaultValues({
 
   return (
     <>
-      {AlertDialogComponent}
       <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="max-participants">

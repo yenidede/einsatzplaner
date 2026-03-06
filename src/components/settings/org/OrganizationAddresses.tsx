@@ -10,7 +10,7 @@ import {
   deleteOrganizationAddressAction,
 } from '@/features/settings/organization-action';
 import { useOrganizationAddresses } from '@/features/organization/hooks/use-organization-queries';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
   Tooltip,
   TooltipContent,
@@ -36,7 +36,7 @@ export function OrganizationAddresses({
   isSuperadmin = false,
 }: OrganizationAddressesProps) {
   const queryClient = useQueryClient();
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<AddressFormData>({
@@ -149,13 +149,10 @@ export function OrganizationAddresses({
       return;
     }
 
-    const result = await showDialog({
-      title: 'Adresse löschen',
-      description: 'Möchten Sie diese Adresse wirklich löschen?',
-      confirmText: 'Löschen',
-      cancelText: 'Abbrechen',
-      variant: 'destructive',
-    });
+    const result = await showDestructive(
+      'Adresse löschen',
+      'Möchten Sie diese Adresse wirklich löschen?'
+    );
 
     if (result === 'success') {
       deleteMutation.mutate({ id });
@@ -172,7 +169,6 @@ export function OrganizationAddresses({
 
   return (
     <>
-      {AlertDialogComponent}
       <div className="flex flex-col items-start justify-center self-stretch">
         <div className="flex items-center justify-between self-stretch border-b border-slate-200 py-2">
           <div className="flex items-center gap-2">

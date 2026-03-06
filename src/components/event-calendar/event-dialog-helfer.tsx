@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import { motion } from 'framer-motion';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import {
   useDetailedEinsatz,
@@ -52,7 +52,7 @@ export function EventDialogHelfer({
   onClose,
   onAssignToggleEvent,
 }: EventDialogProps) {
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
 
   const { data: session } = useSession();
 
@@ -69,7 +69,9 @@ export function EventDialogHelfer({
     useCache ? null : einsatz,
     isOpen
   );
-  const detailedEinsatz = useCache ? cachedDetailedEinsatz : fetchedDetailedEinsatz;
+  const detailedEinsatz = useCache
+    ? cachedDetailedEinsatz
+    : fetchedDetailedEinsatz;
 
   const categoriesQuery = useCategories(activeOrgId);
 
@@ -171,23 +173,18 @@ export function EventDialogHelfer({
     }
     if (warnings.length === 0) return true;
 
-    const dialogResult = await showDialog({
-      title: 'Warnung: Kriterien nicht erfüllt',
-      description:
-        'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
+    const dialogResult = await showDestructive(
+      'Warnung: Kriterien nicht erfüllt',
+      'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
         warnings.map((w) => `• ${w}`).join('\n') +
-        '\n\nMöchten Sie trotzdem fortfahren?',
-      confirmText: 'Trotzdem fortfahren',
-      cancelText: 'Abbrechen',
-      variant: 'destructive',
-    });
+        '\n\nMöchten Sie trotzdem fortfahren?'
+    );
     if (dialogResult === 'success') return true;
     return false;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      {AlertDialogComponent}
       <DialogContent className="flex max-h-[90vh] max-w-220 flex-col">
         <DialogHeader className="bg-background sticky top-0 z-10 shrink-0 border-b pb-4">
           <DialogTitle>

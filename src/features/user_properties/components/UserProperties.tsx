@@ -14,7 +14,7 @@ import {
   updateUserPropertyAction,
 } from '../user_property-actions';
 import { userPropertyQueryKeys } from '../queryKeys';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
   useUserPropertiesByOrg,
   useExistingPropertyNames,
@@ -33,7 +33,7 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
     null
   );
   const [originalPropertyName, setOriginalPropertyName] = useState<string>('');
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
 
   const { data: properties, isLoading: propertiesLoading } =
     useUserPropertiesByOrg(organizationId);
@@ -203,15 +203,12 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
     const property = properties?.find((p) => p.id === propertyId);
     if (!property) return;
 
-    const confirmed = await showDialog({
-      title: 'Eigenschaft löschen',
-      description: `Möchten Sie die Eigenschaft "${property.field.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
-      confirmText: 'Löschen',
-      cancelText: 'Abbrechen',
-      variant: 'destructive',
-    });
+    const result = await showDestructive(
+      'Eigenschaft löschen',
+      `Möchten Sie die Eigenschaft "${property.field.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
+    );
 
-    if (confirmed === 'success') {
+    if (result === 'success') {
       deleteMutation.mutate(propertyId);
     }
   };
@@ -234,7 +231,6 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
-          {AlertDialogComponent}
         </>
       );
 
@@ -254,7 +250,6 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
             onSelectType={handleFieldTypeSelect}
             onBack={() => setCurrentStep('overview')}
           />
-          {AlertDialogComponent}
         </>
       );
 
@@ -278,7 +273,6 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
             existingPropertyNames={filteredExistingNames}
             existingUserCount={userCount}
           />
-          {AlertDialogComponent}
         </>
       );
 

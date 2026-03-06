@@ -64,8 +64,13 @@ function DialogContent({
           {...props}
         >
           {children}
-          <DialogPrimitive.Close className="group focus-visible:border-ring focus-visible:ring-ring/50 absolute top-3 right-3 z-50 flex size-7 cursor-pointer items-center justify-center rounded transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none">
-            <Button variant="ghost" size="icon" className="shrink-0">
+          <DialogPrimitive.Close asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              // classname needed to work reliably with shadcn
+              className="group focus-visible:border-ring focus-visible:ring-ring/50 absolute top-3 right-3 z-50 flex size-7 cursor-pointer items-center justify-center rounded transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none"
+            >
               <XIcon
                 size={16}
                 className="opacity-60 transition-opacity group-hover:opacity-100"

@@ -6,7 +6,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { handlePdfGenerate, handleDelete } from './event-calendar/utils';
-import { useAlertDialog } from '@/contexts/AlertDialogContext';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
 
 interface ContextMenuEventRightClickProps {
@@ -32,7 +32,7 @@ export function ContextMenuEventRightClick({
   canConfirm = false,
   onConfirm,
 }: ContextMenuEventRightClickProps) {
-  const { showDialog } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
   const { generatePdf } = usePdfGenerator();
 
   const handleDeleteClick = async (e: React.MouseEvent) => {
@@ -40,7 +40,7 @@ export function ContextMenuEventRightClick({
     await handleDelete(
       einsatzSingular,
       { id: eventId, title: eventTitle },
-      showDialog,
+      showDestructive,
       onDelete
     );
   };

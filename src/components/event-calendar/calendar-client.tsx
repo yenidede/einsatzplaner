@@ -8,7 +8,7 @@ import { EventCalendar } from '@/components/event-calendar';
 import { CalendarMode, CalendarEvent } from './types';
 import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
   useDetailedEinsatz,
   useEinsaetzeForCalendar,
@@ -160,7 +160,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const { data: session } = useSession();
   const activeOrgId = session?.user?.activeOrganization?.id;
   const userId = session?.user?.id;
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDefault, showDestructive } = useConfirmDialog();
 
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const { selectedEinsatz, setEinsatz } = useEventDialogFromContext();
@@ -332,13 +332,10 @@ export default function Component({ mode }: { mode: CalendarMode }) {
 
       // Handle warnings
       if (validationResult.warnings.length > 0) {
-        const confirmed = await showDialog({
-          title: 'Warnung: Fehlende Eigenschaften',
-          description:
-            validationResult.warnings.join('\n\n') + '\n\nTrotzdem eintragen?',
-          confirmText: 'Trotzdem eintragen',
-          variant: 'destructive',
-        });
+        const confirmed = await showDestructive(
+          'Warnung: Fehlende Eigenschaften',
+          validationResult.warnings.join('\n\n') + '\n\nTrotzdem eintragen?'
+        );
 
         if (confirmed !== 'success') return;
       }
@@ -375,9 +372,6 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const calendarEvents = calendarData?.events ?? [];
   return (
     <>
-      {AlertDialogComponent}
-      {createMutation.AlertDialogComponent}
-      {updateMutation.AlertDialogComponent}
       <EventCalendar
         events={calendarEvents}
         isEventsLoading={isCalendarLoading}
