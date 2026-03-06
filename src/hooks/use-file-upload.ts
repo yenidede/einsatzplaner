@@ -308,6 +308,7 @@ export const useFileUpload = (
       validateFile,
       createPreview,
       generateUniqueId,
+      clearFilesSilently,
       onFilesChange,
       onFilesAdded,
     ]
