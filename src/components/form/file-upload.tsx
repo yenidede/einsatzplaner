@@ -112,6 +112,7 @@ export function FileUpload({
   required,
   setValue,
   accept,
+  onlyAllowImages = true,
   name,
   disabled,
   id,
@@ -139,6 +140,7 @@ export function FileUpload({
     }
   ) => void;
   accept?: string;
+  onlyAllowImages?: boolean;
   name: string;
   id: string;
   onUpload: (optimizedFile: File) => Promise<string>;
@@ -192,11 +194,18 @@ export function FileUpload({
               const previousFileIds = previousFiles.map((file) => file.id);
               const persistedFileIds = getPersistedFileIds(previousFiles);
 
-              clearOptimizedFileEntries(previousFileIds);
-              previousFileIds.forEach((fileId) => {
-                removeFileSilently(fileId);
-              });
-              await removePersistedFiles(persistedFileIds);
+              try {
+                clearOptimizedFileEntries(previousFileIds);
+                previousFileIds.forEach((fileId) => {
+                  removeFileSilently(fileId);
+                });
+                await removePersistedFiles(persistedFileIds);
+              } catch (cleanupError) {
+                console.error(
+                  'Error cleaning up previous files:',
+                  cleanupError
+                );
+              }
             })
             .catch((error) => {
               console.error('Error optimizing/uploading files:', error);
@@ -495,8 +504,8 @@ export function FileUpload({
       return lastUploadValueRef.current;
     }
 
-    if (!file.type.startsWith('image/')) {
-      throw new Error('Only image files are supported for upload.');
+    if (onlyAllowImages && !file.type.startsWith('image/')) {
+      throw new Error('Nur Bildformate sind erlaubt.');
     }
 
     try {
