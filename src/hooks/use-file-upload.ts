@@ -10,7 +10,7 @@ import {
   type DragEvent,
   type InputHTMLAttributes,
 } from 'react';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 export type FileMetadata = {
   name: string;

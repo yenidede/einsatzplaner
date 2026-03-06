@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import { motion } from 'framer-motion';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import {
   useDetailedEinsatz,

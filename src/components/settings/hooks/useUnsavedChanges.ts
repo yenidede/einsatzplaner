@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 interface UseUnsavedChangesOptions<T extends string = string> {
   hasUnsavedChanges: boolean;

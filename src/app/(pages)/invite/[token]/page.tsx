@@ -1,8 +1,8 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -18,7 +18,7 @@ export default function InviteAcceptPage() {
   const params = useParams();
   const token = params?.token as string;
   const { data: session, status: sessionStatus } = useSession();
-  const { showDestructive, AlertDialogComponent } = useConfirmDialog();
+  const { showDestructive } = useConfirmDialog();
 
   const [tab, setTab] = useState<AvailableTab>('accept');
 
@@ -100,7 +100,6 @@ export default function InviteAcceptPage() {
 
   return (
     <>
-      {AlertDialogComponent}
       <div className="flex grow items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           <Tabs value={tab} className="space-y-6">

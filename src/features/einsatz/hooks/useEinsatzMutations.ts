@@ -68,7 +68,7 @@ import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { EinsatzCreate } from '../types';
 import { CalendarEvent } from '@/components/event-calendar/types';
 import { toast } from 'sonner';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 /** Snapshot of calendar cache entries for optimistic rollback. */
 type CalendarCacheSnapshot = Array<[QueryKey, CalendarRangeData | undefined]>;

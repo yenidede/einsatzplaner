@@ -8,7 +8,7 @@ import { EventCalendar } from '@/components/event-calendar';
 import { CalendarMode, CalendarEvent } from './types';
 import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
   useDetailedEinsatz,
   useEinsaetzeForCalendar,
@@ -160,8 +160,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const { data: session } = useSession();
   const activeOrgId = session?.user?.activeOrganization?.id;
   const userId = session?.user?.id;
-  const { showDefault, showDestructive, AlertDialogComponent } =
-    useConfirmDialog();
+  const { showDefault, showDestructive } = useConfirmDialog();
 
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const { selectedEinsatz, setEinsatz } = useEventDialogFromContext();
@@ -373,7 +372,6 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const calendarEvents = calendarData?.events ?? [];
   return (
     <>
-      {AlertDialogComponent}
       <EventCalendar
         events={calendarEvents}
         isEventsLoading={isCalendarLoading}

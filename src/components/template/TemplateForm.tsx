@@ -66,7 +66,7 @@ import { MultiSelect } from '@/components/form/multi-select';
 import { cn } from '@/lib/utils';
 import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
 import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import TooltipCustom from '../tooltip-custom';
 
 /** Format a Date (time-only from DB) to "HH:mm" for input[type="time"]. */

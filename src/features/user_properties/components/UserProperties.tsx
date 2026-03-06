@@ -14,7 +14,7 @@ import {
   updateUserPropertyAction,
 } from '../user_property-actions';
 import { userPropertyQueryKeys } from '../queryKeys';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
   useUserPropertiesByOrg,
   useExistingPropertyNames,

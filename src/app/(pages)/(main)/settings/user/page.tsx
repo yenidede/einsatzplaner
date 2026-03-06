@@ -4,13 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  Bell,
-  Building2,
-  LogOut,
-  Trash2,
-  Calendar,
-} from 'lucide-react';
+import { Bell, Building2, LogOut, Trash2, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
@@ -27,7 +21,7 @@ import {
   useLeaveOrganization,
 } from '@/features/settings/hooks/useSettingsMutations';
 import { toast } from 'sonner';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
 import { OrganizationBase } from '@/features/settings/types';
 

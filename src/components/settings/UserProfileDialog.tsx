@@ -12,7 +12,7 @@ import {
   demoteFromSuperadminAction,
 } from '@/features/settings/users-action';
 import { settingsQueryKeys } from '../../features/settings/queryKeys/queryKey';
-import { useConfirmDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { UserProfileHeader } from './userProfile/UserProfileHeader';
 import { UserContactInfo } from './userProfile/UserContactInfo';
 import { UserPersonalProperties } from './userProfile/UserPersonalProperties';

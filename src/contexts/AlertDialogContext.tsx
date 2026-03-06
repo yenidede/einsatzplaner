@@ -28,7 +28,7 @@ interface AlertDialogContextValue {
   ) => Promise<AlertDialogResult>;
 }
 
-/** Exported for use in use-alert-dialog only. Do not use useContext directly. */
+/** Exported for use in use-confirm-dialog only. Do not use useContext directly. */
 export const AlertDialogContext = createContext<
   AlertDialogContextValue | undefined
 >(undefined);
@@ -73,10 +73,9 @@ export function AlertDialogContextProvider({
     showDialogFromContext,
   };
 
-  return (
-    <AlertDialogContext.Provider value={contextValue}>
-      {children}
-      {options != null && (
+  const AlertDialogWrapper = () => {
+    return (
+      (options && (
         <AlertDialog
           open={isOpen}
           onOpenChange={(open) => {
@@ -92,7 +91,7 @@ export function AlertDialogContextProvider({
               >
                 {options.title}
               </AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogDescription className="whitespace-pre-line">
                 {options.description}
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -109,7 +108,15 @@ export function AlertDialogContextProvider({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      )}
+      )) ||
+      null
+    );
+  };
+
+  return (
+    <AlertDialogContext.Provider value={contextValue}>
+      {children}
+      <AlertDialogWrapper />
     </AlertDialogContext.Provider>
   );
 }
