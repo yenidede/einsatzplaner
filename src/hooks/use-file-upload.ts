@@ -280,7 +280,7 @@ export const useFileUpload = (
         setState((prev) => {
           const newFiles = multiple
             ? [...prev.files, ...filesToAdd]
-            : [...prev.files, ...filesToAdd];
+            : [...filesToAdd];
           onFilesChange?.(newFiles);
           return {
             ...prev,
