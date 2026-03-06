@@ -165,17 +165,17 @@ export const useFileUpload = (
     return file.id;
   }, []);
 
+  const revokePreviewUrl = useCallback((file: FileWithPreview) => {
+    if (file.preview && file.file instanceof File) {
+      URL.revokeObjectURL(file.preview);
+    }
+  }, []);
+
   const clearFilesSilently = useCallback(() => {
     setState((prev) => {
       // Clean up object URLs
       prev.files.forEach((file) => {
-        if (
-          file.preview &&
-          file.file instanceof File &&
-          file.file.type.startsWith('image/')
-        ) {
-          URL.revokeObjectURL(file.preview);
-        }
+        revokePreviewUrl(file);
       });
 
       if (inputRef.current) {
@@ -215,11 +215,6 @@ export const useFileUpload = (
 
       // Clear existing errors when new files are uploaded
       setState((prev) => ({ ...prev, errors: [] }));
-
-      // In single file mode, clear existing files first
-      if (!multiple) {
-        clearFilesSilently();
-      }
 
       // Check if adding these files would exceed maxFiles (only in multiple mode)
       if (
@@ -277,13 +272,21 @@ export const useFileUpload = (
 
       // Only update state if we have valid files to add
       if (validFiles.length > 0) {
+        const filesToAdd = multiple ? validFiles : validFiles.slice(0, 1);
+
         // Call the onFilesAdded callback with the newly added valid files
-        onFilesAdded?.(validFiles);
+        onFilesAdded?.(filesToAdd);
 
         setState((prev) => {
-          const newFiles = !multiple
-            ? validFiles
-            : [...prev.files, ...validFiles];
+          if (!multiple) {
+            prev.files.forEach((file) => {
+              revokePreviewUrl(file);
+            });
+          }
+
+          const newFiles = multiple
+            ? [...prev.files, ...filesToAdd]
+            : [...filesToAdd];
           onFilesChange?.(newFiles);
           return {
             ...prev,
@@ -311,7 +314,7 @@ export const useFileUpload = (
       validateFile,
       createPreview,
       generateUniqueId,
-      clearFilesSilently,
+      revokePreviewUrl,
       onFilesChange,
       onFilesAdded,
     ]
@@ -321,13 +324,8 @@ export const useFileUpload = (
     (id: string) => {
       setState((prev) => {
         const fileToRemovePrev = prev.files.find((file) => file.id === id);
-        if (
-          fileToRemovePrev &&
-          fileToRemovePrev.preview &&
-          fileToRemovePrev.file instanceof File &&
-          fileToRemovePrev.file.type.startsWith('image/')
-        ) {
-          URL.revokeObjectURL(fileToRemovePrev.preview);
+        if (fileToRemovePrev) {
+          revokePreviewUrl(fileToRemovePrev);
         }
 
         const newFiles = prev.files.filter((file) => file.id !== id);
@@ -340,7 +338,7 @@ export const useFileUpload = (
         };
       });
     },
-    [onFilesChange]
+    [onFilesChange, revokePreviewUrl]
   );
 
   const removeFile = useCallback(

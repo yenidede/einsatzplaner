@@ -212,7 +212,7 @@ export function useUpdateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const calendarPrefixKey = queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? '');
-  const { showDestructive, } = useConfirmDialog();
+  const { showDestructive } = useConfirmDialog();
 
   const mutation = useMutation({
     mutationFn: async ({

@@ -112,6 +112,7 @@ export function FileUpload({
   required,
   setValue,
   accept,
+  onlyAllowImages = true,
   name,
   disabled,
   id,
@@ -139,6 +140,7 @@ export function FileUpload({
     }
   ) => void;
   accept?: string;
+  onlyAllowImages?: boolean;
   name: string;
   id: string;
   onUpload: (optimizedFile: File) => Promise<string>;
@@ -172,20 +174,38 @@ export function FileUpload({
     maxSize: maxSize ?? Infinity, // No size restriction - will compress instead
     accept,
     initialFiles,
-    onFilesChange: (files) => {
-      // Only process files that are actually File instances (not FileMetadata)
-      const newFiles = files.filter((f) => f.file instanceof File);
+    onFilesAdded: (newFiles) => {
       if (newFiles.length > 0) {
+        const previousFiles = maxFiles > 1 ? [] : files;
+
         // Clear any previous errors before processing
         clearErrors();
         queueMicrotask(() => {
           optimizeFilesAndUpload(newFiles)
-            .then((optimizedFiles) => {
+            .then(async (optimizedFiles) => {
               setValue(name, optimizedFiles, {
                 shouldValidate: true,
                 shouldDirty: true,
                 shouldTouch: true,
               });
+
+              if (previousFiles.length === 0) return;
+
+              const previousFileIds = previousFiles.map((file) => file.id);
+              const persistedFileIds = getPersistedFileIds(previousFiles);
+
+              try {
+                clearOptimizedFileEntries(previousFileIds);
+                previousFileIds.forEach((fileId) => {
+                  removeFileSilently(fileId);
+                });
+                await removePersistedFiles(persistedFileIds);
+              } catch (cleanupError) {
+                console.error(
+                  'Error cleaning up previous files:',
+                  cleanupError
+                );
+              }
             })
             .catch((error) => {
               console.error('Error optimizing/uploading files:', error);
@@ -215,8 +235,40 @@ export function FileUpload({
   );
 
   const resolvedUploadLabel =
-    uploadLabel ?? (accept?.startsWith('image/') ? 'Bild hochladen' : 'Datei hochladen');
+    uploadLabel ??
+    (accept?.startsWith('image/') ? 'Bild hochladen' : 'Datei hochladen');
   const resolvedRemoveLabel = removeLabel ?? 'Entfernen';
+
+  const getPersistedFileIds = (fileList: FileWithPreview[]) =>
+    fileList.flatMap((file) => (file.file instanceof File ? [] : [file.id]));
+
+  const clearOptimizedFileEntries = (fileIds: string[]) => {
+    if (fileIds.length === 0) return;
+
+    setOptimizedFiles((prev) => {
+      const newMap = new Map(prev);
+      fileIds.forEach((fileId) => {
+        newMap.delete(fileId);
+      });
+      return newMap;
+    });
+  };
+
+  const removePersistedFiles = async (fileIds: string[]) => {
+    if (!onFileRemove || fileIds.length === 0) return;
+
+    for (const fileId of fileIds) {
+      await onFileRemove(fileId);
+    }
+  };
+
+  const finalizeFileRemoval = async (
+    fileIdsToClear: string[],
+    persistedFileIds: string[]
+  ) => {
+    clearOptimizedFileEntries(fileIdsToClear);
+    await removePersistedFiles(persistedFileIds);
+  };
 
   if (variant === 'buttons') {
     const firstFile = files[0];
@@ -251,21 +303,23 @@ export function FileUpload({
               disabled={disabled}
               onClick={async () => {
                 if (!firstFile) return;
-                // Remove optimized file reference
-                setOptimizedFiles((prev) => {
-                  const newMap = new Map(prev);
-                  newMap.delete(firstFile.id);
-                  return newMap;
-                });
+
+                const fileIdsToClear =
+                  maxFiles > 1 ? files.map((file) => file.id) : [firstFile.id];
+                const persistedFileIds =
+                  maxFiles > 1
+                    ? getPersistedFileIds(files)
+                    : firstFile.file instanceof File
+                      ? []
+                      : [firstFile.id];
 
                 const result =
-                  maxFiles > 1 ? await clearFiles() : await removeFile(firstFile.id);
+                  maxFiles > 1
+                    ? await clearFiles()
+                    : await removeFile(firstFile.id);
                 if (result !== 'success') return;
 
-                // Existing file - call onFileRemove callback with file id
-                if (!(firstFile.file instanceof File)) {
-                  await onFileRemove?.(firstFile.id);
-                }
+                await finalizeFileRemoval(fileIdsToClear, persistedFileIds);
               }}
             >
               <Trash2 className="mr-2 h-4 w-4" />
@@ -374,17 +428,13 @@ export function FileUpload({
                 variant="ghost"
                 className="text-muted-foreground/80 hover:text-foreground -me-2 size-8 hover:bg-transparent"
                 onClick={async () => {
-                  // Remove optimized file reference
-                  setOptimizedFiles((prev) => {
-                    const newMap = new Map(prev);
-                    newMap.delete(file.id);
-                    return newMap;
-                  });
                   const result = await removeFile(file.id);
-                  // Check if it's a FileMetadata (existing file) or new File
-                  if (result === 'success' && !(file.file instanceof File)) {
-                    await onFileRemove?.(file.id);
-                  }
+                  if (result !== 'success') return;
+
+                  await finalizeFileRemoval(
+                    [file.id],
+                    file.file instanceof File ? [] : [file.id]
+                  );
                 }}
                 aria-label="Remove file"
               >
@@ -400,7 +450,13 @@ export function FileUpload({
                 size="sm"
                 variant="outline"
                 onClick={async () => {
-                  await clearFiles();
+                  const fileIdsToClear = files.map((file) => file.id);
+                  const persistedFileIds = getPersistedFileIds(files);
+
+                  const result = await clearFiles();
+                  if (result !== 'success') return;
+
+                  await finalizeFileRemoval(fileIdsToClear, persistedFileIds);
                 }}
               >
                 Alle Dateien entfernen
@@ -448,46 +504,43 @@ export function FileUpload({
       return lastUploadValueRef.current;
     }
 
-    // At this point, file is definitely a File (not FileMetadata)
-    const fileObj = file as File;
-    if (!fileObj.type.startsWith('image/')) {
-      throw new Error('Only image files are supported for upload.');
+    if (onlyAllowImages && !file.type.startsWith('image/')) {
+      throw new Error('Nur Bildformate sind erlaubt.');
     }
 
     try {
-      const isSvg =
-        fileObj.type === 'image/svg+xml' || fileObj.name.endsWith('.svg');
+      const isSvg = file.type === 'image/svg+xml' || file.name.endsWith('.svg');
 
       // Skip compression for SVG files (they're already vector graphics)
       if (isSvg) {
         // Validate SVG size if maxSize is provided
-        if (maxSizeBytes !== undefined && fileObj.size > maxSizeBytes) {
+        if (maxSizeBytes !== undefined && file.size > maxSizeBytes) {
           throw new Error(
-            `Datei "${fileObj.name}" überschreitet nach der Komprimierung die maximale Größe von ${formatBytes(maxSizeBytes)}.`
+            `Datei "${file.name}" überschreitet nach der Komprimierung die maximale Größe von ${formatBytes(maxSizeBytes)}.`
           );
         }
         // Store original file for display (no optimization for SVG)
         setOptimizedFiles((prev) => {
           const newMap = new Map(prev);
-          newMap.set(fileId, fileObj);
+          newMap.set(fileId, file);
           return newMap;
         });
-        const uploadedPath = await onUpload(fileObj);
+        const uploadedPath = await onUpload(file);
         lastUploadKeyRef.current = fileKey;
         lastUploadValueRef.current = uploadedPath;
         return uploadedPath;
       }
 
       // Always compress images before upload (except SVG)
-      const optimized = await optimizeImage(fileObj);
+      const optimized = await optimizeImage(file);
 
       // Use the optimized version if it's smaller, otherwise use original
-      const fileToUpload = optimized.size < fileObj.size ? optimized : fileObj;
+      const fileToUpload = optimized.size < file.size ? optimized : file;
 
       // Validate compressed file size if maxSize is provided
       if (maxSizeBytes !== undefined && fileToUpload.size > maxSizeBytes) {
         throw new Error(
-          `Datei "${fileObj.name}" überschreitet nach der Komprimierung die maximale Größe von ${formatBytes(maxSizeBytes)}.`
+          `Datei "${file.name}" überschreitet nach der Komprimierung die maximale Größe von ${formatBytes(maxSizeBytes)}.`
         );
       }
 
