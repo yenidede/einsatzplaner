@@ -11,7 +11,7 @@ import {
 } from './activity_log-dal';
 import type { CreateChangeLogInput, ActivityLogFilters } from './types';
 
-function returnIfIsRedirect(error: unknown): null {
+function throwIfIsRedirect(error: unknown): null {
   if (isRedirectError(error)) {
     throw error;
   }
@@ -31,7 +31,7 @@ export async function getActivitiesAction() {
 
     return { success: true, data: activities };
   } catch (error) {
-    returnIfIsRedirect(error);
+    throwIfIsRedirect(error);
     console.error('Error fetching activities:', error);
     return {
       success: false,
@@ -51,7 +51,7 @@ export async function getActivitiesForEinsatzAction(
 
     return { success: true, data: activities };
   } catch (error) {
-    returnIfIsRedirect(error);
+    throwIfIsRedirect(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unbekannter Fehler',
@@ -105,7 +105,7 @@ export async function getActivityLogsAction(filters?: ActivityLogFilters) {
       },
     };
   } catch (error) {
-    returnIfIsRedirect(error);
+    throwIfIsRedirect(error);
     console.error('Error fetching activity logs:', error);
     return {
       success: false,
@@ -122,7 +122,7 @@ export async function getEinsatzActivityLogsAction(einsatzId: string) {
 
     return { success: true, data: result };
   } catch (error) {
-    returnIfIsRedirect(error);
+    throwIfIsRedirect(error);
     console.error('Error fetching einsatz activity logs:', error);
     return {
       success: false,
@@ -139,7 +139,7 @@ export async function createActivityLogAction(input: CreateChangeLogInput) {
 
     return { success: true, data: log };
   } catch (error) {
-    returnIfIsRedirect(error);
+    throwIfIsRedirect(error);
     console.error('Error creating activity log:', error);
     return {
       success: false,
@@ -154,7 +154,7 @@ export async function getChangeTypesAction() {
     const types = await getChangeTypes();
     return { success: true, data: types };
   } catch (error) {
-    returnIfIsRedirect(error);
+    throwIfIsRedirect(error);
     console.error('Error fetching change types:', error);
     return {
       success: false,

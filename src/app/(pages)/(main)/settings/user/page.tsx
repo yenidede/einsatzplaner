@@ -498,7 +498,14 @@ export default function SettingsPage() {
                           ...initialValuesRef.current,
                           pictureUrl: res.picture_url,
                         };
-                        session && (session.user.picture_url = res.picture_url);
+                      }
+                      if (session) {
+                        await update({
+                          user: {
+                            ...session.user,
+                            picture_url: res.picture_url,
+                          },
+                        });
                       }
                       return res.picture_url;
                     }}
