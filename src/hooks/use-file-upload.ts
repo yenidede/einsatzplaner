@@ -165,17 +165,17 @@ export const useFileUpload = (
     return file.id;
   }, []);
 
+  const revokePreviewUrl = useCallback((file: FileWithPreview) => {
+    if (file.preview && file.file instanceof File) {
+      URL.revokeObjectURL(file.preview);
+    }
+  }, []);
+
   const clearFilesSilently = useCallback(() => {
     setState((prev) => {
       // Clean up object URLs
       prev.files.forEach((file) => {
-        if (
-          file.preview &&
-          file.file instanceof File &&
-          file.file.type.startsWith('image/')
-        ) {
-          URL.revokeObjectURL(file.preview);
-        }
+        revokePreviewUrl(file);
       });
 
       if (inputRef.current) {
@@ -278,6 +278,12 @@ export const useFileUpload = (
         onFilesAdded?.(filesToAdd);
 
         setState((prev) => {
+          if (!multiple) {
+            prev.files.forEach((file) => {
+              revokePreviewUrl(file);
+            });
+          }
+
           const newFiles = multiple
             ? [...prev.files, ...filesToAdd]
             : [...filesToAdd];
@@ -308,7 +314,7 @@ export const useFileUpload = (
       validateFile,
       createPreview,
       generateUniqueId,
-      clearFilesSilently,
+      revokePreviewUrl,
       onFilesChange,
       onFilesAdded,
     ]
@@ -318,13 +324,8 @@ export const useFileUpload = (
     (id: string) => {
       setState((prev) => {
         const fileToRemovePrev = prev.files.find((file) => file.id === id);
-        if (
-          fileToRemovePrev &&
-          fileToRemovePrev.preview &&
-          fileToRemovePrev.file instanceof File &&
-          fileToRemovePrev.file.type.startsWith('image/')
-        ) {
-          URL.revokeObjectURL(fileToRemovePrev.preview);
+        if (fileToRemovePrev) {
+          revokePreviewUrl(fileToRemovePrev);
         }
 
         const newFiles = prev.files.filter((file) => file.id !== id);
@@ -337,7 +338,7 @@ export const useFileUpload = (
         };
       });
     },
-    [onFilesChange]
+    [onFilesChange, revokePreviewUrl]
   );
 
   const removeFile = useCallback(
