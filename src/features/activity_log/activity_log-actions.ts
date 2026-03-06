@@ -11,13 +11,14 @@ import {
 } from './activity_log-dal';
 import type { CreateChangeLogInput, ActivityLogFilters } from './types';
 
-function returnIfIsRedirect(error: unknown): { success: boolean, error: string } | void {
+function isRedirectErrorHelper(error: unknown): { success: boolean, error: string } | null {
   if (isRedirectError(error)) {
     return {
       success: false,
       error: "redirected",
     }
   }
+  return null;
 }
 
 export async function getActivitiesAction() {
@@ -33,7 +34,10 @@ export async function getActivitiesAction() {
 
     return { success: true, data: activities };
   } catch (error) {
-    returnIfIsRedirect(error);
+    const isRedirect = isRedirectErrorHelper(error);
+    if (isRedirect) {
+      return isRedirect;
+    }
     console.error('Error fetching activities:', error);
     return {
       success: false,
@@ -53,8 +57,10 @@ export async function getActivitiesForEinsatzAction(
 
     return { success: true, data: activities };
   } catch (error) {
-    returnIfIsRedirect(error);
-    return {
+    const isRedirect = isRedirectErrorHelper(error);
+    if (isRedirect) {
+      return isRedirect;
+    } return {
       success: false,
       error: error instanceof Error ? error.message : 'Unbekannter Fehler',
     };
@@ -107,7 +113,10 @@ export async function getActivityLogsAction(filters?: ActivityLogFilters) {
       },
     };
   } catch (error) {
-    returnIfIsRedirect(error);
+    const isRedirect = isRedirectErrorHelper(error);
+    if (isRedirect) {
+      return isRedirect;
+    }
     console.error('Error fetching activity logs:', error);
     return {
       success: false,
@@ -124,7 +133,10 @@ export async function getEinsatzActivityLogsAction(einsatzId: string) {
 
     return { success: true, data: result };
   } catch (error) {
-    returnIfIsRedirect(error);
+    const isRedirect = isRedirectErrorHelper(error);
+    if (isRedirect) {
+      return isRedirect;
+    }
     console.error('Error fetching einsatz activity logs:', error);
     return {
       success: false,
@@ -141,7 +153,10 @@ export async function createActivityLogAction(input: CreateChangeLogInput) {
 
     return { success: true, data: log };
   } catch (error) {
-    returnIfIsRedirect(error);
+    const isRedirect = isRedirectErrorHelper(error);
+    if (isRedirect) {
+      return isRedirect;
+    }
     console.error('Error creating activity log:', error);
     return {
       success: false,
@@ -156,7 +171,10 @@ export async function getChangeTypesAction() {
     const types = await getChangeTypes();
     return { success: true, data: types };
   } catch (error) {
-    returnIfIsRedirect(error);
+    const isRedirect = isRedirectErrorHelper(error);
+    if (isRedirect) {
+      return isRedirect;
+    }
     console.error('Error fetching change types:', error);
     return {
       success: false,

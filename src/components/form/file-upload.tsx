@@ -215,8 +215,32 @@ export function FileUpload({
   );
 
   const resolvedUploadLabel =
-    uploadLabel ?? (accept?.startsWith('image/') ? 'Bild hochladen' : 'Datei hochladen');
+    uploadLabel ??
+    (accept?.startsWith('image/') ? 'Bild hochladen' : 'Datei hochladen');
   const resolvedRemoveLabel = removeLabel ?? 'Entfernen';
+
+  const getPersistedFileIds = (fileList: FileWithPreview[]) =>
+    fileList.flatMap((file) => (file.file instanceof File ? [] : [file.id]));
+
+  const clearOptimizedFileEntries = (fileIds: string[]) => {
+    if (fileIds.length === 0) return;
+
+    setOptimizedFiles((prev) => {
+      const newMap = new Map(prev);
+      fileIds.forEach((fileId) => {
+        newMap.delete(fileId);
+      });
+      return newMap;
+    });
+  };
+
+  const notifyRemovedFiles = async (fileIds: string[]) => {
+    if (!onFileRemove || fileIds.length === 0) return;
+
+    for (const fileId of fileIds) {
+      await onFileRemove(fileId);
+    }
+  };
 
   if (variant === 'buttons') {
     const firstFile = files[0];
@@ -251,21 +275,24 @@ export function FileUpload({
               disabled={disabled}
               onClick={async () => {
                 if (!firstFile) return;
-                // Remove optimized file reference
-                setOptimizedFiles((prev) => {
-                  const newMap = new Map(prev);
-                  newMap.delete(firstFile.id);
-                  return newMap;
-                });
+
+                const fileIdsToClear =
+                  maxFiles > 1 ? files.map((file) => file.id) : [firstFile.id];
+                const persistedFileIds =
+                  maxFiles > 1
+                    ? getPersistedFileIds(files)
+                    : firstFile.file instanceof File
+                      ? []
+                      : [firstFile.id];
 
                 const result =
-                  maxFiles > 1 ? await clearFiles() : await removeFile(firstFile.id);
+                  maxFiles > 1
+                    ? await clearFiles()
+                    : await removeFile(firstFile.id);
                 if (result !== 'success') return;
 
-                // Existing file - call onFileRemove callback with file id
-                if (!(firstFile.file instanceof File)) {
-                  await onFileRemove?.(firstFile.id);
-                }
+                clearOptimizedFileEntries(fileIdsToClear);
+                await notifyRemovedFiles(persistedFileIds);
               }}
             >
               <Trash2 className="mr-2 h-4 w-4" />
@@ -400,7 +427,14 @@ export function FileUpload({
                 size="sm"
                 variant="outline"
                 onClick={async () => {
-                  await clearFiles();
+                  const fileIdsToClear = files.map((file) => file.id);
+                  const persistedFileIds = getPersistedFileIds(files);
+
+                  const result = await clearFiles();
+                  if (result !== 'success') return;
+
+                  clearOptimizedFileEntries(fileIdsToClear);
+                  await notifyRemovedFiles(persistedFileIds);
                 }}
               >
                 Alle Dateien entfernen

@@ -493,6 +493,13 @@ export default function SettingsPage() {
                       formData.append('file', optimizedFile);
                       const res = await uploadProfilePictureAction(formData);
                       if (!res) throw new Error('Upload fehlgeschlagen');
+                      if (initialValuesRef.current) {
+                        initialValuesRef.current = {
+                          ...initialValuesRef.current,
+                          pictureUrl: res.picture_url,
+                        };
+                        session && (session.user.picture_url = res.picture_url);
+                      }
                       return res.picture_url;
                     }}
                     onFileRemove={async () => {
