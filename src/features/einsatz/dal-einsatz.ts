@@ -569,15 +569,41 @@ export async function createEinsatz({
 
       const affectedUserIds = getAffectedUserIds([], data.assignedUsers || []);
 
-      for (const typeName of changeTypeNames) {
-        const affectedUserId =
-          typeName === 'E-Erstellt' ? null : (affectedUserIds[0] ?? null);
+      const changeLogData = changeTypeNames
+        .map((typeName) => {
+          const typeId = ChangeTypeIds[typeName];
+          const affectedUserId =
+            typeName === 'E-Erstellt' ? null : (affectedUserIds[0] ?? null);
 
-        await createChangeLogAuto({
-          einsatzId: createdEinsatz.id,
-          userId: userIds.userId,
-          typeId: ChangeTypeIds[typeName],
-          affectedUserId,
+          if (!typeId || !isValidUuid(typeId)) {
+            console.warn(
+              'Skipping change log entry due to invalid change type ID:',
+              typeName,
+              typeId
+            );
+            return null;
+          }
+
+          if (affectedUserId && !isValidUuid(affectedUserId)) {
+            console.warn(
+              'Skipping change log entry due to invalid affected user id:',
+              affectedUserId
+            );
+            return null;
+          }
+
+          return {
+            einsatz_id: createdEinsatz.id,
+            user_id: userIds.userId,
+            type_id: typeId,
+            affected_user: affectedUserId,
+          };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+      if (changeLogData.length > 0) {
+        await prisma.change_log.createMany({
+          data: changeLogData,
         });
       }
     } catch (error) {
@@ -1381,6 +1407,8 @@ async function getDetailedEinsaetzeForCalendarRangeFromDb(
         },
       },
       change_log: {
+        take: 5,
+        orderBy: { created_at: 'desc' },
         select: {
           id: true,
           einsatz_id: true,
