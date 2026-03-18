@@ -42,6 +42,7 @@ export async function verifyInvitationToken(token: string) {
     include: {
       organization: { select: { name: true } },
       role: { select: { name: true } },
+      user: { select: { firstname: true, lastname: true, email: true } }, // inviter
     },
   });
 
@@ -59,11 +60,7 @@ export async function verifyInvitationToken(token: string) {
     throw new Error('Einladung wurde bereits angenommen');
   }
 
-  const inviter = await prisma.user.findUnique({
-    where: { id: firstInvitation.invited_by },
-    select: { firstname: true, lastname: true, email: true },
-  });
-
+  const inviter = firstInvitation.user;
   const inviterName =
     inviter?.firstname && inviter?.lastname
       ? `${inviter.firstname} ${inviter.lastname}`
