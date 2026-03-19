@@ -76,14 +76,20 @@ export function InviteUserForm({
   const einsatzNamePlural = organizationData?.einsatz_name_plural || 'Einsätze';
   const roleNameOverrides = createRoleNameOverrides(helperNameSingular);
 
-  // Rollen-IDs dynamisch aus DB holen
-  const helferRoleId = rolesData?.find(
+  // Rollen-Objekte dynamisch aus DB holen (einheitliche Prädikate für ID & Label)
+  const helferRoleObj = rolesData?.find(
     (r) => r.name === 'Helfer' || r.name === 'Helfer:in'
-  )?.id;
-  const evRoleId = rolesData?.find((r) => r.name === 'Einsatzverwaltung')?.id;
-  const ovRoleId = rolesData?.find(
-    (r) => r.name === 'Organisationsverwaltung'
-  )?.id;
+  );
+  const evRoleObj = rolesData?.find(
+    (r) => r.name === 'Einsatzverwaltung' || r.abbreviation === 'EV'
+  );
+  const ovRoleObj = rolesData?.find(
+    (r) => r.name === 'Organisationsverwaltung' || r.abbreviation === 'OV'
+  );
+
+  const helferRoleId = helferRoleObj?.id;
+  const evRoleId = evRoleObj?.id;
+  const ovRoleId = ovRoleObj?.id;
 
   const getRoleLabel = (role: Role | undefined) => {
     if (!role) return '';
@@ -99,19 +105,9 @@ export function InviteUserForm({
       : overriddenName;
   };
 
-  const helferRoleLabel = getRoleLabel(
-    rolesData?.find((r) => r.name === 'Helfer' || r.name === 'Helfer:in')
-  );
-  const evRoleLabel = getRoleLabel(
-    rolesData?.find(
-      (r) => r.name === 'Einsatzverwaltung' || r.abbreviation === 'EV'
-    )
-  );
-  const ovRoleLabel = getRoleLabel(
-    rolesData?.find(
-      (r) => r.name === 'Organisationsverwaltung' || r.abbreviation === 'OV'
-    )
-  );
+  const helferRoleLabel = getRoleLabel(helferRoleObj);
+  const evRoleLabel = getRoleLabel(evRoleObj);
+  const ovRoleLabel = getRoleLabel(ovRoleObj);
 
   const inviteMutation = useMutation({
     mutationFn: async (data: { email: string; roleIds: string[] }) => {
