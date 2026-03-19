@@ -11,11 +11,10 @@ import {
 } from './activity_log-dal';
 import type { CreateChangeLogInput, ActivityLogFilters } from './types';
 
-function throwIfIsRedirect(error: unknown): null {
+function throwIfIsRedirect(error: unknown): void {
   if (isRedirectError(error)) {
     throw error;
   }
-  return null;
 }
 
 export async function getActivitiesAction() {
