@@ -44,11 +44,15 @@ export type FileUploadState = {
 
 export type FileUploadActions = {
   addFiles: (files: FileList | File[]) => void;
+  /** Prompts for confirmation before removing a single file. */
+  confirmRemoveFile: (id: string) => Promise<'success' | 'cancel'>;
   removeFile: (id: string) => Promise<'success' | 'cancel'>;
   /** Removes file silently without prompting the user. Used eg. after image optimization */
   removeFileSilently: (id: string) => void;
   /** Replaces the current file list without prompting the user. */
   setFilesSilently: (files: FileWithPreview[]) => void;
+  /** Prompts for confirmation before clearing all files. */
+  confirmClearFiles: () => Promise<'success' | 'cancel'>;
   /** Clears all files after user confirmation. */
   clearFiles: () => Promise<'success' | 'cancel'>;
   /** Clears all files without prompting the user (internal use). */
@@ -223,17 +227,23 @@ export const useFileUpload = (
     });
   }, [onFilesChange, revokePreviewUrl]);
 
+  const confirmClearFiles = useCallback(async (): Promise<
+    'success' | 'cancel'
+  > => {
+    return showDestructive(
+      'Alle Dateien entfernen',
+      'Möchten Sie wirklich alle Dateien entfernen?'
+    );
+  }, [showDestructive]);
+
   const clearFiles = useCallback(
     async (): Promise<'success' | 'cancel'> => {
-      const result = await showDestructive(
-        'Alle Dateien entfernen',
-        'Möchten Sie wirklich alle Dateien entfernen?'
-      );
+      const result = await confirmClearFiles();
       if (result !== 'success') return result;
       clearFilesSilently();
       return result;
     },
-    [clearFilesSilently, showDestructive]
+    [clearFilesSilently, confirmClearFiles]
   );
 
   const addFiles = useCallback(
@@ -364,7 +374,7 @@ export const useFileUpload = (
     [onFilesChange, revokePreviewUrl]
   );
 
-  const removeFile = useCallback(
+  const confirmRemoveFile = useCallback(
     async (id: string): Promise<'success' | 'cancel'> => {
       const fileToRemove = state.files.find((file) => file.id === id);
       const filename =
@@ -372,16 +382,23 @@ export const useFileUpload = (
           ? fileToRemove.file.name
           : fileToRemove?.file?.name;
 
-      const result = await showDestructive(
+      return showDestructive(
         'Datei entfernen',
         `Möchten Sie "${filename ?? 'diese Datei'}" wirklich entfernen?`
       );
+    },
+    [showDestructive, state.files]
+  );
+
+  const removeFile = useCallback(
+    async (id: string): Promise<'success' | 'cancel'> => {
+      const result = await confirmRemoveFile(id);
       if (result !== 'success') return result;
 
       removeFileSilently(id);
       return result;
     },
-    [removeFileSilently, showDestructive, state.files]
+    [confirmRemoveFile, removeFileSilently]
   );
 
   const clearErrors = useCallback(() => {
@@ -470,9 +487,11 @@ export const useFileUpload = (
     state,
     {
       addFiles,
+      confirmRemoveFile,
       removeFile,
       removeFileSilently,
       setFilesSilently,
+      confirmClearFiles,
       clearFiles,
       clearFilesSilently,
       clearErrors,
