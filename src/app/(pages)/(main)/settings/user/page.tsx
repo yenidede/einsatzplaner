@@ -493,6 +493,27 @@ export default function SettingsPage() {
                       formData.append('file', optimizedFile);
                       const res = await uploadProfilePictureAction(formData);
                       if (!res) throw new Error('Upload fehlgeschlagen');
+                      if (initialValuesRef.current) {
+                        initialValuesRef.current = {
+                          ...initialValuesRef.current,
+                          pictureUrl: res.picture_url,
+                        };
+                      }
+                      if (session) {
+                        try {
+                          await update({
+                            user: {
+                              ...session.user,
+                              picture_url: res.picture_url,
+                            },
+                          });
+                        } catch (error) {
+                          console.error(
+                            'Failed to sync session profile picture:',
+                            error
+                          );
+                        }
+                      }
                       return res.picture_url;
                     }}
                     onFileRemove={async () => {

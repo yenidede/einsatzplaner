@@ -21,6 +21,9 @@ model change_log {
   einsatz                             einsatz?    @relation(fields: [einsatz_id], references: [id])
   change_type                         change_type @relation(fields: [type_id], references: [id], onDelete: NoAction)
   user                                user?       @relation(fields: [user_id], references: [id])
+
+  @@index([einsatz_id, created_at])
+  @@index([user_id, created_at])
 }
 
 model change_type {
@@ -59,6 +62,11 @@ model einsatz {
   einsatz_helper        einsatz_helper[]
   einsatz_to_category   einsatz_to_category[]
   einsatz_user_property einsatz_user_property[]
+
+  @@index([created_by])
+  @@index([org_id, start])
+  @@index([org_id, status_id])
+  @@index([template_id])
 }
 
 model einsatz_category {
@@ -88,6 +96,9 @@ model einsatz_helper {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz    einsatz  @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([einsatz_id])
+  @@index([user_id])
 }
 
 model einsatz_template {
@@ -237,6 +248,8 @@ model invitation {
   user         user         @relation(fields: [invited_by], references: [id], onDelete: Cascade)
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
   role         role         @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, accepted])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -322,6 +335,9 @@ model user_property_value {
   value            String
   user             user          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   user_property    user_property @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([user_property_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
