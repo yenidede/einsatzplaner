@@ -164,6 +164,7 @@ export function FileUpload({
       openFileDialog,
       removeFile,
       removeFileSilently,
+      setFilesSilently,
       clearFiles,
       clearErrors,
       getInputProps,
@@ -192,14 +193,10 @@ export function FileUpload({
               if (previousFiles.length === 0) return;
 
               const previousFileIds = previousFiles.map((file) => file.id);
-              const persistedFileIds = getPersistedFileIds(previousFiles);
 
               try {
                 clearOptimizedFileEntries(previousFileIds);
-                previousFileIds.forEach((fileId) => {
-                  removeFileSilently(fileId);
-                });
-                await removePersistedFiles(persistedFileIds);
+                revokePreviewUrls(previousFiles);
               } catch (cleanupError) {
                 console.error(
                   'Error cleaning up previous files:',
@@ -218,6 +215,12 @@ export function FileUpload({
                 });
                 return newMap;
               });
+
+              if (previousFiles.length > 0) {
+                setFilesSilently(previousFiles);
+                return;
+              }
+
               newFiles.forEach((file) => {
                 removeFileSilently(file.id);
               });
@@ -260,6 +263,14 @@ export function FileUpload({
     for (const fileId of fileIds) {
       await onFileRemove(fileId);
     }
+  };
+
+  const revokePreviewUrls = (fileList: FileWithPreview[]) => {
+    fileList.forEach((file) => {
+      if (file.preview && file.file instanceof File) {
+        URL.revokeObjectURL(file.preview);
+      }
+    });
   };
 
   const finalizeFileRemoval = async (
