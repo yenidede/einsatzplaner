@@ -315,10 +315,7 @@ export function EventDialogVerwaltung({
   );
 
   const { einsatz_singular, helper_singular, helper_plural } =
-    useOrganizationTerminology(
-    organizations,
-    activeOrgId
-    );
+    useOrganizationTerminology(organizations, activeOrgId);
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =

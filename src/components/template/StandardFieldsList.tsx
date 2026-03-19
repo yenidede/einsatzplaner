@@ -89,7 +89,7 @@ export interface StandardFieldsListProps {
 
 export function StandardFieldsList({
   onOpenStandardField,
-  helperPlural = 'Helfer',
+  helperPlural = 'Helfer:innen',
 }: StandardFieldsListProps = {}) {
   const fields = STANDARD_FIELDS.map((field) =>
     field.standardFieldKey === 'helpers_needed'
