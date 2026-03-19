@@ -338,7 +338,6 @@ export const useFileUpload = (
       validateFile,
       createPreview,
       generateUniqueId,
-      revokePreviewUrl,
       onFilesChange,
       onFilesAdded,
     ]
