@@ -543,7 +543,7 @@ export function UserProfileDialog({
               Fehler beim Laden der Benutzerdaten
             </p>
             <Button variant="secondary" onClick={onClose}>
-              Schließen
+              Zurück
             </Button>
           </CardContent>
         </Card>
@@ -577,7 +577,7 @@ export function UserProfileDialog({
           <div className="shrink-0 bg-white px-4 py-3 md:px-6 md:py-4">
             <div className="flex items-center justify-end gap-2">
               <Button variant="outline" size="sm" onClick={handleClose}>
-                {hasChanges ? 'Abbrechen' : 'Schließen'}
+                {hasChanges ? 'Abbrechen' : 'Zurück'}
               </Button>
               <Button
                 size="sm"

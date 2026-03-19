@@ -8,5 +8,5 @@ export default function EditTemplatePage() {
   const templateId =
     typeof params.templateId === 'string' ? params.templateId : null;
 
-  return <TemplateForm templateId={templateId} />;
+  return <TemplateForm templateId={templateId} cancelLabel="Zurück" />;
 }
