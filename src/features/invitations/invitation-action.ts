@@ -416,7 +416,7 @@ export async function verifyInvitationAction(token: string) {
       email: firstInvitation.email,
       organizationName: firstInvitation.organization?.name || 'Organisation',
       orgId: firstInvitation.org_id,
-      roleName: roleNames || 'Helfer',
+      roleName: roleNames || helperNameSingular,
       helperNameSingular,
       helperNamePlural,
       roles: invitations.map((inv) => ({
