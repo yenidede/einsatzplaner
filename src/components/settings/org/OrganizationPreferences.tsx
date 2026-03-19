@@ -34,6 +34,9 @@ export function OrganizationPreferences({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="helper-singular">Helfer (Singular)</Label>
+          <p className="text-muted-foreground text-sm">
+            Bezeichnung für externe Personen (Einzahl).
+          </p>
           <Input
             id="helper-singular"
             type="text"
@@ -45,6 +48,9 @@ export function OrganizationPreferences({
         </div>
         <div className="space-y-2">
           <Label htmlFor="helper-plural">Helfer (Plural)</Label>
+          <p className="text-muted-foreground text-sm">
+            Bezeichnung für externe Personen (Mehrzahl).
+          </p>
           <Input
             id="helper-plural"
             type="text"
@@ -63,7 +69,7 @@ export function OrganizationPreferences({
             type="text"
             value={einsatzSingular}
             onChange={(e) => onEinsatzSingularChange(e.target.value)}
-            placeholder="z.B. Einsatz, Schicht"
+            placeholder="z.B. Einsatz, Schicht, Führung"
             aria-label="Einsatz Singular"
           />
         </div>
@@ -74,7 +80,7 @@ export function OrganizationPreferences({
             type="text"
             value={einsatzPlural}
             onChange={(e) => onEinsatzPluralChange(e.target.value)}
-            placeholder="z.B. Einsätze, Schichten"
+            placeholder="z.B. Einsätze, Schichten, Führungen"
             aria-label="Einsatz Plural"
           />
         </div>
