@@ -21,6 +21,7 @@ import { UserDangerZone } from './userProfile/UserDangerZone';
 import { upsertUserPropertyValueAction } from '@/features/user_properties/user_property-actions';
 import { queryKeys } from '@/features/user/queryKeys';
 import {
+  useOrganizationById,
   useOrganizationUserRoles,
   useUserProfileById,
   useUserPropertyValues,
@@ -31,6 +32,7 @@ import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { createRoleNameOverrides } from '@/components/Roles';
 
 interface UserProfileDialogProps {
   isOpen: boolean;
@@ -85,6 +87,9 @@ export function UserProfileDialog({
   const { data: userOrgRoles = [] } = useUserOrgRoles(
     isOpen ? organizationId : undefined,
     isOpen ? userId : undefined
+  );
+  const { data: organization } = useOrganizationById(
+    isOpen ? organizationId : undefined
   );
 
   const { data: currentUserOrgRoles = [] } = useUserOrgRoles(
@@ -604,6 +609,9 @@ export function UserProfileDialog({
                   firstname={userProfile.firstname}
                   lastname={userProfile.lastname}
                   pictureUrl={userProfile.picture_url}
+                  roleNameOverrides={createRoleNameOverrides(
+                    organization?.helper_name_singular ?? 'Helfer'
+                  )}
                   userOrgRoles={userOrgRoles}
                 />
                 <UserContactInfo

@@ -59,7 +59,7 @@ import { SettingsErrorCard } from '@/components/settings/SettingsErrorCard';
 import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavigation';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
-import { RolesList } from '@/components/Roles';
+import { createRoleNameOverrides, RolesList } from '@/components/Roles';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 
 export default function SettingsPage() {
@@ -781,7 +781,12 @@ export default function SettingsPage() {
                             <h3 className="text-lg font-semibold">
                               {org.name}
                             </h3>
-                            <RolesList unsortedRoles={org.roles} />
+                            <RolesList
+                              unsortedRoles={org.roles}
+                              roleNameOverrides={createRoleNameOverrides(
+                                org.helper_name_singular ?? 'Helfer'
+                              )}
+                            />
                           </div>
                         </div>
                         <Button
