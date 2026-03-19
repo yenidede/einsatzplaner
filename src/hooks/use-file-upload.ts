@@ -47,6 +47,8 @@ export type FileUploadActions = {
   removeFile: (id: string) => Promise<'success' | 'cancel'>;
   /** Removes file silently without prompting the user. Used eg. after image optimization */
   removeFileSilently: (id: string) => void;
+  /** Replaces the current file list without prompting the user. */
+  setFilesSilently: (files: FileWithPreview[]) => void;
   /** Clears all files after user confirmation. */
   clearFiles: () => Promise<'success' | 'cancel'>;
   /** Clears all files without prompting the user (internal use). */
@@ -171,6 +173,34 @@ export const useFileUpload = (
     }
   }, []);
 
+  const setFilesSilently = useCallback(
+    (files: FileWithPreview[]) => {
+      setState((prev) => {
+        const nextFileIds = new Set(files.map((file) => file.id));
+
+        prev.files.forEach((file) => {
+          if (!nextFileIds.has(file.id)) {
+            revokePreviewUrl(file);
+          }
+        });
+
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
+
+        const newState = {
+          ...prev,
+          files,
+          errors: [],
+        };
+
+        onFilesChange?.(newState.files);
+        return newState;
+      });
+    },
+    [onFilesChange, revokePreviewUrl]
+  );
+
   const clearFilesSilently = useCallback(() => {
     setState((prev) => {
       // Clean up object URLs
@@ -191,7 +221,7 @@ export const useFileUpload = (
       onFilesChange?.(newState.files);
       return newState;
     });
-  }, [onFilesChange]);
+  }, [onFilesChange, revokePreviewUrl]);
 
   const clearFiles = useCallback(
     async (): Promise<'success' | 'cancel'> => {
@@ -278,12 +308,6 @@ export const useFileUpload = (
         onFilesAdded?.(filesToAdd);
 
         setState((prev) => {
-          if (!multiple) {
-            prev.files.forEach((file) => {
-              revokePreviewUrl(file);
-            });
-          }
-
           const newFiles = multiple
             ? [...prev.files, ...filesToAdd]
             : [...filesToAdd];
@@ -449,6 +473,7 @@ export const useFileUpload = (
       addFiles,
       removeFile,
       removeFileSilently,
+      setFilesSilently,
       clearFiles,
       clearFilesSilently,
       clearErrors,
