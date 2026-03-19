@@ -77,7 +77,9 @@ export function InviteUserForm({
   const roleNameOverrides = createRoleNameOverrides(helperNameSingular);
 
   // Rollen-IDs dynamisch aus DB holen
-  const helferRoleId = rolesData?.find((r) => r.name === 'Helfer')?.id;
+  const helferRoleId = rolesData?.find(
+    (r) => r.name === 'Helfer' || r.name === 'Helfer:in'
+  )?.id;
   const evRoleId = rolesData?.find((r) => r.name === 'Einsatzverwaltung')?.id;
   const ovRoleId = rolesData?.find(
     (r) => r.name === 'Organisationsverwaltung'
@@ -92,14 +94,18 @@ export function InviteUserForm({
         ? role.abbreviation
         : null;
 
-    return abbreviation ? `${overriddenName} (${abbreviation})` : overriddenName;
+    return abbreviation
+      ? `${overriddenName} (${abbreviation})`
+      : overriddenName;
   };
 
   const helferRoleLabel = getRoleLabel(
     rolesData?.find((r) => r.name === 'Helfer' || r.name === 'Helfer:in')
   );
   const evRoleLabel = getRoleLabel(
-    rolesData?.find((r) => r.name === 'Einsatzverwaltung' || r.abbreviation === 'EV')
+    rolesData?.find(
+      (r) => r.name === 'Einsatzverwaltung' || r.abbreviation === 'EV'
+    )
   );
   const ovRoleLabel = getRoleLabel(
     rolesData?.find(
