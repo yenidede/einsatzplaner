@@ -314,10 +314,8 @@ export function EventDialogVerwaltung({
     `${DefaultEndHour.toString().padStart(2, '0')}:00`
   );
 
-  const { einsatz_singular } = useOrganizationTerminology(
-    organizations,
-    activeOrgId
-  );
+  const { einsatz_singular, helper_singular, helper_plural } =
+    useOrganizationTerminology(organizations, activeOrgId);
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =
@@ -856,7 +854,7 @@ export function EventDialogVerwaltung({
       )?.max_participants_per_helper;
       if (maxParticipants && ratio > maxParticipants) {
         warnings.push(
-          `Allgemein: Anzahl Teilnehmer:innen pro Helfer maximal ${
+          `Allgemein: Anzahl Teilnehmer:innen pro ${helper_singular} maximal ${
             organizations?.find((o) => o.id === activeOrgId)
               ?.max_participants_per_helper
           } (aktuell: ${Math.round(ratio)})`
@@ -909,8 +907,8 @@ export function EventDialogVerwaltung({
           const propName = property.field.name || 'Unbekannte Eigenschaft';
           const message =
             minRequired === -1
-              ? `Personeneigenschaften: Alle zugewiesenen Helfer benötigen '${propName}' (${matchingCount}/${requiredCount} erfüllt)`
-              : `Personeneigenschaften: mind. ${minRequired} Helfer mit '${propName}' benötigt (aktuell: ${matchingCount})`;
+              ? `Personeneigenschaften: Alle zugewiesenen ${helper_plural} benötigen '${propName}' (${matchingCount}/${requiredCount} erfüllt)`
+              : `Personeneigenschaften: mind. ${minRequired} ${helper_plural} mit '${propName}' benötigt (aktuell: ${matchingCount})`;
           warnings.push(message);
         }
       }
