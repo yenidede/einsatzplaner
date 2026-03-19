@@ -1,3 +1,5 @@
+import TooltipCustom from '@/components/tooltip-custom';
+
 export type RoleType = {
   id?: string;
   name: string;
@@ -30,11 +32,13 @@ export function OrganizationRoleBadge({
   role: RoleType;
   displayFullRoleName?: boolean;
 }) {
+  const fullRoleLabel = role.name ?? role.abbreviation ?? '';
   const label = displayFullRoleName
-    ? (role?.name ?? role?.abbreviation ?? '')
-    : role?.abbreviation && role.abbreviation.trim().length > 0
+    ? fullRoleLabel
+    : role.abbreviation && role.abbreviation.trim().length > 0
       ? role.abbreviation
-      : (role?.name ?? '');
+      : (role.name ?? '');
+  const shouldShowTooltip = !displayFullRoleName && label !== fullRoleLabel;
 
   let bgColor = 'bg-secondary text-secondary-foreground';
   const roleName = role?.name ?? '';
@@ -46,13 +50,19 @@ export function OrganizationRoleBadge({
   else if (roleName === 'Helfer:in' || roleName === 'Helfer')
     bgColor = 'bg-cyan-100 text-cyan-700';
 
-  return (
+  const badge = (
     <span
       className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${bgColor}`}
     >
       {label}
     </span>
   );
+
+  if (!shouldShowTooltip) {
+    return badge;
+  }
+
+  return <TooltipCustom text={fullRoleLabel}>{badge}</TooltipCustom>;
 }
 
 export const RolesList = ({
