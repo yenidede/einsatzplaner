@@ -146,7 +146,7 @@ export default function AcceptPage() {
   }
 
   const organizationName = invitation.organizationName || 'Unbekannt';
-  const roleName = invitation.roleName || 'Helfer';
+  const roleName = invitation.roleName || invitation.helperNameSingular;
   const inviterName = invitation.inviterName || null;
 
   return (

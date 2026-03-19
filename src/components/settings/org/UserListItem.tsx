@@ -1,7 +1,11 @@
 'use client';
 
 import { Pencil } from 'lucide-react';
-import { RolesList, type RoleType } from '@/components/Roles';
+import {
+  RolesList,
+  type RequiredHelperRoleNameOverrides,
+  type RoleType,
+} from '@/components/Roles';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { user } from '@/generated/prisma';
@@ -9,12 +13,14 @@ import type { user } from '@/generated/prisma';
 interface UserListItemProps {
   user: Pick<user, 'id' | 'email' | 'firstname' | 'lastname' | 'picture_url'>;
   roles: RoleType[];
+  roleNameOverrides: RequiredHelperRoleNameOverrides;
   onProfileClick: () => void;
 }
 
 export function UserListItem({
   user,
   roles,
+  roleNameOverrides,
   onProfileClick,
 }: UserListItemProps) {
   const getInitials = () => {
@@ -59,7 +65,7 @@ export function UserListItem({
               </span>
             )}
           </div>
-          <RolesList unsortedRoles={roles} />
+          <RolesList unsortedRoles={roles} roleNameOverrides={roleNameOverrides} />
         </div>
       </div>
 
