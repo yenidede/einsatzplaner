@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useOrganization } from '@/features/organization/hooks/use-organization-queries';
 import { useRoles } from '@/features/roles/hooks/use-roles-queries';
+import { createRoleNameOverrides } from '@/components/Roles';
 
 interface InviteUserFormProps {
   organizationId: string;
@@ -68,10 +69,12 @@ export function InviteUserForm({
 
   // Organisation-Daten über Server Action laden
   const { data: organizationData } = useOrganization(organizationId);
+  const helperNameSingular = organizationData?.helper_name_singular || 'Helfer';
 
   // Rollen über Server Action laden
   const { data: rolesData } = useRoles();
   const einsatzNamePlural = organizationData?.einsatz_name_plural || 'Einsätze';
+  const roleNameOverrides = createRoleNameOverrides(helperNameSingular);
 
   // Rollen-IDs dynamisch aus DB holen
   const helferRoleId = rolesData?.find((r) => r.name === 'Helfer')?.id;
@@ -79,6 +82,30 @@ export function InviteUserForm({
   const ovRoleId = rolesData?.find(
     (r) => r.name === 'Organisationsverwaltung'
   )?.id;
+
+  const getRoleLabel = (role: Role | undefined) => {
+    if (!role) return '';
+
+    const overriddenName = roleNameOverrides[role.name] ?? role.name;
+    const abbreviation =
+      role.abbreviation && role.abbreviation !== role.name
+        ? role.abbreviation
+        : null;
+
+    return abbreviation ? `${overriddenName} (${abbreviation})` : overriddenName;
+  };
+
+  const helferRoleLabel = getRoleLabel(
+    rolesData?.find((r) => r.name === 'Helfer' || r.name === 'Helfer:in')
+  );
+  const evRoleLabel = getRoleLabel(
+    rolesData?.find((r) => r.name === 'Einsatzverwaltung' || r.abbreviation === 'EV')
+  );
+  const ovRoleLabel = getRoleLabel(
+    rolesData?.find(
+      (r) => r.name === 'Organisationsverwaltung' || r.abbreviation === 'OV'
+    )
+  );
 
   const inviteMutation = useMutation({
     mutationFn: async (data: { email: string; roleIds: string[] }) => {
@@ -128,9 +155,9 @@ export function InviteUserForm({
 
   const getSelectedRoleNames = () => {
     const names: string[] = [];
-    if (helferRole) names.push('Helfer');
-    if (evRole) names.push(`Einsatzverwaltung`);
-    if (ovRole) names.push('Organisationsverwaltung');
+    if (helferRole) names.push(helferRoleLabel || helperNameSingular);
+    if (evRole) names.push(evRoleLabel || 'Einsatzverwaltung (EV)');
+    if (ovRole) names.push(ovRoleLabel || 'Organisationsverwaltung (OV)');
     return names;
   };
 
@@ -261,7 +288,7 @@ export function InviteUserForm({
                       htmlFor="role-helfer"
                       className="cursor-pointer font-normal"
                     >
-                      Helfer
+                      {helferRoleLabel || helperNameSingular}
                     </Label>
                   </div>
 
@@ -276,7 +303,7 @@ export function InviteUserForm({
                       htmlFor="role-ev"
                       className="cursor-pointer font-normal"
                     >
-                      Einsatzverwaltung (EV)
+                      {evRoleLabel || 'Einsatzverwaltung (EV)'}
                     </Label>
                   </div>
 
@@ -291,7 +318,7 @@ export function InviteUserForm({
                       htmlFor="role-ov"
                       className="cursor-pointer font-normal"
                     >
-                      Organisationsverwaltung (OV)
+                      {ovRoleLabel || 'Organisationsverwaltung (OV)'}
                     </Label>
                   </div>
                 </div>
