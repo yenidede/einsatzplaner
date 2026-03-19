@@ -632,6 +632,9 @@ export function UserProfileDialog({
                   userRoles={userRoles}
                   saving={saving}
                   onToggleRole={toggleRole}
+                  roleNameOverrides={createRoleNameOverrides(
+                    organization?.helper_name_singular ?? 'Helfer'
+                  )}
                 />
                 <UserDangerZone
                   organizationName={activeOrgName}

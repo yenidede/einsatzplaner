@@ -629,6 +629,8 @@ export function TemplateForm({
   );
 
   const maxParticipantsPerHelper = org?.max_participants_per_helper ?? 20;
+  const helperSingular = org?.helper_name_singular ?? 'Helfer:in';
+  const helperPlural = org?.helper_name_plural ?? 'Helfer:innen';
 
   const handleRequiredUserPropertySelectionChange = useCallback(
     (selectedIds: string[]) => {
@@ -851,6 +853,7 @@ export function TemplateForm({
             </CardHeader>
             <CardContent>
               <StandardFieldsList
+                helperPlural={helperPlural}
                 onOpenStandardField={
                   templateId && template ? handleOpenStandardField : undefined
                 }
@@ -1238,7 +1241,7 @@ export function TemplateForm({
                         {maxParticipantsPerHelper}
                       </span>{' '}
                       <span className="text-muted-foreground">
-                        pro Helfer:in
+                        pro {helperSingular}
                       </span>
                     </>
                   }
