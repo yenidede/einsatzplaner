@@ -500,12 +500,19 @@ export default function SettingsPage() {
                         };
                       }
                       if (session) {
-                        await update({
-                          user: {
-                            ...session.user,
-                            picture_url: res.picture_url,
-                          },
-                        });
+                        try {
+                          await update({
+                            user: {
+                              ...session.user,
+                              picture_url: res.picture_url,
+                            },
+                          });
+                        } catch (error) {
+                          console.error(
+                            'Failed to sync session profile picture:',
+                            error
+                          );
+                        }
                       }
                       return res.picture_url;
                     }}
