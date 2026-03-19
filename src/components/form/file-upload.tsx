@@ -162,10 +162,11 @@ export function FileUpload({
       handleDragOver,
       handleDrop,
       openFileDialog,
-      removeFile,
+      confirmRemoveFile,
       removeFileSilently,
       setFilesSilently,
-      clearFiles,
+      confirmClearFiles,
+      clearFilesSilently,
       clearErrors,
       getInputProps,
     },
@@ -273,12 +274,36 @@ export function FileUpload({
     });
   };
 
-  const finalizeFileRemoval = async (
-    fileIdsToClear: string[],
-    persistedFileIds: string[]
-  ) => {
+  const finalizeFileRemoval = (fileIdsToClear: string[]) => {
     clearOptimizedFileEntries(fileIdsToClear);
-    await removePersistedFiles(persistedFileIds);
+
+    if (fileIdsToClear.length === files.length) {
+      clearFilesSilently();
+      return;
+    }
+
+    fileIdsToClear.forEach((fileId) => {
+      removeFileSilently(fileId);
+    });
+  };
+
+  const confirmAndRemoveFiles = async (
+    fileIdsToClear: string[],
+    persistedFileIds: string[],
+    confirmation: Promise<'success' | 'cancel'>
+  ) => {
+    const result = await confirmation;
+    if (result !== 'success') return;
+
+    try {
+      await removePersistedFiles(persistedFileIds);
+    } catch (error) {
+      console.error('Error removing persisted files:', error);
+      toast.error('Datei konnte nicht entfernt werden.');
+      return;
+    }
+
+    finalizeFileRemoval(fileIdsToClear);
   };
 
   if (variant === 'buttons') {
@@ -323,14 +348,13 @@ export function FileUpload({
                     : firstFile.file instanceof File
                       ? []
                       : [firstFile.id];
-
-                const result =
+                await confirmAndRemoveFiles(
+                  fileIdsToClear,
+                  persistedFileIds,
                   maxFiles > 1
-                    ? await clearFiles()
-                    : await removeFile(firstFile.id);
-                if (result !== 'success') return;
-
-                await finalizeFileRemoval(fileIdsToClear, persistedFileIds);
+                    ? confirmClearFiles()
+                    : confirmRemoveFile(firstFile.id)
+                );
               }}
             >
               <Trash2 className="mr-2 h-4 w-4" />
@@ -439,12 +463,10 @@ export function FileUpload({
                 variant="ghost"
                 className="text-muted-foreground/80 hover:text-foreground -me-2 size-8 hover:bg-transparent"
                 onClick={async () => {
-                  const result = await removeFile(file.id);
-                  if (result !== 'success') return;
-
-                  await finalizeFileRemoval(
+                  await confirmAndRemoveFiles(
                     [file.id],
-                    file.file instanceof File ? [] : [file.id]
+                    file.file instanceof File ? [] : [file.id],
+                    confirmRemoveFile(file.id)
                   );
                 }}
                 aria-label="Remove file"
@@ -463,11 +485,11 @@ export function FileUpload({
                 onClick={async () => {
                   const fileIdsToClear = files.map((file) => file.id);
                   const persistedFileIds = getPersistedFileIds(files);
-
-                  const result = await clearFiles();
-                  if (result !== 'success') return;
-
-                  await finalizeFileRemoval(fileIdsToClear, persistedFileIds);
+                  await confirmAndRemoveFiles(
+                    fileIdsToClear,
+                    persistedFileIds,
+                    confirmClearFiles()
+                  );
                 }}
               >
                 Alle Dateien entfernen
