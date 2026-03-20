@@ -11,6 +11,7 @@ interface PageHeaderProps {
   isSaving?: boolean;
   onCancel?: () => void;
   cancelHref?: string;
+  cancelLabel?: string;
 }
 
 export function PageHeader({
@@ -20,6 +21,7 @@ export function PageHeader({
   isSaving = false,
   onCancel,
   cancelHref,
+  cancelLabel = 'Schließen',
 }: PageHeaderProps) {
   const router = useRouter();
 
@@ -52,7 +54,7 @@ export function PageHeader({
             className="min-h-10 min-w-11 touch-manipulation sm:min-h-9"
             type="button"
           >
-            Schließen
+            {cancelLabel}
             <span className="ml-2 hidden sm:inline">
               <Kbd>ESC</Kbd>
             </span>
