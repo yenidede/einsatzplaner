@@ -521,7 +521,7 @@ export default function OrganizationManagePage() {
               <CardTitle id="details-heading">Organisationsdetails</CardTitle>
               <CardDescription>
                 Grundlegende Informationen und äußeres Erscheinungsbild Ihrer
-                Organisation.
+                Organisation bearbeiten.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

@@ -46,12 +46,12 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import {
   CalendarIntegrationCard,
   NAV_ITEMS,
   type SectionId,
 } from '@/components/settings';
+import { PageHeader } from '@/components/settings/PageHeader';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { UserSettingsMobileNav } from '@/components/settings/UserSettingsMobileNav';
 import { SettingsLoadingSkeleton } from '@/components/settings/SettingsLoadingSkeleton';
@@ -392,28 +392,12 @@ export default function SettingsPage() {
   }
 
   const header = (
-    <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-16 z-40 border-b backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <div>
-          <h1>Persönliche Einstellungen</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigateWithCheck('/')}>
-            Abbrechen
-            <span className="ml-2 hidden sm:inline">
-              <Kbd>ESC</Kbd>
-            </span>
-          </Button>
-          <Button onClick={handleSave} disabled={mutation.isPending}>
-            {mutation.isPending ? 'Speichert...' : 'Speichern'}
-            <KbdGroup className="hidden sm:flex">
-              <Kbd>⌘</Kbd>
-              <Kbd>S</Kbd>
-            </KbdGroup>
-          </Button>
-        </div>
-      </div>
-    </header>
+    <PageHeader
+      title="Persönliche Einstellungen"
+      onSave={handleSave}
+      isSaving={mutation.isPending}
+      onCancel={() => navigateWithCheck('/')}
+    />
   );
 
   const mobileNav = (

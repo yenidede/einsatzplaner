@@ -55,10 +55,17 @@ export function SettingsPageLayout({
             {/* Mobile Navigation */}
             {mobileNav && (
               <div
-                className="-mx-3 flex gap-2 overflow-x-auto overflow-y-hidden px-3 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0 lg:hidden"
-                role="tablist"
+                className="bg-background sticky z-30 -mx-3 px-3 pb-2 sm:mx-0 sm:px-0 lg:hidden"
+                style={{
+                  top: 'calc(4rem + var(--settings-page-header-height, 0px))',
+                }}
               >
-                {mobileNav}
+                <div
+                  className="flex gap-2 overflow-x-auto overflow-y-hidden [scrollbar-width:thin]"
+                  role="tablist"
+                >
+                  {mobileNav}
+                </div>
               </div>
             )}
 
