@@ -31,6 +31,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,8 @@ import {
   type StandardFieldKey,
 } from './StandardFieldsList';
 import { TemplateFieldListItem } from './TemplateFieldListItem';
+import { ExistingTemplateFieldSelector } from './ExistingTemplateFieldSelector';
+import { TemplateFieldReuseSuggestions } from './TemplateFieldReuseSuggestions';
 import {
   templateFormSchema,
   type TemplateFormValues,
@@ -51,13 +54,12 @@ import {
 import { FieldTypeSelector } from '@/features/user_properties/components/FieldTypeSelector';
 import { VORLAGE_SELECTABLE_FIELD_TYPES } from '@/features/user_properties/field-type-definitions';
 import { PropertyConfiguration } from '@/features/user_properties/components/PropertyConfiguration';
-import type {
-  PropertyConfig,
-  FieldType,
-} from '@/features/user_properties/types';
+import type { PropertyConfig } from '@/features/user_properties/types';
 import { INITIAL_CONFIG } from '@/features/user_properties/types';
+import { fieldToPropertyConfig } from '@/features/user_properties/utils/field-to-property-config';
 import {
   useTemplate,
+  useTemplateFieldReuseCandidates,
   useTemplateIcons,
 } from '../../features/template/hooks/use-template-queries';
 import { useTemplateMutations } from '../../features/template/hooks/useTemplateMutations';
@@ -68,6 +70,7 @@ import { useOrganization } from '@/features/organization/hooks/use-organization-
 import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import TooltipCustom from '../tooltip-custom';
+import type { TemplateFieldReuseCandidate } from '@/features/template/template-dal';
 
 /** Format a Date (time-only from DB) to "HH:mm" for input[type="time"]. */
 function formatTimeForInput(d: Date | null | undefined): string {
@@ -84,6 +87,65 @@ function parseTimeFromInput(s: string): Date | null {
   const [h, m] = s.trim().split(':').map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   return new Date(2000, 0, 1, h, m);
+}
+
+function normalizeComparisonValue(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase('de-AT')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function getNameSimilarityScore(source: string, target: string): number {
+  if (!source || !target) return 0;
+  if (source === target) return 1;
+  if (source.includes(target) || target.includes(source)) return 0.9;
+
+  const sourceTokens = new Set(source.split(' ').filter(Boolean));
+  const targetTokens = new Set(target.split(' ').filter(Boolean));
+  if (sourceTokens.size === 0 || targetTokens.size === 0) return 0;
+
+  const overlappingTokens = Array.from(sourceTokens).filter((token) =>
+    targetTokens.has(token)
+  ).length;
+  const tokenScore =
+    overlappingTokens / Math.max(sourceTokens.size, targetTokens.size);
+
+  return tokenScore;
+}
+
+function findMatchingReuseCandidates(
+  config: PropertyConfig,
+  candidates: TemplateFieldReuseCandidate[]
+): TemplateFieldReuseCandidate[] {
+  const normalizedFieldName = normalizeComparisonValue(config.name);
+  if (!normalizedFieldName || !config.fieldType) {
+    return [];
+  }
+
+  return candidates
+    .map((candidate) => {
+      const candidateName = normalizeComparisonValue(candidate.name);
+      const nameScore = getNameSimilarityScore(
+        normalizedFieldName,
+        candidateName
+      );
+      const typeBonus = candidate.datatype === config.fieldType ? 0.15 : 0;
+      return {
+        candidate,
+        score: nameScore + typeBonus,
+      };
+    })
+    .filter(({ candidate, score }) => {
+      const hasSameType = candidate.datatype === config.fieldType;
+      return score >= (hasSameType ? 0.75 : 0.92);
+    })
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 3)
+    .map(({ candidate }) => candidate);
 }
 
 interface TemplateFormProps {
@@ -106,10 +168,10 @@ export function TemplateForm({
     updateMutation,
     addTemplateFieldMutation,
     updateTemplateFieldMutation,
+    connectExistingTemplateFieldMutation,
     deleteTemplateFieldMutation,
     setDefaultCategoriesMutation,
     setTemplateRequiredUserPropertiesMutation,
-    deleteTemplateMutation,
     isSaving,
   } = useTemplateMutations();
   const { showDefault, showDestructive } = useConfirmDialog();
@@ -125,6 +187,8 @@ export function TemplateForm({
   const { data: availableUserProps } = useUserProperties(
     effectiveOrgId ?? null
   );
+  const { data: templateFieldReuseCandidates = [] } =
+    useTemplateFieldReuseCandidates(effectiveOrgId, templateId);
 
   const form = useForm<TemplateFormInputValues, unknown, TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
@@ -140,10 +204,16 @@ export function TemplateForm({
 
   const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
   const [customFieldStep, setCustomFieldStep] = useState<
-    'typeSelection' | 'configuration'
+    | 'typeSelection'
+    | 'configuration'
+    | 'existingFieldSelection'
+    | 'reuseSuggestion'
   >('typeSelection');
   const [customFieldConfig, setCustomFieldConfig] =
     useState<PropertyConfig>(INITIAL_CONFIG);
+  const [matchingReuseCandidates, setMatchingReuseCandidates] = useState<
+    TemplateFieldReuseCandidate[]
+  >([]);
   /** When set, dialog is in edit mode for this field id */
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   /** When set, dialog is open for editing this standard field's default/placeholder */
@@ -297,11 +367,57 @@ export function TemplateForm({
     editingFieldId &&
     template?.template_field?.find((tf) => tf.field?.id === editingFieldId)
       ?.field?.name;
+  const editingTemplateField =
+    editingFieldId != null
+      ? template?.template_field?.find((tf) => tf.field?.id === editingFieldId)
+      : undefined;
   const existingTemplateFieldNamesForDialog = editingFieldName
     ? existingTemplateFieldNames.filter(
         (n) => n !== String(editingFieldName).toLowerCase()
       )
     : existingTemplateFieldNames;
+
+  const editingFieldUsageNames =
+    editingTemplateField?.field?.template_field
+      ?.map((templateFieldLink) =>
+        templateFieldLink.einsatz_template.name?.trim()
+      )
+      .filter((name): name is string => Boolean(name))
+      .sort((left, right) => left.localeCompare(right, 'de-AT')) ?? [];
+
+  const editingFieldUsageInfo =
+    editingFieldId == null ? null : (
+      <div className="space-y-2">
+        <div className="flex justify-between gap-4">
+          <div>
+            <p className="shrink-0">
+              {editingFieldUsageNames.length > 0
+                ? `Dieses Feld wird in ${editingFieldUsageNames.length} Vorlage${
+                    editingFieldUsageNames.length === 1 ? '' : 'n'
+                  } verwendet.`
+                : 'Dieses Feld ist aktuell nur in dieser Vorlage hinterlegt.'}
+            </p>
+            {editingFieldUsageNames.length > 0 && (
+              <p className="text-xs text-slate-500">
+                Änderungen an diesem Feld wirken sich auf alle Vorlagen aus, die
+                es verwenden.
+              </p>
+            )}
+          </div>
+          <div className="flex shrink flex-wrap justify-end gap-1.5">
+            {editingFieldUsageNames.map((templateName) => (
+              <Badge
+                key={templateName}
+                variant="outline"
+                className="px-1.5 py-0 text-[10px] font-medium"
+              >
+                {templateName}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
 
   type TemplateFieldItem = NonNullable<
     NonNullable<typeof template>['template_field']
@@ -310,29 +426,7 @@ export function TemplateForm({
     (tf: TemplateFieldItem): PropertyConfig | null => {
       const f = tf?.field;
       if (!f) return null;
-      const datatype = f.type?.datatype;
-      const isValidFieldType = (v: unknown): v is FieldType =>
-        typeof v === 'string' &&
-        ['text', 'number', 'boolean', 'select'].includes(v);
-      if (!datatype || !isValidFieldType(datatype)) return null;
-      return {
-        name: f.name ?? '',
-        description: f.description ?? '',
-        fieldType: datatype,
-        placeholder: f.placeholder ?? '',
-        maxLength: f.max != null ? f.max : undefined,
-        isMultiline: f.is_multiline ?? false,
-        minValue: f.min != null ? f.min : undefined,
-        maxValue: f.max != null ? f.max : undefined,
-        isDecimal: false,
-        trueLabel: 'Ja',
-        falseLabel: 'Nein',
-        booleanDefaultValue: null,
-        options: f.allowed_values ?? [],
-        defaultOption: f.default_value ?? undefined,
-        isRequired: f.is_required,
-        defaultValue: f.default_value ?? '',
-      };
+      return fieldToPropertyConfig(f);
     },
     []
   );
@@ -350,6 +444,7 @@ export function TemplateForm({
   const handleOpenCreateField = useCallback(() => {
     setEditingFieldId(null);
     setCustomFieldConfig(INITIAL_CONFIG);
+    setMatchingReuseCandidates([]);
     setCustomFieldStep('typeSelection');
     setCustomFieldDialogOpen(true);
   }, []);
@@ -359,11 +454,52 @@ export function TemplateForm({
       const config = templateFieldToPropertyConfig(tf);
       if (!config) return;
       setCustomFieldConfig(config);
+      setMatchingReuseCandidates([]);
       setEditingFieldId(tf.field?.id ?? null);
       setCustomFieldStep('configuration');
       setCustomFieldDialogOpen(true);
     },
-    [templateFieldToPropertyConfig, template?.template_field]
+    [templateFieldToPropertyConfig]
+  );
+
+  const resetCustomFieldDialog = useCallback(() => {
+    setCustomFieldDialogOpen(false);
+    setCustomFieldStep('typeSelection');
+    setCustomFieldConfig(INITIAL_CONFIG);
+    setEditingFieldId(null);
+    setMatchingReuseCandidates([]);
+  }, []);
+
+  const createCustomField = useCallback(() => {
+    if (!templateId || !customFieldConfig.fieldType) return;
+    addTemplateFieldMutation.mutate(
+      { templateId, config: customFieldConfig },
+      {
+        onSuccess: () => {
+          resetCustomFieldDialog();
+        },
+      }
+    );
+  }, [
+    templateId,
+    customFieldConfig,
+    addTemplateFieldMutation,
+    resetCustomFieldDialog,
+  ]);
+
+  const handleConnectExistingField = useCallback(
+    (fieldId: string) => {
+      if (!templateId) return;
+      connectExistingTemplateFieldMutation.mutate(
+        { templateId, fieldId },
+        {
+          onSuccess: () => {
+            resetCustomFieldDialog();
+          },
+        }
+      );
+    },
+    [templateId, connectExistingTemplateFieldMutation, resetCustomFieldDialog]
   );
 
   const handleCustomFieldSave = useCallback(() => {
@@ -377,41 +513,41 @@ export function TemplateForm({
         },
         {
           onSuccess: () => {
-            setCustomFieldDialogOpen(false);
-            setCustomFieldStep('typeSelection');
-            setCustomFieldConfig(INITIAL_CONFIG);
-            setEditingFieldId(null);
+            resetCustomFieldDialog();
           },
         }
       );
     } else {
-      addTemplateFieldMutation.mutate(
-        { templateId, config: customFieldConfig },
-        {
-          onSuccess: () => {
-            setCustomFieldDialogOpen(false);
-            setCustomFieldStep('typeSelection');
-            setCustomFieldConfig(INITIAL_CONFIG);
-          },
-        }
+      const matchingCandidates = findMatchingReuseCandidates(
+        customFieldConfig,
+        templateFieldReuseCandidates
       );
+      if (matchingCandidates.length > 0) {
+        setMatchingReuseCandidates(matchingCandidates);
+        setCustomFieldStep('reuseSuggestion');
+        return;
+      }
+
+      createCustomField();
     }
   }, [
     templateId,
     customFieldConfig,
     editingFieldId,
-    addTemplateFieldMutation,
+    templateFieldReuseCandidates,
     updateTemplateFieldMutation,
+    createCustomField,
+    resetCustomFieldDialog,
   ]);
 
-  const handleCustomFieldDialogClose = useCallback((open: boolean) => {
-    if (!open) {
-      setCustomFieldDialogOpen(false);
-      setCustomFieldStep('typeSelection');
-      setCustomFieldConfig(INITIAL_CONFIG);
-      setEditingFieldId(null);
-    }
-  }, []);
+  const handleCustomFieldDialogClose = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        resetCustomFieldDialog();
+      }
+    },
+    [resetCustomFieldDialog]
+  );
 
   useEffect(() => {
     if (editingStandardFieldKey && template) {
@@ -713,6 +849,7 @@ export function TemplateForm({
       onSave={() => form.handleSubmit(onSubmit)()}
       isSaving={isSaving}
       onCancel={handleCancel}
+      disableHorizontalPadding={true}
     />
   );
 
@@ -764,7 +901,7 @@ export function TemplateForm({
             <CardHeader>
               <CardTitle>Template-Informationen</CardTitle>
               <CardDescription>
-                Bezeichnung und Icon der Vorlage.
+                Name, Beschreibung und Icon dieser Vorlage.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -846,9 +983,9 @@ export function TemplateForm({
             <CardHeader>
               <CardTitle>Standardfelder</CardTitle>
               <CardDescription>
-                Von uns vordefinierte Felder für jeden Einsatz. Diese können
-                nicht bearbeitet werden. Können durch eigene Felder (siehe
-                unten) ergänzt werden.
+                Standardfelder sind in jedem Einsatz dieser Vorlage vorhanden.
+                Du kannst hier nur ihre Standardwerte anpassen, aber keine
+                weiteren Standardfelder hinzufügen oder entfernen.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1114,8 +1251,9 @@ export function TemplateForm({
             <CardHeader>
               <CardTitle>Eigene Felder</CardTitle>
               <CardDescription>
-                Wähle einen Feldtyp aus. Eigene Felder ergänzen die von uns
-                erstellten Standardfelder.
+                Ergänze die Standardfelder um eigene zusätzliche Felder oder
+                verknüpfe ein bereits vorhandenes Feld, um es mit anderen
+                Vorlagen gemeinsam zu nutzen.
               </CardDescription>
               <CardAction>
                 <Button
@@ -1186,15 +1324,35 @@ export function TemplateForm({
               <DialogHeader>
                 <DialogTitle>
                   {editingFieldId
-                    ? 'Eigenes Feld bearbeiten'
-                    : 'Eigenes Feld erstellen'}
+                    ? `${editingFieldName} bearbeiten`
+                    : 'Eigenes Feld hinzufügen'}
                 </DialogTitle>
               </DialogHeader>
               {customFieldStep === 'typeSelection' ? (
                 <FieldTypeSelector
                   onSelectType={handleCustomFieldTypeSelect}
                   onBack={() => handleCustomFieldDialogClose(false)}
+                  onSelectExistingField={() =>
+                    setCustomFieldStep('existingFieldSelection')
+                  }
                   enabledFieldTypes={VORLAGE_SELECTABLE_FIELD_TYPES}
+                />
+              ) : customFieldStep === 'existingFieldSelection' ? (
+                <ExistingTemplateFieldSelector
+                  candidates={templateFieldReuseCandidates}
+                  isConnecting={connectExistingTemplateFieldMutation.isPending}
+                  onBack={() => setCustomFieldStep('typeSelection')}
+                  onConnect={handleConnectExistingField}
+                />
+              ) : customFieldStep === 'reuseSuggestion' ? (
+                <TemplateFieldReuseSuggestions
+                  fieldName={customFieldConfig.name.trim() || 'Neues Feld'}
+                  candidates={matchingReuseCandidates}
+                  isConnecting={connectExistingTemplateFieldMutation.isPending}
+                  isCreating={addTemplateFieldMutation.isPending}
+                  onBack={() => setCustomFieldStep('configuration')}
+                  onCreateNew={createCustomField}
+                  onConnect={handleConnectExistingField}
                 />
               ) : (
                 <PropertyConfiguration
@@ -1209,8 +1367,8 @@ export function TemplateForm({
                   existingPropertyNames={existingTemplateFieldNamesForDialog}
                   existingUserCount={0}
                   context="vorlage"
-                  title="Feld konfigurieren"
                   nameLabel="Label *"
+                  usageInfo={editingFieldUsageInfo}
                   saveButtonLabel={
                     editingFieldId ? 'Änderungen speichern' : 'Feld Speichern'
                   }

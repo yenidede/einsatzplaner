@@ -5,6 +5,7 @@ import {
   getAllTemplatesByOrgIds,
   getTemplateById,
   getAllTemplateIcons,
+  getTemplateFieldReuseCandidatesAction,
 } from '@/features/template/template-dal';
 
 export function useTemplate(templateId: string | null | undefined) {
@@ -35,5 +36,25 @@ export function useTemplateIcons() {
   return useQuery({
     queryKey: ['template', 'icons'] as const,
     queryFn: () => getAllTemplateIcons(),
+  });
+}
+
+export function useTemplateFieldReuseCandidates(
+  activeOrgId: string | null | undefined,
+  excludeTemplateId?: string | null
+) {
+  return useQuery({
+    queryKey: [
+      'template',
+      'field-reuse-candidates',
+      activeOrgId ?? '',
+      excludeTemplateId ?? '',
+    ] as const,
+    queryFn: () =>
+      getTemplateFieldReuseCandidatesAction(
+        activeOrgId ?? '',
+        excludeTemplateId
+      ),
+    enabled: !!activeOrgId,
   });
 }

@@ -202,7 +202,10 @@ export function InviteUserForm({
       await inviteMutation.mutateAsync(data);
       toast.success('Einladung erfolgreich gesendet.');
     } catch (error) {
-      toast.error('Fehler beim Senden der Einladung.');
+      toast.error(
+        'Fehler beim Senden der Einladung.<br/>' +
+          (error instanceof Error ? ` ${error.message}` : error)
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -274,7 +277,7 @@ export function InviteUserForm({
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="mt-3 space-y-3">
                 <Label>Berechtigungen</Label>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
