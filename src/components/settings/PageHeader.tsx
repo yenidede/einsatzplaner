@@ -14,6 +14,7 @@ interface PageHeaderProps {
   onCancel?: () => void;
   cancelHref?: string;
   disableHorizontalPadding?: boolean;
+  cancelLabel?: string;
 }
 
 export function PageHeader({
@@ -23,6 +24,7 @@ export function PageHeader({
   onCancel,
   cancelHref,
   disableHorizontalPadding,
+  cancelLabel = 'Schließen',
 }: PageHeaderProps) {
   const router = useRouter();
   const headerRef = useRef<HTMLElement | null>(null);
@@ -93,7 +95,7 @@ export function PageHeader({
             className="min-h-9 min-w-0 touch-manipulation px-2.5 text-sm sm:min-h-9 sm:px-3"
             type="button"
           >
-            Schließen
+            {cancelLabel}
             <span className="ml-2 hidden sm:inline">
               <Kbd>ESC</Kbd>
             </span>
