@@ -17,6 +17,7 @@ interface BooleanFieldSettingsProps {
 export function BooleanFieldSettings({
   trueLabel,
   falseLabel,
+  booleanDefaultValue,
   onChange,
 }: BooleanFieldSettingsProps) {
   return (
@@ -24,7 +25,21 @@ export function BooleanFieldSettings({
       <div className="flex flex-col gap-2">
         <Label className="text-sm font-medium">Standardwert (optional)</Label>
         <div className="flex gap-4">
-          <RadioGroup>
+          <RadioGroup
+            value={
+              booleanDefaultValue === true
+                ? 'true'
+                : booleanDefaultValue === false
+                  ? 'false'
+                  : ''
+            }
+            onValueChange={(value) =>
+              onChange({
+                booleanDefaultValue:
+                  value === 'true' ? true : value === 'false' ? false : null,
+              })
+            }
+          >
             <div className="flex items-center gap-2">
               <RadioGroupItem value="true" id="true" />
               <Label htmlFor="true">{trueLabel}</Label>
