@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
+import { cn } from '@/lib/utils';
 
 interface PageHeaderProps {
   title: string;
@@ -11,6 +12,7 @@ interface PageHeaderProps {
   isSaving?: boolean;
   onCancel?: () => void;
   cancelHref?: string;
+  disableHorizontalPadding?: boolean;
 }
 
 export function PageHeader({
@@ -20,6 +22,7 @@ export function PageHeader({
   isSaving = false,
   onCancel,
   cancelHref,
+  disableHorizontalPadding,
 }: PageHeaderProps) {
   const router = useRouter();
 
@@ -35,14 +38,19 @@ export function PageHeader({
 
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-16 z-40 border-b backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4 lg:px-8">
+      <div
+        className={cn(
+          'mx-auto flex max-w-7xl flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-4',
+          !disableHorizontalPadding && 'px-3 sm:px-6 lg:px-8'
+        )}
+      >
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-semibold sm:text-xl">{title}</h1>
-          {description && (
+          {/* {description && (
             <p className="text-muted-foreground mt-0.5 hidden truncate text-sm sm:block">
               {description}
             </p>
-          )}
+          )} */}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button
