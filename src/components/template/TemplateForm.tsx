@@ -154,12 +154,14 @@ interface TemplateFormProps {
   templateId?: string | null;
   /** Optional for edit – derived from template.org_id when template is loaded */
   backHref?: string;
+  cancelLabel?: string;
 }
 
 export function TemplateForm({
   orgId: orgIdProp,
   templateId,
   backHref: backHrefProp,
+  cancelLabel = 'Schließen',
 }: TemplateFormProps) {
   const router = useRouter();
   const isEdit = !!templateId;
@@ -850,6 +852,7 @@ export function TemplateForm({
       isSaving={isSaving}
       onCancel={handleCancel}
       disableHorizontalPadding={true}
+      cancelLabel={cancelLabel}
     />
   );
 
@@ -1563,7 +1566,7 @@ export function TemplateForm({
         </div>
         <div>
           <Button variant="ghost" onClick={handleCancel}>
-            Schließen (ESC)
+            {cancelLabel} (ESC)
           </Button>
           <Button
             onClick={() => form.handleSubmit(onSubmit)()}
