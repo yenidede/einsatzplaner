@@ -52,7 +52,7 @@ export function fieldToPropertyConfig(
     trueLabel: 'Ja',
     falseLabel: 'Nein',
     booleanDefaultValue,
-    options: datatype === 'select' ? (field.allowed_values ?? []) : [],
+    options: datatype === 'select' ? field.allowed_values : [],
     defaultOption:
       datatype === 'select' ? (field.default_value ?? undefined) : undefined,
     isRequired: field.is_required,
