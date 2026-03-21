@@ -484,7 +484,6 @@ export default function OrganizationManagePage() {
   const header = (
     <PageHeader
       title={`${name} verwalten`}
-      description="Verwalten Sie die Einstellungen und Details Ihrer Organisation"
       onSave={handleSave}
       isSaving={updateMutation.isPending}
       onCancel={() => router.push('/')}
