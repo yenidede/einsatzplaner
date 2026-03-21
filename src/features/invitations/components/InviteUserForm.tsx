@@ -203,8 +203,14 @@ export function InviteUserForm({
       toast.success('Einladung erfolgreich gesendet.');
     } catch (error) {
       toast.error(
-        'Fehler beim Senden der Einladung.<br/>' +
-          (error instanceof Error ? ` ${error.message}` : error)
+        <div>
+          <div>Fehler beim Senden der Einladung.</div>
+          {error && (
+            <div>
+              {error instanceof Error ? error.message : String(error)}
+            </div>
+          )}
+        </div>
       );
     } finally {
       setIsSubmitting(false);
