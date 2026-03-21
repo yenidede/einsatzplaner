@@ -13,7 +13,7 @@ export const ORG_MANAGE_NAV_ITEMS = [
   { id: 'details', label: 'Organisationsdetails', icon: Building2 },
   { id: 'preferences', label: 'Präferenzen', icon: Settings },
   { id: 'standardfelder', label: 'Standardfelder', icon: SlidersHorizontal },
-  { id: 'vorlagen', label: 'Vorlagen', icon: LayoutTemplate },
+  { id: 'vorlagen', label: 'Vorlagen & eigene Felder', icon: LayoutTemplate },
   { id: 'user-properties', label: 'Personeneigenschaften', icon: FileText },
   { id: 'users', label: 'Benutzer', icon: Users },
   { id: 'pdf-export', label: 'PDF-Export', icon: FileDown },
