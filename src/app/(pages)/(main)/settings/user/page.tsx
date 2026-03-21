@@ -59,7 +59,7 @@ import { SettingsErrorCard } from '@/components/settings/SettingsErrorCard';
 import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavigation';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
-import { RolesList } from '@/components/Roles';
+import { createRoleNameOverrides, RolesList } from '@/components/Roles';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 
 export default function SettingsPage() {
@@ -493,6 +493,27 @@ export default function SettingsPage() {
                       formData.append('file', optimizedFile);
                       const res = await uploadProfilePictureAction(formData);
                       if (!res) throw new Error('Upload fehlgeschlagen');
+                      if (initialValuesRef.current) {
+                        initialValuesRef.current = {
+                          ...initialValuesRef.current,
+                          pictureUrl: res.picture_url,
+                        };
+                      }
+                      if (session) {
+                        try {
+                          await update({
+                            user: {
+                              ...session.user,
+                              picture_url: res.picture_url,
+                            },
+                          });
+                        } catch (error) {
+                          console.error(
+                            'Failed to sync session profile picture:',
+                            error
+                          );
+                        }
+                      }
                       return res.picture_url;
                     }}
                     onFileRemove={async () => {
@@ -760,7 +781,12 @@ export default function SettingsPage() {
                             <h3 className="text-lg font-semibold">
                               {org.name}
                             </h3>
-                            <RolesList unsortedRoles={org.roles} />
+                            <RolesList
+                              unsortedRoles={org.roles}
+                              roleNameOverrides={createRoleNameOverrides(
+                                org.helper_name_singular ?? 'Helfer'
+                              )}
+                            />
                           </div>
                         </div>
                         <Button

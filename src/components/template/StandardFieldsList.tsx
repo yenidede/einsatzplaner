@@ -84,14 +84,22 @@ export const STANDARD_FIELDS: Array<{
 export interface StandardFieldsListProps {
   /** When provided, standard fields with standardFieldKey become clickable and open this callback with the key. */
   onOpenStandardField?: (key: StandardFieldKey) => void;
+  helperPlural?: string;
 }
 
 export function StandardFieldsList({
   onOpenStandardField,
+  helperPlural = 'Helfer:innen',
 }: StandardFieldsListProps = {}) {
+  const fields = STANDARD_FIELDS.map((field) =>
+    field.standardFieldKey === 'helpers_needed'
+      ? { ...field, name: `Benötigte ${helperPlural}` }
+      : field
+  );
+
   return (
     <ul className="space-y-2">
-      {STANDARD_FIELDS.map((field) => {
+      {fields.map((field) => {
         const def = getFieldTypeDefinition(field.typeKey);
         const typeLabel = def?.label ?? field.typeKey;
         const canOpen =

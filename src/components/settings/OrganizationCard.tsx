@@ -1,11 +1,17 @@
 'use client';
 import { Trash } from 'lucide-react';
 import React from 'react';
-import { OrganizationRoleBadge, RoleType, sortRolesByPriority } from '../Roles';
+import {
+  OrganizationRoleBadge,
+  type RequiredHelperRoleNameOverrides,
+  type RoleType,
+  sortRolesByPriority,
+} from '../Roles';
 
 interface OrganizationCardProps {
   name: string;
   roles?: RoleType[] | string[];
+  roleNameOverrides: RequiredHelperRoleNameOverrides;
   logo?: React.ReactNode;
   onLeave?: () => void;
 }
@@ -13,6 +19,7 @@ interface OrganizationCardProps {
 export const OrganizationCard: React.FC<OrganizationCardProps> = ({
   name,
   roles = [],
+  roleNameOverrides,
   logo,
   onLeave,
 }) => {
@@ -35,7 +42,11 @@ export const OrganizationCard: React.FC<OrganizationCardProps> = ({
           </div>
           <div className="mt-2 inline-flex flex-wrap gap-2">
             {normalizedRoles.map((r, i) => (
-              <OrganizationRoleBadge key={i} role={r} />
+              <OrganizationRoleBadge
+                key={i}
+                role={r}
+                roleNameOverrides={roleNameOverrides}
+              />
             ))}
           </div>
         </div>

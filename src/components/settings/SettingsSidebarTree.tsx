@@ -279,7 +279,7 @@ export function SettingsSidebarTree({
 
   return (
     <nav
-      className="sticky top-44 space-y-1"
+      className="sticky top-44 max-h-[calc(100vh-12rem)] space-y-1 overflow-y-auto pr-2"
       aria-label="Einstellungen Navigation"
     >
       <SettingsSidebarTreeContent
