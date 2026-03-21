@@ -63,10 +63,10 @@ model einsatz {
   einsatz_to_category   einsatz_to_category[]
   einsatz_user_property einsatz_user_property[]
 
-  @@index([org_id, start])     // Calendar view filtering and sorting
-  @@index([org_id, status_id]) // Status filtering
-  @@index([created_by])        // User-created einsätze
-  @@index([template_id])       // Template joins
+  @@index([org_id, start])
+  @@index([org_id, status_id])
+  @@index([created_by])
+  @@index([template_id])
 }
 
 model einsatz_category {
