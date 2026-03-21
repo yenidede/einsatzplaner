@@ -10,8 +10,9 @@ import {
 
 export function useTemplate(templateId: string | null | undefined) {
   return useQuery({
-    queryKey: queryKeys.template(templateId ?? ''),
-    queryFn: () => getTemplateById(templateId ?? ''),
+    queryKey: [...queryKeys.template(templateId ?? ''), 'with-reuse-graph'],
+    queryFn: () =>
+      getTemplateById(templateId ?? '', { includeReuseGraph: true }),
     enabled: !!templateId,
   });
 }

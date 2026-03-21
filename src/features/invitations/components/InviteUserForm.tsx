@@ -205,11 +205,7 @@ export function InviteUserForm({
       toast.error(
         <div>
           <div>Fehler beim Senden der Einladung.</div>
-          {error && (
-            <div>
-              {error instanceof Error ? error.message : String(error)}
-            </div>
-          )}
+          <div>{error instanceof Error ? error.message : String(error)}</div>
         </div>
       );
     } finally {
