@@ -31,15 +31,23 @@ export function BooleanFieldSettings({
                 ? 'true'
                 : booleanDefaultValue === false
                   ? 'false'
-                  : ''
+                  : 'none'
             }
             onValueChange={(value) =>
               onChange({
                 booleanDefaultValue:
-                  value === 'true' ? true : value === 'false' ? false : null,
+                  value === 'true'
+                    ? true
+                    : value === 'false'
+                      ? false
+                      : null,
               })
             }
           >
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="none" id="none" />
+              <Label htmlFor="none">Kein Standardwert</Label>
+            </div>
             <div className="flex items-center gap-2">
               <RadioGroupItem value="true" id="true" />
               <Label htmlFor="true">{trueLabel}</Label>
