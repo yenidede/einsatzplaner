@@ -2,12 +2,17 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { RolesList, type RoleType } from '@/components/Roles';
+import {
+  RolesList,
+  type RequiredHelperRoleNameOverrides,
+  type RoleType,
+} from '@/components/Roles';
 
 interface UserProfileHeaderProps {
   firstname: string;
   lastname: string;
   pictureUrl: string | null;
+  roleNameOverrides: RequiredHelperRoleNameOverrides;
   userOrgRoles: { role: RoleType }[];
 }
 
@@ -15,6 +20,7 @@ export function UserProfileHeader({
   firstname,
   lastname,
   pictureUrl,
+  roleNameOverrides,
   userOrgRoles,
 }: UserProfileHeaderProps) {
   const [imageError, setImageError] = useState(false);
@@ -48,7 +54,11 @@ export function UserProfileHeader({
         </div>
         <div className="inline-flex flex-wrap items-start justify-start gap-1">
           {roles.length > 0 ? (
-            <RolesList unsortedRoles={roles} displayFullRoleName={true} />
+            <RolesList
+              unsortedRoles={roles}
+              displayFullRoleName={true}
+              roleNameOverrides={roleNameOverrides}
+            />
           ) : (
             <span className="bg-secondary text-secondary-foreground inline-flex items-center rounded-md px-2 py-1 text-xs font-medium">
               Keine Rollen zugewiesen

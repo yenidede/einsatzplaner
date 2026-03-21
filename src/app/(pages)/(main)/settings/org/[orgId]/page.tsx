@@ -626,8 +626,7 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="preferences-heading">Präferenzen</CardTitle>
               <CardDescription>
-                Passen Sie die Terminologie und Präferenzen Ihrer Organisation
-                an
+                Passt die App an die Bedürfnisse Ihrer Organisation an.
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -23,6 +23,10 @@ export default function NewTemplatePage() {
   }
 
   return (
-    <TemplateForm orgId={orgId} backHref={`/settings/org/${orgId}#vorlagen`} />
+    <TemplateForm
+      orgId={orgId}
+      backHref={`/settings/org/${orgId}#vorlagen`}
+      cancelLabel="Zurück"
+    />
   );
 }

@@ -7,6 +7,10 @@ import { UserListItem } from './UserListItem';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useSession } from 'next-auth/react';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import {
+  createRoleNameOverrides,
+  type RequiredHelperRoleNameOverrides,
+} from '@/components/Roles';
 
 interface usersData {
   user: {
@@ -52,9 +56,14 @@ export function UsersManagementSection({
   const { data: session } = useSession();
   const { data: organizations } = useOrganizations(session?.user.orgIds);
 
-  const { helper_plural } = useOrganizationTerminology(
+  const { helper_plural, helper_singular } = useOrganizationTerminology(
     organizations,
     session?.user.activeOrganization?.id
+  );
+
+  const roleNameOverrides = useMemo<RequiredHelperRoleNameOverrides>(
+    () => createRoleNameOverrides(helper_singular),
+    [helper_singular]
   );
 
   const groupedUsers = usersData?.reduce(
@@ -167,6 +176,7 @@ export function UsersManagementSection({
                 key={groupedUser.user?.id}
                 user={groupedUser.user}
                 roles={groupedUser.roles}
+                roleNameOverrides={roleNameOverrides}
                 onProfileClick={() => onUserProfileClick(groupedUser.user?.id)}
               />
             )
