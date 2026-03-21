@@ -393,13 +393,13 @@ export function TemplateForm({
         <div className="flex justify-between gap-4">
           <div>
             <p className="shrink-0">
-              {editingFieldUsageNames.length > 0
+              {editingFieldUsageNames.length > 1
                 ? `Dieses Feld wird in ${editingFieldUsageNames.length} Vorlage${
                     editingFieldUsageNames.length === 1 ? '' : 'n'
                   } verwendet.`
                 : 'Dieses Feld ist aktuell nur in dieser Vorlage hinterlegt.'}
             </p>
-            {editingFieldUsageNames.length > 0 && (
+            {editingFieldUsageNames.length > 1 && (
               <p className="text-xs text-slate-500">
                 Änderungen an diesem Feld wirken sich auf alle Vorlagen aus, die
                 es verwenden.
