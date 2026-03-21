@@ -46,6 +46,7 @@ import {
 import { TemplateFieldListItem } from './TemplateFieldListItem';
 import { ExistingTemplateFieldSelector } from './ExistingTemplateFieldSelector';
 import { TemplateFieldReuseSuggestions } from './TemplateFieldReuseSuggestions';
+import { normalizeTemplateFieldSearchValue } from './template-field-reuse-utils';
 import {
   templateFormSchema,
   type TemplateFormValues,
@@ -89,16 +90,6 @@ function parseTimeFromInput(s: string): Date | null {
   return new Date(2000, 0, 1, h, m);
 }
 
-function normalizeComparisonValue(value: string): string {
-  return value
-    .trim()
-    .toLocaleLowerCase('de-AT')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
 function getNameSimilarityScore(source: string, target: string): number {
   if (!source || !target) return 0;
   if (source === target) return 1;
@@ -121,14 +112,14 @@ function findMatchingReuseCandidates(
   config: PropertyConfig,
   candidates: TemplateFieldReuseCandidate[]
 ): TemplateFieldReuseCandidate[] {
-  const normalizedFieldName = normalizeComparisonValue(config.name);
+  const normalizedFieldName = normalizeTemplateFieldSearchValue(config.name);
   if (!normalizedFieldName || !config.fieldType) {
     return [];
   }
 
   return candidates
     .map((candidate) => {
-      const candidateName = normalizeComparisonValue(candidate.name);
+      const candidateName = normalizeTemplateFieldSearchValue(candidate.name);
       const nameScore = getNameSimilarityScore(
         normalizedFieldName,
         candidateName
@@ -189,7 +180,10 @@ export function TemplateForm({
   const { data: availableUserProps } = useUserProperties(
     effectiveOrgId ?? null
   );
-  const { data: templateFieldReuseCandidates = [] } =
+  const {
+    data: templateFieldReuseCandidates,
+    isLoading: isReuseCandidatesLoading,
+  } =
     useTemplateFieldReuseCandidates(effectiveOrgId, templateId);
 
   const form = useForm<TemplateFormInputValues, unknown, TemplateFormValues>({
@@ -520,9 +514,13 @@ export function TemplateForm({
         }
       );
     } else {
+      if (isReuseCandidatesLoading) {
+        return;
+      }
+
       const matchingCandidates = findMatchingReuseCandidates(
         customFieldConfig,
-        templateFieldReuseCandidates
+        templateFieldReuseCandidates ?? []
       );
       if (matchingCandidates.length > 0) {
         setMatchingReuseCandidates(matchingCandidates);
@@ -536,6 +534,7 @@ export function TemplateForm({
     templateId,
     customFieldConfig,
     editingFieldId,
+    isReuseCandidatesLoading,
     templateFieldReuseCandidates,
     updateTemplateFieldMutation,
     createCustomField,
@@ -1342,7 +1341,8 @@ export function TemplateForm({
                 />
               ) : customFieldStep === 'existingFieldSelection' ? (
                 <ExistingTemplateFieldSelector
-                  candidates={templateFieldReuseCandidates}
+                  candidates={templateFieldReuseCandidates ?? []}
+                  isLoading={isReuseCandidatesLoading}
                   isConnecting={connectExistingTemplateFieldMutation.isPending}
                   onBack={() => setCustomFieldStep('typeSelection')}
                   onConnect={handleConnectExistingField}
@@ -1377,7 +1377,8 @@ export function TemplateForm({
                   }
                   saveDisabled={
                     addTemplateFieldMutation.isPending ||
-                    updateTemplateFieldMutation.isPending
+                    updateTemplateFieldMutation.isPending ||
+                    (!editingFieldId && isReuseCandidatesLoading)
                   }
                 />
               )}

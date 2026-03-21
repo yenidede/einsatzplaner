@@ -61,16 +61,6 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
           field: {
             include: {
               type: { select: { datatype: true } },
-              template_field: {
-                include: {
-                  einsatz_template: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
-                },
-              },
             },
           },
         },
@@ -90,7 +80,12 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
   return templates;
 }
 
-export async function getTemplateById(id: string) {
+export async function getTemplateById(
+  id: string,
+  options?: { includeReuseGraph?: boolean }
+) {
+  const includeReuseGraph = options?.includeReuseGraph === true;
+
   const template = await prisma.einsatz_template.findUnique({
     where: { id },
     include: {
@@ -104,16 +99,20 @@ export async function getTemplateById(id: string) {
           field: {
             include: {
               type: { select: { datatype: true } },
-              template_field: {
-                include: {
-                  einsatz_template: {
-                    select: {
-                      id: true,
-                      name: true,
+              ...(includeReuseGraph
+                ? {
+                    template_field: {
+                      include: {
+                        einsatz_template: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                      },
                     },
-                  },
-                },
-              },
+                  }
+                : {}),
             },
           },
         },

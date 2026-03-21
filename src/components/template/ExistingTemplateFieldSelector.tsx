@@ -13,6 +13,7 @@ import {
 
 interface ExistingTemplateFieldSelectorProps {
   candidates: TemplateFieldReuseCandidate[];
+  isLoading: boolean;
   isConnecting: boolean;
   onBack: () => void;
   onConnect: (fieldId: string) => void;
@@ -20,6 +21,7 @@ interface ExistingTemplateFieldSelectorProps {
 
 export function ExistingTemplateFieldSelector({
   candidates,
+  isLoading,
   isConnecting,
   onBack,
   onConnect,
@@ -63,7 +65,11 @@ export function ExistingTemplateFieldSelector({
       </div>
 
       <div className="max-h-[48vh] space-y-3 overflow-y-auto pr-1">
-        {filteredCandidates.length === 0 ? (
+        {isLoading ? (
+          <div className="text-muted-foreground rounded-md border border-dashed px-4 py-8 text-center text-sm">
+            Bestehende Felder werden geladen…
+          </div>
+        ) : filteredCandidates.length === 0 ? (
           <div className="text-muted-foreground rounded-md border border-dashed px-4 py-8 text-center text-sm">
             Keine bestehenden Felder gefunden.
           </div>
@@ -85,7 +91,7 @@ export function ExistingTemplateFieldSelector({
           type="button"
           variant="secondary"
           onClick={onBack}
-          disabled={isConnecting}
+          disabled={isConnecting || isLoading}
         >
           Zurück
         </Button>
