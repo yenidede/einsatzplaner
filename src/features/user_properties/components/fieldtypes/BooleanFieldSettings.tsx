@@ -36,11 +36,7 @@ export function BooleanFieldSettings({
             onValueChange={(value) =>
               onChange({
                 booleanDefaultValue:
-                  value === 'true'
-                    ? true
-                    : value === 'false'
-                      ? false
-                      : null,
+                  value === 'true' ? true : value === 'false' ? false : null,
               })
             }
           >
