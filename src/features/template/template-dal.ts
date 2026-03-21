@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { Prisma } from '@/generated/prisma';
 import type { einsatz_template as Template } from '@/generated/prisma';
 import type { PropertyConfig } from '@/features/user_properties/types';
 import { propertyConfigToFieldInput } from '@/features/user_properties/utils/config-to-field-input';
@@ -80,12 +81,7 @@ export async function getAllTemplatesWithIconByOrgId(org_id: string) {
   return templates;
 }
 
-export async function getTemplateById(
-  id: string,
-  options?: { includeReuseGraph?: boolean }
-) {
-  const includeReuseGraph = options?.includeReuseGraph === true;
-
+export async function getTemplateById(id: string) {
   const template = await prisma.einsatz_template.findUnique({
     where: { id },
     include: {
@@ -99,20 +95,51 @@ export async function getTemplateById(
           field: {
             include: {
               type: { select: { datatype: true } },
-              ...(includeReuseGraph
-                ? {
-                    template_field: {
-                      include: {
-                        einsatz_template: {
-                          select: {
-                            id: true,
-                            name: true,
-                          },
-                        },
-                      },
+            },
+          },
+        },
+      },
+      template_to_category: {
+        include: {
+          einsatz_category: true,
+        },
+      },
+      template_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
+        },
+      },
+    },
+  });
+  return template;
+}
+
+export async function getTemplateWithReuseGraphById(id: string) {
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id },
+    include: {
+      template_icon: {
+        select: {
+          icon_url: true,
+        },
+      },
+      template_field: {
+        include: {
+          field: {
+            include: {
+              type: { select: { datatype: true } },
+              template_field: {
+                include: {
+                  einsatz_template: {
+                    select: {
+                      id: true,
+                      name: true,
                     },
-                  }
-                : {}),
+                  },
+                },
+              },
             },
           },
         },
@@ -136,7 +163,7 @@ export async function getTemplateById(
 
 /** Template as returned by getTemplateById (with relations). Use for typing components that consume this data. */
 export type TemplateWithRelations = NonNullable<
-  Awaited<ReturnType<typeof getTemplateById>>
+  Awaited<ReturnType<typeof getTemplateWithReuseGraphById>>
 >;
 
 export async function updateTemplate(
@@ -202,7 +229,7 @@ export async function getTemplateFieldReuseCandidatesByOrgId(
 ): Promise<TemplateFieldReuseCandidate[]> {
   const { session } = await requireAuth();
 
-  if (!session.user.orgIds.includes(orgId)) {
+  if (!(await hasPermission(session, 'templates:update', orgId))) {
     throw new Error('Keine Berechtigung für diese Organisation.');
   }
 
@@ -450,24 +477,22 @@ export async function connectExistingFieldToTemplate(
     );
   }
 
-  const existingLink = await prisma.template_field.findFirst({
-    where: {
-      template_id: templateId,
-      field_id: fieldId,
-    },
-    select: { id: true },
-  });
-
-  if (existingLink) {
-    throw new Error('Dieses Feld ist bereits mit der Vorlage verbunden.');
+  try {
+    await prisma.template_field.create({
+      data: {
+        template_id: templateId,
+        field_id: fieldId,
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      throw new Error('Dieses Feld ist bereits mit der Vorlage verbunden.');
+    }
+    throw error;
   }
-
-  await prisma.template_field.create({
-    data: {
-      template_id: templateId,
-      field_id: fieldId,
-    },
-  });
 
   return prisma.field.findUnique({
     where: { id: fieldId },
