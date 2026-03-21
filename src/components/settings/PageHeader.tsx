@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils';
 
 interface PageHeaderProps {
   title: string;
-  description?: string;
   onSave: () => void;
   isSaving?: boolean;
   onCancel?: () => void;
@@ -81,11 +80,6 @@ export function PageHeader({
       >
         <div className="min-w-0 flex-1 pr-2">
           <h1 className="truncate">{title}</h1>
-          {/* {description && (
-            <p className="text-muted-foreground mt-0.5 hidden truncate text-sm sm:block">
-              {description}
-            </p>
-          )} */}
         </div>
         <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
           <Button
