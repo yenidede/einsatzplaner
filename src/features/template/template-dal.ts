@@ -161,7 +161,7 @@ export async function getTemplateWithReuseGraphById(id: string) {
   return template;
 }
 
-/** Template as returned by getTemplateById (with relations). Use for typing components that consume this data. */
+/** Template as returned by getTemplateWithReuseGraphById (including reuse graph relations). Use for typing components that consume this data. */
 export type TemplateWithRelations = NonNullable<
   Awaited<ReturnType<typeof getTemplateWithReuseGraphById>>
 >;
@@ -235,28 +235,28 @@ export async function getTemplateFieldReuseCandidatesByOrgId(
 
   const excludedFieldIds = excludeTemplateId
     ? (
-        await prisma.template_field.findMany({
-          where: {
-            template_id: excludeTemplateId,
-            einsatz_template: {
-              org_id: orgId,
-            },
+      await prisma.template_field.findMany({
+        where: {
+          template_id: excludeTemplateId,
+          einsatz_template: {
+            org_id: orgId,
           },
-          select: {
-            field_id: true,
-          },
-        })
-      ).map((templateField) => templateField.field_id)
+        },
+        select: {
+          field_id: true,
+        },
+      })
+    ).map((templateField) => templateField.field_id)
     : [];
 
   const templateFields = await prisma.template_field.findMany({
     where: {
       ...(excludedFieldIds.length > 0
         ? {
-            field_id: {
-              notIn: excludedFieldIds,
-            },
-          }
+          field_id: {
+            notIn: excludedFieldIds,
+          },
+        }
         : {}),
       einsatz_template: {
         org_id: orgId,
