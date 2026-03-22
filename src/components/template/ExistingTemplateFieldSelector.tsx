@@ -31,8 +31,7 @@ export function ExistingTemplateFieldSelector({
   onRetry,
 }: ExistingTemplateFieldSelectorProps) {
   const [searchValue, setSearchValue] = useState('');
-  const normalizedSearchValue =
-    normalizeTemplateFieldSearchValue(searchValue);
+  const normalizedSearchValue = normalizeTemplateFieldSearchValue(searchValue);
 
   const filteredCandidates = useMemo(() => {
     if (!normalizedSearchValue) {
@@ -59,10 +58,14 @@ export function ExistingTemplateFieldSelector({
       </div>
 
       <div className="relative">
-        <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+        <Search
+          aria-hidden="true"
+          className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+        />
         <Input
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
+          aria-label="Felder oder Vorlage suchen"
           placeholder="Nach Feldname oder Vorlage suchen"
           className="pl-9"
         />
@@ -86,6 +89,22 @@ export function ExistingTemplateFieldSelector({
             >
               Erneut versuchen
             </Button>
+          </div>
+        ) : candidates.length === 0 ? (
+          <div className="text-muted-foreground rounded-md border border-dashed px-4 py-8 text-center text-sm">
+            <p>Keine bestehenden Felder gefunden.</p>
+            <p className="mt-1">
+              In anderen Vorlagen dieser Organisation gibt es aktuell keine
+              Felder zum Verknüpfen.
+            </p>
+          </div>
+        ) : filteredCandidates.length === 0 && searchValue.trim() ? (
+          <div className="text-muted-foreground rounded-md border border-dashed px-4 py-8 text-center text-sm">
+            <p>{`Keine Ergebnisse für '${searchValue.trim()}'`}</p>
+            <p className="mt-1">
+              Passe den Suchbegriff an oder lösche die Suche, um alle Felder zu
+              sehen.
+            </p>
           </div>
         ) : filteredCandidates.length === 0 ? (
           <div className="text-muted-foreground rounded-md border border-dashed px-4 py-8 text-center text-sm">
