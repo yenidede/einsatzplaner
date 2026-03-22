@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Type, Hash, Plus, Pause, Play, AlertCircle } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import {
   getFieldTypeDefinition,
   isFieldTypeKey,
@@ -183,8 +184,9 @@ export function TemplateForm({
   const {
     data: templateFieldReuseCandidates,
     isLoading: isReuseCandidatesLoading,
-  } =
-    useTemplateFieldReuseCandidates(effectiveOrgId, templateId);
+    isError: isReuseCandidatesError,
+    refetch: refetchReuseCandidates,
+  } = useTemplateFieldReuseCandidates(effectiveOrgId, templateId);
 
   const form = useForm<TemplateFormInputValues, unknown, TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
@@ -373,27 +375,34 @@ export function TemplateForm({
       )
     : existingTemplateFieldNames;
 
-  const editingFieldUsageNames =
-    editingTemplateField?.field?.template_field
-      ?.map((templateFieldLink) =>
-        templateFieldLink.einsatz_template.name?.trim()
-      )
-      .filter((name): name is string => Boolean(name))
-      .sort((left, right) => left.localeCompare(right, 'de-AT')) ?? [];
-
   const editingFieldUsageInfo =
+    editingTemplateField?.field?.template_field
+      ?.map((templateFieldLink) => {
+        return {
+          id: templateFieldLink.einsatz_template.id,
+          name: templateFieldLink.einsatz_template.name.trim(),
+        };
+      })
+      .filter(
+        (templateUsage): templateUsage is { id: string; name: string } =>
+          templateUsage != null
+      )
+      .sort((left, right) => left.name.localeCompare(right.name, 'de-AT')) ??
+    [];
+
+  const editingFieldUsageSummary =
     editingFieldId == null ? null : (
       <div className="space-y-2">
         <div className="flex justify-between gap-4">
           <div>
             <p className="shrink-0">
-              {editingFieldUsageNames.length > 1
-                ? `Dieses Feld wird in ${editingFieldUsageNames.length} Vorlage${
-                    editingFieldUsageNames.length === 1 ? '' : 'n'
+              {editingFieldUsageInfo.length > 1
+                ? `Dieses Feld wird in ${editingFieldUsageInfo.length} Vorlage${
+                    editingFieldUsageInfo.length === 1 ? '' : 'n'
                   } verwendet.`
                 : 'Dieses Feld ist aktuell nur in dieser Vorlage hinterlegt.'}
             </p>
-            {editingFieldUsageNames.length > 1 && (
+            {editingFieldUsageInfo.length > 1 && (
               <p className="text-xs text-slate-500">
                 Änderungen an diesem Feld wirken sich auf alle Vorlagen aus, die
                 es verwenden.
@@ -401,13 +410,13 @@ export function TemplateForm({
             )}
           </div>
           <div className="flex shrink flex-wrap justify-end gap-1.5">
-            {editingFieldUsageNames.map((templateName) => (
+            {editingFieldUsageInfo.map(({ id, name }) => (
               <Badge
-                key={templateName}
+                key={id}
                 variant="outline"
                 className="px-1.5 py-0 text-[10px] font-medium"
               >
-                {templateName}
+                {name}
               </Badge>
             ))}
           </div>
@@ -517,6 +526,12 @@ export function TemplateForm({
       if (isReuseCandidatesLoading) {
         return;
       }
+      if (isReuseCandidatesError) {
+        toast.error(
+          'Bestehende Felder konnten nicht geladen werden. Bitte versuche es erneut.'
+        );
+        return;
+      }
 
       const matchingCandidates = findMatchingReuseCandidates(
         customFieldConfig,
@@ -535,6 +550,7 @@ export function TemplateForm({
     customFieldConfig,
     editingFieldId,
     isReuseCandidatesLoading,
+    isReuseCandidatesError,
     templateFieldReuseCandidates,
     updateTemplateFieldMutation,
     createCustomField,
@@ -1343,9 +1359,13 @@ export function TemplateForm({
                 <ExistingTemplateFieldSelector
                   candidates={templateFieldReuseCandidates ?? []}
                   isLoading={isReuseCandidatesLoading}
+                  isError={isReuseCandidatesError}
                   isConnecting={connectExistingTemplateFieldMutation.isPending}
                   onBack={() => setCustomFieldStep('typeSelection')}
                   onConnect={handleConnectExistingField}
+                  onRetry={() => {
+                    void refetchReuseCandidates();
+                  }}
                 />
               ) : customFieldStep === 'reuseSuggestion' ? (
                 <TemplateFieldReuseSuggestions
@@ -1371,7 +1391,7 @@ export function TemplateForm({
                   existingUserCount={0}
                   context="vorlage"
                   nameLabel="Label *"
-                  usageInfo={editingFieldUsageInfo}
+                  usageInfo={editingFieldUsageSummary}
                   saveButtonLabel={
                     editingFieldId ? 'Änderungen speichern' : 'Feld Speichern'
                   }
