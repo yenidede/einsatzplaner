@@ -507,9 +507,9 @@ export async function connectExistingFieldToTemplate(
 }
 
 export async function createTemplateAction(input: CreateTemplateInput) {
-  const { session, userIds } = await requireAuth();
+  const { session } = await requireAuth();
 
-  if (!(await hasPermission(session, 'templates:create', userIds.orgId))) {
+  if (!(await hasPermission(session, 'templates:create', input.org_id))) {
     throw new Error('Fehlende Berechtigungen zum Erstellen der Vorlage.');
   }
 
