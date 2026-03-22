@@ -42,6 +42,38 @@ export type FileUploadState = {
   errors: string[];
 };
 
+const createClientSafeId = (): string => {
+  const webCrypto = globalThis.crypto;
+
+  if (webCrypto?.randomUUID) {
+    return webCrypto.randomUUID();
+  }
+
+  if (webCrypto?.getRandomValues) {
+    const bytes = webCrypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    const segments = [
+      Array.from(bytes.slice(0, 4)),
+      Array.from(bytes.slice(4, 6)),
+      Array.from(bytes.slice(6, 8)),
+      Array.from(bytes.slice(8, 10)),
+      Array.from(bytes.slice(10, 16)),
+    ];
+
+    return segments
+      .map((segment) =>
+        segment
+          .map((value) => value.toString(16).padStart(2, '0'))
+          .join('')
+      )
+      .join('-');
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
 export type FileUploadActions = {
   addFiles: (files: FileList | File[]) => void;
   /** Prompts for confirmation before removing a single file. */
@@ -166,7 +198,7 @@ export const useFileUpload = (
 
   const generateUniqueId = useCallback((file: File | FileMetadata): string => {
     if (file instanceof File) {
-      return `${file.name}-${crypto.randomUUID()}`;
+      return `${file.name}-${createClientSafeId()}`;
     }
     return file.id;
   }, []);

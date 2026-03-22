@@ -9,6 +9,7 @@ import {
   updateOrganizationAddressAction,
   deleteOrganizationAddressAction,
 } from '@/features/settings/organization-action';
+import { queryKeys as organizationQueryKeys } from '@/features/organization/queryKeys';
 import { useOrganizationAddresses } from '@/features/organization/hooks/use-organization-queries';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
@@ -54,7 +55,7 @@ export function OrganizationAddresses({
     mutationFn: createOrganizationAddressAction,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['org-addresses', organizationId],
+        queryKey: organizationQueryKeys.addresses(organizationId),
       });
       toast.success('Adresse erfolgreich hinzugefügt!');
       resetForm();
@@ -68,7 +69,7 @@ export function OrganizationAddresses({
     mutationFn: updateOrganizationAddressAction,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['org-addresses', organizationId],
+        queryKey: organizationQueryKeys.addresses(organizationId),
       });
       toast.success('Adresse erfolgreich aktualisiert!');
       resetForm();
@@ -83,7 +84,7 @@ export function OrganizationAddresses({
       deleteOrganizationAddressAction(id, organizationId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['org-addresses', organizationId],
+        queryKey: organizationQueryKeys.addresses(organizationId),
       });
       toast.success('Adresse erfolgreich gelöscht!');
     },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import FormInputFieldCustom from '@/components/form/formInputFieldCustom';
 import { Input } from '@/components/ui/input';
@@ -28,10 +29,10 @@ interface PropertyConfigurationProps {
   existingUserCount?: number;
   /** Whether this form is for a person property or a template (Vorlage) field. Affects visibility of "Eingabe-Regeln für Personen". */
   context?: FieldFormContext;
-  /** Optional title (default: "Neue Eigenschaft konfigurieren") */
-  title?: string;
   /** Optional label for name field (default: "Name der Eigenschaft *") */
   nameLabel?: string;
+  /** Optional usage hint shown above the form fields. */
+  usageInfo?: React.ReactNode;
   /** Optional save button text (default: "Speichern") */
   saveButtonLabel?: string;
   /** Optional: disable save button (e.g. while submitting) */
@@ -46,8 +47,8 @@ export function PropertyConfiguration({
   existingPropertyNames = [],
   existingUserCount = 0,
   context = 'person',
-  title = 'Neue Eigenschaft konfigurieren',
   nameLabel = 'Name der Eigenschaft *',
+  usageInfo,
   saveButtonLabel = 'Speichern',
   saveDisabled = false,
 }: PropertyConfigurationProps) {
@@ -83,20 +84,29 @@ export function PropertyConfiguration({
   };
 
   return (
-    <div className="flex flex-col items-start justify-start gap-2 self-stretch">
-      <div className="inline-flex items-center justify-start gap-2.5 self-stretch pt-2">
-        <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
-          {title}
-        </div>
-      </div>
+    <div className="flex flex-col items-start justify-start gap-4 self-stretch">
+      <div className="flex flex-col items-start justify-start gap-5 self-stretch border-t border-slate-200 py-4">
+        {usageInfo && (
+          <div className="bg-muted/40 border-border flex w-full items-start gap-3 rounded-lg border px-4 py-3 text-sm">
+            <span className="bg-background flex size-8 shrink-0 items-center justify-center rounded-full border">
+              <Info className="text-muted-foreground h-4 w-4" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <div>{usageInfo}</div>
+            </div>
+          </div>
+        )}
 
-      <div className="flex flex-col items-start justify-start gap-6 self-stretch border-t border-slate-200 py-4">
-        <div className="flex flex-col gap-4 self-stretch">
-          <h3 className="text-sm font-semibold text-slate-700">
+        <section className="bg-card flex flex-col gap-4 self-stretch rounded-xl border p-5 shadow-sm">
+          <h3 className="text-foreground text-base font-semibold">
             Grundinformationen
           </h3>
 
-          <FormInputFieldCustom name={nameLabel} errors={getFieldError('name')}>
+          <FormInputFieldCustom
+            name={nameLabel}
+            errors={getFieldError('name')}
+            className="space-y-2"
+          >
             <Input
               value={config.name}
               onChange={(e) => onConfigChange({ name: e.target.value })}
@@ -112,20 +122,19 @@ export function PropertyConfiguration({
           <FormInputFieldCustom
             name="Beschreibung (optional)"
             errors={getFieldError('description')}
+            className="space-y-2"
           >
             <Input
               value={config.description ?? ''}
-              onChange={(e) =>
-                onConfigChange({ description: e.target.value })
-              }
+              onChange={(e) => onConfigChange({ description: e.target.value })}
               placeholder="Kurze Beschreibung des Feldes"
               className="w-full"
             />
           </FormInputFieldCustom>
-        </div>
+        </section>
 
-        <div className="flex flex-col gap-4 self-stretch">
-          <h3 className="text-sm font-semibold text-slate-700">
+        <section className="bg-card flex flex-col gap-4 self-stretch rounded-xl border p-5 shadow-sm">
+          <h3 className="text-foreground text-base font-semibold">
             Feldeinstellungen
           </h3>
 
@@ -212,7 +221,7 @@ export function PropertyConfiguration({
                 {getFieldError('minValue')[0]}
               </p>
             )}
-        </div>
+        </section>
 
         {context === 'person' && (
           <UsageSettings
@@ -222,7 +231,7 @@ export function PropertyConfiguration({
           />
         )}
 
-        <div className="inline-flex items-start justify-end gap-2 self-stretch border-t border-slate-200 pt-2">
+        <div className="inline-flex items-start justify-end gap-2 self-stretch border-t border-slate-200 pt-4">
           <Button variant="secondary" onClick={onCancel}>
             Abbrechen
           </Button>

@@ -236,10 +236,14 @@ export default function OrganizationManagePage() {
 
   const { data: currentUserWithRoles } = useOrganizationUserRoles(orgId);
 
+  const currentUserRoles =
+    currentUserWithRoles?.filter(
+      (userRole) => userRole.user.id === session?.user?.id
+    ) ?? [];
   const isSuperadmin =
-    currentUserWithRoles?.some(
+    currentUserRoles.some(
       (role) => role.role.name.toLowerCase() === 'superadmin'
-    ) ?? false;
+    );
 
   const updateMutation = useUpdateOrganization(orgId);
 
@@ -285,6 +289,10 @@ export default function OrganizationManagePage() {
         default_starttime: defaultStarttime,
         default_endtime: defaultEndtime,
         allow_self_sign_out: allowSelfSignOut,
+        website,
+        vat,
+        zvr,
+        authority,
       });
 
       // Note: Initial values will be updated automatically when orgData refetches
@@ -327,7 +335,6 @@ export default function OrganizationManagePage() {
     maxParticipantsPerHelper,
     defaultStarttime,
     defaultEndtime,
-    logoFile,
     website,
     vat,
     zvr,
@@ -484,7 +491,6 @@ export default function OrganizationManagePage() {
   const header = (
     <PageHeader
       title={`${name} verwalten`}
-      description="Verwalten Sie die Einstellungen und Details Ihrer Organisation"
       onSave={handleSave}
       isSaving={updateMutation.isPending}
       onCancel={() => router.push('/')}
@@ -520,7 +526,8 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="details-heading">Organisationsdetails</CardTitle>
               <CardDescription>
-                Grundlegende Informationen und Logo Ihrer Organisation
+                Grundlegende Informationen und äußeres Erscheinungsbild Ihrer
+                Organisation bearbeiten.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -538,10 +545,7 @@ export default function OrganizationManagePage() {
                     accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
                     placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert). Sollte das Logo nicht richtig laden, bitte die Seite neu laden."
                     previewAspectRatio={PreviewAspectRatio.LANDSCAPE}
-                    setValue={(name, value) => {
-                      // FileUpload component manages its own state
-                      // We handle the upload in onUpload callback
-                    }}
+                    setValue={() => undefined}
                     onUpload={handleLogoUpload}
                     onFileRemove={
                       logoUrl ? () => handleLogoRemove() : undefined
@@ -574,10 +578,7 @@ export default function OrganizationManagePage() {
                     accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
                     placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert). Sollte das Logo nicht richtig laden, bitte die Seite neu laden."
                     previewAspectRatio={PreviewAspectRatio.SQUARE}
-                    setValue={(name, value) => {
-                      // FileUpload component manages its own state
-                      // We handle the upload in onUpload callback
-                    }}
+                    setValue={() => undefined}
                     onUpload={handleSmallLogoUpload}
                     onFileRemove={
                       smallLogoUrl ? () => handleSmallLogoRemove() : undefined
@@ -658,8 +659,8 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="standardfelder-heading">Standardfelder</CardTitle>
               <CardDescription>
-                Voreinstellungen für maximale Teilnehmende sowie Standard-Start-
-                und Endzeit
+                Standardfelder sind vordefinierte Felder, die nicht über
+                Vorlagen hinzugefügt werden.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -710,9 +711,9 @@ export default function OrganizationManagePage() {
                 Personeneigenschaften
               </CardTitle>
               <CardDescription>
-                Verwalte die benutzerdefinierten Eigenschaften für Benutzer in
-                dieser Organisation. Diese können für personenbasierte
-                Überprüfungen verwendet werden.
+                Personeneigenschaften werden einzelnen Nutzern der Organisation
+                zugewiesen und können später z. B. für Filter oder
+                Datenprüfungen verwendet werden.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -733,11 +734,11 @@ export default function OrganizationManagePage() {
             <CardHeader>
               <CardTitle id="users-heading">Benutzer</CardTitle>
               <CardDescription>
-                Verwalte Benutzer und ihre Rollen in dieser Organisation
+                Benutzer einladen, entfernen und zugewiesene Rollen verwalten.
               </CardDescription>
               <CardAction>
                 <Button onClick={() => setIsInviteModalOpen(true)}>
-                  {helperPlural} einladen
+                  Benutzer einladen
                 </Button>
               </CardAction>
             </CardHeader>

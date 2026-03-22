@@ -9,6 +9,7 @@ import {
   updateOrganizationBankAccountAction,
   deleteOrganizationBankAccountAction,
 } from '@/features/settings/organization-action';
+import { queryKeys as organizationQueryKeys } from '@/features/organization/queryKeys';
 import { useOrganizationBankAccounts } from '@/features/organization/hooks/use-organization-queries';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
@@ -50,7 +51,7 @@ export function OrganizationBankAccounts({
     mutationFn: createOrganizationBankAccountAction,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['org-bank-accounts', organizationId],
+        queryKey: organizationQueryKeys.bankAccounts(organizationId),
       });
       toast.success('Bankkonto erfolgreich hinzugefügt!');
       resetForm();
@@ -64,7 +65,7 @@ export function OrganizationBankAccounts({
     mutationFn: updateOrganizationBankAccountAction,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['org-bank-accounts', organizationId],
+        queryKey: organizationQueryKeys.bankAccounts(organizationId),
       });
       toast.success('Bankkonto erfolgreich aktualisiert!');
       resetForm();
@@ -79,7 +80,7 @@ export function OrganizationBankAccounts({
       deleteOrganizationBankAccountAction(id, organizationId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['org-bank-accounts', organizationId],
+        queryKey: organizationQueryKeys.bankAccounts(organizationId),
       });
       toast.success('Bankkonto erfolgreich gelöscht!');
     },
