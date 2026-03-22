@@ -26,7 +26,7 @@ h1 {
   @apply text-2xl leading-relaxed font-semibold tracking-tight;
 }
 
-button:not(:disabled) {
+button:where(:not(:disabled)) {
   @apply cursor-pointer;
 }
 
