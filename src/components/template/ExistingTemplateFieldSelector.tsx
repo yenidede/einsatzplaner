@@ -14,17 +14,21 @@ import {
 interface ExistingTemplateFieldSelectorProps {
   candidates: TemplateFieldReuseCandidate[];
   isLoading: boolean;
+  isError: boolean;
   isConnecting: boolean;
   onBack: () => void;
   onConnect: (fieldId: string) => void;
+  onRetry: () => void;
 }
 
 export function ExistingTemplateFieldSelector({
   candidates,
   isLoading,
+  isError,
   isConnecting,
   onBack,
   onConnect,
+  onRetry,
 }: ExistingTemplateFieldSelectorProps) {
   const [searchValue, setSearchValue] = useState('');
   const normalizedSearchValue =
@@ -68,6 +72,20 @@ export function ExistingTemplateFieldSelector({
         {isLoading ? (
           <div className="text-muted-foreground rounded-md border border-dashed px-4 py-8 text-center text-sm">
             Bestehende Felder werden geladen…
+          </div>
+        ) : isError ? (
+          <div className="space-y-3 rounded-md border border-dashed px-4 py-8 text-center text-sm">
+            <p className="text-destructive">
+              Bestehende Felder konnten nicht geladen werden.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onRetry}
+              disabled={isConnecting}
+            >
+              Erneut versuchen
+            </Button>
           </div>
         ) : filteredCandidates.length === 0 ? (
           <div className="text-muted-foreground rounded-md border border-dashed px-4 py-8 text-center text-sm">
