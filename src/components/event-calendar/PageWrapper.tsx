@@ -70,6 +70,18 @@ export default function CalendarPageWrapper({
       : (activeOrg?.helferansicht_description ??
         `Hier sehen Sie alle ${einsatz_plural}. Bitte tragen Sie sich für die Termine ein, an denen Sie verfügbar sind.`);
 
+  const activeOrgName =
+    activeOrg?.name ??
+    permissionSession?.user?.activeOrganization?.name ??
+    session?.user?.activeOrganization?.name ??
+    null;
+
+  const pageTitle =
+    mode === 'verwaltung' ? 'Verwaltungsansicht' : `${helper_plural}ansicht`;
+  const pageTitleWithOrg = activeOrgName
+    ? `${pageTitle} (${activeOrgName})`
+    : pageTitle;
+
   if (isLoading) {
     return <div>Lade Berechtigungen...</div>;
   }
@@ -82,11 +94,7 @@ export default function CalendarPageWrapper({
 
   return (
     <>
-      <h1 className="leading-relaxed">
-        {mode === 'verwaltung'
-          ? `Verwaltungsansicht`
-          : `${helper_plural}ansicht`}
-      </h1>
+      <h1 className="leading-relaxed">{pageTitleWithOrg}</h1>
       <p className="text-muted-foreground leading-6">{descriptionText}</p>
       <div className="mt-6">
         <Calendar mode={mode} />

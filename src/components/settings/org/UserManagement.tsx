@@ -192,7 +192,7 @@ export function UsersManagementSection({
 
       {canInviteUsers && (
         <div className="mt-2">
-          <Button onClick={onInviteClick}>{helper_plural} einladen</Button>
+          <Button onClick={onInviteClick}>Benutzer einladen</Button>
         </div>
       )}
     </div>

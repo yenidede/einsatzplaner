@@ -286,14 +286,14 @@ export function OrganizationDefaultValues({
                 className="max-w-[200px]"
                 value={newValue}
                 onChange={(e) => setNewValue(e.target.value)}
-                placeholder="Name der Kategorie"
+                placeholder="Dauerausstellung"
                 aria-label="Neue Kategorie Name"
               />
               <Input
                 className="max-w-[120px]"
                 value={newAbbreviation}
                 onChange={(e) => setNewAbbreviation(e.target.value)}
-                placeholder="Kürzel (optional)"
+                placeholder="DA"
                 aria-label="Neue Kategorie Kürzel"
               />
               <Button
