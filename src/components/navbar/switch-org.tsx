@@ -70,7 +70,7 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
     >
       <SelectTrigger
         className={cn(
-          'w-46 max-md:w-auto max-md:min-w-0',
+          'w-46 min-w-0 max-md:w-auto max-md:min-w-0',
           organizations.length <= 1 && 'max-md:hidden'
         )}
       >
