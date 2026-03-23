@@ -13,6 +13,7 @@ import {
 import { getCommonPinningStyles } from '@/components/data-table/lib/data-table';
 import { cn } from '@/lib/utils';
 import { DataTableSkeleton } from '../components/data-table-skeleton';
+import { Button } from '@/components/ui/button';
 
 interface DataTableProps<TData> extends React.ComponentProps<'div'> {
   table: TanstackTable<TData>;
@@ -101,12 +102,12 @@ export function DataTable<TData>({
                         className="h-24 text-center"
                       >
                         Keine Suchergebnisse.{' '}
-                        <a
-                          className="cursor-pointer underline"
+                        <Button
+                          variant="link"
                           onClick={() => table.resetColumnFilters()}
                         >
                           Filter zurücksetzen.
-                        </a>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   )}

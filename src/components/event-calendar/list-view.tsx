@@ -87,7 +87,6 @@ function getCustomFieldFilterVariant(
     case 'currency':
       return 'range';
     case 'date':
-    case 'datetime':
       return 'dateRange';
     case 'boolean':
     case 'select':
@@ -108,15 +107,6 @@ function formatCustomFieldValue(
   if (datatype === 'boolean') {
     if (value === 'true') return 'Ja';
     if (value === 'false') return 'Nein';
-  }
-
-  if (value instanceof Date) {
-    return formatDate(
-      value,
-      datatype === 'datetime'
-        ? { hour: '2-digit', minute: '2-digit' }
-        : undefined
-    );
   }
 
   return String(value);
