@@ -1,5 +1,4 @@
 import { flexRender, type Table as TanstackTable } from '@tanstack/react-table';
-import { useCallback, useRef } from 'react';
 import type * as React from 'react';
 
 import { DataTablePagination } from '@/components/data-table/components/data-table-pagination';
@@ -29,88 +28,44 @@ export function DataTable<TData>({
   isLoading = false,
   ...props
 }: DataTableProps<TData>) {
-  const headerScrollRef = useRef<HTMLDivElement | null>(null);
-  const bodyScrollRef = useRef<HTMLDivElement | null>(null);
-  const isSyncingScrollRef = useRef(false);
-
-  const syncHorizontalScroll = useCallback(
-    (source: 'header' | 'body') => {
-      const headerElement = headerScrollRef.current;
-      const bodyElement = bodyScrollRef.current;
-
-      if (!headerElement || !bodyElement || isSyncingScrollRef.current) {
-        return;
-      }
-
-      isSyncingScrollRef.current = true;
-
-      if (source === 'body') {
-        headerElement.scrollLeft = bodyElement.scrollLeft;
-      } else {
-        bodyElement.scrollLeft = headerElement.scrollLeft;
-      }
-
-      requestAnimationFrame(() => {
-        isSyncingScrollRef.current = false;
-      });
-    },
-    []
-  );
-
   return (
-    <div
-      className={cn('flex w-full flex-col gap-2.5', className)}
-      {...props}
-    >
+    <div className={cn('flex w-full flex-col gap-2.5', className)} {...props}>
       {children}
       <div className="rounded-md border">
         {isLoading ? (
           <DataTableSkeleton columnCount={8} />
         ) : (
           <>
-            <div className="bg-background sticky top-0 z-40 border-b shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
-              <div
-                ref={headerScrollRef}
-                onScroll={() => syncHorizontalScroll('header')}
-                className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              >
-                <Table className="min-w-full w-max">
-                  <TableHeader>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                          <TableHead
-                            key={header.id}
-                            colSpan={header.colSpan}
-                            className={cn(
-                              header.column.getIsPinned() && 'bg-background'
-                            )}
-                            style={{
-                              ...getCommonPinningStyles({
-                                column: header.column,
-                              }),
-                            }}
-                          >
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                </Table>
-              </div>
-            </div>
-            <div
-              ref={bodyScrollRef}
-              onScroll={() => syncHorizontalScroll('body')}
-              className="bg-background max-h-[70svh] overflow-auto"
-            >
-              <Table className="min-w-full w-max">
+            <div className="bg-background max-h-[70svh] overflow-auto">
+              <Table className="w-max min-w-full">
+                <TableHeader className="bg-background sticky top-0 z-50 border-b shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          colSpan={header.colSpan}
+                          className="bg-background"
+                          style={{
+                            ...getCommonPinningStyles({
+                              column: header.column,
+                              withBorder: true,
+                            }),
+                            top: 0,
+                            zIndex: header.column.getIsPinned() ? 60 : 50,
+                          }}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
                 <TableBody>
                   {table.getRowModel().rows?.length ? (
                     table.getRowModel().rows.map((row) => (
