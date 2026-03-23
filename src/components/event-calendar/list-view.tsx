@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { DataTable } from '@/components/data-table/components/data-table';
 import { DataTableAdvancedToolbar } from '@/components/data-table/components/data-table-advanced-toolbar';
@@ -93,13 +93,12 @@ export function ListView({
   mode,
 }: ListViewProps) {
   const [pageCount, setPageCount] = useState(0);
-  const [isTableReady, setIsTableReady] = useState(false);
 
-  const { data: userSession } = useSession();
+  const { data: userSession, status: sessionStatus } = useSession();
   const activeOrgId = userSession?.user?.activeOrganization?.id;
   const userOrgIds = userSession?.user?.orgIds ?? [];
 
-  const { data, isLoading } = useEinsaetzeTableView(userOrgIds);
+  const { data, isLoading, isFetched } = useEinsaetzeTableView(userOrgIds);
   const { data: statusData, isLoading: isStatusLoading } = useStatuses();
   const { data: organizations } = useOrganizations(userOrgIds);
   const { data: templatesData, isLoading: areTemplatesLoading } =
@@ -116,6 +115,7 @@ export function ListView({
 
   const isSomeQueryLoading = useMemo(() => {
     return (
+      sessionStatus === 'loading' ||
       isLoading ||
       isStatusLoading ||
       areTemplatesLoading ||
@@ -123,6 +123,7 @@ export function ListView({
       isCategoriesLoading
     );
   }, [
+    sessionStatus,
     isLoading,
     isStatusLoading,
     areTemplatesLoading,
@@ -418,11 +419,6 @@ export function ListView({
     },
   });
 
-  const rowModelRows = table.getRowModel().rows;
-  useEffect(() => {
-    setIsTableReady(true);
-  }, [rowModelRows]);
-
   if (data instanceof Response) {
     console.error('Error Response in ListView:', data);
     return (
@@ -448,16 +444,19 @@ export function ListView({
     );
   }
 
-  if (!isTableReady) {
+  if (
+    sessionStatus !== 'loading' &&
+    isFetched &&
+    !isSomeQueryLoading &&
+    tableData.length === 0
+  ) {
     return (
       <div className="flex flex-col items-baseline justify-start gap-4 px-4 py-6">
         <div>
-          <h2 className="font-bold">
-            Es wurden noch keine Datensätze angelegt.{' '}
-          </h2>
+          <h2 className="font-bold">Es sind noch keine Datensätze vorhanden.</h2>
           <p>
-            Falls Sie glauben, dass ein Fehler vorliegt, wenden Sie sich bitte
-            an Ihre Administration.
+            Legen Sie den ersten Datensatz an, um die Tabellenansicht zu
+            verwenden.
           </p>
         </div>
         <Button
