@@ -315,19 +315,31 @@ export async function getEinsaetzeForTableView(
   const { session } = await requireAuth();
 
   const userOrgIds = session.user.orgIds;
-  const allowedOrgIds =
+  const memberOrgIds =
     active_org_ids.length > 0
       ? active_org_ids.filter((orgId) => userOrgIds.includes(orgId))
       : userOrgIds;
 
-  if (allowedOrgIds.length === 0) {
+  if (memberOrgIds.length === 0) {
+    return [];
+  }
+
+  const readableOrgIds = (
+    await Promise.all(
+      memberOrgIds.map(async (orgId) =>
+        (await hasPermission(session, 'einsaetze:read', orgId)) ? orgId : null
+      )
+    )
+  ).filter((orgId): orgId is string => orgId !== null);
+
+  if (readableOrgIds.length === 0) {
     return [];
   }
 
   const einsaetzeFromDb = await prisma.einsatz.findMany({
     where: {
       org_id: {
-        in: allowedOrgIds,
+        in: readableOrgIds,
       },
     },
     include: {
@@ -466,7 +478,7 @@ export async function getEinsaetzeForTableView(
  * Builds custom-field values and metadata for the list view.
  *
  * @param fields - Custom field entries including field metadata such as name, group name, and datatype
- * @returns An object containing the flattened custom-field values keyed by `field_id` and the metadata needed to render matching columns
+ * @returns An object containing the flattened custom-field values keyed by a formatted field-name key and the metadata needed to render matching columns
  */
 function mapCustomFields(
   fields: Array<{
@@ -486,27 +498,16 @@ function mapCustomFields(
   customFields: Record<string, string | null>;
   customFieldMeta: EinsatzListCustomFieldMeta[];
 } {
-  const labelCounts = new Map<string, number>();
   const customFields: Record<string, string | null> = {};
   const customFieldMeta: EinsatzListCustomFieldMeta[] = [];
 
   for (const fieldEntry of fields) {
     const groupName = fieldEntry.field.group_name?.trim() || null;
     const fieldName = fieldEntry.field.name?.trim() || null;
-    const baseLabel =
-      fieldName && groupName
-        ? `${fieldName} (${groupName})`
-        : fieldName ?? (groupName ? `Eigenes Feld (${groupName})` : 'Eigenes Feld');
-    const duplicateLabelCount = labelCounts.get(baseLabel) ?? 0;
     const label =
-      duplicateLabelCount === 0
-        ? baseLabel
-        : groupName
-          ? `${baseLabel} ${duplicateLabelCount + 1}`
-          : `Eigenes Feld ${duplicateLabelCount + 1}`;
-    const key = `customField_${fieldEntry.field_id}`;
+      fieldName ?? (groupName ? `Eigenes Feld (${groupName})` : 'Eigenes Feld');
+    const key = formatCustomFieldKey(label);
 
-    labelCounts.set(baseLabel, duplicateLabelCount + 1);
     customFields[key] = fieldEntry.value;
     customFieldMeta.push({
       key,
@@ -517,6 +518,24 @@ function mapCustomFields(
   }
 
   return { customFields, customFieldMeta };
+}
+
+/**
+ * Formats a custom field key by normalizing the label and replacing special characters.
+ *
+ * @param label - The label to format
+ * @returns The formatted custom field key
+ */
+function formatCustomFieldKey(label: string): string {
+  const normalizedLabel = label
+    .normalize('NFKD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return `cf-${normalizedLabel || 'eigenes-feld'}`;
 }
 
 /**
