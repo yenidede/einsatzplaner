@@ -28,12 +28,16 @@ export function DataTableViewOptions<TData>({
 }: DataTableViewOptionsProps<TData>) {
   const [searchValue, setSearchValue] = React.useState('');
 
-  const columns = table
-    .getAllLeafColumns()
-    .filter(
-      (column) =>
-        typeof column.accessorFn !== 'undefined' && column.getCanHide()
-    );
+  const columns = React.useMemo(
+    () =>
+      table
+        .getAllLeafColumns()
+        .filter(
+          (column) =>
+            typeof column.accessorFn !== 'undefined' && column.getCanHide()
+        ),
+    [table]
+  );
 
   const filteredColumns = React.useMemo(() => {
     const normalizedSearchValue = searchValue.trim().toLocaleLowerCase('de');
