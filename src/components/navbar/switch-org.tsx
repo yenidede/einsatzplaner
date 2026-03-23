@@ -18,6 +18,14 @@ type Props = {
   organizations: OrganizationBasicVisualize[];
 };
 
+/**
+ * Render a dropdown to switch the user's active organization.
+ *
+ * Selecting an organization updates the session and persistent user record, shows a success toast on success, and restores the previous selection if an error occurs.
+ *
+ * @param organizations - Array of available organizations to display in the dropdown
+ * @returns The Select component that controls and displays the user's active organization
+ */
 export function NavSwitchOrgSelect({ organizations }: Props) {
   const { update: updateSession, data: session } = useSession();
   const [activeOrgId, setActiveOrgId] = React.useState<string>('');
@@ -70,7 +78,7 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
     >
       <SelectTrigger
         className={cn(
-          'w-46 min-w-0 max-md:w-auto max-md:min-w-0',
+          'w-46 min-w-0 text-left [&>span]:text-left max-md:w-auto max-md:min-w-0',
           organizations.length <= 1 && 'max-md:hidden'
         )}
       >

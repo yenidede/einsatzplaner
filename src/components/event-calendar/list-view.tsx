@@ -1,42 +1,71 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { DataTable } from '@/components/data-table/components/data-table';
 import { DataTableAdvancedToolbar } from '@/components/data-table/components/data-table-advanced-toolbar';
+import { DataTableFilterMenu } from '@/components/data-table/components/data-table-filter-menu';
 import { DataTableSortList } from '@/components/data-table/components/data-table-sort-list';
 import { useDataTable } from '@/components/data-table/hooks/use-data-table';
-
+import {
+  byOperator,
+  byOperatorUseMetaField,
+} from '@/components/data-table/lib/filter-fns';
+import { formatDate } from '@/components/data-table/lib/format';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-import type { ETV } from '@/features/einsatz/types';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { cn } from '@/lib/utils';
 import { useEinsaetzeTableView } from '@/features/einsatz/hooks/useEinsatzQueries';
+import type {
+  EinsatzListCustomFieldMeta,
+  EinsatzListItem,
+} from '@/features/einsatz/types';
+import { useCategoriesByOrgIds } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useStatuses } from '@/features/einsatz_status/hooks/useStatuses';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useTemplatesByOrgIds } from '@/features/template/hooks/use-template-queries';
 import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
-import { useCategoriesByOrgIds } from '@/features/einsatz/hooks/useEinsatzQueries';
-import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
-import { Checkbox } from '../ui/checkbox';
-import { CalendarMode } from './types';
-import { getBadgeColorClassByStatus, getStatusByMode } from './utils';
-import { Badge } from '../ui/badge';
-import { cn } from '@/lib/utils';
-import { DataTableFilterMenu } from '../data-table/components/data-table-filter-menu';
-import {
-  byOperator,
-  byOperatorUseMetaField,
-} from '../data-table/lib/filter-fns';
-import { formatDate } from '../data-table/lib/format';
-import { Button } from '../ui/button';
+import { createColumnHelper } from '@tanstack/react-table';
 import { MoreHorizontal } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+
+import { CalendarMode } from './types';
+import { getBadgeColorClassByStatus, getStatusByMode } from './utils';
+
+/**
+ * Selects the displayed status text for a list row based on the calendar mode.
+ *
+ * @param row - The list item containing status text fields
+ * @param mode - Calendar mode; when `'helper'` the helper-specific status text is used
+ * @returns `row.status_helper_text` when `mode` is `'helper'`, otherwise `row.status_verwalter_text`
+ */
+function getStatusLabel(row: EinsatzListItem, mode: CalendarMode): string {
+  return mode === 'helper' ? row.status_helper_text : row.status_verwalter_text;
+}
+
+/**
+ * Formats a category label by combining the category name with an optional abbreviation.
+ *
+ * @param value - The category name (may include surrounding whitespace)
+ * @param abbreviation - The category abbreviation (may include surrounding whitespace)
+ * @returns The trimmed category name followed by ` (abbreviation)` if `abbreviation` is non-empty after trimming, otherwise the trimmed category name
+ */
+function formatCategoryLabel(value: string, abbreviation: string): string {
+  const trimmedValue = value.trim();
+  const trimmedAbbreviation = abbreviation.trim();
+
+  return trimmedAbbreviation
+    ? `${trimmedValue} (${trimmedAbbreviation})`
+    : trimmedValue;
+}
 
 type ListViewProps = {
   onEventEdit: (eventId: string) => void;
@@ -46,6 +75,16 @@ type ListViewProps = {
   mode: CalendarMode;
 };
 
+/**
+ * Render the Einsätze list view: a data table with columns, filters, sorting, dynamic custom-field columns and per-row actions.
+ *
+ * @param onEventEdit - Callback invoked with an event id when a row's "Bearbeiten" action is selected.
+ * @param onEventCreate - Callback invoked with a start date when the "Datensatz anlegen" button is pressed.
+ * @param onEventDelete - Callback invoked with an event id and title when a row's "Löschen" action is selected.
+ * @param onMultiEventDelete - Callback for deleting multiple events (declared but not used in this component).
+ * @param mode - Calendar mode that determines which status text is shown for each row.
+ * @returns A React element displaying the table, advanced toolbar (filters and sort list), and per-row action menu.
+ */
 export function ListView({
   onEventEdit,
   onEventCreate,
@@ -61,33 +100,19 @@ export function ListView({
   const userOrgIds = userSession?.user?.orgIds ?? [];
 
   const { data, isLoading } = useEinsaetzeTableView(userOrgIds);
-
   const { data: statusData, isLoading: isStatusLoading } = useStatuses();
-
   const { data: organizations } = useOrganizations(userOrgIds);
+  const { data: templatesData, isLoading: areTemplatesLoading } =
+    useTemplatesByOrgIds(userOrgIds);
+  const { data: usersData, isLoading: isUsersLoading } =
+    useUsersByOrgIds(userOrgIds);
+  const { data: categoriesData, isLoading: isCategoriesLoading } =
+    useCategoriesByOrgIds(userOrgIds);
 
   const { einsatz_singular, helper_plural } = useOrganizationTerminology(
     organizations,
     activeOrgId
   );
-
-  // const { data: organizationsData, isLoading: isOrganizationsLoading } =
-  //   useQuery({
-  //     queryKey: organizationQueryKeys.organizations(userOrgIds),
-  //     queryFn: () => getOrganizationsByIds(userOrgIds),
-  //     enabled: userOrgIds.length > 0,
-  //   });
-
-  const { data: templatesData, isLoading: areTemplatesLoading } =
-    useTemplatesByOrgIds(userOrgIds);
-
-  const { data: usersData, isLoading: isUsersLoading } =
-    useUsersByOrgIds(userOrgIds);
-
-  const { data: categoriesData, isLoading: isCategoriesLoading } =
-    useCategoriesByOrgIds(userOrgIds);
-
-  // Ensure data is defined before accessing its elements
 
   const isSomeQueryLoading = useMemo(() => {
     return (
@@ -105,11 +130,28 @@ export function ListView({
     isCategoriesLoading,
   ]);
 
-  const columnHelper = createColumnHelper<ETV>();
+  const tableData = Array.isArray(data) ? data : [];
 
-  // Note: Don't constrain ColumnDef's value generic to unknown; let each accessor infer (string, boolean, etc.).
-  const columns = React.useMemo<ColumnDef<ETV, any>[]>(
-    () => [
+  const customFieldMeta = useMemo<EinsatzListCustomFieldMeta[]>(() => {
+    const metaByKey = new Map<string, EinsatzListCustomFieldMeta>();
+
+    for (const einsatz of tableData) {
+      for (const fieldMeta of einsatz.custom_field_meta) {
+        if (!metaByKey.has(fieldMeta.key)) {
+          metaByKey.set(fieldMeta.key, fieldMeta);
+        }
+      }
+    }
+
+    return Array.from(metaByKey.values()).sort((a, b) =>
+      a.label.localeCompare(b.label, 'de')
+    );
+  }, [tableData]);
+
+  const columnHelper = createColumnHelper<EinsatzListItem>();
+
+  const columns = useMemo(() => {
+    const staticColumns = [
       columnHelper.display({
         id: 'select',
         size: 40,
@@ -146,45 +188,41 @@ export function ListView({
           placeholder: `Nach ${einsatz_singular} suchen...`,
         },
       }),
-      columnHelper.accessor(
-        (row) => getStatusByMode(row.einsatz_status, mode)?.text ?? '-',
-        {
-          id: 'status',
-          header: 'Status',
-          cell: (row) => (
-            <Badge
-              variant="default"
-              className={cn(
-                'capitalize',
-                getBadgeColorClassByStatus(row.getValue(), mode)
-              )}
-            >
-              {getStatusByMode(row.getValue(), mode)?.text ?? '-'}
-            </Badge>
-          ),
-          enableColumnFilter: true,
-          filterFn: byOperator,
-          meta: {
-            label: 'Status',
-            variant: 'multiSelect',
-            options:
-              statusData?.reduce(
-                (acc, status) => {
-                  const label = getStatusByMode(status, mode)?.text ?? '-';
-                  // labels shouldnt be duplicate, if not already exists add to list
-                  if (!acc.some((item) => item.label === label)) {
-                    acc.push({
-                      label,
-                      value: label, // label cause for some modes there isnt a difference between different values
-                    });
-                  }
-                  return acc;
-                },
-                [] as { label: string; value: string }[]
-              ) ?? [],
-          },
-        }
-      ),
+      columnHelper.accessor((row) => getStatusLabel(row, mode), {
+        id: 'status',
+        header: 'Status',
+        cell: (row) => (
+          <Badge
+            variant="default"
+            className={cn(
+              'capitalize',
+              getBadgeColorClassByStatus(row.getValue(), mode)
+            )}
+          >
+            {row.getValue() ?? '-'}
+          </Badge>
+        ),
+        enableColumnFilter: true,
+        filterFn: byOperator,
+        meta: {
+          label: 'Status',
+          variant: 'multiSelect',
+          options:
+            statusData?.reduce(
+              (acc, status) => {
+                const label = getStatusByMode(status, mode)?.text ?? '-';
+                if (!acc.some((item) => item.label === label)) {
+                  acc.push({
+                    label,
+                    value: label,
+                  });
+                }
+                return acc;
+              },
+              [] as { label: string; value: string }[]
+            ) ?? [],
+        },
+      }),
       columnHelper.accessor((row) => row.start, {
         id: 'start',
         header: 'Start Datum',
@@ -202,57 +240,52 @@ export function ListView({
           filterField: 'start',
         },
       }),
-      columnHelper.accessor(
-        (row) =>
-          `${row.user?.firstname ?? ''} ${row.user?.lastname ?? ''}`.trim(),
-        {
-          id: 'created_by',
-          header: 'Erstellt von',
-          cell: (props) => props.getValue(),
-          enableColumnFilter: true,
-          filterFn: byOperatorUseMetaField,
-          meta: {
-            label: 'Erstellt von',
-            variant: 'multiSelect',
-            filterField: 'user.id',
-            options:
-              usersData
-                ?.map((user) => ({
-                  label: `${user.firstname} ${user.lastname}`.trim(),
-                  value: user.id,
-                }))
-                // sort by display name
-                .sort((a, b) => a.label.localeCompare(b.label)) ?? [],
-          },
-        }
-      ),
-      columnHelper.accessor(
-        (row) =>
-          `${row.einsatz_categories
-            .map((cat) => cat.abbreviation)
-            .join(', ')}`.trim(),
-        {
-          id: 'categories',
-          header: 'Kategorien',
-          cell: (props) => props.getValue(),
-          enableColumnFilter: false,
-          filterFn: byOperatorUseMetaField,
-          meta: {
-            label: 'Kategorien',
-            variant: 'multiSelect',
-            filterField: 'einsatz_categories.id',
-            options:
-              categoriesData
-                ?.map((cat) => ({
-                  label: `${cat.value} (${cat.abbreviation})`,
-                  value: cat.id,
-                }))
-                // sort by display name
-                .sort((a, b) => a.label.localeCompare(b.label)) ?? [],
-          },
-        }
-      ),
-      columnHelper.accessor((row) => `${row.einsatz_helper.length}`, {
+      columnHelper.accessor((row) => row.created_by_name ?? '-', {
+        id: 'created_by_name',
+        header: 'Erstellt von',
+        cell: (props) => props.getValue(),
+        enableColumnFilter: true,
+        filterFn: byOperatorUseMetaField,
+        meta: {
+          label: 'Erstellt von',
+          variant: 'multiSelect',
+          filterField: 'created_by',
+          options:
+            usersData
+              ?.map((user) => ({
+                label: `${user.firstname} ${user.lastname}`.trim(),
+                value: user.id,
+              }))
+              .sort((a, b) => a.label.localeCompare(b.label, 'de')) ?? [],
+        },
+      }),
+      columnHelper.accessor((row) => row.category_display, {
+        id: 'categories',
+        header: 'Kategorien',
+        cell: (props) => props.getValue() || '-',
+        enableColumnFilter: true,
+        filterFn: byOperatorUseMetaField,
+        meta: {
+          label: 'Kategorien',
+          variant: 'multiSelect',
+          filterField: 'category_labels',
+          options:
+            categoriesData
+              ?.map((category) => {
+                const label = formatCategoryLabel(
+                  category.value,
+                  category.abbreviation
+                );
+
+                return {
+                  label,
+                  value: label,
+                };
+              })
+              .sort((a, b) => a.label.localeCompare(b.label, 'de')) ?? [],
+        },
+      }),
+      columnHelper.accessor((row) => row.helper_count, {
         id: 'helper_count',
         header: `Anzahl ${helper_plural}`,
         cell: (props) => props.getValue(),
@@ -263,83 +296,113 @@ export function ListView({
           variant: 'range',
         },
       }),
-      columnHelper.accessor((row) => `${row.einsatz_template?.name}`.trim(), {
-        id: 'template',
+      columnHelper.accessor((row) => row.template_name ?? '-', {
+        id: 'template_name',
         header: 'Vorlage',
-        cell: (props) => props.getValue(),
+        cell: (props) => props.getValue() || '-',
         enableColumnFilter: true,
         filterFn: byOperatorUseMetaField,
         meta: {
           label: 'Vorlage',
           variant: 'multiSelect',
-          filterField: 'einsatz_template.id',
+          filterField: 'template_id',
           options:
             templatesData
-              ?.filter((t) => t.name)
+              ?.filter((template) => template.name)
               .map((template) => ({
                 label: template.name?.trim() ?? '-',
                 value: template.id,
               }))
-              // sort by display name
-              .sort((a, b) => a.label.localeCompare(b.label)) ?? [],
+              .sort((a, b) => a.label.localeCompare(b.label, 'de')) ?? [],
         },
       }),
-      columnHelper.display({
-        id: 'actions',
-        size: 40,
-        cell: function Cell(props) {
-          return (
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Aktionsmenü öffnen</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => onEventEdit(props.row.original.id)}
-                  >
-                    Bearbeiten
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() =>
-                      onEventDelete(
-                        props.row.original.id,
-                        props.row.original.title
-                      )
-                    }
-                  >
-                    Löschen
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          );
+      columnHelper.accessor((row) => row.helper_display, {
+        id: 'helper_display',
+        header: helper_plural,
+        cell: (props) => props.getValue() || '-',
+        enableColumnFilter: true,
+        filterFn: byOperator,
+        meta: {
+          label: helper_plural,
+          variant: 'text',
+          placeholder: `Nach ${helper_plural} suchen...`,
         },
-        enableColumnFilter: false,
       }),
-    ],
-    [
-      columnHelper,
-      einsatz_singular,
-      statusData,
-      usersData,
-      categoriesData,
-      helper_plural,
-      templatesData,
-      mode,
-      onEventEdit,
-      onEventDelete,
-    ]
-  );
+    ];
+
+    const dynamicColumns = customFieldMeta.map(
+      (fieldMeta) =>
+        columnHelper.accessor((row) => row.custom_fields[fieldMeta.key] ?? '', {
+          id: fieldMeta.key,
+          header: fieldMeta.label,
+          cell: (props) => props.getValue() || '-',
+          enableColumnFilter: true,
+          filterFn: byOperator,
+          meta: {
+            label: fieldMeta.label,
+            variant: 'text',
+            placeholder: `Nach ${fieldMeta.label} suchen...`,
+          },
+        })
+    );
+
+    const actionColumn = columnHelper.display({
+      id: 'actions',
+      size: 40,
+      cell: function Cell(props) {
+        return (
+          <div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">Aktionsmenü öffnen</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => onEventEdit(props.row.original.id)}
+                >
+                  Bearbeiten
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() =>
+                    onEventDelete(
+                      props.row.original.id,
+                      props.row.original.title
+                    )
+                  }
+                >
+                  Löschen
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+      enableColumnFilter: false,
+    });
+
+    return [...staticColumns, ...dynamicColumns, actionColumn];
+  }, [
+    categoriesData,
+    columnHelper,
+    customFieldMeta,
+    einsatz_singular,
+    helper_plural,
+    mode,
+    onEventDelete,
+    onEventEdit,
+    statusData,
+    templatesData,
+    usersData,
+  ]);
 
   const { table } = useDataTable({
-    data: Array.isArray(data) ? data : [],
-    columns: columns,
-    rowCount: Array.isArray(data) ? data.length : 0,
+    data: tableData,
+    columns,
+    rowCount: tableData.length,
     pageCount,
     initialState: {
       sorting: [
@@ -357,7 +420,6 @@ export function ListView({
 
   const rowModelRows = table.getRowModel().rows;
   useEffect(() => {
-    // run after table rows are computed
     setIsTableReady(true);
   }, [rowModelRows]);
 
@@ -402,7 +464,6 @@ export function ListView({
           variant="default"
           onClick={() => {
             const now = new Date();
-            // round to 15 minutes
             const roundedDate = new Date(
               Math.ceil(now.getTime() / (15 * 60 * 1000)) * (15 * 60 * 1000)
             );
@@ -418,7 +479,6 @@ export function ListView({
   return (
     <DataTable table={table} isLoading={isSomeQueryLoading}>
       <DataTableAdvancedToolbar table={table}>
-        {/* "key" changes to make sure ui updates when everything is loaded */}
         <DataTableFilterMenu
           setPageCount={setPageCount}
           key={String(!isSomeQueryLoading)}
