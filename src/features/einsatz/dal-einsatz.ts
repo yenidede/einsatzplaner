@@ -309,12 +309,19 @@ export async function getEinsaetzeForTableView(
   const { session } = await requireAuth();
 
   const userOrgIds = session.user.orgIds;
-  const filterOrgIds = active_org_ids ? active_org_ids : userOrgIds;
+  const allowedOrgIds =
+    active_org_ids.length > 0
+      ? active_org_ids.filter((orgId) => userOrgIds.includes(orgId))
+      : userOrgIds;
+
+  if (allowedOrgIds.length === 0) {
+    return [];
+  }
 
   const einsaetzeFromDb = await prisma.einsatz.findMany({
     where: {
       org_id: {
-        in: filterOrgIds,
+        in: allowedOrgIds,
       },
     },
     include: {
@@ -440,7 +447,7 @@ export async function getEinsaetzeForTableView(
       category_display: categoryLabels.join(', '),
       helper_names: helperNames,
       helper_display: helperNames.join(', '),
-      helper_count: helperUsers.length,
+      helper_count: einsatz._count?.einsatz_helper ?? einsatz.einsatz_helper.length,
       custom_fields: customFields,
       custom_field_meta: customFieldMeta,
     };
@@ -467,7 +474,6 @@ function mapCustomFields(
   customFields: Record<string, string | null>;
   customFieldMeta: EinsatzListCustomFieldMeta[];
 } {
-  const keyCounts = new Map<string, number>();
   const labelCounts = new Map<string, number>();
   const customFields: Record<string, string | null> = {};
   const customFieldMeta: EinsatzListCustomFieldMeta[] = [];
@@ -486,12 +492,8 @@ function mapCustomFields(
         : groupName
           ? `${baseLabel} ${duplicateLabelCount + 1}`
           : `Eigenes Feld ${duplicateLabelCount + 1}`;
-    const baseKey = fieldName && groupName ? `${fieldName} (${groupName})` : baseLabel;
-    const duplicateCount = keyCounts.get(baseKey) ?? 0;
-    const key =
-      duplicateCount === 0 ? baseKey : `${baseKey} [${fieldEntry.field_id}]`;
+    const key = `customField_${fieldEntry.field_id}`;
 
-    keyCounts.set(baseKey, duplicateCount + 1);
     labelCounts.set(baseLabel, duplicateLabelCount + 1);
     customFields[key] = fieldEntry.value;
     customFieldMeta.push({
