@@ -375,18 +375,20 @@ export async function getEinsaetzeForTableView(
   });
 
   const mapped: EinsatzListItem[] = einsaetzeFromDb.map((einsatz) => {
-    const helperNames = Array.from(
-      new Set(
-        einsatz.einsatz_helper
-          .map((helper) =>
-            [helper.user.firstname, helper.user.lastname]
-              .filter((value): value is string => Boolean(value))
-              .join(' ')
-              .trim()
-          )
-          .filter((name) => name.length > 0)
-      )
+    const helperUsers = Array.from(
+      new Map(
+        einsatz.einsatz_helper.map((helper) => [helper.user.id, helper.user])
+      ).values()
     );
+
+    const helperNames = helperUsers
+      .map((helper) =>
+        [helper.firstname, helper.lastname]
+          .filter((value): value is string => Boolean(value))
+          .join(' ')
+          .trim()
+      )
+      .filter((name) => name.length > 0);
 
     const categoryLabels = Array.from(
       new Set(
@@ -438,7 +440,7 @@ export async function getEinsaetzeForTableView(
       category_display: categoryLabels.join(', '),
       helper_names: helperNames,
       helper_display: helperNames.join(', '),
-      helper_count: helperNames.length,
+      helper_count: helperUsers.length,
       custom_fields: customFields,
       custom_field_meta: customFieldMeta,
     };
