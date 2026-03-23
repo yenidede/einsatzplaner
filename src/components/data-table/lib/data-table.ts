@@ -38,7 +38,6 @@ export function getCommonPinningStyles<TData>({
     position: isPinned ? 'sticky' : 'relative',
     marginLeft: isPinned === 'left' ? '-2px' : undefined,
     width: column.getSize(),
-    zIndex: isPinned ? 40 : 0,
   };
 }
 
