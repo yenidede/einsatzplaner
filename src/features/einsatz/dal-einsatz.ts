@@ -474,7 +474,9 @@ function mapCustomFields(
     const groupName = fieldEntry.field.group_name?.trim() || null;
     const fieldName = fieldEntry.field.name?.trim() || null;
     const baseLabel =
-      fieldName ?? (groupName ? `Eigenes Feld (${groupName})` : 'Eigenes Feld');
+      fieldName && groupName
+        ? `${fieldName} (${groupName})`
+        : fieldName ?? (groupName ? `Eigenes Feld (${groupName})` : 'Eigenes Feld');
     const duplicateLabelCount = labelCounts.get(baseLabel) ?? 0;
     const label =
       duplicateLabelCount === 0
