@@ -73,11 +73,9 @@ export function DataTableFilterMenu<TData>({
 }: DataTableFilterMenuProps<TData>) {
   const id = React.useId();
 
-  const columns = React.useMemo(() => {
-    return table
-      .getAllLeafColumns()
-      .filter((column) => column.columnDef.enableColumnFilter);
-  }, [table]);
+  const columns = table
+    .getAllLeafColumns()
+    .filter((column) => column.columnDef.enableColumnFilter);
 
   const [open, setOpen] = React.useState(false);
   const [selectedColumn, setSelectedColumn] =

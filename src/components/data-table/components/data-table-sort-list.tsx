@@ -63,7 +63,7 @@ export function DataTableSortList<TData>({
   const sorting = table.getState().sorting;
   const onSortingChange = table.setSorting;
 
-  const { columnLabels, columns } = React.useMemo(() => {
+  const { columnLabels, columns } = (() => {
     const labels = new Map<string, string>();
     const sortingIds = new Set(sorting.map((s) => s.id));
     const availableColumns: { id: string; label: string }[] = [];
@@ -83,7 +83,7 @@ export function DataTableSortList<TData>({
       columnLabels: labels,
       columns: availableColumns,
     };
-  }, [sorting, table]);
+  })();
 
   const onSortAdd = React.useCallback(() => {
     const firstColumn = columns[0];
