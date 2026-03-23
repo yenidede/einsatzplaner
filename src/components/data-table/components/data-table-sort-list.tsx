@@ -68,7 +68,7 @@ export function DataTableSortList<TData>({
     const sortingIds = new Set(sorting.map((s) => s.id));
     const availableColumns: { id: string; label: string }[] = [];
 
-    for (const column of table.getAllColumns()) {
+    for (const column of table.getAllLeafColumns()) {
       if (!column.getCanSort()) continue;
 
       const label = column.columnDef.meta?.label ?? column.id;
