@@ -82,7 +82,10 @@ export type EinsatzListCustomFieldMeta = {
   label: string;
   datatype: FieldType['datatype'] | null;
   group_name: string | null;
+  allowed_values: string[];
 };
+
+export type EinsatzListCustomFieldValue = string | number | Date | null;
 
 export type EinsatzListItem = Einsatz & {
   organization_name: string;
@@ -97,7 +100,7 @@ export type EinsatzListItem = Einsatz & {
   helper_names: string[];
   helper_display: string;
   helper_count: number;
-  custom_fields: Record<string, string | null>;
+  custom_fields: Record<string, EinsatzListCustomFieldValue>;
   custom_field_meta: EinsatzListCustomFieldMeta[];
 };
 

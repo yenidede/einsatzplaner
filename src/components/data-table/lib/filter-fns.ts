@@ -267,9 +267,16 @@ export const byOperator: FilterFn<EinsatzListItem> = (
   const relevantFilter = filters.find(
     (f: FilterItemSchema) => f.id === columnId
   );
+  const isEmptyOperator =
+    relevantFilter?.operator === 'isEmpty' ||
+    relevantFilter?.operator === 'isNotEmpty';
 
   // filter not complete (eg. just changed) - show all
-  if (!relevantFilter || !relevantFilter.operator || !relevantFilter.value)
+  if (
+    !relevantFilter ||
+    !relevantFilter.operator ||
+    (!isEmptyOperator && !relevantFilter.value)
+  )
     return true;
   const cellValue = row.getValue(columnId);
 
@@ -293,8 +300,15 @@ export const byOperatorUseMetaField: FilterFn<EinsatzListItem> = (
   const relevantFilter = filters.find(
     (f: FilterItemSchema) => f.id === columnId
   );
+  const isEmptyOperator =
+    relevantFilter?.operator === 'isEmpty' ||
+    relevantFilter?.operator === 'isNotEmpty';
 
-  if (!relevantFilter || !relevantFilter.operator || !relevantFilter.value)
+  if (
+    !relevantFilter ||
+    !relevantFilter.operator ||
+    (!isEmptyOperator && !relevantFilter.value)
+  )
     return true;
 
   const column = row

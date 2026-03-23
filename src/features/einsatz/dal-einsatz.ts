@@ -2,12 +2,17 @@
 
 import prisma from '@/lib/prisma';
 import type { einsatz as Einsatz } from '@/generated/prisma';
+import {
+  isFieldTypeKey,
+  type FieldTypeKey,
+} from '../user_properties/field-type-definitions';
 import type {
   EinsatzForCalendar,
   EinsatzCreate,
   EinsatzDetailed,
   EinsatzDetailedForCalendar,
   EinsatzListCustomFieldMeta,
+  EinsatzListCustomFieldValue,
   EinsatzListItem,
 } from '@/features/einsatz/types';
 import {
@@ -200,10 +205,10 @@ export async function getEinsatzWithDetailsById(
       affected_user: log.affected_user,
       user: log.user
         ? {
-            id: log.user.id,
-            firstname: log.user.firstname,
-            lastname: log.user.lastname,
-          }
+          id: log.user.id,
+          firstname: log.user.firstname,
+          lastname: log.user.lastname,
+        }
         : null,
     })),
   };
@@ -367,6 +372,7 @@ export async function getEinsaetzeForTableView(
             select: {
               name: true,
               group_name: true,
+              allowed_values: true,
               type: {
                 select: {
                   name: true,
@@ -452,9 +458,9 @@ export async function getEinsaetzeForTableView(
       organization_name: einsatz.organization.name,
       created_by_name: einsatz.user
         ? [einsatz.user.firstname, einsatz.user.lastname]
-            .filter((value): value is string => Boolean(value))
-            .join(' ')
-            .trim() || null
+          .filter((value): value is string => Boolean(value))
+          .join(' ')
+          .trim() || null
         : null,
       template_name: einsatz.einsatz_template?.name ?? null,
       status_verwalter_text: einsatz.einsatz_status.verwalter_text,
@@ -489,16 +495,17 @@ function mapCustomFields(
     field: {
       name: string | null;
       group_name: string | null;
+      allowed_values: string[];
       type: {
         datatype: string | null;
       } | null;
     };
   }>
 ): {
-  customFields: Record<string, string | null>;
+  customFields: Record<string, EinsatzListCustomFieldValue>;
   customFieldMeta: EinsatzListCustomFieldMeta[];
 } {
-  const customFields: Record<string, string | null> = {};
+  const customFields: Record<string, EinsatzListCustomFieldValue> = {};
   const customFieldMeta: EinsatzListCustomFieldMeta[] = [];
 
   for (const fieldEntry of fields) {
@@ -508,16 +515,135 @@ function mapCustomFields(
       fieldName ?? (groupName ? `Eigenes Feld (${groupName})` : 'Eigenes Feld');
     const key = formatCustomFieldKey(label);
 
-    customFields[key] = fieldEntry.value;
+    customFields[key] = normalizeCustomFieldValue(
+      fieldEntry.field.type?.datatype ?? null,
+      fieldEntry.value
+    );
     customFieldMeta.push({
       key,
       label,
       datatype: fieldEntry.field.type?.datatype ?? null,
       group_name: groupName,
+      allowed_values: fieldEntry.field.allowed_values,
     });
   }
 
   return { customFields, customFieldMeta };
+}
+
+function normalizeCustomFieldValue(
+  datatype: string | null,
+  value: string | null
+): EinsatzListCustomFieldValue {
+  const normalizedValue = normalizeTextValue(value);
+
+  if (normalizedValue === null) {
+    return null;
+  }
+
+  const fieldType = normalizeFieldType(datatype);
+
+  if (fieldType === null) {
+    return normalizedValue;
+  }
+
+  switch (fieldType) {
+    case 'text':
+    case 'phone':
+    case 'mail':
+    case 'group':
+    case 'select':
+    case 'time':
+      return normalizeStringLikeFieldValue(fieldType, normalizedValue);
+    case 'number':
+    case 'currency':
+      return normalizeNumericFieldValue(normalizedValue);
+    case 'date':
+      return normalizeDateFieldValue(normalizedValue);
+    case 'boolean':
+      return normalizeBooleanFieldValue(normalizedValue);
+    default:
+      return normalizedValue;
+  }
+}
+
+function normalizeFieldType(datatype: string | null): FieldTypeKey | null {
+  if (!datatype) {
+    return null;
+  }
+
+  return isFieldTypeKey(datatype) ? datatype : null;
+}
+
+function normalizeTextValue(value: string | null): string | null {
+  if (value == null) {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+  return trimmedValue === '' ? null : trimmedValue;
+}
+
+function normalizeStringLikeFieldValue(
+  datatype: Extract<FieldTypeKey, 'text' | 'phone' | 'mail' | 'group' | 'select' | 'time'>,
+  value: string
+): string {
+  switch (datatype) {
+    default:
+      return value;
+    case 'mail':
+      return value.toLowerCase();
+    case 'time':
+      return normalizeTimeFieldValue(value);
+  }
+}
+
+function normalizeNumericFieldValue(value: string): number | string {
+  const normalizedNumber = Number(value.replace(',', '.'));
+  return Number.isFinite(normalizedNumber) ? normalizedNumber : value;
+}
+
+function normalizeBooleanFieldValue(value: string): string {
+  const normalizedValue = value.toLowerCase();
+
+  if (['true', '1', 'yes', 'ja', 'on'].includes(normalizedValue)) {
+    return 'true';
+  }
+
+  if (['false', '0', 'no', 'nein', 'off'].includes(normalizedValue)) {
+    return 'false';
+  }
+
+  return value;
+}
+
+function normalizeDateFieldValue(value: string): Date | string {
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    const dateValue = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day)
+    );
+
+    return Number.isNaN(dateValue.getTime()) ? value : dateValue;
+  }
+
+  const dateValue = new Date(value);
+  return Number.isNaN(dateValue.getTime()) ? value : dateValue;
+}
+
+function normalizeTimeFieldValue(value: string): string {
+  const timeMatch = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value);
+
+  if (!timeMatch) {
+    return value;
+  }
+
+  const [, hours, minutes] = timeMatch;
+  return `${hours.padStart(2, '0')}:${minutes}`;
 }
 
 /**
@@ -830,7 +956,7 @@ export async function toggleUserAssignmentToEinsatz(
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-    existingEinsatz.einsatz_helper.length + addOrRemoveOne
+      existingEinsatz.einsatz_helper.length + addOrRemoveOne
       ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
       : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
@@ -1436,10 +1562,10 @@ function mapRawEinsatzToDetailedForCalendar(
       affected_user: log.affected_user,
       user: log.user
         ? {
-            id: log.user.id,
-            firstname: log.user.firstname,
-            lastname: log.user.lastname,
-          }
+          id: log.user.id,
+          firstname: log.user.firstname,
+          lastname: log.user.lastname,
+        }
         : null,
     })),
     category_abbreviations,

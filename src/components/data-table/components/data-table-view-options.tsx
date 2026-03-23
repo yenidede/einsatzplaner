@@ -29,7 +29,7 @@ export function DataTableViewOptions<TData>({
   const columns = React.useMemo(
     () =>
       table
-        .getAllColumns()
+        .getAllLeafColumns()
         .filter(
           (column) =>
             typeof column.accessorFn !== 'undefined' && column.getCanHide()

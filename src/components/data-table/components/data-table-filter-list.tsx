@@ -102,7 +102,7 @@ export function DataTableFilterList<TData>({
 
   const columns = React.useMemo(() => {
     return table
-      .getAllColumns()
+      .getAllLeafColumns()
       .filter((column) => column.columnDef.enableColumnFilter);
   }, [table]);
 
