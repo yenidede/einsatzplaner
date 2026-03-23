@@ -219,19 +219,29 @@ function evalClause(cellValue: unknown, clause: Clause): boolean {
 
     // Numeric comparisons
     case 'lt': {
+      if (!isNumericLike(cellValue) || !isNumericLike(value)) return false;
       return asNumber(cellValue) < asNumber(value);
     }
     case 'lte': {
+      if (!isNumericLike(cellValue) || !isNumericLike(value)) return false;
       return asNumber(cellValue) <= asNumber(value);
     }
     case 'gt': {
+      if (!isNumericLike(cellValue) || !isNumericLike(value)) return false;
       return asNumber(cellValue) > asNumber(value);
     }
     case 'gte': {
+      if (!isNumericLike(cellValue) || !isNumericLike(value)) return false;
       return asNumber(cellValue) >= asNumber(value);
     }
     case 'isBetween': {
       if (!Array.isArray(value) || value.length !== 2) return true;
+      if (
+        !isNumericLike(cellValue) ||
+        !value.every((entry) => isNumericLike(entry))
+      ) {
+        return false;
+      }
       const v = asNumber(cellValue);
       const [min, max] = value.map(asNumber);
       return v >= min && v <= max;
