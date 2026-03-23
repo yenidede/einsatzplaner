@@ -15,6 +15,7 @@ import { formatDate } from '@/components/data-table/lib/format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { TruncatedTextWithTooltip } from '@/components/truncated-text-with-tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { useEinsaetzeTableView } from '@/features/einsatz/hooks/useEinsatzQueries';
 import type {
   EinsatzListCustomFieldMeta,
+  EinsatzListCustomFieldValue,
   EinsatzListItem,
 } from '@/features/einsatz/types';
 import { useCategoriesByOrgIds } from '@/features/einsatz/hooks/useEinsatzQueries';
@@ -65,6 +67,49 @@ function formatCategoryLabel(value: string, abbreviation: string): string {
   return trimmedAbbreviation
     ? `${trimmedValue} (${trimmedAbbreviation})`
     : trimmedValue;
+}
+
+function getUserDisplayName(user: {
+  firstname: string | null;
+  lastname: string | null;
+}): string {
+  return [user.firstname, user.lastname]
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+    .trim();
+}
+
+function getCustomFieldFilterVariant(
+  datatype: EinsatzListCustomFieldMeta['datatype']
+): 'text' | 'range' | 'dateRange' | 'select' {
+  switch (datatype) {
+    case 'number':
+    case 'currency':
+      return 'range';
+    case 'date':
+      return 'dateRange';
+    case 'boolean':
+    case 'select':
+      return 'select';
+    default:
+      return 'text';
+  }
+}
+
+function formatCustomFieldValue(
+  value: EinsatzListCustomFieldValue,
+  datatype: EinsatzListCustomFieldMeta['datatype']
+): string {
+  if (value == null || value === '') {
+    return '-';
+  }
+
+  if (datatype === 'boolean') {
+    if (value === 'true') return 'Ja';
+    if (value === 'false') return 'Nein';
+  }
+
+  return String(value);
 }
 
 type ListViewProps = {
@@ -113,6 +158,10 @@ export function ListView({
     activeOrgId
   );
 
+  const registeredHelpersLabel = `Eingetragene ${helper_plural}`;
+  const registeredHelpersCountLabel = `Anzahl eingetragene ${helper_plural}`;
+  const neededHelpersCountLabel = `Anzahl benötigte ${helper_plural}`;
+
   const isSomeQueryLoading = useMemo(() => {
     return (
       sessionStatus === 'loading' ||
@@ -131,7 +180,9 @@ export function ListView({
     isCategoriesLoading,
   ]);
 
-  const tableData = Array.isArray(data) ? data : [];
+  const tableData = useMemo(() => {
+    return Array.isArray(data) ? data : [];
+  }, [data]);
 
   const customFieldMeta = useMemo<EinsatzListCustomFieldMeta[]>(() => {
     const metaByKey = new Map<string, EinsatzListCustomFieldMeta>();
@@ -149,9 +200,71 @@ export function ListView({
     );
   }, [tableData]);
 
+  const customFieldSelectOptions = useMemo(() => {
+    const optionsByFieldKey = new Map<
+      string,
+      { label: string; value: string }[]
+    >();
+
+    for (const fieldMeta of customFieldMeta) {
+      if (fieldMeta.datatype !== 'select') {
+        continue;
+      }
+
+      const uniqueValues = new Set<string>();
+
+      for (const allowedValue of fieldMeta.allowed_values) {
+        const normalizedValue = allowedValue.trim();
+
+        if (normalizedValue.length === 0) {
+          continue;
+        }
+
+        uniqueValues.add(normalizedValue);
+      }
+
+      for (const einsatz of tableData) {
+        const fieldValue = einsatz.custom_fields[fieldMeta.key];
+
+        if (typeof fieldValue !== 'string') {
+          continue;
+        }
+
+        const normalizedValue = fieldValue.trim();
+
+        if (normalizedValue.length === 0) {
+          continue;
+        }
+
+        uniqueValues.add(normalizedValue);
+      }
+
+      optionsByFieldKey.set(
+        fieldMeta.key,
+        Array.from(uniqueValues)
+          .map((value) => ({ label: value, value }))
+          .sort((a, b) => a.label.localeCompare(b.label, 'de'))
+      );
+    }
+
+    return optionsByFieldKey;
+  }, [customFieldMeta, tableData]);
+
   const columnHelper = useMemo(() => createColumnHelper<EinsatzListItem>(), []);
 
   const columns = useMemo(() => {
+    const userOptions =
+      usersData
+        ?.map((user) => {
+          const label = getUserDisplayName(user);
+          return label ? { label, value: label } : null;
+        })
+        .filter(
+          (option): option is { label: string; value: string } =>
+            option !== null
+        )
+        .sort((a, b) => a.label.localeCompare(b.label, 'de')) ?? [];
+
     const staticColumns = [
       columnHelper.display({
         id: 'select',
@@ -180,7 +293,16 @@ export function ListView({
       columnHelper.accessor((row) => row.title, {
         id: 'title',
         header: 'Titel',
-        cell: (props) => props.getValue(),
+        cell: (props) => {
+          const title = props.getValue();
+
+          return (
+            // the max-w-32 and the triggerCharCount=18 need to be aligned
+            <div className="max-w-32">
+              <TruncatedTextWithTooltip text={title} triggerCharCount={18} />
+            </div>
+          );
+        },
         enableColumnFilter: true,
         filterFn: byOperator,
         meta: {
@@ -253,10 +375,14 @@ export function ListView({
           filterField: 'created_by',
           options:
             usersData
-              ?.map((user) => ({
-                label: `${user.firstname} ${user.lastname}`.trim(),
-                value: user.id,
-              }))
+              ?.map((user) => {
+                const label = getUserDisplayName(user);
+                return label ? { label, value: user.id } : null;
+              })
+              .filter(
+                (option): option is { label: string; value: string } =>
+                  option !== null
+              )
               .sort((a, b) => a.label.localeCompare(b.label, 'de')) ?? [],
         },
       }),
@@ -286,14 +412,38 @@ export function ListView({
               .sort((a, b) => a.label.localeCompare(b.label, 'de')) ?? [],
         },
       }),
+      columnHelper.accessor((row) => row.helper_display, {
+        id: 'helper_display',
+        header: registeredHelpersLabel,
+        cell: (props) => props.getValue() || '-',
+        enableColumnFilter: true,
+        filterFn: byOperatorUseMetaField,
+        meta: {
+          label: registeredHelpersLabel,
+          variant: 'multiSelect',
+          filterField: 'helper_names',
+          options: userOptions,
+        },
+      }),
       columnHelper.accessor((row) => row.helper_count, {
         id: 'helper_count',
-        header: `Anzahl ${helper_plural}`,
+        header: registeredHelpersCountLabel,
         cell: (props) => props.getValue(),
         enableColumnFilter: true,
         filterFn: byOperator,
         meta: {
-          label: `Anzahl ${helper_plural}`,
+          label: registeredHelpersCountLabel,
+          variant: 'range',
+        },
+      }),
+      columnHelper.accessor((row) => row.helpers_needed, {
+        id: 'helpers_needed',
+        header: neededHelpersCountLabel,
+        cell: (props) => props.getValue(),
+        enableColumnFilter: true,
+        filterFn: byOperator,
+        meta: {
+          label: neededHelpersCountLabel,
           variant: 'range',
         },
       }),
@@ -317,34 +467,33 @@ export function ListView({
               .sort((a, b) => a.label.localeCompare(b.label, 'de')) ?? [],
         },
       }),
-      columnHelper.accessor((row) => row.helper_display, {
-        id: 'helper_display',
-        header: helper_plural,
-        cell: (props) => props.getValue() || '-',
+    ];
+
+    const dynamicColumns = customFieldMeta.map((fieldMeta) =>
+      columnHelper.accessor((row) => row.custom_fields[fieldMeta.key] ?? '', {
+        id: fieldMeta.key,
+        header: fieldMeta.label,
+        cell: (props) =>
+          formatCustomFieldValue(props.getValue(), fieldMeta.datatype),
+        enableHiding: true,
+        enableSorting: true,
         enableColumnFilter: true,
         filterFn: byOperator,
         meta: {
-          label: helper_plural,
-          variant: 'text',
-          placeholder: `Nach ${helper_plural} suchen...`,
+          label: fieldMeta.label,
+          variant: getCustomFieldFilterVariant(fieldMeta.datatype),
+          options:
+            fieldMeta.datatype === 'boolean'
+              ? [
+                  { label: 'Ja', value: 'true' },
+                  { label: 'Nein', value: 'false' },
+                ]
+              : fieldMeta.datatype === 'select'
+                ? (customFieldSelectOptions.get(fieldMeta.key) ?? [])
+                : undefined,
+          placeholder: `Nach ${fieldMeta.label} suchen...`,
         },
-      }),
-    ];
-
-    const dynamicColumns = customFieldMeta.map(
-      (fieldMeta) =>
-        columnHelper.accessor((row) => row.custom_fields[fieldMeta.key] ?? '', {
-          id: fieldMeta.key,
-          header: fieldMeta.label,
-          cell: (props) => props.getValue() || '-',
-          enableColumnFilter: true,
-          filterFn: byOperator,
-          meta: {
-            label: fieldMeta.label,
-            variant: 'text',
-            placeholder: `Nach ${fieldMeta.label} suchen...`,
-          },
-        })
+      })
     );
 
     const actionColumn = columnHelper.display({
@@ -390,11 +539,14 @@ export function ListView({
     categoriesData,
     columnHelper,
     customFieldMeta,
+    customFieldSelectOptions,
     einsatz_singular,
-    helper_plural,
+    neededHelpersCountLabel,
     mode,
     onEventDelete,
     onEventEdit,
+    registeredHelpersCountLabel,
+    registeredHelpersLabel,
     statusData,
     templatesData,
     usersData,
@@ -453,7 +605,9 @@ export function ListView({
     return (
       <div className="flex flex-col items-baseline justify-start gap-4 px-4 py-6">
         <div>
-          <h2 className="font-bold">Es sind noch keine Datensätze vorhanden.</h2>
+          <h2 className="font-bold">
+            Es sind noch keine Datensätze vorhanden.
+          </h2>
           <p>
             Legen Sie den ersten Datensatz an, um die Tabellenansicht zu
             verwenden.

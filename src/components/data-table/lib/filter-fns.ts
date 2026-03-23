@@ -20,7 +20,47 @@ const toLower = (v: unknown) => (v == null ? '' : String(v).toLowerCase());
 
 const isBlank = (v: unknown) => v == null || v === '' || v === '-';
 
-const asNumber = (v: unknown) => (typeof v === 'number' ? v : Number(v));
+/**
+ * Parse a value that may represent a number, supporting comma as decimal separator.
+ *
+ * - Finite numbers are returned as-is.
+ * - Strings are trimmed, a single comma is normalized to a dot, and then parsed.
+ * - Non-finite or unparseable values result in `null`.
+ */
+const parseNumericLike = (v: unknown): number | null => {
+  if (typeof v === 'number') {
+    return Number.isFinite(v) ? v : null;
+  }
+
+  if (typeof v === 'string') {
+    const normalizedValue = v.trim().replace(',', '.');
+    if (normalizedValue === '') {
+      return null;
+    }
+
+    const parsed = Number(normalizedValue);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+};
+
+const asNumber = (v: unknown) => {
+  if (typeof v === 'number') {
+    return v;
+  }
+
+  if (typeof v === 'string') {
+    const parsed = parseNumericLike(v);
+    return parsed !== null ? parsed : Number(v);
+  }
+
+  return Number(v);
+};
+
+function isNumericLike(v: unknown): boolean {
+  return parseNumericLike(v) !== null;
+}
 
 type asDateOnlyFnProps = {
   filterValue: string | number | Date;
@@ -147,9 +187,31 @@ function evalClause(cellValue: unknown, clause: Clause): boolean {
 
     // Equality / inequality (works for text/number/boolean/select)
     case 'eq': {
+      if (isNumericLike(cellValue) && isNumericLike(value)) {
+        return asNumber(
+          typeof cellValue === 'string'
+            ? cellValue.replace(',', '.')
+            : cellValue
+        ) ===
+          asNumber(
+            typeof value === 'string' ? value.replace(',', '.') : value
+          );
+      }
+
       return cellValue === value;
     }
     case 'ne': {
+      if (isNumericLike(cellValue) && isNumericLike(value)) {
+        return asNumber(
+          typeof cellValue === 'string'
+            ? cellValue.replace(',', '.')
+            : cellValue
+        ) !==
+          asNumber(
+            typeof value === 'string' ? value.replace(',', '.') : value
+          );
+      }
+
       return cellValue !== value;
     }
 
@@ -179,19 +241,29 @@ function evalClause(cellValue: unknown, clause: Clause): boolean {
 
     // Numeric comparisons
     case 'lt': {
+      if (!isNumericLike(cellValue) || !isNumericLike(value)) return false;
       return asNumber(cellValue) < asNumber(value);
     }
     case 'lte': {
+      if (!isNumericLike(cellValue) || !isNumericLike(value)) return false;
       return asNumber(cellValue) <= asNumber(value);
     }
     case 'gt': {
+      if (!isNumericLike(cellValue) || !isNumericLike(value)) return false;
       return asNumber(cellValue) > asNumber(value);
     }
     case 'gte': {
+      if (!isNumericLike(cellValue) || !isNumericLike(value)) return false;
       return asNumber(cellValue) >= asNumber(value);
     }
     case 'isBetween': {
       if (!Array.isArray(value) || value.length !== 2) return true;
+      if (
+        !isNumericLike(cellValue) ||
+        !value.every((entry) => isNumericLike(entry))
+      ) {
+        return false;
+      }
       const v = asNumber(cellValue);
       const [min, max] = value.map(asNumber);
       return v >= min && v <= max;
@@ -267,9 +339,16 @@ export const byOperator: FilterFn<EinsatzListItem> = (
   const relevantFilter = filters.find(
     (f: FilterItemSchema) => f.id === columnId
   );
+  const isEmptyOperator =
+    relevantFilter?.operator === 'isEmpty' ||
+    relevantFilter?.operator === 'isNotEmpty';
 
   // filter not complete (eg. just changed) - show all
-  if (!relevantFilter || !relevantFilter.operator || !relevantFilter.value)
+  if (
+    !relevantFilter ||
+    !relevantFilter.operator ||
+    (!isEmptyOperator && !relevantFilter.value)
+  )
     return true;
   const cellValue = row.getValue(columnId);
 
@@ -293,8 +372,15 @@ export const byOperatorUseMetaField: FilterFn<EinsatzListItem> = (
   const relevantFilter = filters.find(
     (f: FilterItemSchema) => f.id === columnId
   );
+  const isEmptyOperator =
+    relevantFilter?.operator === 'isEmpty' ||
+    relevantFilter?.operator === 'isNotEmpty';
 
-  if (!relevantFilter || !relevantFilter.operator || !relevantFilter.value)
+  if (
+    !relevantFilter ||
+    !relevantFilter.operator ||
+    (!isEmptyOperator && !relevantFilter.value)
+  )
     return true;
 
   const column = row

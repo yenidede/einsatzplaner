@@ -50,8 +50,6 @@ export function buildInputProps(
       return { type: 'date', placeholder };
     case 'time':
       return { type: 'time', placeholder };
-    case 'datetime':
-      return { type: 'datetime-local' };
     default:
       return {};
   }
