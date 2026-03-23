@@ -124,7 +124,7 @@ export function ListView({
     );
   }, [tableData]);
 
-  const columnHelper = createColumnHelper<EinsatzListItem>();
+  const columnHelper = useMemo(() => createColumnHelper<EinsatzListItem>(), []);
 
   const columns = useMemo(() => {
     const staticColumns = [
