@@ -2,13 +2,13 @@ import type {
   einsatz as EinsatzRawDb,
   einsatz_comment as CommentRawDb,
   change_log as ChangeLogRawDb,
-  einsatz_category,
 } from '@/generated/prisma';
 export type Einsatz = EinsatzRawDb;
 import type {
   einsatz_status as EinsatzStatus,
   einsatz_field as EinsatzField,
   einsatz_category as EinsatzCategory,
+  type as FieldType,
 } from '@/generated/prisma';
 
 export type { CalendarEvent } from '@/components/event-calendar/types';
@@ -77,28 +77,28 @@ export type EinsatzDetailedForCalendar = EinsatzDetailed & {
   category_abbreviations: string[];
 };
 
-export type ETV = Einsatz & {
-  einsatz_status: EinsatzStatus;
-  organization: { id: string; name: string };
-  einsatz_helper: {
-    id: string;
-    firstname: string | null;
-    lastname: string | null;
-  }[];
-  einsatz_categories: einsatz_category[];
-  einsatz_fields: (EinsatzField & { datatype: string | null })[];
-  user: {
-    id: string;
-    firstname: string | null;
-    lastname: string | null;
-  } | null;
-  einsatz_template: {
-    id: string;
-    name: string | null;
-  } | null;
-  _count: {
-    einsatz_helper: number;
-  };
+export type EinsatzListCustomFieldMeta = {
+  key: string;
+  label: string;
+  datatype: FieldType['datatype'] | null;
+  group_name: string | null;
+};
+
+export type EinsatzListItem = Einsatz & {
+  organization_name: string;
+  created_by_name: string | null;
+  template_name: string | null;
+  status_verwalter_text: string;
+  status_helper_text: string;
+  status_verwalter_color: string;
+  status_helper_color: string;
+  category_labels: string[];
+  category_display: string;
+  helper_names: string[];
+  helper_display: string;
+  helper_count: number;
+  custom_fields: Record<string, string | null>;
+  custom_field_meta: EinsatzListCustomFieldMeta[];
 };
 
 export type EinsatzCustomizable = {

@@ -1,13 +1,14 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import type { einsatz as Einsatz, einsatz_field } from '@/generated/prisma';
+import type { einsatz as Einsatz } from '@/generated/prisma';
 import type {
   EinsatzForCalendar,
   EinsatzCreate,
   EinsatzDetailed,
   EinsatzDetailedForCalendar,
-  ETV,
+  EinsatzListCustomFieldMeta,
+  EinsatzListItem,
 } from '@/features/einsatz/types';
 import {
   addMonths,
@@ -302,18 +303,43 @@ export async function getDetailedEinsaetzeForAgenda(
   return rows.map((row) => mapRawEinsatzToDetailedForCalendar(row));
 }
 
+/**
+ * Builds a table-ready list of Einsätze for the specified organizations.
+ *
+ * @param active_org_ids - Organization IDs to filter by; when empty, the current user's organization IDs are used
+ * @returns A list of `EinsatzListItem` objects containing einsatz data plus computed helper names, category labels, and custom field data
+ */
 export async function getEinsaetzeForTableView(
   active_org_ids: string[]
-): Promise<ETV[]> {
+): Promise<EinsatzListItem[]> {
   const { session } = await requireAuth();
 
   const userOrgIds = session.user.orgIds;
-  const filterOrgIds = active_org_ids ? active_org_ids : userOrgIds;
+  const memberOrgIds =
+    active_org_ids.length > 0
+      ? active_org_ids.filter((orgId) => userOrgIds.includes(orgId))
+      : userOrgIds;
+
+  if (memberOrgIds.length === 0) {
+    return [];
+  }
+
+  const readableOrgIds = (
+    await Promise.all(
+      memberOrgIds.map(async (orgId) =>
+        (await hasPermission(session, 'einsaetze:read', orgId)) ? orgId : null
+      )
+    )
+  ).filter((orgId): orgId is string => orgId !== null);
+
+  if (readableOrgIds.length === 0) {
+    return [];
+  }
 
   const einsaetzeFromDb = await prisma.einsatz.findMany({
     where: {
       org_id: {
-        in: filterOrgIds,
+        in: readableOrgIds,
       },
     },
     include: {
@@ -339,6 +365,8 @@ export async function getEinsaetzeForTableView(
         include: {
           field: {
             select: {
+              name: true,
+              group_name: true,
               type: {
                 select: {
                   name: true,
@@ -371,73 +399,152 @@ export async function getEinsaetzeForTableView(
     orderBy: { created_at: 'asc' },
   });
 
-  // Map DB result to ETV type
-  const mapped: ETV[] = einsaetzeFromDb.map((einsatz) => ({
-    id: einsatz.id,
-    created_at: einsatz.created_at,
-    title: einsatz.title,
-    updated_at: einsatz.updated_at,
-    start: einsatz.start,
-    participant_count: einsatz.participant_count,
-    price_per_person: einsatz.price_per_person,
-    total_price: einsatz.total_price,
-    org_id: einsatz.org_id,
-    created_by: einsatz.created_by,
-    template_id: einsatz.template_id,
-    all_day: einsatz.all_day,
-    end: einsatz.end,
-    helpers_needed: einsatz.helpers_needed,
-    status_id: einsatz.status_id,
-    einsatz_status: einsatz.einsatz_status,
-    anmerkung: einsatz.anmerkung,
-    organization: {
-      id: einsatz.organization.id,
-      name: einsatz.organization.name,
-    },
-    einsatz_helper: Array.from(
+  const mapped: EinsatzListItem[] = einsaetzeFromDb.map((einsatz) => {
+    const helperUsers = Array.from(
       new Map(
-        einsatz.einsatz_helper.map((helper) => [
-          helper.user.id,
-          {
-            id: helper.user.id,
-            firstname: helper.user.firstname ?? null,
-            lastname: helper.user.lastname ?? null,
-          },
-        ])
+        einsatz.einsatz_helper.map((helper) => [helper.user.id, helper.user])
       ).values()
-    ),
-    einsatz_categories: einsatz.einsatz_to_category.map(
-      (cat) => cat.einsatz_category
-    ),
-    einsatz_fields: einsatz.einsatz_field.map(
-      (f) =>
-        ({
-          id: f.id,
-          einsatz_id: f.einsatz_id,
-          value: f.value,
-          field_id: f.field_id,
-          datatype: f.field.type?.datatype ?? null,
-        }) as einsatz_field & { datatype: string | null }
-    ),
-    user: einsatz.user
-      ? {
-          id: einsatz.user.id,
-          firstname: einsatz.user.firstname ?? null,
-          lastname: einsatz.user.lastname ?? null,
-        }
-      : null,
-    einsatz_template: einsatz.einsatz_template
-      ? {
-          id: einsatz.einsatz_template.id,
-          name: einsatz.einsatz_template.name ?? null,
-        }
-      : null,
-    _count: einsatz._count,
-  }));
+    );
+
+    const helperNames = helperUsers
+      .map((helper) =>
+        [helper.firstname, helper.lastname]
+          .filter((value): value is string => Boolean(value))
+          .join(' ')
+          .trim()
+      )
+      .filter((name) => name.length > 0);
+
+    const categoryLabels = Array.from(
+      new Set(
+        einsatz.einsatz_to_category
+          .map((category) => {
+            const value = category.einsatz_category.value.trim();
+            const abbreviation = category.einsatz_category.abbreviation.trim();
+
+            return abbreviation ? `${value} (${abbreviation})` : value;
+          })
+          .filter((label) => label.length > 0)
+      )
+    );
+
+    const { customFields, customFieldMeta } = mapCustomFields(
+      einsatz.einsatz_field
+    );
+
+    return {
+      id: einsatz.id,
+      created_at: einsatz.created_at,
+      title: einsatz.title,
+      updated_at: einsatz.updated_at,
+      start: einsatz.start,
+      participant_count: einsatz.participant_count,
+      price_per_person: einsatz.price_per_person,
+      total_price: einsatz.total_price,
+      org_id: einsatz.org_id,
+      created_by: einsatz.created_by,
+      template_id: einsatz.template_id,
+      all_day: einsatz.all_day,
+      end: einsatz.end,
+      helpers_needed: einsatz.helpers_needed,
+      status_id: einsatz.status_id,
+      anmerkung: einsatz.anmerkung,
+      organization_name: einsatz.organization.name,
+      created_by_name: einsatz.user
+        ? [einsatz.user.firstname, einsatz.user.lastname]
+            .filter((value): value is string => Boolean(value))
+            .join(' ')
+            .trim() || null
+        : null,
+      template_name: einsatz.einsatz_template?.name ?? null,
+      status_verwalter_text: einsatz.einsatz_status.verwalter_text,
+      status_helper_text: einsatz.einsatz_status.helper_text,
+      status_verwalter_color: einsatz.einsatz_status.verwalter_color,
+      status_helper_color: einsatz.einsatz_status.helper_color,
+      category_labels: categoryLabels,
+      category_display: categoryLabels.join(', '),
+      helper_names: helperNames,
+      helper_display: helperNames.join(', '),
+      helper_count: einsatz._count?.einsatz_helper ?? einsatz.einsatz_helper.length,
+      custom_fields: customFields,
+      custom_field_meta: customFieldMeta,
+    };
+  });
 
   return mapped;
 }
 
+/**
+ * Builds custom-field values and metadata for the list view.
+ *
+ * @param fields - Custom field entries including field metadata such as name, group name, and datatype
+ * @returns An object containing the flattened custom-field values keyed by a formatted field-name key and the metadata needed to render matching columns
+ */
+function mapCustomFields(
+  fields: Array<{
+    id: string;
+    einsatz_id: string;
+    field_id: string;
+    value: string | null;
+    field: {
+      name: string | null;
+      group_name: string | null;
+      type: {
+        datatype: string | null;
+      } | null;
+    };
+  }>
+): {
+  customFields: Record<string, string | null>;
+  customFieldMeta: EinsatzListCustomFieldMeta[];
+} {
+  const customFields: Record<string, string | null> = {};
+  const customFieldMeta: EinsatzListCustomFieldMeta[] = [];
+
+  for (const fieldEntry of fields) {
+    const groupName = fieldEntry.field.group_name?.trim() || null;
+    const fieldName = fieldEntry.field.name?.trim() || null;
+    const label =
+      fieldName ?? (groupName ? `Eigenes Feld (${groupName})` : 'Eigenes Feld');
+    const key = formatCustomFieldKey(label);
+
+    customFields[key] = fieldEntry.value;
+    customFieldMeta.push({
+      key,
+      label,
+      datatype: fieldEntry.field.type?.datatype ?? null,
+      group_name: groupName,
+    });
+  }
+
+  return { customFields, customFieldMeta };
+}
+
+/**
+ * Formats a custom field key by normalizing the label and replacing special characters.
+ *
+ * @param label - The label to format
+ * @returns The formatted custom field key
+ */
+function formatCustomFieldKey(label: string): string {
+  const normalizedLabel = label
+    .normalize('NFKD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return `cf-${normalizedLabel || 'eigenes-feld'}`;
+}
+
+/**
+ * Fetch templates for an organization, including each template's icon URL and template fields with their field type name.
+ *
+ * @param org_id - Optional organization id to fetch templates for; if omitted, uses the user's single organization when possible
+ * @returns Template records for the resolved organization or a `Response` with status 403 when the caller lacks permission
+ * @throws {BadRequestError} When no organization can be resolved from `org_id` and the current user's memberships
+ */
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
