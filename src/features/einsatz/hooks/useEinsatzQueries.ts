@@ -13,7 +13,7 @@ import {
   getEinsaetzeForTableView,
 } from '@/features/einsatz/dal-einsatz';
 import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
-import type { ETV } from '@/features/einsatz/types';
+import type { EinsatzListItem } from '@/features/einsatz/types';
 
 export function useEinsaetze(activeOrgId: string | null | undefined) {
   return useQuery({
@@ -151,7 +151,7 @@ export function useCategoriesByOrgIds(orgIds: string[] | null | undefined) {
 }
 
 export function useEinsaetzeTableView(userOrgIds: string[] | null | undefined) {
-  return useQuery<ETV[]>({
+  return useQuery<EinsatzListItem[]>({
     queryKey: [...queryKeys.einsaetzeTableView(userOrgIds ?? [])],
     queryFn: () => getEinsaetzeForTableView(userOrgIds ?? []),
     placeholderData: (previousData) => previousData ?? [],
