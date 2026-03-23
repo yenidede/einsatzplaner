@@ -622,13 +622,25 @@ function normalizeDateFieldValue(value: string): Date | string {
 
   if (dateOnlyMatch) {
     const [, year, month, day] = dateOnlyMatch;
+    const numericYear = Number(year);
+    const numericMonth = Number(month);
+    const numericDay = Number(day);
     const dateValue = new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day)
+      numericYear,
+      numericMonth - 1,
+      numericDay
     );
 
-    return Number.isNaN(dateValue.getTime()) ? value : dateValue;
+    if (
+      Number.isNaN(dateValue.getTime()) ||
+      dateValue.getFullYear() !== numericYear ||
+      dateValue.getMonth() + 1 !== numericMonth ||
+      dateValue.getDate() !== numericDay
+    ) {
+      return value;
+    }
+
+    return dateValue;
   }
 
   const dateValue = new Date(value);
