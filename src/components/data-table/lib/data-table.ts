@@ -34,7 +34,7 @@ export function getCommonPinningStyles<TData>({
         : undefined, // -8 to avoid gaps
     right:
       isPinned === 'right' ? `${column.getAfter('right') / 16}rem` : undefined,
-    opacity: 0.95,
+    opacity: isPinned ? 0.95 : undefined,
     position: isPinned ? 'sticky' : 'relative',
     marginLeft: isPinned === 'left' ? '-2px' : undefined,
     width: column.getSize(),
