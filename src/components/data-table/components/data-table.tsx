@@ -39,7 +39,7 @@ export function DataTable<TData>({
           <>
             <div className="bg-background max-h-[70svh] overflow-auto">
               <Table className="w-max min-w-full">
-                <TableHeader className="bg-background sticky top-0 z-50 border-b shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
+                <TableHeader className="bg-background sticky top-0 z-40 border-b shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -52,8 +52,7 @@ export function DataTable<TData>({
                               column: header.column,
                               withBorder: true,
                             }),
-                            top: 0,
-                            zIndex: header.column.getIsPinned() ? 60 : 50,
+                            zIndex: header.column.getIsPinned() ? 30 : 20,
                           }}
                         >
                           {header.isPlaceholder
@@ -85,6 +84,7 @@ export function DataTable<TData>({
                               ...getCommonPinningStyles({
                                 column: cell.column,
                               }),
+                              zIndex: cell.column.getIsPinned() ? 10 : undefined,
                             }}
                           >
                             {flexRender(
@@ -98,7 +98,7 @@ export function DataTable<TData>({
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={table.getAllColumns().length}
+                        colSpan={table.getVisibleLeafColumns().length}
                         className="h-24 text-center"
                       >
                         Keine Suchergebnisse.{' '}
@@ -114,7 +114,7 @@ export function DataTable<TData>({
                 </TableBody>
               </Table>
             </div>
-            <div className="bg-background sticky bottom-0 z-50 flex flex-col gap-2.5 border-t pt-2 shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
+            <div className="bg-background sticky bottom-0 z-40 flex flex-col gap-2.5 border-t pt-2 shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
               <DataTablePagination table={table} />
               {actionBar &&
                 table.getFilteredSelectedRowModel().rows.length > 0 &&

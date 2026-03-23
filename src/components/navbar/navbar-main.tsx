@@ -74,7 +74,7 @@ export default function Component() {
   return (
     <header
       className={cn(
-        'bg-background fixed top-0 right-0 left-0 z-220 border-b px-4 md:px-6'
+        'bg-background fixed top-0 right-0 left-0 z-50 border-b px-4 md:px-6'
       )}
     >
       <div className="flex h-16 items-center justify-between gap-4">
