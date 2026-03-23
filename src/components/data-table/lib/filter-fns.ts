@@ -20,24 +20,46 @@ const toLower = (v: unknown) => (v == null ? '' : String(v).toLowerCase());
 
 const isBlank = (v: unknown) => v == null || v === '' || v === '-';
 
-const asNumber = (v: unknown) => (typeof v === 'number' ? v : Number(v));
+/**
+ * Parse a value that may represent a number, supporting comma as decimal separator.
+ *
+ * - Finite numbers are returned as-is.
+ * - Strings are trimmed, a single comma is normalized to a dot, and then parsed.
+ * - Non-finite or unparseable values result in `null`.
+ */
+const parseNumericLike = (v: unknown): number | null => {
+  if (typeof v === 'number') {
+    return Number.isFinite(v) ? v : null;
+  }
+
+  if (typeof v === 'string') {
+    const normalizedValue = v.trim().replace(',', '.');
+    if (normalizedValue === '') {
+      return null;
+    }
+
+    const parsed = Number(normalizedValue);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+};
+
+const asNumber = (v: unknown) => {
+  if (typeof v === 'number') {
+    return v;
+  }
+
+  if (typeof v === 'string') {
+    const parsed = parseNumericLike(v);
+    return parsed !== null ? parsed : Number(v);
+  }
+
+  return Number(v);
+};
 
 function isNumericLike(v: unknown): boolean {
-  if (typeof v === 'number') {
-    return Number.isFinite(v);
-  }
-
-  if (typeof v !== 'string') {
-    return false;
-  }
-
-  const normalizedValue = v.trim().replace(',', '.');
-
-  if (normalizedValue === '') {
-    return false;
-  }
-
-  return Number.isFinite(Number(normalizedValue));
+  return parseNumericLike(v) !== null;
 }
 
 type asDateOnlyFnProps = {
