@@ -22,6 +22,24 @@ const isBlank = (v: unknown) => v == null || v === '' || v === '-';
 
 const asNumber = (v: unknown) => (typeof v === 'number' ? v : Number(v));
 
+function isNumericLike(v: unknown): boolean {
+  if (typeof v === 'number') {
+    return Number.isFinite(v);
+  }
+
+  if (typeof v !== 'string') {
+    return false;
+  }
+
+  const normalizedValue = v.trim().replace(',', '.');
+
+  if (normalizedValue === '') {
+    return false;
+  }
+
+  return Number.isFinite(Number(normalizedValue));
+}
+
 type asDateOnlyFnProps = {
   filterValue: string | number | Date;
   cellValue: unknown;
@@ -147,9 +165,31 @@ function evalClause(cellValue: unknown, clause: Clause): boolean {
 
     // Equality / inequality (works for text/number/boolean/select)
     case 'eq': {
+      if (isNumericLike(cellValue) && isNumericLike(value)) {
+        return asNumber(
+          typeof cellValue === 'string'
+            ? cellValue.replace(',', '.')
+            : cellValue
+        ) ===
+          asNumber(
+            typeof value === 'string' ? value.replace(',', '.') : value
+          );
+      }
+
       return cellValue === value;
     }
     case 'ne': {
+      if (isNumericLike(cellValue) && isNumericLike(value)) {
+        return asNumber(
+          typeof cellValue === 'string'
+            ? cellValue.replace(',', '.')
+            : cellValue
+        ) !==
+          asNumber(
+            typeof value === 'string' ? value.replace(',', '.') : value
+          );
+      }
+
       return cellValue !== value;
     }
 
