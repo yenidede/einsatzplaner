@@ -598,9 +598,9 @@ function normalizeStringLikeFieldValue(
   }
 }
 
-function normalizeNumericFieldValue(value: string): number | string {
+function normalizeNumericFieldValue(value: string): string {
   const normalizedNumber = Number(value.replace(',', '.'));
-  return Number.isFinite(normalizedNumber) ? normalizedNumber : value;
+  return Number.isFinite(normalizedNumber) ? String(normalizedNumber) : value;
 }
 
 function normalizeBooleanFieldValue(value: string): string {
