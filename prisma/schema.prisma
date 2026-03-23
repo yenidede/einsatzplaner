@@ -62,7 +62,6 @@ model einsatz {
   einsatz_helper        einsatz_helper[]
   einsatz_to_category   einsatz_to_category[]
   einsatz_user_property einsatz_user_property[]
-
   @@index([org_id, start])
   @@index([org_id, status_id])
   @@index([created_by])
@@ -162,6 +161,7 @@ model organization {
   organization_address         organization_address[]
   organization_bank_account    organization_bank_account[]
   organization_details         organization_details[]
+  pdfTemplate                  pdfTemplate[]
   user                         user[]
   user_organization_role       user_organization_role[]
   user_property                user_property[]
@@ -438,4 +438,20 @@ model template_user_property {
   min_matching_users Int?             @db.SmallInt
   einsatz_template   einsatz_template @relation(fields: [template_id], references: [id], onDelete: Cascade)
   user_property      user_property    @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
+}
+
+model pdfTemplate {
+  id             String       @id(map: "PdfTemplate_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @db.Uuid
+  name           String
+  documentType   String       @default("BOOKING_CONFIRMATION")
+  contentJson    Json
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "PdfTemplate_organizationId_fkey")
+
+  @@index([organizationId, documentType], map: "PdfTemplate_organizationId_documentType_idx")
+  @@index([organizationId, isActive], map: "PdfTemplate_organizationId_isActive_idx")
+
 }
