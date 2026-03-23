@@ -56,10 +56,14 @@ export function DataTableViewOptions<TData>({
   const toggleAllColumns = React.useCallback(() => {
     const nextVisibility = !allFilteredColumnsVisible;
 
-    for (const column of filteredColumns) {
-      column.toggleVisibility(nextVisibility);
-    }
-  }, [allFilteredColumnsVisible, filteredColumns]);
+    table.setColumnVisibility((prev) => {
+      const next = { ...prev };
+      for (const column of filteredColumns) {
+        next[column.id] = nextVisibility;
+      }
+      return next;
+    });
+  }, [allFilteredColumnsVisible, filteredColumns, table]);
 
   return (
     <Popover>
@@ -115,9 +119,7 @@ export function DataTableViewOptions<TData>({
             onClick={toggleAllColumns}
             disabled={filteredColumns.length === 0}
           >
-            {allFilteredColumnsVisible
-              ? 'Alle ausblenden'
-              : 'Alle einblenden'}
+            {allFilteredColumnsVisible ? 'Alle ausblenden' : 'Alle einblenden'}
           </Button>
         </div>
       </PopoverContent>
