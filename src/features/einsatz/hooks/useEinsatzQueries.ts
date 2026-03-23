@@ -13,8 +13,14 @@ import {
   getEinsaetzeForTableView,
 } from '@/features/einsatz/dal-einsatz';
 import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
-import type { ETV } from '@/features/einsatz/types';
+import type { EinsatzListItem } from '@/features/einsatz/types';
 
+/**
+ * Loads Einsätze for the specified active organization.
+ *
+ * @param activeOrgId - The active organization's id; if falsy, the query is disabled
+ * @returns The React Query result for the organization's Einsätze
+ */
 export function useEinsaetze(activeOrgId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.einsaetze(activeOrgId ?? ''),
@@ -141,7 +147,12 @@ export function useCategories(activeOrgId: string | null | undefined) {
   });
 }
 
-/** Categories for multiple orgs (e.g. list view showing events from all user orgs). */
+/**
+ * Loads categories aggregated for multiple organization IDs.
+ *
+ * @param orgIds - Array of organization IDs to load categories for; the query is disabled when the array is missing or empty
+ * @returns The query result object containing the aggregated categories and React Query status fields
+ */
 export function useCategoriesByOrgIds(orgIds: string[] | null | undefined) {
   return useQuery({
     queryKey: queryKeys.categoriesByOrgIds(orgIds ?? []),
@@ -150,8 +161,14 @@ export function useCategoriesByOrgIds(orgIds: string[] | null | undefined) {
   });
 }
 
+/**
+ * Fetches Einsätze prepared for the table view for the given organization IDs.
+ *
+ * @param userOrgIds - Array of organization IDs to include; if empty, the query is disabled
+ * @returns The React Query result whose data contains `EinsatzListItem[]` for the table view
+ */
 export function useEinsaetzeTableView(userOrgIds: string[] | null | undefined) {
-  return useQuery<ETV[]>({
+  return useQuery<EinsatzListItem[]>({
     queryKey: [...queryKeys.einsaetzeTableView(userOrgIds ?? [])],
     queryFn: () => getEinsaetzeForTableView(userOrgIds ?? []),
     placeholderData: (previousData) => previousData ?? [],
