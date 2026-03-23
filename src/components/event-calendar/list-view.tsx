@@ -40,10 +40,24 @@ import { useSession } from 'next-auth/react';
 import { CalendarMode } from './types';
 import { getBadgeColorClassByStatus, getStatusByMode } from './utils';
 
+/**
+ * Selects the displayed status text for a list row based on the calendar mode.
+ *
+ * @param row - The list item containing status text fields
+ * @param mode - Calendar mode; when `'helper'` the helper-specific status text is used
+ * @returns `row.status_helper_text` when `mode` is `'helper'`, otherwise `row.status_verwalter_text`
+ */
 function getStatusLabel(row: EinsatzListItem, mode: CalendarMode): string {
   return mode === 'helper' ? row.status_helper_text : row.status_verwalter_text;
 }
 
+/**
+ * Formats a category label by combining the category name with an optional abbreviation.
+ *
+ * @param value - The category name
+ * @param abbreviation - The category abbreviation
+ * @returns The trimmed category name followed by ` (abbreviation)` when an abbreviation is present, otherwise the trimmed category name
+ */
 function formatCategoryLabel(value: string, abbreviation: string): string {
   const trimmedValue = value.trim();
   const trimmedAbbreviation = abbreviation.trim();
@@ -61,6 +75,16 @@ type ListViewProps = {
   mode: CalendarMode;
 };
 
+/**
+ * Render the Einsätze list view with filters, sorting, dynamic custom-field columns, and row actions.
+ *
+ * @param onEventEdit - Callback invoked with an event id when a row's "Bearbeiten" action is selected
+ * @param onEventCreate - Callback invoked with a start date when the "Datensatz anlegen" action is selected
+ * @param onEventDelete - Callback invoked with an event id and title when a row's "Löschen" action is selected
+ * @param onMultiEventDelete - Callback for deleting multiple events; accepted by the props type but currently unused in this component
+ * @param mode - Calendar mode that determines which status text is displayed
+ * @returns A React element containing the list view table and toolbar
+ */
 export function ListView({
   onEventEdit,
   onEventCreate,

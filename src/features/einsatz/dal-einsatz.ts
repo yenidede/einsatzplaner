@@ -303,6 +303,12 @@ export async function getDetailedEinsaetzeForAgenda(
   return rows.map((row) => mapRawEinsatzToDetailedForCalendar(row));
 }
 
+/**
+ * Builds a table-ready list of Einsätze for the specified organizations.
+ *
+ * @param active_org_ids - Organization IDs to filter by; when empty, the current user's organization IDs are used
+ * @returns A list of `EinsatzListItem` objects containing einsatz data plus computed helper names, category labels, and custom field data
+ */
 export async function getEinsaetzeForTableView(
   active_org_ids: string[]
 ): Promise<EinsatzListItem[]> {
@@ -456,6 +462,12 @@ export async function getEinsaetzeForTableView(
   return mapped;
 }
 
+/**
+ * Builds custom-field values and metadata for the list view.
+ *
+ * @param fields - Custom field entries including field metadata such as name, group name, and datatype
+ * @returns An object containing the flattened custom-field values keyed by `field_id` and the metadata needed to render matching columns
+ */
 function mapCustomFields(
   fields: Array<{
     id: string;
@@ -507,6 +519,13 @@ function mapCustomFields(
   return { customFields, customFieldMeta };
 }
 
+/**
+ * Fetch templates for an organization, including each template's icon URL and template fields with their field type name.
+ *
+ * @param org_id - Optional organization id to fetch templates for; if omitted, uses the user's single organization when possible
+ * @returns Template records for the resolved organization or a `Response` with status 403 when the caller lacks permission
+ * @throws {BadRequestError} When no organization can be resolved from `org_id` and the current user's memberships
+ */
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
