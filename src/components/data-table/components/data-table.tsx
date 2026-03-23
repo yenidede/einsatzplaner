@@ -110,7 +110,7 @@ export function DataTable<TData>({
           </Table>
         )}
       </div>
-      <div className="flex flex-col gap-2.5">
+      <div className="bg-background sticky bottom-0 z-20 flex flex-col gap-2.5 border-t pt-2">
         <DataTablePagination table={table} />
         {actionBar &&
           table.getFilteredSelectedRowModel().rows.length > 0 &&
