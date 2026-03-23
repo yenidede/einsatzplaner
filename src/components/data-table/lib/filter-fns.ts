@@ -1,8 +1,7 @@
 // filterFns.ts
 import { FilterFn, Row } from '@tanstack/react-table';
 import type { Operators } from '../config/data-table';
-import { ETV } from '@/features/einsatz/types';
-import { useUrlFilters } from './use-url-filters';
+import type { EinsatzListItem } from '@/features/einsatz/types';
 import { FilterItemSchema } from './parsers';
 import { get } from 'lodash';
 
@@ -11,7 +10,7 @@ import { get } from 'lodash';
 export type JoinOp = 'and' | 'or';
 
 export type Clause = {
-  value?: any;
+  value?: unknown;
   operator?: Operators;
 };
 
@@ -25,7 +24,7 @@ const asNumber = (v: unknown) => (typeof v === 'number' ? v : Number(v));
 
 type asDateOnlyFnProps = {
   filterValue: string | number | Date;
-  cellValue: any;
+  cellValue: unknown;
 };
 
 function timestampToDate(timestamp: number | string | Date): Date | null {
@@ -58,6 +57,14 @@ function timestampToDate(timestamp: number | string | Date): Date | null {
   }
 }
 
+function isDateFilterValue(value: unknown): value is string | number | Date {
+  return (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    value instanceof Date
+  );
+}
+
 function asDateOnlys({ filterValue, cellValue }: asDateOnlyFnProps): Date[] {
   const result: Date[] = [];
 
@@ -83,7 +90,7 @@ function isDateSameDay(fv: Date, cv: Date): boolean {
 }
 
 // Evaluate one clause against a single cell value
-function evalClause(cellValue: any, clause: Clause): boolean {
+function evalClause(cellValue: unknown, clause: Clause): boolean {
   if (!clause?.operator) return true; // No operator means filter not fully set. Show all.
   const { operator, value } = clause;
 
@@ -106,10 +113,18 @@ function evalClause(cellValue: any, clause: Clause): boolean {
 
     // Multi-select
     case 'inArray': {
-      return Array.isArray(value) ? value.includes(cellValue) : true;
+      if (!Array.isArray(value)) return true;
+      if (Array.isArray(cellValue)) {
+        return cellValue.some((entry) => value.includes(entry));
+      }
+      return value.includes(cellValue);
     }
     case 'notInArray': {
-      return Array.isArray(value) ? !value.includes(cellValue) : true;
+      if (!Array.isArray(value)) return true;
+      if (Array.isArray(cellValue)) {
+        return cellValue.every((entry) => !value.includes(entry));
+      }
+      return !value.includes(cellValue);
     }
 
     // Emptiness (treats null/""/"-" as empty)
@@ -143,31 +158,37 @@ function evalClause(cellValue: any, clause: Clause): boolean {
     // Dates - cellValue is row data; value is filter value. fv = fv, cv = cv. Always apply filters to fv!
     // asDateOnlys normalizes to midnight
     case 'dateEq': {
+      if (!isDateFilterValue(value)) return false;
       const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
       if (!fv || !cv) return false;
       return isDateSameDay(fv, cv);
     }
     case 'dateNe': {
+      if (!isDateFilterValue(value)) return false;
       const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
       if (!fv || !cv) return false;
       return !isDateSameDay(fv, cv);
     }
     case 'dateLt': {
+      if (!isDateFilterValue(value)) return false;
       const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
       if (!fv || !cv) return false;
       return fv > cv;
     }
     case 'dateGt': {
+      if (!isDateFilterValue(value)) return false;
       const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
       if (!fv || !cv) return false;
       return fv < cv;
     }
     case 'dateLte': {
+      if (!isDateFilterValue(value)) return false;
       const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
       if (!fv || !cv) return false;
       return fv >= cv;
     }
     case 'dateGte': {
+      if (!isDateFilterValue(value)) return false;
       const [fv, cv] = asDateOnlys({ filterValue: value, cellValue });
       if (!fv || !cv) return false;
       return fv <= cv;
@@ -190,10 +211,10 @@ function evalClause(cellValue: any, clause: Clause): boolean {
 }
 
 // ----- Single filterFn to handle advanced, joined operators per column -----
-export const byOperator: FilterFn<ETV> = (
-  row: Row<ETV>,
+export const byOperator: FilterFn<EinsatzListItem> = (
+  row: Row<EinsatzListItem>,
   columnId: string,
-  _filterValue: any[]
+  _filterValue: unknown[]
 ) => {
   // hard to understand state relations lead to now only using the url to filter
   // problem was related to the filterValue not being passed correctly to our custom filterFn
@@ -216,10 +237,10 @@ export const byOperator: FilterFn<ETV> = (
   });
 };
 
-export const byOperatorUseMetaField: FilterFn<ETV> = (
-  row: Row<ETV>,
+export const byOperatorUseMetaField: FilterFn<EinsatzListItem> = (
+  row: Row<EinsatzListItem>,
   columnId: string,
-  _filterValue: any[]
+  _filterValue: unknown[]
 ) => {
   // hard to understand state relations lead to now only using the url to filter
   // problem was related to the filterValue not being passed correctly to our custom filterFn
