@@ -27,6 +27,16 @@ type asDateOnlyFnProps = {
   cellValue: unknown;
 };
 
+/**
+ * Convert a date-like value into a `Date`, or return `null` for invalid input.
+ *
+ * `Date` inputs are normalized to midnight of the same calendar day. Numeric and
+ * digit-only string inputs are interpreted as epoch milliseconds and returned as
+ * constructed by `new Date(...)`.
+ *
+ * @param timestamp - A `Date`, a numeric epoch timestamp in milliseconds, or a digit-only string representing epoch milliseconds
+ * @returns A `Date` for valid inputs, or `null` if the input cannot be parsed into a valid date
+ */
 function timestampToDate(timestamp: number | string | Date): Date | null {
   if (timestamp instanceof Date)
     return new Date(
@@ -57,6 +67,12 @@ function timestampToDate(timestamp: number | string | Date): Date | null {
   }
 }
 
+/**
+ * Type guard that determines whether a value is a date-like filter input.
+ *
+ * @param value - The value to test
+ * @returns `true` if `value` is a `string`, `number`, or `Date`, `false` otherwise.
+ */
 function isDateFilterValue(value: unknown): value is string | number | Date {
   return (
     typeof value === 'string' ||
@@ -65,6 +81,16 @@ function isDateFilterValue(value: unknown): value is string | number | Date {
   );
 }
 
+/**
+ * Prepare filter and cell inputs for date comparisons.
+ *
+ * The filter value is converted via `timestampToDate`. The cell value is
+ * normalized to midnight only when it is already a `Date`.
+ *
+ * @param filterValue - A timestamp-like value used as the filter input
+ * @param cellValue - The row cell value to compare against the filter input
+ * @returns An array where index `0` holds the converted filter value and index `1` holds the normalized cell date when available
+ */
 function asDateOnlys({ filterValue, cellValue }: asDateOnlyFnProps): Date[] {
   const result: Date[] = [];
 
@@ -81,6 +107,13 @@ function asDateOnlys({ filterValue, cellValue }: asDateOnlyFnProps): Date[] {
   return result;
 }
 
+/**
+ * Determines whether two Date objects fall on the same calendar day.
+ *
+ * @param fv - The first date to compare
+ * @param cv - The second date to compare
+ * @returns `true` if `fv` and `cv` have the same year, month, and day, `false` otherwise
+ */
 function isDateSameDay(fv: Date, cv: Date): boolean {
   return (
     fv.getFullYear() === cv.getFullYear() &&
@@ -89,7 +122,16 @@ function isDateSameDay(fv: Date, cv: Date): boolean {
   );
 }
 
-// Evaluate one clause against a single cell value
+/**
+ * Evaluate a single filter clause against a cell value.
+ *
+ * Returns whether the provided cell value satisfies the clause's operator and value.
+ * If the clause has no operator or an unrecognized operator, the function treats the clause as not fully set and returns `true`.
+ *
+ * @param cellValue - The value from the row cell to evaluate.
+ * @param clause - Filter clause containing an `operator` and associated `value` used for evaluation.
+ * @returns `true` if the cell value matches the clause, `false` otherwise.
+ */
 function evalClause(cellValue: unknown, clause: Clause): boolean {
   if (!clause?.operator) return true; // No operator means filter not fully set. Show all.
   const { operator, value } = clause;
