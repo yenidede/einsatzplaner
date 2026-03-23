@@ -584,19 +584,21 @@ function FilterValueSelector<TData>({
 
     case 'number':
     case 'range': {
-      const normalizedValue = value.trim();
+      const trimmedValue = value.trim();
+      const normalizedNumericValue = trimmedValue.replace(',', '.');
       const hasNumericValue =
-        normalizedValue.length > 0 && !Number.isNaN(Number(normalizedValue));
+        trimmedValue.length > 0 &&
+        !Number.isNaN(Number(normalizedNumericValue));
 
       return (
         <CommandGroup>
           <CommandItem
-            value={normalizedValue}
-            onSelect={() => onSelect(normalizedValue)}
+            value={trimmedValue}
+            onSelect={() => onSelect(normalizedNumericValue)}
             disabled={!hasNumericValue}
           >
             {hasNumericValue ? (
-              <span className="truncate">Ist {normalizedValue}</span>
+              <span className="truncate">Ist {trimmedValue}</span>
             ) : (
               <span>Zahl eingeben...</span>
             )}
