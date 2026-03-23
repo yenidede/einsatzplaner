@@ -56,7 +56,9 @@ import {
   calcTotal,
   calcPricePerPersonFromTotal,
 } from '../form/utils';
-import TooltipCustom from '../tooltip-custom';
+import TooltipCustom from '@/components/tooltip-custom';
+import { PrintTemplateDropdown } from '../pdfTemplates/PrintTemplateDropdown';
+import { getPdfTemplates } from '@/app/actions/pdfTemplates';
 
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
 import { useSession } from 'next-auth/react';
@@ -279,6 +281,10 @@ export function EventDialogVerwaltung({
   // Track if dynamic form fields have been initialized to prevent overwriting
   const dynamicFieldsInitializedRef = useRef<string | null>(null);
 
+  const [pdfTemplates, setPdfTemplates] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+
   // Update form resolver when dynamicSchema changes
   useEffect(() => {
     if (dynamicSchema) {
@@ -316,6 +322,13 @@ export function EventDialogVerwaltung({
 
   const { einsatz_singular, helper_singular, helper_plural } =
     useOrganizationTerminology(organizations, activeOrgId);
+
+  // Lade PDF-Templates
+  useEffect(() => {
+    if (activeOrgId) {
+      getPdfTemplates(activeOrgId).then(setPdfTemplates);
+    }
+  }, [activeOrgId]);
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =
@@ -1099,7 +1112,7 @@ export function EventDialogVerwaltung({
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="flex max-h-[90vh] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden sm:max-w-220">
-          <DialogHeader className="sticky top-0 z-10 shrink-0 border-b pb-4">
+          <DialogHeader className="sticky top-0 z-60 shrink-0 border-b pb-4">
             <DialogTitle className="bg-background mr-8 wrap-break-word">
               {isLoading
                 ? 'Laden...'
@@ -1239,7 +1252,7 @@ export function EventDialogVerwaltung({
             </div>
           </div>
 
-          <DialogFooter className="bg-background sticky bottom-0 z-10 shrink-0 flex-row border-t pt-4 sm:justify-between">
+          <DialogFooter className="bg-background sticky bottom-0 z-60 shrink-0 flex-row border-t pt-4 sm:justify-between">
             {
               <TooltipCustom text={einsatz_singular + ' löschen'}>
                 <Button
@@ -1265,25 +1278,11 @@ export function EventDialogVerwaltung({
                 </Button>
               </TooltipCustom>
             }
-            <TooltipCustom text="PDF-Bestätigung drucken">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() =>
-                  handlePdfGenerate(
-                    einsatz_singular,
-                    {
-                      id: currentEinsatz?.id,
-                      title: currentEinsatz?.title ?? staticFormData.title,
-                    },
-                    generatePdf
-                  )
-                }
-                aria-label="PDF-Bestätigung drucken"
-              >
-                <FileDown size={16} aria-hidden="true" />
-              </Button>
-            </TooltipCustom>
+            <PrintTemplateDropdown
+              organizationId={activeOrgId || ''}
+              assignmentId={currentEinsatz?.id || ''}
+              templates={pdfTemplates}
+            />
             <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
               {staticFormData.helpersNeeded > 0 &&
                 staticFormData.assignedUsers.length >=

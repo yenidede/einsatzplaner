@@ -5,6 +5,8 @@ import {
   criticalFieldClass,
 } from '@/features/settings/utils/criticalFieldUtils';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { OrganizationAddresses } from '@/components/settings/org/OrganizationAddresses';
 import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
 
@@ -144,6 +146,16 @@ export function OrganizationPdfExportForm({
         organizationId={organizationId}
         isSuperadmin={isSuperadmin}
       />
+
+      <div className="rounded-lg border border-dashed border-slate-300 p-4">
+        <p className="text-muted-foreground text-sm">
+          Hier kannst du zusätzliche PDF-Templates für
+          Einsatz-Buchungsbestätigungen verwalten.
+        </p>
+        <Link href="/settings/pdf-templates" className="mt-3 inline-block">
+          <Button variant="secondary">PDF-Vorlagen verwalten</Button>
+        </Link>
+      </div>
     </div>
   );
 }

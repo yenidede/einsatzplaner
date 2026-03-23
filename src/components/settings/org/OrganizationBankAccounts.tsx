@@ -272,8 +272,8 @@ export function OrganizationBankAccounts({
           {isLoading ? (
             <div className="text-sm text-slate-500">Lädt Bankkonten...</div>
           ) : accounts.length === 0 ? (
-            <div className="text-sm text-slate-500 italic">
-              Keine Bankkonten vorhanden
+            <div className="py-8 text-center text-sm text-slate-500">
+              Noch keine Bankkonten hinzugefügt
             </div>
           ) : (
             <div className="flex flex-col gap-2">
