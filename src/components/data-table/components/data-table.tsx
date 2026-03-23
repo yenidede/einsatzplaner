@@ -30,15 +30,15 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   return (
     <div
-      className={cn('flex w-full flex-col gap-2.5 overflow-auto', className)}
+      className={cn('flex w-full flex-col gap-2.5', className)}
       {...props}
     >
       {children}
-      <div className="overflow-hidden rounded-md border">
+      <div className="bg-background overflow-x-auto rounded-md border">
         {isLoading ? (
           <DataTableSkeleton columnCount={8} />
         ) : (
-          <Table>
+          <Table className="min-w-full w-max">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -46,6 +46,9 @@ export function DataTable<TData>({
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
+                      className={cn(
+                        header.column.getIsPinned() && 'bg-background'
+                      )}
                       style={{
                         ...getCommonPinningStyles({ column: header.column }),
                       }}
@@ -71,6 +74,10 @@ export function DataTable<TData>({
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
+                        className={cn(
+                          cell.column.getIsPinned() &&
+                            'bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted'
+                        )}
                         style={{
                           ...getCommonPinningStyles({ column: cell.column }),
                         }}

@@ -567,19 +567,45 @@ function FilterValueSelector<TData>({
   onSelect,
 }: FilterValueSelectorProps<TData>) {
   const variant = column.columnDef.meta?.variant ?? 'text';
+  const [range, setRange] = React.useState<
+    { from?: Date; to?: Date } | undefined
+  >(undefined);
 
   switch (variant) {
     case 'boolean':
       return (
         <CommandGroup>
           <CommandItem value="true" onSelect={() => onSelect('true')}>
-            True
+            Ja
           </CommandItem>
           <CommandItem value="false" onSelect={() => onSelect('false')}>
-            False
+            Nein
           </CommandItem>
         </CommandGroup>
       );
+
+    case 'number':
+    case 'range': {
+      const normalizedValue = value.trim();
+      const hasNumericValue =
+        normalizedValue.length > 0 && !Number.isNaN(Number(normalizedValue));
+
+      return (
+        <CommandGroup>
+          <CommandItem
+            value={normalizedValue}
+            onSelect={() => onSelect(normalizedValue)}
+            disabled={!hasNumericValue}
+          >
+            {hasNumericValue ? (
+              <span className="truncate">Ist {normalizedValue}</span>
+            ) : (
+              <span>Zahl eingeben...</span>
+            )}
+          </CommandItem>
+        </CommandGroup>
+      );
+    }
 
     case 'select':
     case 'multiSelect':
@@ -614,10 +640,6 @@ function FilterValueSelector<TData>({
         />
       );
     case 'dateRange': {
-      // Support picking both min and max before closing
-      const [range, setRange] = React.useState<
-        { from?: Date; to?: Date } | undefined
-      >(undefined);
       return (
         <Calendar
           autoFocus
