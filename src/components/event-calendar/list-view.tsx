@@ -210,6 +210,56 @@ export function ListView({
     );
   }, [tableData]);
 
+  const customFieldSelectOptions = useMemo(() => {
+    const optionsByFieldKey = new Map<
+      string,
+      { label: string; value: string }[]
+    >();
+
+    for (const fieldMeta of customFieldMeta) {
+      if (fieldMeta.datatype !== 'select') {
+        continue;
+      }
+
+      const uniqueValues = new Set<string>();
+
+      for (const allowedValue of fieldMeta.allowed_values) {
+        const normalizedValue = allowedValue.trim();
+
+        if (normalizedValue.length === 0) {
+          continue;
+        }
+
+        uniqueValues.add(normalizedValue);
+      }
+
+      for (const einsatz of tableData) {
+        const fieldValue = einsatz.custom_fields[fieldMeta.key];
+
+        if (typeof fieldValue !== 'string') {
+          continue;
+        }
+
+        const normalizedValue = fieldValue.trim();
+
+        if (normalizedValue.length === 0) {
+          continue;
+        }
+
+        uniqueValues.add(normalizedValue);
+      }
+
+      optionsByFieldKey.set(
+        fieldMeta.key,
+        Array.from(uniqueValues)
+          .map((value) => ({ label: value, value }))
+          .sort((a, b) => a.label.localeCompare(b.label, 'de'))
+      );
+    }
+
+    return optionsByFieldKey;
+  }, [customFieldMeta, tableData]);
+
   const columnHelper = useMemo(() => createColumnHelper<EinsatzListItem>(), []);
 
   const columns = useMemo(() => {
@@ -257,9 +307,9 @@ export function ListView({
           const title = props.getValue();
 
           return (
-            // the max-w-32 and the maxChars=18 need to be aligned
+            // the max-w-32 and the triggerCharCount=18 need to be aligned
             <div className="max-w-32">
-              <TruncatedTextWithTooltip text={title} maxChars={18} />
+              <TruncatedTextWithTooltip text={title} triggerCharCount={18} />
             </div>
           );
         },
@@ -449,10 +499,7 @@ export function ListView({
                   { label: 'Nein', value: 'false' },
                 ]
               : fieldMeta.datatype === 'select'
-                ? fieldMeta.allowed_values.map((allowedValue) => ({
-                    label: allowedValue,
-                    value: allowedValue,
-                  }))
+                ? (customFieldSelectOptions.get(fieldMeta.key) ?? [])
                 : undefined,
           placeholder: `Nach ${fieldMeta.label} suchen...`,
         },
@@ -502,6 +549,7 @@ export function ListView({
     categoriesData,
     columnHelper,
     customFieldMeta,
+    customFieldSelectOptions,
     einsatz_singular,
     neededHelpersCountLabel,
     mode,
