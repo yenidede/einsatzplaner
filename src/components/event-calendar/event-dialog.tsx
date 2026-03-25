@@ -73,6 +73,7 @@ import { SelectTrigger } from '@radix-ui/react-select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import { RequiredUserProperties } from './RequiredUserProperties';
 import { Separator } from '../ui/separator';
+import { formatDateToTimeInput, isNormalizedTime } from '@/lib/time-input';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -119,18 +120,14 @@ function formatOrgTimeForInput(value: unknown, fallback: string): string {
   }
 
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    const hours = value.getHours().toString().padStart(2, '0');
-    const minutes = value.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+    return formatDateToTimeInput(value);
   }
 
   return fallback;
 }
 
 function formatTimeForInput(date: Date) {
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
+  return formatDateToTimeInput(date);
 }
 
 function combineDateAndTime(date: Date, time: string) {
@@ -363,8 +360,6 @@ export function EventDialogVerwaltung({
   const currentEinsatz =
     typeof einsatz === 'string' ? detailedEinsatz : einsatz;
 
-  // React Hook Form übernimmt jetzt die Validierung automatisch
-
   const handleFormDataChange = useCallback(
     (updates: Partial<EinsatzFormData>) => {
       let nextFormData: EinsatzFormData | undefined;
@@ -490,6 +485,28 @@ export function EventDialogVerwaltung({
       }
     },
     [orgDefaultStartTime, orgDefaultEndTime]
+  );
+
+  const handleTimeFieldErrorChange = useCallback(
+    (field: 'startTime' | 'endTime', error: string | null) => {
+      setErrors((prevErrors) => {
+        const nextErrors = {
+          ...prevErrors,
+          fieldErrors: {
+            ...prevErrors.fieldErrors,
+          },
+        };
+
+        if (error) {
+          nextErrors.fieldErrors[field] = [error];
+        } else {
+          delete nextErrors.fieldErrors[field];
+        }
+
+        return nextErrors;
+      });
+    },
+    []
   );
 
   const getDefaultStaticFormData = useCallback((): EinsatzFormData => {
@@ -892,6 +909,34 @@ export function EventDialogVerwaltung({
   };
 
   const handleSave = async () => {
+    if (
+      !staticFormData.all_day &&
+      (!isNormalizedTime(staticFormData.startTime) ||
+        !isNormalizedTime(staticFormData.endTime))
+    ) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        fieldErrors: {
+          ...prevErrors.fieldErrors,
+          ...(!isNormalizedTime(staticFormData.startTime)
+            ? {
+                startTime: [
+                  'Bitte geben Sie eine gültige Startzeit im Format HH:MM ein.',
+                ],
+              }
+            : {}),
+          ...(!isNormalizedTime(staticFormData.endTime)
+            ? {
+                endTime: [
+                  'Bitte geben Sie eine gültige Endzeit im Format HH:MM ein.',
+                ],
+              }
+            : {}),
+        },
+      }));
+      return;
+    }
+
     // Validiere statische Felder
     const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
 
@@ -1276,6 +1321,7 @@ export function EventDialogVerwaltung({
                 formData={staticFormData}
                 onFormDataChange={handleFormDataChange}
                 errors={errors}
+                onTimeFieldErrorChange={handleTimeFieldErrorChange}
                 categoriesOptions={
                   categoriesQuery?.data
                     ? categoriesQuery?.data?.map((cat) => ({

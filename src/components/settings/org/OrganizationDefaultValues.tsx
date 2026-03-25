@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { TimeTextInput } from '@/components/form/TimeTextInput';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { queryKeys } from '@/features/einsatz/queryKeys';
 import {
@@ -27,10 +28,14 @@ interface OrganizationDefaultValuesProps {
   maxParticipantsPerHelper: string;
   defaultStarttime: string;
   defaultEndtime: string;
+  defaultStarttimeError: string | null;
+  defaultEndtimeError: string | null;
   categories: CategoryItem[];
   onMaxParticipantsPerHelperChange: (value: string) => void;
   onDefaultStarttimeChange: (value: string) => void;
   onDefaultEndtimeChange: (value: string) => void;
+  onDefaultStarttimeErrorChange: (error: string | null) => void;
+  onDefaultEndtimeErrorChange: (error: string | null) => void;
 }
 
 export function OrganizationDefaultValues({
@@ -39,10 +44,14 @@ export function OrganizationDefaultValues({
   maxParticipantsPerHelper,
   defaultStarttime,
   defaultEndtime,
+  defaultStarttimeError,
+  defaultEndtimeError,
   categories,
   onMaxParticipantsPerHelperChange,
   onDefaultStarttimeChange,
   onDefaultEndtimeChange,
+  onDefaultStarttimeErrorChange,
+  onDefaultEndtimeErrorChange,
 }: OrganizationDefaultValuesProps) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
@@ -178,26 +187,34 @@ export function OrganizationDefaultValues({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="default-starttime">Standard-Startzeit</Label>
-            <Input
+            <TimeTextInput
               id="default-starttime"
-              type="time"
               value={defaultStarttime}
-              onChange={(e) => onDefaultStarttimeChange(e.target.value)}
+              onValueChange={onDefaultStarttimeChange}
+              onValidationChange={onDefaultStarttimeErrorChange}
+              invalidMessage="Bitte geben Sie eine gültige Standard-Startzeit ein, z. B. 09:00."
               aria-label="Standard-Startzeit für neue Einsätze"
             />
+            {defaultStarttimeError && (
+              <p className="text-destructive text-sm">{defaultStarttimeError}</p>
+            )}
             <p className="text-muted-foreground text-sm">
               Wird im Einsatz-Dialog als Vorgabe für die Startzeit verwendet.
             </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="default-endtime">Standard-Endzeit</Label>
-            <Input
+            <TimeTextInput
               id="default-endtime"
-              type="time"
               value={defaultEndtime}
-              onChange={(e) => onDefaultEndtimeChange(e.target.value)}
+              onValueChange={onDefaultEndtimeChange}
+              onValidationChange={onDefaultEndtimeErrorChange}
+              invalidMessage="Bitte geben Sie eine gültige Standard-Endzeit ein, z. B. 10:00."
               aria-label="Standard-Endzeit für neue Einsätze"
             />
+            {defaultEndtimeError && (
+              <p className="text-destructive text-sm">{defaultEndtimeError}</p>
+            )}
             <p className="text-muted-foreground text-sm">
               Wird im Einsatz-Dialog als Vorgabe für die Endzeit verwendet.
             </p>
