@@ -345,7 +345,10 @@ export async function getPdfTemplatePreviewData(args: {
   };
 }
 
-export async function generateBookingConfirmationPdf(einsatzId: string): Promise<{
+export async function generateBookingConfirmationPdf(
+  einsatzId: string,
+  templateId?: string
+): Promise<{
   success: boolean;
   data?: {
     pdf: string;
@@ -375,12 +378,21 @@ export async function generateBookingConfirmationPdf(einsatzId: string): Promise
 
     await assertEinsatzReadPermission(einsatz.org_id);
 
-    const defaultTemplate = await getDefaultPdfTemplateByOrganization(
-      einsatz.org_id,
-      PDF_TEMPLATE_DOCUMENT_TYPE
-    );
+    const selectedTemplate = templateId
+      ? await getPdfTemplateById(templateId)
+      : await getDefaultPdfTemplateByOrganization(
+          einsatz.org_id,
+          PDF_TEMPLATE_DOCUMENT_TYPE
+        );
 
-    if (!defaultTemplate) {
+    if (selectedTemplate && selectedTemplate.organizationId !== einsatz.org_id) {
+      return {
+        success: false,
+        error: 'Vorlage gehört nicht zur aktiven Organisation',
+      };
+    }
+
+    if (!selectedTemplate) {
       const legacyResult = await generateEinsatzPDF(einsatzId);
 
       if (!legacyResult.success || !legacyResult.data) {
@@ -401,7 +413,7 @@ export async function generateBookingConfirmationPdf(einsatzId: string): Promise
 
     const input = await buildBookingConfirmationPdfInput(einsatzId);
     const pdfBytes = await generatePdfmeDocument({
-      template: defaultTemplate.template,
+      template: selectedTemplate.template,
       input,
     });
 

@@ -66,8 +66,17 @@ import {
   detectChangeTypes,
   getAffectedUserId,
 } from '@/features/activity_log/utils';
-import { Select, SelectContent, SelectItem } from '../ui/select';
-import { SelectTrigger } from '@radix-ui/react-select';
+import {
+  getDefaultOrganizationPdfTemplate,
+  getPdfTemplates,
+} from '@/app/actions/pdfTemplates';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import { RequiredUserProperties } from './RequiredUserProperties';
 import { Separator } from '../ui/separator';
@@ -243,6 +252,13 @@ export function EventDialogVerwaltung({
   const currentUserId = session?.user?.id;
 
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [pdfTemplates, setPdfTemplates] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [selectedPdfTemplateId, setSelectedPdfTemplateId] = useState<
+    string | null
+  >(null);
+  const [isPdfTemplatesLoading, setIsPdfTemplatesLoading] = useState(false);
   const [staticFormData, setStaticFormData] =
     useState<EinsatzFormData>(DEFAULTFORMDATA);
   // state for validation on dynamic form data - generated once after template was selected
@@ -313,6 +329,65 @@ export function EventDialogVerwaltung({
 
   const { einsatz_singular, helper_singular, helper_plural } =
     useOrganizationTerminology(organizations, activeOrgId);
+
+  useEffect(() => {
+    if (!activeOrgId) {
+      setPdfTemplates([]);
+      setSelectedPdfTemplateId(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsPdfTemplatesLoading(true);
+
+    void Promise.all([
+      getPdfTemplates(activeOrgId),
+      getDefaultOrganizationPdfTemplate(activeOrgId),
+    ])
+      .then(([templates, defaultTemplate]) => {
+        if (cancelled) {
+          return;
+        }
+
+        setPdfTemplates(templates);
+        setSelectedPdfTemplateId((current) => {
+          if (current && templates.some((template) => template.id === current)) {
+            return current;
+          }
+
+          if (
+            defaultTemplate?.id &&
+            templates.some((template) => template.id === defaultTemplate.id)
+          ) {
+            return defaultTemplate.id;
+          }
+
+          return templates[0]?.id ?? null;
+        });
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+
+        setPdfTemplates([]);
+        setSelectedPdfTemplateId(null);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'PDF-Vorlagen konnten nicht geladen werden.'
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsPdfTemplatesLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeOrgId]);
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =
@@ -1161,13 +1236,7 @@ export function EventDialogVerwaltung({
                       onValueChange={handleTemplateSelect}
                     >
                       <SelectTrigger className="w-full sm:w-auto">
-                        <Button
-                          asChild
-                          variant="outline"
-                          className="w-full sm:w-auto"
-                        >
-                          <div className="truncate">Aktive Vorlage ändern</div>
-                        </Button>
+                        <SelectValue placeholder="Aktive Vorlage ändern" />
                       </SelectTrigger>
                       <SelectContent>
                         {templatesQuery.data
@@ -1242,6 +1311,7 @@ export function EventDialogVerwaltung({
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-9 w-9"
                   onClick={() =>
                     handleDelete(
                       einsatz_singular,
@@ -1262,7 +1332,15 @@ export function EventDialogVerwaltung({
                 </Button>
               </TooltipCustom>
             }
-            <GenerateBookingConfirmationButton assignmentId={currentEinsatz?.id} />
+            <div className="flex flex-wrap items-center gap-3">
+              <GenerateBookingConfirmationButton
+                assignmentId={currentEinsatz?.id}
+                templateId={selectedPdfTemplateId}
+                templates={pdfTemplates}
+                onTemplateChange={setSelectedPdfTemplateId}
+                isLoading={isPdfTemplatesLoading}
+              />
+            </div>
             <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
               {staticFormData.helpersNeeded > 0 &&
                 staticFormData.assignedUsers.length >=

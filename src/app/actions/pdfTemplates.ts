@@ -108,7 +108,8 @@ export async function getDefaultOrganizationPdfTemplate(
 }
 
 export async function generatePdfForAssignment(
-  assignmentId: string
+  assignmentId: string,
+  templateId?: string | null
 ): Promise<{
   success: boolean;
   data?: {
@@ -119,7 +120,7 @@ export async function generatePdfForAssignment(
   };
   error?: string;
 }> {
-  return generateBookingConfirmationPdf(assignmentId);
+  return generateBookingConfirmationPdf(assignmentId, templateId ?? undefined);
 }
 
 export async function getPdfTemplatePreview(
