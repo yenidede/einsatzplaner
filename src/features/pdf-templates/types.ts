@@ -15,10 +15,25 @@ export type PdfTemplateFieldValue =
 
 export type PdfTemplateInput = Record<string, PdfTemplateFieldValue>;
 
+export type PdfTemplateFieldGroup =
+  | 'organization'
+  | 'einsatz'
+  | 'contact_person'
+  | 'participants'
+  | 'custom';
+
+export type PdfTemplateFieldKind = 'standard' | 'custom';
+
 export interface PdfTemplateFieldDefinition {
   key: string;
   label: string;
   source: 'einsatz' | 'organization' | 'dynamic_field' | 'user_property';
+  group: PdfTemplateFieldGroup;
+  subgroup?: string | null;
+  kind: PdfTemplateFieldKind;
+  isCustom: boolean;
+  sourceLabel?: string | null;
+  searchText: string;
 }
 
 export interface StoredPdfTemplateMeta {
@@ -50,4 +65,3 @@ export interface PdfTemplateRecord extends PdfTemplateListItem {
 }
 
 export type PrismaPdfTemplate = pdfTemplate;
-
