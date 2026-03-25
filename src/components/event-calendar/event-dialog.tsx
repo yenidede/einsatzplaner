@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
-import { FileDown } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -57,10 +56,7 @@ import {
   calcPricePerPersonFromTotal,
 } from '../form/utils';
 import TooltipCustom from '@/components/tooltip-custom';
-import { PrintTemplateDropdown } from '../pdfTemplates/PrintTemplateDropdown';
-import { getPdfTemplates } from '@/app/actions/pdfTemplates';
-
-import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
+import { GenerateBookingConfirmationButton } from '../pdfTemplates/GenerateBookingConfirmationButton';
 import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
@@ -247,7 +243,6 @@ export function EventDialogVerwaltung({
   const currentUserId = session?.user?.id;
 
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const { generatePdf } = usePdfGenerator();
   const [staticFormData, setStaticFormData] =
     useState<EinsatzFormData>(DEFAULTFORMDATA);
   // state for validation on dynamic form data - generated once after template was selected
@@ -280,10 +275,6 @@ export function EventDialogVerwaltung({
 
   // Track if dynamic form fields have been initialized to prevent overwriting
   const dynamicFieldsInitializedRef = useRef<string | null>(null);
-
-  const [pdfTemplates, setPdfTemplates] = useState<
-    Array<{ id: string; name: string }>
-  >([]);
 
   // Update form resolver when dynamicSchema changes
   useEffect(() => {
@@ -322,13 +313,6 @@ export function EventDialogVerwaltung({
 
   const { einsatz_singular, helper_singular, helper_plural } =
     useOrganizationTerminology(organizations, activeOrgId);
-
-  // Lade PDF-Templates
-  useEffect(() => {
-    if (activeOrgId) {
-      getPdfTemplates(activeOrgId).then(setPdfTemplates);
-    }
-  }, [activeOrgId]);
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =
@@ -1278,11 +1262,7 @@ export function EventDialogVerwaltung({
                 </Button>
               </TooltipCustom>
             }
-            <PrintTemplateDropdown
-              organizationId={activeOrgId || ''}
-              assignmentId={currentEinsatz?.id || ''}
-              templates={pdfTemplates}
-            />
+            <GenerateBookingConfirmationButton assignmentId={currentEinsatz?.id} />
             <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
               {staticFormData.helpersNeeded > 0 &&
                 staticFormData.assignedUsers.length >=

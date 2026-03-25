@@ -1,169 +1,152 @@
 'use server';
 
-import prisma from '@/lib/prisma';
-import { PdfTemplateContent } from '@/types/pdfTemplate';
-import { revalidatePath } from 'next/cache';
+import type { Template } from '@pdfme/common';
+import type {
+  PdfTemplateListItem,
+  PdfTemplateRecord,
+} from '@/features/pdf-templates/types';
+import {
+  createPdfTemplate as createPdfTemplateService,
+  deletePdfTemplate as deletePdfTemplateService,
+  duplicatePdfTemplate as duplicatePdfTemplateService,
+  generateBookingConfirmationPdf,
+  getDefaultPdfTemplateByOrganization,
+  getPdfTemplateById as getPdfTemplateByIdService,
+  getPdfTemplatePreviewData,
+  getPdfTemplatesByOrganization as getPdfTemplatesByOrganizationService,
+  setDefaultPdfTemplate as setDefaultPdfTemplateService,
+  updatePdfTemplate as updatePdfTemplateService,
+} from '@/features/pdf-templates/pdf-template-service';
+import {
+  getBookingConfirmationPreviewOptions,
+  buildBookingConfirmationPdfInput,
+} from '@/features/pdf-templates/pdf-template-input';
+import { PDF_TEMPLATE_DOCUMENT_TYPE } from '@/features/pdf-templates/types';
 
-type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: JsonValue }
-  | JsonValue[];
-// Erstelle Template
 export async function createPdfTemplate(data: {
   organizationId: string;
-  name: string;
-  contentJson: PdfTemplateContent;
-}) {
-  const template = await prisma.pdfTemplate.create({
-    data: {
-      organizationId: data.organizationId,
-      name: data.name,
-      contentJson: data.contentJson as JsonValue,
-    },
+  name?: string;
+  template?: Template;
+  isDefault?: boolean;
+  isActive?: boolean;
+  sampleEinsatzId?: string | null;
+}): Promise<PdfTemplateRecord> {
+  return createPdfTemplateService({
+    organizationId: data.organizationId,
+    name: data.name,
+    template: data.template,
+    documentType: PDF_TEMPLATE_DOCUMENT_TYPE,
+    isDefault: data.isDefault,
+    isActive: data.isActive,
+    sampleEinsatzId: data.sampleEinsatzId,
   });
-  revalidatePath('/settings/pdf-templates');
-  return template;
 }
 
-// Update Template
 export async function updatePdfTemplate(
   id: string,
   data: {
     name?: string;
-    contentJson?: PdfTemplateContent;
+    template?: Template;
     isActive?: boolean;
+    sampleEinsatzId?: string | null;
   }
-) {
-  const updateData: {
-    name?: string;
-    contentJson?: JsonValue;
-    isActive?: boolean;
-  } = {};
-
-  if (data.name !== undefined) updateData.name = data.name;
-  if (data.isActive !== undefined) updateData.isActive = data.isActive;
-  if (data.contentJson !== undefined)
-    updateData.contentJson = data.contentJson as JsonValue;
-
-  const template = await prisma.pdfTemplate.update({
-    where: { id },
-    data: updateData,
+): Promise<PdfTemplateRecord> {
+  return updatePdfTemplateService({
+    id,
+    name: data.name,
+    template: data.template,
+    isActive: data.isActive,
+    sampleEinsatzId: data.sampleEinsatzId,
   });
-  revalidatePath('/settings/pdf-templates');
-  return template;
 }
 
-// Lösche Template
-export async function deletePdfTemplate(id: string) {
-  await prisma.pdfTemplate.delete({
-    where: { id },
-  });
-  revalidatePath('/settings/pdf-templates');
+export async function getPdfTemplatesByOrganization(
+  organizationId: string
+): Promise<PdfTemplateListItem[]> {
+  return getPdfTemplatesByOrganizationService(organizationId);
 }
 
-// Lade Templates für Organization
-export async function getPdfTemplates(organizationId: string) {
-  const templates = await prisma.pdfTemplate.findMany({
-    where: { organizationId },
-    orderBy: { createdAt: 'desc' },
-  });
-  return templates;
+export async function getPdfTemplates(
+  organizationId: string
+): Promise<Array<{ id: string; name: string }>> {
+  const templates = await getPdfTemplatesByOrganizationService(organizationId);
+
+  return templates
+    .filter((template) => template.isActive)
+    .map((template) => ({
+      id: template.id,
+      name: template.name,
+    }));
 }
 
-// Dupliziere Template
-export async function duplicatePdfTemplate(id: string) {
-  const original = await prisma.pdfTemplate.findUnique({
-    where: { id },
-  });
-  if (!original) throw new Error('Template not found');
-
-  const duplicate = await prisma.pdfTemplate.create({
-    data: {
-      organizationId: original.organizationId,
-      name: `${original.name} (Kopie)`,
-      contentJson: original.contentJson as JsonValue,
-    },
-  });
-  revalidatePath('/settings/pdf-templates');
-  return duplicate;
+export async function getPdfTemplateById(
+  id: string
+): Promise<PdfTemplateRecord | null> {
+  return getPdfTemplateByIdService(id);
 }
 
-// Preview Template (mit Mock-Daten)
-export async function previewPdfTemplate(id: string) {
-  const template = await prisma.pdfTemplate.findUnique({
-    where: { id },
-  });
-  if (!template) throw new Error('Template not found');
-
-  // Mock ViewModel für Preview
-  const mockViewModel = {
-    organization: {
-      name: 'Beispiel Organisation',
-      email: 'info@beispiel.de',
-      phone: '0123 456789',
-      signatureName: 'Max Mustermann',
-      signatureRole: 'Leiter',
-    },
-    assignment: {
-      groupName: 'Gruppe A',
-      programName: 'Programm 1',
-      formattedDate: 'Donnerstag, 19. März 2026',
-      formattedTimeRange: '07:20 Uhr – 11:05 Uhr',
-      formattedDateTimeRange:
-        'Donnerstag, 19. März 2026, 07:20 Uhr – 11:05 Uhr',
-      participantSummary: '0 Erwachsene / Senioren',
-      priceSummary: '€ 9/Person bzw. € 0 bei 0 Teilnehmer:innen',
-    },
-  };
-
-  return { template, mockViewModel };
+export async function deletePdfTemplate(id: string): Promise<void> {
+  return deletePdfTemplateService(id);
 }
 
-// Generiere PDF für Assignment
+export async function duplicatePdfTemplate(
+  id: string
+): Promise<PdfTemplateRecord> {
+  return duplicatePdfTemplateService(id);
+}
+
+export async function setDefaultPdfTemplate(
+  id: string
+): Promise<PdfTemplateRecord> {
+  return setDefaultPdfTemplateService(id);
+}
+
+export async function getDefaultOrganizationPdfTemplate(
+  organizationId: string
+): Promise<PdfTemplateRecord | null> {
+  return getDefaultPdfTemplateByOrganization(organizationId);
+}
+
 export async function generatePdfForAssignment(
-  assignmentId: string,
-  templateId: string
-) {
-  // Lade Template
-  const template = await prisma.pdfTemplate.findUnique({
-    where: { id: templateId },
-  });
-  if (!template) throw new Error('Template not found');
-
-  // Lade Assignment und Organization (angenommen, einsatz ist assignment)
-  const assignment = await prisma.einsatz.findUnique({
-    where: { id: assignmentId },
-    include: { organization: true, einsatz_template: true },
-  });
-  if (!assignment) throw new Error('Assignment not found');
-
-  // Baue ViewModel (hier formatierte Werte berechnen)
-  const viewModel = {
-    organization: {
-      name: assignment.organization.name,
-      email: assignment.organization.email || '',
-      phone: assignment.organization.phone || '',
-      signatureName: assignment.organization.name, // TODO: Aus organization_details.contact_person laden
-      signatureRole: 'Verwalter:in', // TODO: Aus DB laden
-    },
-    assignment: {
-      groupName: assignment.title,
-      programName: assignment.einsatz_template?.name || 'Unbekannt',
-      formattedDate: new Date(assignment.start).toLocaleDateString('de-DE', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      }),
-      formattedTimeRange: `${new Date(assignment.start).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} – ${new Date(assignment.end).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`,
-      formattedDateTimeRange: `${new Date(assignment.start).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}, ${new Date(assignment.start).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} – ${new Date(assignment.end).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`,
-      participantSummary: `${assignment.participant_count || 0} Teilnehmer:innen`,
-      priceSummary: `€ ${assignment.price_per_person || 0}/Person bzw. € ${assignment.total_price || 0} gesamt`,
-    },
+  assignmentId: string
+): Promise<{
+  success: boolean;
+  data?: {
+    pdf: string;
+    filename: string;
+    mimeType: string;
+    source: 'pdfme' | 'legacy';
   };
+  error?: string;
+}> {
+  return generateBookingConfirmationPdf(assignmentId);
+}
 
-  return { template, viewModel };
+export async function getPdfTemplatePreview(
+  templateId: string,
+  einsatzId?: string | null
+) {
+  return getPdfTemplatePreviewData({
+    templateId,
+    einsatzId,
+  });
+}
+
+export async function getPdfPreviewAssignments(organizationId: string) {
+  return getBookingConfirmationPreviewOptions(organizationId);
+}
+
+export async function getPdfPreviewInput(einsatzId?: string | null) {
+  if (!einsatzId) {
+    return {
+      organisation_name: 'Beispielorganisation',
+      organisation_email: 'office@example.org',
+      einsatz_titel: 'Beispiel Einsatz',
+      einsatz_start_datum_formatiert: '24.03.2026',
+      einsatz_zeitraum_formatiert: '09:00 - 11:00',
+      einsatz_preis_gesamt_formatiert: 'EUR 0,00',
+    };
+  }
+
+  return buildBookingConfirmationPdfInput(einsatzId);
 }
