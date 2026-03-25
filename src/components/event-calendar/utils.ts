@@ -11,6 +11,10 @@ import {
   EinsatzDetailedForCalendar,
   EinsatzForCalendar,
 } from '@/features/einsatz/types';
+import {
+  getInputPropsForDatatype,
+  isInputPropDatatype,
+} from '@/lib/input-props';
 import React from 'react';
 import {
   getAllEinsaetzeForCalendar,
@@ -440,15 +444,6 @@ export function mapDbDataTypeToFormFieldType(
 export function mapDbDataTypeToInputProps(
   datatype: string | null | undefined
 ): React.ComponentProps<'input'> | null {
-  const defaultTypes = [
-    'text',
-    'number',
-    'currency',
-    'phone',
-    'mail',
-    'date',
-    'time',
-  ];
   if (datatype) {
     if (datatype === 'group') return null;
     if (!isInputPropDatatype(datatype)) return null;
