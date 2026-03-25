@@ -92,6 +92,8 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   confirmAsBestätigt: false,
 };
 
+const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
+
 function formatOrgTimeForInput(value: unknown, fallback: string): string {
   if (!value) return fallback;
 
@@ -123,6 +125,45 @@ function formatOrgTimeForInput(value: unknown, fallback: string): string {
   }
 
   return fallback;
+}
+
+function formatTimeForInput(date: Date) {
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function combineDateAndTime(date: Date, time: string) {
+  const combined = new Date(date);
+  const [hours = 0, minutes = 0] = time.split(':').map(Number);
+  combined.setHours(hours, minutes, 0, 0);
+  return combined;
+}
+
+function getDurationFromFormData(formData: EinsatzFormData) {
+  if (formData.all_day) {
+    return null;
+  }
+
+  const start = combineDateAndTime(formData.startDate, formData.startTime);
+  const end = combineDateAndTime(formData.endDate, formData.endTime);
+  const duration = end.getTime() - start.getTime();
+
+  return duration > 0 ? duration : null;
+}
+
+function buildEndFromStartAndDuration(
+  startDate: Date,
+  startTime: string,
+  durationMs: number
+) {
+  const start = combineDateAndTime(startDate, startTime);
+  const end = new Date(start.getTime() + durationMs);
+
+  return {
+    endDate: end,
+    endTime: formatTimeForInput(end),
+  };
 }
 
 export const ZodEinsatzFormData = z
@@ -271,6 +312,7 @@ export function EventDialogVerwaltung({
     fieldErrors: {},
     formErrors: [],
   });
+  const durationRef = useRef<number>(DEFAULT_EVENT_DURATION_MS);
 
   // Track last programmatically synced start/end times so we don't overwrite user edits
   const lastSyncedStartRef = useRef<string | null>(null);
@@ -329,6 +371,11 @@ export function EventDialogVerwaltung({
 
       setStaticFormData((prev) => {
         const merged = { ...prev, ...updates };
+        const startChanged =
+          updates.startDate !== undefined || updates.startTime !== undefined;
+        const endChanged =
+          updates.endDate !== undefined || updates.endTime !== undefined;
+
         // When switching from "Ganztägig" to timed, reset start/end time to org defaults
         if (prev.all_day === true && updates.all_day === false) {
           merged.startTime = orgDefaultStartTime;
@@ -336,6 +383,24 @@ export function EventDialogVerwaltung({
           lastSyncedStartRef.current = orgDefaultStartTime;
           lastSyncedEndRef.current = orgDefaultEndTime;
         }
+
+        if (!merged.all_day && startChanged && !endChanged) {
+          const syncedEnd = buildEndFromStartAndDuration(
+            merged.startDate,
+            merged.startTime,
+            durationRef.current
+          );
+
+          merged.endDate = syncedEnd.endDate;
+          merged.endTime = syncedEnd.endTime;
+          lastSyncedEndRef.current = syncedEnd.endTime;
+        }
+
+        const nextDuration = getDurationFromFormData(merged);
+        if (nextDuration !== null) {
+          durationRef.current = nextDuration;
+        }
+
         nextFormData = merged;
         return merged;
       });
@@ -429,13 +494,20 @@ export function EventDialogVerwaltung({
 
   const getDefaultStaticFormData = useCallback((): EinsatzFormData => {
     const now = new Date();
-    return {
+    const formData = {
       ...DEFAULTFORMDATA,
       startDate: now,
       endDate: now,
       startTime: orgDefaultStartTime,
       endTime: orgDefaultEndTime,
     };
+
+    const defaultDuration = getDurationFromFormData(formData);
+    if (defaultDuration !== null) {
+      durationRef.current = defaultDuration;
+    }
+
+    return formData;
   }, [orgDefaultStartTime, orgDefaultEndTime]);
 
   const resetForm = useCallback(() => {
@@ -470,6 +542,10 @@ export function EventDialogVerwaltung({
           }),
         };
         setStaticFormData(createFormData);
+        const createDuration = getDurationFromFormData(createFormData);
+        if (createDuration !== null) {
+          durationRef.current = createDuration;
+        }
         lastSyncedStartRef.current = createFormData.startTime;
         lastSyncedEndRef.current = createFormData.endTime;
         setActiveTemplateId(createEinsatz.template_id ?? null);
@@ -482,7 +558,7 @@ export function EventDialogVerwaltung({
         const einsatzDetailed = currentEinsatz as EinsatzDetailed;
         // Edit existing einsatz (loaded from query)
         setActiveTemplateId(currentEinsatz.template_id || null);
-        setStaticFormData({
+        const editFormData: EinsatzFormData = {
           title: einsatzDetailed.title || '',
           all_day: einsatzDetailed.all_day || false,
           startDate: einsatzDetailed.start || new Date(),
@@ -505,7 +581,12 @@ export function EventDialogVerwaltung({
           anmerkung: einsatzDetailed.anmerkung || '',
           // this should always reset to false (if something were to be edited)
           confirmAsBestätigt: false,
-        });
+        };
+        setStaticFormData(editFormData);
+        const editDuration = getDurationFromFormData(editFormData);
+        if (editDuration !== null) {
+          durationRef.current = editDuration;
+        }
         // Reset errors when opening dialog
         setErrors({
           fieldErrors: {},
@@ -546,11 +627,16 @@ export function EventDialogVerwaltung({
         }
         lastSyncedStartRef.current = orgDefaultStartTime;
         lastSyncedEndRef.current = orgDefaultEndTime;
-        return {
+        const nextFormData = {
           ...prev,
           startTime: orgDefaultStartTime,
           endTime: orgDefaultEndTime,
         };
+        const nextDuration = getDurationFromFormData(nextFormData);
+        if (nextDuration !== null) {
+          durationRef.current = nextDuration;
+        }
+        return nextFormData;
       });
     }
   }, [
@@ -658,12 +744,6 @@ export function EventDialogVerwaltung({
     isFetching,
     einsatz,
   ]);
-
-  const formatTimeForInput = (date: Date) => {
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-  };
 
   const checkIfFormIsModified = (o1: EinsatzFormData, o2: EinsatzFormData) => {
     if (o1.participantCount !== o2.participantCount) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { RiCalendarLine } from '@remixicon/react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -16,13 +16,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import type { organization as Organization } from '@/generated/prisma';
 import FormGroup from '../form/formGroup';
 import FormField from '../form/formInputField';
@@ -54,23 +47,11 @@ export function DefaultFormFields({
 }: DefaultFormFieldsProps) {
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
-  const isEndDateEdited = useRef(
-    formData.endDate &&
-      formData.startDate &&
-      format(formData.endDate, 'yyyy-MM-dd') !==
-        format(formData.startDate, 'yyyy-MM-dd')
-  );
 
-  useEffect(() => {
-    isEndDateEdited.current = !!(
-      formData.endDate &&
-      formData.startDate &&
-      format(formData.endDate, 'yyyy-MM-dd') !==
-        format(formData.startDate, 'yyyy-MM-dd')
-    );
-  }, [formData.startDate, formData.endDate]);
-
-  const handleChange = (field: keyof EinsatzFormData, value: any) => {
+  const handleChange = <TField extends keyof EinsatzFormData>(
+    field: TField,
+    value: EinsatzFormData[TField]
+  ) => {
     onFormDataChange({ [field]: value });
   };
 
@@ -140,16 +121,7 @@ export function DefaultFormFields({
                   locale={de}
                   onSelect={(date) => {
                     if (date) {
-                      // Auto-adjust end date unless user already edited it
-                      if (!isEndDateEdited.current) {
-                        const updates: Partial<EinsatzFormData> = {
-                          startDate: date,
-                          endDate: date,
-                        };
-                        onFormDataChange(updates);
-                      } else {
-                        handleChange('startDate', date);
-                      }
+                      handleChange('startDate', date);
                       setStartDateOpen(false);
                     }
                   }}
@@ -216,8 +188,6 @@ export function DefaultFormFields({
                   locale={de}
                   onSelect={(date) => {
                     if (date) {
-                      // Mark as edited when user picks an explicit end date
-                      isEndDateEdited.current = true;
                       handleChange('endDate', date);
                       setEndDateOpen(false);
                     }
