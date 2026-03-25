@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { TimeTextInput } from '@/components/form/TimeTextInput';
 import {
   Select,
   SelectContent,
@@ -73,22 +74,20 @@ import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import TooltipCustom from '../tooltip-custom';
 import type { TemplateFieldReuseCandidate } from '@/features/template/template-dal';
+import {
+  formatDateToTimeInput,
+  isNormalizedTime,
+  parseNormalizedTimeToDate,
+} from '@/lib/time-input';
 
-/** Format a Date (time-only from DB) to "HH:mm" for input[type="time"]. */
 function formatTimeForInput(d: Date | null | undefined): string {
   if (!d) return '';
   const date = d instanceof Date ? d : new Date(d);
-  const h = date.getHours();
-  const m = date.getMinutes();
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  return formatDateToTimeInput(date);
 }
 
-/** Parse "HH:mm" string to a Date (fixed calendar day, local time) for Prisma Time. */
 function parseTimeFromInput(s: string): Date | null {
-  if (!s || !/^\d{1,2}:\d{2}$/.test(s.trim())) return null;
-  const [h, m] = s.trim().split(':').map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  return new Date(2000, 0, 1, h, m);
+  return parseNormalizedTimeToDate(s);
 }
 
 function getNameSimilarityScore(source: string, target: string): number {
@@ -229,6 +228,13 @@ export function TemplateForm({
   const [timeRangeStartValue, setTimeRangeStartValue] = useState('');
   const [timeRangeEndValue, setTimeRangeEndValue] = useState('');
   const [timeRangeError, setTimeRangeError] = useState<string | null>(null);
+  const [timeRangeFieldErrors, setTimeRangeFieldErrors] = useState<{
+    start: string | null;
+    end: string | null;
+  }>({
+    start: null,
+    end: null,
+  });
   /** Required user properties for this template (Überprüfungen). */
   const [requiredUserPropertyConfigs, setRequiredUserPropertyConfigs] =
     useState<
@@ -591,6 +597,7 @@ export function TemplateForm({
           );
           setTimeRangeEndValue(formatTimeForInput(template.time_end_default));
           setTimeRangeError(null);
+          setTimeRangeFieldErrors({ start: null, end: null });
           break;
         case 'participant_count':
           setStandardFieldDefaultValue(
@@ -673,6 +680,20 @@ export function TemplateForm({
         );
         return;
       case 'time_range': {
+        if (
+          timeRangeFieldErrors.start !== null ||
+          timeRangeFieldErrors.end !== null ||
+          (timeRangeStartValue !== '' && !isNormalizedTime(timeRangeStartValue)) ||
+          (timeRangeEndValue !== '' && !isNormalizedTime(timeRangeEndValue))
+        ) {
+          setTimeRangeError(
+            timeRangeFieldErrors.start ??
+              timeRangeFieldErrors.end ??
+              'Bitte geben Sie gültige Uhrzeiten ein.'
+          );
+          return;
+        }
+
         const startDate = parseTimeFromInput(timeRangeStartValue);
         const endDate = parseTimeFromInput(timeRangeEndValue);
         if (
@@ -733,6 +754,7 @@ export function TemplateForm({
       { templateId, ...payload },
       {
         onSuccess: () => {
+          setTimeRangeFieldErrors({ start: null, end: null });
           setEditingStandardFieldKey(null);
         },
       }
@@ -744,6 +766,8 @@ export function TemplateForm({
     standardFieldPlaceholderValue,
     timeRangeStartValue,
     timeRangeEndValue,
+    timeRangeFieldErrors.start,
+    timeRangeFieldErrors.end,
     selectedDefaultCategoryIds,
     updateMutation,
     setDefaultCategoriesMutation,
@@ -753,6 +777,7 @@ export function TemplateForm({
     if (!open) {
       setEditingStandardFieldKey(null);
       setTimeRangeError(null);
+      setTimeRangeFieldErrors({ start: null, end: null });
     }
   }, []);
 
@@ -1132,28 +1157,60 @@ export function TemplateForm({
                       <Label htmlFor="time-range-start">
                         Uhrzeit von (optional)
                       </Label>
-                      <Input
+                      <TimeTextInput
                         id="time-range-start"
-                        type="time"
                         value={timeRangeStartValue}
-                        onChange={(e) => {
-                          setTimeRangeStartValue(e.target.value);
+                        onValueChange={(value) => {
+                          setTimeRangeStartValue(value);
                           setTimeRangeError(null);
                         }}
+                        onValidationChange={(error) => {
+                          setTimeRangeFieldErrors((prev) => ({
+                            ...prev,
+                            start: error,
+                          }));
+                          if (error) {
+                            setTimeRangeError(error);
+                          } else {
+                            setTimeRangeError((currentError) =>
+                              currentError === timeRangeFieldErrors.start
+                                ? null
+                                : currentError
+                            );
+                          }
+                        }}
+                        allowEmpty={true}
+                        invalidMessage="Bitte geben Sie eine gültige Startzeit ein, z. B. 09:30."
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="time-range-end">
                         Uhrzeit bis (optional)
                       </Label>
-                      <Input
+                      <TimeTextInput
                         id="time-range-end"
-                        type="time"
                         value={timeRangeEndValue}
-                        onChange={(e) => {
-                          setTimeRangeEndValue(e.target.value);
+                        onValueChange={(value) => {
+                          setTimeRangeEndValue(value);
                           setTimeRangeError(null);
                         }}
+                        onValidationChange={(error) => {
+                          setTimeRangeFieldErrors((prev) => ({
+                            ...prev,
+                            end: error,
+                          }));
+                          if (error) {
+                            setTimeRangeError(error);
+                          } else {
+                            setTimeRangeError((currentError) =>
+                              currentError === timeRangeFieldErrors.end
+                                ? null
+                                : currentError
+                            );
+                          }
+                        }}
+                        allowEmpty={true}
+                        invalidMessage="Bitte geben Sie eine gültige Endzeit ein, z. B. 12:20."
                       />
                     </div>
                     {timeRangeError && (

@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Popover,
@@ -21,6 +20,7 @@ import FormGroup from '../form/formGroup';
 import FormField from '../form/formInputField';
 import MultiSelectFormField from '../form/multiSelectFormField';
 import FormInputFieldCustom from '../form/formInputFieldCustom';
+import { TimeTextInput } from '@/components/form/TimeTextInput';
 import type { EinsatzFormData } from '@/components/event-calendar/event-dialog';
 import { calcTotal, calcPricePerPersonFromTotal } from '../form/utils';
 import { Textarea } from '../ui/textarea';
@@ -35,6 +35,10 @@ interface DefaultFormFieldsProps {
   categoriesOptions: Array<{ value: string; label: string }>;
   usersOptions: Array<{ value: string; label: string }>;
   activeOrg: Organization | null;
+  onTimeFieldErrorChange: (
+    field: 'startTime' | 'endTime',
+    error: string | null
+  ) => void;
 }
 
 export function DefaultFormFields({
@@ -44,6 +48,7 @@ export function DefaultFormFields({
   categoriesOptions,
   usersOptions,
   activeOrg,
+  onTimeFieldErrorChange,
 }: DefaultFormFieldsProps) {
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
@@ -135,11 +140,14 @@ export function DefaultFormFields({
                 name="Start Zeit"
                 errors={errors.fieldErrors['startTime'] || []}
               >
-                <Input
+                <TimeTextInput
                   id="start_time"
-                  type="time"
                   value={formData.startTime}
-                  onChange={(e) => handleChange('startTime', e.target.value)}
+                  onValueChange={(value) => handleChange('startTime', value)}
+                  onValidationChange={(error) =>
+                    onTimeFieldErrorChange('startTime', error)
+                  }
+                  invalidMessage="Bitte geben Sie eine gültige Startzeit ein, z. B. 09:30."
                   className="w-full"
                 />
               </FormInputFieldCustom>
@@ -202,11 +210,14 @@ export function DefaultFormFields({
                 name="Ende Zeit"
                 errors={errors.fieldErrors['endTime'] || []}
               >
-                <Input
+                <TimeTextInput
                   id="end_time"
-                  type="time"
                   value={formData.endTime}
-                  onChange={(e) => handleChange('endTime', e.target.value)}
+                  onValueChange={(value) => handleChange('endTime', value)}
+                  onValidationChange={(error) =>
+                    onTimeFieldErrorChange('endTime', error)
+                  }
+                  invalidMessage="Bitte geben Sie eine gültige Endzeit ein, z. B. 12:20."
                   className="w-full"
                 />
               </FormInputFieldCustom>
