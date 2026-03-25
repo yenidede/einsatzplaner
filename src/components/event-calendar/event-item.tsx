@@ -24,6 +24,19 @@ const formatTimeWithOptionalMinutes = (date: Date) => {
   return format(date, 'HH:mm');
 };
 
+function PastIndicator({ compact = false }: { compact?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border border-current/15 bg-white/45 font-medium tracking-[0.02em] text-current/75 uppercase dark:bg-black/10',
+        compact ? 'px-1 py-0 text-[0.55rem]' : 'px-1.5 py-0.5 text-[0.6rem]'
+      )}
+    >
+      Vergangen
+    </span>
+  );
+}
+
 interface EventWrapperProps {
   event: CalendarEvent;
   isFirstDay?: boolean;
@@ -78,7 +91,7 @@ function EventWrapper({
   return (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2',
+        'focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:opacity-75 data-past-event:saturate-50 sm:px-2',
         getEventColorClasses(statusForColor || 'fallback', mode),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
@@ -173,6 +186,7 @@ export function EventItem({
       displayStart
     )} - ${formatTimeWithOptionalMinutes(displayEnd)}`;
   };
+  const isEventInPast = isPast(displayEnd);
 
   if (view === 'month') {
     const eventWrapper = (
@@ -196,18 +210,21 @@ export function EventItem({
       >
         {children || (
           <div className="flex w-full flex-col">
-            {!event.allDay && (
-              <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
-                <span className="sm:hidden">
-                  {formatTimeWithOptionalMinutes(displayStart)}
-                </span>
-                <span className="hidden sm:inline">
-                  {formatTimeWithOptionalMinutes(displayStart)}
-                  {'-'}
-                  {formatTimeWithOptionalMinutes(displayEnd)}
-                </span>
-              </div>
-            )}
+            <div className="flex items-start justify-between gap-1">
+              {!event.allDay && (
+                <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
+                  <span className="sm:hidden">
+                    {formatTimeWithOptionalMinutes(displayStart)}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {formatTimeWithOptionalMinutes(displayStart)}
+                    {'-'}
+                    {formatTimeWithOptionalMinutes(displayEnd)}
+                  </span>
+                </div>
+              )}
+              {isEventInPast && <PastIndicator compact />}
+            </div>
             <div className="leading-tight wrap-break-word max-md:line-clamp-2">
               {event.title}
             </div>
@@ -249,8 +266,11 @@ export function EventItem({
         onTouchStart={onTouchStart}
         mode={mode}
       >
-        <div className="leading-tight font-medium wrap-break-word">
-          {event.title}
+        <div className="flex items-start justify-between gap-1">
+          <div className="leading-tight font-medium wrap-break-word">
+            {event.title}
+          </div>
+          {isEventInPast && <PastIndicator compact={view === 'week'} />}
         </div>
         {showTime && (
           <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
