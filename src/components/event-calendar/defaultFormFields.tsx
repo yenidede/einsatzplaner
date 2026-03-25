@@ -279,7 +279,7 @@ export function DefaultFormFields({
         </div>
         <div className="grow">
           <FormField
-            step={0.01}
+            step={0.5}
             name="Preis p. Person (€)"
             type="number"
             min={0}
@@ -300,7 +300,7 @@ export function DefaultFormFields({
         </div>
         <div className="sm:w-28 sm:min-w-28">
           <FormField
-            step={0.01}
+            step={0.5}
             name="Gesamtpreis (€)"
             type="number"
             min={0}

@@ -450,14 +450,9 @@ export function mapDbDataTypeToInputProps(
     'time',
   ];
   if (datatype) {
-    if (!defaultTypes.includes(datatype) && datatype !== 'group') return null;
-    if (datatype === 'text') return { type: 'text' };
-    if (datatype === 'phone') return { type: 'tel' };
-    if (datatype === 'mail') return { type: 'email' };
-    if (datatype === 'number') return { type: 'number' };
-    if (datatype === 'currency') return { type: 'number', step: '0.10' };
-    if (datatype === 'date') return { type: 'date' };
-    if (datatype === 'time') return { type: 'time' };
+    if (datatype === 'group') return null;
+    if (!isInputPropDatatype(datatype)) return null;
+    return getInputPropsForDatatype(datatype);
     // if (datatype === 'group') return { type: 'group' }; // not supported yet
   }
   throw new Error(
