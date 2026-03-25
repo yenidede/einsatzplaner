@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { OrganizationAddresses } from '@/components/settings/org/OrganizationAddresses';
 import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
+import { OrganizationPdfTemplateManager } from './OrganizationPdfTemplateManager';
 
 interface OrganizationPdfExportFormProps {
   organizationId: string;
@@ -56,7 +57,7 @@ export function OrganizationPdfExportForm({
               id="website-restriction"
               className="text-muted-foreground text-xs"
             >
-              Nur Superadmins können die Website ändern
+              Nur Superadmins koennen die Website aendern
             </p>
           )}
         </div>
@@ -81,7 +82,7 @@ export function OrganizationPdfExportForm({
           />
           {!isSuperadmin && (
             <p id="vat-restriction" className="text-muted-foreground text-xs">
-              Nur Superadmins können die UID ändern
+              Nur Superadmins koennen die UID aendern
             </p>
           )}
         </div>
@@ -101,14 +102,14 @@ export function OrganizationPdfExportForm({
           />
           {!isSuperadmin && (
             <p id="zvr-restriction" className="text-muted-foreground text-xs">
-              Nur Superadmins können die ZVR-Nummer ändern
+              Nur Superadmins koennen die ZVR-Nummer aendern
             </p>
           )}
         </div>
 
         <div className="space-y-2">
           {criticalFieldLabel(
-            'Zuständige Behörde',
+            'Zustaendige Behoerde',
             isSuperadmin,
             false,
             'org-authority'
@@ -121,7 +122,7 @@ export function OrganizationPdfExportForm({
             disabled={!isSuperadmin}
             placeholder="Magistrat Wien"
             className={criticalFieldClass(isSuperadmin)}
-            aria-label="Zuständige Behörde"
+            aria-label="Zustaendige Behoerde"
             aria-describedby={
               !isSuperadmin ? 'authority-restriction' : undefined
             }
@@ -131,7 +132,7 @@ export function OrganizationPdfExportForm({
               id="authority-restriction"
               className="text-muted-foreground text-xs"
             >
-              Nur Superadmins können dieses Feld ändern
+              Nur Superadmins koennen dieses Feld aendern
             </p>
           )}
         </div>
@@ -147,14 +148,26 @@ export function OrganizationPdfExportForm({
         isSuperadmin={isSuperadmin}
       />
 
-      <div className="rounded-lg border border-dashed border-slate-300 p-4">
-        <p className="text-muted-foreground text-sm">
-          Hier kannst du zusätzliche PDF-Templates für
-          Einsatz-Buchungsbestätigungen verwalten.
-        </p>
-        <Link href="/settings/pdf-templates" className="mt-3 inline-block">
-          <Button variant="secondary">PDF-Vorlagen verwalten</Button>
-        </Link>
+      <div className="space-y-4 rounded-lg border border-dashed border-slate-300 p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-medium">
+              PDF-Vorlagen fuer Einsatz-Buchungsbestaetigungen
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Vorlagen koennen direkt hier fuer diese Organisation erstellt und
+              verwaltet werden.
+            </p>
+          </div>
+          <Link
+            href={`/settings/pdf-templates?orgId=${organizationId}`}
+            className="inline-block"
+          >
+            <Button variant="secondary">Vollansicht oeffnen</Button>
+          </Link>
+        </div>
+
+        <OrganizationPdfTemplateManager organizationId={organizationId} />
       </div>
     </div>
   );

@@ -1,35 +1,32 @@
-import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth.config';
-import { TemplateList } from '@/components/pdfTemplates/TemplateList';
+import { getPdfTemplatesByOrganization } from '@/app/actions/pdfTemplates';
+import { PdfTemplateList } from '@/components/pdfTemplates/PdfTemplateList';
 
-export default async function PdfTemplatesPage() {
+interface PdfTemplatesPageProps {
+  searchParams?: Promise<{ orgId?: string }>;
+}
+
+export default async function PdfTemplatesPage({
+  searchParams,
+}: PdfTemplatesPageProps) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.activeOrganization?.id) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const organizationId =
+    resolvedSearchParams?.orgId ?? session?.user?.activeOrganization?.id;
+
+  if (!organizationId) {
     return <div>Keine Berechtigung</div>;
   }
 
-  //console.log('Session:', session); // Debug-Ausgabe der Session-Daten
-  //console.log('Active Organization ID:', session.user.activeOrganization.id); // Debug-Ausgabe der aktiven Organisation
-  const organizationId = session.user.activeOrganization?.id;
-  //console.log('session.activeOrg', organizationId);
-
-  const templates = await prisma.pdfTemplate.findMany({
-    where: { organizationId },
-    select: { id: true, name: true, isActive: true, documentType: true },
-  });
-
-  /* console.log(
-    'templates found',
-    templates.length,
-    templates.map((t) => t.id)
-  ); */
+  const templates = await getPdfTemplatesByOrganization(organizationId);
 
   return (
     <div className="container mx-auto p-4">
-      <TemplateList
+      <PdfTemplateList
+        templates={templates}
         organizationId={organizationId}
-        templates={templates as any}
+        createHref={`/settings/pdf-templates/new?orgId=${organizationId}`}
       />
     </div>
   );
