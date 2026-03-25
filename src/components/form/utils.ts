@@ -22,6 +22,11 @@ export const calcPricePerPersonFromTotal = (
 
 // Dynamic form: build input props from datatype and field constraints
 import type { InputHTMLAttributes } from 'react';
+import {
+  getInputPropsForDatatype,
+  isInputPropDatatype,
+} from '@/lib/input-props';
+
 export function buildInputProps(
   datatype?: string | null,
   opts?: {
@@ -30,27 +35,9 @@ export function buildInputProps(
     max?: number | null;
   }
 ): InputHTMLAttributes<HTMLInputElement> {
-  const placeholder =
-    typeof opts?.placeholder === 'string' ? opts.placeholder : undefined;
-  const min = typeof opts?.min === 'number' ? opts.min : undefined;
-  const max = typeof opts?.max === 'number' ? opts.max : undefined;
-
-  switch (datatype) {
-    case 'text':
-      return { type: 'text', placeholder, minLength: min, maxLength: max };
-    case 'number':
-      return { type: 'number', step: 1, min, max };
-    case 'currency':
-      return { type: 'number', step: 0.01, inputMode: 'decimal', min, max };
-    case 'phone':
-      return { type: 'tel', placeholder };
-    case 'mail':
-      return { type: 'email', placeholder };
-    case 'date':
-      return { type: 'date', placeholder };
-    case 'time':
-      return { type: 'time', placeholder };
-    default:
-      return {};
+  if (!isInputPropDatatype(datatype)) {
+    return {};
   }
+
+  return getInputPropsForDatatype(datatype, opts);
 }
