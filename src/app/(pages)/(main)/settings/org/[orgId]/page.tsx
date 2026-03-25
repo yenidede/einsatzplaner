@@ -57,6 +57,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
+import { isNormalizedTime } from '@/lib/time-input';
 
 export default function OrganizationManagePage() {
   const params = useParams();
@@ -79,6 +80,8 @@ export default function OrganizationManagePage() {
   const [maxParticipantsPerHelper, setMaxParticipantsPerHelper] = useState('');
   const [defaultStarttime, setDefaultStarttime] = useState('09:00');
   const [defaultEndtime, setDefaultEndtime] = useState('10:00');
+  const [defaultStarttimeError, setDefaultStarttimeError] = useState<string | null>(null);
+  const [defaultEndtimeError, setDefaultEndtimeError] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [smallLogoUrl, setSmallLogoUrl] = useState<string>('');
@@ -273,6 +276,16 @@ export default function OrganizationManagePage() {
     );
   })();
   const handleSave = useCallback(async () => {
+    if (
+      defaultStarttimeError !== null ||
+      defaultEndtimeError !== null ||
+      !isNormalizedTime(defaultStarttime) ||
+      !isNormalizedTime(defaultEndtime)
+    ) {
+      toast.error('Bitte korrigieren Sie die ungültigen Standardzeiten.');
+      return;
+    }
+
     try {
       await updateMutation.mutateAsync({
         name,
@@ -335,6 +348,8 @@ export default function OrganizationManagePage() {
     maxParticipantsPerHelper,
     defaultStarttime,
     defaultEndtime,
+    defaultStarttimeError,
+    defaultEndtimeError,
     website,
     vat,
     zvr,
@@ -670,6 +685,8 @@ export default function OrganizationManagePage() {
                 maxParticipantsPerHelper={maxParticipantsPerHelper}
                 defaultStarttime={defaultStarttime}
                 defaultEndtime={defaultEndtime}
+                defaultStarttimeError={defaultStarttimeError}
+                defaultEndtimeError={defaultEndtimeError}
                 categories={categories.map((c) => ({
                   id: c.id,
                   value: c.value,
@@ -678,6 +695,8 @@ export default function OrganizationManagePage() {
                 onMaxParticipantsPerHelperChange={setMaxParticipantsPerHelper}
                 onDefaultStarttimeChange={setDefaultStarttime}
                 onDefaultEndtimeChange={setDefaultEndtime}
+                onDefaultStarttimeErrorChange={setDefaultStarttimeError}
+                onDefaultEndtimeErrorChange={setDefaultEndtimeError}
               />
             </CardContent>
           </Card>
