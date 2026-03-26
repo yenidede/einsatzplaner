@@ -331,10 +331,28 @@ export function WeekView({
             data-today={isToday(day) || undefined}
           >
             <span className="sm:hidden" aria-hidden="true">
-              {format(day, 'E', { locale: de })[0]} {format(day, 'd')}
+              {format(day, 'E', { locale: de })[0]}{' '}
+              <span
+                className={
+                  startOfDay(day) < startOfDay(new Date())
+                    ? 'line-through'
+                    : undefined
+                }
+              >
+                {format(day, 'd')}
+              </span>
             </span>
             <span className="max-sm:hidden">
-              {format(day, 'EEE dd', { locale: de })}
+              {format(day, 'EEE ', { locale: de })}
+              <span
+                className={
+                  startOfDay(day) < startOfDay(new Date())
+                    ? 'line-through'
+                    : undefined
+                }
+              >
+                {format(day, 'dd')}
+              </span>
             </span>
           </div>
         ))}
