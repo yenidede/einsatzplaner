@@ -11,6 +11,7 @@ import {
   endOfWeek,
   format,
   isSameMonth,
+  startOfDay,
   startOfWeek,
   subMonths,
   subWeeks,
@@ -311,6 +312,8 @@ export function EventCalendar({
   };
 
   const viewTitle = useMemo(() => {
+    const isPastCurrentDay = startOfDay(currentDate) < startOfDay(new Date());
+
     if (view === 'month') {
       return format(currentDate, 'MMMM yyyy', { locale: de });
     } else if (view === 'week') {
@@ -328,13 +331,25 @@ export function EventCalendar({
     } else if (view === 'day') {
       return (
         <>
-          <span className="min-[480px]:hidden" aria-hidden="true">
+          <span
+            className={cn(
+              'min-[480px]:hidden',
+              isPastCurrentDay && 'line-through'
+            )}
+            aria-hidden="true"
+          >
             {format(currentDate, 'MMM d, yyyy', { locale: de })}
           </span>
-          <span className="max-[479px]:hidden md:hidden" aria-hidden="true">
+          <span
+            className={cn(
+              'max-[479px]:hidden md:hidden',
+              isPastCurrentDay && 'line-through'
+            )}
+            aria-hidden="true"
+          >
             {format(currentDate, 'MMMM d, yyyy', { locale: de })}
           </span>
-          <span className="max-md:hidden">
+          <span className={cn('max-md:hidden', isPastCurrentDay && 'line-through')}>
             {format(currentDate, 'EEE MMMM d, yyyy', { locale: de })}
           </span>
         </>

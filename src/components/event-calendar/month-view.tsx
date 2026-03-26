@@ -7,6 +7,7 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  startOfDay,
   isSameDay,
   isSameMonth,
   isToday,
@@ -162,6 +163,7 @@ export function MonthView({
               });
 
               const isCurrentMonth = isSameMonth(day, currentDate);
+              const isPastDay = startOfDay(day) < startOfDay(new Date());
               const cellId = `month-cell-${day.toISOString()}`;
               const allEvents = getAllEventsForDay(events, day);
 
@@ -187,8 +189,14 @@ export function MonthView({
                       onEventCreate(startTime);
                     }}
                   >
-                    <div className="group-data-today:bg-primary group-data-today:text-primary-foreground mt-1 inline-flex size-6 items-center justify-center rounded-full text-sm">
-                      {format(day, 'd')}
+                    <div
+                      className="group-data-today:bg-primary group-data-today:text-primary-foreground mt-1 inline-flex size-6 items-center justify-center rounded-full text-sm"
+                    >
+                      <span
+                        className={isPastDay ? 'line-through' : undefined}
+                      >
+                        {format(day, 'd')}
+                      </span>
                     </div>
                     <div>
                       {sortEvents(allDayEventsForDay).map((event, index) => {
