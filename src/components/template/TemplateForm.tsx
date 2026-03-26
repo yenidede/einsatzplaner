@@ -227,7 +227,6 @@ export function TemplateForm({
   /** Time range dialog: start/end strings and validation error. */
   const [timeRangeStartValue, setTimeRangeStartValue] = useState('');
   const [timeRangeEndValue, setTimeRangeEndValue] = useState('');
-  const [timeRangeError, setTimeRangeError] = useState<string | null>(null);
   const [timeRangeFieldErrors, setTimeRangeFieldErrors] = useState<{
     start: string | null;
     end: string | null;
@@ -235,6 +234,8 @@ export function TemplateForm({
     start: null,
     end: null,
   });
+  const timeRangeError =
+    timeRangeFieldErrors.start ?? timeRangeFieldErrors.end;
   /** Required user properties for this template (Überprüfungen). */
   const [requiredUserPropertyConfigs, setRequiredUserPropertyConfigs] =
     useState<
@@ -596,7 +597,6 @@ export function TemplateForm({
             formatTimeForInput(template.time_start_default)
           );
           setTimeRangeEndValue(formatTimeForInput(template.time_end_default));
-          setTimeRangeError(null);
           setTimeRangeFieldErrors({ start: null, end: null });
           break;
         case 'participant_count':
@@ -686,11 +686,19 @@ export function TemplateForm({
           (timeRangeStartValue !== '' && !isNormalizedTime(timeRangeStartValue)) ||
           (timeRangeEndValue !== '' && !isNormalizedTime(timeRangeEndValue))
         ) {
-          setTimeRangeError(
-            timeRangeFieldErrors.start ??
-              timeRangeFieldErrors.end ??
-              'Bitte geben Sie gültige Uhrzeiten ein.'
-          );
+          setTimeRangeFieldErrors((prev) => ({
+            start:
+              prev.start ??
+              (timeRangeStartValue !== '' &&
+              !isNormalizedTime(timeRangeStartValue)
+                ? 'Bitte geben Sie eine gültige Startzeit ein, z. B. 09:30.'
+                : null),
+            end:
+              prev.end ??
+              (timeRangeEndValue !== '' && !isNormalizedTime(timeRangeEndValue)
+                ? 'Bitte geben Sie eine gültige Endzeit ein, z. B. 12:20.'
+                : null),
+          }));
           return;
         }
 
@@ -701,10 +709,13 @@ export function TemplateForm({
           endDate != null &&
           endDate.getTime() <= startDate.getTime()
         ) {
-          setTimeRangeError('Endzeit muss nach der Startzeit liegen.');
+          setTimeRangeFieldErrors({
+            start: null,
+            end: 'Endzeit muss nach der Startzeit liegen.',
+          });
           return;
         }
-        setTimeRangeError(null);
+        setTimeRangeFieldErrors({ start: null, end: null });
         payload.time_start_default = startDate;
         payload.time_end_default = endDate;
         break;
@@ -776,7 +787,6 @@ export function TemplateForm({
   const handleStandardFieldDialogClose = useCallback((open: boolean) => {
     if (!open) {
       setEditingStandardFieldKey(null);
-      setTimeRangeError(null);
       setTimeRangeFieldErrors({ start: null, end: null });
     }
   }, []);
@@ -1162,22 +1172,14 @@ export function TemplateForm({
                         value={timeRangeStartValue}
                         onValueChange={(value) => {
                           setTimeRangeStartValue(value);
-                          setTimeRangeError(null);
                         }}
                         onValidationChange={(error) => {
-                          setTimeRangeFieldErrors((prev) => ({
-                            ...prev,
-                            start: error,
-                          }));
-                          if (error) {
-                            setTimeRangeError(error);
-                          } else {
-                            setTimeRangeError((currentError) =>
-                              currentError === timeRangeFieldErrors.start
-                                ? null
-                                : currentError
-                            );
-                          }
+                          setTimeRangeFieldErrors((prev) => {
+                            return {
+                              ...prev,
+                              start: error,
+                            };
+                          });
                         }}
                         allowEmpty={true}
                         invalidMessage="Bitte geben Sie eine gültige Startzeit ein, z. B. 09:30."
@@ -1192,22 +1194,14 @@ export function TemplateForm({
                         value={timeRangeEndValue}
                         onValueChange={(value) => {
                           setTimeRangeEndValue(value);
-                          setTimeRangeError(null);
                         }}
                         onValidationChange={(error) => {
-                          setTimeRangeFieldErrors((prev) => ({
-                            ...prev,
-                            end: error,
-                          }));
-                          if (error) {
-                            setTimeRangeError(error);
-                          } else {
-                            setTimeRangeError((currentError) =>
-                              currentError === timeRangeFieldErrors.end
-                                ? null
-                                : currentError
-                            );
-                          }
+                          setTimeRangeFieldErrors((prev) => {
+                            return {
+                              ...prev,
+                              end: error,
+                            };
+                          });
                         }}
                         allowEmpty={true}
                         invalidMessage="Bitte geben Sie eine gültige Endzeit ein, z. B. 12:20."
