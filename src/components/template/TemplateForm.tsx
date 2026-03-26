@@ -80,16 +80,35 @@ import {
   parseNormalizedTimeToDate,
 } from '@/lib/time-input';
 
+/**
+ * Format a date value for an HTML time input.
+ *
+ * @param d - The date to format; if `null` or `undefined`, an empty string is returned.
+ * @returns A time string suitable for an `<input type="time">` (e.g., `"14:30"`), or `''` when `d` is null/undefined.
+ */
 function formatTimeForInput(d: Date | null | undefined): string {
   if (!d) return '';
   const date = d instanceof Date ? d : new Date(d);
   return formatDateToTimeInput(date);
 }
 
+/**
+ * Parse a normalized time string into a Date anchored to an arbitrary reference date.
+ *
+ * @param s - A normalized time string (for example "HH:MM") as produced/accepted by time inputs
+ * @returns A Date corresponding to the given time on an arbitrary reference date, or `null` if `s` is empty or cannot be parsed
+ */
 function parseTimeFromInput(s: string): Date | null {
   return parseNormalizedTimeToDate(s);
 }
 
+/**
+ * Computes a similarity score between two name strings.
+ *
+ * @param source - The first name to compare
+ * @param target - The second name to compare
+ * @returns A number between 0 and 1: `1` for an exact match, `0.9` if one string contains the other, `0` if either input is empty, otherwise the ratio of shared tokens between the two strings
+ */
 function getNameSimilarityScore(source: string, target: string): number {
   if (!source || !target) return 0;
   if (source === target) return 1;
@@ -148,6 +167,15 @@ interface TemplateFormProps {
   cancelLabel?: string;
 }
 
+/**
+ * Render the form for creating or editing a template (Vorlage), including template info, standard fields, custom fields, verifications, and related dialogs and handlers.
+ *
+ * @param orgId - Optional organization id used when creating a new template.
+ * @param templateId - Optional template id; when present the form loads and edits the existing template.
+ * @param backHref - Optional href to navigate back to when cancelling; defaults to settings overview when not provided.
+ * @param cancelLabel - Label for the cancel button shown in the footer; defaults to 'Schließen'.
+ * @returns The React element for the template create/edit UI.
+ */
 export function TemplateForm({
   orgId: orgIdProp,
   templateId,
