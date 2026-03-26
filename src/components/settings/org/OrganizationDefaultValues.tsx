@@ -193,10 +193,18 @@ export function OrganizationDefaultValues({
               onValueChange={onDefaultStarttimeChange}
               onValidationChange={onDefaultStarttimeErrorChange}
               invalidMessage="Bitte geben Sie eine gültige Standard-Startzeit ein, z. B. 09:00."
+              aria-describedby={
+                defaultStarttimeError ? 'default-starttime-error' : undefined
+              }
               aria-label="Standard-Startzeit für neue Einsätze"
             />
             {defaultStarttimeError && (
-              <p className="text-destructive text-sm">{defaultStarttimeError}</p>
+              <p
+                id="default-starttime-error"
+                className="text-destructive text-sm"
+              >
+                {defaultStarttimeError}
+              </p>
             )}
             <p className="text-muted-foreground text-sm">
               Wird im Einsatz-Dialog als Vorgabe für die Startzeit verwendet.
@@ -210,10 +218,18 @@ export function OrganizationDefaultValues({
               onValueChange={onDefaultEndtimeChange}
               onValidationChange={onDefaultEndtimeErrorChange}
               invalidMessage="Bitte geben Sie eine gültige Standard-Endzeit ein, z. B. 10:00."
+              aria-describedby={
+                defaultEndtimeError ? 'default-endtime-error' : undefined
+              }
               aria-label="Standard-Endzeit für neue Einsätze"
             />
             {defaultEndtimeError && (
-              <p className="text-destructive text-sm">{defaultEndtimeError}</p>
+              <p
+                id="default-endtime-error"
+                className="text-destructive text-sm"
+              >
+                {defaultEndtimeError}
+              </p>
             )}
             <p className="text-muted-foreground text-sm">
               Wird im Einsatz-Dialog als Vorgabe für die Endzeit verwendet.
