@@ -11,7 +11,6 @@ import {
   endOfWeek,
   format,
   isSameMonth,
-  startOfDay,
   startOfWeek,
   subMonths,
   subWeeks,
@@ -56,6 +55,7 @@ import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useEinsaetzeForAgenda } from '@/features/einsatz/hooks/useEinsatzQueries';
+import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -97,6 +97,7 @@ export function EventCalendar({
   mode,
   activeOrgId,
 }: EventCalendarProps) {
+  const todayStart = useTodayStart();
   const [internalDate, setInternalDate] = useState(new Date());
   const currentDate = currentDateProp ?? internalDate;
   const setCurrentDate = setCurrentDateProp ?? setInternalDate;
@@ -312,7 +313,7 @@ export function EventCalendar({
   };
 
   const viewTitle = useMemo(() => {
-    const isPastCurrentDay = startOfDay(currentDate) < startOfDay(new Date());
+    const isPastCurrentDay = currentDate < todayStart;
 
     if (view === 'month') {
       return format(currentDate, 'MMMM yyyy', { locale: de });
@@ -362,7 +363,7 @@ export function EventCalendar({
     } else {
       return format(currentDate, 'MMMM yyyy', { locale: de });
     }
-  }, [currentDate, view]);
+  }, [currentDate, todayStart, view]);
 
   return (
     <div

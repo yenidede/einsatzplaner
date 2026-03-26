@@ -20,6 +20,7 @@ import {
 import { de } from 'date-fns/locale';
 
 import { cn } from '@/lib/utils';
+import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
 import {
   DraggableEvent,
   DroppableCell,
@@ -61,6 +62,8 @@ export function WeekView({
   mode,
   onEventConfirm,
 }: WeekViewProps) {
+  const todayStart = useTodayStart();
+
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -334,9 +337,7 @@ export function WeekView({
               {format(day, 'E', { locale: de })[0]}{' '}
               <span
                 className={
-                  startOfDay(day) < startOfDay(new Date())
-                    ? 'line-through'
-                    : undefined
+                  startOfDay(day) < todayStart ? 'line-through' : undefined
                 }
               >
                 {format(day, 'd')}
@@ -346,9 +347,7 @@ export function WeekView({
               {format(day, 'EEE ', { locale: de })}
               <span
                 className={
-                  startOfDay(day) < startOfDay(new Date())
-                    ? 'line-through'
-                    : undefined
+                  startOfDay(day) < todayStart ? 'line-through' : undefined
                 }
               >
                 {format(day, 'dd')}
