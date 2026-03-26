@@ -226,7 +226,13 @@ function areErrorStatesEqual(
     return false;
   }
 
+  const rightFieldKeySet = new Set(rightFieldKeys);
+
   for (const key of leftFieldKeys) {
+    if (!rightFieldKeySet.has(key)) {
+      return false;
+    }
+
     const leftErrors = left.fieldErrors[key] ?? [];
     const rightErrors = right.fieldErrors[key] ?? [];
 
@@ -912,7 +918,6 @@ export function EventDialogVerwaltung({
     activeTemplateId,
     currentEinsatz,
     templatesQuery.data,
-    currentEinsatz?.einsatz_fields,
     dynamicForm,
     isLoading,
     isFetching,
