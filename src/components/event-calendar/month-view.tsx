@@ -189,12 +189,8 @@ export function MonthView({
                       onEventCreate(startTime);
                     }}
                   >
-                    <div
-                      className="group-data-today:bg-primary group-data-today:text-primary-foreground mt-1 inline-flex size-6 items-center justify-center rounded-full text-sm"
-                    >
-                      <span
-                        className={isPastDay ? 'line-through' : undefined}
-                      >
+                    <div className="group-data-today:bg-primary group-data-today:text-primary-foreground mt-1 inline-flex size-6 items-center justify-center rounded-full text-sm">
+                      <span className={isPastDay ? 'line-through' : undefined}>
                         {format(day, 'd')}
                       </span>
                     </div>
