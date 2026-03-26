@@ -95,6 +95,15 @@ const DEFAULTFORMDATA: EinsatzFormData = {
 
 const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
 
+/**
+ * Convert a variety of time representations into an `HH:MM` string suitable for time inputs.
+ *
+ * Accepts a `Date` instance, a time string in `HH:MM` or `HH:MM:SS(.sss)` format, or an ISO date/time string.
+ *
+ * @param value - The input to normalize: a `Date`, a plain `HH:MM(:SS)` time string, or an ISO date/time string (UTC ISO strings ending with `Z` are interpreted in UTC).
+ * @param fallback - The string to return when `value` cannot be parsed into a valid time.
+ * @returns The normalized time as `HH:MM`, or `fallback` if the input is invalid or unrecognized.
+ */
 function formatOrgTimeForInput(value: unknown, fallback: string): string {
   if (!value) return fallback;
 
@@ -126,10 +135,22 @@ function formatOrgTimeForInput(value: unknown, fallback: string): string {
   return fallback;
 }
 
+/**
+ * Formats a Date into an HH:MM string suitable for time input fields.
+ *
+ * @returns An `HH:MM` string representing the time portion of `date`.
+ */
 function formatTimeForInput(date: Date) {
   return formatDateToTimeInput(date);
 }
 
+/**
+ * Combine a date (year/month/day) with an HH:MM time string to produce a single Date.
+ *
+ * @param date - Date whose date portion (year, month, day) will be preserved
+ * @param time - Time in `HH:MM` 24-hour format; missing hours or minutes default to `0`
+ * @returns A `Date` with the same calendar date as `date`, time set to the provided hours and minutes, and seconds/milliseconds cleared
+ */
 function combineDateAndTime(date: Date, time: string) {
   const combined = new Date(date);
   const [hours = 0, minutes = 0] = time.split(':').map(Number);
@@ -137,6 +158,12 @@ function combineDateAndTime(date: Date, time: string) {
   return combined;
 }
 
+/**
+ * Calculate the event duration in milliseconds from the form's start and end date/time.
+ *
+ * @param formData - The form values containing `all_day`, `startDate`, `startTime`, `endDate`, and `endTime`.
+ * @returns The duration in milliseconds if the event is timed and end is after start, `null` for all-day events or non-positive durations.
+ */
 function getDurationFromFormData(formData: EinsatzFormData) {
   if (formData.all_day) {
     return null;
@@ -149,6 +176,14 @@ function getDurationFromFormData(formData: EinsatzFormData) {
   return duration > 0 ? duration : null;
 }
 
+/**
+ * Produces an end date and time by adding a duration to a start date/time.
+ *
+ * @param startDate - Date representing the event start date (date component used)
+ * @param startTime - Start time as an `HH:MM` 24-hour string
+ * @param durationMs - Duration to add in milliseconds
+ * @returns An object with `endDate` (a Date equal to start + duration) and `endTime` (an `HH:MM` string suitable for time inputs)
+ */
 function buildEndFromStartAndDuration(
   startDate: Date,
   startTime: string,
@@ -269,6 +304,13 @@ interface EventDialogProps {
   onDelete: (eventId: string, eventTitle: string) => void;
 }
 
+/**
+ * Displays a modal dialog for creating or editing an Einsatz (event) with static fields, template-driven dynamic fields, validation, and activity logging.
+ *
+ * The dialog manages form state (including org-default times, duration tracking, and template defaults), runs field- and relationship-level validation, shows warnings that require confirmation, and collects dynamic template field values. It invokes the provided callbacks (onSave, onDelete, onClose) when the user saves, deletes, or closes the dialog, and updates activity logs for changes.
+ *
+ * @returns The Dialog JSX containing template selection, default and dynamic form fields, required-user-property controls, error/warning UI, and action buttons that call the component's callbacks.
+ */
 export function EventDialogVerwaltung({
   einsatz,
   isOpen,

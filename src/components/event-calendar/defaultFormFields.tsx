@@ -41,6 +41,11 @@ interface DefaultFormFieldsProps {
   ) => void;
 }
 
+/**
+ * Renders the default form UI for editing EinsatzFormData, including title, categories, start/end date & time, all-day toggle, participant and price controls, helper assignment, and a resizable note field.
+ *
+ * @returns A React element containing the composed form fields and controls for an Einsatz.
+ */
 export function DefaultFormFields({
   formData,
   onFormDataChange,

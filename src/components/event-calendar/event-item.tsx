@@ -24,6 +24,12 @@ const formatTimeWithOptionalMinutes = (date: Date) => {
   return format(date, 'HH:mm');
 };
 
+/**
+ * Renders a pill-shaped "Vergangen" indicator.
+ *
+ * @param compact - When true, use the compact variant with reduced padding and a smaller font size.
+ * @returns A span element displaying "Vergangen" with pill-style visual styling.
+ */
 function PastIndicator({ compact = false }: { compact?: boolean }) {
   return (
     <span
@@ -53,7 +59,25 @@ interface EventWrapperProps {
   mode: CalendarMode;
 }
 
-// Shared wrapper component for event styling
+/**
+ * Render a styled button wrapper for an event that applies color, border-radius, drag-and-drop bindings, and a past-event state.
+ *
+ * @param event - Event data used to determine displayed end time, status color, and assigned users.
+ * @param isFirstDay - Whether this event is the first day in a multi-day event (affects border radius).
+ * @param isLastDay - Whether this event is the last day in a multi-day event (affects border radius).
+ * @param isDragging - When true, sets a `data-dragging` attribute to adjust visual appearance while dragging.
+ * @param onClick - Click handler forwarded to the button.
+ * @param className - Additional CSS classes appended to the wrapper.
+ * @param children - Content to render inside the button.
+ * @param currentTime - Optional current time used to shift the event's duration for past-state calculation.
+ * @param dndListeners - Drag-and-drop listener props spread onto the button.
+ * @param dndAttributes - Drag-and-drop attribute props spread onto the button.
+ * @param onMouseDown - Mouse down handler forwarded to the button.
+ * @param onTouchStart - Touch start handler forwarded to the button.
+ * @param mode - Display mode that influences color selection (e.g., helper mode).
+ *
+ * @returns The button element that visually wraps the event and forwards interaction and drag/drop bindings.
+ */
 function EventWrapper({
   event,
   isFirstDay = true,
@@ -129,6 +153,29 @@ interface EventItemProps {
   onConfirm?: (eventId: string) => void;
 }
 
+/**
+ * Render an event as a calendar item for month, week/day, or agenda views, including time display, past-state styling, drag-and-drop bindings, and right-click context-menu integration.
+ *
+ * @param event - The event object to render (must contain at least `id`, `title`, `start`, `end`, and optional fields like `allDay`, `status`, `assignedUsers`, and `helpersNeeded`).
+ * @param view - The current calendar view (`'month'`, `'week'`, `'day'`, or other for agenda) which determines layout and content.
+ * @param currentTime - Optional override start time used when dragging; when provided, the event's displayed start/end are shifted to this time.
+ * @param isFirstDay - Whether this event instance is the first day in a multi-day span, used for corner radius/layout.
+ * @param isLastDay - Whether this event instance is the last day in a multi-day span, used for corner radius/layout.
+ * @param isDragging - Whether the event is currently being dragged; applied as a visual state.
+ * @param showTime - When true (applies to week/day views), render the event's time line beneath the title.
+ * @param dndListeners - Drag-and-drop event listeners to spread onto the rendered element.
+ * @param dndAttributes - Drag-and-drop attributes to spread onto the rendered element.
+ * @param onDelete - Optional delete handler forwarded to the context menu (defaults to a no-op).
+ * @param onConfirm - Optional confirm handler forwarded to the context menu when helper confirmation is available.
+ * @param mode - Optional mode modifier (e.g., `'helper'`) that affects color selection when the current user is assigned to the event.
+ * @param children - Optional custom children to render inside the event wrapper; when omitted a view-specific default layout is used.
+ * @param className - Optional additional CSS classes applied to the root element.
+ * @param onClick - Click handler for the rendered event element.
+ * @param onMouseDown - Mouse-down handler forwarded to the rendered element.
+ * @param onTouchStart - Touch-start handler forwarded to the rendered element.
+ *
+ * @returns A React element that renders the event according to the selected view and props.
+ */
 export function EventItem({
   event,
   view,

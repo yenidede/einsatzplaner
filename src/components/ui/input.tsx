@@ -2,6 +2,12 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+/**
+ * Remove leading zeros from a numeric string while preserving at least one digit.
+ *
+ * @param value - The numeric string to normalize; may contain leading zeros.
+ * @returns The string with leading zeros removed; if the input is all zeros, a single `"0"` is preserved.
+ */
 function stripLeadingZeros(value: string): string {
   return value.replace(/^0+(?=\d)/, '');
 }
