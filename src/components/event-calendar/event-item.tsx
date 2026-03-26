@@ -24,12 +24,19 @@ const formatTimeWithOptionalMinutes = (date: Date) => {
   return format(date, 'HH:mm');
 };
 
-function PastIndicator({ compact = false }: { compact?: boolean }) {
+function PastIndicator({
+  compact = false,
+  className,
+}: {
+  compact?: boolean;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
         'inline-flex items-center rounded-full border border-current/15 bg-white/45 font-medium tracking-[0.02em] text-current/75 uppercase dark:bg-black/10',
-        compact ? 'px-1 py-0 text-[0.55rem]' : 'px-1.5 py-0.5 text-[0.6rem]'
+        compact ? 'px-1 py-0 text-[0.55rem]' : 'px-1.5 py-0.5 text-[0.6rem]',
+        className
       )}
     >
       Vergangen
@@ -223,7 +230,7 @@ export function EventItem({
                   </span>
                 </div>
               )}
-              {isEventInPast && <PastIndicator compact />}
+              {isEventInPast && <PastIndicator compact className="ml-auto" />}
             </div>
             <div className="leading-tight wrap-break-word max-md:line-clamp-2">
               {event.title}
@@ -297,17 +304,18 @@ export function EventItem({
   const agendaView = (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90',
+        'focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:opacity-75 data-past-event:saturate-50',
         getEventColorClasses(statusForColor, mode), // Use statusForColor instead of event.status
         className
       )}
-      data-past-event={isPast(new Date(event.end)) || undefined}
+      data-past-event={isEventInPast || undefined}
       onClick={onClick}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
       {...dndListeners}
       {...dndAttributes}
     >
+      {/* PastIndicator hier nicht benötigt, weil in Agenda sowieso nur zukünftige Events angezeigt werden */}
       <div className="text-sm font-medium">{event.title}</div>
       <div className="text-xs opacity-70">
         {event.allDay ? (
