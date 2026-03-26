@@ -349,7 +349,9 @@ export function EventCalendar({
           >
             {format(currentDate, 'MMMM d, yyyy', { locale: de })}
           </span>
-          <span className={cn('max-md:hidden', isPastCurrentDay && 'line-through')}>
+          <span
+            className={cn('max-md:hidden', isPastCurrentDay && 'line-through')}
+          >
             {format(currentDate, 'EEE MMMM d, yyyy', { locale: de })}
           </span>
         </>
