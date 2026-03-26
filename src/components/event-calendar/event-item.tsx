@@ -273,11 +273,13 @@ export function EventItem({
         onTouchStart={onTouchStart}
         mode={mode}
       >
-        <div className="flex items-start justify-between gap-1">
-          <div className="leading-tight font-medium wrap-break-word">
-            {event.title}
+        {isEventInPast && (view === 'week' || view === 'day') && (
+          <div>
+            <PastIndicator compact />
           </div>
-          {isEventInPast && <PastIndicator compact={view === 'week'} />}
+        )}
+        <div className="leading-tight font-medium wrap-break-word">
+          {event.title}
         </div>
         {showTime && (
           <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
