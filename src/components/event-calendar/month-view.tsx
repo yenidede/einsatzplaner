@@ -7,7 +7,6 @@ import {
   endOfMonth,
   endOfWeek,
   format,
-  startOfDay,
   isSameDay,
   isSameMonth,
   isToday,
@@ -35,6 +34,7 @@ import {
   DefaultStartHour,
   MaxEventsPerCellInMonthView,
 } from '@/components/event-calendar/constants';
+import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
 import { CalendarMode } from './types';
 
 interface MonthViewProps {
@@ -54,6 +54,8 @@ export function MonthView({
   mode,
   onEventConfirm,
 }: MonthViewProps) {
+  const todayStart = useTodayStart();
+
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
@@ -163,7 +165,7 @@ export function MonthView({
               });
 
               const isCurrentMonth = isSameMonth(day, currentDate);
-              const isPastDay = startOfDay(day) < startOfDay(new Date());
+              const isPastDay = day < todayStart;
               const cellId = `month-cell-${day.toISOString()}`;
               const allEvents = getAllEventsForDay(events, day);
 
