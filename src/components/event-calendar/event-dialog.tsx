@@ -74,6 +74,7 @@ import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityL
 import { RequiredUserProperties } from './RequiredUserProperties';
 import { Separator } from '../ui/separator';
 import { formatDateToTimeInput, isNormalizedTime } from '@/lib/time-input';
+import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -1213,6 +1214,11 @@ export function EventDialogVerwaltung({
       anmerkung: parsedDataStatic.data.anmerkung ?? undefined,
     });
   };
+
+  useSettingsKeyboardShortcuts({
+    onSave: handleSave,
+    enabled: isOpen,
+  });
 
   // const handleDelete = async () => {
   //   if (currentEinsatz?.id) {
