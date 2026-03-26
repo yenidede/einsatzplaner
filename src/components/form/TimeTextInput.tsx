@@ -34,36 +34,59 @@ export const TimeTextInput = React.forwardRef<
 ) {
   const [draftValue, setDraftValue] = React.useState(value);
   const [localError, setLocalError] = React.useState<string | null>(null);
+  const emitValidationChange = React.useEffectEvent(
+    (error: string | null) => {
+      onValidationChange?.(error);
+    }
+  );
+
+  const validateValue = React.useCallback(
+    (nextValue: string): { normalizedValue: string | null; error: string | null } => {
+      const normalizedValue = normalizeTimeInput(nextValue);
+      const isEmptyValue = normalizedValue === '';
+
+      if (normalizedValue == null || (isEmptyValue && !allowEmpty)) {
+        return {
+          normalizedValue,
+          error: invalidMessage,
+        };
+      }
+
+      return {
+        normalizedValue,
+        error: null,
+      };
+    },
+    [allowEmpty, invalidMessage]
+  );
 
   React.useEffect(() => {
     setDraftValue(value);
-  }, [value]);
+    const validationResult = validateValue(value);
+    setLocalError(validationResult.error);
+    emitValidationChange(validationResult.error);
+  }, [emitValidationChange, validateValue, value]);
 
   const commitValue = React.useCallback(() => {
-    const normalizedValue = normalizeTimeInput(draftValue);
-    const isEmptyValue = normalizedValue === '';
+    const validationResult = validateValue(draftValue);
 
-    if (normalizedValue == null || (isEmptyValue && !allowEmpty)) {
-      setLocalError(invalidMessage);
-      onValidationChange?.(invalidMessage);
+    if (
+      validationResult.error !== null ||
+      validationResult.normalizedValue === null
+    ) {
+      setLocalError(validationResult.error);
+      onValidationChange?.(validationResult.error);
       return;
     }
 
-    setDraftValue(normalizedValue);
+    setDraftValue(validationResult.normalizedValue);
     setLocalError(null);
     onValidationChange?.(null);
 
-    if (normalizedValue !== value) {
-      onValueChange(normalizedValue);
+    if (validationResult.normalizedValue !== value) {
+      onValueChange(validationResult.normalizedValue);
     }
-  }, [
-    allowEmpty,
-    draftValue,
-    invalidMessage,
-    onValidationChange,
-    onValueChange,
-    value,
-  ]);
+  }, [draftValue, onValidationChange, onValueChange, validateValue, value]);
 
   return (
     <Input
@@ -71,6 +94,7 @@ export const TimeTextInput = React.forwardRef<
       {...props}
       type="text"
       inputMode="numeric"
+      data-time-input="true"
       placeholder={props.placeholder ?? 'HH:MM'}
       value={draftValue}
       aria-invalid={
@@ -89,7 +113,6 @@ export const TimeTextInput = React.forwardRef<
       }}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
-          commitValue();
           event.currentTarget.blur();
         }
         onKeyDown?.(event);
