@@ -201,6 +201,43 @@ function buildEndFromStartAndDuration(
   };
 }
 
+function areStringArraysEqual(left: string[], right: string[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((value, index) => value === right[index]);
+}
+
+function areErrorStatesEqual(
+  left: {
+    fieldErrors: Record<string, string[]>;
+    formErrors: string[];
+  },
+  right: {
+    fieldErrors: Record<string, string[]>;
+    formErrors: string[];
+  }
+) {
+  const leftFieldKeys = Object.keys(left.fieldErrors);
+  const rightFieldKeys = Object.keys(right.fieldErrors);
+
+  if (leftFieldKeys.length !== rightFieldKeys.length) {
+    return false;
+  }
+
+  for (const key of leftFieldKeys) {
+    const leftErrors = left.fieldErrors[key] ?? [];
+    const rightErrors = right.fieldErrors[key] ?? [];
+
+    if (!areStringArraysEqual(leftErrors, rightErrors)) {
+      return false;
+    }
+  }
+
+  return areStringArraysEqual(left.formErrors, right.formErrors);
+}
+
 export const ZodEinsatzFormData = z
   .object({
     title: z.string().min(1, 'Titel ist erforderlich'),
@@ -362,6 +399,7 @@ export function EventDialogVerwaltung({
 
   // Track if dynamic form fields have been initialized to prevent overwriting
   const dynamicFieldsInitializedRef = useRef<string | null>(null);
+  const initializationKeyRef = useRef<string | null>(null);
 
   // Update form resolver when dynamicSchema changes
   useEffect(() => {
@@ -369,7 +407,7 @@ export function EventDialogVerwaltung({
       dynamicForm.clearErrors();
       dynamicForm.trigger();
     }
-  }, [dynamicSchema]);
+  }, [dynamicForm, dynamicSchema]);
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
   const {
@@ -491,7 +529,9 @@ export function EventDialogVerwaltung({
           });
         }
 
-        return newErrors;
+        return areErrorStatesEqual(prevErrors, newErrors)
+          ? prevErrors
+          : newErrors;
       });
 
       if (!nextFormData) {
@@ -508,20 +548,26 @@ export function EventDialogVerwaltung({
         );
 
         if (relationshipErrors.length > 0) {
-          setErrors((prevErrors) => ({
-            ...prevErrors,
-            fieldErrors: {
-              ...prevErrors.fieldErrors,
-              ...relationshipErrors.reduce(
-                (acc, error) => {
-                  const field = error.path[0] as string;
-                  acc[field] = [error.message];
-                  return acc;
-                },
-                {} as Record<string, string[]>
-              ),
-            },
-          }));
+          setErrors((prevErrors) => {
+            const nextErrors = {
+              ...prevErrors,
+              fieldErrors: {
+                ...prevErrors.fieldErrors,
+                ...relationshipErrors.reduce<Record<string, string[]>>(
+                  (acc, error) => {
+                    const field = String(error.path[0]);
+                    acc[field] = [error.message];
+                    return acc;
+                  },
+                  {}
+                ),
+              },
+            };
+
+            return areErrorStatesEqual(prevErrors, nextErrors)
+              ? prevErrors
+              : nextErrors;
+          });
         }
       } else {
         // Clear relationship errors if full validation passes
@@ -535,7 +581,9 @@ export function EventDialogVerwaltung({
           ) {
             delete newErrors.fieldErrors.endDate;
           }
-          return newErrors;
+          return areErrorStatesEqual(prevErrors, newErrors)
+            ? prevErrors
+            : newErrors;
         });
       }
     },
@@ -558,7 +606,9 @@ export function EventDialogVerwaltung({
           delete nextErrors.fieldErrors[field];
         }
 
-        return nextErrors;
+        return areErrorStatesEqual(prevErrors, nextErrors)
+          ? prevErrors
+          : nextErrors;
       });
     },
     []
@@ -584,20 +634,38 @@ export function EventDialogVerwaltung({
 
   const resetForm = useCallback(() => {
     handleFormDataChange(getDefaultStaticFormData());
-    setActiveTemplateId(null);
-    setErrors({
-      fieldErrors: {},
-      formErrors: [],
+    setActiveTemplateId((prev) => (prev === null ? prev : null));
+    setErrors((prevErrors) => {
+      const emptyErrors = {
+        fieldErrors: {},
+        formErrors: [],
+      };
+
+      return areErrorStatesEqual(prevErrors, emptyErrors)
+        ? prevErrors
+        : emptyErrors;
     });
     // Reset dynamic fields initialization tracker
     dynamicFieldsInitializedRef.current = null;
+    initializationKeyRef.current = null;
   }, [handleFormDataChange, getDefaultStaticFormData]);
 
   useEffect(() => {
+    if (!isOpen) {
+      initializationKeyRef.current = null;
+      return;
+    }
+
     if (currentEinsatz && typeof currentEinsatz === 'object') {
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
+        const nextInitializationKey = `create:${createEinsatz.template_id ?? 'new'}:${orgDefaultStartTime}:${orgDefaultEndTime}:${createEinsatz.start?.toISOString() ?? 'no-start'}:${createEinsatz.end?.toISOString() ?? 'no-end'}:${createEinsatz.all_day ? 'all-day' : 'timed'}:${createEinsatz.title ?? ''}`;
+
+        if (initializationKeyRef.current === nextInitializationKey) {
+          return;
+        }
+
         // Use org defaults once organizations are available so we don't show 09:00/10:00 and only update after close
         const base = getDefaultStaticFormData();
         const createFormData: EinsatzFormData = {
@@ -620,16 +688,37 @@ export function EventDialogVerwaltung({
         }
         lastSyncedStartRef.current = createFormData.startTime;
         lastSyncedEndRef.current = createFormData.endTime;
-        setActiveTemplateId(createEinsatz.template_id ?? null);
+        setActiveTemplateId((prev) =>
+          prev === (createEinsatz.template_id ?? null)
+            ? prev
+            : (createEinsatz.template_id ?? null)
+        );
         // Reset errors when opening dialog
-        setErrors({
-          fieldErrors: {},
-          formErrors: [],
+        setErrors((prevErrors) => {
+          const emptyErrors = {
+            fieldErrors: {},
+            formErrors: [],
+          };
+
+          return areErrorStatesEqual(prevErrors, emptyErrors)
+            ? prevErrors
+            : emptyErrors;
         });
+        initializationKeyRef.current = nextInitializationKey;
       } else {
         const einsatzDetailed = currentEinsatz as EinsatzDetailed;
+        const nextInitializationKey = `edit:${einsatzDetailed.id}:${einsatzDetailed.template_id ?? 'no-template'}`;
+
+        if (initializationKeyRef.current === nextInitializationKey) {
+          return;
+        }
+
         // Edit existing einsatz (loaded from query)
-        setActiveTemplateId(currentEinsatz.template_id || null);
+        setActiveTemplateId((prev) =>
+          prev === (currentEinsatz.template_id || null)
+            ? prev
+            : (currentEinsatz.template_id || null)
+        );
         const editFormData: EinsatzFormData = {
           title: einsatzDetailed.title || '',
           all_day: einsatzDetailed.all_day || false,
@@ -660,23 +749,28 @@ export function EventDialogVerwaltung({
           durationRef.current = editDuration;
         }
         // Reset errors when opening dialog
-        setErrors({
-          fieldErrors: {},
-          formErrors: [],
+        setErrors((prevErrors) => {
+          const emptyErrors = {
+            fieldErrors: {},
+            formErrors: [],
+          };
+
+          return areErrorStatesEqual(prevErrors, emptyErrors)
+            ? prevErrors
+            : emptyErrors;
         });
+        initializationKeyRef.current = nextInitializationKey;
       }
     } else {
       resetForm();
     }
   }, [
     currentEinsatz,
-    handleFormDataChange,
     resetForm,
     isOpen,
     getDefaultStaticFormData,
     orgDefaultStartTime,
     orgDefaultEndTime,
-    organizations,
   ]);
 
   // When in create mode and org defaults become available, sync start/end time only if user hasn't edited them
@@ -689,6 +783,13 @@ export function EventDialogVerwaltung({
       activeOrg
     ) {
       setStaticFormData((prev) => {
+        if (
+          prev.startTime === orgDefaultStartTime &&
+          prev.endTime === orgDefaultEndTime
+        ) {
+          return prev;
+        }
+
         const userHasEditedTimes =
           lastSyncedStartRef.current !== null &&
           lastSyncedEndRef.current !== null &&
@@ -760,31 +861,30 @@ export function EventDialogVerwaltung({
     try {
       const mappedFields = mapFieldsForSchema(fields);
       const schema = generateDynamicSchema(mappedFields);
-      setDynamicSchema(schema);
-      setDynamicFormFields(
-        fields.map((f) => ({
-          id: f.field.id,
-          displayName: f.field.name || f.field.id,
+      const nextDynamicFields = fields.map((f) => ({
+        id: f.field.id,
+        displayName: f.field.name || f.field.id,
+        placeholder: f.field.placeholder,
+        defaultValue: f.field.default_value ?? null,
+        required: f.field.is_required === true,
+        groupName: f.field.group_name ?? null,
+        isMultiline: f.field.is_multiline,
+        min: f.field.min,
+        max: f.field.max,
+        allowedValues: f.field.allowed_values,
+        inputType:
+          f.field.is_multiline === true
+            ? 'textarea'
+            : mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+        dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
+        inputProps: buildInputProps(f.field.type?.datatype, {
           placeholder: f.field.placeholder,
-          defaultValue: f.field.default_value ?? null,
-          required: f.field.is_required === true,
-          groupName: f.field.group_name ?? null,
-          isMultiline: f.field.is_multiline,
           min: f.field.min,
           max: f.field.max,
-          allowedValues: f.field.allowed_values,
-          inputType:
-            f.field.is_multiline === true
-              ? 'textarea'
-              : mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
-          dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
-          inputProps: buildInputProps(f.field.type?.datatype, {
-            placeholder: f.field.placeholder,
-            min: f.field.min,
-            max: f.field.max,
-          }) as InputHTMLAttributes<HTMLInputElement>,
-        }))
-      );
+        }) as InputHTMLAttributes<HTMLInputElement>,
+      }));
+      setDynamicSchema(schema);
+      setDynamicFormFields(nextDynamicFields);
 
       // Populate React Hook Form with field values (saved einsatz data or template default_value)
       const formValues = fields.reduce(
@@ -800,18 +900,20 @@ export function EventDialogVerwaltung({
           );
           return acc;
         },
-        {} as Record<string, any>
+        {} as Record<string, unknown>
       );
       // Reset form with new values so dynamic fields show saved or default values
       dynamicForm.reset(formValues);
       dynamicFieldsInitializedRef.current = currentKey;
-    } catch (error) {
+    } catch {
       toast.error('Fehler beim Laden der Felder für diesen Einsatz');
     }
   }, [
     activeTemplateId,
+    currentEinsatz,
     templatesQuery.data,
     currentEinsatz?.einsatz_fields,
+    dynamicForm,
     isLoading,
     isFetching,
     einsatz,
