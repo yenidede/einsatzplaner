@@ -441,6 +441,13 @@ export function mapDbDataTypeToFormFieldType(
   );
 }
 
+/**
+ * Map a database column datatype to HTML input element props.
+ *
+ * @param datatype - The database datatype identifier to map (may be `null` or `undefined`).
+ * @returns React input props appropriate for the given `datatype`, or `null` when the datatype has no corresponding input props (for example `'group'` or unsupported input-prop datatypes).
+ * @throws Error when `datatype` is falsy (null, undefined, or empty), indicating the datatype cannot be mapped to a form field.
+ */
 export function mapDbDataTypeToInputProps(
   datatype: string | null | undefined
 ): React.ComponentProps<'input'> | null {
