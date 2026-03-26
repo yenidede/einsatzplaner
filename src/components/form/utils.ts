@@ -27,6 +27,16 @@ import {
   isInputPropDatatype,
 } from '@/lib/input-props';
 
+/**
+ * Construct HTML input attributes appropriate for a named datatype.
+ *
+ * @param datatype - The datatype name to build props for; if not a recognized datatype an empty object is returned.
+ * @param opts - Optional constraints applied to the generated props.
+ * @param opts.placeholder - Optional placeholder text to apply to the input.
+ * @param opts.min - Optional minimum numeric constraint to apply where applicable.
+ * @param opts.max - Optional maximum numeric constraint to apply where applicable.
+ * @returns An object of `InputHTMLAttributes<HTMLInputElement>` configured for `datatype`, or `{}` if `datatype` is not recognized.
+ */
 export function buildInputProps(
   datatype?: string | null,
   opts?: {

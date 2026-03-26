@@ -38,6 +38,24 @@ interface OrganizationDefaultValuesProps {
   onDefaultEndtimeErrorChange: (error: string | null) => void;
 }
 
+/**
+ * Render the organization defaults UI for participant limits, default times, and category management.
+ *
+ * @param orgId - Organization identifier used for category mutations and queries
+ * @param helperSingular - Singular label for a helper used in the participant-limit field label
+ * @param maxParticipantsPerHelper - Current value for the maximum participants per helper
+ * @param defaultStarttime - Current default start time value (e.g. "09:00")
+ * @param defaultEndtime - Current default end time value (e.g. "10:00")
+ * @param defaultStarttimeError - Validation error message for the default start time, or `null` when valid
+ * @param defaultEndtimeError - Validation error message for the default end time, or `null` when valid
+ * @param categories - List of category records to render and manage
+ * @param onMaxParticipantsPerHelperChange - Callback invoked with the new participant-limit value
+ * @param onDefaultStarttimeChange - Callback invoked when the default start time value changes
+ * @param onDefaultEndtimeChange - Callback invoked when the default end time value changes
+ * @param onDefaultStarttimeErrorChange - Callback invoked with validation errors for the default start time (`string | null`)
+ * @param onDefaultEndtimeErrorChange - Callback invoked with validation errors for the default end time (`string | null`)
+ * @returns The JSX element for the organization defaults settings panel
+ */
 export function OrganizationDefaultValues({
   orgId,
   helperSingular,

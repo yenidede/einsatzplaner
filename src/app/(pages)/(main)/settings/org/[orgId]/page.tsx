@@ -59,6 +59,14 @@ import { Button } from '@/components/ui/button';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { isNormalizedTime } from '@/lib/time-input';
 
+/**
+ * Page component for managing an organization's settings, templates, users, and PDF-export configuration.
+ *
+ * Renders the full organization management UI and coordinates state, data loading, permissions, change detection,
+ * saving, logo upload/removal, section navigation, and dialogs for user profiles and invites.
+ *
+ * @returns The React element that renders the organization management settings page.
+ */
 export default function OrganizationManagePage() {
   const params = useParams();
   const router = useRouter();
