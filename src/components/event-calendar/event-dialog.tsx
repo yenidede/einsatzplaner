@@ -81,6 +81,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   einsatzCategoriesIds: [],
   startDate: new Date(),
   endDate: new Date(),
+  // DefaultStartHours are constants and set to 9 and 10 but will be overridden by org defaults once those are loaded (if available) so we don't show 09:00/10:00 and only update after close or when user changes to timed event
   startTime: `${DefaultStartHour}:00`,
   endTime: `${DefaultEndHour}:00`,
   all_day: false,
@@ -363,6 +364,7 @@ export function EventDialogVerwaltung({
   const handleFormDataChange = useCallback(
     (updates: Partial<EinsatzFormData>) => {
       let nextFormData: EinsatzFormData | undefined;
+      const derivedUpdates: Partial<EinsatzFormData> = {};
 
       setStaticFormData((prev) => {
         const merged = { ...prev, ...updates };
@@ -375,6 +377,8 @@ export function EventDialogVerwaltung({
         if (prev.all_day === true && updates.all_day === false) {
           merged.startTime = orgDefaultStartTime;
           merged.endTime = orgDefaultEndTime;
+          derivedUpdates.startTime = orgDefaultStartTime;
+          derivedUpdates.endTime = orgDefaultEndTime;
           lastSyncedStartRef.current = orgDefaultStartTime;
           lastSyncedEndRef.current = orgDefaultEndTime;
         }
@@ -388,6 +392,8 @@ export function EventDialogVerwaltung({
 
           merged.endDate = syncedEnd.endDate;
           merged.endTime = syncedEnd.endTime;
+          derivedUpdates.endDate = syncedEnd.endDate;
+          derivedUpdates.endTime = syncedEnd.endTime;
           lastSyncedEndRef.current = syncedEnd.endTime;
         }
 
@@ -401,7 +407,12 @@ export function EventDialogVerwaltung({
       });
 
       // Validate just the updated fields using partial schema
-      const partialResult = ZodEinsatzFormData.partial().safeParse(updates);
+      const validationUpdates = {
+        ...updates,
+        ...derivedUpdates,
+      };
+      const partialResult =
+        ZodEinsatzFormData.partial().safeParse(validationUpdates);
 
       // Update errors based on partial validation
       setErrors((prevErrors) => {
@@ -431,7 +442,7 @@ export function EventDialogVerwaltung({
           }
         } else {
           // Clear errors for the fields that are now valid
-          Object.keys(updates).forEach((field) => {
+          Object.keys(validationUpdates).forEach((field) => {
             delete newErrors.fieldErrors[field];
           });
         }
