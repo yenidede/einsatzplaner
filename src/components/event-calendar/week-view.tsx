@@ -327,34 +327,30 @@ export function WeekView({
         <div className="text-muted-foreground/70 px-2 py-2 text-left text-sm">
           <span className="max-[479px]:sr-only">MEZ (AT)</span>
         </div>
-        {days.map((day) => (
-          <div
-            key={day.toString()}
-            className="data-today:text-foreground text-muted-foreground/70 py-2 text-center text-sm data-today:font-medium"
-            data-today={isToday(day) || undefined}
-          >
-            <span className="sm:hidden" aria-hidden="true">
-              {format(day, 'E', { locale: de })[0]}{' '}
-              <span
-                className={
-                  startOfDay(day) < todayStart ? 'line-through' : undefined
-                }
-              >
-                {format(day, 'd')}
+        {days.map((day) => {
+          const isPastDay = startOfDay(day) < todayStart;
+
+          return (
+            <div
+              key={day.toString()}
+              className="data-today:text-foreground text-muted-foreground/70 py-2 text-center text-sm data-today:font-medium"
+              data-today={isToday(day) || undefined}
+            >
+              <span className="sm:hidden" aria-hidden="true">
+                {format(day, 'E', { locale: de })[0]}{' '}
+                <span className={isPastDay ? 'line-through' : undefined}>
+                  {format(day, 'd')}
+                </span>
               </span>
-            </span>
-            <span className="max-sm:hidden">
-              {format(day, 'EEE ', { locale: de })}
-              <span
-                className={
-                  startOfDay(day) < todayStart ? 'line-through' : undefined
-                }
-              >
-                {format(day, 'dd')}
+              <span className="max-sm:hidden">
+                {format(day, 'EEE ', { locale: de })}
+                <span className={isPastDay ? 'line-through' : undefined}>
+                  {format(day, 'dd')}
+                </span>
               </span>
-            </span>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       {showAllDaySection && (

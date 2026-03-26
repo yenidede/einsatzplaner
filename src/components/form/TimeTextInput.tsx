@@ -34,6 +34,7 @@ export const TimeTextInput = React.forwardRef<
 ) {
   const [draftValue, setDraftValue] = React.useState(value);
   const [localError, setLocalError] = React.useState<string | null>(null);
+  const lastCommittedPropValueRef = React.useRef(value);
   const emitValidationChange = React.useEffectEvent(
     (error: string | null) => {
       onValidationChange?.(error);
@@ -61,6 +62,11 @@ export const TimeTextInput = React.forwardRef<
   );
 
   React.useEffect(() => {
+    if (lastCommittedPropValueRef.current === value) {
+      return;
+    }
+
+    lastCommittedPropValueRef.current = value;
     setDraftValue(value);
     const validationResult = validateValue(value);
     setLocalError(validationResult.error);
@@ -82,6 +88,7 @@ export const TimeTextInput = React.forwardRef<
     setDraftValue(validationResult.normalizedValue);
     setLocalError(null);
     onValidationChange?.(null);
+    lastCommittedPropValueRef.current = validationResult.normalizedValue;
 
     if (validationResult.normalizedValue !== value) {
       onValueChange(validationResult.normalizedValue);
@@ -104,8 +111,8 @@ export const TimeTextInput = React.forwardRef<
         setDraftValue(event.target.value);
         if (localError !== null) {
           setLocalError(null);
+          onValidationChange?.(null);
         }
-        onValidationChange?.(null);
       }}
       onBlur={(event) => {
         commitValue();
