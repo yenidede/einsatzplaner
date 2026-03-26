@@ -2,18 +2,30 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+/**
+ * Remove leading zeros from a numeric string while preserving at least one digit.
+ *
+ * @param value - The numeric string to normalize; may contain leading zeros.
+ * @returns The string with leading zeros removed; if the input is all zeros, a single `"0"` is preserved.
+ */
 function stripLeadingZeros(value: string): string {
   return value.replace(/^0+(?=\d)/, '');
 }
 
-function Input({
-  className,
-  type,
-  onChange,
-  value,
-  isStripLeadingZeros = true,
-  ...props
-}: React.ComponentProps<'input'> & { isStripLeadingZeros?: boolean }) {
+const Input = React.forwardRef<
+  HTMLInputElement,
+  React.ComponentProps<'input'> & { isStripLeadingZeros?: boolean }
+>(function Input(
+  {
+    className,
+    type,
+    onChange,
+    value,
+    isStripLeadingZeros = true,
+    ...props
+  },
+  ref
+) {
   const displayValue =
     type === 'number' && isStripLeadingZeros && value != null && value !== ''
       ? stripLeadingZeros(String(value))
@@ -29,6 +41,7 @@ function Input({
 
   return (
     <input
+      ref={ref}
       type={type}
       data-slot="input"
       value={displayValue}
@@ -46,6 +59,6 @@ function Input({
       {...props}
     />
   );
-}
+});
 
 export { Input };

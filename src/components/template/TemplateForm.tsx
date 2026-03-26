@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { TimeTextInput } from '@/components/form/TimeTextInput';
 import {
   Select,
   SelectContent,
@@ -73,24 +74,41 @@ import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import TooltipCustom from '../tooltip-custom';
 import type { TemplateFieldReuseCandidate } from '@/features/template/template-dal';
+import {
+  formatDateToTimeInput,
+  isNormalizedTime,
+  parseNormalizedTimeToDate,
+} from '@/lib/time-input';
 
-/** Format a Date (time-only from DB) to "HH:mm" for input[type="time"]. */
+/**
+ * Format a date value for an HTML time input.
+ *
+ * @param d - The date to format; if `null` or `undefined`, an empty string is returned.
+ * @returns A time string suitable for an `<input type="time">` (e.g., `"14:30"`), or `''` when `d` is null/undefined.
+ */
 function formatTimeForInput(d: Date | null | undefined): string {
   if (!d) return '';
   const date = d instanceof Date ? d : new Date(d);
-  const h = date.getHours();
-  const m = date.getMinutes();
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  return formatDateToTimeInput(date);
 }
 
-/** Parse "HH:mm" string to a Date (fixed calendar day, local time) for Prisma Time. */
+/**
+ * Parse a normalized time string into a Date anchored to the default reference date used by `parseNormalizedTimeToDate`.
+ *
+ * @param s - A normalized time string (for example "HH:MM") as produced/accepted by time inputs
+ * @returns A Date corresponding to the given time on the default reference date, or `null` if `s` is empty or cannot be parsed
+ */
 function parseTimeFromInput(s: string): Date | null {
-  if (!s || !/^\d{1,2}:\d{2}$/.test(s.trim())) return null;
-  const [h, m] = s.trim().split(':').map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  return new Date(2000, 0, 1, h, m);
+  return parseNormalizedTimeToDate(s);
 }
 
+/**
+ * Computes a similarity score between two name strings.
+ *
+ * @param source - The first name to compare
+ * @param target - The second name to compare
+ * @returns A number between 0 and 1: `1` for an exact match, `0.9` if one string contains the other, `0` if either input is empty, otherwise the ratio of shared tokens between the two strings
+ */
 function getNameSimilarityScore(source: string, target: string): number {
   if (!source || !target) return 0;
   if (source === target) return 1;
@@ -149,6 +167,15 @@ interface TemplateFormProps {
   cancelLabel?: string;
 }
 
+/**
+ * Render the form for creating or editing a template (Vorlage), including template info, standard fields, custom fields, verifications, and related dialogs and handlers.
+ *
+ * @param orgId - Optional organization id used when creating a new template.
+ * @param templateId - Optional template id; when present the form loads and edits the existing template.
+ * @param backHref - Optional href to navigate back to when cancelling; defaults to settings overview when not provided.
+ * @param cancelLabel - Label for the cancel button shown in the footer; defaults to 'Schließen'.
+ * @returns The React element for the template create/edit UI.
+ */
 export function TemplateForm({
   orgId: orgIdProp,
   templateId,
@@ -228,7 +255,15 @@ export function TemplateForm({
   /** Time range dialog: start/end strings and validation error. */
   const [timeRangeStartValue, setTimeRangeStartValue] = useState('');
   const [timeRangeEndValue, setTimeRangeEndValue] = useState('');
-  const [timeRangeError, setTimeRangeError] = useState<string | null>(null);
+  const [timeRangeFieldErrors, setTimeRangeFieldErrors] = useState<{
+    start: string | null;
+    end: string | null;
+  }>({
+    start: null,
+    end: null,
+  });
+  const timeRangeError =
+    timeRangeFieldErrors.start ?? timeRangeFieldErrors.end;
   /** Required user properties for this template (Überprüfungen). */
   const [requiredUserPropertyConfigs, setRequiredUserPropertyConfigs] =
     useState<
@@ -590,7 +625,7 @@ export function TemplateForm({
             formatTimeForInput(template.time_start_default)
           );
           setTimeRangeEndValue(formatTimeForInput(template.time_end_default));
-          setTimeRangeError(null);
+          setTimeRangeFieldErrors({ start: null, end: null });
           break;
         case 'participant_count':
           setStandardFieldDefaultValue(
@@ -673,6 +708,28 @@ export function TemplateForm({
         );
         return;
       case 'time_range': {
+        if (
+          timeRangeFieldErrors.start !== null ||
+          timeRangeFieldErrors.end !== null ||
+          (timeRangeStartValue !== '' && !isNormalizedTime(timeRangeStartValue)) ||
+          (timeRangeEndValue !== '' && !isNormalizedTime(timeRangeEndValue))
+        ) {
+          setTimeRangeFieldErrors((prev) => ({
+            start:
+              prev.start ??
+              (timeRangeStartValue !== '' &&
+              !isNormalizedTime(timeRangeStartValue)
+                ? 'Bitte geben Sie eine gültige Startzeit ein, z. B. 09:30.'
+                : null),
+            end:
+              prev.end ??
+              (timeRangeEndValue !== '' && !isNormalizedTime(timeRangeEndValue)
+                ? 'Bitte geben Sie eine gültige Endzeit ein, z. B. 12:20.'
+                : null),
+          }));
+          return;
+        }
+
         const startDate = parseTimeFromInput(timeRangeStartValue);
         const endDate = parseTimeFromInput(timeRangeEndValue);
         if (
@@ -680,10 +737,13 @@ export function TemplateForm({
           endDate != null &&
           endDate.getTime() <= startDate.getTime()
         ) {
-          setTimeRangeError('Endzeit muss nach der Startzeit liegen.');
+          setTimeRangeFieldErrors({
+            start: null,
+            end: 'Endzeit muss nach der Startzeit liegen.',
+          });
           return;
         }
-        setTimeRangeError(null);
+        setTimeRangeFieldErrors({ start: null, end: null });
         payload.time_start_default = startDate;
         payload.time_end_default = endDate;
         break;
@@ -733,6 +793,7 @@ export function TemplateForm({
       { templateId, ...payload },
       {
         onSuccess: () => {
+          setTimeRangeFieldErrors({ start: null, end: null });
           setEditingStandardFieldKey(null);
         },
       }
@@ -744,6 +805,8 @@ export function TemplateForm({
     standardFieldPlaceholderValue,
     timeRangeStartValue,
     timeRangeEndValue,
+    timeRangeFieldErrors.start,
+    timeRangeFieldErrors.end,
     selectedDefaultCategoryIds,
     updateMutation,
     setDefaultCategoriesMutation,
@@ -752,7 +815,7 @@ export function TemplateForm({
   const handleStandardFieldDialogClose = useCallback((open: boolean) => {
     if (!open) {
       setEditingStandardFieldKey(null);
-      setTimeRangeError(null);
+      setTimeRangeFieldErrors({ start: null, end: null });
     }
   }, []);
 
@@ -1132,28 +1195,44 @@ export function TemplateForm({
                       <Label htmlFor="time-range-start">
                         Uhrzeit von (optional)
                       </Label>
-                      <Input
+                      <TimeTextInput
                         id="time-range-start"
-                        type="time"
                         value={timeRangeStartValue}
-                        onChange={(e) => {
-                          setTimeRangeStartValue(e.target.value);
-                          setTimeRangeError(null);
+                        onValueChange={(value) => {
+                          setTimeRangeStartValue(value);
                         }}
+                        onValidationChange={(error) => {
+                          setTimeRangeFieldErrors((prev) => {
+                            return {
+                              ...prev,
+                              start: error,
+                            };
+                          });
+                        }}
+                        allowEmpty={true}
+                        invalidMessage="Bitte geben Sie eine gültige Startzeit ein, z. B. 09:30."
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="time-range-end">
                         Uhrzeit bis (optional)
                       </Label>
-                      <Input
+                      <TimeTextInput
                         id="time-range-end"
-                        type="time"
                         value={timeRangeEndValue}
-                        onChange={(e) => {
-                          setTimeRangeEndValue(e.target.value);
-                          setTimeRangeError(null);
+                        onValueChange={(value) => {
+                          setTimeRangeEndValue(value);
                         }}
+                        onValidationChange={(error) => {
+                          setTimeRangeFieldErrors((prev) => {
+                            return {
+                              ...prev,
+                              end: error,
+                            };
+                          });
+                        }}
+                        allowEmpty={true}
+                        invalidMessage="Bitte geben Sie eine gültige Endzeit ein, z. B. 12:20."
                       />
                     </div>
                     {timeRangeError && (

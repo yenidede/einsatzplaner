@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { RiCalendarLine } from '@remixicon/react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -9,25 +9,18 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import type { organization as Organization } from '@/generated/prisma';
 import FormGroup from '../form/formGroup';
 import FormField from '../form/formInputField';
 import MultiSelectFormField from '../form/multiSelectFormField';
 import FormInputFieldCustom from '../form/formInputFieldCustom';
+import { TimeTextInput } from '@/components/form/TimeTextInput';
 import type { EinsatzFormData } from '@/components/event-calendar/event-dialog';
 import { calcTotal, calcPricePerPersonFromTotal } from '../form/utils';
 import { Textarea } from '../ui/textarea';
@@ -42,8 +35,17 @@ interface DefaultFormFieldsProps {
   categoriesOptions: Array<{ value: string; label: string }>;
   usersOptions: Array<{ value: string; label: string }>;
   activeOrg: Organization | null;
+  onTimeFieldErrorChange: (
+    field: 'startTime' | 'endTime',
+    error: string | null
+  ) => void;
 }
 
+/**
+ * Renders the default form UI for editing EinsatzFormData, including title, categories, start/end date & time, all-day toggle, participant and price controls, helper assignment, and a resizable note field.
+ *
+ * @returns A React element containing the composed form fields and controls for an Einsatz.
+ */
 export function DefaultFormFields({
   formData,
   onFormDataChange,
@@ -51,26 +53,15 @@ export function DefaultFormFields({
   categoriesOptions,
   usersOptions,
   activeOrg,
+  onTimeFieldErrorChange,
 }: DefaultFormFieldsProps) {
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
-  const isEndDateEdited = useRef(
-    formData.endDate &&
-      formData.startDate &&
-      format(formData.endDate, 'yyyy-MM-dd') !==
-        format(formData.startDate, 'yyyy-MM-dd')
-  );
 
-  useEffect(() => {
-    isEndDateEdited.current = !!(
-      formData.endDate &&
-      formData.startDate &&
-      format(formData.endDate, 'yyyy-MM-dd') !==
-        format(formData.startDate, 'yyyy-MM-dd')
-    );
-  }, [formData.startDate, formData.endDate]);
-
-  const handleChange = (field: keyof EinsatzFormData, value: any) => {
+  const handleChange = <TField extends keyof EinsatzFormData>(
+    field: TField,
+    value: EinsatzFormData[TField]
+  ) => {
     onFormDataChange({ [field]: value });
   };
 
@@ -140,16 +131,7 @@ export function DefaultFormFields({
                   locale={de}
                   onSelect={(date) => {
                     if (date) {
-                      // Auto-adjust end date unless user already edited it
-                      if (!isEndDateEdited.current) {
-                        const updates: Partial<EinsatzFormData> = {
-                          startDate: date,
-                          endDate: date,
-                        };
-                        onFormDataChange(updates);
-                      } else {
-                        handleChange('startDate', date);
-                      }
+                      handleChange('startDate', date);
                       setStartDateOpen(false);
                     }
                   }}
@@ -163,11 +145,14 @@ export function DefaultFormFields({
                 name="Start Zeit"
                 errors={errors.fieldErrors['startTime'] || []}
               >
-                <Input
+                <TimeTextInput
                   id="start_time"
-                  type="time"
                   value={formData.startTime}
-                  onChange={(e) => handleChange('startTime', e.target.value)}
+                  onValueChange={(value) => handleChange('startTime', value)}
+                  onValidationChange={(error) =>
+                    onTimeFieldErrorChange('startTime', error)
+                  }
+                  invalidMessage="Bitte geben Sie eine gültige Startzeit ein, z. B. 09:30."
                   className="w-full"
                 />
               </FormInputFieldCustom>
@@ -216,8 +201,6 @@ export function DefaultFormFields({
                   locale={de}
                   onSelect={(date) => {
                     if (date) {
-                      // Mark as edited when user picks an explicit end date
-                      isEndDateEdited.current = true;
                       handleChange('endDate', date);
                       setEndDateOpen(false);
                     }
@@ -232,11 +215,14 @@ export function DefaultFormFields({
                 name="Ende Zeit"
                 errors={errors.fieldErrors['endTime'] || []}
               >
-                <Input
+                <TimeTextInput
                   id="end_time"
-                  type="time"
                   value={formData.endTime}
-                  onChange={(e) => handleChange('endTime', e.target.value)}
+                  onValueChange={(value) => handleChange('endTime', value)}
+                  onValidationChange={(error) =>
+                    onTimeFieldErrorChange('endTime', error)
+                  }
+                  invalidMessage="Bitte geben Sie eine gültige Endzeit ein, z. B. 12:20."
                   className="w-full"
                 />
               </FormInputFieldCustom>
@@ -279,7 +265,7 @@ export function DefaultFormFields({
         </div>
         <div className="grow">
           <FormField
-            step={0.01}
+            step={0.5}
             name="Preis p. Person (€)"
             type="number"
             min={0}
@@ -300,7 +286,7 @@ export function DefaultFormFields({
         </div>
         <div className="sm:w-28 sm:min-w-28">
           <FormField
-            step={0.01}
+            step={0.5}
             name="Gesamtpreis (€)"
             type="number"
             min={0}
