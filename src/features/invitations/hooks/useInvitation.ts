@@ -157,6 +157,8 @@ export interface InvitationDTO {
   organizationName: string;
 
   roleName: string;
+  helperNameSingular: string;
+  helperNamePlural: string;
   roles: { id: string; name: string }[];
 
   token: string;

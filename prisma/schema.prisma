@@ -24,6 +24,9 @@ model change_log {
 
   @@index([einsatz_id, created_at])
   @@index([user_id, created_at])
+
+  @@index([einsatz_id, created_at])
+  @@index([user_id, created_at])
 }
 
 model change_type {
@@ -96,6 +99,9 @@ model einsatz_helper {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz    einsatz  @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([einsatz_id])
+  @@index([user_id])
 
   @@index([einsatz_id])
   @@index([user_id])
@@ -248,6 +254,8 @@ model invitation {
   user         user         @relation(fields: [invited_by], references: [id], onDelete: Cascade)
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
   role         role         @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, accepted])
 
   @@index([org_id, accepted])
 }

@@ -20,6 +20,7 @@ import {
 import { de } from 'date-fns/locale';
 
 import { cn } from '@/lib/utils';
+import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
 import {
   DraggableEvent,
   DroppableCell,
@@ -61,6 +62,8 @@ export function WeekView({
   mode,
   onEventConfirm,
 }: WeekViewProps) {
+  const todayStart = useTodayStart();
+
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -324,20 +327,30 @@ export function WeekView({
         <div className="text-muted-foreground/70 px-2 py-2 text-left text-sm">
           <span className="max-[479px]:sr-only">MEZ (AT)</span>
         </div>
-        {days.map((day) => (
-          <div
-            key={day.toString()}
-            className="data-today:text-foreground text-muted-foreground/70 py-2 text-center text-sm data-today:font-medium"
-            data-today={isToday(day) || undefined}
-          >
-            <span className="sm:hidden" aria-hidden="true">
-              {format(day, 'E', { locale: de })[0]} {format(day, 'd')}
-            </span>
-            <span className="max-sm:hidden">
-              {format(day, 'EEE dd', { locale: de })}
-            </span>
-          </div>
-        ))}
+        {days.map((day) => {
+          const isPastDay = startOfDay(day) < todayStart;
+
+          return (
+            <div
+              key={day.toString()}
+              className="data-today:text-foreground text-muted-foreground/70 py-2 text-center text-sm data-today:font-medium"
+              data-today={isToday(day) || undefined}
+            >
+              <span className="sm:hidden" aria-hidden="true">
+                {format(day, 'E', { locale: de })[0]}{' '}
+                <span className={isPastDay ? 'line-through' : undefined}>
+                  {format(day, 'd')}
+                </span>
+              </span>
+              <span className="max-sm:hidden">
+                {format(day, 'EEE ', { locale: de })}
+                <span className={isPastDay ? 'line-through' : undefined}>
+                  {format(day, 'dd')}
+                </span>
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {showAllDaySection && (

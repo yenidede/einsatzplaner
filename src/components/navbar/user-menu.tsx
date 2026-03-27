@@ -14,7 +14,7 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
 import { Close, PopoverContent, PopoverTrigger } from '@radix-ui/react-popover';
 import { Popover } from '../ui/popover';
-import { RolesList } from '../Roles';
+import { createRoleNameOverrides, RolesList } from '../Roles';
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
@@ -113,6 +113,7 @@ export default function UserMenu(): JSX.Element | null {
                 key={org.id}
                 orgId={org.id}
                 orgName={org.name}
+                helperNameSingular={org.helper_name_singular ?? 'Helfer'}
                 userId={session.user.id}
               />
             ))}
@@ -164,10 +165,12 @@ export default function UserMenu(): JSX.Element | null {
 function OrganizationWithRoles({
   orgId,
   orgName,
+  helperNameSingular,
   userId,
 }: {
   orgId: string;
   orgName: string;
+  helperNameSingular: string;
   userId: string;
 }) {
   const { data: uorRoles } = useUserOrgRoles(orgId, userId);
@@ -177,7 +180,10 @@ function OrganizationWithRoles({
     <div className="flex items-end justify-between">
       <div>
         <p className="text-muted-foreground mb-2 text-sm">{orgName}</p>
-        <RolesList unsortedRoles={roles} />
+        <RolesList
+          unsortedRoles={roles}
+          roleNameOverrides={createRoleNameOverrides(helperNameSingular)}
+        />
       </div>
       {roles.find(
         (r) => r.name === 'Organisationsverwaltung' || r.name === 'OV'

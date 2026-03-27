@@ -24,6 +24,33 @@ const formatTimeWithOptionalMinutes = (date: Date) => {
   return format(date, 'HH:mm');
 };
 
+/**
+ * Renders a pill-shaped "Vergangen" indicator.
+ *
+ * @param compact - When true, use the compact variant with reduced padding and a smaller font size.
+ * @param className - Optional additional CSS classes applied to the indicator.
+ * @returns A span element displaying "Vergangen" with pill-style visual styling.
+ */
+function PastIndicator({
+  compact = false,
+  className,
+}: {
+  compact?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border border-current/15 bg-white/45 font-medium tracking-[0.02em] text-current/75 uppercase dark:bg-black/10',
+        compact ? 'px-1 py-0 text-[0.55rem]' : 'px-1.5 py-0.5 text-[0.6rem]',
+        className
+      )}
+    >
+      Vergangen
+    </span>
+  );
+}
+
 interface EventWrapperProps {
   event: CalendarEvent;
   isFirstDay?: boolean;
@@ -40,7 +67,25 @@ interface EventWrapperProps {
   mode: CalendarMode;
 }
 
-// Shared wrapper component for event styling
+/**
+ * Render a styled button wrapper for an event that applies color, border-radius, drag-and-drop bindings, and a past-event state.
+ *
+ * @param event - Event data used to determine displayed end time, status color, and assigned users.
+ * @param isFirstDay - Whether this event is the first day in a multi-day event (affects border radius).
+ * @param isLastDay - Whether this event is the last day in a multi-day event (affects border radius).
+ * @param isDragging - When true, sets a `data-dragging` attribute to adjust visual appearance while dragging.
+ * @param onClick - Click handler forwarded to the button.
+ * @param className - Additional CSS classes appended to the wrapper.
+ * @param children - Content to render inside the button.
+ * @param currentTime - Optional current time used to shift the event's duration for past-state calculation.
+ * @param dndListeners - Drag-and-drop listener props spread onto the button.
+ * @param dndAttributes - Drag-and-drop attribute props spread onto the button.
+ * @param onMouseDown - Mouse down handler forwarded to the button.
+ * @param onTouchStart - Touch start handler forwarded to the button.
+ * @param mode - Display mode that influences color selection (e.g., helper mode).
+ *
+ * @returns The button element that visually wraps the event and forwards interaction and drag/drop bindings.
+ */
 function EventWrapper({
   event,
   isFirstDay = true,
@@ -78,7 +123,7 @@ function EventWrapper({
   return (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2',
+        'focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:opacity-75 data-past-event:saturate-50 sm:px-2',
         getEventColorClasses(statusForColor || 'fallback', mode),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
@@ -116,6 +161,29 @@ interface EventItemProps {
   onConfirm?: (eventId: string) => void;
 }
 
+/**
+ * Render an event as a calendar item for month, week/day, or agenda views, including time display, past-state styling, drag-and-drop bindings, and right-click context-menu integration.
+ *
+ * @param event - The event object to render (must contain at least `id`, `title`, `start`, `end`, and optional fields like `allDay`, `status`, `assignedUsers`, and `helpersNeeded`).
+ * @param view - The current calendar view (`'month'`, `'week'`, `'day'`, or `'agenda'`) which determines layout and content.
+ * @param currentTime - Optional override start time used when dragging; when provided, the event's displayed start/end are shifted to this time.
+ * @param isFirstDay - Whether this event instance is the first day in a multi-day span, used for corner radius/layout.
+ * @param isLastDay - Whether this event instance is the last day in a multi-day span, used for corner radius/layout.
+ * @param isDragging - Whether the event is currently being dragged; applied as a visual state.
+ * @param showTime - When true (applies to week/day views), render the event's time line beneath the title.
+ * @param dndListeners - Drag-and-drop event listeners to spread onto the rendered element.
+ * @param dndAttributes - Drag-and-drop attributes to spread onto the rendered element.
+ * @param onDelete - Optional delete handler forwarded to the context menu (defaults to a no-op).
+ * @param onConfirm - Optional confirm handler forwarded to the context menu when helper confirmation is available.
+ * @param mode - Display mode (for example `'helper'`) that affects color selection when the current user is assigned to the event.
+ * @param children - Optional custom children to render inside the event wrapper; when omitted a view-specific default layout is used.
+ * @param className - Optional additional CSS classes applied to the root element.
+ * @param onClick - Click handler for the rendered event element.
+ * @param onMouseDown - Mouse-down handler forwarded to the rendered element.
+ * @param onTouchStart - Touch-start handler forwarded to the rendered element.
+ *
+ * @returns A React element that renders the event according to the selected view and props.
+ */
 export function EventItem({
   event,
   view,
@@ -166,13 +234,14 @@ export function EventItem({
   }, [currentTime, event.start, event.end]);
 
   const getEventTime = () => {
-    if (event.allDay) return 'All day';
+    if (event.allDay) return 'Ganztägig';
 
     // Always show both start and end time for consistency
     return `${formatTimeWithOptionalMinutes(
       displayStart
     )} - ${formatTimeWithOptionalMinutes(displayEnd)}`;
   };
+  const isEventInPast = isPast(displayEnd);
 
   if (view === 'month') {
     const eventWrapper = (
@@ -196,18 +265,21 @@ export function EventItem({
       >
         {children || (
           <div className="flex w-full flex-col">
-            {!event.allDay && (
-              <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
-                <span className="sm:hidden">
-                  {formatTimeWithOptionalMinutes(displayStart)}
-                </span>
-                <span className="hidden sm:inline">
-                  {formatTimeWithOptionalMinutes(displayStart)}
-                  {'-'}
-                  {formatTimeWithOptionalMinutes(displayEnd)}
-                </span>
-              </div>
-            )}
+            <div className="flex items-start justify-between gap-1">
+              {!event.allDay && (
+                <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
+                  <span className="sm:hidden">
+                    {formatTimeWithOptionalMinutes(displayStart)}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {formatTimeWithOptionalMinutes(displayStart)}
+                    {'-'}
+                    {formatTimeWithOptionalMinutes(displayEnd)}
+                  </span>
+                </div>
+              )}
+              {isEventInPast && <PastIndicator compact className="ml-auto" />}
+            </div>
             <div className="leading-tight wrap-break-word max-md:line-clamp-2">
               {event.title}
             </div>
@@ -249,6 +321,11 @@ export function EventItem({
         onTouchStart={onTouchStart}
         mode={mode}
       >
+        {isEventInPast && (view === 'week' || view === 'day') && (
+          <div>
+            <PastIndicator compact />
+          </div>
+        )}
         <div className="leading-tight font-medium wrap-break-word">
           {event.title}
         </div>
@@ -277,17 +354,18 @@ export function EventItem({
   const agendaView = (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90',
+        'focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:opacity-75 data-past-event:saturate-50',
         getEventColorClasses(statusForColor, mode), // Use statusForColor instead of event.status
         className
       )}
-      data-past-event={isPast(new Date(event.end)) || undefined}
+      data-past-event={isEventInPast || undefined}
       onClick={onClick}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
       {...dndListeners}
       {...dndAttributes}
     >
+      {/* PastIndicator hier nicht benötigt, weil in Agenda sowieso nur zukünftige Events angezeigt werden */}
       <div className="text-sm font-medium">{event.title}</div>
       <div className="text-xs opacity-70">
         {event.allDay ? (

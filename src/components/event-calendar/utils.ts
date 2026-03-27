@@ -11,6 +11,10 @@ import {
   EinsatzDetailedForCalendar,
   EinsatzForCalendar,
 } from '@/features/einsatz/types';
+import {
+  getInputPropsForDatatype,
+  isInputPropDatatype,
+} from '@/lib/input-props';
 import React from 'react';
 import {
   getAllEinsaetzeForCalendar,
@@ -20,7 +24,6 @@ import {
 import { toast } from 'sonner';
 import { PdfGenerationRequest } from '@/features/pdf/types/types';
 import { UsePdfGeneratorReturn } from '@/features/pdf/hooks/usePdfGenerator';
-import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -438,27 +441,20 @@ export function mapDbDataTypeToFormFieldType(
   );
 }
 
+/**
+ * Map a database column datatype to HTML input element props.
+ *
+ * @param datatype - The database datatype identifier to map (may be `null` or `undefined`).
+ * @returns React input props appropriate for the given `datatype`, or `null` when the datatype has no corresponding input props (for example `'group'` or unsupported input-prop datatypes).
+ * @throws Error when `datatype` is falsy (null, undefined, or empty), indicating the datatype cannot be mapped to a form field.
+ */
 export function mapDbDataTypeToInputProps(
   datatype: string | null | undefined
 ): React.ComponentProps<'input'> | null {
-  const defaultTypes = [
-    'text',
-    'number',
-    'currency',
-    'phone',
-    'mail',
-    'date',
-    'time',
-  ];
   if (datatype) {
-    if (!defaultTypes.includes(datatype) && datatype !== 'group') return null;
-    if (datatype === 'text') return { type: 'text' };
-    if (datatype === 'phone') return { type: 'tel' };
-    if (datatype === 'mail') return { type: 'email' };
-    if (datatype === 'number') return { type: 'number' };
-    if (datatype === 'currency') return { type: 'number', step: '0.10' };
-    if (datatype === 'date') return { type: 'date' };
-    if (datatype === 'time') return { type: 'time' };
+    if (datatype === 'group') return null;
+    if (!isInputPropDatatype(datatype)) return null;
+    return getInputPropsForDatatype(datatype);
     // if (datatype === 'group') return { type: 'group' }; // not supported yet
   }
   throw new Error(

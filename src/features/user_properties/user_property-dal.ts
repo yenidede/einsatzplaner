@@ -125,7 +125,7 @@ export async function getTypeByDatatype(
 }
 
 async function ensureTypeExists(datatype: string): Promise<string> {
-  let type = await prisma.type.findFirst({
+  const type = await prisma.type.findFirst({
     where: { datatype },
   });
 

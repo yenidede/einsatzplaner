@@ -73,6 +73,8 @@ import { SelectTrigger } from '@radix-ui/react-select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import { RequiredUserProperties } from './RequiredUserProperties';
 import { Separator } from '../ui/separator';
+import { formatDateToTimeInput, isNormalizedTime } from '@/lib/time-input';
+import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -80,6 +82,7 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   einsatzCategoriesIds: [],
   startDate: new Date(),
   endDate: new Date(),
+  // DefaultStartHours are constants and set to 9 and 10 but will be overridden by org defaults once those are loaded (if available) so we don't show 09:00/10:00 and only update after close or when user changes to timed event
   startTime: `${DefaultStartHour}:00`,
   endTime: `${DefaultEndHour}:00`,
   all_day: false,
@@ -92,6 +95,17 @@ const DEFAULTFORMDATA: EinsatzFormData = {
   confirmAsBestätigt: false,
 };
 
+const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
+
+/**
+ * Convert a variety of time representations into an `HH:MM` string suitable for time inputs.
+ *
+ * Accepts a `Date` instance, a time string in `HH:MM` or `HH:MM:SS(.sss)` format, or an ISO date/time string.
+ *
+ * @param value - The input to normalize: a `Date`, a plain `HH:MM(:SS)` time string, or an ISO date/time string (UTC ISO strings ending with `Z` are interpreted in UTC).
+ * @param fallback - The string to return when `value` cannot be parsed into a valid time.
+ * @returns The normalized time as `HH:MM`, or `fallback` if the input is invalid or unrecognized.
+ */
 function formatOrgTimeForInput(value: unknown, fallback: string): string {
   if (!value) return fallback;
 
@@ -117,12 +131,117 @@ function formatOrgTimeForInput(value: unknown, fallback: string): string {
   }
 
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    const hours = value.getHours().toString().padStart(2, '0');
-    const minutes = value.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+    return formatDateToTimeInput(value);
   }
 
   return fallback;
+}
+
+/**
+ * Formats a Date into an HH:MM string suitable for time input fields.
+ *
+ * @param date - The date whose time portion should be formatted.
+ * @returns An `HH:MM` string representing the time portion of `date`.
+ */
+function formatTimeForInput(date: Date) {
+  return formatDateToTimeInput(date);
+}
+
+/**
+ * Combine a date (year/month/day) with an HH:MM time string to produce a single Date.
+ *
+ * @param date - Date whose date portion (year, month, day) will be preserved
+ * @param time - Time in `HH:MM` 24-hour format; missing hours or minutes default to `0`
+ * @returns A `Date` with the same calendar date as `date`, time set to the provided hours and minutes, and seconds/milliseconds cleared
+ */
+function combineDateAndTime(date: Date, time: string) {
+  const combined = new Date(date);
+  const [hours = 0, minutes = 0] = time.split(':').map(Number);
+  combined.setHours(hours, minutes, 0, 0);
+  return combined;
+}
+
+/**
+ * Calculate the event duration in milliseconds from the form's start and end date/time.
+ *
+ * @param formData - The form values containing `all_day`, `startDate`, `startTime`, `endDate`, and `endTime`.
+ * @returns The duration in milliseconds if the event is timed and end is after start, `null` for all-day events or non-positive durations.
+ */
+function getDurationFromFormData(formData: EinsatzFormData) {
+  if (formData.all_day) {
+    return null;
+  }
+
+  const start = combineDateAndTime(formData.startDate, formData.startTime);
+  const end = combineDateAndTime(formData.endDate, formData.endTime);
+  const duration = end.getTime() - start.getTime();
+
+  return duration > 0 ? duration : null;
+}
+
+/**
+ * Produces an end date and time by adding a duration to a start date/time.
+ *
+ * @param startDate - Date representing the event start date (date component used)
+ * @param startTime - Start time as an `HH:MM` 24-hour string
+ * @param durationMs - Duration to add in milliseconds
+ * @returns An object with `endDate` (a Date equal to start + duration) and `endTime` (an `HH:MM` string suitable for time inputs)
+ */
+function buildEndFromStartAndDuration(
+  startDate: Date,
+  startTime: string,
+  durationMs: number
+) {
+  const start = combineDateAndTime(startDate, startTime);
+  const end = new Date(start.getTime() + durationMs);
+
+  return {
+    endDate: end,
+    endTime: formatTimeForInput(end),
+  };
+}
+
+function areStringArraysEqual(left: string[], right: string[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((value, index) => value === right[index]);
+}
+
+function areErrorStatesEqual(
+  left: {
+    fieldErrors: Record<string, string[]>;
+    formErrors: string[];
+  },
+  right: {
+    fieldErrors: Record<string, string[]>;
+    formErrors: string[];
+  }
+) {
+  const leftFieldKeys = Object.keys(left.fieldErrors);
+  const rightFieldKeys = Object.keys(right.fieldErrors);
+
+  if (leftFieldKeys.length !== rightFieldKeys.length) {
+    return false;
+  }
+
+  const rightFieldKeySet = new Set(rightFieldKeys);
+
+  for (const key of leftFieldKeys) {
+    if (!rightFieldKeySet.has(key)) {
+      return false;
+    }
+
+    const leftErrors = left.fieldErrors[key] ?? [];
+    const rightErrors = right.fieldErrors[key] ?? [];
+
+    if (!areStringArraysEqual(leftErrors, rightErrors)) {
+      return false;
+    }
+  }
+
+  return areStringArraysEqual(left.formErrors, right.formErrors);
 }
 
 export const ZodEinsatzFormData = z
@@ -231,6 +350,13 @@ interface EventDialogProps {
   onDelete: (eventId: string, eventTitle: string) => void;
 }
 
+/**
+ * Displays a modal dialog for creating or editing an Einsatz (event) with static fields, template-driven dynamic fields, validation, and activity logging.
+ *
+ * The dialog manages form state (including org-default times, duration tracking, and template defaults), runs field- and relationship-level validation, shows warnings that require confirmation, and collects dynamic template field values. It invokes the provided callbacks (onSave, onDelete, onClose) when the user saves, deletes, or closes the dialog, and updates activity logs for changes.
+ *
+ * @returns The Dialog JSX containing template selection, default and dynamic form fields, required-user-property controls, error/warning UI, and action buttons that call the component's callbacks.
+ */
 export function EventDialogVerwaltung({
   einsatz,
   isOpen,
@@ -271,6 +397,7 @@ export function EventDialogVerwaltung({
     fieldErrors: {},
     formErrors: [],
   });
+  const durationRef = useRef<number>(DEFAULT_EVENT_DURATION_MS);
 
   // Track last programmatically synced start/end times so we don't overwrite user edits
   const lastSyncedStartRef = useRef<string | null>(null);
@@ -278,6 +405,7 @@ export function EventDialogVerwaltung({
 
   // Track if dynamic form fields have been initialized to prevent overwriting
   const dynamicFieldsInitializedRef = useRef<string | null>(null);
+  const initializationKeyRef = useRef<string | null>(null);
 
   // Update form resolver when dynamicSchema changes
   useEffect(() => {
@@ -285,7 +413,7 @@ export function EventDialogVerwaltung({
       dynamicForm.clearErrors();
       dynamicForm.trigger();
     }
-  }, [dynamicSchema]);
+  }, [dynamicForm, dynamicSchema]);
 
   // Fetch detailed einsatz data when einsatz is a string (UUID)
   const {
@@ -314,36 +442,65 @@ export function EventDialogVerwaltung({
     `${DefaultEndHour.toString().padStart(2, '0')}:00`
   );
 
-  const { einsatz_singular } = useOrganizationTerminology(
-    organizations,
-    activeOrgId
-  );
+  const { einsatz_singular, helper_singular, helper_plural } =
+    useOrganizationTerminology(organizations, activeOrgId);
 
   // type string means edit einsatz (uuid)
   const currentEinsatz =
     typeof einsatz === 'string' ? detailedEinsatz : einsatz;
 
-  // React Hook Form übernimmt jetzt die Validierung automatisch
-
   const handleFormDataChange = useCallback(
     (updates: Partial<EinsatzFormData>) => {
       let nextFormData: EinsatzFormData | undefined;
+      const derivedUpdates: Partial<EinsatzFormData> = {};
 
       setStaticFormData((prev) => {
         const merged = { ...prev, ...updates };
+        const startChanged =
+          updates.startDate !== undefined || updates.startTime !== undefined;
+        const endChanged =
+          updates.endDate !== undefined || updates.endTime !== undefined;
+
         // When switching from "Ganztägig" to timed, reset start/end time to org defaults
         if (prev.all_day === true && updates.all_day === false) {
           merged.startTime = orgDefaultStartTime;
           merged.endTime = orgDefaultEndTime;
+          derivedUpdates.startTime = orgDefaultStartTime;
+          derivedUpdates.endTime = orgDefaultEndTime;
           lastSyncedStartRef.current = orgDefaultStartTime;
           lastSyncedEndRef.current = orgDefaultEndTime;
         }
+
+        if (!merged.all_day && startChanged && !endChanged) {
+          const syncedEnd = buildEndFromStartAndDuration(
+            merged.startDate,
+            merged.startTime,
+            durationRef.current
+          );
+
+          merged.endDate = syncedEnd.endDate;
+          merged.endTime = syncedEnd.endTime;
+          derivedUpdates.endDate = syncedEnd.endDate;
+          derivedUpdates.endTime = syncedEnd.endTime;
+          lastSyncedEndRef.current = syncedEnd.endTime;
+        }
+
+        const nextDuration = getDurationFromFormData(merged);
+        if (nextDuration !== null) {
+          durationRef.current = nextDuration;
+        }
+
         nextFormData = merged;
         return merged;
       });
 
       // Validate just the updated fields using partial schema
-      const partialResult = ZodEinsatzFormData.partial().safeParse(updates);
+      const validationUpdates = {
+        ...updates,
+        ...derivedUpdates,
+      };
+      const partialResult =
+        ZodEinsatzFormData.partial().safeParse(validationUpdates);
 
       // Update errors based on partial validation
       setErrors((prevErrors) => {
@@ -373,12 +530,14 @@ export function EventDialogVerwaltung({
           }
         } else {
           // Clear errors for the fields that are now valid
-          Object.keys(updates).forEach((field) => {
+          Object.keys(validationUpdates).forEach((field) => {
             delete newErrors.fieldErrors[field];
           });
         }
 
-        return newErrors;
+        return areErrorStatesEqual(prevErrors, newErrors)
+          ? prevErrors
+          : newErrors;
       });
 
       if (!nextFormData) {
@@ -395,20 +554,26 @@ export function EventDialogVerwaltung({
         );
 
         if (relationshipErrors.length > 0) {
-          setErrors((prevErrors) => ({
-            ...prevErrors,
-            fieldErrors: {
-              ...prevErrors.fieldErrors,
-              ...relationshipErrors.reduce(
-                (acc, error) => {
-                  const field = error.path[0] as string;
-                  acc[field] = [error.message];
-                  return acc;
-                },
-                {} as Record<string, string[]>
-              ),
-            },
-          }));
+          setErrors((prevErrors) => {
+            const nextErrors = {
+              ...prevErrors,
+              fieldErrors: {
+                ...prevErrors.fieldErrors,
+                ...relationshipErrors.reduce<Record<string, string[]>>(
+                  (acc, error) => {
+                    const field = String(error.path[0]);
+                    acc[field] = [error.message];
+                    return acc;
+                  },
+                  {}
+                ),
+              },
+            };
+
+            return areErrorStatesEqual(prevErrors, nextErrors)
+              ? prevErrors
+              : nextErrors;
+          });
         }
       } else {
         // Clear relationship errors if full validation passes
@@ -422,40 +587,91 @@ export function EventDialogVerwaltung({
           ) {
             delete newErrors.fieldErrors.endDate;
           }
-          return newErrors;
+          return areErrorStatesEqual(prevErrors, newErrors)
+            ? prevErrors
+            : newErrors;
         });
       }
     },
     [orgDefaultStartTime, orgDefaultEndTime]
   );
 
+  const handleTimeFieldErrorChange = useCallback(
+    (field: 'startTime' | 'endTime', error: string | null) => {
+      setErrors((prevErrors) => {
+        const nextErrors = {
+          ...prevErrors,
+          fieldErrors: {
+            ...prevErrors.fieldErrors,
+          },
+        };
+
+        if (error) {
+          nextErrors.fieldErrors[field] = [error];
+        } else {
+          delete nextErrors.fieldErrors[field];
+        }
+
+        return areErrorStatesEqual(prevErrors, nextErrors)
+          ? prevErrors
+          : nextErrors;
+      });
+    },
+    []
+  );
+
   const getDefaultStaticFormData = useCallback((): EinsatzFormData => {
     const now = new Date();
-    return {
+    const formData = {
       ...DEFAULTFORMDATA,
       startDate: now,
       endDate: now,
       startTime: orgDefaultStartTime,
       endTime: orgDefaultEndTime,
     };
+
+    const defaultDuration = getDurationFromFormData(formData);
+    if (defaultDuration !== null) {
+      durationRef.current = defaultDuration;
+    }
+
+    return formData;
   }, [orgDefaultStartTime, orgDefaultEndTime]);
 
   const resetForm = useCallback(() => {
     handleFormDataChange(getDefaultStaticFormData());
-    setActiveTemplateId(null);
-    setErrors({
-      fieldErrors: {},
-      formErrors: [],
+    setActiveTemplateId((prev) => (prev === null ? prev : null));
+    setErrors((prevErrors) => {
+      const emptyErrors = {
+        fieldErrors: {},
+        formErrors: [],
+      };
+
+      return areErrorStatesEqual(prevErrors, emptyErrors)
+        ? prevErrors
+        : emptyErrors;
     });
     // Reset dynamic fields initialization tracker
     dynamicFieldsInitializedRef.current = null;
+    initializationKeyRef.current = null;
   }, [handleFormDataChange, getDefaultStaticFormData]);
 
   useEffect(() => {
+    if (!isOpen) {
+      initializationKeyRef.current = null;
+      return;
+    }
+
     if (currentEinsatz && typeof currentEinsatz === 'object') {
       // Create new (EinsatzCreate)
       if (!currentEinsatz.id) {
         const createEinsatz = currentEinsatz as EinsatzCreate;
+        const nextInitializationKey = `create:${createEinsatz.template_id ?? 'new'}:${orgDefaultStartTime}:${orgDefaultEndTime}:${createEinsatz.start?.toISOString() ?? 'no-start'}:${createEinsatz.end?.toISOString() ?? 'no-end'}:${createEinsatz.all_day ? 'all-day' : 'timed'}:${createEinsatz.title ?? ''}`;
+
+        if (initializationKeyRef.current === nextInitializationKey) {
+          return;
+        }
+
         // Use org defaults once organizations are available so we don't show 09:00/10:00 and only update after close
         const base = getDefaultStaticFormData();
         const createFormData: EinsatzFormData = {
@@ -472,19 +688,44 @@ export function EventDialogVerwaltung({
           }),
         };
         setStaticFormData(createFormData);
+        const createDuration = getDurationFromFormData(createFormData);
+        if (createDuration !== null) {
+          durationRef.current = createDuration;
+        }
         lastSyncedStartRef.current = createFormData.startTime;
         lastSyncedEndRef.current = createFormData.endTime;
-        setActiveTemplateId(createEinsatz.template_id ?? null);
+        setActiveTemplateId((prev) =>
+          prev === (createEinsatz.template_id ?? null)
+            ? prev
+            : (createEinsatz.template_id ?? null)
+        );
         // Reset errors when opening dialog
-        setErrors({
-          fieldErrors: {},
-          formErrors: [],
+        setErrors((prevErrors) => {
+          const emptyErrors = {
+            fieldErrors: {},
+            formErrors: [],
+          };
+
+          return areErrorStatesEqual(prevErrors, emptyErrors)
+            ? prevErrors
+            : emptyErrors;
         });
+        initializationKeyRef.current = nextInitializationKey;
       } else {
         const einsatzDetailed = currentEinsatz as EinsatzDetailed;
+        const nextInitializationKey = `edit:${einsatzDetailed.id}:${einsatzDetailed.template_id ?? 'no-template'}`;
+
+        if (initializationKeyRef.current === nextInitializationKey) {
+          return;
+        }
+
         // Edit existing einsatz (loaded from query)
-        setActiveTemplateId(currentEinsatz.template_id || null);
-        setStaticFormData({
+        setActiveTemplateId((prev) =>
+          prev === (currentEinsatz.template_id || null)
+            ? prev
+            : (currentEinsatz.template_id || null)
+        );
+        const editFormData: EinsatzFormData = {
           title: einsatzDetailed.title || '',
           all_day: einsatzDetailed.all_day || false,
           startDate: einsatzDetailed.start || new Date(),
@@ -507,25 +748,35 @@ export function EventDialogVerwaltung({
           anmerkung: einsatzDetailed.anmerkung || '',
           // this should always reset to false (if something were to be edited)
           confirmAsBestätigt: false,
-        });
+        };
+        setStaticFormData(editFormData);
+        const editDuration = getDurationFromFormData(editFormData);
+        if (editDuration !== null) {
+          durationRef.current = editDuration;
+        }
         // Reset errors when opening dialog
-        setErrors({
-          fieldErrors: {},
-          formErrors: [],
+        setErrors((prevErrors) => {
+          const emptyErrors = {
+            fieldErrors: {},
+            formErrors: [],
+          };
+
+          return areErrorStatesEqual(prevErrors, emptyErrors)
+            ? prevErrors
+            : emptyErrors;
         });
+        initializationKeyRef.current = nextInitializationKey;
       }
     } else {
       resetForm();
     }
   }, [
     currentEinsatz,
-    handleFormDataChange,
     resetForm,
     isOpen,
     getDefaultStaticFormData,
     orgDefaultStartTime,
     orgDefaultEndTime,
-    organizations,
   ]);
 
   // When in create mode and org defaults become available, sync start/end time only if user hasn't edited them
@@ -538,6 +789,13 @@ export function EventDialogVerwaltung({
       activeOrg
     ) {
       setStaticFormData((prev) => {
+        if (
+          prev.startTime === orgDefaultStartTime &&
+          prev.endTime === orgDefaultEndTime
+        ) {
+          return prev;
+        }
+
         const userHasEditedTimes =
           lastSyncedStartRef.current !== null &&
           lastSyncedEndRef.current !== null &&
@@ -548,11 +806,16 @@ export function EventDialogVerwaltung({
         }
         lastSyncedStartRef.current = orgDefaultStartTime;
         lastSyncedEndRef.current = orgDefaultEndTime;
-        return {
+        const nextFormData = {
           ...prev,
           startTime: orgDefaultStartTime,
           endTime: orgDefaultEndTime,
         };
+        const nextDuration = getDurationFromFormData(nextFormData);
+        if (nextDuration !== null) {
+          durationRef.current = nextDuration;
+        }
+        return nextFormData;
       });
     }
   }, [
@@ -604,31 +867,30 @@ export function EventDialogVerwaltung({
     try {
       const mappedFields = mapFieldsForSchema(fields);
       const schema = generateDynamicSchema(mappedFields);
-      setDynamicSchema(schema);
-      setDynamicFormFields(
-        fields.map((f) => ({
-          id: f.field.id,
-          displayName: f.field.name || f.field.id,
+      const nextDynamicFields = fields.map((f) => ({
+        id: f.field.id,
+        displayName: f.field.name || f.field.id,
+        placeholder: f.field.placeholder,
+        defaultValue: f.field.default_value ?? null,
+        required: f.field.is_required === true,
+        groupName: f.field.group_name ?? null,
+        isMultiline: f.field.is_multiline,
+        min: f.field.min,
+        max: f.field.max,
+        allowedValues: f.field.allowed_values,
+        inputType:
+          f.field.is_multiline === true
+            ? 'textarea'
+            : mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
+        dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
+        inputProps: buildInputProps(f.field.type?.datatype, {
           placeholder: f.field.placeholder,
-          defaultValue: f.field.default_value ?? null,
-          required: f.field.is_required === true,
-          groupName: f.field.group_name ?? null,
-          isMultiline: f.field.is_multiline,
           min: f.field.min,
           max: f.field.max,
-          allowedValues: f.field.allowed_values,
-          inputType:
-            f.field.is_multiline === true
-              ? 'textarea'
-              : mapDbDataTypeToFormFieldType(f.field?.type?.datatype),
-          dataType: (f.field.type?.datatype as SupportedDataTypes) || 'text',
-          inputProps: buildInputProps(f.field.type?.datatype, {
-            placeholder: f.field.placeholder,
-            min: f.field.min,
-            max: f.field.max,
-          }) as InputHTMLAttributes<HTMLInputElement>,
-        }))
-      );
+        }) as InputHTMLAttributes<HTMLInputElement>,
+      }));
+      setDynamicSchema(schema);
+      setDynamicFormFields(nextDynamicFields);
 
       // Populate React Hook Form with field values (saved einsatz data or template default_value)
       const formValues = fields.reduce(
@@ -644,28 +906,23 @@ export function EventDialogVerwaltung({
           );
           return acc;
         },
-        {} as Record<string, any>
+        {} as Record<string, unknown>
       );
       // Reset form with new values so dynamic fields show saved or default values
       dynamicForm.reset(formValues);
       dynamicFieldsInitializedRef.current = currentKey;
-    } catch (error) {
+    } catch {
       toast.error('Fehler beim Laden der Felder für diesen Einsatz');
     }
   }, [
     activeTemplateId,
+    currentEinsatz,
     templatesQuery.data,
-    currentEinsatz?.einsatz_fields,
+    dynamicForm,
     isLoading,
     isFetching,
     einsatz,
   ]);
-
-  const formatTimeForInput = (date: Date) => {
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-  };
 
   const checkIfFormIsModified = (o1: EinsatzFormData, o2: EinsatzFormData) => {
     if (o1.participantCount !== o2.participantCount) {
@@ -814,6 +1071,34 @@ export function EventDialogVerwaltung({
   };
 
   const handleSave = async () => {
+    if (
+      !staticFormData.all_day &&
+      (!isNormalizedTime(staticFormData.startTime) ||
+        !isNormalizedTime(staticFormData.endTime))
+    ) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        fieldErrors: {
+          ...prevErrors.fieldErrors,
+          ...(!isNormalizedTime(staticFormData.startTime)
+            ? {
+                startTime: [
+                  'Bitte geben Sie eine gültige Startzeit im Format HH:MM ein.',
+                ],
+              }
+            : {}),
+          ...(!isNormalizedTime(staticFormData.endTime)
+            ? {
+                endTime: [
+                  'Bitte geben Sie eine gültige Endzeit im Format HH:MM ein.',
+                ],
+              }
+            : {}),
+        },
+      }));
+      return;
+    }
+
     // Validiere statische Felder
     const parsedDataStatic = ZodEinsatzFormData.safeParse(staticFormData);
 
@@ -856,7 +1141,7 @@ export function EventDialogVerwaltung({
       )?.max_participants_per_helper;
       if (maxParticipants && ratio > maxParticipants) {
         warnings.push(
-          `Allgemein: Anzahl Teilnehmer:innen pro Helfer maximal ${
+          `Allgemein: Anzahl Teilnehmer:innen pro ${helper_singular} maximal ${
             organizations?.find((o) => o.id === activeOrgId)
               ?.max_participants_per_helper
           } (aktuell: ${Math.round(ratio)})`
@@ -909,8 +1194,8 @@ export function EventDialogVerwaltung({
           const propName = property.field.name || 'Unbekannte Eigenschaft';
           const message =
             minRequired === -1
-              ? `Personeneigenschaften: Alle zugewiesenen Helfer benötigen '${propName}' (${matchingCount}/${requiredCount} erfüllt)`
-              : `Personeneigenschaften: mind. ${minRequired} Helfer mit '${propName}' benötigt (aktuell: ${matchingCount})`;
+              ? `Personeneigenschaften: Alle zugewiesenen ${helper_plural} benötigen '${propName}' (${matchingCount}/${requiredCount} erfüllt)`
+              : `Personeneigenschaften: mind. ${minRequired} ${helper_plural} mit '${propName}' benötigt (aktuell: ${matchingCount})`;
           warnings.push(message);
         }
       }
@@ -1080,6 +1365,11 @@ export function EventDialogVerwaltung({
     });
   };
 
+  useSettingsKeyboardShortcuts({
+    onSave: handleSave,
+    enabled: isOpen,
+  });
+
   // const handleDelete = async () => {
   //   if (currentEinsatz?.id) {
   //     const result = await showDialog({
@@ -1198,6 +1488,7 @@ export function EventDialogVerwaltung({
                 formData={staticFormData}
                 onFormDataChange={handleFormDataChange}
                 errors={errors}
+                onTimeFieldErrorChange={handleTimeFieldErrorChange}
                 categoriesOptions={
                   categoriesQuery?.data
                     ? categoriesQuery?.data?.map((cat) => ({

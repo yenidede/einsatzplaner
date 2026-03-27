@@ -21,6 +21,7 @@ import { UserDangerZone } from './userProfile/UserDangerZone';
 import { upsertUserPropertyValueAction } from '@/features/user_properties/user_property-actions';
 import { queryKeys } from '@/features/user/queryKeys';
 import {
+  useOrganizationById,
   useOrganizationUserRoles,
   useUserProfileById,
   useUserPropertyValues,
@@ -31,6 +32,7 @@ import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { createRoleNameOverrides } from '@/components/Roles';
 
 interface UserProfileDialogProps {
   isOpen: boolean;
@@ -85,6 +87,9 @@ export function UserProfileDialog({
   const { data: userOrgRoles = [] } = useUserOrgRoles(
     isOpen ? organizationId : undefined,
     isOpen ? userId : undefined
+  );
+  const { data: organization } = useOrganizationById(
+    isOpen ? organizationId : undefined
   );
 
   const { data: currentUserOrgRoles = [] } = useUserOrgRoles(
@@ -538,7 +543,7 @@ export function UserProfileDialog({
               Fehler beim Laden der Benutzerdaten
             </p>
             <Button variant="secondary" onClick={onClose}>
-              Schließen
+              Zurück
             </Button>
           </CardContent>
         </Card>
@@ -572,7 +577,7 @@ export function UserProfileDialog({
           <div className="shrink-0 bg-white px-4 py-3 md:px-6 md:py-4">
             <div className="flex items-center justify-end gap-2">
               <Button variant="outline" size="sm" onClick={handleClose}>
-                {hasChanges ? 'Abbrechen' : 'Schließen'}
+                {hasChanges ? 'Abbrechen' : 'Zurück'}
               </Button>
               <Button
                 size="sm"
@@ -604,6 +609,9 @@ export function UserProfileDialog({
                   firstname={userProfile.firstname}
                   lastname={userProfile.lastname}
                   pictureUrl={userProfile.picture_url}
+                  roleNameOverrides={createRoleNameOverrides(
+                    organization?.helper_name_singular ?? 'Helfer'
+                  )}
                   userOrgRoles={userOrgRoles}
                 />
                 <UserContactInfo
@@ -624,6 +632,9 @@ export function UserProfileDialog({
                   userRoles={userRoles}
                   saving={saving}
                   onToggleRole={toggleRole}
+                  roleNameOverrides={createRoleNameOverrides(
+                    organization?.helper_name_singular ?? 'Helfer'
+                  )}
                 />
                 <UserDangerZone
                   organizationName={activeOrgName}
