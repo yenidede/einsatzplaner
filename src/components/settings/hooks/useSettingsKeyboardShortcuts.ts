@@ -2,18 +2,24 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface UseSettingsKeyboardShortcutsOptions {
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   onCancel?: () => void;
+  enabled?: boolean;
 }
 
 export function useSettingsKeyboardShortcuts({
   onSave,
   onCancel,
+  enabled = true,
 }: UseSettingsKeyboardShortcutsOptions) {
   const router = useRouter();
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+    if (!enabled) {
+      return;
+    }
+
+    const handleKeyDown = async (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         if (onCancel) {
           onCancel();
@@ -23,11 +29,21 @@ export function useSettingsKeyboardShortcuts({
       }
       if ((event.metaKey || event.ctrlKey) && event.key === 's') {
         event.preventDefault();
-        onSave();
+
+        const activeElement = document.activeElement;
+        if (
+          activeElement instanceof HTMLInputElement &&
+          activeElement.dataset.timeInput === 'true'
+        ) {
+          activeElement.blur();
+          await new Promise((resolve) => window.setTimeout(resolve, 0));
+        }
+
+        await onSave();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSave, onCancel, router]);
+  }, [enabled, onSave, onCancel, router]);
 }

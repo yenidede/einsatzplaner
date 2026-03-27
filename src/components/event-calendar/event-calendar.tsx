@@ -55,6 +55,7 @@ import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useEinsaetzeForAgenda } from '@/features/einsatz/hooks/useEinsatzQueries';
+import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -96,6 +97,7 @@ export function EventCalendar({
   mode,
   activeOrgId,
 }: EventCalendarProps) {
+  const todayStart = useTodayStart();
   const [internalDate, setInternalDate] = useState(new Date());
   const currentDate = currentDateProp ?? internalDate;
   const setCurrentDate = setCurrentDateProp ?? setInternalDate;
@@ -311,6 +313,8 @@ export function EventCalendar({
   };
 
   const viewTitle = useMemo(() => {
+    const isPastCurrentDay = currentDate < todayStart;
+
     if (view === 'month') {
       return format(currentDate, 'MMMM yyyy', { locale: de });
     } else if (view === 'week') {
@@ -328,13 +332,27 @@ export function EventCalendar({
     } else if (view === 'day') {
       return (
         <>
-          <span className="min-[480px]:hidden" aria-hidden="true">
+          <span
+            className={cn(
+              'min-[480px]:hidden',
+              isPastCurrentDay && 'line-through'
+            )}
+            aria-hidden="true"
+          >
             {format(currentDate, 'MMM d, yyyy', { locale: de })}
           </span>
-          <span className="max-[479px]:hidden md:hidden" aria-hidden="true">
+          <span
+            className={cn(
+              'max-[479px]:hidden md:hidden',
+              isPastCurrentDay && 'line-through'
+            )}
+            aria-hidden="true"
+          >
             {format(currentDate, 'MMMM d, yyyy', { locale: de })}
           </span>
-          <span className="max-md:hidden">
+          <span
+            className={cn('max-md:hidden', isPastCurrentDay && 'line-through')}
+          >
             {format(currentDate, 'EEE MMMM d, yyyy', { locale: de })}
           </span>
         </>
@@ -345,7 +363,7 @@ export function EventCalendar({
     } else {
       return format(currentDate, 'MMMM yyyy', { locale: de });
     }
-  }, [currentDate, view]);
+  }, [currentDate, todayStart, view]);
 
   return (
     <div

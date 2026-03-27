@@ -1,8 +1,34 @@
+import TooltipCustom from '@/components/tooltip-custom';
+
 export type RoleType = {
   id?: string;
   name: string;
   abbreviation?: string | null;
 };
+
+export type RoleNameOverrides = Record<string, string>;
+export type RequiredHelperRoleNameOverrides = RoleNameOverrides & {
+  Helfer: string;
+  'Helfer:in': string;
+};
+
+export function createRoleNameOverrides(
+  helperRoleName: string,
+  overrides: RoleNameOverrides = {}
+): RequiredHelperRoleNameOverrides {
+  return {
+    Helfer: helperRoleName,
+    'Helfer:in': helperRoleName,
+    ...overrides,
+  };
+}
+
+function getRoleLabelOverride(
+  role: RoleType,
+  roleNameOverrides: RequiredHelperRoleNameOverrides
+): string | null {
+  return roleNameOverrides[role.name] ?? null;
+}
 
 export function sortRolesByPriority(roles: RoleType[]): RoleType[] {
   const priority = (role: RoleType) => {
@@ -26,15 +52,22 @@ export function sortRolesByPriority(roles: RoleType[]): RoleType[] {
 export function OrganizationRoleBadge({
   role,
   displayFullRoleName = false,
+  roleNameOverrides,
 }: {
   role: RoleType;
   displayFullRoleName?: boolean;
+  roleNameOverrides: RequiredHelperRoleNameOverrides;
 }) {
+  const overriddenLabel = getRoleLabelOverride(role, roleNameOverrides);
+  const fullRoleLabel = overriddenLabel ?? role.name ?? role.abbreviation ?? '';
   const label = displayFullRoleName
-    ? (role?.name ?? role?.abbreviation ?? '')
-    : role?.abbreviation && role.abbreviation.trim().length > 0
-      ? role.abbreviation
-      : (role?.name ?? '');
+    ? fullRoleLabel
+    : overriddenLabel
+      ? overriddenLabel
+      : role.abbreviation && role.abbreviation.trim().length > 0
+        ? role.abbreviation
+        : (role.name ?? '');
+  const shouldShowTooltip = !displayFullRoleName && label !== fullRoleLabel;
 
   let bgColor = 'bg-secondary text-secondary-foreground';
   const roleName = role?.name ?? '';
@@ -46,21 +79,29 @@ export function OrganizationRoleBadge({
   else if (roleName === 'Helfer:in' || roleName === 'Helfer')
     bgColor = 'bg-cyan-100 text-cyan-700';
 
-  return (
+  const badge = (
     <span
       className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${bgColor}`}
     >
       {label}
     </span>
   );
+
+  if (!shouldShowTooltip) {
+    return badge;
+  }
+
+  return <TooltipCustom text={fullRoleLabel}>{badge}</TooltipCustom>;
 }
 
 export const RolesList = ({
   unsortedRoles,
   displayFullRoleName = false,
+  roleNameOverrides,
 }: {
   unsortedRoles: RoleType[];
   displayFullRoleName?: boolean;
+  roleNameOverrides: RequiredHelperRoleNameOverrides;
 }) => {
   const sortedRoles = unsortedRoles ? sortRolesByPriority(unsortedRoles) : [];
 
@@ -71,6 +112,7 @@ export const RolesList = ({
           key={i}
           role={role}
           displayFullRoleName={displayFullRoleName}
+          roleNameOverrides={roleNameOverrides}
         />
       ))}
     </div>

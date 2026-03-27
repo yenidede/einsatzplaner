@@ -96,6 +96,9 @@ export async function getUserProfileAction() {
               id: true,
               name: true,
               logo_url: true,
+              small_logo_url: true,
+              helper_name_singular: true,
+              helper_name_plural: true,
             },
           },
           role: {
@@ -120,6 +123,9 @@ export async function getUserProfileAction() {
         id: orgId,
         name: uor.organization.name,
         logo_url: uor.organization.logo_url,
+        small_logo_url: uor.organization.small_logo_url,
+        helper_name_singular: uor.organization.helper_name_singular,
+        helper_name_plural: uor.organization.helper_name_plural,
         roles: [],
         hasGetMailNotification: uor.hasGetMailNotification ?? true,
       });
@@ -201,6 +207,9 @@ export async function getUserProfileByIdAction(
               id: true,
               name: true,
               logo_url: true,
+              small_logo_url: true,
+              helper_name_singular: true,
+              helper_name_plural: true,
             },
           },
           role: {
@@ -225,6 +234,9 @@ export async function getUserProfileByIdAction(
         id: orgId,
         name: uor.organization.name,
         logo_url: uor.organization.logo_url,
+        small_logo_url: uor.organization.small_logo_url,
+        helper_name_singular: uor.organization.helper_name_singular,
+        helper_name_plural: uor.organization.helper_name_plural,
         roles: [],
         hasGetMailNotification: uor.hasGetMailNotification ?? true,
       });

@@ -40,7 +40,13 @@ export async function verifyInvitationToken(token: string) {
   const invitations = await prisma.invitation.findMany({
     where: { token },
     include: {
-      organization: { select: { name: true } },
+      organization: {
+        select: {
+          name: true,
+          helper_name_singular: true,
+          helper_name_plural: true,
+        },
+      },
       role: { select: { name: true } },
       user: { select: { firstname: true, lastname: true, email: true } }, // inviter
     },
@@ -66,8 +72,19 @@ export async function verifyInvitationToken(token: string) {
       ? `${inviter.firstname} ${inviter.lastname}`
       : inviter?.email || 'Unbekannt';
 
+  const helperNameSingular =
+    firstInvitation.organization?.helper_name_singular ?? 'Helfer';
+  const helperNamePlural =
+    firstInvitation.organization?.helper_name_plural ?? helperNameSingular;
+
+  const formatRoleName = (name?: string | null) => {
+    if (!name) return helperNameSingular;
+    if (name === 'Helfer') return helperNameSingular;
+    return name;
+  };
+
   const roleNames = invitations
-    .map((inv) => inv.role?.name)
+    .map((inv) => formatRoleName(inv.role?.name))
     .filter(Boolean)
     .join(', ');
 
@@ -75,10 +92,12 @@ export async function verifyInvitationToken(token: string) {
     id: firstInvitation.id,
     email: firstInvitation.email,
     organizationName: firstInvitation.organization?.name || 'Organisation',
-    roleName: roleNames || 'Helfer',
+    roleName: roleNames || helperNameSingular,
+    helperNameSingular,
+    helperNamePlural,
     roles: invitations.map((inv) => ({
       id: inv.role_id,
-      name: inv.role?.name || 'Unbekannt',
+      name: formatRoleName(inv.role?.name),
     })),
     inviterName,
     expiresAt: firstInvitation.expires_at.toISOString(),
@@ -93,7 +112,14 @@ export async function getInvitationByToken(token: string) {
   const invitations = await prisma.invitation.findMany({
     where: { token },
     include: {
-      organization: { select: { id: true, name: true } },
+      organization: {
+        select: {
+          id: true,
+          name: true,
+          helper_name_singular: true,
+          helper_name_plural: true,
+        },
+      },
       role: { select: { id: true, name: true } },
       user: { select: { id: true, firstname: true, lastname: true } },
     },
@@ -112,6 +138,16 @@ export async function getInvitationByToken(token: string) {
   }
 
   const firstInvitation = validInvitations[0];
+  const helperNameSingular =
+    firstInvitation.organization?.helper_name_singular ?? 'Helfer';
+  const helperNamePlural =
+    firstInvitation.organization?.helper_name_plural ?? helperNameSingular;
+
+  const formatRoleName = (name?: string | null) => {
+    if (!name) return helperNameSingular;
+    if (name === 'Helfer') return helperNameSingular;
+    return name;
+  };
 
   return {
     valid: true,
@@ -121,12 +157,14 @@ export async function getInvitationByToken(token: string) {
       organization_id: firstInvitation.org_id,
       organizationName: firstInvitation.organization?.name || 'Organisation',
       roleName: validInvitations
-        .map((inv) => inv.role?.name)
+        .map((inv) => formatRoleName(inv.role?.name))
         .filter(Boolean)
-        .join(', '),
+        .join(', ') || helperNameSingular,
+      helperNameSingular,
+      helperNamePlural,
       roles: validInvitations.map((inv) => ({
         id: inv.role_id,
-        name: inv.role?.name || 'Unbekannt',
+        name: formatRoleName(inv.role?.name),
       })),
       token: firstInvitation.token,
       expiresAt: firstInvitation.expires_at.toISOString(),

@@ -45,7 +45,7 @@ export function UsageSettings({
         <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
           <p className="text-xs text-slate-600">
             Diese Eigenschaft beschreibt Personen und kann später in anderen
-            Modulen (z. B. Filtersuche) genutzt werden.
+            Modulen (z. B. Filtersuche oder Datenprüfungen) genutzt werden.
           </p>
         </div>
       </div>

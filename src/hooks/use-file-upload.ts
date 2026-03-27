@@ -42,11 +42,49 @@ export type FileUploadState = {
   errors: string[];
 };
 
+const createClientSafeId = (): string => {
+  const webCrypto = globalThis.crypto;
+
+  if (webCrypto?.randomUUID) {
+    return webCrypto.randomUUID();
+  }
+
+  if (webCrypto?.getRandomValues) {
+    const bytes = webCrypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    const segments = [
+      Array.from(bytes.slice(0, 4)),
+      Array.from(bytes.slice(4, 6)),
+      Array.from(bytes.slice(6, 8)),
+      Array.from(bytes.slice(8, 10)),
+      Array.from(bytes.slice(10, 16)),
+    ];
+
+    return segments
+      .map((segment) =>
+        segment
+          .map((value) => value.toString(16).padStart(2, '0'))
+          .join('')
+      )
+      .join('-');
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
 export type FileUploadActions = {
   addFiles: (files: FileList | File[]) => void;
+  /** Prompts for confirmation before removing a single file. */
+  confirmRemoveFile: (id: string) => Promise<'success' | 'cancel'>;
   removeFile: (id: string) => Promise<'success' | 'cancel'>;
   /** Removes file silently without prompting the user. Used eg. after image optimization */
   removeFileSilently: (id: string) => void;
+  /** Replaces the current file list without prompting the user. */
+  setFilesSilently: (files: FileWithPreview[]) => void;
+  /** Prompts for confirmation before clearing all files. */
+  confirmClearFiles: () => Promise<'success' | 'cancel'>;
   /** Clears all files after user confirmation. */
   clearFiles: () => Promise<'success' | 'cancel'>;
   /** Clears all files without prompting the user (internal use). */
@@ -160,22 +198,50 @@ export const useFileUpload = (
 
   const generateUniqueId = useCallback((file: File | FileMetadata): string => {
     if (file instanceof File) {
-      return `${file.name}-${crypto.randomUUID()}`;
+      return `${file.name}-${createClientSafeId()}`;
     }
     return file.id;
   }, []);
+
+  const revokePreviewUrl = useCallback((file: FileWithPreview) => {
+    if (file.preview && file.file instanceof File) {
+      URL.revokeObjectURL(file.preview);
+    }
+  }, []);
+
+  const setFilesSilently = useCallback(
+    (files: FileWithPreview[]) => {
+      setState((prev) => {
+        const nextFileIds = new Set(files.map((file) => file.id));
+
+        prev.files.forEach((file) => {
+          if (!nextFileIds.has(file.id)) {
+            revokePreviewUrl(file);
+          }
+        });
+
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
+
+        const newState = {
+          ...prev,
+          files,
+          errors: [],
+        };
+
+        onFilesChange?.(newState.files);
+        return newState;
+      });
+    },
+    [onFilesChange, revokePreviewUrl]
+  );
 
   const clearFilesSilently = useCallback(() => {
     setState((prev) => {
       // Clean up object URLs
       prev.files.forEach((file) => {
-        if (
-          file.preview &&
-          file.file instanceof File &&
-          file.file.type.startsWith('image/')
-        ) {
-          URL.revokeObjectURL(file.preview);
-        }
+        revokePreviewUrl(file);
       });
 
       if (inputRef.current) {
@@ -191,19 +257,25 @@ export const useFileUpload = (
       onFilesChange?.(newState.files);
       return newState;
     });
-  }, [onFilesChange]);
+  }, [onFilesChange, revokePreviewUrl]);
+
+  const confirmClearFiles = useCallback(async (): Promise<
+    'success' | 'cancel'
+  > => {
+    return showDestructive(
+      'Alle Dateien entfernen',
+      'Möchten Sie wirklich alle Dateien entfernen?'
+    );
+  }, [showDestructive]);
 
   const clearFiles = useCallback(
     async (): Promise<'success' | 'cancel'> => {
-      const result = await showDestructive(
-        'Alle Dateien entfernen',
-        'Möchten Sie wirklich alle Dateien entfernen?'
-      );
+      const result = await confirmClearFiles();
       if (result !== 'success') return result;
       clearFilesSilently();
       return result;
     },
-    [clearFilesSilently, showDestructive]
+    [clearFilesSilently, confirmClearFiles]
   );
 
   const addFiles = useCallback(
@@ -215,11 +287,6 @@ export const useFileUpload = (
 
       // Clear existing errors when new files are uploaded
       setState((prev) => ({ ...prev, errors: [] }));
-
-      // In single file mode, clear existing files first
-      if (!multiple) {
-        clearFilesSilently();
-      }
 
       // Check if adding these files would exceed maxFiles (only in multiple mode)
       if (
@@ -277,13 +344,13 @@ export const useFileUpload = (
 
       // Only update state if we have valid files to add
       if (validFiles.length > 0) {
+        const filesToAdd = multiple ? validFiles : validFiles.slice(0, 1);
+
         // Call the onFilesAdded callback with the newly added valid files
-        onFilesAdded?.(validFiles);
+        onFilesAdded?.(filesToAdd);
 
         setState((prev) => {
-          const newFiles = !multiple
-            ? validFiles
-            : [...prev.files, ...validFiles];
+          const newFiles = multiple ? [...prev.files, ...filesToAdd] : filesToAdd;
           onFilesChange?.(newFiles);
           return {
             ...prev,
@@ -311,7 +378,6 @@ export const useFileUpload = (
       validateFile,
       createPreview,
       generateUniqueId,
-      clearFilesSilently,
       onFilesChange,
       onFilesAdded,
     ]
@@ -321,13 +387,8 @@ export const useFileUpload = (
     (id: string) => {
       setState((prev) => {
         const fileToRemovePrev = prev.files.find((file) => file.id === id);
-        if (
-          fileToRemovePrev &&
-          fileToRemovePrev.preview &&
-          fileToRemovePrev.file instanceof File &&
-          fileToRemovePrev.file.type.startsWith('image/')
-        ) {
-          URL.revokeObjectURL(fileToRemovePrev.preview);
+        if (fileToRemovePrev) {
+          revokePreviewUrl(fileToRemovePrev);
         }
 
         const newFiles = prev.files.filter((file) => file.id !== id);
@@ -340,10 +401,10 @@ export const useFileUpload = (
         };
       });
     },
-    [onFilesChange]
+    [onFilesChange, revokePreviewUrl]
   );
 
-  const removeFile = useCallback(
+  const confirmRemoveFile = useCallback(
     async (id: string): Promise<'success' | 'cancel'> => {
       const fileToRemove = state.files.find((file) => file.id === id);
       const filename =
@@ -351,16 +412,23 @@ export const useFileUpload = (
           ? fileToRemove.file.name
           : fileToRemove?.file?.name;
 
-      const result = await showDestructive(
+      return showDestructive(
         'Datei entfernen',
         `Möchten Sie "${filename ?? 'diese Datei'}" wirklich entfernen?`
       );
+    },
+    [showDestructive, state.files]
+  );
+
+  const removeFile = useCallback(
+    async (id: string): Promise<'success' | 'cancel'> => {
+      const result = await confirmRemoveFile(id);
       if (result !== 'success') return result;
 
       removeFileSilently(id);
       return result;
     },
-    [removeFileSilently, showDestructive, state.files]
+    [confirmRemoveFile, removeFileSilently]
   );
 
   const clearErrors = useCallback(() => {
@@ -449,8 +517,11 @@ export const useFileUpload = (
     state,
     {
       addFiles,
+      confirmRemoveFile,
       removeFile,
       removeFileSilently,
+      setFilesSilently,
+      confirmClearFiles,
       clearFiles,
       clearFilesSilently,
       clearErrors,

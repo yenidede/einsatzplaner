@@ -8,6 +8,7 @@ import { INITIAL_CONFIG } from '../types';
 import { PropertyOverview } from './PropertyOverview';
 import { FieldTypeSelector } from './FieldTypeSelector';
 import { PropertyConfiguration } from './PropertyConfiguration';
+import { fieldToPropertyConfig } from '../utils/field-to-property-config';
 import {
   createUserPropertyAction,
   deleteUserPropertyAction,
@@ -155,43 +156,15 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
     const property = properties?.find((p) => p.id === propertyId);
     if (!property) return;
 
-    const datatype = property.field.type?.datatype;
+    const editConfig = fieldToPropertyConfig(property.field);
 
-    const isValidFieldType = (value: unknown): value is FieldType => {
-      return (
-        typeof value === 'string' &&
-        ['text', 'number', 'boolean', 'select'].includes(value)
-      );
-    };
-
-    if (!datatype || !isValidFieldType(datatype)) {
+    if (!editConfig) {
       toast.error(
-        `Ungültiger Feldtyp: ${datatype}. Eigenschaft kann nicht bearbeitet werden.`
+        `Ungültiger Feldtyp: ${property.field.type?.datatype}. Eigenschaft kann nicht bearbeitet werden.`
       );
-      console.error('Invalid field type:', datatype);
+      console.error('Invalid field type:', property.field.type?.datatype);
       return;
     }
-
-    const fieldType: FieldType = datatype;
-
-    const editConfig: PropertyConfig = {
-      name: property.field.name || '',
-      description: property.field.description ?? '',
-      fieldType,
-      placeholder: property.field.placeholder || '',
-      maxLength: property.field.max !== null ? property.field.max : undefined,
-      isMultiline: property.field.is_multiline || false,
-      minValue: property.field.min !== null ? property.field.min : undefined,
-      maxValue: property.field.max !== null ? property.field.max : undefined,
-      isDecimal: false,
-      trueLabel: 'Ja',
-      falseLabel: 'Nein',
-      booleanDefaultValue: null,
-      options: property.field.allowed_values || [],
-      defaultOption: property.field.default_value || undefined,
-      isRequired: property.field.is_required,
-      defaultValue: property.field.default_value || '',
-    };
 
     setConfig(editConfig);
     setEditingPropertyId(propertyId);
@@ -218,6 +191,22 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
         (name) => name.toLowerCase() !== originalPropertyName.toLowerCase()
       )
     : existingNames;
+
+  const editingProperty =
+    editingPropertyId != null
+      ? properties?.find((property) => property.id === editingPropertyId)
+      : undefined;
+
+  const propertyUsageInfo =
+    editingProperty == null ? null : (
+      <p>
+        {editingProperty.userCount && editingProperty.userCount > 0
+          ? `Dieses Feld ist aktuell bei ${editingProperty.userCount} Person${
+              editingProperty.userCount === 1 ? '' : 'en'
+            } hinterlegt.`
+          : 'Dieses Feld ist aktuell noch bei keiner Person hinterlegt.'}
+      </p>
+    );
 
   switch (currentStep) {
     case 'overview':
@@ -272,6 +261,7 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
             onCancel={handleCancel}
             existingPropertyNames={filteredExistingNames}
             existingUserCount={userCount}
+            usageInfo={propertyUsageInfo}
           />
         </>
       );

@@ -8,6 +8,7 @@ import {
 import {
   OrganizationUpdateData,
   updateOrganizationAction,
+  saveOrganizationDetailsAction,
 } from '../organization-action';
 import { toast } from 'sonner';
 import { queryKeys } from '@/features/organization/queryKeys';
@@ -87,6 +88,10 @@ export function useUpdateOrganization(orgId: string | undefined) {
       default_starttime?: string;
       default_endtime?: string;
       allow_self_sign_out?: boolean;
+      website?: string;
+      vat?: string;
+      zvr?: string;
+      authority?: string;
     }) => {
       if (!orgId) {
         throw new Error('Organisation ID ist erforderlich');
@@ -108,7 +113,16 @@ export function useUpdateOrganization(orgId: string | undefined) {
         allow_self_sign_out: data.allow_self_sign_out,
       };
 
-      const resPromise = updateOrganizationAction(updateData);
+      const resPromise = Promise.all([
+        updateOrganizationAction(updateData),
+        saveOrganizationDetailsAction({
+          orgId,
+          website: data.website,
+          vat: data.vat,
+          zvr: data.zvr,
+          authority: data.authority,
+        }),
+      ]).then(([organization]) => organization);
       toast.promise(resPromise, {
         loading: 'Speichert Organisationsdaten ...',
         success: 'Organisationsdaten erfolgreich gespeichert!',
@@ -123,6 +137,9 @@ export function useUpdateOrganization(orgId: string | undefined) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.org.all(orgId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.org.details(orgId),
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.all,

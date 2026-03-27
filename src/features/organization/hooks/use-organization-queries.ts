@@ -34,7 +34,7 @@ export function useOrganizationDetails(organizationId: string | undefined) {
 
 export function useOrganizationAddresses(organizationId: string | undefined) {
   return useQuery({
-    queryKey: ['org-addresses', organizationId],
+    queryKey: queryKeys.addresses(organizationId ?? ''),
     queryFn: () => getOrganizationAddressesAction(organizationId ?? ''),
     enabled: !!organizationId,
   });
@@ -44,7 +44,7 @@ export function useOrganizationBankAccounts(
   organizationId: string | undefined
 ) {
   return useQuery({
-    queryKey: ['org-bank-accounts', organizationId],
+    queryKey: queryKeys.bankAccounts(organizationId ?? ''),
     queryFn: () => getOrganizationBankAccountsAction(organizationId ?? ''),
     enabled: !!organizationId,
   });
