@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { settingsQueryKeys } from '../queryKeys/queryKey';
 import {
   getUserProfileAction,
   updateUserProfileAction,
@@ -9,12 +10,11 @@ import {
 } from '../settings-action';
 import { useState } from 'react';
 
-const userProfileKey = ['userProfile'];
-
-export function useUserSettings() {
+export function useUserSettings(userId?: string) {
   const queryClient = useQueryClient();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string>('');
+  const userProfileKey = settingsQueryKeys.user.settings(userId ?? '');
 
   const query = useQuery({
     queryKey: userProfileKey,
@@ -43,10 +43,16 @@ export function useUserSettings() {
   const uploadPicture = useMutation({
     mutationFn: (formData: FormData) => uploadProfilePictureAction(formData),
     onSuccess: (data) => {
-      queryClient.setQueryData(userProfileKey, (prev: any) => ({
-        ...prev,
-        picture_url: data.picture_url,
-      }));
+      queryClient.setQueryData<
+        Awaited<ReturnType<typeof getUserProfileAction>> | undefined
+      >(userProfileKey, (prev) =>
+        prev
+          ? {
+              ...prev,
+              picture_url: data.picture_url,
+            }
+          : prev
+      );
       setMessage('Profilbild erfolgreich hochgeladen');
       setTimeout(() => setMessage(''), 3000);
     },
