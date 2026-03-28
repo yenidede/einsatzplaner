@@ -1,9 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import type {
-  type as FieldType,
-} from '@/generated/prisma';
+import type { type as FieldType } from '@/generated/prisma';
 import { requireAuth } from '@/lib/auth/authGuard';
 
 export interface UserPropertyWithField {
@@ -56,9 +54,9 @@ export async function getUserPropertiesByOrgId(
           },
         },
       },
-      user_property_value: {
+      _count: {
         select: {
-          id: true,
+          user_property_value: true,
         },
       },
     },
@@ -69,7 +67,7 @@ export async function getUserPropertiesByOrgId(
     field_id: prop.field_id,
     org_id: prop.org_id,
     field: prop.field,
-    userCount: prop.user_property_value.length,
+    userCount: prop._count.user_property_value,
   }));
 }
 
@@ -142,16 +140,16 @@ export interface CreateUserPropertyInput {
   name: string;
   description?: string;
   datatype:
-  | 'text'
-  | 'number'
-  | 'boolean'
-  | 'select'
-  | 'currency'
-  | 'group'
-  | 'date'
-  | 'time'
-  | 'phone'
-  | 'mail';
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'currency'
+    | 'group'
+    | 'date'
+    | 'time'
+    | 'phone'
+    | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -412,7 +410,8 @@ export async function upsertUserPropertyValue(
 
   if (userProperty.field.is_required && (!value || value.trim() === '')) {
     throw new Error(
-      `Das Feld "${userProperty.field.name || 'Unbekannt'
+      `Das Feld "${
+        userProperty.field.name || 'Unbekannt'
       }" ist ein Pflichtfeld und darf nicht leer sein.`
     );
   }
