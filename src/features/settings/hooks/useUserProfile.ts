@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { settingsQueryKeys } from '../queryKeys/queryKey';
 import {
@@ -102,16 +102,22 @@ export function usePrefetchUserProfiles(
   userIds: string[]
 ) {
   const queryClient = useQueryClient();
+  const stableUserIdsKey = useMemo(
+    () => Array.from(new Set(userIds)).sort().join('\u0000'),
+    [userIds]
+  );
+  const stableUserIds = useMemo(
+    () => (stableUserIdsKey ? stableUserIdsKey.split('\u0000') : []),
+    [stableUserIdsKey]
+  );
 
   useEffect(() => {
-    if (!orgId || userIds.length === 0) {
+    if (!orgId || stableUserIds.length === 0) {
       return;
     }
 
-    const uniqueUserIds = Array.from(new Set(userIds));
-
     void Promise.allSettled(
-      uniqueUserIds.flatMap((userId) => [
+      stableUserIds.flatMap((userId) => [
         queryClient.prefetchQuery({
           queryKey: settingsQueryKeys.org.userProfile(orgId, userId),
           queryFn: () => getUserProfileByIdAction(userId, orgId),
@@ -132,5 +138,5 @@ export function usePrefetchUserProfiles(
         }),
       ])
     );
-  }, [orgId, queryClient, userIds]);
+  }, [orgId, queryClient, stableUserIds]);
 }
