@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { settingsQueryKeys } from '../queryKeys/queryKey';
 import {
@@ -9,10 +10,11 @@ import {
   getUserOrganizationByIdAction,
   getUserManagedOrganizationsAction,
 } from '../organization-action';
-import { getAllUserOrgRolesAction } from '../users-action';
+import {
+  getAllUserOrgRolesAction,
+  getUserOrgRolesAction,
+} from '../users-action';
 import { getUserPropertyValuesAction } from '@/features/user_properties/user_property-actions';
-import { useEffect } from 'react';
-
 export function useUserProfile(userId: string | undefined) {
   return useQuery({
     queryKey: settingsQueryKeys.user.settings(userId || ''),
@@ -102,23 +104,33 @@ export function usePrefetchUserProfiles(
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!orgId || userIds.length === 0) return;
+    if (!orgId || userIds.length === 0) {
+      return;
+    }
 
-    // Prefetch all user profiles and their properties
-    userIds.forEach((userId) => {
-      // Prefetch user profile
-      queryClient.prefetchQuery({
-        queryKey: settingsQueryKeys.org.userProfile(orgId, userId),
-        queryFn: async () => await getUserProfileByIdAction(userId, orgId),
-        staleTime: 30000,
-      });
+    const uniqueUserIds = Array.from(new Set(userIds));
 
-      // Prefetch user property values
-      queryClient.prefetchQuery({
-        queryKey: settingsQueryKeys.org.userProperties(orgId, userId),
-        queryFn: () => getUserPropertyValuesAction(userId, orgId),
-        staleTime: 30000,
-      });
-    });
-  }, [orgId, userIds]);
+    void Promise.allSettled(
+      uniqueUserIds.flatMap((userId) => [
+        queryClient.prefetchQuery({
+          queryKey: settingsQueryKeys.org.userProfile(orgId, userId),
+          queryFn: () => getUserProfileByIdAction(userId, orgId),
+          staleTime: 30000,
+          gcTime: 5 * 60 * 1000,
+        }),
+        queryClient.prefetchQuery({
+          queryKey: settingsQueryKeys.org.userRoles(orgId, userId),
+          queryFn: () => getUserOrgRolesAction(orgId, userId),
+          staleTime: 30000,
+          gcTime: 5 * 60 * 1000,
+        }),
+        queryClient.prefetchQuery({
+          queryKey: settingsQueryKeys.org.userProperties(orgId, userId),
+          queryFn: () => getUserPropertyValuesAction(userId, orgId),
+          staleTime: 30000,
+          gcTime: 5 * 60 * 1000,
+        }),
+      ])
+    );
+  }, [orgId, queryClient, userIds]);
 }
