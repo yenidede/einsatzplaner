@@ -55,7 +55,13 @@ export function TemplateFieldListItem({
       {children}
       {onOpen != null && (
         <TooltipCustom text="Feld bearbeiten">
-          <Button type="button" variant="ghost" size="icon" onClick={onOpen}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onOpen}
+            aria-label="Feld bearbeiten"
+          >
             <Pencil className="size-4" />
           </Button>
         </TooltipCustom>
@@ -69,6 +75,7 @@ export function TemplateFieldListItem({
             className="text-destructive hover:text-destructive"
             onClick={onDelete}
             disabled={deleteDisabled}
+            aria-label="Feld von Vorlage entfernen"
           >
             <Trash className="size-4" />
           </Button>

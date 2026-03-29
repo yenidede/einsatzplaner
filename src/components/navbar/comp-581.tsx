@@ -36,6 +36,7 @@ export default function Component() {
                 className="group size-8 md:hidden"
                 variant="ghost"
                 size="icon"
+                aria-label="Navigationsmenü umschalten"
               >
                 <svg
                   className="pointer-events-none"

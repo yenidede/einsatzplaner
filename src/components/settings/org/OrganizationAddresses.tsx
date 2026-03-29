@@ -347,6 +347,7 @@ export function OrganizationAddresses({
                       disabled={!isSuperadmin}
                       variant="ghost"
                       size="icon"
+                      aria-label="Adresse bearbeiten"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -364,6 +365,7 @@ export function OrganizationAddresses({
                       disabled={!isSuperadmin || deleteMutation.isPending}
                       variant="ghost"
                       size="icon"
+                      aria-label="Adresse löschen"
                       className="text-red-600 hover:bg-red-50 hover:text-red-700"
                     >
                       <Trash2 className="h-4 w-4" />

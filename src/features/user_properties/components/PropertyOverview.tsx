@@ -86,6 +86,7 @@ export function PropertyOverview({
                 <div className="flex items-center gap-2">
                   <TooltipCustom text="Eigenschaft bearbeiten">
                     <Button
+                      aria-label="Eigenschaft bearbeiten"
                       onClick={() => onEdit?.(property.id)}
                       variant="ghost"
                       size="icon"
@@ -96,6 +97,7 @@ export function PropertyOverview({
 
                   <TooltipCustom text="Eigenschaft löschen">
                     <Button
+                      aria-label="Eigenschaft löschen"
                       onClick={() => onDelete?.(property.id)}
                       variant="destructive"
                       size="icon"
