@@ -149,13 +149,11 @@ export default function NotificationMenu() {
       ? activityIdsOrEvent
       : activities.map((a) => a.id);
 
-    const readAt = new Date();
-
     markAllActivitiesAsRead(ids);
     setReadIds((prev) => new Set([...prev, ...ids]));
 
     try {
-      await markNotificationsAsRead(readAt);
+      await markNotificationsAsRead();
     } catch (error) {
       console.error(
         'Benachrichtigungsstatus konnte nicht gespeichert werden:',

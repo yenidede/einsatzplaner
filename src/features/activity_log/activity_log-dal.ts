@@ -414,9 +414,10 @@ export async function getNotificationReadState(
 }
 
 export async function markNotificationsAsRead(
-  userId: string,
-  readAt: Date = new Date()
+  userId: string
 ): Promise<NotificationReadState> {
+  const readAt = new Date();
+
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
