@@ -2,12 +2,8 @@
 
 import { PlusIcon, Pencil, Trash2 } from 'lucide-react';
 import Image from 'next/image';
+import TooltipCustom from '@/components/tooltip-custom';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import type { UserPropertyWithField } from '../user_property-dal';
 
 interface PropertyOverviewProps {
@@ -21,9 +17,11 @@ interface PropertyOverviewProps {
   hideActions?: boolean;
 }
 
+/**
+ * Shows the current property fields and optional management actions.
+ */
 export function PropertyOverview({
   onCreateNew,
-  onCancel,
   properties,
   isLoading,
   onEdit,
@@ -86,35 +84,27 @@ export function PropertyOverview({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={() => onEdit?.(property.id)}
-                        variant="ghost"
-                        size="icon"
-                      >
-                        <Pencil />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Eigenschaft bearbeiten</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <TooltipCustom text="Eigenschaft bearbeiten">
+                    <Button
+                      aria-label="Eigenschaft bearbeiten"
+                      onClick={() => onEdit?.(property.id)}
+                      variant="ghost"
+                      size="icon"
+                    >
+                      <Pencil />
+                    </Button>
+                  </TooltipCustom>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={() => onDelete?.(property.id)}
-                        variant="destructive"
-                        size="icon"
-                      >
-                        <Trash2 />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Eigenschaft löschen</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <TooltipCustom text="Eigenschaft löschen">
+                    <Button
+                      aria-label="Eigenschaft löschen"
+                      onClick={() => onDelete?.(property.id)}
+                      variant="destructive"
+                      size="icon"
+                    >
+                      <Trash2 />
+                    </Button>
+                  </TooltipCustom>
                 </div>
               </div>
             ))}

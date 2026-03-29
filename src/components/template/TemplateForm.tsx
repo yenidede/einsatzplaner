@@ -1653,6 +1653,11 @@ export function TemplateForm({
                   variant="outline"
                   onClick={handlePause}
                   disabled={isSaving}
+                  aria-label={
+                    template?.is_paused
+                      ? 'Vorlage reaktivieren'
+                      : 'Vorlage pausieren'
+                  }
                 >
                   {template?.is_paused ? (
                     <Play className="size-4" />

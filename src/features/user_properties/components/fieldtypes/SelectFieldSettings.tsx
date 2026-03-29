@@ -162,6 +162,7 @@ export function SelectFieldSettings({
                     title="Löschen"
                     variant="destructive"
                     size="icon"
+                    aria-label="Option löschen"
                   >
                     <X className="h-4 w-4" />
                   </Button>

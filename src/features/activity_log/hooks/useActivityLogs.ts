@@ -58,5 +58,7 @@ export function useEinsatzActivityLogs(
     queryKey: activityLogQueryKeys.einsatz(einsatzId ?? '', limit),
     queryFn: () => getActivitiesForEinsatzAction(einsatzId ?? '', limit),
     enabled: !!einsatzId && enabled,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 }
