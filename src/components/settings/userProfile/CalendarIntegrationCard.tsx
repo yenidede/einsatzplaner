@@ -18,6 +18,15 @@ export interface CalendarIntegrationCardProps {
   org: { id: string; name: string };
 }
 
+/**
+ * Render a card showing an organization's calendar subscription status and available actions.
+ *
+ * Displays the subscription state, a copyable webcal URL, and controls to activate, deactivate,
+ * regenerate the subscription URL, or open the calendar link when a subscription exists.
+ *
+ * @param org - The organization (with `id` and `name`) for which to render the calendar integration card
+ * @returns The calendar integration card element for the given organization
+ */
 export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
   const { query, rotate, deactivate, activate } = useCalendarSubscription(
     org.id

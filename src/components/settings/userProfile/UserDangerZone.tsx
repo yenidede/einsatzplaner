@@ -19,6 +19,26 @@ interface UserDangerZoneProps {
   superadminCount: number;
 }
 
+/**
+ * Renders the "danger zone" controls for removing a user or (de)promoting their superadmin role within an organization.
+ *
+ * Renders action buttons and contextual messages based on the current user's privileges, target user's roles, and loading states.
+ *
+ * @param organizationName - Display name of the organization shown in the danger zone header
+ * @param isSuperadmin - Whether the target user currently has the superadmin role
+ * @param isCurrentUserSuperadmin - Whether the current user viewing the UI is a superadmin
+ * @param isCurrentUserOV - Whether the current user is an organizational validator (OV)
+ * @param isTargetUserOV - Whether the target user is an organizational validator (OV)
+ * @param isRemovingUser - Whether a remove-user action is in progress (disables remove button)
+ * @param isDemoting - Whether a demote-from-superadmin action is in progress
+ * @param isPromoting - Whether a promote-to-superadmin action is in progress
+ * @param onRemoveUser - Callback invoked when the remove-user button is clicked
+ * @param onDemoteFromSuperadmin - Callback invoked when the demote-from-superadmin button is clicked
+ * @param onPromoteToSuperadmin - Callback invoked when the promote-to-superadmin button is clicked
+ * @param isCurrentUser - Whether the target user is the current user (affects last-superadmin logic)
+ * @param superadminCount - Total number of superadmins in the organization (used to determine last-superadmin)
+ * @returns The component's JSX element containing danger zone controls and messages
+ */
 export function UserDangerZone({
   organizationName,
   isSuperadmin,

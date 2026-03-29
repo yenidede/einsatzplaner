@@ -31,6 +31,13 @@ type OrganizationBankAccount = Awaited<
   ReturnType<typeof getOrganizationBankAccountsAction>
 >[number];
 
+/**
+ * Renders and manages an organization's bank accounts list with add, edit, and delete controls subject to superadmin restrictions.
+ *
+ * @param organizationId - ID of the organization whose bank accounts are displayed and managed
+ * @param isSuperadmin - When `true`, enables add/edit/delete actions for bank accounts; defaults to `false`
+ * @returns The UI for viewing and managing the organization's bank accounts
+ */
 export function OrganizationBankAccounts({
   organizationId,
   isSuperadmin = false,
