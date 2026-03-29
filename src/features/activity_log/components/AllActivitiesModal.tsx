@@ -42,7 +42,7 @@ import {
 import { DataTableColumnHeader } from '@/components/data-table/components/data-table-column-header';
 import { DataTablePagination } from '@/components/data-table/components/data-table-pagination';
 import { cn } from '@/lib/utils';
-import { getFormattedMessage } from '../utils';
+import { getFormattedMessage, isActivityRead } from '../utils';
 import {
   useActivityLogsFiltered,
   useChangeTypes,
@@ -138,6 +138,7 @@ type AllActivitiesModalProps = {
   onOpenChange: (open: boolean) => void;
   openDialog: (einsatzId: string) => void;
   readIds: Set<string>;
+  lastReadNotifications: Date | null;
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead?: (activityIds: string[]) => void;
 };
@@ -147,6 +148,7 @@ export function AllActivitiesModal({
   onOpenChange,
   openDialog,
   readIds,
+  lastReadNotifications,
   onMarkAsRead,
   onMarkAllAsRead,
 }: AllActivitiesModalProps) {
@@ -176,7 +178,7 @@ export function AllActivitiesModal({
   );
   const { data: changeTypes = [] } = useChangeTypes(open);
 
-  const allActivities = data?.activities ?? [];
+  const allActivities = useMemo(() => data?.activities ?? [], [data?.activities]);
 
   const filteredActivities = useMemo(() => {
     let list = allActivities;
@@ -198,11 +200,14 @@ export function AllActivitiesModal({
       list = list.filter((a) => new Date(a.created_at) <= end);
     }
     if (deferredFilters.unreadOnly) {
-      list = list.filter((a) => !readIds.has(a.id));
+      list = list.filter(
+        (activity) =>
+          !isActivityRead(activity, readIds, lastReadNotifications)
+      );
     }
 
     return list;
-  }, [allActivities, deferredFilters, readIds]);
+  }, [allActivities, deferredFilters, lastReadNotifications, readIds]);
 
   const hasMultipleOrgs = (orgsData?.length ?? 0) > 1;
 
@@ -271,7 +276,7 @@ export function AllActivitiesModal({
         header: () => <span className="sr-only">Status</span>,
         size: 32,
         cell: ({ row }) =>
-          !readIds.has(row.original.id) ? (
+          !isActivityRead(row.original, readIds, lastReadNotifications) ? (
             <span className="flex items-center" title="Ungelesen">
               <span className="sr-only">Ungelesen</span>
               <Dot className="text-primary" />
@@ -279,7 +284,14 @@ export function AllActivitiesModal({
           ) : null,
       }),
     ],
-    [columnHelper, openDialog, hasMultipleOrgs, orgsData, readIds]
+    [
+      columnHelper,
+      hasMultipleOrgs,
+      lastReadNotifications,
+      openDialog,
+      orgsData,
+      readIds,
+    ]
   );
 
   const table = useReactTable({
@@ -303,6 +315,7 @@ export function AllActivitiesModal({
     filters.startDate,
     filters.endDate,
     filters.unreadOnly,
+    table,
   ]);
 
   const handleResetFilters = () => {
@@ -461,7 +474,10 @@ export function AllActivitiesModal({
             )}
             {onMarkAllAsRead &&
               allActivities.length > 0 &&
-              filteredActivities.some((a) => !readIds.has(a.id)) && (
+              filteredActivities.some(
+                (activity) =>
+                  !isActivityRead(activity, readIds, lastReadNotifications)
+              ) && (
                 <Button
                   variant="default"
                   size="sm"

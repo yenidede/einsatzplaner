@@ -13,10 +13,17 @@ import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useQueryClient } from '@tanstack/react-query';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
-import { getFormattedMessage } from '@/features/activity_log/utils';
+import {
+  getFormattedMessage,
+  isActivityRead,
+} from '@/features/activity_log/utils';
 import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useSession } from 'next-auth/react';
-import { useActivityLogs } from '@/features/activity_log/hooks/useActivityLogs';
+import {
+  useActivityLogs,
+  useMarkNotificationsAsRead,
+  useNotificationReadState,
+} from '@/features/activity_log/hooks/useActivityLogs';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { AllActivitiesModal } from '@/features/activity_log/components/AllActivitiesModal';
 
@@ -88,6 +95,9 @@ export default function NotificationMenu() {
   const { data: session } = useSession();
 
   const { data, isLoading } = useActivityLogs({ limit: 10, offset: 0 });
+  const { data: notificationReadState } = useNotificationReadState();
+  const { mutateAsync: markNotificationsAsRead } =
+    useMarkNotificationsAsRead();
 
   const orgIds = session?.user.orgIds;
   const { data: orgsData } = useOrganizations(
@@ -95,6 +105,8 @@ export default function NotificationMenu() {
   );
 
   const activities = data || [];
+  const lastReadNotifications =
+    notificationReadState?.lastReadNotifications ?? null;
 
   // Read IDs beim Mount laden
   useEffect(() => {
@@ -121,18 +133,35 @@ export default function NotificationMenu() {
   };
 
   const unreadIds = new Set(
-    activities.filter((a) => !readIds.has(a.id)).map((a) => a.id)
+    activities
+      .filter(
+        (activity) =>
+          !isActivityRead(activity, readIds, lastReadNotifications)
+      )
+      .map((activity) => activity.id)
   );
   const unreadCount = unreadIds.size;
 
-  const handleMarkAllAsRead = (
+  const handleMarkAllAsRead = async (
     activityIdsOrEvent?: string[] | React.MouseEvent
   ) => {
     const ids = Array.isArray(activityIdsOrEvent)
       ? activityIdsOrEvent
       : activities.map((a) => a.id);
+
+    const readAt = new Date();
+
     markAllActivitiesAsRead(ids);
     setReadIds((prev) => new Set([...prev, ...ids]));
+
+    try {
+      await markNotificationsAsRead(readAt);
+    } catch (error) {
+      console.error(
+        'Benachrichtigungsstatus konnte nicht gespeichert werden:',
+        error
+      );
+    }
   };
 
   const handleNotificationClick = (id: string) => {
@@ -163,7 +192,7 @@ export default function NotificationMenu() {
           {unreadCount > 0 && (
             <button
               className="cursor-pointer text-xs font-medium hover:underline"
-              onClick={handleMarkAllAsRead}
+              onClick={() => void handleMarkAllAsRead()}
             >
               Alle als gelesen markieren
             </button>
@@ -186,7 +215,11 @@ export default function NotificationMenu() {
             </div>
           ) : (
             activities.map((activity) => {
-              const isUnread = !readIds.has(activity.id);
+              const isUnread = !isActivityRead(
+                activity,
+                readIds,
+                lastReadNotifications
+              );
 
               return (
                 <div
@@ -276,8 +309,9 @@ export default function NotificationMenu() {
         onOpenChange={setAllActivitiesModalOpen}
         openDialog={openDialog}
         readIds={readIds}
+        lastReadNotifications={lastReadNotifications}
         onMarkAsRead={handleMarkAsRead}
-        onMarkAllAsRead={handleMarkAllAsRead}
+        onMarkAllAsRead={(activityIds) => void handleMarkAllAsRead(activityIds)}
       />
     </Popover>
   );

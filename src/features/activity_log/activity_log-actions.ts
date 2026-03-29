@@ -8,6 +8,8 @@ import {
   getEinsatzActivityLogs,
   createChangeLog,
   getChangeTypes,
+  getNotificationReadState,
+  markNotificationsAsRead,
 } from './activity_log-dal';
 import type { CreateChangeLogInput, ActivityLogFilters } from './types';
 
@@ -155,6 +157,40 @@ export async function getChangeTypesAction() {
   } catch (error) {
     throwIfIsRedirect(error);
     console.error('Error fetching change types:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unbekannter Fehler',
+    };
+  }
+}
+
+export async function getNotificationReadStateAction() {
+  try {
+    const { session } = await requireAuth();
+
+    const readState = await getNotificationReadState(session.user.id);
+
+    return { success: true, data: readState };
+  } catch (error) {
+    throwIfIsRedirect(error);
+    console.error('Error fetching notification read state:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unbekannter Fehler',
+    };
+  }
+}
+
+export async function markNotificationsAsReadAction(readAt?: Date) {
+  try {
+    const { session } = await requireAuth();
+
+    const readState = await markNotificationsAsRead(session.user.id, readAt);
+
+    return { success: true, data: readState };
+  } catch (error) {
+    throwIfIsRedirect(error);
+    console.error('Error updating notification read state:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unbekannter Fehler',
