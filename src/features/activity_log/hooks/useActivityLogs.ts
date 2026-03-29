@@ -74,19 +74,19 @@ export function useMarkNotificationsAsRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (readAt: Date) => {
-      const result = await markNotificationsAsReadAction(readAt);
+    mutationFn: async () => {
+      const result = await markNotificationsAsReadAction();
 
       if (!result.success || !result.data) {
         throw new Error(
           result.error ??
-            'Benachrichtigungsstatus konnte nicht gespeichert werden.'
+          'Benachrichtigungsstatus konnte nicht gespeichert werden.'
         );
       }
 
       return result.data;
     },
-    onMutate: async (readAt) => {
+    onMutate: async () => {
       await queryClient.cancelQueries({
         queryKey: activityLogQueryKeys.notificationReadState,
       });
@@ -99,19 +99,25 @@ export function useMarkNotificationsAsRead() {
       queryClient.setQueryData<NotificationReadState>(
         activityLogQueryKeys.notificationReadState,
         {
-          lastReadNotifications: readAt,
+          lastReadNotifications: new Date(),
         }
       );
 
       return { previousState };
     },
     onError: (_error, _readAt, context) => {
-      if (context?.previousState) {
+      if (context?.previousState !== undefined) {
         queryClient.setQueryData(
           activityLogQueryKeys.notificationReadState,
           context.previousState
         );
+        return;
       }
+
+      queryClient.setQueryData(
+        activityLogQueryKeys.notificationReadState,
+        undefined
+      );
     },
     onSuccess: (data) => {
       queryClient.setQueryData(activityLogQueryKeys.notificationReadState, data);
