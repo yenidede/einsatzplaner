@@ -19,6 +19,7 @@ interface AgendaViewProps {
   onEventSelect: (event: CalendarEvent) => void;
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
+  pastIndicatorTooltip: string;
 }
 
 export function AgendaView({
@@ -27,6 +28,7 @@ export function AgendaView({
   onEventSelect,
   mode,
   onEventConfirm,
+  pastIndicatorTooltip,
 }: AgendaViewProps) {
   const { data: session } = useSession();
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -127,6 +129,7 @@ export function AgendaView({
                   onClick={(e) => handleEventClick(event, e)}
                   mode={mode}
                   onConfirm={onEventConfirm}
+                  pastIndicatorTooltip={pastIndicatorTooltip}
                 />
               ))}
             </div>

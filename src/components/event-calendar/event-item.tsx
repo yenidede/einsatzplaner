@@ -5,7 +5,6 @@ import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { format, isPast } from 'date-fns';
 import { Clock10 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 
 import { cn } from '@/lib/utils';
 import {
@@ -18,8 +17,7 @@ import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
 import { ContextMenuEventRightClick } from '../context-menu';
 import { StatusValuePairs } from './constants';
 import TooltipCustom from '@/components/tooltip-custom';
-import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
-import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useSession } from 'next-auth/react';
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -148,6 +146,7 @@ interface EventItemProps {
   mode: CalendarMode;
   onDelete?: (eventId: string, eventTitle: string) => void;
   onConfirm?: (eventId: string) => void;
+  pastIndicatorTooltip: string;
 }
 
 /**
@@ -171,15 +170,9 @@ export function EventItem({
   mode,
   onDelete,
   onConfirm,
+  pastIndicatorTooltip,
 }: EventItemProps) {
   const { data: session } = useSession();
-  const activeOrgId = session?.user?.activeOrganization?.id;
-  const { data: organizations } = useOrganizations(session?.user.orgIds);
-  const { einsatz_singular } = useOrganizationTerminology(
-    organizations,
-    activeOrgId
-  );
-  const pastIndicatorTooltip = `Diese ${einsatz_singular} liegt in der Vergangenheit.`;
   const canConfirm =
     (event.helpersNeeded ?? 0) > 0 &&
     (event.assignedUsers?.length ?? 0) >= (event.helpersNeeded ?? 0) &&

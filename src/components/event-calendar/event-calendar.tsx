@@ -144,6 +144,7 @@ export function EventCalendar({
     organizations,
     activeOrgId
   );
+  const pastIndicatorTooltip = `Diese ${einsatz_singular} liegt in der Vergangenheit.`;
 
   // Add keyboard shortcuts for view switching
   useEffect(() => {
@@ -380,6 +381,7 @@ export function EventCalendar({
         onEventUpdate={handleEventUpdate}
         mode={mode}
         disableDragAndDrop={mode !== 'verwaltung'}
+        pastIndicatorTooltip={pastIndicatorTooltip}
       >
         <div
           className={cn(
@@ -507,6 +509,7 @@ export function EventCalendar({
               onEventCreate={handleEventCreate}
               mode={mode}
               onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'week' && (
@@ -517,6 +520,7 @@ export function EventCalendar({
               onEventCreate={handleEventCreate}
               mode={mode}
               onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'day' && (
@@ -527,6 +531,7 @@ export function EventCalendar({
               onEventCreate={handleEventCreate}
               mode={mode}
               onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'agenda' && (
@@ -536,6 +541,7 @@ export function EventCalendar({
               onEventSelect={handleEventSelect}
               mode={mode}
               onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'list' && (
