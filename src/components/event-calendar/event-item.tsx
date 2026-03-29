@@ -220,7 +220,7 @@ export function EventItem({
     organizations,
     activeOrgId
   );
-  const pastIndicatorTooltip = `Diese ${einsatz_singular} liegt in der Vergangenheit.`;
+  const pastIndicatorTooltip = `${einsatz_singular} liegt in der Vergangenheit.`;
   const canConfirm =
     (event.helpersNeeded ?? 0) > 0 &&
     (event.assignedUsers?.length ?? 0) >= (event.helpersNeeded ?? 0) &&
