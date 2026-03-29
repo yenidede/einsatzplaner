@@ -80,3 +80,7 @@ export interface ActivityLogResult {
   total: number;
   hasMore: boolean;
 }
+
+export interface NotificationReadState {
+  lastReadNotifications: Date | null;
+}
