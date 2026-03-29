@@ -47,15 +47,11 @@ export default function TooltipCustom({
     return <>{children}</>;
   }
 
-  if (text === '') {
-    return children;
-  }
-
   const shouldWrapDisabledChild =
     asChild && isDisabledElement(children) && children.props.disabled === true;
 
   const triggerChild = shouldWrapDisabledChild ? (
-    <span className="inline-flex">{children}</span>
+    <span className="inline-flex w-full">{children}</span>
   ) : (
     children
   );
