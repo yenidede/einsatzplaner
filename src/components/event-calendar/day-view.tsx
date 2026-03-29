@@ -37,6 +37,7 @@ interface DayViewProps {
   onEventCreate: (startTime: Date) => void;
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
+  pastIndicatorTooltip: string;
 }
 
 interface PositionedEvent {
@@ -55,6 +56,7 @@ export function DayView({
   onEventCreate,
   mode,
   onEventConfirm,
+  pastIndicatorTooltip,
 }: DayViewProps) {
   const dayEvents = useMemo(() => {
     const eventsForDay: CalendarEvent[] = [];
@@ -298,6 +300,7 @@ export function DayView({
                     isLastDay={isLastDay}
                     mode={mode}
                     onConfirm={onEventConfirm}
+                    pastIndicatorTooltip={pastIndicatorTooltip}
                   >
                     {/* Always show the title in day view for better usability */}
                     <div>{event.title}</div>
@@ -348,6 +351,7 @@ export function DayView({
                   height={positionedEvent.height}
                   mode={mode}
                   onConfirm={onEventConfirm}
+                  pastIndicatorTooltip={pastIndicatorTooltip}
                 />
               </div>
             </div>
