@@ -28,8 +28,9 @@ function isDisabledElement(
  * Render a tooltip around the provided children when `text` contains non-whitespace characters.
  *
  * If `text` is empty or only whitespace, returns `children` unchanged. When `asChild` is true and the
- * child is a React element with `disabled === true`, the child is wrapped in a `<span className="inline-flex">`
- * so a `TooltipTrigger` can attach to it. `contentClassName` is forwarded to the `TooltipContent`.
+ * child is a React element with `disabled === true`, the child is wrapped in a focusable
+ * `<span className="inline-flex">` so a `TooltipTrigger` can attach to it and remain reachable for
+ * keyboard users. `contentClassName` is forwarded to the `TooltipContent`.
  *
  * @param children - Element that will act as the tooltip trigger
  * @param text - Tooltip text; if empty or whitespace, the children are returned unchanged
@@ -51,7 +52,9 @@ export default function TooltipCustom({
     asChild && isDisabledElement(children) && children.props.disabled === true;
 
   const triggerChild = shouldWrapDisabledChild ? (
-    <span className="inline-flex w-full">{children}</span>
+    <span className="inline-flex w-full" tabIndex={0} aria-disabled="true">
+      {children}
+    </span>
   ) : (
     children
   );
