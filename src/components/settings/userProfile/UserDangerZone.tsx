@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import TooltipCustom from '@/components/tooltip-custom';
 import { Crown, Trash } from 'lucide-react';
 
 interface UserDangerZoneProps {
@@ -24,6 +19,9 @@ interface UserDangerZoneProps {
   superadminCount: number;
 }
 
+/**
+ * Renders destructive user-management actions for an organization.
+ */
 export function UserDangerZone({
   organizationName,
   isSuperadmin,
@@ -78,40 +76,34 @@ export function UserDangerZone({
               </button>
             )}
             {isCurrentUserSuperadmin && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={
-                        isSuperadmin
-                          ? onDemoteFromSuperadmin
-                          : onPromoteToSuperadmin
-                      }
-                      disabled={isLoading || isLastSuperadmin}
-                      className="flex w-full items-center justify-center gap-2 rounded-md bg-red-500 px-4 py-2 transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                    >
-                      <Crown className="shrink-0 text-white" size={20} />
-                      <div className="font-['Inter'] text-sm leading-normal font-medium whitespace-nowrap text-white">
-                        {isLoading
-                          ? isSuperadmin
-                            ? 'Wird degradiert...'
-                            : 'Wird ernannt...'
-                          : isSuperadmin
-                            ? 'Superadmin-Rolle entfernen'
-                            : 'Zu Superadmin Ernennen'}
-                      </div>
-                    </button>
-                  </TooltipTrigger>
-                  {isLastSuperadmin && (
-                    <TooltipContent>
-                      <p>
-                        Sie können sich nicht selbst die Superadmin-Rolle
-                        entfernen, da Sie der letzte Superadmin sind
-                      </p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </TooltipProvider>
+              <TooltipCustom
+                text={
+                  isLastSuperadmin
+                    ? 'Sie können sich nicht selbst die Superadmin-Rolle entfernen, da Sie der letzte Superadmin sind'
+                    : ''
+                }
+              >
+                <button
+                  onClick={
+                    isSuperadmin
+                      ? onDemoteFromSuperadmin
+                      : onPromoteToSuperadmin
+                  }
+                  disabled={isLoading || isLastSuperadmin}
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-red-500 px-4 py-2 transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  <Crown className="shrink-0 text-white" size={20} />
+                  <div className="font-['Inter'] text-sm leading-normal font-medium whitespace-nowrap text-white">
+                    {isLoading
+                      ? isSuperadmin
+                        ? 'Wird degradiert...'
+                        : 'Wird ernannt...'
+                      : isSuperadmin
+                        ? 'Superadmin-Rolle entfernen'
+                        : 'Zu Superadmin Ernennen'}
+                  </div>
+                </button>
+              </TooltipCustom>
             )}
 
             {!canRemoveUser && !isCurrentUserSuperadmin && (

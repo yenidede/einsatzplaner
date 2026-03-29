@@ -5,7 +5,6 @@ import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { format, isPast } from 'date-fns';
 import { Clock10 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 
 import { cn } from '@/lib/utils';
 import {
@@ -18,8 +17,7 @@ import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
 import { ContextMenuEventRightClick } from '../context-menu';
 import { StatusValuePairs } from './constants';
 import TooltipCustom from '@/components/tooltip-custom';
-import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
-import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useSession } from 'next-auth/react';
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -29,12 +27,7 @@ const formatTimeWithOptionalMinutes = (date: Date) => {
 };
 
 /**
- * Renders an icon-only indicator for past events.
- *
- * @param compact - When true, use the compact variant with reduced sizing.
- * @param className - Optional additional CSS classes applied to the indicator.
- * @param tooltipText - Tooltip text shown on hover/focus.
- * @returns An icon-only past indicator with tooltip.
+ * Marks an event as being in the past.
  */
 function PastIndicator({
   compact = false,
@@ -78,23 +71,7 @@ interface EventWrapperProps {
 }
 
 /**
- * Render a styled button wrapper for an event that applies color, border-radius, drag-and-drop bindings, and a past-event state.
- *
- * @param event - Event data used to determine displayed end time, status color, and assigned users.
- * @param isFirstDay - Whether this event is the first day in a multi-day event (affects border radius).
- * @param isLastDay - Whether this event is the last day in a multi-day event (affects border radius).
- * @param isDragging - When true, sets a `data-dragging` attribute to adjust visual appearance while dragging.
- * @param onClick - Click handler forwarded to the button.
- * @param className - Additional CSS classes appended to the wrapper.
- * @param children - Content to render inside the button.
- * @param currentTime - Optional current time used to shift the event's duration for past-state calculation.
- * @param dndListeners - Drag-and-drop listener props spread onto the button.
- * @param dndAttributes - Drag-and-drop attribute props spread onto the button.
- * @param onMouseDown - Mouse down handler forwarded to the button.
- * @param onTouchStart - Touch start handler forwarded to the button.
- * @param mode - Display mode that influences color selection (e.g., helper mode).
- *
- * @returns The button element that visually wraps the event and forwards interaction and drag/drop bindings.
+ * Wraps an event with shared styling and interaction handling.
  */
 function EventWrapper({
   event,
@@ -133,7 +110,7 @@ function EventWrapper({
   return (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:opacity-75 data-past-event:saturate-50 sm:px-2',
+        'focus-visible:border-ring focus-visible:ring-ring/50 relative flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:opacity-75 data-past-event:saturate-50 sm:px-2',
         getEventColorClasses(statusForColor || 'fallback', mode),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
@@ -169,30 +146,11 @@ interface EventItemProps {
   mode: CalendarMode;
   onDelete?: (eventId: string, eventTitle: string) => void;
   onConfirm?: (eventId: string) => void;
+  pastIndicatorTooltip: string;
 }
 
 /**
- * Render an event as a calendar item for month, week/day, or agenda views, including time display, past-state styling, drag-and-drop bindings, and right-click context-menu integration.
- *
- * @param event - The event object to render (must contain at least `id`, `title`, `start`, `end`, and optional fields like `allDay`, `status`, `assignedUsers`, and `helpersNeeded`).
- * @param view - The current calendar view (`'month'`, `'week'`, `'day'`, or `'agenda'`) which determines layout and content.
- * @param currentTime - Optional override start time used when dragging; when provided, the event's displayed start/end are shifted to this time.
- * @param isFirstDay - Whether this event instance is the first day in a multi-day span, used for corner radius/layout.
- * @param isLastDay - Whether this event instance is the last day in a multi-day span, used for corner radius/layout.
- * @param isDragging - Whether the event is currently being dragged; applied as a visual state.
- * @param showTime - When true (applies to week/day views), render the event's time line beneath the title.
- * @param dndListeners - Drag-and-drop event listeners to spread onto the rendered element.
- * @param dndAttributes - Drag-and-drop attributes to spread onto the rendered element.
- * @param onDelete - Optional delete handler forwarded to the context menu (defaults to a no-op).
- * @param onConfirm - Optional confirm handler forwarded to the context menu when helper confirmation is available.
- * @param mode - Display mode (for example `'helper'`) that affects color selection when the current user is assigned to the event.
- * @param children - Optional custom children to render inside the event wrapper; when omitted a view-specific default layout is used.
- * @param className - Optional additional CSS classes applied to the root element.
- * @param onClick - Click handler for the rendered event element.
- * @param onMouseDown - Mouse-down handler forwarded to the rendered element.
- * @param onTouchStart - Touch-start handler forwarded to the rendered element.
- *
- * @returns A React element that renders the event according to the selected view and props.
+ * Renders a calendar event across the supported views.
  */
 export function EventItem({
   event,
@@ -212,15 +170,9 @@ export function EventItem({
   mode,
   onDelete,
   onConfirm,
+  pastIndicatorTooltip,
 }: EventItemProps) {
   const { data: session } = useSession();
-  const activeOrgId = session?.user?.activeOrganization?.id;
-  const { data: organizations } = useOrganizations(session?.user.orgIds);
-  const { einsatz_singular } = useOrganizationTerminology(
-    organizations,
-    activeOrgId
-  );
-  const pastIndicatorTooltip = `${einsatz_singular} liegt in der Vergangenheit.`;
   const canConfirm =
     (event.helpersNeeded ?? 0) > 0 &&
     (event.assignedUsers?.length ?? 0) >= (event.helpersNeeded ?? 0) &&
@@ -282,8 +234,15 @@ export function EventItem({
         mode={mode}
       >
         {children || (
-          <div className="flex w-full flex-col">
-            <div className="flex items-start justify-between gap-1">
+          <div className="flex w-full flex-col pr-6">
+            {isEventInPast && (
+              <PastIndicator
+                compact
+                className="absolute top-1 right-1"
+                tooltipText={pastIndicatorTooltip}
+              />
+            )}
+            <div className="flex items-start gap-1">
               {!event.allDay && (
                 <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
                   <span className="sm:hidden">
@@ -295,13 +254,6 @@ export function EventItem({
                     {formatTimeWithOptionalMinutes(displayEnd)}
                   </span>
                 </div>
-              )}
-              {isEventInPast && (
-                <PastIndicator
-                  compact
-                  className="ml-auto"
-                  tooltipText={pastIndicatorTooltip}
-                />
               )}
             </div>
             <div className="leading-tight wrap-break-word max-md:line-clamp-2">
@@ -346,18 +298,22 @@ export function EventItem({
         mode={mode}
       >
         {isEventInPast && (view === 'week' || view === 'day') && (
-          <div>
-            <PastIndicator compact tooltipText={pastIndicatorTooltip} />
-          </div>
+          <PastIndicator
+            compact
+            className="absolute top-1 right-1"
+            tooltipText={pastIndicatorTooltip}
+          />
         )}
-        <div className="leading-tight font-medium wrap-break-word">
-          {event.title}
+        <div className="pr-6">
+          <div className="leading-tight font-medium wrap-break-word">
+            {event.title}
+          </div>
+          {showTime && (
+            <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
+              {getEventTime()}
+            </div>
+          )}
         </div>
-        {showTime && (
-          <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
-            {getEventTime()}
-          </div>
-        )}
       </EventWrapper>
     );
     return (
