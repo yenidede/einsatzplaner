@@ -13,10 +13,7 @@ interface TooltipCustomProps {
 }
 
 /**
- * Determines whether a React node is a React element that may have a `disabled` prop.
- *
- * @param child - The React node to test
- * @returns `true` if `child` is a React element that can have a `disabled?: boolean` prop, `false` otherwise.
+ * Narrows a React node to an element that may expose a `disabled` prop.
  */
 function isDisabledElement(
   child: React.ReactNode
@@ -25,18 +22,7 @@ function isDisabledElement(
 }
 
 /**
- * Render a tooltip around the provided children when `text` contains non-whitespace characters.
- *
- * If `text` is empty or only whitespace, returns `children` unchanged. When `asChild` is true and the
- * child is a React element with `disabled === true`, the child is wrapped in a focusable
- * `<span className="inline-flex">` so a `TooltipTrigger` can attach to it and remain reachable for
- * keyboard users. `contentClassName` is forwarded to the `TooltipContent`.
- *
- * @param children - Element that will act as the tooltip trigger
- * @param text - Tooltip text; if empty or whitespace, the children are returned unchanged
- * @param asChild - When true, passes `asChild` to `TooltipTrigger` so the children replace the trigger element
- * @param contentClassName - Optional class name applied to the `TooltipContent` container
- * @returns The tooltip-wrapped trigger with content when `text` is non-empty, otherwise the original children
+ * Renders a tooltip when `text` is present and keeps disabled triggers reachable.
  */
 export default function TooltipCustom({
   children,
