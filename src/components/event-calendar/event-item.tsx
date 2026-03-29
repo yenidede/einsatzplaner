@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { format, isPast } from 'date-fns';
+import { Clock10 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 
 import { cn } from '@/lib/utils';
@@ -16,6 +17,9 @@ import { CalendarMode } from './types';
 import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
 import { ContextMenuEventRightClick } from '../context-menu';
 import { StatusValuePairs } from './constants';
+import TooltipCustom from '@/components/tooltip-custom';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -25,29 +29,35 @@ const formatTimeWithOptionalMinutes = (date: Date) => {
 };
 
 /**
- * Renders a pill-shaped "Vergangen" indicator.
+ * Renders an icon-only indicator for past events.
  *
- * @param compact - When true, use the compact variant with reduced padding and a smaller font size.
+ * @param compact - When true, use the compact variant with reduced sizing.
  * @param className - Optional additional CSS classes applied to the indicator.
- * @returns A span element displaying "Vergangen" with pill-style visual styling.
+ * @param tooltipText - Tooltip text shown on hover/focus.
+ * @returns An icon-only past indicator with tooltip.
  */
 function PastIndicator({
   compact = false,
   className,
+  tooltipText,
 }: {
   compact?: boolean;
   className?: string;
+  tooltipText: string;
 }) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full border border-current/15 bg-white/45 font-medium tracking-[0.02em] text-current/75 uppercase dark:bg-black/10',
-        compact ? 'px-1 py-0 text-[0.55rem]' : 'px-1.5 py-0.5 text-[0.6rem]',
-        className
-      )}
-    >
-      Vergangen
-    </span>
+    <TooltipCustom text={tooltipText}>
+      <span
+        className={cn(
+          'inline-flex items-center justify-center rounded-full border border-current/15 bg-white/45 text-current/75 dark:bg-black/10',
+          compact ? 'size-5' : 'size-6',
+          className
+        )}
+        aria-label={tooltipText}
+      >
+        <Clock10 className={compact ? 'size-3' : 'size-3.5'} />
+      </span>
+    </TooltipCustom>
   );
 }
 
@@ -203,13 +213,21 @@ export function EventItem({
   onDelete,
   onConfirm,
 }: EventItemProps) {
+  const { data: session } = useSession();
+  const activeOrgId = session?.user?.activeOrganization?.id;
+  const { data: organizations } = useOrganizations(session?.user.orgIds);
+  const { einsatz_singular } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
+  const pastIndicatorTooltip = `Diese ${einsatz_singular} liegt in der Vergangenheit.`;
   const canConfirm =
     (event.helpersNeeded ?? 0) > 0 &&
     (event.assignedUsers?.length ?? 0) >= (event.helpersNeeded ?? 0) &&
     event.status?.id !== StatusValuePairs.vergeben_bestaetigt;
 
   // Use the provided currentTime (for dragging) or the event's actual time
-  const userId = useSession().data?.user?.id;
+  const userId = session?.user?.id;
   let statusForColor: EinsatzStatus | string = event.status || 'fallback';
 
   if (
@@ -278,7 +296,13 @@ export function EventItem({
                   </span>
                 </div>
               )}
-              {isEventInPast && <PastIndicator compact className="ml-auto" />}
+              {isEventInPast && (
+                <PastIndicator
+                  compact
+                  className="ml-auto"
+                  tooltipText={pastIndicatorTooltip}
+                />
+              )}
             </div>
             <div className="leading-tight wrap-break-word max-md:line-clamp-2">
               {event.title}
@@ -323,7 +347,7 @@ export function EventItem({
       >
         {isEventInPast && (view === 'week' || view === 'day') && (
           <div>
-            <PastIndicator compact />
+            <PastIndicator compact tooltipText={pastIndicatorTooltip} />
           </div>
         )}
         <div className="leading-tight font-medium wrap-break-word">
