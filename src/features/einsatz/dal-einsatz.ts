@@ -934,6 +934,14 @@ export async function updateEinsatzTime(data: {
     },
   });
 
+  if (session.user.id) {
+    await createChangeLogAuto({
+      einsatzId: id,
+      userId: session.user.id,
+      typeId: ChangeTypeIds['E-Bearbeitet'],
+    });
+  }
+
   return {
     einsatz,
     conflicts: [],
