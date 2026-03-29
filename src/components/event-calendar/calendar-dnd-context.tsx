@@ -67,6 +67,7 @@ interface CalendarDndProviderProps {
   onEventUpdate: (event: CalendarEvent) => void;
   mode: CalendarMode;
   disableDragAndDrop?: boolean;
+  pastIndicatorTooltip: string;
 }
 
 export function CalendarDndProvider({
@@ -74,6 +75,7 @@ export function CalendarDndProvider({
   onEventUpdate,
   mode,
   disableDragAndDrop = false,
+  pastIndicatorTooltip,
 }: CalendarDndProviderProps) {
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -378,6 +380,7 @@ export function CalendarDndProvider({
                 isFirstDay={dragHandlePosition?.data?.isFirstDay !== false}
                 isLastDay={dragHandlePosition?.data?.isLastDay !== false}
                 mode={mode}
+                pastIndicatorTooltip={pastIndicatorTooltip}
               />
             </div>
           )}

@@ -342,6 +342,7 @@ export function EventDialogHelfer({
               autoFocus={false}
               variant="outline"
               size="icon"
+              aria-label="PDF-Bestätigung drucken"
               onClick={() =>
                 handlePdfGenerate(
                   einsatz_singular,
@@ -354,7 +355,6 @@ export function EventDialogHelfer({
                   generatePdf
                 )
               }
-              aria-label="PDF-Bestätigung drucken"
             >
               <FileDown size={16} aria-hidden="true" />
             </Button>

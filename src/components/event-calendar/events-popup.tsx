@@ -14,6 +14,7 @@ interface EventsPopupProps {
   onClose: () => void;
   onEventSelect: (event: CalendarEvent) => void;
   mode: CalendarMode;
+  pastIndicatorTooltip: string;
 }
 
 export function EventsPopup({
@@ -23,6 +24,7 @@ export function EventsPopup({
   onClose,
   onEventSelect,
   mode,
+  pastIndicatorTooltip,
 }: EventsPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -128,6 +130,7 @@ export function EventsPopup({
                   isFirstDay={isFirstDay}
                   isLastDay={isLastDay}
                   mode={mode}
+                  pastIndicatorTooltip={pastIndicatorTooltip}
                 />
               </div>
             );
