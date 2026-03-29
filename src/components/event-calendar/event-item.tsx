@@ -110,7 +110,7 @@ function EventWrapper({
   return (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:opacity-75 data-past-event:saturate-50 sm:px-2',
+        'focus-visible:border-ring focus-visible:ring-ring/50 relative flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:opacity-75 data-past-event:saturate-50 sm:px-2',
         getEventColorClasses(statusForColor || 'fallback', mode),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
@@ -234,8 +234,15 @@ export function EventItem({
         mode={mode}
       >
         {children || (
-          <div className="flex w-full flex-col">
-            <div className="flex items-start justify-between gap-1">
+          <div className="flex w-full flex-col pr-6">
+            {isEventInPast && (
+              <PastIndicator
+                compact
+                className="absolute top-1 right-1"
+                tooltipText={pastIndicatorTooltip}
+              />
+            )}
+            <div className="flex items-start gap-1">
               {!event.allDay && (
                 <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
                   <span className="sm:hidden">
@@ -247,13 +254,6 @@ export function EventItem({
                     {formatTimeWithOptionalMinutes(displayEnd)}
                   </span>
                 </div>
-              )}
-              {isEventInPast && (
-                <PastIndicator
-                  compact
-                  className="ml-auto"
-                  tooltipText={pastIndicatorTooltip}
-                />
               )}
             </div>
             <div className="leading-tight wrap-break-word max-md:line-clamp-2">
@@ -298,18 +298,22 @@ export function EventItem({
         mode={mode}
       >
         {isEventInPast && (view === 'week' || view === 'day') && (
-          <div>
-            <PastIndicator compact tooltipText={pastIndicatorTooltip} />
-          </div>
+          <PastIndicator
+            compact
+            className="absolute top-1 right-1"
+            tooltipText={pastIndicatorTooltip}
+          />
         )}
-        <div className="leading-tight font-medium wrap-break-word">
-          {event.title}
+        <div className="pr-6">
+          <div className="leading-tight font-medium wrap-break-word">
+            {event.title}
+          </div>
+          {showTime && (
+            <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
+              {getEventTime()}
+            </div>
+          )}
         </div>
-        {showTime && (
-          <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
-            {getEventTime()}
-          </div>
-        )}
       </EventWrapper>
     );
     return (
