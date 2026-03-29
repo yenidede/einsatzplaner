@@ -26,6 +26,12 @@ export const metadata: Metadata = {
     'Maturaprojekt der HAK DigBiz 5ADB 2025/26. (c) David Kathrein, Ömer Yenidede, Luca Raffeiner',
 };
 
+/**
+ * Application root layout that renders the HTML shell, applies global fonts and layout classes, and wraps `children` with app-level providers and UI components.
+ *
+ * @param children - The page content to render inside the layout.
+ * @returns The top-level HTML structure containing providers, navigation, children, and the toast container.
+ */
 export default async function RootLayout({
   children,
 }: Readonly<{

@@ -18,12 +18,23 @@ function TooltipProvider({
   );
 }
 
+/**
+ * Renders a Radix Tooltip Root element with a fixed `data-slot="tooltip"` marker.
+ *
+ * @returns A React element representing the tooltip root with the provided props applied.
+ */
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
   return <TooltipPrimitive.Root data-slot="tooltip" {...props} />;
 }
 
+/**
+ * Renders a Radix tooltip trigger and forwards all received props to it.
+ *
+ * @param props - Props for Radix TooltipTrigger, applied to the underlying trigger element.
+ * @returns The tooltip trigger element with `data-slot="tooltip-trigger"` and the provided props forwarded.
+ */
 function TooltipTrigger({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
