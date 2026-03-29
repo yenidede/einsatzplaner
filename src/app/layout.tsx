@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from 'next/font/google';
 import NextAuthSessionProvider from '@/components/SessionProvider';
 import Navbar from '@/components/navbar/navbar-main';
 import QueryProvider from '@/components/QueryProvider';
+import AppTooltipProvider from '@/components/AppTooltipProvider';
 import '@/styles/globals.css';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Toaster } from 'sonner';
@@ -37,15 +38,17 @@ export default async function RootLayout({
       >
         <NuqsAdapter>
           <QueryProvider>
-            <NextAuthSessionProvider>
-              <AlertDialogContextProvider>
-                <EventDialogProvider>
-                  <Navbar />
-                  {children}
-                  <Toaster position="bottom-left" richColors />
-                </EventDialogProvider>
-              </AlertDialogContextProvider>
-            </NextAuthSessionProvider>
+            <AppTooltipProvider>
+              <NextAuthSessionProvider>
+                <AlertDialogContextProvider>
+                  <EventDialogProvider>
+                    <Navbar />
+                    {children}
+                    <Toaster position="bottom-left" richColors />
+                  </EventDialogProvider>
+                </AlertDialogContextProvider>
+              </NextAuthSessionProvider>
+            </AppTooltipProvider>
           </QueryProvider>
         </NuqsAdapter>
       </body>
