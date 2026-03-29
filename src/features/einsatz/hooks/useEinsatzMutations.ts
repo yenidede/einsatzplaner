@@ -54,6 +54,14 @@ function invalidateAllCalendarMonthsForOrg(
   });
 }
 
+function invalidateActivityLogs(
+  queryClient: ReturnType<typeof useQueryClient>
+) {
+  queryClient.invalidateQueries({
+    queryKey: activityLogQueryKeys.all,
+  });
+}
+
 import {
   createEinsatz,
   updateEinsatz,
@@ -186,6 +194,9 @@ export function useCreateEinsatz(
     },
     onSettled: (data, _error, vars) => {
       const event = data?.einsatz ?? vars?.event;
+      if (data?.einsatz?.id) {
+        invalidateActivityLogs(queryClient);
+      }
       if (activeOrgId && event && hasDefinedStart(event)) {
         const dates = getDatesSpanningEvent({
           start: event.start,
@@ -320,9 +331,7 @@ export function useUpdateEinsatz(
         queryClient.invalidateQueries({
           queryKey: queryKeys.detailedEinsatz(einsatzId),
         });
-        queryClient.invalidateQueries({
-          queryKey: activityLogQueryKeys.allEinsatz(einsatzId),
-        });
+        invalidateActivityLogs(queryClient);
       }
     },
     onSettled: (data, _error, vars) => {
@@ -422,9 +431,7 @@ export function useConfirmEinsatz(
         queryClient.invalidateQueries({
           queryKey: queryKeys.detailedEinsatz(eventId),
         });
-        queryClient.invalidateQueries({
-          queryKey: activityLogQueryKeys.allEinsatz(eventId),
-        });
+        invalidateActivityLogs(queryClient);
       }
       if (activeOrgId && data && hasDefinedStart(data)) {
         const dates = getDatesSpanningEvent({
@@ -498,6 +505,7 @@ export function useToggleUserAssignment(
         queryClient.invalidateQueries({
           queryKey: queryKeys.detailedEinsatz(data.id),
         });
+        invalidateActivityLogs(queryClient);
       }
       if (activeOrgId && data && hasDefinedStart(data)) {
         const dates = getDatesSpanningEvent({
