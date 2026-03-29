@@ -144,8 +144,15 @@ export function EventCalendar({
     organizations,
     activeOrgId
   );
-  const pastIndicatorTooltip = `${einsatz_singular} liegt in der Vergangenheit.`;
 
+  const capitalizeFirst = (value?: string | null) =>
+    value && value.length > 0
+      ? value.charAt(0).toUpperCase() + value.slice(1)
+      : '';
+
+  const pastIndicatorTooltip = `${capitalizeFirst(
+    einsatz_singular
+  )} liegt in der Vergangenheit.`;
   // Add keyboard shortcuts for view switching
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
