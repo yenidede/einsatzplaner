@@ -6,17 +6,14 @@ import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, MapPin } from 'lucide-react';
 import {
   createOrganizationAddressAction,
+  getOrganizationAddressesAction,
   updateOrganizationAddressAction,
   deleteOrganizationAddressAction,
 } from '@/features/settings/organization-action';
 import { queryKeys as organizationQueryKeys } from '@/features/organization/queryKeys';
 import { useOrganizationAddresses } from '@/features/organization/hooks/use-organization-queries';
+import TooltipCustom from '@/components/tooltip-custom';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 
 interface OrganizationAddressesProps {
@@ -32,6 +29,13 @@ interface AddressFormData {
   country: string;
 }
 
+type OrganizationAddress = Awaited<
+  ReturnType<typeof getOrganizationAddressesAction>
+>[number];
+
+/**
+ * Manages an organization's addresses.
+ */
 export function OrganizationAddresses({
   organizationId,
   isSuperadmin = false,
@@ -132,7 +136,7 @@ export function OrganizationAddresses({
     }
   };
 
-  const handleEdit = (address: any) => {
+  const handleEdit = (address: OrganizationAddress) => {
     setFormData({
       label: address.label || '',
       street: address.street,
@@ -178,24 +182,21 @@ export function OrganizationAddresses({
               Adressen
             </div>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handleAddClick}
-                disabled={!isSuperadmin}
-                size="sm"
-                variant={isSuperadmin ? 'default' : 'secondary'}
-              >
-                <Plus className="h-4 w-4" />
-                <span>Hinzufügen</span>
-              </Button>
-            </TooltipTrigger>
-            {!isSuperadmin && (
-              <TooltipContent>
-                Nur Superadmins können Adressen hinzufügen
-              </TooltipContent>
-            )}
-          </Tooltip>
+          <TooltipCustom
+            text={
+              !isSuperadmin ? 'Nur Superadmins können Adressen hinzufügen' : ''
+            }
+          >
+            <Button
+              onClick={handleAddClick}
+              disabled={!isSuperadmin}
+              size="sm"
+              variant={isSuperadmin ? 'default' : 'secondary'}
+            >
+              <Plus className="h-4 w-4" />
+              <span>Hinzufügen</span>
+            </Button>
+          </TooltipCustom>
         </div>
 
         <div className="flex flex-col gap-3 self-stretch py-2">
@@ -313,7 +314,7 @@ export function OrganizationAddresses({
               Noch keine Adressen hinzugefügt
             </div>
           ) : (
-            addresses.map((address: any) => (
+            addresses.map((address: OrganizationAddress) => (
               <div
                 key={address.id}
                 className="flex items-start justify-between rounded-md border border-slate-200 bg-white p-4"
@@ -334,42 +335,42 @@ export function OrganizationAddresses({
                 </div>
 
                 <div className="flex gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={() => handleEdit(address)}
-                        disabled={!isSuperadmin}
-                        variant="ghost"
-                        size="icon"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    {!isSuperadmin && (
-                      <TooltipContent>
-                        Nur Superadmins können Adressen bearbeiten
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+                  <TooltipCustom
+                    text={
+                      !isSuperadmin
+                        ? 'Nur Superadmins können Adressen bearbeiten'
+                        : ''
+                    }
+                  >
+                    <Button
+                      onClick={() => handleEdit(address)}
+                      disabled={!isSuperadmin}
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Adresse bearbeiten"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipCustom>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={() => handleDelete(address.id)}
-                        disabled={!isSuperadmin || deleteMutation.isPending}
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    {!isSuperadmin && (
-                      <TooltipContent>
-                        Nur Superadmins können Adressen löschen
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+                  <TooltipCustom
+                    text={
+                      !isSuperadmin
+                        ? 'Nur Superadmins können Adressen löschen'
+                        : ''
+                    }
+                  >
+                    <Button
+                      onClick={() => handleDelete(address.id)}
+                      disabled={!isSuperadmin || deleteMutation.isPending}
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Adresse löschen"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipCustom>
                 </div>
               </div>
             ))

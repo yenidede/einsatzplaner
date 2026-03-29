@@ -43,6 +43,7 @@ interface WeekViewProps {
   onEventCreate: (startTime: Date) => void;
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
+  pastIndicatorTooltip: string;
 }
 
 interface PositionedEvent {
@@ -61,6 +62,7 @@ export function WeekView({
   onEventCreate,
   mode,
   onEventConfirm,
+  pastIndicatorTooltip,
 }: WeekViewProps) {
   const todayStart = useTodayStart();
 
@@ -399,6 +401,7 @@ export function WeekView({
                         isLastDay={isLastDay}
                         mode={mode}
                         onConfirm={onEventConfirm}
+                        pastIndicatorTooltip={pastIndicatorTooltip}
                       >
                         {/* Show title if it's the first day of the event or the first visible day in the week */}
                         <div
@@ -465,6 +468,7 @@ export function WeekView({
                     height={positionedEvent.height}
                     mode={mode}
                     onConfirm={onEventConfirm}
+                    pastIndicatorTooltip={pastIndicatorTooltip}
                   />
                 </div>
               </div>
