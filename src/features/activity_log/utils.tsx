@@ -133,6 +133,22 @@ export function getFormattedMessage(
   );
 }
 
+export function isActivityRead(
+  activity: Pick<ChangeLogEntry, 'id' | 'created_at'>,
+  readIds: Set<string>,
+  lastReadNotifications: Date | null | undefined
+): boolean {
+  if (readIds.has(activity.id)) {
+    return true;
+  }
+
+  if (!lastReadNotifications) {
+    return false;
+  }
+
+  return new Date(activity.created_at) <= lastReadNotifications;
+}
+
 const getFullName = (user: { firstname: string; lastname: string }) => {
   return `${user.firstname} ${user.lastname}`;
 };
