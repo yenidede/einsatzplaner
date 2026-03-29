@@ -34,14 +34,7 @@ type OrganizationAddress = Awaited<
 >[number];
 
 /**
- * Displays and manages an organization's addresses, including add, edit and delete controls.
- *
- * Renders a list of addresses for the given organization and an optional form for creating or updating an address.
- * Create, update and delete actions invalidate the address query and show success or error toasts; deletions prompt for confirmation.
- *
- * @param organizationId - The ID of the organization whose addresses are displayed
- * @param isSuperadmin - When `true`, enables the add, edit and delete controls; when `false`, controls are disabled and show permission tooltips
- * @returns The rendered address list, action buttons, and the add/edit form when active
+ * Manages an organization's addresses.
  */
 export function OrganizationAddresses({
   organizationId,
