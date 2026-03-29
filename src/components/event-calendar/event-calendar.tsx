@@ -144,7 +144,7 @@ export function EventCalendar({
     organizations,
     activeOrgId
   );
-  const pastIndicatorTooltip = `Diese ${einsatz_singular} liegt in der Vergangenheit.`;
+  const pastIndicatorTooltip = `${einsatz_singular} liegt in der Vergangenheit.`;
 
   // Add keyboard shortcuts for view switching
   useEffect(() => {
