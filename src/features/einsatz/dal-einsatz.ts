@@ -934,6 +934,32 @@ export async function updateEinsatzTime(data: {
     },
   });
 
+  if (session.user.id) {
+    try {
+      const changeLog = await createChangeLogAuto({
+        einsatzId: id,
+        userId: session.user.id,
+        typeId: ChangeTypeIds['E-Bearbeitet'],
+      });
+
+      if (!changeLog) {
+        throw new Error(
+          `Aktivitätenprotokoll für die Zeitänderung von Einsatz ${id} konnte nicht erstellt werden.`
+        );
+      }
+    } catch (error) {
+      console.error('Failed to create audit log for time update', {
+        einsatzId: id,
+        userId: session.user.id,
+        typeId: ChangeTypeIds['E-Bearbeitet'],
+        error,
+      });
+      throw new Error(
+        `Aktivitätenprotokoll für die Zeitänderung von Einsatz ${id} konnte nicht erstellt werden.`
+      );
+    }
+  }
+
   return {
     einsatz,
     conflicts: [],
