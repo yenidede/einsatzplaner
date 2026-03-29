@@ -181,11 +181,11 @@ export async function getNotificationReadStateAction() {
   }
 }
 
-export async function markNotificationsAsReadAction(readAt?: Date) {
+export async function markNotificationsAsReadAction() {
   try {
     const { session } = await requireAuth();
 
-    const readState = await markNotificationsAsRead(session.user.id, readAt);
+    const readState = await markNotificationsAsRead(session.user.id);
 
     return { success: true, data: readState };
   } catch (error) {
