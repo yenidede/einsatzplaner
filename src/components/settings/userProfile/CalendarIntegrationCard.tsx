@@ -9,13 +9,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCalendarSubscription } from '@/features/calendar-subscription/hooks/useCalendarSubscription';
+import TooltipCustom from '@/components/tooltip-custom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 export interface CalendarIntegrationCardProps {
@@ -149,53 +145,44 @@ export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
               In Kalender öffnen
             </a>
           </Button>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  rotate.mutate(subscription.id);
-                }}
-                disabled={rotate.isPending}
-              >
-                <RefreshCw
-                  className={cn(
-                    'mr-2 h-3.5 w-3.5',
-                    rotate.isPending && 'animate-spin'
-                  )}
-                />
-                {rotate.isPending ? 'Generiere...' : 'Neu generieren'}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-xs">
-                Der alte Link wird widerrufen und ein neuer generiert.
-              </p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  deactivate.mutate(subscription.id);
-                }}
-                disabled={deactivate.isPending}
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              >
-                <Link2Off className="mr-2 h-3.5 w-3.5" />
-                {deactivate.isPending ? 'Deaktiviere...' : 'Deaktivieren'}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-xs">
-                Synchronisation temporär deaktivieren, kann wieder aktiviert
-                werden.
-              </p>
-            </TooltipContent>
-          </Tooltip>
+          <TooltipCustom
+            text="Der alte Link wird widerrufen und ein neuer generiert."
+            contentClassName="max-w-xs"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                rotate.mutate(subscription.id);
+              }}
+              disabled={rotate.isPending}
+            >
+              <RefreshCw
+                className={cn(
+                  'mr-2 h-3.5 w-3.5',
+                  rotate.isPending && 'animate-spin'
+                )}
+              />
+              {rotate.isPending ? 'Generiere...' : 'Neu generieren'}
+            </Button>
+          </TooltipCustom>
+          <TooltipCustom
+            text="Synchronisation temporär deaktivieren, kann wieder aktiviert werden."
+            contentClassName="max-w-xs"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                deactivate.mutate(subscription.id);
+              }}
+              disabled={deactivate.isPending}
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Link2Off className="mr-2 h-3.5 w-3.5" />
+              {deactivate.isPending ? 'Deaktiviere...' : 'Deaktivieren'}
+            </Button>
+          </TooltipCustom>
         </div>
       ) : (
         <p className="text-muted-foreground text-sm">
