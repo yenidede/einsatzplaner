@@ -17,6 +17,18 @@ interface PropertyOverviewProps {
   hideActions?: boolean;
 }
 
+/**
+ * Render an overview panel for user property fields, showing loading, empty, and list states and optional action controls.
+ *
+ * @param onCreateNew - Callback invoked when the "create new property" action is triggered.
+ * @param properties - Array of user properties (with their field metadata); when undefined or empty the component shows the empty state.
+ * @param isLoading - When true, displays a loading message instead of list or empty states.
+ * @param onEdit - Optional callback invoked with a property's id when the edit action is triggered.
+ * @param onDelete - Optional callback invoked with a property's id when the delete action is triggered.
+ * @param showCreateForm - When true, hides the "create new property" button (defaults to false).
+ * @param hideActions - When true, hides the actions area containing the create/edit/delete controls (defaults to false).
+ * @returns A React element containing the property overview UI.
+ */
 export function PropertyOverview({
   onCreateNew,
   properties,
