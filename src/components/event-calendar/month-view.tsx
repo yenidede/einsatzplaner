@@ -102,7 +102,12 @@ export function MonthView({
 
   return (
     <div data-slot="month-view" className="contents">
-      <div className="border-border/70 grid grid-cols-7 border-b">
+      <div
+        className="bg-card border-border/70 sticky z-30 grid grid-cols-7 border-b"
+        style={{
+          top: 'calc(var(--calendar-sticky-top, 0px) + var(--calendar-toolbar-height, 0px))',
+        }}
+      >
         {weekdays.map((day) => (
           <div
             key={day}

@@ -375,9 +375,11 @@ export function EventCalendar({
 
   return (
     <div
-      className="flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
+      className="bg-card flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
       style={
         {
+          '--calendar-sticky-top': '4rem',
+          '--calendar-toolbar-height': '4rem',
           '--event-height': `${EventHeight}px`,
           '--event-gap': `${EventGap}px`,
           '--week-cells-height': `${WeekCellsHeight}px`,
@@ -391,108 +393,116 @@ export function EventCalendar({
         pastIndicatorTooltip={pastIndicatorTooltip}
       >
         <div
-          className={cn(
-            'flex items-center justify-between px-1 py-2',
-            className
-          )}
+          className="bg-card sticky z-40 rounded-t-lg border-b"
+          style={{ top: 'var(--calendar-sticky-top)' }}
         >
-          {view !== 'list' && (
-            <div className="flex items-center gap-1 sm:gap-4">
-              {view !== 'agenda' && (
-                <>
+          <div
+            className={cn(
+              'flex min-h-16 items-center justify-between px-1 py-2',
+              className
+            )}
+          >
+            {view !== 'list' && (
+              <div className="flex items-center gap-1 sm:gap-4">
+                {view !== 'agenda' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="max-[479px]:aspect-square max-[479px]:p-0!"
+                      onClick={handleToday}
+                    >
+                      <RiCalendarCheckLine
+                        className="min-[480px]:hidden"
+                        size={16}
+                        aria-hidden="true"
+                      />
+                      <span className="max-[479px]:sr-only">Heute</span>
+                    </Button>
+                    <div className="flex items-center sm:gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handlePrevious}
+                        aria-label="Previous"
+                      >
+                        <ChevronLeftIcon size={16} aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleNext}
+                        aria-label="Next"
+                      >
+                        <ChevronRightIcon size={16} aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </>
+                )}
+                <h2 className="m-0 text-sm font-semibold sm:text-lg md:text-xl">
+                  {viewTitle}
+                </h2>
+              </div>
+            )}
+
+            {view === 'list' && <h2 className="m-0">Tabellenansicht</h2>}
+            <div className="flex items-center gap-2">
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="max-[479px]:aspect-square max-[479px]:p-0!"
-                    onClick={handleToday}
+                    className="gap-1.5 max-[479px]:h-8"
                   >
-                    <RiCalendarCheckLine
-                      className="min-[480px]:hidden"
+                    <span>
+                      <span className="min-[480px]:hidden" aria-hidden="true">
+                        {viewLabels[view].charAt(0)}
+                      </span>
+                      <span className="max-[479px]:sr-only">
+                        {viewLabels[view]}
+                      </span>
+                    </span>
+                    <ChevronDownIcon
+                      className="-me-1 opacity-60"
                       size={16}
                       aria-hidden="true"
                     />
-                    <span className="max-[479px]:sr-only">Heute</span>
                   </Button>
-                  <div className="flex items-center sm:gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handlePrevious}
-                      aria-label="Previous"
-                    >
-                      <ChevronLeftIcon size={16} aria-hidden="true" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleNext}
-                      aria-label="Next"
-                    >
-                      <ChevronRightIcon size={16} aria-hidden="true" />
-                    </Button>
-                  </div>
-                </>
-              )}
-              <h2 className="text-sm font-semibold sm:text-lg md:text-xl">
-                {viewTitle}
-              </h2>
-            </div>
-          )}
-
-          {view === 'list' && <h2>Tabellenansicht</h2>}
-          <div className="flex items-center gap-2">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
-                  <span>
-                    <span className="min-[480px]:hidden" aria-hidden="true">
-                      {viewLabels[view].charAt(0)}
-                    </span>
-                    <span className="max-[479px]:sr-only">
-                      {viewLabels[view]}
-                    </span>
-                  </span>
-                  <ChevronDownIcon
-                    className="-me-1 opacity-60"
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-32">
+                  <DropdownMenuItem onClick={() => setView('month')}>
+                    Monat <DropdownMenuShortcut>M</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView('week')}>
+                    Woche <DropdownMenuShortcut>W</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView('day')}>
+                    Tag <DropdownMenuShortcut>T</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView('agenda')}>
+                    Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
+                  </DropdownMenuItem>{' '}
+                  <DropdownMenuItem onClick={() => setView('list')}>
+                    Liste <DropdownMenuShortcut>L</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {mode === 'verwaltung' && (
+                <Button
+                  className="max-[479px]:aspect-square max-[479px]:p-0!"
+                  onClick={() => {
+                    openDialog(null); // Ensure we're creating a new event
+                  }}
+                >
+                  <PlusIcon
+                    className="opacity-60 sm:-ms-1"
                     size={16}
                     aria-hidden="true"
                   />
+                  <span className="max-sm:sr-only">
+                    {einsatz_singular} hinzufügen
+                  </span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-32">
-                <DropdownMenuItem onClick={() => setView('month')}>
-                  Monat <DropdownMenuShortcut>M</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView('week')}>
-                  Woche <DropdownMenuShortcut>W</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView('day')}>
-                  Tag <DropdownMenuShortcut>T</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView('agenda')}>
-                  Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
-                </DropdownMenuItem>{' '}
-                <DropdownMenuItem onClick={() => setView('list')}>
-                  Liste <DropdownMenuShortcut>L</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {mode === 'verwaltung' && (
-              <Button
-                className="max-[479px]:aspect-square max-[479px]:p-0!"
-                onClick={() => {
-                  openDialog(null); // Ensure we're creating a new event
-                }}
-              >
-                <PlusIcon
-                  className="opacity-60 sm:-ms-1"
-                  size={16}
-                  aria-hidden="true"
-                />
-                <span className="max-sm:sr-only">
-                  {einsatz_singular} hinzufügen
-                </span>
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
