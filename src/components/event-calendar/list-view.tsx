@@ -288,6 +288,7 @@ export function ListView({
             aria-label="Datenreihe auswählen"
           />
         ),
+        enableHiding: false,
         enableColumnFilter: false,
       }),
       columnHelper.accessor((row) => row.title, {
@@ -531,6 +532,7 @@ export function ListView({
           </div>
         );
       },
+      enableHiding: false,
       enableColumnFilter: false,
     });
 
