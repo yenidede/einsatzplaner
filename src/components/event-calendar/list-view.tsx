@@ -684,7 +684,7 @@ export function ListView({
       }
     >
       <div
-        className="bg-card sticky z-50"
+        className="bg-card sticky z-40"
         style={{
           top: 'calc(var(--calendar-sticky-top, 0px) + var(--calendar-toolbar-height), 0px)',
         }}
