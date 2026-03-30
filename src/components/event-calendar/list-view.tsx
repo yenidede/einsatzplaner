@@ -631,15 +631,22 @@ export function ListView({
 
   return (
     <DataTable table={table} isLoading={isSomeQueryLoading}>
-      <DataTableAdvancedToolbar table={table}>
-        <DataTableFilterMenu
-          setPageCount={setPageCount}
-          key={String(!isSomeQueryLoading)}
-          table={table}
-          isLoading={isSomeQueryLoading}
-        />
-        <DataTableSortList table={table} />
-      </DataTableAdvancedToolbar>
+      <div
+        className="bg-card sticky z-50"
+        style={{
+          top: 'calc(var(--calendar-sticky-top) + var(--calendar-toolbar-height))',
+        }}
+      >
+        <DataTableAdvancedToolbar table={table}>
+          <DataTableFilterMenu
+            setPageCount={setPageCount}
+            key={String(!isSomeQueryLoading)}
+            table={table}
+            isLoading={isSomeQueryLoading}
+          />
+          <DataTableSortList table={table} />
+        </DataTableAdvancedToolbar>
+      </div>
     </DataTable>
   );
 }
