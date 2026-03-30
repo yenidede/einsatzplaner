@@ -19,7 +19,6 @@ import { UserPersonalProperties } from './userProfile/UserPersonalProperties';
 import { UserRoleManagement } from './userProfile/UserRoleManagement';
 import { UserDangerZone } from './userProfile/UserDangerZone';
 import { upsertUserPropertyValueAction } from '@/features/user_properties/user_property-actions';
-import { queryKeys } from '@/features/user/queryKeys';
 import {
   useOrganizationById,
   useOrganizationUserRoles,
@@ -49,6 +48,25 @@ interface UserRole {
     name: string;
     abbreviation: string;
   };
+}
+
+function invalidateUserQueriesForOrganization(
+  queryClient: ReturnType<typeof useQueryClient>,
+  organizationId: string
+) {
+  return queryClient.invalidateQueries({
+    predicate: (query) => {
+      if (query.queryKey[0] !== 'user') {
+        return false;
+      }
+
+      const scope = query.queryKey[1];
+      return (
+        Array.isArray(scope) &&
+        scope.some((value): value is string => value === organizationId)
+      );
+    },
+  });
 }
 
 export function UserProfileDialog({
@@ -272,6 +290,7 @@ export function UserProfileDialog({
         queryClient.invalidateQueries({
           queryKey: settingsQueryKeys.org.users(organizationId),
         }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
       ]);
 
       toast.success('Rollen erfolgreich aktualisiert', {
@@ -303,6 +322,7 @@ export function UserProfileDialog({
         queryClient.invalidateQueries({
           queryKey: settingsQueryKeys.org.users(organizationId),
         }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
       ]);
 
       toast.success('Benutzer erfolgreich entfernt', {
@@ -336,6 +356,7 @@ export function UserProfileDialog({
         queryClient.invalidateQueries({
           queryKey: settingsQueryKeys.org.users(organizationId),
         }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
       ]);
 
       toast.success('Erfolgreich zum Superadmin ernannt', {
@@ -374,6 +395,7 @@ export function UserProfileDialog({
         queryClient.invalidateQueries({
           queryKey: settingsQueryKeys.org.users(organizationId),
         }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
       ]);
 
       toast.success('Superadmin-Rolle erfolgreich entfernt', {
@@ -441,13 +463,7 @@ export function UserProfileDialog({
         queryClient.invalidateQueries({
           queryKey: settingsQueryKeys.org.users(organizationId),
         }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.users(organizationId),
-        }),
-        queryClient.refetchQueries({
-          queryKey: queryKeys.users(organizationId),
-          exact: true,
-        }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
       ]);
 
       setOriginalPropertyValues({ ...propertyValues });
