@@ -378,7 +378,7 @@ export function EventCalendar({
       className="bg-card flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
       style={
         {
-          '--calendar-sticky-top': '4rem',
+          '--calendar-sticky-top': '3.3rem',
           '--calendar-toolbar-height': '4rem',
           '--event-height': `${EventHeight}px`,
           '--event-gap': `${EventGap}px`,
