@@ -24,6 +24,7 @@ import {
   subMonths,
 } from 'date-fns';
 import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
+import type { PermissionType } from '@/lib/auth/permissions';
 
 import { ValidateEinsatzCreate } from './validation-service';
 import z from 'zod';
@@ -57,6 +58,30 @@ export type EinsatzCreateResponse = {
   einsatz?: Einsatz;
   conflicts: EinsatzConflict[];
 };
+
+type AuthSession = Awaited<ReturnType<typeof requireAuth>>['session'];
+
+async function hasOrgPermission(
+  session: AuthSession,
+  orgId: string,
+  permission: PermissionType
+): Promise<boolean> {
+  if (!session.user.orgIds.includes(orgId)) {
+    return false;
+  }
+
+  return hasPermission(session, permission, orgId);
+}
+
+async function assertOrgPermission(
+  session: AuthSession,
+  orgId: string,
+  permission: PermissionType
+): Promise<void> {
+  if (!(await hasOrgPermission(session, orgId, permission))) {
+    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
+  }
+}
 
 /**
  * Check if users have conflicting time entries with an Einsatz
@@ -144,7 +169,6 @@ async function checkEinsatzConflicts(
   }));
 }
 
-// TODO: Add auth check
 export async function getEinsatzWithDetailsById(
   id: string
 ): Promise<EinsatzDetailed | null | Response> {
@@ -157,8 +181,7 @@ export async function getEinsatzWithDetailsById(
 
   if (!einsaetzeFromDb) return null;
 
-  // Prüfe ob User Zugriff auf diese Organisation hat
-  if (!session.user.orgIds.includes(einsaetzeFromDb.org_id)) {
+  if (!(await hasOrgPermission(session, einsaetzeFromDb.org_id, 'einsaetze:read'))) {
     return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
       status: 403,
     });
@@ -253,6 +276,24 @@ export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
 }
 
 export async function getEinsatzForCalendar(id: string) {
+  const { session } = await requireAuth();
+  if (!isValidUuid(id)) {
+    return new Response('Invalid ID', { status: 400 });
+  }
+
+  const einsatz = await prisma.einsatz.findUnique({
+    where: { id },
+    select: { org_id: true },
+  });
+
+  if (!einsatz) {
+    return null;
+  }
+
+  if (!(await hasOrgPermission(session, einsatz.org_id, 'einsaetze:read'))) {
+    return new Response('Unauthorized', { status: 403 });
+  }
+
   return getEinsatzForCalendarFromDb(id);
 }
 
@@ -752,16 +793,6 @@ export async function createEinsatz({
 }): Promise<EinsatzCreateResponse> {
   const { session, userIds } = await requireAuth();
 
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:create',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new ForbiddenError('Fehlende Berechtigungen');
-  }
-
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   const useOrgId =
     data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
@@ -770,9 +801,7 @@ export async function createEinsatz({
     throw new BadRequestError('Organisation muss angegeben werden');
   }
 
-  if (!userOrgIds.includes(useOrgId)) {
-    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
-  }
+  await assertOrgPermission(session, useOrgId, 'einsaetze:create');
 
   // Check for conflicts when creating with assigned users (unless disabled)
   let conflicts: EinsatzConflict[] = [];
@@ -869,15 +898,6 @@ export async function updateEinsatzTime(data: {
   disableTimeConflicts?: boolean;
 }): Promise<EinsatzUpdateResponse> {
   const { session } = await requireAuth();
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:update',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new ForbiddenError('Fehlende Berechtigungen');
-  }
 
   const dataSchema = z.object({
     id: z.string(),
@@ -897,11 +917,18 @@ export async function updateEinsatzTime(data: {
   const existingEinsatz = await prisma.einsatz.findUnique({
     where: { id },
     select: {
+      org_id: true,
       einsatz_helper: {
         select: { user_id: true },
       },
     },
   });
+
+  if (!existingEinsatz) {
+    throw new Response(`Einsatz with ID ${id} not found`, { status: 404 });
+  }
+
+  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
 
   let conflicts: EinsatzConflict[] = [];
 
@@ -997,6 +1024,12 @@ export async function toggleUserAssignmentToEinsatz(
 
   const isSignedInUserAssigned = existingEinsatz.einsatz_helper.some(
     (helper) => helper.user_id === session.user.id
+  );
+
+  await assertOrgPermission(
+    session,
+    existingEinsatz.org_id,
+    isSignedInUserAssigned ? 'einsaetze:leave' : 'einsaetze:join'
   );
 
   // Check for conflicts only when assigning (not when removing)
@@ -1111,30 +1144,17 @@ export async function updateEinsatz({
   data: Partial<EinsatzCreate>;
   disableTimeConflicts?: boolean;
 }): Promise<EinsatzUpdateResponse> {
-  const { session, userIds } = await requireAuth();
-
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:update',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new ForbiddenError('Fehlende Berechtigungen');
-  }
+  const { session } = await requireAuth();
 
   if (data.template_id && false) {
     // TODO implement server side validation
-    const parsedDynamicFields = await ValidateEinsatzCreate(
-      data as EinsatzCreate
-    );
+    await ValidateEinsatzCreate(data as EinsatzCreate);
   }
   const {
     id,
     categories,
     einsatz_fields,
     assignedUsers,
-    org_id,
     userProperties,
     ...updateData
   } = data;
@@ -1157,10 +1177,7 @@ export async function updateEinsatz({
     throw new Response(`Einsatz with ID ${id} not found`, { status: 404 });
   }
 
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
-  }
+  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
 
   // Check for conflicts when assigning users (unless disabled)
   let conflicts: EinsatzConflict[] = [];
@@ -1245,17 +1262,7 @@ export async function updateEinsatzStatus(
   einsatzId: string,
   statusId: string
 ): Promise<Einsatz> {
-  const { session, userIds } = await requireAuth();
-
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:update',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new ForbiddenError('Fehlende Berechtigungen');
-  }
+  const { session } = await requireAuth();
 
   const existingEinsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
@@ -1268,10 +1275,7 @@ export async function updateEinsatzStatus(
     });
   }
 
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
-  }
+  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
 
   const updatedEinsatz = await prisma.einsatz.update({
     where: { id: einsatzId },
@@ -1295,16 +1299,6 @@ export async function updateEinsatzStatus(
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   const { session } = await requireAuth();
 
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:delete',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new Response('Unauthorized', { status: 403 });
-  }
-
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
     select: { id: true, org_id: true },
@@ -1315,6 +1309,8 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
       status: 404,
     });
   }
+
+  await assertOrgPermission(session, einsatz.org_id, 'einsaetze:delete');
 
   try {
     await prisma.einsatz.delete({
@@ -1333,14 +1329,21 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
 export async function deleteEinsaetzeByIds(
   einsatzIds: string[]
 ): Promise<void> {
-  // TODO: check if logged in user has permission to delete this Einsatz
+  const { session } = await requireAuth();
 
   const einsatz = await prisma.einsatz.findMany({
     where: { id: { in: einsatzIds } },
+    select: { id: true, org_id: true },
   });
   if (!einsatz || einsatz.length === 0) {
     throw new BadRequestError(`No Einsaetze found: ${einsatzIds.join(', ')}`);
   }
+
+  await Promise.all(
+    einsatz.map(async (entry) => {
+      await assertOrgPermission(session, entry.org_id, 'einsaetze:delete');
+    })
+  );
 
   try {
     await prisma.einsatz.deleteMany({
@@ -1422,31 +1425,6 @@ function isValidUuid(id?: unknown): boolean {
   return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(
     id
   );
-}
-
-async function getEinsatzByIdFromDb(
-  id: string,
-  org_id: string
-): Promise<Einsatz | null> {
-  /*   if (!isValidUuid(id)) {
-      console.error("ungültige IDs", { id});
-      return null;
-    }
-    if (!isValidUuid(org_id)) {
-      console.error("ungültige IDs", {org_id });
-      return null;
-    } */
-
-  return prisma.einsatz.findUnique({
-    where: { id, org_id },
-    include: {
-      organization: true,
-      einsatz_to_category: { include: { einsatz_category: true } },
-      einsatz_helper: { include: { user: true } },
-      einsatz_status: true,
-      user: true,
-    },
-  });
 }
 
 async function getAllEinsaetzeFromDb(
