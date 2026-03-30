@@ -448,10 +448,7 @@ export function EventCalendar({
             <div className="flex items-center gap-2">
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="gap-1.5 max-[479px]:h-8"
-                  >
+                  <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
                     <span>
                       <span className="min-[480px]:hidden" aria-hidden="true">
                         {viewLabels[view].charAt(0)}
@@ -507,17 +504,13 @@ export function EventCalendar({
         </div>
 
         <div className="flex flex-1 flex-col">
-          {effectiveEvents.length === 0 && view !== 'list' && (
-            <div className="text-muted-foreground mx-2 flex items-center gap-2">
-              {effectiveIsEventsLoading ? (
-                <>
-                  Lade {einsatz_plural}... <Loader className="animate-spin" />
-                </>
-              ) : (
-                <>Noch keine {einsatz_plural} vorhanden.</>
-              )}
-            </div>
-          )}
+          {effectiveIsEventsLoading &&
+            effectiveEvents.length === 0 &&
+            view !== 'list' && (
+              <div className="text-muted-foreground mx-2 flex items-center gap-2">
+                Lade {einsatz_plural}... <Loader className="animate-spin" />
+              </div>
+            )}
           {view === 'month' && (
             <MonthView
               currentDate={currentDate}
