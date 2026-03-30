@@ -13,7 +13,6 @@ export const queryKeys = {
   einsaetzeForCalendarPrefix: (orgId: string) =>
     ['einsatz', 'calendar', orgId] as const,
   detailedEinsatz: (id: string) => ['einsatz', id, 'detail'] as const,
-  einsatzHelpers: (id: string) => ['einsatz', id, 'detail', 'helpers'] as const,
   categories: (activeOrgId: string) => ['categories', activeOrgId] as const,
   categoriesByOrgIds: (orgIds: string[]) =>
     ['categories', 'byOrgIds', orgIds] as const,
