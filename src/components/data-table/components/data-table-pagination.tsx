@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 
 interface DataTablePaginationProps<TData> extends React.ComponentProps<'div'> {
   table: Table<TData>;
+  actionBar?: React.ReactNode;
   pageSizeOptions?: number[];
   /** Hide the "X von Y Zeile(n) ausgewählt" text on mobile (max-md). */
   hideRowCountOnMobile?: boolean;
@@ -27,6 +28,7 @@ export const FirstPageAlias = 0.1;
 
 export function DataTablePagination<TData>({
   table,
+  actionBar,
   pageSizeOptions = [10, 20, 30, 40, 50],
   hideRowCountOnMobile,
   className,
@@ -42,12 +44,15 @@ export function DataTablePagination<TData>({
     >
       <div
         className={cn(
-          'text-muted-foreground flex-1 text-sm whitespace-nowrap',
+          'text-muted-foreground flex flex-1 items-center gap-2 text-sm whitespace-nowrap',
           hideRowCountOnMobile && 'max-md:hidden'
         )}
       >
-        {table.getFilteredSelectedRowModel().rows.length} von{' '}
-        {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.
+        {actionBar}
+        <span>
+          {table.getFilteredSelectedRowModel().rows.length} von{' '}
+          {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.
+        </span>
       </div>
       <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
         <div className="flex items-center space-x-2">

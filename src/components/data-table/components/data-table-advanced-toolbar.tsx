@@ -10,12 +10,14 @@ interface DataTableAdvancedToolbarProps<
   TData,
 > extends React.ComponentProps<'div'> {
   table: Table<TData>;
+  viewOptionsLeadingActions?: React.ReactNode;
 }
 
 export function DataTableAdvancedToolbar<TData>({
   table,
   children,
   className,
+  viewOptionsLeadingActions,
   ...props
 }: DataTableAdvancedToolbarProps<TData>) {
   return (
@@ -30,7 +32,10 @@ export function DataTableAdvancedToolbar<TData>({
     >
       <div className="flex flex-1 flex-wrap items-center gap-2">{children}</div>
       <div className="flex items-center gap-2">
-        <DataTableViewOptions table={table} />
+        <DataTableViewOptions
+          table={table}
+          leadingActions={viewOptionsLeadingActions}
+        />
       </div>
     </div>
   );
