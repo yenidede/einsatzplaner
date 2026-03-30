@@ -119,7 +119,7 @@ type ListViewProps = {
   onEventEdit: (eventId: string) => void;
   onEventCreate: (startTime: Date) => void;
   onEventDelete: (eventId: string, title: string) => void;
-  onMultiEventDelete: (eventIds: string[]) => void;
+  onMultiEventDelete: (eventIds: string[]) => Promise<void>;
   mode: CalendarMode;
 };
 
@@ -604,8 +604,12 @@ export function ListView({
       return;
     }
 
-    onMultiEventDelete(selectedEventIds);
-    table.resetRowSelection();
+    try {
+      await onMultiEventDelete(selectedEventIds);
+      table.resetRowSelection();
+    } catch (error) {
+      console.error('Mehrfaches Löschen fehlgeschlagen:', error);
+    }
   };
 
   if (data instanceof Response) {

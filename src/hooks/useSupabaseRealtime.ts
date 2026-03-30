@@ -5,6 +5,7 @@ import { queryKeys } from '@/features/einsatz/queryKeys';
 import { getEinsatzRealtimeMetadataById } from '@/features/einsatz/dal-einsatz';
 import { supabaseRealtimeClient } from '@/lib/supabase-client';
 import { getMonthKeysForDate } from '@/features/einsatz/hooks/useEinsatzMutations';
+import { BadRequestError } from '@/lib/errors';
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
@@ -128,7 +129,23 @@ export function useSupabaseRealtime(orgId?: string) {
             (payload.old as { einsatz_id?: string })?.einsatz_id;
           if (!einsatzId || !orgId) return;
 
-          const einsatz = await getEinsatzRealtimeMetadataById(einsatzId);
+          let einsatz: Awaited<ReturnType<typeof getEinsatzRealtimeMetadataById>>;
+
+          try {
+            einsatz = await getEinsatzRealtimeMetadataById(einsatzId);
+          } catch (error) {
+            if (!isMountedRef.current) {
+              return;
+            }
+
+            if (error instanceof BadRequestError) {
+              return;
+            }
+
+            console.error('Realtime-Metadaten konnten nicht geladen werden:', error);
+            return;
+          }
+
           if (!isMountedRef.current) return;
           if (!einsatz || einsatz instanceof Response || einsatz.org_id !== orgId) {
             return;

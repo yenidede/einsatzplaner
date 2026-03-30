@@ -54,6 +54,26 @@ function invalidateAllCalendarMonthsForOrg(
   });
 }
 
+function invalidateAgendaForOrg(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string
+) {
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.einsaetzeForAgenda(orgId),
+  });
+}
+
+function invalidateCalendarSnapshot(
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshot: CalendarCacheSnapshot
+) {
+  snapshot.forEach(([key]) => {
+    queryClient.invalidateQueries({
+      queryKey: key,
+    });
+  });
+}
+
 function invalidateActivityLogs(
   queryClient: ReturnType<typeof useQueryClient>
 ) {
@@ -120,19 +140,6 @@ function invalidateEinsatzQueries(
       queryKey: queryKeys.detailedEinsatz(einsatzId),
     });
   }
-}
-
-function invalidateMultipleEinsatzQueries(
-  queryClient: ReturnType<typeof useQueryClient>,
-  einsatzIds: string[]
-) {
-  invalidateEinsatzQueries(queryClient);
-
-  einsatzIds.forEach((einsatzId) => {
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.detailedEinsatz(einsatzId),
-    });
-  });
 }
 
 import {
@@ -271,12 +278,14 @@ export function useCreateEinsatz(
         invalidateActivityLogs(queryClient);
       }
       if (activeOrgId && event && hasDefinedStart(event)) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         const dates = getDatesSpanningEvent({
           start: event.start,
           end: 'end' in event && event.end != null ? event.end : undefined,
         });
         invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
@@ -404,7 +413,7 @@ export function useUpdateEinsatz(
         invalidateActivityLogs(queryClient);
       }
     },
-    onSettled: (data, _error, vars) => {
+    onSettled: (data, _error, vars, context) => {
       const event =
         data && 'einsatz' in data && data.einsatz
           ? data.einsatz
@@ -417,14 +426,20 @@ export function useUpdateEinsatz(
       if (!data && fallbackEinsatzId) {
         invalidateEinsatzQueries(queryClient, fallbackEinsatzId);
       }
+      if (activeOrgId) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
+      }
+      if (activeOrgId && context?.previousData?.length) {
+        invalidateCalendarSnapshot(queryClient, context.previousData);
+      } else if (activeOrgId) {
+        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
+      }
       if (activeOrgId && event && hasDefinedStart(event)) {
         const dates = getDatesSpanningEvent({
           start: event.start,
           end: 'end' in event && event.end != null ? event.end : undefined,
         });
         invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
-      } else if (activeOrgId) {
-        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
   });
@@ -501,12 +516,14 @@ export function useConfirmEinsatz(
         invalidateActivityLogs(queryClient);
       }
       if (activeOrgId && data && hasDefinedStart(data)) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         const dates = getDatesSpanningEvent({
           start: data.start,
           end: 'end' in data && data.end != null ? data.end : undefined,
         });
         invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
@@ -571,12 +588,14 @@ export function useToggleUserAssignment(
         invalidateActivityLogs(queryClient);
       }
       if (activeOrgId && data && hasDefinedStart(data)) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         const dates = getDatesSpanningEvent({
           start: data.start,
           end: 'end' in data && data.end != null ? data.end : undefined,
         });
         invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
@@ -627,8 +646,8 @@ export function useDeleteEinsatz(
       toast.success(`${einsatzSingular} '${title}' wurde gelöscht.`);
     },
     onSettled: (_data, _error, variables) => {
+      invalidateEinsatzQueries(queryClient);
       if (variables?.eventId) {
-        invalidateEinsatzQueries(queryClient, variables.eventId);
         queryClient.removeQueries({
           queryKey: queryKeys.detailedEinsatz(variables.eventId),
         });
@@ -683,11 +702,8 @@ export function useDeleteMultipleEinsaetze(
       );
     },
     onSettled: (_data, _error, variables) => {
+      invalidateEinsatzQueries(queryClient);
       if (variables?.eventIds) {
-        invalidateMultipleEinsatzQueries(
-          queryClient,
-          variables.eventIds
-        );
         variables.eventIds.forEach((id) => {
           queryClient.removeQueries({
             queryKey: queryKeys.detailedEinsatz(id),

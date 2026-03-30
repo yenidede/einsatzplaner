@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { createRoleNameOverrides } from '@/components/Roles';
+import { queryKeys as userQueryKeys } from '@/features/user/queryKeys';
 
 interface UserProfileDialogProps {
   isOpen: boolean;
@@ -56,8 +57,24 @@ function invalidateUserQueriesForOrganization(
 ) {
   const queryKey = settingsQueryKeys.org.all(organizationId);
 
-  return queryClient.invalidateQueries({
+  queryClient.invalidateQueries({
     queryKey,
+  });
+
+  return queryClient.invalidateQueries({
+    queryKey: userQueryKeys.users(undefined),
+    predicate: (query) => {
+      if (query.queryKey[0] !== 'user') {
+        return false;
+      }
+
+      const orgIds = query.queryKey[1];
+
+      return (
+        Array.isArray(orgIds) &&
+        orgIds.some((orgId): orgId is string => orgId === organizationId)
+      );
+    },
   });
 }
 
