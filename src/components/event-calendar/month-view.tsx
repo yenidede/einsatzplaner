@@ -105,7 +105,7 @@ export function MonthView({
       <div
         className="bg-card border-border/70 sticky z-30 grid grid-cols-7 border-b"
         style={{
-          top: 'calc(var(--calendar-sticky-top) + var(--calendar-toolbar-height))',
+          top: 'calc(var(--calendar-sticky-top, 0px) + var(--calendar-toolbar-height, 0px))',
         }}
       >
         {weekdays.map((day) => (
