@@ -328,7 +328,7 @@ export function WeekView({
       <div
         className="bg-card border-border/70 sticky z-30 grid grid-cols-8 border-b"
         style={{
-          top: 'calc(var(--calendar-sticky-top) + var(--calendar-toolbar-height))',
+          top: 'calc(var(--calendar-sticky-top, 0px) + var(--calendar-toolbar-height, 0px))',
         }}
       >
         <div className="text-muted-foreground/70 px-2 py-2 text-left text-sm">
