@@ -29,9 +29,8 @@ export function DataTableViewOptions<TData>({
   const [searchValue, setSearchValue] = React.useState('');
 
   const columns = React.useMemo(
-    () =>
-      table.getAllLeafColumns().filter((column) => column.getCanHide()),
-    [table]
+    () => table.getAllLeafColumns().filter((column) => column.getCanHide()),
+    [table, table.getAllLeafColumns()]
   );
 
   const filteredColumns = React.useMemo(() => {
