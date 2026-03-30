@@ -1,5 +1,5 @@
 export const queryKeys = {
-  allLists: () => ['einsaetze', 'list'] as const, // used to invalidate all List
+  allLists: () => ['einsatz', 'list'] as const, // used to invalidate all List
   einsaetze: (orgId: string) => ['einsatz', 'list', orgId] as const,
   einsaetzeListPrefix: () => ['einsatz', 'list'] as const,
   einsaetzeTableView: (orgIds: string[]) =>
