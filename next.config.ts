@@ -22,7 +22,13 @@ const nextConfig: NextConfig = {
     '/*': ['./src/generated/prisma/**', './src/generated/prisma/runtime/**'],
   },
   images: {
-    domains: ['fgxvzejucaxteqvnhojt.supabase.co'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'fgxvzejucaxteqvnhojt.supabase.co',
+        pathname: '/storage/**',
+      },
+    ],
   },
 };
 
