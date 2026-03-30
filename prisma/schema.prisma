@@ -24,6 +24,9 @@ model change_log {
 
   @@index([einsatz_id, created_at])
   @@index([user_id, created_at])
+  @@index([affected_user, created_at])
+  @@index([created_at])
+  @@index([einsatz_id, type_id])
 }
 
 model change_type {
@@ -77,6 +80,8 @@ model einsatz_category {
   organization         organization           @relation(fields: [org_id], references: [id], onDelete: Cascade)
   einsatz_to_category  einsatz_to_category[]
   template_to_category template_to_category[]
+
+  @@index([org_id, value])
 }
 
 model einsatz_comment {
@@ -132,6 +137,8 @@ model einsatz_template {
   template_field                template_field[]
   template_to_category          template_to_category[]
   template_user_property        template_user_property[]
+
+  @@index([org_id, is_paused, name])
 }
 
 model organization {
@@ -222,6 +229,10 @@ model user_organization_role {
   organization           organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
   role                   role         @relation(fields: [role_id], references: [id], onDelete: NoAction)
   user                   user         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, role_id])
+  @@index([org_id, user_id])
+  @@index([user_id, org_id])
 }
 
 model user_property {
@@ -233,6 +244,9 @@ model user_property {
   field                  field                    @relation(fields: [field_id], references: [id], onDelete: Cascade)
   organization           organization             @relation(fields: [org_id], references: [id], onDelete: Cascade)
   user_property_value    user_property_value[]
+
+  @@index([org_id, field_id])
+  @@index([org_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -252,6 +266,8 @@ model invitation {
   role         role         @relation(fields: [role_id], references: [id], onDelete: Cascade)
 
   @@index([org_id, accepted])
+  @@index([email, org_id, accepted, expires_at])
+  @@index([token])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -262,6 +278,8 @@ model einsatz_field {
   id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz    einsatz @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   field      field   @relation(fields: [field_id], references: [id], onDelete: Cascade)
+
+  @@index([einsatz_id, field_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -292,6 +310,9 @@ model template_field {
   field_id         String           @db.Uuid
   field            field            @relation(fields: [field_id], references: [id], onDelete: Cascade)
   einsatz_template einsatz_template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@index([field_id, template_id])
+  @@index([template_id, field_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -301,6 +322,8 @@ model einsatz_to_category {
   id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz_category einsatz_category @relation(fields: [category_id], references: [id], onDelete: Cascade)
   einsatz          einsatz          @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
+
+  @@index([einsatz_id, category_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -340,6 +363,7 @@ model user_property_value {
 
   @@index([user_property_id])
   @@index([user_id])
+  @@index([user_id, user_property_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -354,6 +378,8 @@ model calendar_subscription {
   last_accessed DateTime?    @db.Timestamptz(6)
   organization  organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
   user          user         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, user_id, is_active])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -365,6 +391,8 @@ model user_session {
   created_at    DateTime  @default(now()) @db.Timestamptz(6)
   updated_at    DateTime? @db.Timestamp(6)
   user          user?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, expires_at])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -385,6 +413,8 @@ model organization_address {
   city         String
   country      String
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, created_at])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -396,6 +426,8 @@ model organization_bank_account {
   iban         String
   bic          String
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, created_at])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -408,6 +440,9 @@ model organization_details {
   zvr          String?
   authority    String?
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, created_at])
+  @@index([org_id])
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -420,6 +455,8 @@ model einsatz_user_property {
   min_matching_users Int?          @db.SmallInt
   einsatz            einsatz       @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user_property      user_property @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
+
+  @@index([einsatz_id, user_property_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -429,6 +466,8 @@ model template_to_category {
   category_id      String           @db.Uuid
   einsatz_category einsatz_category @relation(fields: [category_id], references: [id], onDelete: Cascade)
   einsatz_template einsatz_template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@index([template_id, category_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -440,6 +479,8 @@ model template_user_property {
   min_matching_users Int?             @db.SmallInt
   einsatz_template   einsatz_template @relation(fields: [template_id], references: [id], onDelete: Cascade)
   user_property      user_property    @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
+
+  @@index([template_id, user_property_id])
 }
 
 model pdfTemplate {
