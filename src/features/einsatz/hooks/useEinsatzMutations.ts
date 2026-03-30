@@ -80,14 +80,26 @@ async function cancelEinsatzQueries(
     queriesToCancel.push(
       queryClient.cancelQueries({
         queryKey: queryKeys.detailedEinsatz(einsatzId),
-      }),
-      queryClient.cancelQueries({
-        queryKey: queryKeys.einsatzHelpers(einsatzId),
       })
     );
   }
 
   await Promise.all(queriesToCancel);
+}
+
+async function cancelMultipleEinsatzQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  activeOrgId: string | undefined,
+  einsatzIds: string[]
+) {
+  await Promise.all([
+    cancelEinsatzQueries(queryClient, activeOrgId),
+    ...einsatzIds.map((einsatzId) =>
+      queryClient.cancelQueries({
+        queryKey: queryKeys.detailedEinsatz(einsatzId),
+      })
+    ),
+  ]);
 }
 
 function invalidateEinsatzQueries(
@@ -109,10 +121,21 @@ function invalidateEinsatzQueries(
     queryClient.invalidateQueries({
       queryKey: queryKeys.detailedEinsatz(einsatzId),
     });
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.einsatzHelpers(einsatzId),
-    });
   }
+}
+
+function invalidateMultipleEinsatzQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  activeOrgId: string | undefined,
+  einsatzIds: string[]
+) {
+  invalidateEinsatzQueries(queryClient, activeOrgId);
+
+  einsatzIds.forEach((einsatzId) => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.detailedEinsatz(einsatzId),
+    });
+  });
 }
 
 import {
@@ -612,9 +635,6 @@ export function useDeleteEinsatz(
         queryClient.removeQueries({
           queryKey: queryKeys.detailedEinsatz(variables.eventId),
         });
-        queryClient.removeQueries({
-          queryKey: queryKeys.einsatzHelpers(variables.eventId),
-        });
       }
       invalidateActivityLogs(queryClient);
       if (activeOrgId) {
@@ -636,7 +656,7 @@ export function useDeleteMultipleEinsaetze(
       return deleteEinsaetzeByIds(eventIds);
     },
     onMutate: async ({ eventIds }) => {
-      await cancelEinsatzQueries(queryClient, activeOrgId);
+      await cancelMultipleEinsatzQueries(queryClient, activeOrgId, eventIds);
       if (!activeOrgId) return {};
       const idSet = new Set(eventIds);
       const previousData: CalendarCacheSnapshot = [];
@@ -667,17 +687,17 @@ export function useDeleteMultipleEinsaetze(
     },
     onSettled: (_data, _error, variables) => {
       if (variables?.eventIds) {
+        invalidateMultipleEinsatzQueries(
+          queryClient,
+          activeOrgId,
+          variables.eventIds
+        );
         variables.eventIds.forEach((id) => {
-          invalidateEinsatzQueries(queryClient, activeOrgId, id);
           queryClient.removeQueries({
             queryKey: queryKeys.detailedEinsatz(id),
           });
-          queryClient.removeQueries({
-            queryKey: queryKeys.einsatzHelpers(id),
-          });
         });
       }
-      invalidateEinsatzQueries(queryClient, activeOrgId);
       invalidateActivityLogs(queryClient);
       if (activeOrgId) {
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
