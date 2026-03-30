@@ -1,0 +1,11 @@
+{
+  "ignoreUnresolved": [
+    "@/generated/prisma",
+    "@/generated/prisma/runtime/library"
+  ],
+  "ignoreDependencies": [
+    "@prisma/client",
+    "eslint-config-next",
+    "eslint-plugin-react-hooks"
+  ]
+}
