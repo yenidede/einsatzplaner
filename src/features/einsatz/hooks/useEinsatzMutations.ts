@@ -71,10 +71,15 @@ async function cancelEinsatzQueries(
     queryClient.cancelQueries({
       queryKey: queryKeys.einsaetzeListPrefix(),
     }),
-    queryClient.cancelQueries({
-      queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
-    }),
   ];
+
+  if (activeOrgId) {
+    queriesToCancel.push(
+      queryClient.cancelQueries({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      })
+    );
+  }
 
   if (einsatzId) {
     queriesToCancel.push(
@@ -104,18 +109,11 @@ async function cancelMultipleEinsatzQueries(
 
 function invalidateEinsatzQueries(
   queryClient: ReturnType<typeof useQueryClient>,
-  activeOrgId: string | undefined,
   einsatzId?: string
 ) {
   queryClient.invalidateQueries({
     queryKey: queryKeys.einsaetzeListPrefix(),
   });
-
-  if (activeOrgId) {
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
-    });
-  }
 
   if (einsatzId) {
     queryClient.invalidateQueries({
@@ -126,10 +124,9 @@ function invalidateEinsatzQueries(
 
 function invalidateMultipleEinsatzQueries(
   queryClient: ReturnType<typeof useQueryClient>,
-  activeOrgId: string | undefined,
   einsatzIds: string[]
 ) {
-  invalidateEinsatzQueries(queryClient, activeOrgId);
+  invalidateEinsatzQueries(queryClient);
 
   einsatzIds.forEach((einsatzId) => {
     queryClient.invalidateQueries({
@@ -269,7 +266,7 @@ export function useCreateEinsatz(
     },
     onSettled: (data, _error, vars) => {
       const event = data?.einsatz ?? vars?.event;
-      invalidateEinsatzQueries(queryClient, activeOrgId, data?.einsatz?.id);
+      invalidateEinsatzQueries(queryClient, data?.einsatz?.id);
       if (data?.einsatz?.id) {
         invalidateActivityLogs(queryClient);
       }
@@ -403,7 +400,7 @@ export function useUpdateEinsatz(
       }
 
       if (einsatzId) {
-        invalidateEinsatzQueries(queryClient, activeOrgId, einsatzId);
+        invalidateEinsatzQueries(queryClient, einsatzId);
         invalidateActivityLogs(queryClient);
       }
     },
@@ -418,7 +415,7 @@ export function useUpdateEinsatz(
               : null;
       const fallbackEinsatzId = vars?.event?.id;
       if (!data && fallbackEinsatzId) {
-        invalidateEinsatzQueries(queryClient, activeOrgId, fallbackEinsatzId);
+        invalidateEinsatzQueries(queryClient, fallbackEinsatzId);
       }
       if (activeOrgId && event && hasDefinedStart(event)) {
         const dates = getDatesSpanningEvent({
@@ -499,7 +496,7 @@ export function useConfirmEinsatz(
       toast.success(`${einsatzSingular} '${data.title}' wurde bestätigt.`);
     },
     onSettled: (data, _error, eventId) => {
-      invalidateEinsatzQueries(queryClient, activeOrgId, eventId);
+      invalidateEinsatzQueries(queryClient, eventId);
       if (eventId) {
         invalidateActivityLogs(queryClient);
       }
@@ -569,7 +566,7 @@ export function useToggleUserAssignment(
         toast.success(`Sie haben sich erfolgreich von ${data.title} ausgetragen`);
     },
     onSettled: (data) => {
-      invalidateEinsatzQueries(queryClient, activeOrgId, data?.id);
+      invalidateEinsatzQueries(queryClient, data?.id);
       if (data?.id) {
         invalidateActivityLogs(queryClient);
       }
@@ -631,7 +628,7 @@ export function useDeleteEinsatz(
     },
     onSettled: (_data, _error, variables) => {
       if (variables?.eventId) {
-        invalidateEinsatzQueries(queryClient, activeOrgId, variables.eventId);
+        invalidateEinsatzQueries(queryClient, variables.eventId);
         queryClient.removeQueries({
           queryKey: queryKeys.detailedEinsatz(variables.eventId),
         });
@@ -689,7 +686,6 @@ export function useDeleteMultipleEinsaetze(
       if (variables?.eventIds) {
         invalidateMultipleEinsatzQueries(
           queryClient,
-          activeOrgId,
           variables.eventIds
         );
         variables.eventIds.forEach((id) => {

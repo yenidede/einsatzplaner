@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/features/einsatz/queryKeys';
-import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
+import { getEinsatzRealtimeMetadataById } from '@/features/einsatz/dal-einsatz';
 import { supabaseRealtimeClient } from '@/lib/supabase-client';
 import { getMonthKeysForDate } from '@/features/einsatz/hooks/useEinsatzMutations';
 import type {
@@ -128,14 +128,17 @@ export function useSupabaseRealtime(orgId?: string) {
             (payload.old as { einsatz_id?: string })?.einsatz_id;
           if (!einsatzId || !orgId) return;
 
-          const einsatz = await getEinsatzWithDetailsById(einsatzId);
+          const einsatz = await getEinsatzRealtimeMetadataById(einsatzId);
           if (!isMountedRef.current) return;
           if (!einsatz || einsatz instanceof Response || einsatz.org_id !== orgId) {
             return;
           }
 
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+          const monthKeys = getMonthKeysForDate(einsatz.start, false);
+          monthKeys.forEach((monthKey) => {
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.einsaetzeForCalendar(orgId, monthKey),
+            });
           });
           queryClient.invalidateQueries({
             queryKey: queryKeys.einsaetzeForAgenda(orgId),

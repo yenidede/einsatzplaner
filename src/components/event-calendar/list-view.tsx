@@ -129,7 +129,7 @@ type ListViewProps = {
  * @param onEventEdit - Callback invoked with an event id when a row's "Bearbeiten" action is selected
  * @param onEventCreate - Callback invoked with a start date when the "Datensatz anlegen" action is selected
  * @param onEventDelete - Callback invoked with an event id and title when a row's "Löschen" action is selected
- * @param onMultiEventDelete - Callback for deleting multiple events; accepted by the props type but currently unused in this component
+ * @param onMultiEventDelete - Callback for deleting multiple events; invoked by handleMultiDelete with an array of event ids
  * @param mode - Calendar mode that determines which status text is displayed
  * @returns A React element containing the list view table and toolbar
  */
@@ -575,8 +575,14 @@ export function ListView({
     },
   });
 
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const selectedEventIds = selectedRows.map((row) => row.original.id);
+  const filteredSelectedRows = table.getFilteredSelectedRowModel().rows;
+
+  const { selectedRows, selectedEventIds } = useMemo(() => {
+    return {
+      selectedRows: filteredSelectedRows,
+      selectedEventIds: filteredSelectedRows.map((row) => row.original.id),
+    };
+  }, [filteredSelectedRows]);
 
   const handleMultiDelete = async () => {
     if (selectedEventIds.length === 0) {
@@ -673,6 +679,7 @@ export function ListView({
               size="icon"
               className="size-8"
               aria-label="Ausgewählte Datensätze löschen"
+              disabled={selectedRows.length === 0}
               onClick={() => {
                 void handleMultiDelete();
               }}

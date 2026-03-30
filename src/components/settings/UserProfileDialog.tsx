@@ -54,18 +54,10 @@ function invalidateUserQueriesForOrganization(
   queryClient: ReturnType<typeof useQueryClient>,
   organizationId: string
 ) {
-  return queryClient.invalidateQueries({
-    predicate: (query) => {
-      if (query.queryKey[0] !== 'user') {
-        return false;
-      }
+  const queryKey = settingsQueryKeys.org.all(organizationId);
 
-      const scope = query.queryKey[1];
-      return (
-        Array.isArray(scope) &&
-        scope.some((value): value is string => value === organizationId)
-      );
-    },
+  return queryClient.invalidateQueries({
+    queryKey,
   });
 }
 
