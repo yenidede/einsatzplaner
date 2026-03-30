@@ -30,7 +30,7 @@ import { ValidateEinsatzCreate } from './validation-service';
 import z from 'zod';
 import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
 import { createChangeLogAuto } from '../activity_log/activity_log-dal';
-import { BadRequestError, ForbiddenError } from '@/lib/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/errors';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { ChangeTypeIds } from '../activity_log/changeTypeIds';
 import { checkEinsatzRequirementsAfterAssignment } from '@/lib/email/email-helpers';
@@ -235,6 +235,46 @@ export async function getEinsatzWithDetailsById(
         : null,
     })),
   };
+}
+
+export async function getEinsatzRealtimeMetadataById(id: string): Promise<{
+  id: string;
+  org_id: string;
+  start: Date;
+  end: Date;
+} | null | Response> {
+  const { session } = await requireAuth();
+
+  if (!isValidUuid(id)) {
+    throw new BadRequestError('Invalid ID');
+  }
+
+  const einsatz = await prisma.einsatz.findUnique({
+    where: {
+      id,
+      organization: {
+        user_organization_role: { some: { user_id: session.user.id } },
+      },
+    },
+    select: {
+      id: true,
+      org_id: true,
+      start: true,
+      end: true,
+    },
+  });
+
+  if (!einsatz) {
+    return null;
+  }
+
+  if (!(await hasOrgPermission(session, einsatz.org_id, 'einsaetze:read'))) {
+    return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
+      status: 403,
+    });
+  }
+
+  return einsatz;
 }
 
 export async function getAllEinsaetze(org_ids: string[]) {
@@ -801,6 +841,12 @@ export async function createEinsatz({
     throw new BadRequestError('Organisation muss angegeben werden');
   }
 
+  const einsatzWithAuth = {
+    ...data,
+    created_by: userIds.userId,
+    org_id: useOrgId,
+  };
+
   await assertOrgPermission(session, useOrgId, 'einsaetze:create');
 
   // Check for conflicts when creating with assigned users (unless disabled)
@@ -823,12 +869,6 @@ export async function createEinsatz({
       };
     }
   }
-
-  const einsatzWithAuth = {
-    ...data,
-    created_by: userIds.userId,
-    org_id: useOrgId,
-  };
 
   const createdEinsatz = await createEinsatzInDb({ data: einsatzWithAuth });
 
@@ -925,7 +965,7 @@ export async function updateEinsatzTime(data: {
   });
 
   if (!existingEinsatz) {
-    throw new Response(`Einsatz with ID ${id} not found`, { status: 404 });
+    throw new NotFoundError(`Einsatz with ID ${id} not found`);
   }
 
   await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
@@ -1017,9 +1057,7 @@ export async function toggleUserAssignmentToEinsatz(
   });
 
   if (!existingEinsatz) {
-    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
-      status: 404,
-    });
+    throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
   }
 
   const isSignedInUserAssigned = existingEinsatz.einsatz_helper.some(
@@ -1170,11 +1208,12 @@ export async function updateEinsatz({
       org_id: true,
       start: true,
       end: true,
+      template_id: true,
     },
   });
 
   if (!existingEinsatz) {
-    throw new Response(`Einsatz with ID ${id} not found`, { status: 404 });
+    throw new NotFoundError(`Einsatz with ID ${id} not found`);
   }
 
   await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
@@ -1270,9 +1309,7 @@ export async function updateEinsatzStatus(
   });
 
   if (!existingEinsatz) {
-    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
-      status: 404,
-    });
+    throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
   }
 
   await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
@@ -1305,9 +1342,7 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   });
 
   if (!einsatz) {
-    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
-      status: 404,
-    });
+    throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
   }
 
   await assertOrgPermission(session, einsatz.org_id, 'einsaetze:delete');

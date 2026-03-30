@@ -29,12 +29,10 @@ export function DataTableViewOptions<TData>({
   leadingActions,
 }: DataTableViewOptionsProps<TData>) {
   const [searchValue, setSearchValue] = React.useState('');
-  const allLeafColumns = table.getAllLeafColumns();
 
-  const columns = React.useMemo(
-    () => allLeafColumns.filter((column) => column.getCanHide()),
-    [allLeafColumns]
-  );
+  const columns = table
+    .getAllLeafColumns()
+    .filter((column) => column.getCanHide());
 
   const filteredColumns = React.useMemo(() => {
     const normalizedSearchValue = searchValue.trim().toLocaleLowerCase('de');
@@ -89,9 +87,8 @@ export function DataTableViewOptions<TData>({
               placeholder="Spalten suchen..."
               value={searchValue}
               onValueChange={setSearchValue}
-              
             />
-            <CommandList >
+            <CommandList>
               <CommandEmpty>Keine Spalten gefunden.</CommandEmpty>
               <CommandGroup>
                 {filteredColumns.map((column) => (

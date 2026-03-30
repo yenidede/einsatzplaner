@@ -22,11 +22,15 @@ function formatCustomFieldValue(
   }
 
   if (datatype === 'boolean') {
-    if (value === 'true') {
+    if (typeof value === 'boolean') {
+      return value ? 'Ja' : 'Nein';
+    }
+
+    if (typeof value === 'string' && value.toLowerCase() === 'true') {
       return 'Ja';
     }
 
-    if (value === 'false') {
+    if (typeof value === 'string' && value.toLowerCase() === 'false') {
       return 'Nein';
     }
   }
@@ -46,16 +50,19 @@ function formatCustomFieldValue(
 
 function escapeCsvCell(value: string): string {
   const normalizedValue = value.replace(/\r\n/g, '\n');
+  const sanitizedValue = /^[\t ]*[=+\-@]/.test(normalizedValue)
+    ? `'${normalizedValue}`
+    : normalizedValue;
 
   if (
-    normalizedValue.includes(';') ||
-    normalizedValue.includes('"') ||
-    normalizedValue.includes('\n')
+    sanitizedValue.includes(';') ||
+    sanitizedValue.includes('"') ||
+    sanitizedValue.includes('\n')
   ) {
-    return `"${normalizedValue.replace(/"/g, '""')}"`;
+    return `"${sanitizedValue.replace(/"/g, '""')}"`;
   }
 
-  return normalizedValue;
+  return sanitizedValue;
 }
 
 type BuildCsvColumnsOptions = {
@@ -77,12 +84,14 @@ function buildCsvColumns({
   const baseColumns: CsvColumn[] = [
     {
       header: 'Titel',
-      getValue: (row) => row.title,
+      getValue: (row) => row.title ?? '',
     },
     {
       header: 'Status',
       getValue: (row) =>
-        mode === 'helper' ? row.status_helper_text : row.status_verwalter_text,
+        mode === 'helper'
+          ? (row.status_helper_text ?? '')
+          : (row.status_verwalter_text ?? ''),
     },
     {
       header: 'Start Datum',
@@ -101,19 +110,19 @@ function buildCsvColumns({
     },
     {
       header: 'Kategorien',
-      getValue: (row) => row.category_display,
+      getValue: (row) => row.category_display ?? '',
     },
     {
       header: registeredHelpersLabel,
-      getValue: (row) => row.helper_display,
+      getValue: (row) => row.helper_display ?? '',
     },
     {
       header: registeredHelpersCountLabel,
-      getValue: (row) => String(row.helper_count),
+      getValue: (row) => String(row.helper_count ?? ''),
     },
     {
       header: neededHelpersCountLabel,
-      getValue: (row) => String(row.helpers_needed),
+      getValue: (row) => String(row.helpers_needed ?? ''),
     },
     {
       header: 'Vorlage',
@@ -138,7 +147,9 @@ export function buildListViewCsv(
   options: BuildCsvColumnsOptions
 ): string {
   const columns = buildCsvColumns(options);
-  const headerLine = columns.map((column) => escapeCsvCell(column.header)).join(';');
+  const headerLine = columns
+    .map((column) => escapeCsvCell(column.header))
+    .join(';');
   const dataLines = rows.map((row) =>
     columns.map((column) => escapeCsvCell(column.getValue(row))).join(';')
   );
@@ -159,7 +170,9 @@ export function downloadCsvFile(content: string, filename: string): void {
 
   link.href = blobUrl;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
 
   URL.revokeObjectURL(blobUrl);
 }
