@@ -72,7 +72,7 @@ export interface EventCalendarProps {
   onEventTimeUpdate: (event: CalendarEvent) => void;
   onEventDelete: (eventId: string, eventTitle: string) => void;
   onEventConfirm?: (eventId: string) => void;
-  onMultiEventDelete: (eventIds: string[]) => void;
+  onMultiEventDelete: (eventIds: string[]) => Promise<void>;
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;

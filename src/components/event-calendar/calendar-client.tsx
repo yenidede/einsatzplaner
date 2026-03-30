@@ -357,8 +357,8 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     deleteMutation.mutate({ eventId, eventTitle });
   };
 
-  const handleMultiEventDelete = (eventIds: string[]) => {
-    deleteMultipleMutation.mutate({ eventIds });
+  const handleMultiEventDelete = async (eventIds: string[]) => {
+    await deleteMultipleMutation.mutateAsync({ eventIds });
   };
 
   if (isCalendarError) {
