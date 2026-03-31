@@ -13,6 +13,25 @@ import {
 import { toast } from 'sonner';
 import { queryKeys } from '@/features/organization/queryKeys';
 
+function invalidateOrganizationQueriesForOrg(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string
+) {
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.organization(orgId),
+  });
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.all,
+    predicate: (query) => {
+      const scope = query.queryKey[1];
+      return (
+        Array.isArray(scope) &&
+        scope.some((value): value is string => value === orgId)
+      );
+    },
+  });
+}
+
 export function useUpdateUserProfile(userId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -66,6 +85,9 @@ export function useLeaveOrganization(userId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.user.settings(userId || ''),
+      });
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.managedOrganizations(userId || ''),
       });
     },
   });
@@ -138,13 +160,7 @@ export function useUpdateOrganization(orgId: string | undefined) {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.org.all(orgId),
       });
-      queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.org.details(orgId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.all,
-        predicate: (query) => query.queryHash.includes(data.id),
-      });
+      invalidateOrganizationQueriesForOrg(queryClient, data.id);
     },
   });
 }

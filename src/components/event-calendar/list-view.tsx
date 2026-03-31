@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { cn } from '@/lib/utils';
 import { useEinsaetzeTableView } from '@/features/einsatz/hooks/useEinsatzQueries';
 import type {
@@ -36,11 +37,13 @@ import { useOrganizations } from '@/features/organization/hooks/use-organization
 import { useTemplatesByOrgIds } from '@/features/template/hooks/use-template-queries';
 import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
 import { createColumnHelper } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Trash2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 
+import { ListViewCsvExport } from './ListViewCsvExport';
 import { CalendarMode } from './types';
 import { getBadgeColorClassByStatus, getStatusByMode } from './utils';
+import TooltipCustom from '../tooltip-custom';
 
 /**
  * Selects the displayed status text for a list row based on the calendar mode.
@@ -116,7 +119,7 @@ type ListViewProps = {
   onEventEdit: (eventId: string) => void;
   onEventCreate: (startTime: Date) => void;
   onEventDelete: (eventId: string, title: string) => void;
-  onMultiEventDelete: (eventIds: string[]) => void;
+  onMultiEventDelete: (eventIds: string[]) => Promise<void>;
   mode: CalendarMode;
 };
 
@@ -126,7 +129,7 @@ type ListViewProps = {
  * @param onEventEdit - Callback invoked with an event id when a row's "Bearbeiten" action is selected
  * @param onEventCreate - Callback invoked with a start date when the "Datensatz anlegen" action is selected
  * @param onEventDelete - Callback invoked with an event id and title when a row's "Löschen" action is selected
- * @param onMultiEventDelete - Callback for deleting multiple events; accepted by the props type but currently unused in this component
+ * @param onMultiEventDelete - Callback for deleting multiple events; invoked by handleMultiDelete with an array of event ids
  * @param mode - Calendar mode that determines which status text is displayed
  * @returns A React element containing the list view table and toolbar
  */
@@ -138,6 +141,7 @@ export function ListView({
   mode,
 }: ListViewProps) {
   const [pageCount, setPageCount] = useState(0);
+  const { showDestructive } = useConfirmDialog();
 
   const { data: userSession, status: sessionStatus } = useSession();
   const activeOrgId = userSession?.user?.activeOrganization?.id;
@@ -153,10 +157,8 @@ export function ListView({
   const { data: categoriesData, isLoading: isCategoriesLoading } =
     useCategoriesByOrgIds(userOrgIds);
 
-  const { einsatz_singular, helper_plural } = useOrganizationTerminology(
-    organizations,
-    activeOrgId
-  );
+  const { einsatz_singular, einsatz_plural, helper_plural } =
+    useOrganizationTerminology(organizations, activeOrgId);
 
   const registeredHelpersLabel = `Eingetragene ${helper_plural}`;
   const registeredHelpersCountLabel = `Anzahl eingetragene ${helper_plural}`;
@@ -573,6 +575,43 @@ export function ListView({
     },
   });
 
+  const filteredSelectedRows = table.getFilteredSelectedRowModel().rows;
+
+  const { selectedRows, selectedEventIds } = useMemo(() => {
+    return {
+      selectedRows: filteredSelectedRows,
+      selectedEventIds: filteredSelectedRows.map((row) => row.original.id),
+    };
+  }, [filteredSelectedRows]);
+
+  const handleMultiDelete = async () => {
+    if (selectedEventIds.length === 0) {
+      return;
+    }
+
+    const title =
+      selectedEventIds.length === 1
+        ? `${einsatz_singular} löschen`
+        : `${einsatz_plural} löschen`;
+    const description =
+      selectedEventIds.length === 1
+        ? 'Möchten Sie den ausgewählten Datensatz wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.'
+        : `Möchten Sie die ${selectedEventIds.length} ausgewählten Datensätze wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`;
+
+    const result = await showDestructive(title, description);
+
+    if (result !== 'success') {
+      return;
+    }
+
+    try {
+      await onMultiEventDelete(selectedEventIds);
+      table.resetRowSelection();
+    } catch (error) {
+      console.error('Mehrfaches Löschen fehlgeschlagen:', error);
+    }
+  };
+
   if (data instanceof Response) {
     console.error('Error Response in ListView:', data);
     return (
@@ -632,14 +671,49 @@ export function ListView({
   }
 
   return (
-    <DataTable table={table} isLoading={isSomeQueryLoading}>
+    <DataTable
+      table={table}
+      isLoading={isSomeQueryLoading}
+      actionBar={
+        mode === 'verwaltung' ? (
+          <TooltipCustom text="Ausgewählte Datensätze löschen">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-8"
+              aria-label="Ausgewählte Datensätze löschen"
+              disabled={selectedRows.length === 0}
+              onClick={() => {
+                void handleMultiDelete();
+              }}
+            >
+              <Trash2 />
+            </Button>
+          </TooltipCustom>
+        ) : null
+      }
+    >
       <div
-        className="bg-card sticky z-50"
+        className="bg-card sticky z-40"
         style={{
           top: 'calc(var(--calendar-sticky-top, 0px) + var(--calendar-toolbar-height), 0px)',
         }}
       >
-        <DataTableAdvancedToolbar table={table}>
+        <DataTableAdvancedToolbar
+          table={table}
+          viewOptionsLeadingActions={
+            <ListViewCsvExport
+              table={table}
+              tableData={tableData}
+              customFieldMeta={customFieldMeta}
+              mode={mode}
+              registeredHelpersLabel={registeredHelpersLabel}
+              registeredHelpersCountLabel={registeredHelpersCountLabel}
+              neededHelpersCountLabel={neededHelpersCountLabel}
+            />
+          }
+        >
           <DataTableFilterMenu
             setPageCount={setPageCount}
             key={String(!isSomeQueryLoading)}

@@ -21,17 +21,18 @@ import { cn } from '@/lib/utils';
 
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;
+  leadingActions?: React.ReactNode;
 }
 
 export function DataTableViewOptions<TData>({
   table,
+  leadingActions,
 }: DataTableViewOptionsProps<TData>) {
   const [searchValue, setSearchValue] = React.useState('');
 
-  const columns = React.useMemo(
-    () => table.getAllLeafColumns().filter((column) => column.getCanHide()),
-    [table, table.getAllLeafColumns()]
-  );
+  const columns = table
+    .getAllLeafColumns()
+    .filter((column) => column.getCanHide());
 
   const filteredColumns = React.useMemo(() => {
     const normalizedSearchValue = searchValue.trim().toLocaleLowerCase('de');
@@ -64,63 +65,68 @@ export function DataTableViewOptions<TData>({
   }, [allFilteredColumnsVisible, filteredColumns, table]);
 
   return (
-    <Popover>
-      <PopoverTrigger tooltip="Spalten verwalten" asChild>
-        <Button
-          aria-label="Spalten ein/ausblenden"
-          role="combobox"
-          variant="outline"
-          size="sm"
-          className="ml-auto hidden h-8 lg:flex"
-        >
-          <Settings2 />
-          View
-          <ChevronsUpDown className="ml-auto opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-44 p-0">
-        <Command>
-          <CommandInput
-            placeholder="Spalten suchen..."
-            value={searchValue}
-            onValueChange={setSearchValue}
-          />
-          <CommandList>
-            <CommandEmpty>Keine Spalten gefunden.</CommandEmpty>
-            <CommandGroup>
-              {filteredColumns.map((column) => (
-                <CommandItem
-                  key={column.id}
-                  onSelect={() =>
-                    column.toggleVisibility(!column.getIsVisible())
-                  }
-                >
-                  <span className="truncate">
-                    {column.columnDef.meta?.label ?? column.id}
-                  </span>
-                  <Check
-                    className={cn(
-                      'ml-auto size-4 shrink-0',
-                      column.getIsVisible() ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-        <div className="border-t p-2">
+    <div className="flex items-center gap-2">
+      {leadingActions}
+      <Popover>
+        <PopoverTrigger tooltip="Spalten verwalten" asChild>
           <Button
+            aria-label="Spalten ein/ausblenden"
+            role="combobox"
             variant="outline"
             size="sm"
-            className="w-full"
-            onClick={toggleAllColumns}
-            disabled={filteredColumns.length === 0}
+            className="ml-auto hidden h-8 lg:flex"
           >
-            {allFilteredColumnsVisible ? 'Alle ausblenden' : 'Alle einblenden'}
+            <Settings2 />
+            Ansicht
+            <ChevronsUpDown className="ml-auto opacity-50" />
           </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-44 p-0">
+          <Command>
+            <CommandInput
+              placeholder="Spalten suchen..."
+              value={searchValue}
+              onValueChange={setSearchValue}
+            />
+            <CommandList>
+              <CommandEmpty>Keine Spalten gefunden.</CommandEmpty>
+              <CommandGroup>
+                {filteredColumns.map((column) => (
+                  <CommandItem
+                    key={column.id}
+                    onSelect={() =>
+                      column.toggleVisibility(!column.getIsVisible())
+                    }
+                  >
+                    <span className="truncate">
+                      {column.columnDef.meta?.label ?? column.id}
+                    </span>
+                    <Check
+                      className={cn(
+                        'ml-auto size-4 shrink-0',
+                        column.getIsVisible() ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          <div className="border-t p-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={toggleAllColumns}
+              disabled={filteredColumns.length === 0}
+            >
+              {allFilteredColumnsVisible
+                ? 'Alle ausblenden'
+                : 'Alle einblenden'}
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
