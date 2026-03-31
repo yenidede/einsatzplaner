@@ -72,7 +72,7 @@ export interface EventCalendarProps {
   onEventTimeUpdate: (event: CalendarEvent) => void;
   onEventDelete: (eventId: string, eventTitle: string) => void;
   onEventConfirm?: (eventId: string) => void;
-  onMultiEventDelete: (eventIds: string[]) => void;
+  onMultiEventDelete: (eventIds: string[]) => Promise<void>;
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;
@@ -306,11 +306,6 @@ export function EventCalendar({
     onEventConfirm?.(eventId);
   };
 
-  const handleMultiEventDelete = (eventIds: string[]) => {
-    onMultiEventDelete?.(eventIds);
-    closeDialog();
-  };
-
   const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
     // Type guard to handle both types
     if ('org_id' in updatedEvent) {
@@ -378,7 +373,7 @@ export function EventCalendar({
       className="bg-card flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
       style={
         {
-          '--calendar-sticky-top': '3.3rem',
+          '--calendar-sticky-top': '4rem',
           '--calendar-toolbar-height': '4rem',
           '--event-height': `${EventHeight}px`,
           '--event-gap': `${EventGap}px`,
@@ -559,7 +554,7 @@ export function EventCalendar({
               onEventEdit={handleEventSelect}
               onEventCreate={handleEventCreate}
               onEventDelete={handleEventDelete}
-              onMultiEventDelete={handleMultiEventDelete}
+              onMultiEventDelete={onMultiEventDelete}
               mode={mode}
             />
           )}

@@ -5,7 +5,14 @@ import {
   type QueryClient,
   type QueryKey,
 } from '@tanstack/react-query';
-import { addMonths, addYears, endOfMonth, startOfDay, startOfMonth, subMonths } from 'date-fns';
+import {
+  addMonths,
+  addYears,
+  endOfMonth,
+  startOfDay,
+  startOfMonth,
+  subMonths,
+} from 'date-fns';
 import { queryKeys } from '@/features/einsatz/queryKeys';
 import { supabaseRealtimeClient } from '@/lib/supabase-client';
 import {
@@ -102,8 +109,8 @@ function isEinsatzRow(value: unknown): value is EinsatzRow {
     return false;
   }
 
-  const maybeRecord = value as Record<string, unknown>;
-  return typeof maybeRecord.id === 'string' && typeof maybeRecord.org_id === 'string';
+  const maybeRow = value as Record<string, unknown>;
+  return typeof maybeRow.id === 'string' && typeof maybeRow.org_id === 'string';
 }
 
 function buildEinsatzBasePatch(record: Partial<EinsatzRow>): EinsatzBasePatch {
@@ -129,10 +136,20 @@ function buildEinsatzBasePatch(record: Partial<EinsatzRow>): EinsatzBasePatch {
   return patch;
 }
 
+function addUserId(userIds: string[] | undefined, userId: string): string[] {
+  const currentUserIds = userIds ?? [];
+  return currentUserIds.includes(userId) ? currentUserIds : [...currentUserIds, userId];
+}
+
+function removeUserId(userIds: string[] | undefined, userId: string): string[] {
+  return (userIds ?? []).filter((currentUserId) => currentUserId !== userId);
+}
+
 function sortCalendarEvents(events: CalendarEvent[]): CalendarEvent[] {
   return [...events].sort(
     (left, right) =>
-      left.start.getTime() - right.start.getTime() || left.title.localeCompare(right.title)
+      left.start.getTime() - right.start.getTime() ||
+      left.title.localeCompare(right.title)
   );
 }
 
@@ -141,11 +158,15 @@ function sortDetailedEinsaetze(
 ): EinsatzDetailedForCalendar[] {
   return [...einsaetze].sort(
     (left, right) =>
-      left.start.getTime() - right.start.getTime() || left.title.localeCompare(right.title)
+      left.start.getTime() - right.start.getTime() ||
+      left.title.localeCompare(right.title)
   );
 }
 
-function mapStatus(statusId: string | null | undefined, currentStatus: CalendarEvent['status']) {
+function mapStatus(
+  statusId: string | undefined,
+  currentStatus: CalendarEvent['status']
+) {
   if (!statusId) {
     return currentStatus;
   }
@@ -154,21 +175,24 @@ function mapStatus(statusId: string | null | undefined, currentStatus: CalendarE
   return nextStatus ?? currentStatus;
 }
 
-function getCalendarQueryDescriptor(queryKey: QueryKey): CalendarQueryDescriptor | null {
+function getCalendarQueryDescriptor(
+  queryKey: QueryKey
+): CalendarQueryDescriptor | null {
   if (queryKey.length !== 4) {
     return null;
   }
 
   const [, scope, orgId, segment] = queryKey;
-  if (scope !== 'calendar' || typeof orgId !== 'string' || typeof segment !== 'string') {
+  if (
+    scope !== 'calendar' ||
+    typeof orgId !== 'string' ||
+    typeof segment !== 'string'
+  ) {
     return null;
   }
 
   if (segment === 'agenda') {
-    return {
-      type: 'agenda',
-      queryKey,
-    };
+    return { type: 'agenda', queryKey };
   }
 
   return {
@@ -207,7 +231,6 @@ function isRecordInCalendarQuery(
   const focusDate = new Date(`${descriptor.monthKey}-01T00:00:00`);
   const rangeStart = startOfMonth(subMonths(focusDate, 1));
   const rangeEnd = endOfMonth(addMonths(focusDate, 1));
-
   return overlapsRange(start, end, rangeStart, rangeEnd);
 }
 
@@ -226,6 +249,7 @@ function applyPatchToDetailedEinsatz(
     end: patch.end ?? detailedEinsatz.end,
     updated_at:
       patch.updated_at === undefined ? detailedEinsatz.updated_at : patch.updated_at,
+    status_id: patch.status_id ?? detailedEinsatz.status_id,
   };
 }
 
@@ -240,6 +264,7 @@ function applyPatchToCalendarDetailedEinsatz(
     end: patch.end ?? detailedEinsatz.end,
     updated_at:
       patch.updated_at === undefined ? detailedEinsatz.updated_at : patch.updated_at,
+    status_id: patch.status_id ?? detailedEinsatz.status_id,
   };
 }
 
@@ -275,7 +300,8 @@ function applyPatchToListItem(
     status_id: patch.status_id ?? listItem.status_id,
     status_verwalter_text: nextStatus?.verwalter_text ?? listItem.status_verwalter_text,
     status_helper_text: nextStatus?.helper_text ?? listItem.status_helper_text,
-    status_verwalter_color: nextStatus?.verwalter_color ?? listItem.status_verwalter_color,
+    status_verwalter_color:
+      nextStatus?.verwalter_color ?? listItem.status_verwalter_color,
     status_helper_color: nextStatus?.helper_color ?? listItem.status_helper_color,
   };
 }
@@ -340,16 +366,32 @@ function updateCalendarRangeWithPatch(
       );
 
   return {
-    nextData:
-      nextEvents === data.events && nextDetailedEinsaetze === data.detailedEinsaetze
-        ? data
-        : {
-          ...data,
-          events: nextEvents,
-          detailedEinsaetze: nextDetailedEinsaetze,
-        },
+    nextData: {
+      ...data,
+      events: nextEvents,
+      detailedEinsaetze: nextDetailedEinsaetze,
+    },
     requiresRefetch: false,
   };
+}
+
+function matchesEinsatzListQueryForOrg(
+  queryKey: readonly unknown[],
+  orgId: string
+) {
+  if (queryKey[0] !== 'einsatz' || queryKey[1] !== 'list') {
+    return false;
+  }
+
+  const scope = queryKey[2];
+  if (scope === orgId) {
+    return true;
+  }
+
+  return (
+    Array.isArray(scope) &&
+    scope.some((value): value is string => value === orgId)
+  );
 }
 
 function syncEinsatzListCaches(
@@ -358,25 +400,16 @@ function syncEinsatzListCaches(
   einsatzId: string,
   patch: EinsatzBasePatch
 ) {
-  const listQueryKeyPrefix = queryKeys.einsaetzeTableView([]);
   const listQueries = queryClient.getQueriesData<EinsatzListItem[]>({
-    queryKey: listQueryKeyPrefix.slice(0, 2),
+    queryKey: queryKeys.einsaetzeListPrefix(),
   });
 
   listQueries.forEach(([queryKey, currentData]) => {
-    if (!currentData) {
+    if (!currentData || !matchesEinsatzListQueryForOrg(queryKey, orgId)) {
       return;
     }
 
-    const orgIds = Array.isArray(queryKey[2])
-      ? queryKey[2].filter((value): value is string => typeof value === 'string')
-      : [];
-    if (!orgIds.includes(orgId)) {
-      return;
-    }
-
-    const hasMatch = currentData.some((item) => item.id === einsatzId);
-    if (!hasMatch) {
+    if (!currentData.some((item) => item.id === einsatzId)) {
       return;
     }
 
@@ -398,12 +431,7 @@ function syncSimpleCalendarListCache(
   queryClient.setQueryData<CalendarEvent[]>(
     queryKeys.einsaetze(orgId),
     (currentData) => {
-      if (!currentData) {
-        return currentData;
-      }
-
-      const hasMatch = currentData.some((event) => event.id === einsatzId);
-      if (!hasMatch) {
+      if (!currentData || !currentData.some((event) => event.id === einsatzId)) {
         return currentData;
       }
 
@@ -458,20 +486,12 @@ function removeEinsatzFromCaches(
     });
   });
 
-  const listQueryKeyPrefix = queryKeys.einsaetzeTableView([]);
   const listQueries = queryClient.getQueriesData<EinsatzListItem[]>({
-    queryKey: listQueryKeyPrefix.slice(0, 2),
+    queryKey: queryKeys.einsaetzeListPrefix(),
   });
 
   listQueries.forEach(([queryKey, currentData]) => {
-    if (!currentData) {
-      return;
-    }
-
-    const orgIds = Array.isArray(queryKey[2])
-      ? queryKey[2].filter((value): value is string => typeof value === 'string')
-      : [];
-    if (!orgIds.includes(orgId)) {
+    if (!currentData || !matchesEinsatzListQueryForOrg(queryKey, orgId)) {
       return;
     }
 
@@ -536,15 +556,6 @@ function syncEinsatzRealtimeCaches(
       queryClient.invalidateQueries({ queryKey });
     }
   });
-}
-
-function addUserId(userIds: string[] | undefined, userId: string): string[] {
-  const currentUserIds = userIds ?? [];
-  return currentUserIds.includes(userId) ? currentUserIds : [...currentUserIds, userId];
-}
-
-function removeUserId(userIds: string[] | undefined, userId: string): string[] {
-  return (userIds ?? []).filter((currentUserId) => currentUserId !== userId);
 }
 
 function updateDetailedEinsatzAssignments(
@@ -712,7 +723,6 @@ export function useSupabaseRealtime(orgId?: string) {
 
     const einsatzChannelName = `einsatz-changes:${orgId}:${Date.now()}`;
     const einsatzChannel = supabaseRealtimeClient.channel(einsatzChannelName);
-
     einsatzChannelRef.current = einsatzChannel;
 
     einsatzChannel
@@ -741,7 +751,6 @@ export function useSupabaseRealtime(orgId?: string) {
     const einsatzHelperChannel = supabaseRealtimeClient.channel(
       einsatzHelperChannelName
     );
-
     einsatzHelperChannelRef.current = einsatzHelperChannel;
 
     einsatzHelperChannel
@@ -760,14 +769,14 @@ export function useSupabaseRealtime(orgId?: string) {
 
           queryClient.invalidateQueries({
             queryKey: queryKeys.allLists(),
-            predicate: (query) => query.queryHash.includes(orgId),
+            predicate: (query) => matchesEinsatzListQueryForOrg(query.queryKey, orgId),
           });
         }
       )
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR') {
           console.error(
-            '[Supabase Realtime] einsatz_helper subscription failed. Prüfen Sie, ob einsatz_helper.org_id bereits in der Datenbank existiert.'
+            '[Supabase Realtime] einsatz_helper subscription failed. Pruefen Sie, ob einsatz_helper.org_id bereits in der Datenbank existiert.'
           );
         }
       });

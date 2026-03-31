@@ -4,14 +4,6 @@ export const settingsQueryKeys = {
 
   // User-related queries (primary entity: user)
   user: {
-    /** Invalidate all queries for a specific user */
-    all: (userId: string) =>
-      [...settingsQueryKeys.all, 'user', userId] as const,
-
-    /** User profile data (separate from settings) */
-    profile: (userId: string) =>
-      [...settingsQueryKeys.all, 'user', userId, 'profile'] as const,
-
     /** User settings/preferences data - used in settings page and mutations */
     settings: (userId: string | undefined) =>
       [...settingsQueryKeys.all, 'user', userId, 'settings'] as const,
