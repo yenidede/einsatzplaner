@@ -19,6 +19,7 @@ type EinsatzPayload = RealtimePostgresChangesPayload<{
 
 type EinsatzHelperPayload = RealtimePostgresChangesPayload<{
   einsatz_id: string;
+  org_id: string;
   [key: string]: unknown;
 }>;
 
@@ -54,7 +55,9 @@ export function useSupabaseRealtime(orgId?: string) {
         (payload) => {
           if (!isMountedRef.current) return;
 
-          const record = (payload.new as { start?: string }) ?? (payload.old as { start?: string });
+          const record =
+            (payload.new as { start?: string }) ??
+            (payload.old as { start?: string });
           const start = record?.start;
           if (orgId && start) {
             const monthKeys = getMonthKeysForDate(new Date(start), false);
@@ -93,7 +96,7 @@ export function useSupabaseRealtime(orgId?: string) {
           event: '*',
           schema: 'public',
           table: 'einsatz_helper',
-          filter: `einsatz_id=eq.${orgId}`,
+          filter: `org_id=eq.${orgId}`,
         },
         (payload) => {
           if (!isMountedRef.current) return;
@@ -101,7 +104,9 @@ export function useSupabaseRealtime(orgId?: string) {
           const einsatzId =
             (payload.new as { einsatz_id?: string })?.einsatz_id ||
             (payload.old as { einsatz_id?: string })?.einsatz_id;
-          const record = (payload.new as { start?: string }) ?? (payload.old as { start?: string });
+          const record =
+            (payload.new as { start?: string }) ??
+            (payload.old as { start?: string });
           const start = record?.start;
           if (orgId && start) {
             const monthKeys = getMonthKeysForDate(new Date(start), false);
