@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/features/einsatz/queryKeys';
+import { getEinsatzRealtimeMetadataById } from '@/features/einsatz/dal-einsatz';
 import { supabaseRealtimeClient } from '@/lib/supabase-client';
 import { getMonthKeysForDate } from '@/features/einsatz/hooks/useEinsatzMutations';
+import { BadRequestError } from '@/lib/errors';
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
@@ -21,6 +23,35 @@ type EinsatzHelperPayload = RealtimePostgresChangesPayload<{
   einsatz_id: string;
   [key: string]: unknown;
 }>;
+
+function matchesEinsatzListQueryForOrg(
+  queryKey: readonly unknown[],
+  orgId: string
+) {
+  if (queryKey[0] !== 'einsatz' || queryKey[1] !== 'list') {
+    return false;
+  }
+
+  const scope = queryKey[2];
+  if (scope === orgId) {
+    return true;
+  }
+
+  return (
+    Array.isArray(scope) &&
+    scope.some((value): value is string => value === orgId)
+  );
+}
+
+function invalidateEinsatzListQueriesForOrg(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string
+) {
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.einsaetzeListPrefix(),
+    predicate: (query) => matchesEinsatzListQueryForOrg(query.queryKey, orgId),
+  });
+}
 
 export function useSupabaseRealtime(orgId?: string) {
   const { data: session } = useSession();
@@ -71,11 +102,7 @@ export function useSupabaseRealtime(orgId?: string) {
           queryClient.invalidateQueries({
             queryKey: queryKeys.einsaetzeForAgenda(orgId),
           });
-          // this is to invalidate the list view
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.allLists(),
-            predicate: (query) => query.queryHash.includes(orgId),
-          });
+          invalidateEinsatzListQueriesForOrg(queryClient, orgId);
 
           const einsatzId =
             (payload.new as { id?: string })?.id ||
@@ -93,44 +120,51 @@ export function useSupabaseRealtime(orgId?: string) {
           event: '*',
           schema: 'public',
           table: 'einsatz_helper',
-          filter: `einsatz_id=eq.${orgId}`,
         },
-        (payload) => {
+        async (payload) => {
           if (!isMountedRef.current) return;
 
           const einsatzId =
             (payload.new as { einsatz_id?: string })?.einsatz_id ||
             (payload.old as { einsatz_id?: string })?.einsatz_id;
-          const record = (payload.new as { start?: string }) ?? (payload.old as { start?: string });
-          const start = record?.start;
-          if (orgId && start) {
-            const monthKeys = getMonthKeysForDate(new Date(start), false);
-            monthKeys.forEach((monthKey) => {
-              queryClient.invalidateQueries({
-                queryKey: queryKeys.einsaetzeForCalendar(orgId, monthKey),
-              });
-            });
-          } else if (orgId) {
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
-            });
+          if (!einsatzId || !orgId) return;
+
+          let einsatz: Awaited<ReturnType<typeof getEinsatzRealtimeMetadataById>>;
+
+          try {
+            einsatz = await getEinsatzRealtimeMetadataById(einsatzId);
+          } catch (error) {
+            if (!isMountedRef.current) {
+              return;
+            }
+
+            if (error instanceof BadRequestError) {
+              return;
+            }
+
+            console.error('Realtime-Metadaten konnten nicht geladen werden:', error);
+            return;
           }
 
-          if (orgId) {
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.einsaetzeForAgenda(orgId),
-            });
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.allLists(),
-              predicate: (query) => query.queryHash.includes(orgId),
-            });
+          if (!isMountedRef.current) return;
+          if (!einsatz || einsatz instanceof Response || einsatz.org_id !== orgId) {
+            return;
           }
 
-          if (einsatzId) {
+          const monthKeys = getMonthKeysForDate(einsatz.start, false);
+          monthKeys.forEach((monthKey) => {
             queryClient.invalidateQueries({
-              queryKey: queryKeys.detailedEinsatz(einsatzId),
+              queryKey: queryKeys.einsaetzeForCalendar(orgId, monthKey),
             });
-          }
+          });
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.einsaetzeForAgenda(orgId),
+          });
+          invalidateEinsatzListQueriesForOrg(queryClient, orgId);
+
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.detailedEinsatz(einsatzId),
+          });
         }
       )
       .subscribe((status) => {

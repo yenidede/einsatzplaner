@@ -32,7 +32,7 @@ export function DataTable<TData>({
   return (
     <div className={cn('flex w-full flex-col gap-2.5', className)} {...props}>
       {children}
-      <div className="rounded-md border">
+      <div className="overflow-hidden rounded-md border">
         {isLoading ? (
           <DataTableSkeleton columnCount={8} />
         ) : (
@@ -114,11 +114,15 @@ export function DataTable<TData>({
                 </TableBody>
               </Table>
             </div>
-            <div className="bg-background sticky bottom-0 z-40 flex flex-col gap-2.5 border-t pt-2 shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
-              <DataTablePagination table={table} />
-              {actionBar &&
-                table.getFilteredSelectedRowModel().rows.length > 0 &&
-                actionBar}
+            <div className="bg-background flex flex-col gap-2.5 border-t pt-2">
+              <DataTablePagination
+                table={table}
+                actionBar={
+                  table.getFilteredSelectedRowModel().rows.length > 0
+                    ? actionBar
+                    : null
+                }
+              />
             </div>
           </>
         )}
