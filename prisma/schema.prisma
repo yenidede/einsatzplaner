@@ -99,11 +99,14 @@ model einsatz_helper {
   user_id    String   @db.Uuid
   joined_at  DateTime @default(now())
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id     String   @db.Uuid
   einsatz    einsatz  @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([einsatz_id])
   @@index([user_id])
+  @@index([org_id], map: "idx_einsatz_helper_org_id")
+  @@index([org_id, einsatz_id], map: "idx_einsatz_helper_org_id_einsatz_id")
 }
 
 model einsatz_template {
@@ -162,6 +165,8 @@ model organization {
   default_starttime            DateTime                    @default(dbgenerated("'09:00:00'::time without time zone")) @map("default-starttime") @db.Time(6)
   default_endtime              DateTime                    @default(dbgenerated("'10:00:00'::time without time zone")) @map("default-endtime") @db.Time(6)
   small_logo_url               String?                     @map("small-logo_url")
+  analytics_chart              analytics_chart[]
+  analytics_chart1             analytics_chart1[]
   calendar_subscription        calendar_subscription[]
   einsatz                      einsatz[]
   einsatz_category             einsatz_category[]
@@ -204,6 +209,8 @@ model user {
   resetTokenExpires                         DateTime?                @db.Timestamp(6)
   salutationId                              String?                  @db.Uuid
   active_org                                String?                  @map("active-org") @db.Uuid
+  analytics_chart                           analytics_chart[]
+  analytics_chart1                          analytics_chart1[]
   calendar_subscription                     calendar_subscription[]
   change_log_change_log_affected_userTouser change_log[]             @relation("change_log_affected_userTouser")
   change_log                                change_log[]
@@ -496,4 +503,43 @@ model pdfTemplate {
 
   @@index([organizationId, documentType], map: "PdfTemplate_organizationId_documentType_idx")
   @@index([organizationId, isActive], map: "PdfTemplate_organizationId_isActive_idx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model analytics_chart {
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id             String       @db.Uuid
+  created_by         String?      @db.Uuid
+  title              String
+  description        String?
+  chart_type         String
+  dataset            String
+  dimension_kind     String
+  dimension_key      String
+  metric_aggregation String
+  metric_key         String
+  layout_order       Int          @default(0)
+  is_demo            Boolean      @default(false)
+  system_key         String?
+  filters_json       Json         @default("{}")
+  display_json       Json         @default("{}")
+  created_at         DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime     @default(now()) @db.Timestamptz(6)
+  user               user?        @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  organization       organization @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([org_id])
+  @@index([org_id, layout_order])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model analytics_chart1 {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  org_id       String       @db.Uuid
+  created_by   String       @db.Uuid
+  title        String
+  description  String?
+  user         user         @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  organization organization @relation(fields: [org_id], references: [id], onDelete: NoAction)
 }
