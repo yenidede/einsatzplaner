@@ -1132,6 +1132,11 @@ export async function toggleUserAssignmentToEinsatz(
     }
   } else {
     // USER IS NOT ASSIGNED → ADD THEM
+    const helperCreateData = {
+      user: { connect: { id: session.user.id } },
+      org_id: existingEinsatz.org_id,
+    };
+
     result = await prisma.einsatz.update({
       where: {
         id: einsatzId,
@@ -1145,9 +1150,7 @@ export async function toggleUserAssignmentToEinsatz(
       },
       data: {
         einsatz_helper: {
-          create: {
-            user: { connect: { id: session.user.id } },
-          },
+          create: helperCreateData,
         },
         status_id: newStatusId,
       },
@@ -1240,6 +1243,11 @@ export async function updateEinsatz({
     }
   }
 
+  const helperCreateData = (assignedUsers ?? []).map((userId) => ({
+    user: { connect: { id: userId } },
+    org_id: existingEinsatz.org_id,
+  }));
+
   try {
     const einsatz = await prisma.einsatz.update({
       where: { id },
@@ -1268,9 +1276,7 @@ export async function updateEinsatz({
         einsatz_helper: {
           ...(assignedUsers && {
             deleteMany: {},
-            create: (assignedUsers ?? []).map((userId) => ({
-              user: { connect: { id: userId } },
-            })),
+            create: helperCreateData,
           }),
         },
         einsatz_user_property: {
@@ -1414,6 +1420,11 @@ async function createEinsatzInDb({
     all_day = false,
   } = data;
 
+  const helperCreateData = assignedUsers.map((userId) => ({
+    user: { connect: { id: userId } },
+    org_id,
+  }));
+
   return prisma.einsatz.create({
     data: {
       title,
@@ -1438,9 +1449,7 @@ async function createEinsatzInDb({
           })) || [],
       },
       einsatz_helper: {
-        create: assignedUsers.map((userId) => ({
-          user: { connect: { id: userId } },
-        })),
+        create: helperCreateData,
       },
       einsatz_user_property: {
         create:
