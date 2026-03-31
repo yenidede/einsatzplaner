@@ -239,5 +239,23 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     manualFiltering: false,
   });
 
+  React.useEffect(() => {
+    const visibleRowIds = new Set(
+      table.getFilteredRowModel().rows.map((row) => row.id)
+    );
+
+    setRowSelection((previousSelection) => {
+      const nextSelectionEntries = Object.entries(previousSelection).filter(
+        ([rowId, isSelected]) => isSelected && visibleRowIds.has(rowId)
+      );
+
+      if (nextSelectionEntries.length === Object.keys(previousSelection).length) {
+        return previousSelection;
+      }
+
+      return Object.fromEntries(nextSelectionEntries);
+    });
+  }, [columnFilters, table, tableProps.data]);
+
   return { table, shallow, debounceMs, throttleMs };
 }

@@ -1,6 +1,7 @@
 export const queryKeys = {
-  allLists: () => ['einsaetze', 'list'] as const, // used to invalidate all List
+  allLists: () => ['einsatz', 'list'] as const, // used to invalidate all List
   einsaetze: (orgId: string) => ['einsatz', 'list', orgId] as const,
+  einsaetzeListPrefix: () => ['einsatz', 'list'] as const,
   einsaetzeTableView: (orgIds: string[]) =>
     ['einsatz', 'list', orgIds, 'table'] as const,
   /** One cache entry per (orgId, monthKey); invalidate only affected months. */
@@ -12,7 +13,6 @@ export const queryKeys = {
   einsaetzeForCalendarPrefix: (orgId: string) =>
     ['einsatz', 'calendar', orgId] as const,
   detailedEinsatz: (id: string) => ['einsatz', id, 'detail'] as const,
-  einsatzHelpers: (id: string) => ['einsatz', id, 'detail', 'helpers'] as const,
   categories: (activeOrgId: string) => ['categories', activeOrgId] as const,
   categoriesByOrgIds: (orgIds: string[]) =>
     ['categories', 'byOrgIds', orgIds] as const,
