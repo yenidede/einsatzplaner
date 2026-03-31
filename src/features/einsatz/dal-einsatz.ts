@@ -249,7 +249,7 @@ export async function getEinsatzRealtimeMetadataById(id: string): Promise<{
     throw new BadRequestError('Invalid ID');
   }
 
-  const einsatz = await prisma.einsatz.findUnique({
+  const einsatz = await prisma.einsatz.findFirst({
     where: {
       id,
       organization: {
