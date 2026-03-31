@@ -113,6 +113,21 @@ function isEinsatzRow(value: unknown): value is EinsatzRow {
   return typeof maybeRow.id === 'string' && typeof maybeRow.org_id === 'string';
 }
 
+function isEinsatzHelperRecord(value: unknown): value is EinsatzHelperRecord {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const maybeRecord = value as Record<string, unknown>;
+  const einsatzId = maybeRecord.einsatz_id;
+  const userId = maybeRecord.user_id;
+
+  return (
+    (einsatzId === undefined || typeof einsatzId === 'string') &&
+    (userId === undefined || typeof userId === 'string')
+  );
+}
+
 function buildEinsatzBasePatch(record: Partial<EinsatzRow>): EinsatzBasePatch {
   const patch: EinsatzBasePatch = {};
 
@@ -681,10 +696,10 @@ function syncHelperRealtimeCaches(
   orgId: string,
   payload: EinsatzHelperPayload
 ) {
-  const oldRecord = payload.old as EinsatzHelperRecord;
-  const newRecord = payload.new as EinsatzHelperRecord;
+  const oldRecord = isEinsatzHelperRecord(payload.old) ? payload.old : null;
+  const newRecord = isEinsatzHelperRecord(payload.new) ? payload.new : null;
 
-  if (oldRecord.einsatz_id && oldRecord.user_id) {
+  if (oldRecord?.einsatz_id && oldRecord.user_id) {
     applyHelperAssignmentChange(
       queryClient,
       orgId,
@@ -694,7 +709,7 @@ function syncHelperRealtimeCaches(
     );
   }
 
-  if (newRecord.einsatz_id && newRecord.user_id) {
+  if (newRecord?.einsatz_id && newRecord.user_id) {
     applyHelperAssignmentChange(
       queryClient,
       orgId,
@@ -710,16 +725,26 @@ export function useSupabaseRealtime(orgId?: string) {
   const queryClient = useQueryClient();
   const einsatzChannelRef = useRef<RealtimeChannel | null>(null);
   const einsatzHelperChannelRef = useRef<RealtimeChannel | null>(null);
+  const einsatzConnectedRef = useRef(false);
+  const helperConnectedRef = useRef(false);
   const [isConnected, setIsConnected] = useState(false);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
     isMountedRef.current = true;
+    einsatzConnectedRef.current = false;
+    helperConnectedRef.current = false;
 
     if (!orgId || !session?.user?.id) {
       setIsConnected(false);
       return;
     }
+
+    const updateConnectionState = () => {
+      setIsConnected(
+        einsatzConnectedRef.current && helperConnectedRef.current
+      );
+    };
 
     const einsatzChannelName = `einsatz-changes:${orgId}:${Date.now()}`;
     const einsatzChannel = supabaseRealtimeClient.channel(einsatzChannelName);
@@ -741,9 +766,11 @@ export function useSupabaseRealtime(orgId?: string) {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          setIsConnected(true);
+          einsatzConnectedRef.current = true;
+          updateConnectionState();
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          setIsConnected(false);
+          einsatzConnectedRef.current = false;
+          updateConnectionState();
         }
       });
 
@@ -774,6 +801,14 @@ export function useSupabaseRealtime(orgId?: string) {
         }
       )
       .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          helperConnectedRef.current = true;
+          updateConnectionState();
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          helperConnectedRef.current = false;
+          updateConnectionState();
+        }
+
         if (status === 'CHANNEL_ERROR') {
           console.error(
             '[Supabase Realtime] einsatz_helper subscription failed. Pruefen Sie, ob einsatz_helper.org_id bereits in der Datenbank existiert.'
@@ -783,6 +818,8 @@ export function useSupabaseRealtime(orgId?: string) {
 
     return () => {
       isMountedRef.current = false;
+      einsatzConnectedRef.current = false;
+      helperConnectedRef.current = false;
       if (einsatzChannelRef.current) {
         supabaseRealtimeClient.removeChannel(einsatzChannelRef.current);
         einsatzChannelRef.current = null;
