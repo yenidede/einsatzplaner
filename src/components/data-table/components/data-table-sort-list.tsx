@@ -177,7 +177,7 @@ export function DataTableSortList<TData>({
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" onKeyDown={onTriggerKeyDown}>
             <ArrowDownUp />
-            Sort
+            Sortieren
             {sorting.length > 0 && (
               <Badge
                 variant="secondary"
