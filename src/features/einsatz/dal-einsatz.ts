@@ -34,6 +34,10 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/errors';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { ChangeTypeIds } from '../activity_log/changeTypeIds';
 import { checkEinsatzRequirementsAfterAssignment } from '@/lib/email/email-helpers';
+import {
+  normalizeDateRangeForDb,
+  normalizeEinsatzDatesFromDb,
+} from '@/features/einsatz/datetime';
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -160,13 +164,14 @@ async function checkEinsatzConflicts(
   return conflictingAssignments.map((assignment) => ({
     userId: assignment.user_id,
     userName: `${assignment.user.firstname} ${assignment.user.lastname}`,
-    conflictingEinsatz: {
-      id: assignment.einsatz.id,
-      title: assignment.einsatz.title,
-      start: assignment.einsatz.start,
-      end: assignment.einsatz.end,
-    },
+    conflictingEinsatz: normalizeDateRangeFromConflict(assignment.einsatz),
   }));
+}
+
+function normalizeDateRangeFromConflict<T extends { start: Date; end: Date }>(
+  value: T
+): T {
+  return normalizeEinsatzDatesFromDb(value);
 }
 
 export async function getEinsatzWithDetailsById(
@@ -199,7 +204,7 @@ export async function getEinsatzWithDetailsById(
   } = einsaetzeFromDb;
 
   return {
-    ...rest,
+    ...normalizeEinsatzDatesFromDb(rest),
     einsatz_status,
     assigned_users: Array.from(
       new Set(einsatz_helper.map((helper) => helper.user_id))
@@ -846,6 +851,7 @@ export async function createEinsatz({
     created_by: userIds.userId,
     org_id: useOrgId,
   };
+  const normalizedEinsatzWithAuth = normalizeDateRangeForDb(einsatzWithAuth);
 
   await assertOrgPermission(session, useOrgId, 'einsaetze:create');
 
@@ -858,8 +864,8 @@ export async function createEinsatz({
   ) {
     conflicts = await checkEinsatzConflicts(
       data.assignedUsers,
-      data.start,
-      data.end
+      normalizedEinsatzWithAuth.start,
+      normalizedEinsatzWithAuth.end
     );
 
     // Return early if conflicts exist - do not create the einsatz
@@ -870,7 +876,9 @@ export async function createEinsatz({
     }
   }
 
-  const createdEinsatz = await createEinsatzInDb({ data: einsatzWithAuth });
+  const createdEinsatz = await createEinsatzInDb({
+    data: normalizedEinsatzWithAuth,
+  });
 
   if (createdEinsatz.id && userIds.userId) {
     try {
@@ -926,7 +934,7 @@ export async function createEinsatz({
   }
 
   return {
-    einsatz: createdEinsatz,
+    einsatz: normalizeEinsatzDatesFromDb(createdEinsatz),
     conflicts: [],
   };
 }
@@ -952,6 +960,7 @@ export async function updateEinsatzTime(data: {
     end,
     disableTimeConflicts = false,
   } = dataSchema.parse(data);
+  const normalizedDateRange = normalizeDateRangeForDb({ start, end });
 
   // Get assigned users for this Einsatz
   const existingEinsatz = await prisma.einsatz.findUnique({
@@ -982,7 +991,12 @@ export async function updateEinsatzTime(data: {
     );
 
     // Check if the new time causes conflicts with already assigned users
-    conflicts = await checkEinsatzConflicts(assignedUserIds, start, end, id);
+    conflicts = await checkEinsatzConflicts(
+      assignedUserIds,
+      normalizedDateRange.start,
+      normalizedDateRange.end,
+      id
+    );
 
     // Return early if conflicts exist - do not update the time
     if (conflicts.length > 0) {
@@ -995,8 +1009,8 @@ export async function updateEinsatzTime(data: {
   const einsatz = await prisma.einsatz.update({
     where: { id },
     data: {
-      start,
-      end,
+      start: normalizedDateRange.start,
+      end: normalizedDateRange.end,
       updated_at: new Date(),
     },
   });
@@ -1028,7 +1042,7 @@ export async function updateEinsatzTime(data: {
   }
 
   return {
-    einsatz,
+    einsatz: normalizeEinsatzDatesFromDb(einsatz),
     conflicts: [],
   };
 }
@@ -1199,6 +1213,16 @@ export async function updateEinsatz({
     userProperties,
     ...updateData
   } = data;
+  const normalizedUpdateData =
+    updateData.start && updateData.end
+      ? {
+        ...updateData,
+        ...normalizeDateRangeForDb({
+          start: updateData.start,
+          end: updateData.end,
+        }),
+      }
+      : updateData;
 
   if (!id) {
     throw new BadRequestError('Einsatz must have an id for update');
@@ -1225,8 +1249,8 @@ export async function updateEinsatz({
   let conflicts: EinsatzConflict[] = [];
   if (!disableTimeConflicts && assignedUsers && assignedUsers.length > 0) {
     // Use the new start/end times if provided, otherwise use existing ones
-    const checkStart = updateData.start || existingEinsatz.start;
-    const checkEnd = updateData.end || existingEinsatz.end;
+    const checkStart = normalizedUpdateData.start || existingEinsatz.start;
+    const checkEnd = normalizedUpdateData.end || existingEinsatz.end;
 
     conflicts = await checkEinsatzConflicts(
       assignedUsers,
@@ -1252,7 +1276,7 @@ export async function updateEinsatz({
     const einsatz = await prisma.einsatz.update({
       where: { id },
       data: {
-        ...updateData,
+        ...normalizedUpdateData,
         updated_at: new Date(),
         einsatz_to_category: {
           // delete all existing categories and add the new ones
@@ -1293,7 +1317,7 @@ export async function updateEinsatz({
     });
 
     return {
-      einsatz,
+      einsatz: normalizeEinsatzDatesFromDb(einsatz),
       conflicts: [],
     };
   } catch (error) {
@@ -1404,6 +1428,7 @@ async function createEinsatzInDb({
 }: {
   data: EinsatzCreate;
 }): Promise<Einsatz> {
+  const normalizedData = normalizeDateRangeForDb(data);
   const {
     title,
     start,
@@ -1418,7 +1443,7 @@ async function createEinsatzInDb({
     status_id = 'offen',
     template_id = null,
     all_day = false,
-  } = data;
+  } = normalizedData;
 
   const helperCreateData = assignedUsers.map((userId) => ({
     user: { connect: { id: userId } },

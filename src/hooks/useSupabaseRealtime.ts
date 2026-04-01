@@ -25,6 +25,7 @@ import type {
   EinsatzListItem,
 } from '@/features/einsatz/types';
 import type { CalendarEvent } from '@/components/event-calendar/types';
+import { dbTimestampToCalendarDate } from '@/features/einsatz/datetime';
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
@@ -101,7 +102,9 @@ function toDate(value: string | null | undefined): Date | undefined {
   }
 
   const parsedDate = new Date(value);
-  return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+  return Number.isNaN(parsedDate.getTime())
+    ? undefined
+    : dbTimestampToCalendarDate(parsedDate);
 }
 
 function isEinsatzRow(value: unknown): value is EinsatzRow {
