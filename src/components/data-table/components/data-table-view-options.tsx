@@ -74,7 +74,7 @@ export function DataTableViewOptions<TData>({
             role="combobox"
             variant="outline"
             size="sm"
-            className="ml-auto hidden h-8 lg:flex"
+            className="ml-auto inline-flex h-8 shrink-0 whitespace-nowrap"
           >
             <Settings2 />
             Ansicht
