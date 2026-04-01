@@ -148,6 +148,33 @@ function formatTimeForInput(date: Date) {
 }
 
 /**
+ * Normalize event date values coming from cache/server so the dialog always works with real Date instances.
+ *
+ * Event times should be shown in local wall-clock time. Unlike org default times, UTC ISO strings here
+ * represent concrete instants and therefore must be interpreted locally after parsing.
+ */
+function normalizeEventDateValue(value: Date | string | null | undefined): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new Date(value);
+  }
+
+  const parsedDate = new Date(value);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function formatEventTimeForInput(
+  value: Date | string | null | undefined,
+  fallback: string
+): string {
+  const normalizedDate = normalizeEventDateValue(value);
+  return normalizedDate ? formatTimeForInput(normalizedDate) : fallback;
+}
+
+/**
  * Combine a date (year/month/day) with an HH:MM time string to produce a single Date.
  *
  * @param date - Date whose date portion (year, month, day) will be preserved
@@ -674,17 +701,25 @@ export function EventDialogVerwaltung({
 
         // Use org defaults once organizations are available so we don't show 09:00/10:00 and only update after close
         const base = getDefaultStaticFormData();
+        const createStart = normalizeEventDateValue(createEinsatz.start);
+        const createEnd = normalizeEventDateValue(createEinsatz.end);
         const createFormData: EinsatzFormData = {
           ...base,
           title: createEinsatz.title ?? '',
           all_day: createEinsatz.all_day ?? false,
-          ...(createEinsatz.start && {
-            startDate: createEinsatz.start,
-            startTime: formatTimeForInput(createEinsatz.start),
+          ...(createStart && {
+            startDate: createStart,
+            startTime: formatEventTimeForInput(
+              createEinsatz.start,
+              orgDefaultStartTime
+            ),
           }),
-          ...(createEinsatz.end && {
-            endDate: createEinsatz.end,
-            endTime: formatTimeForInput(createEinsatz.end),
+          ...(createEnd && {
+            endDate: createEnd,
+            endTime: formatEventTimeForInput(
+              createEinsatz.end,
+              orgDefaultEndTime
+            ),
           }),
         };
         setStaticFormData(createFormData);
@@ -725,14 +760,16 @@ export function EventDialogVerwaltung({
             ? prev
             : (currentEinsatz.template_id || null)
         );
+        const editStart = normalizeEventDateValue(einsatzDetailed.start);
+        const editEnd = normalizeEventDateValue(einsatzDetailed.end);
         const editFormData: EinsatzFormData = {
           title: einsatzDetailed.title || '',
           all_day: einsatzDetailed.all_day || false,
-          startDate: einsatzDetailed.start || new Date(),
+          startDate: editStart ?? new Date(),
           startTime:
-            formatTimeForInput(einsatzDetailed.start) || orgDefaultStartTime,
-          endDate: einsatzDetailed.end || new Date(),
-          endTime: formatTimeForInput(einsatzDetailed.end) || orgDefaultEndTime,
+            formatEventTimeForInput(einsatzDetailed.start, orgDefaultStartTime),
+          endDate: editEnd ?? new Date(),
+          endTime: formatEventTimeForInput(einsatzDetailed.end, orgDefaultEndTime),
           participantCount: einsatzDetailed.participant_count || 0,
           pricePerPerson: einsatzDetailed.price_per_person || 0,
           totalPrice: einsatzDetailed.total_price || 0,

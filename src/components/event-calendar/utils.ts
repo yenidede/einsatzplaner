@@ -24,6 +24,7 @@ import {
 import { toast } from 'sonner';
 import { PdfGenerationRequest } from '@/features/pdf/types/types';
 import { UsePdfGeneratorReturn } from '@/features/pdf/hooks/usePdfGenerator';
+import { normalizeEinsatzDatesFromDb } from '@/features/einsatz/datetime';
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -247,19 +248,21 @@ export const mapEinsatzToCalendarEvent = (
   const categories = einsatz.einsatz_to_category;
   const hasCategories = categories && categories.length > 0;
 
+  const normalizedEinsatz = normalizeEinsatzDatesFromDb(einsatz);
+
   return {
-    id: einsatz.id,
+    id: normalizedEinsatz.id,
     title: hasCategories
-      ? `${einsatz.title} (${categories
+      ? `${normalizedEinsatz.title} (${categories
         .map((c) => c.einsatz_category.abbreviation)
         .join(', ')})`
-      : einsatz.title,
-    start: einsatz.start,
-    end: einsatz.end,
-    allDay: einsatz.all_day,
-    status: einsatz.einsatz_status,
-    assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
-    helpersNeeded: einsatz.helpers_needed,
+      : normalizedEinsatz.title,
+    start: normalizedEinsatz.start,
+    end: normalizedEinsatz.end,
+    allDay: normalizedEinsatz.all_day,
+    status: normalizedEinsatz.einsatz_status,
+    assignedUsers: normalizedEinsatz.einsatz_helper.map((helper) => helper.user_id),
+    helpersNeeded: normalizedEinsatz.helpers_needed,
   };
 };
 
@@ -271,17 +274,19 @@ export const mapDetailedEinsatzToCalendarEvent = (
   }
   const abbr = einsatz.category_abbreviations;
   const hasCategories = abbr && abbr.length > 0;
+  const normalizedEinsatz = normalizeEinsatzDatesFromDb(einsatz);
+
   return {
-    id: einsatz.id,
+    id: normalizedEinsatz.id,
     title: hasCategories
-      ? `${einsatz.title} (${abbr.join(', ')})`
-      : einsatz.title,
-    start: einsatz.start,
-    end: einsatz.end,
-    allDay: einsatz.all_day,
-    status: einsatz.einsatz_status,
-    assignedUsers: einsatz.assigned_users ?? [],
-    helpersNeeded: einsatz.helpers_needed ?? undefined,
+      ? `${normalizedEinsatz.title} (${abbr.join(', ')})`
+      : normalizedEinsatz.title,
+    start: normalizedEinsatz.start,
+    end: normalizedEinsatz.end,
+    allDay: normalizedEinsatz.all_day,
+    status: normalizedEinsatz.einsatz_status,
+    assignedUsers: normalizedEinsatz.assigned_users ?? [],
+    helpersNeeded: normalizedEinsatz.helpers_needed ?? undefined,
   };
 };
 
