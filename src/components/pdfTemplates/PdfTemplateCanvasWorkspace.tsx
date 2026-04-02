@@ -68,8 +68,8 @@ export function PdfTemplateCanvasWorkspace({
   children,
 }: PdfTemplateCanvasWorkspaceProps) {
   return (
-    <div className="min-w-0 self-start px-1.5">
-      <div className="relative overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(241,245,249,0.92)_36%,rgba(226,232,240,0.88))] p-4 shadow-[0_20px_64px_rgba(15,23,42,0.07)]">
+    <div className="h-full min-w-0 px-1.5">
+      <div className="relative h-full overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(241,245,249,0.92)_36%,rgba(226,232,240,0.88))] p-4 shadow-[0_20px_64px_rgba(15,23,42,0.07)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,255,255,0.85),transparent)]" />
 
         <div className="absolute top-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 p-1 shadow-[0_10px_28px_rgba(15,23,42,0.12)] backdrop-blur">

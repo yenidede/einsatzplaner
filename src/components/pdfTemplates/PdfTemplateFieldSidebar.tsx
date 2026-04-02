@@ -58,8 +58,7 @@ const GROUP_META: Record<
   basic: {
     label: 'Basisfelder',
     icon: FileStack,
-    description:
-      'Schnell verfügbare Angaben für Titel, Zeit und Standardtexte',
+    description: 'Schnell verfügbare Angaben für Titel, Zeit und Standardtexte',
   },
   organization: {
     label: 'Organisationsfelder',
@@ -175,7 +174,7 @@ function FieldRow({
     <div
       ref={cardRef}
       draggable
-      className="group/field rounded-[1rem] border border-slate-200 bg-white p-3.5 shadow-[0_8px_20px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_14px_28px_rgba(15,23,42,0.07)]"
+      className="group/field rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_8px_20px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_14px_28px_rgba(15,23,42,0.07)]"
       onDragStart={(event) => {
         setIsDragging(true);
         suppressClickRef.current = true;
@@ -384,7 +383,7 @@ export function PdfTemplateFieldSidebar({
       <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/70 p-2.5">
         {displayGroups.length === 0 ? (
           <div className="flex h-full min-h-56 items-center justify-center px-4">
-            <div className="w-full rounded-[1.5rem] border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
+            <div className="w-full rounded-3xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
               <div className="text-sm font-semibold text-slate-900">
                 Keine Felder gefunden
               </div>

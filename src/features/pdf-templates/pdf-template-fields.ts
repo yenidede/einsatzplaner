@@ -79,6 +79,7 @@ function createStandardField(
     group,
     kind: 'standard',
     isCustom: false,
+    sourceFieldId: null,
     sourceLabel: null,
     searchText: buildSearchText([
       label,
@@ -159,6 +160,20 @@ const baseFieldDefinitions: PdfTemplateFieldDefinition[] = [
     'Bankkonten',
     'organization',
     'bank iban bic organisation organization',
+    'organization'
+  ),
+  createStandardField(
+    'organisation_adressen_tabelle',
+    'Adressen-Tabelle',
+    'organization',
+    'address standort tabelle table organisation organization',
+    'organization'
+  ),
+  createStandardField(
+    'organisation_bankkonten_tabelle',
+    'Bankkonten-Tabelle',
+    'organization',
+    'bank iban bic tabelle table organisation organization',
     'organization'
   ),
   createStandardField(
@@ -335,6 +350,7 @@ export async function getPdfTemplateFieldDefinitions(
         subgroup: 'Einsatzfelder',
         kind: 'custom',
         isCustom: true,
+        sourceFieldId: field.field.id,
         sourceLabel: 'Einsatzfeld',
         searchText: buildSearchText([
           label,
@@ -359,6 +375,7 @@ export async function getPdfTemplateFieldDefinitions(
         subgroup: 'Teilnehmer-Eigenschaften',
         kind: 'custom',
         isCustom: true,
+        sourceFieldId: property.field.id,
         sourceLabel: 'Teilnehmer',
         searchText: buildSearchText([
           label,

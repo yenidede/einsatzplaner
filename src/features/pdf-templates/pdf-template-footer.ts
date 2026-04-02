@@ -16,7 +16,7 @@ export const FOOTER_SCHEMA_PREFIX = '__footer__';
 export const PDF_PAGE_WIDTH_MM = 210;
 export const PDF_PAGE_HEIGHT_MM = 297;
 export const PDF_PAGE_PADDING_MM = 20;
-export const FOOTER_BOTTOM_SAFE_AREA_MM = 4;
+export const FOOTER_BOTTOM_SAFE_AREA_MM = 1;
 
 const FOOTER_MAX_WIDTH_MM = PDF_PAGE_WIDTH_MM - PDF_PAGE_PADDING_MM * 2;
 const FOOTER_MIN_TOP_MM = PDF_PAGE_PADDING_MM;
@@ -24,6 +24,10 @@ const FOOTER_COLUMN_GAP_MM = 8;
 const FOOTER_ROW_GAP_MM = 2.4;
 const FOOTER_DIVIDER_GAP_MM = 3;
 const FOOTER_DIVIDER_HEIGHT_MM = 3;
+const FOOTER_MIN_TEXT_HEIGHT_MM = 3.6;
+const FOOTER_TEXT_CHARS_PER_LINE_FACTOR = 5;
+const FOOTER_TEXT_HEIGHT_FACTOR = 0.34;
+const FOOTER_TEXT_HEIGHT_PADDING_MM = 0.8;
 
 interface FooterContentLayout {
   id: string;
@@ -325,8 +329,8 @@ function resolveFooterText(text: string, input?: PdfTemplateInput): string {
 function estimateLineCount(text: string, widthMm: number, fontSize: number): number {
   const normalizedText = text.replace(/\r/g, '');
   const charsPerLine = Math.max(
-    18,
-    Math.floor((widthMm * 2.5) / Math.max(fontSize, 6))
+    28,
+    Math.floor((widthMm * FOOTER_TEXT_CHARS_PER_LINE_FACTOR) / Math.max(fontSize, 6))
   );
 
   return normalizedText.split('\n').reduce((lineCount, line) => {
@@ -347,7 +351,15 @@ function estimateTextHeight(
   lineHeight: number
 ): number {
   const lineCount = estimateLineCount(text, widthMm, fontSize);
-  return Math.max(5, Math.ceil(lineCount * fontSize * lineHeight * 0.45));
+  return Math.max(
+    FOOTER_MIN_TEXT_HEIGHT_MM,
+    Number(
+      (
+        lineCount * fontSize * lineHeight * FOOTER_TEXT_HEIGHT_FACTOR +
+        FOOTER_TEXT_HEIGHT_PADDING_MM
+      ).toFixed(2)
+    )
+  );
 }
 
 function hasFooterContent(footer: PdfTemplateFooterConfig | null): footer is PdfTemplateFooterConfig {

@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, type CSSProperties } from 'react';
+import { memo } from 'react';
 import { Eye, LoaderCircle, PanelRightClose } from 'lucide-react';
 import type { Template } from '@pdfme/common';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,6 @@ interface PdfTemplateInspectorSidebarProps {
   onRefreshPreview: () => void;
   isRefreshingPreview: boolean;
   onCollapse: () => void;
-  panelStyle?: CSSProperties;
   template: Template;
   input: PdfTemplateInput;
 }
@@ -34,12 +33,11 @@ export const PdfTemplateInspectorSidebar = memo(function PdfTemplateInspectorSid
   onRefreshPreview,
   isRefreshingPreview,
   onCollapse,
-  panelStyle,
   template,
   input,
 }: PdfTemplateInspectorSidebarProps) {
   return (
-    <div className="min-h-0 self-start pl-1.5" style={panelStyle}>
+    <div className="h-full min-h-0 overflow-hidden pl-1.5">
       <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.07)]">
         <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-4 py-3.5">
           <div className="flex items-start gap-3">

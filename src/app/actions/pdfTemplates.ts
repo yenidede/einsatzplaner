@@ -138,8 +138,14 @@ export async function getPdfTemplatePreview(
   });
 }
 
-export async function getPdfPreviewAssignments(organizationId: string) {
-  return getBookingConfirmationPreviewOptions(organizationId);
+export async function getPdfPreviewAssignments(
+  organizationId: string,
+  preferredEinsatzId?: string | null
+) {
+  return getBookingConfirmationPreviewOptions(
+    organizationId,
+    preferredEinsatzId
+  );
 }
 
 export async function getPdfPreviewInput(einsatzId?: string | null) {
@@ -147,6 +153,16 @@ export async function getPdfPreviewInput(einsatzId?: string | null) {
     return {
       organisation_name: 'Beispielorganisation',
       organisation_email: 'office@example.org',
+      organisation_adressen:
+        'Musterstraße 1, 1010 Wien, Österreich',
+      organisation_bankkonten:
+        'Musterbank, AT12 3456 7890 1234 5678, ABCDATWW',
+      organisation_adressen_tabelle: [
+        ['Hauptstandort', 'Musterstraße 1, 1010 Wien, Österreich'],
+      ],
+      organisation_bankkonten_tabelle: [
+        ['Musterbank', 'AT12 3456 7890 1234 5678', 'ABCDATWW'],
+      ],
       einsatz_titel: 'Beispiel Einsatz',
       einsatz_start_datum_formatiert: '24.03.2026',
       einsatz_zeitraum_formatiert: '09:00 - 11:00',

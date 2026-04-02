@@ -121,7 +121,8 @@ async function normalizeImageForPdf(value: string | null | undefined): Promise<s
 }
 
 export async function getBookingConfirmationPreviewOptions(
-  organizationId: string
+  organizationId: string,
+  preferredEinsatzId?: string | null
 ): Promise<Array<{ id: string; title: string }>> {
   const { session } = await requireAuth();
 
@@ -129,19 +130,94 @@ export async function getBookingConfirmationPreviewOptions(
     throw new ForbiddenError('Fehlende Berechtigung');
   }
 
-  const records = await prisma.einsatz.findMany({
-    where: { org_id: organizationId },
-    select: {
-      id: true,
-      title: true,
-    },
-    orderBy: {
-      start: 'desc',
-    },
-    take: 20,
-  });
+  const now = new Date();
+  const baseSelect = {
+    id: true,
+    title: true,
+    start: true,
+  } as const;
 
-  return records;
+  const [nextRecords, previousRecords] = await Promise.all([
+    prisma.einsatz.findMany({
+      where: {
+        org_id: organizationId,
+        start: {
+          gte: now,
+        },
+      },
+      select: baseSelect,
+      orderBy: {
+        start: 'asc',
+      },
+      take: 5,
+    }),
+    prisma.einsatz.findMany({
+      where: {
+        org_id: organizationId,
+        start: {
+          lt: now,
+        },
+      },
+      select: baseSelect,
+      orderBy: {
+        start: 'desc',
+      },
+      take: 5,
+    }),
+  ]);
+
+  let records =
+    nextRecords.length === 0
+      ? await prisma.einsatz.findMany({
+          where: {
+            org_id: organizationId,
+            start: {
+              lt: now,
+            },
+          },
+          select: baseSelect,
+          orderBy: {
+            start: 'desc',
+          },
+          take: 10,
+        })
+      : previousRecords.length === 0
+        ? await prisma.einsatz.findMany({
+            where: {
+              org_id: organizationId,
+              start: {
+                gte: now,
+              },
+            },
+            select: baseSelect,
+            orderBy: {
+              start: 'asc',
+            },
+            take: 10,
+          })
+        : [...nextRecords, ...previousRecords];
+
+  if (
+    preferredEinsatzId &&
+    !records.some((record) => record.id === preferredEinsatzId)
+  ) {
+    const preferredRecord = await prisma.einsatz.findFirst({
+      where: {
+        id: preferredEinsatzId,
+        org_id: organizationId,
+      },
+      select: baseSelect,
+    });
+
+    if (preferredRecord) {
+      records = [preferredRecord, ...records];
+    }
+  }
+
+  return records.map(({ id, title }) => ({
+    id,
+    title,
+  }));
 }
 
 export async function buildBookingConfirmationPdfInput(
@@ -229,7 +305,22 @@ export async function buildBookingConfirmationPdfInput(
   }
 
   const fieldDefinitions = await getPdfTemplateFieldDefinitions(einsatz.org_id);
-  const fieldKeys = new Map(fieldDefinitions.map((field) => [field.label, field.key]));
+  const dynamicFieldKeys = new Map(
+    fieldDefinitions
+      .filter(
+        (field): field is typeof field & { sourceFieldId: string } =>
+          field.source === 'dynamic_field' && typeof field.sourceFieldId === 'string'
+      )
+      .map((field) => [field.sourceFieldId, field.key])
+  );
+  const userPropertyKeys = new Map(
+    fieldDefinitions
+      .filter(
+        (field): field is typeof field & { sourceFieldId: string } =>
+          field.source === 'user_property' && typeof field.sourceFieldId === 'string'
+      )
+      .map((field) => [field.sourceFieldId, field.key])
+  );
   const orgDetails = einsatz.organization.organization_details[0] ?? null;
   const logoImage = await normalizeImageForPdf(einsatz.organization.logo_url);
 
@@ -313,7 +404,7 @@ export async function buildBookingConfirmationPdfInput(
     }
 
     const fallbackKey = slugifyPdfFieldKey(label, `feld_${fieldValue.field.id.slice(0, 8)}`);
-    const key = fieldKeys.get(label) ?? fallbackKey;
+    const key = dynamicFieldKeys.get(fieldValue.field.id) ?? fallbackKey;
     input[key] = toStringValue(fieldValue.value);
   });
 
@@ -327,7 +418,8 @@ export async function buildBookingConfirmationPdfInput(
       label,
       `eigenschaft_${property.user_property.field.id.slice(0, 8)}`
     );
-    const key = fieldKeys.get(label) ?? fallbackKey;
+    const key =
+      userPropertyKeys.get(property.user_property.field.id) ?? fallbackKey;
     input[key] = property.is_required ? 'Ja' : 'Nein';
   });
 

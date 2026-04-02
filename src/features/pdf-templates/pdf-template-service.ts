@@ -333,6 +333,16 @@ export async function getPdfTemplatePreviewData(args: {
     const input: PdfTemplateInput = {
       organisation_name: 'Beispielorganisation',
       organisation_email: 'office@example.org',
+      organisation_adressen:
+        'Musterstraße 1, 1010 Wien, Österreich',
+      organisation_bankkonten:
+        'Musterbank, AT12 3456 7890 1234 5678, ABCDATWW',
+      organisation_adressen_tabelle: [
+        ['Hauptstandort', 'Musterstraße 1, 1010 Wien, Österreich'],
+      ],
+      organisation_bankkonten_tabelle: [
+        ['Musterbank', 'AT12 3456 7890 1234 5678', 'ABCDATWW'],
+      ],
       organisation_logo_url:
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAABaCAQAAAB2M8rWAAAAIElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAA4G4w2AABGq5W9QAAAABJRU5ErkJggg==',
       einsatz_titel: 'Beispiel Einsatz',
