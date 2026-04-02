@@ -1,14 +1,8 @@
 'use client';
 
-import { CopyPlus, LoaderCircle, MoreHorizontal, Save } from 'lucide-react';
+import { LoaderCircle, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 
 interface PdfTemplateEditorTopBarProps {
@@ -17,7 +11,6 @@ interface PdfTemplateEditorTopBarProps {
   saveStateLabel: string;
   isSaving: boolean;
   onSave: () => void;
-  onDuplicate: () => void;
 }
 
 export function PdfTemplateEditorTopBar({
@@ -26,7 +19,6 @@ export function PdfTemplateEditorTopBar({
   saveStateLabel,
   isSaving,
   onSave,
-  onDuplicate,
 }: PdfTemplateEditorTopBarProps) {
   return (
     <div className="relative z-20 rounded-[1.2rem] border border-slate-200/80 bg-white/95 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur">
@@ -53,26 +45,6 @@ export function PdfTemplateEditorTopBar({
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-2">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 rounded-xl border-slate-200 bg-white px-3"
-                aria-label="Weitere Aktionen"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-                Mehr
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-44 rounded-xl">
-              <DropdownMenuItem onClick={onDuplicate}>
-                <CopyPlus className="h-4 w-4" />
-                Duplizieren
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           <Button
             type="button"
             className="h-10 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800"

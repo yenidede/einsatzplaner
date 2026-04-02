@@ -102,6 +102,7 @@ export interface PdfTemplateFieldDefinition {
   subgroup?: string | null;
   kind: PdfTemplateFieldKind;
   isCustom: boolean;
+  sourceFieldId?: string | null;
   sourceLabel?: string | null;
   searchText: string;
 }

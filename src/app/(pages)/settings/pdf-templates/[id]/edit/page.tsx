@@ -35,7 +35,7 @@ export default async function EditTemplatePage({
   }
 
   const [previewAssignments, fields] = await Promise.all([
-    getPdfPreviewAssignments(organizationId),
+    getPdfPreviewAssignments(organizationId, template.sampleEinsatzId),
     getPdfTemplateFieldDefinitions(organizationId),
   ]);
 

@@ -16,12 +16,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { Template } from '@pdfme/common';
-import {
-  PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightOpen,
-} from 'lucide-react';
+import { type Template } from '@pdfme/common';
+import { PanelLeftClose, PanelLeftOpen, PanelRightOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +34,11 @@ import {
   type PdfTemplateFooterTarget,
 } from './PdfTemplateFooterInlineEditor';
 import { PdfTemplateInspectorSidebar } from './PdfTemplateInspectorSidebar';
-import { getPdfmePlugins } from '@/features/pdf-templates/pdf-template-default';
+import {
+  getPdfmePlugins,
+  isLegacyPdfTemplateBlankBasePdf,
+  PDF_TEMPLATE_BLANK_BASE_PDF,
+} from '@/features/pdf-templates/pdf-template-default';
 import {
   applyFooterToTemplate,
   buildFooterLayout,
@@ -73,7 +73,6 @@ type DesignerInstance = {
   getTemplate: () => Template;
   updateTemplate: (template: Template) => void;
   getPageCursor: () => number;
-  getTotalPages: () => number;
 };
 
 interface DropPosition {
@@ -154,7 +153,9 @@ interface CanvasSchemaHotspot {
   height: number;
 }
 
-function getDefaultOverlayLayout(kind: Exclude<ActiveOverlay, null>): OverlayPanelLayout {
+function getDefaultOverlayLayout(
+  kind: Exclude<ActiveOverlay, null>
+): OverlayPanelLayout {
   if (kind === 'footer') {
     return {
       mode: 'anchored',
@@ -199,6 +200,8 @@ const ELEMENT_OVERLAY_MIN_WIDTH_PX = 320;
 const ELEMENT_OVERLAY_MAX_WIDTH_PX = 520;
 const ELEMENT_OVERLAY_MIN_HEIGHT_PX = 260;
 const EMPTY_PREVIEW_INPUT: PdfTemplateInput = {};
+const WORKSPACE_BOTTOM_GAP_PX = 1;
+const WORKSPACE_MIN_RESERVED_VIEWPORT_PX = 50;
 const FOOTER_HIGHLIGHT_PADDING_X_MM = 2.5;
 const FOOTER_HIGHLIGHT_PADDING_Y_MM = 1.5;
 
@@ -218,14 +221,23 @@ function getDockedEditorMinWidth(viewportWidth: number): number {
   return 460;
 }
 
-function getDesignerPageElement(
-  container: HTMLDivElement | null
+function getDesignerPageElementForIndex(
+  container: HTMLDivElement | null,
+  pageIndex: number
 ): HTMLDivElement | null {
-  return (
-    container?.querySelector<HTMLDivElement>(
-      'div[style*="background-size"][style*="position: relative"]'
-    ) ?? null
-  );
+  return getDesignerPageElements(container)[pageIndex] ?? null;
+}
+
+function getDesignerPageElements(
+  container: HTMLDivElement | null
+): HTMLDivElement[] {
+  return container
+    ? Array.from(
+        container.querySelectorAll<HTMLDivElement>(
+          'div[style*="background-size"][style*="position: relative"]'
+        )
+      )
+    : [];
 }
 
 function buildAnchorViewportRect(
@@ -332,7 +344,9 @@ function getSchemaKey(
 
 function getElementLabel(schema: TemplateSchema, schemaIndex: number): string {
   const content =
-    typeof schema.content === 'string' ? schema.content.replace(/[{}]/g, '') : '';
+    typeof schema.content === 'string'
+      ? schema.content.replace(/[{}]/g, '')
+      : '';
 
   return content || schema.name || `Element ${schemaIndex + 1}`;
 }
@@ -448,17 +462,29 @@ function clampValue(value: number, min: number, max: number): number {
 }
 
 function createClientId(prefix: string): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
     return `${prefix}-${crypto.randomUUID()}`;
   }
 
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
+function normalizeBlankBasePdf(template: Template): Template {
+  return isLegacyPdfTemplateBlankBasePdf(template.basePdf)
+    ? {
+        ...template,
+        basePdf: PDF_TEMPLATE_BLANK_BASE_PDF,
+      }
+    : template;
+}
+
 function sanitizeBaseTemplate(template: Template): Template {
   return stripFooterSchemas(
     applyFooterToTemplate({
-      template,
+      template: normalizeBlankBasePdf(template),
       footer: null,
     })
   );
@@ -485,7 +511,9 @@ export function PdfmeTemplateEditor({
   const editorCanvasRef = useRef<HTMLDivElement | null>(null);
   const footerZoneRef = useRef<HTMLDivElement | null>(null);
   const overlayPanelRef = useRef<HTMLDivElement | null>(null);
-  const overlayLayoutsRef = useRef<Record<Exclude<ActiveOverlay, null>, OverlayPanelLayout>>({
+  const overlayLayoutsRef = useRef<
+    Record<Exclude<ActiveOverlay, null>, OverlayPanelLayout>
+  >({
     element: getDefaultOverlayLayout('element'),
     footer: getDefaultOverlayLayout('footer'),
   });
@@ -500,7 +528,9 @@ export function PdfmeTemplateEditor({
   const isApplyingTemplateRef = useRef(false);
   const baselineTemplateRef = useRef<Template>(normalizedInitialTemplate);
   const baselineNameRef = useRef(initialName);
-  const baselineFooterRef = useRef<PdfTemplateFooterConfig | null>(initialFooterConfig);
+  const baselineFooterRef = useRef<PdfTemplateFooterConfig | null>(
+    initialFooterConfig
+  );
   const baselineSampleRef = useRef<string | null>(initialSampleEinsatzId);
   const appliedDesignerTemplateRef = useRef<Template>(
     applyFooterToTemplate({
@@ -509,14 +539,15 @@ export function PdfmeTemplateEditor({
       input: EMPTY_PREVIEW_INPUT,
     })
   );
-  const footerConfigRef = useRef<PdfTemplateFooterConfig | null>(initialFooterConfig);
+  const footerConfigRef = useRef<PdfTemplateFooterConfig | null>(
+    initialFooterConfig
+  );
   const previewInputRef = useRef<PdfTemplateInput>(EMPTY_PREVIEW_INPUT);
 
   const [name, setName] = useState(initialName);
   const [template, setTemplate] = useState<Template>(normalizedInitialTemplate);
-  const [footerConfig, setFooterConfig] = useState<PdfTemplateFooterConfig | null>(
-    initialFooterConfig
-  );
+  const [footerConfig, setFooterConfig] =
+    useState<PdfTemplateFooterConfig | null>(initialFooterConfig);
   const [selectedPreviewEinsatzId, setSelectedPreviewEinsatzId] =
     useState<string>(initialSampleEinsatzId ?? 'mock');
   const [isFieldSidebarOpen, setIsFieldSidebarOpen] = useState(true);
@@ -541,7 +572,9 @@ export function PdfmeTemplateEditor({
   );
   const [isFooterSelected, setIsFooterSelected] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(null);
-  const [overlayAnchor, setOverlayAnchor] = useState<OverlayAnchor | null>(null);
+  const [overlayAnchor, setOverlayAnchor] = useState<OverlayAnchor | null>(
+    null
+  );
   const [overlayViewportStyle, setOverlayViewportStyle] =
     useState<CSSProperties | null>(null);
   const [overlayLayouts, setOverlayLayouts] = useState<
@@ -550,10 +583,11 @@ export function PdfmeTemplateEditor({
     element: getDefaultOverlayLayout('element'),
     footer: getDefaultOverlayLayout('footer'),
   });
-  const [activeFooterTarget, setActiveFooterTarget] = useState<PdfTemplateFooterTarget>({
-    rowId: null,
-    column: 'left',
-  });
+  const [activeFooterTarget, setActiveFooterTarget] =
+    useState<PdfTemplateFooterTarget>({
+      rowId: null,
+      column: 'left',
+    });
   const [isSaving, startSaving] = useTransition();
 
   const previewInputQuery = useQuery<PdfTemplateInput>({
@@ -579,21 +613,18 @@ export function PdfmeTemplateEditor({
     () => new Map(libraryFields.map((field) => [field.key, field])),
     [libraryFields]
   );
-  const renderedTemplate = useMemo(
-    () => {
-      const footerTemplate = applyFooterToTemplate({
-        template,
-        footer: deferredFooterConfig,
-        input: deferredPreviewInput,
-      });
+  const renderedTemplate = useMemo(() => {
+    const footerTemplate = applyFooterToTemplate({
+      template,
+      footer: deferredFooterConfig,
+      input: deferredPreviewInput,
+    });
 
-      return applyImageBindingsToTemplate({
-        template: footerTemplate,
-        input: deferredPreviewInput,
-      });
-    },
-    [template, deferredFooterConfig, deferredPreviewInput]
-  );
+    return applyImageBindingsToTemplate({
+      template: footerTemplate,
+      input: deferredPreviewInput,
+    });
+  }, [template, deferredFooterConfig, deferredPreviewInput]);
 
   useEffect(() => {
     overlayLayoutsRef.current = overlayLayouts;
@@ -635,9 +666,13 @@ export function PdfmeTemplateEditor({
     const overlayLeft =
       typeof gridOverlayStyle.left === 'number' ? gridOverlayStyle.left : null;
     const overlayWidth =
-      typeof gridOverlayStyle.width === 'number' ? gridOverlayStyle.width : null;
+      typeof gridOverlayStyle.width === 'number'
+        ? gridOverlayStyle.width
+        : null;
     const overlayHeight =
-      typeof gridOverlayStyle.height === 'number' ? gridOverlayStyle.height : null;
+      typeof gridOverlayStyle.height === 'number'
+        ? gridOverlayStyle.height
+        : null;
 
     if (
       overlayTop === null ||
@@ -657,7 +692,10 @@ export function PdfmeTemplateEditor({
       x: overlayLeft + (schema.position.x / PDF_PAGE_WIDTH_MM) * overlayWidth,
       y: overlayTop + (schema.position.y / PDF_PAGE_HEIGHT_MM) * overlayHeight,
       width: Math.max((schema.width / PDF_PAGE_WIDTH_MM) * overlayWidth, 24),
-      height: Math.max((schema.height / PDF_PAGE_HEIGHT_MM) * overlayHeight, 20),
+      height: Math.max(
+        (schema.height / PDF_PAGE_HEIGHT_MM) * overlayHeight,
+        20
+      ),
     }));
   }, [currentPageIndex, gridOverlayStyle, template.schemas]);
 
@@ -667,22 +705,23 @@ export function PdfmeTemplateEditor({
     }
 
     if (
-      (selectedPreviewEinsatzId === 'mock' ? null : selectedPreviewEinsatzId) !==
-      baselineSampleRef.current
+      (selectedPreviewEinsatzId === 'mock'
+        ? null
+        : selectedPreviewEinsatzId) !== baselineSampleRef.current
     ) {
       return true;
     }
 
-    if (JSON.stringify(footerConfig) !== JSON.stringify(baselineFooterRef.current)) {
+    if (
+      JSON.stringify(footerConfig) !== JSON.stringify(baselineFooterRef.current)
+    ) {
       return true;
     }
 
     return !compareTemplates(template, baselineTemplateRef.current);
   }, [footerConfig, name, selectedPreviewEinsatzId, template]);
 
-  const saveStateLabel = isDirty
-    ? 'Ungespeicherte Änderungen'
-    : 'Gespeichert';
+  const saveStateLabel = isDirty ? 'Ungespeicherte Änderungen' : 'Gespeichert';
 
   const closeActiveOverlay = useCallback(() => {
     setActiveOverlay(null);
@@ -702,6 +741,12 @@ export function PdfmeTemplateEditor({
   }, [template]);
 
   useEffect(() => {
+    setCurrentPageIndex((current) =>
+      Math.min(current, Math.max(template.schemas.length - 1, 0))
+    );
+  }, [template.schemas.length]);
+
+  useEffect(() => {
     if (!selectedElementKey && elementOptions[0]) {
       setSelectedElementKey(elementOptions[0].key);
       return;
@@ -714,22 +759,6 @@ export function PdfmeTemplateEditor({
       setSelectedElementKey(elementOptions[0]?.key ?? null);
     }
   }, [elementOptions, selectedElementKey]);
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      const nextPageIndex = designerRef.current?.getPageCursor();
-
-      if (typeof nextPageIndex === 'number') {
-        setCurrentPageIndex((current) =>
-          current === nextPageIndex ? current : nextPageIndex
-        );
-      }
-    }, 250);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, []);
 
   useEffect(() => {
     if (!footerConfig?.enabled) {
@@ -753,9 +782,7 @@ export function PdfmeTemplateEditor({
     }
 
     const nextColumn =
-      footerConfig.layout === 'two_column'
-        ? activeFooterTarget.column
-        : 'left';
+      footerConfig.layout === 'two_column' ? activeFooterTarget.column : 'left';
 
     if (
       matchingRow.id !== activeFooterTarget.rowId ||
@@ -827,13 +854,15 @@ export function PdfmeTemplateEditor({
         templateRef.current = normalizedTemplate;
         setTemplate(normalizedTemplate);
       });
-
+      instance.onPageChange(({ currentPage }) => {
+        setCurrentPageIndex(currentPage);
+      });
+      setCurrentPageIndex(instance.getPageCursor());
       designerRef.current = {
         destroy: () => instance.destroy(),
         getTemplate: () => instance.getTemplate(),
         updateTemplate: (nextTemplate) => instance.updateTemplate(nextTemplate),
         getPageCursor: () => instance.getPageCursor(),
-        getTotalPages: () => instance.getTotalPages(),
       };
     }
 
@@ -851,7 +880,9 @@ export function PdfmeTemplateEditor({
       return;
     }
 
-    if (compareTemplates(appliedDesignerTemplateRef.current, renderedTemplate)) {
+    if (
+      compareTemplates(appliedDesignerTemplateRef.current, renderedTemplate)
+    ) {
       return;
     }
 
@@ -862,7 +893,8 @@ export function PdfmeTemplateEditor({
 
   useEffect(() => {
     function syncWorkspaceViewportOffset() {
-      const nextTop = workspaceGridRef.current?.getBoundingClientRect().top ?? 0;
+      const nextTop =
+        workspaceGridRef.current?.getBoundingClientRect().top ?? 0;
       setWorkspaceViewportOffset(Math.max(Math.round(nextTop), 0));
     }
 
@@ -888,7 +920,9 @@ export function PdfmeTemplateEditor({
 
   useEffect(() => {
     function syncLayoutViewportWidth() {
-      setLayoutViewportWidth(layoutViewportRef.current?.clientWidth ?? window.innerWidth);
+      setLayoutViewportWidth(
+        layoutViewportRef.current?.clientWidth ?? window.innerWidth
+      );
     }
 
     syncLayoutViewportWidth();
@@ -917,7 +951,10 @@ export function PdfmeTemplateEditor({
         return;
       }
 
-      const pageElement = getDesignerPageElement(designerContainer);
+      const pageElement = getDesignerPageElementForIndex(
+        designerContainer,
+        currentPageIndex
+      );
 
       if (!pageElement) {
         setGridOverlayStyle(null);
@@ -964,9 +1001,12 @@ export function PdfmeTemplateEditor({
       mutationObserver.disconnect();
       window.removeEventListener('resize', syncGridOverlay);
     };
-  }, [template, zoomLevel]);
+  }, [currentPageIndex, template, zoomLevel]);
 
-  function applyTemplate(nextTemplate: Template, nextSelectedKey?: string | null) {
+  function applyTemplate(
+    nextTemplate: Template,
+    nextSelectedKey?: string | null
+  ) {
     const nextRenderedTemplate = applyFooterToTemplate({
       template: nextTemplate,
       footer: footerConfig,
@@ -1008,7 +1048,9 @@ export function PdfmeTemplateEditor({
       ...templateRef.current,
       schemas: templateRef.current.schemas.map((page, pageIndex) =>
         page.map((schema, schemaIndex) => {
-          if (getSchemaKey(schema, pageIndex, schemaIndex) !== selectedElementKey) {
+          if (
+            getSchemaKey(schema, pageIndex, schemaIndex) !== selectedElementKey
+          ) {
             return schema;
           }
 
@@ -1020,7 +1062,10 @@ export function PdfmeTemplateEditor({
     commitTemplateChange(nextTemplate, selectedElementKey);
   }
 
-  function openElementOverlay(elementKey: string, triggerElement?: HTMLElement | null) {
+  function openElementOverlay(
+    elementKey: string,
+    triggerElement?: HTMLElement | null
+  ) {
     setSelectedElementKey(elementKey);
     lastOverlayTriggerRef.current = triggerElement ?? null;
     setActiveOverlay('element');
@@ -1053,7 +1098,8 @@ export function PdfmeTemplateEditor({
   }
 
   function insertFooterToken(field: PdfTemplateFieldDefinition) {
-    const baseFooter = footerConfig ?? createDefaultFooterConfig(currentPageIndex);
+    const baseFooter =
+      footerConfig ?? createDefaultFooterConfig(currentPageIndex);
     const targetRow =
       baseFooter.rows.find((row) => row.id === activeFooterTarget.rowId) ??
       baseFooter.rows[0] ??
@@ -1129,7 +1175,10 @@ export function PdfmeTemplateEditor({
       }
 
       const target = event.target;
-      if (target instanceof HTMLElement && target.closest('[data-footer-zone="true"]')) {
+      if (
+        target instanceof HTMLElement &&
+        target.closest('[data-footer-zone="true"]')
+      ) {
         setIsFooterSelected(true);
         setSelectedElementKey(null);
         return;
@@ -1145,7 +1194,11 @@ export function PdfmeTemplateEditor({
       const canvasRect = editorCanvasRef.current.getBoundingClientRect();
       const relativeX = event.clientX - canvasRect.left;
       const relativeY = event.clientY - canvasRect.top;
-      const hotspot = getHotspotAtPoint(canvasSchemaHotspots, relativeX, relativeY);
+      const hotspot = getHotspotAtPoint(
+        canvasSchemaHotspots,
+        relativeX,
+        relativeY
+      );
 
       if (hotspot) {
         setSelectedElementKey(hotspot.key);
@@ -1175,7 +1228,11 @@ export function PdfmeTemplateEditor({
       const canvasRect = editorCanvasRef.current.getBoundingClientRect();
       const relativeX = event.clientX - canvasRect.left;
       const relativeY = event.clientY - canvasRect.top;
-      const hotspot = getHotspotAtPoint(canvasSchemaHotspots, relativeX, relativeY);
+      const hotspot = getHotspotAtPoint(
+        canvasSchemaHotspots,
+        relativeX,
+        relativeY
+      );
 
       if (!hotspot) {
         return;
@@ -1208,7 +1265,11 @@ export function PdfmeTemplateEditor({
       const canvasRect = editorCanvasRef.current.getBoundingClientRect();
       const relativeX = event.clientX - canvasRect.left;
       const relativeY = event.clientY - canvasRect.top;
-      const hotspot = getHotspotAtPoint(canvasSchemaHotspots, relativeX, relativeY);
+      const hotspot = getHotspotAtPoint(
+        canvasSchemaHotspots,
+        relativeX,
+        relativeY
+      );
 
       if (!hotspot) {
         return;
@@ -1224,8 +1285,13 @@ export function PdfmeTemplateEditor({
     [canvasSchemaHotspots]
   );
 
-  function getDropPosition(event: DragEvent<HTMLDivElement>): DropPosition | null {
-    const pageElement = getDesignerPageElement(containerRef.current);
+  function getDropPosition(
+    event: DragEvent<HTMLDivElement>
+  ): DropPosition | null {
+    const pageElement = getDesignerPageElementForIndex(
+      containerRef.current,
+      currentPageIndex
+    );
 
     if (!pageElement) {
       return null;
@@ -1270,13 +1336,17 @@ export function PdfmeTemplateEditor({
     }
 
     if (field.key === FOOTER_LIBRARY_FIELD_KEY) {
-      const pageIndex = designerRef.current?.getPageCursor() ?? currentPageIndex;
+      const pageIndex =
+        designerRef.current?.getPageCursor() ?? currentPageIndex;
       const nextFooter = footerConfig ?? createDefaultFooterConfig(pageIndex);
       setCurrentPageIndex(pageIndex);
       setFooterConfig(nextFooter);
       setActiveFooterTarget({
         rowId: nextFooter.rows[0]?.id ?? null,
-        column: nextFooter.layout === 'two_column' ? nextFooter.rows[0]?.column ?? 'left' : 'left',
+        column:
+          nextFooter.layout === 'two_column'
+            ? (nextFooter.rows[0]?.column ?? 'left')
+            : 'left',
       });
       setActiveOverlay('footer');
       toast.success('Footer-Bereich wurde aktiviert');
@@ -1399,36 +1469,6 @@ export function PdfmeTemplateEditor({
     });
   }
 
-  async function duplicateTemplate() {
-    try {
-      const currentTemplate = sanitizeBaseTemplate(
-        designerRef.current?.getTemplate() ?? templateRef.current
-      );
-      const sampleEinsatzId =
-        selectedPreviewEinsatzId === 'mock' ? null : selectedPreviewEinsatzId;
-
-      const created = await createPdfTemplate({
-        organizationId,
-        name: `${name} Kopie`,
-        template: currentTemplate,
-        sampleEinsatzId,
-        footer: footerConfig,
-      });
-
-      toast.success('Vorlage dupliziert');
-      router.push(
-        `/settings/pdf-templates/${created.id}/edit?orgId=${organizationId}`
-      );
-      router.refresh();
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Vorlage konnte nicht dupliziert werden'
-      );
-    }
-  }
-
   function undoTemplateChange() {
     const previous = undoStack[undoStack.length - 1];
 
@@ -1525,10 +1565,10 @@ export function PdfmeTemplateEditor({
   );
   const editorSurfaceMaxWidth = '100%';
   const workspaceHeight = `calc(100vh - ${Math.max(
-    workspaceViewportOffset + 12,
-    160
+    workspaceViewportOffset + WORKSPACE_BOTTOM_GAP_PX,
+    WORKSPACE_MIN_RESERVED_VIEWPORT_PX
   )}px)`;
-  const workspacePanelStyle = useMemo(
+  const workspaceContainerStyle = useMemo(
     () => ({ height: workspaceHeight }),
     [workspaceHeight]
   );
@@ -1537,7 +1577,8 @@ export function PdfmeTemplateEditor({
     [currentPageIndex, footerConfig]
   );
   const isFooterActiveOnCurrentPage =
-    footerConfig?.enabled === true && footerConfig.pageIndex === currentPageIndex;
+    footerConfig?.enabled === true &&
+    footerConfig.pageIndex === currentPageIndex;
   const footerInteractiveZoneStyle = useMemo(() => {
     if (!gridOverlayStyle) {
       return null;
@@ -1548,9 +1589,13 @@ export function PdfmeTemplateEditor({
     const overlayLeft =
       typeof gridOverlayStyle.left === 'number' ? gridOverlayStyle.left : null;
     const overlayWidth =
-      typeof gridOverlayStyle.width === 'number' ? gridOverlayStyle.width : null;
+      typeof gridOverlayStyle.width === 'number'
+        ? gridOverlayStyle.width
+        : null;
     const overlayHeight =
-      typeof gridOverlayStyle.height === 'number' ? gridOverlayStyle.height : null;
+      typeof gridOverlayStyle.height === 'number'
+        ? gridOverlayStyle.height
+        : null;
 
     if (
       overlayTop === null ||
@@ -1561,7 +1606,10 @@ export function PdfmeTemplateEditor({
       return null;
     }
 
-    const layout = buildFooterLayout(footerZoneLayoutConfig, deferredPreviewInput);
+    const layout = buildFooterLayout(
+      footerZoneLayoutConfig,
+      deferredPreviewInput
+    );
     if (layout.items.length === 0) {
       return null;
     }
@@ -1587,25 +1635,30 @@ export function PdfmeTemplateEditor({
 
     const minLeftMm = Math.max(
       0,
-      Math.min(...itemBounds.map((bounds) => bounds.left)) - FOOTER_HIGHLIGHT_PADDING_X_MM
+      Math.min(...itemBounds.map((bounds) => bounds.left)) -
+        FOOTER_HIGHLIGHT_PADDING_X_MM
     );
     const maxRightMm = Math.min(
       PDF_PAGE_WIDTH_MM,
-      Math.max(...itemBounds.map((bounds) => bounds.right)) + FOOTER_HIGHLIGHT_PADDING_X_MM
+      Math.max(...itemBounds.map((bounds) => bounds.right)) +
+        FOOTER_HIGHLIGHT_PADDING_X_MM
     );
     const minTopMm = Math.max(
       0,
-      Math.min(...itemBounds.map((bounds) => bounds.top)) - FOOTER_HIGHLIGHT_PADDING_Y_MM
+      Math.min(...itemBounds.map((bounds) => bounds.top)) -
+        FOOTER_HIGHLIGHT_PADDING_Y_MM
     );
     const maxBottomMm = Math.min(
       PDF_PAGE_HEIGHT_MM,
-      Math.max(...itemBounds.map((bounds) => bounds.bottom)) + FOOTER_HIGHLIGHT_PADDING_Y_MM
+      Math.max(...itemBounds.map((bounds) => bounds.bottom)) +
+        FOOTER_HIGHLIGHT_PADDING_Y_MM
     );
 
     const top = overlayTop + (minTopMm / PDF_PAGE_HEIGHT_MM) * overlayHeight;
     const left = overlayLeft + (minLeftMm / PDF_PAGE_WIDTH_MM) * overlayWidth;
     const right = overlayLeft + (maxRightMm / PDF_PAGE_WIDTH_MM) * overlayWidth;
-    const bottom = overlayTop + (maxBottomMm / PDF_PAGE_HEIGHT_MM) * overlayHeight;
+    const bottom =
+      overlayTop + (maxBottomMm / PDF_PAGE_HEIGHT_MM) * overlayHeight;
 
     return {
       top,
@@ -1614,14 +1667,19 @@ export function PdfmeTemplateEditor({
       height: Math.max(bottom - top, 22),
     };
   }, [deferredPreviewInput, footerZoneLayoutConfig, gridOverlayStyle]);
-  const footerZoneStyle = isFooterActiveOnCurrentPage ? footerInteractiveZoneStyle : null;
+  const footerZoneStyle = isFooterActiveOnCurrentPage
+    ? footerInteractiveZoneStyle
+    : null;
   const updateOverlayViewportPosition = useCallback(() => {
     if (!activeOverlay || !overlayAnchor || !editorCanvasRef.current) {
       setOverlayViewportStyle(null);
       return;
     }
 
-    const anchorRect = buildAnchorViewportRect(editorCanvasRef.current, overlayAnchor);
+    const anchorRect = buildAnchorViewportRect(
+      editorCanvasRef.current,
+      overlayAnchor
+    );
     const canvasRect = editorCanvasRef.current.getBoundingClientRect();
 
     if (
@@ -1654,8 +1712,14 @@ export function PdfmeTemplateEditor({
         : ELEMENT_OVERLAY_MIN_HEIGHT_PX;
     const preferredWidth =
       activeOverlay === 'footer'
-        ? Math.min(Math.max(viewportWidth * 0.42, 560), FOOTER_OVERLAY_MAX_WIDTH_PX)
-        : Math.min(Math.max(viewportWidth * 0.28, 320), ELEMENT_OVERLAY_MAX_WIDTH_PX);
+        ? Math.min(
+            Math.max(viewportWidth * 0.42, 560),
+            FOOTER_OVERLAY_MAX_WIDTH_PX
+          )
+        : Math.min(
+            Math.max(viewportWidth * 0.28, 320),
+            ELEMENT_OVERLAY_MAX_WIDTH_PX
+          );
     const defaultLayout = getDefaultOverlayLayout(activeOverlay);
     const width = Math.min(
       Math.max(
@@ -1717,7 +1781,10 @@ export function PdfmeTemplateEditor({
       );
       top = Math.max(
         OVERLAY_VIEWPORT_MARGIN_PX,
-        Math.min(top, viewportHeight - measuredHeight - OVERLAY_VIEWPORT_MARGIN_PX)
+        Math.min(
+          top,
+          viewportHeight - measuredHeight - OVERLAY_VIEWPORT_MARGIN_PX
+        )
       );
     }
 
@@ -1733,7 +1800,10 @@ export function PdfmeTemplateEditor({
 
   useEffect(() => {
     if (activeOverlay === 'element') {
-      if (!selectedElementKey || selectedElementPageIndex !== currentPageIndex) {
+      if (
+        !selectedElementKey ||
+        selectedElementPageIndex !== currentPageIndex
+      ) {
         setActiveOverlay(null);
         setOverlayAnchor(null);
         return;
@@ -1826,8 +1896,14 @@ export function PdfmeTemplateEditor({
     return () => {
       window.removeEventListener('resize', handleViewportChange);
       window.removeEventListener('scroll', handleViewportChange, true);
-      window.visualViewport?.removeEventListener('resize', handleViewportChange);
-      window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+      window.visualViewport?.removeEventListener(
+        'resize',
+        handleViewportChange
+      );
+      window.visualViewport?.removeEventListener(
+        'scroll',
+        handleViewportChange
+      );
       resizeObserver?.disconnect();
     };
   }, [activeOverlay, updateOverlayViewportPosition, zoomLevel]);
@@ -1868,9 +1944,14 @@ export function PdfmeTemplateEditor({
       const overlayKind = activeOverlay;
 
       const startRect: FloatingOverlayRect = {
-        top: typeof overlayViewportStyle.top === 'number' ? overlayViewportStyle.top : 0,
+        top:
+          typeof overlayViewportStyle.top === 'number'
+            ? overlayViewportStyle.top
+            : 0,
         left:
-          typeof overlayViewportStyle.left === 'number' ? overlayViewportStyle.left : 0,
+          typeof overlayViewportStyle.left === 'number'
+            ? overlayViewportStyle.left
+            : 0,
         width:
           typeof overlayViewportStyle.width === 'number'
             ? overlayViewportStyle.width
@@ -1903,12 +1984,14 @@ export function PdfmeTemplateEditor({
           return;
         }
 
-        overlayInteractionFrameRef.current = window.requestAnimationFrame(() => {
-          overlayInteractionFrameRef.current = null;
-          if (liveOverlayRectRef.current) {
-            applyOverlayRectToDom(liveOverlayRectRef.current);
+        overlayInteractionFrameRef.current = window.requestAnimationFrame(
+          () => {
+            overlayInteractionFrameRef.current = null;
+            if (liveOverlayRectRef.current) {
+              applyOverlayRectToDom(liveOverlayRectRef.current);
+            }
           }
-        });
+        );
       }
 
       function handlePointerMove(event: PointerEvent) {
@@ -1943,7 +2026,9 @@ export function PdfmeTemplateEditor({
                 startRect.width + (event.clientX - clientX),
                 Math.min(
                   maxWidth,
-                  window.innerWidth - startRect.left - OVERLAY_VIEWPORT_MARGIN_PX
+                  window.innerWidth -
+                    startRect.left -
+                    OVERLAY_VIEWPORT_MARGIN_PX
                 )
               )
             ),
@@ -1996,7 +2081,12 @@ export function PdfmeTemplateEditor({
       window.addEventListener('pointermove', handlePointerMove);
       window.addEventListener('pointerup', handlePointerUp);
     },
-    [activeOverlay, applyOverlayRectToDom, commitOverlayLayout, overlayViewportStyle]
+    [
+      activeOverlay,
+      applyOverlayRectToDom,
+      commitOverlayLayout,
+      overlayViewportStyle,
+    ]
   );
 
   const startFooterZoneDrag = useCallback(
@@ -2008,7 +2098,9 @@ export function PdfmeTemplateEditor({
       }
 
       const overlayHeight =
-        typeof gridOverlayStyle.height === 'number' ? gridOverlayStyle.height : null;
+        typeof gridOverlayStyle.height === 'number'
+          ? gridOverlayStyle.height
+          : null;
       if (!overlayHeight || overlayHeight <= 0) {
         return;
       }
@@ -2052,8 +2144,12 @@ export function PdfmeTemplateEditor({
           footerZoneRef.current.style.transform = '';
         }
 
-        const deltaMm = (deltaPixels / normalizedOverlayHeight) * PDF_PAGE_HEIGHT_MM;
-        const nextTopSpacing = Math.max(0, Math.min(24, startTopSpacing - deltaMm));
+        const deltaMm =
+          (deltaPixels / normalizedOverlayHeight) * PDF_PAGE_HEIGHT_MM;
+        const nextTopSpacing = Math.max(
+          0,
+          Math.min(24, startTopSpacing - deltaMm)
+        );
 
         if (nextTopSpacing !== footerToDrag.topSpacing) {
           setFooterConfig({
@@ -2132,7 +2228,7 @@ export function PdfmeTemplateEditor({
   }, []);
 
   return (
-    <div className="space-y-4 pb-3 pt-4">
+    <div className="space-y-4 pt-4 pb-3">
       <div ref={topBarRef}>
         <PdfTemplateEditorTopBar
           name={name}
@@ -2140,255 +2236,267 @@ export function PdfmeTemplateEditor({
           saveStateLabel={saveStateLabel}
           isSaving={isSaving}
           onSave={() => void saveTemplate()}
-          onDuplicate={() => void duplicateTemplate()}
         />
       </div>
 
       <div ref={layoutViewportRef} className="min-w-0 pb-1.5">
         <div
-          ref={workspaceGridRef}
-          className="grid w-full min-w-0 items-start gap-0"
-          style={{
-            gridTemplateColumns: `${currentLeftWidth}px ${leftHandleWidth}px minmax(0,1fr) ${rightHandleWidth}px ${currentRightWidth}px`,
-          }}
+          className="min-h-0 overflow-hidden"
+          style={workspaceContainerStyle}
         >
-          <div className="min-h-0 self-start pr-1.5" style={workspacePanelStyle}>
-            {isFieldSidebarOpen ? (
-              <div className="relative h-full">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="absolute top-3 right-3 z-10 h-8 w-8 rounded-xl border-slate-200 bg-white"
-                  onClick={() => setIsFieldSidebarOpen(false)}
-                  aria-label="Feldliste einklappen"
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </Button>
-                <PdfTemplateFieldSidebar
-                  fields={libraryFields}
-                  onInsertField={handleInsertField}
-                  onDragFieldStart={(field) => setDraggedFieldKey(field.key)}
-                  onDragFieldEnd={() => {
-                    setDraggedFieldKey(null);
-                    setIsCanvasDropActive(false);
-                  }}
-                  insertionMode={
-                    activeOverlay === 'footer' ? 'footer' : 'canvas'
-                  }
-                  footerTargetLabel={
-                    activeOverlay === 'footer' && activeFooterTarget.rowId
-                      ? `Zeile ${Math.max(
-                          1,
-                          (footerConfig?.rows.findIndex(
-                            (row) => row.id === activeFooterTarget.rowId
-                          ) ?? 0) + 1
-                        )}${
-                          footerConfig?.layout === 'two_column'
-                            ? activeFooterTarget.column === 'left'
-                              ? ', links'
-                              : ', rechts'
-                            : ''
-                        }`
-                      : null
-                  }
-                />
-              </div>
-            ) : (
-              <div className="flex h-full flex-col items-center rounded-[1.25rem] border border-slate-200 bg-white p-2.5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-xl"
-                  onClick={() => setIsFieldSidebarOpen(true)}
-                  aria-label="Feldliste ausklappen"
-                >
-                  <PanelLeftOpen className="h-4 w-4" />
-                </Button>
+          <div
+            ref={workspaceGridRef}
+            className="grid h-full min-h-0 w-full min-w-0 items-stretch gap-0"
+            style={{
+              gridTemplateColumns: `${currentLeftWidth}px ${leftHandleWidth}px minmax(0,1fr) ${rightHandleWidth}px ${currentRightWidth}px`,
+            }}
+          >
+            <div className="h-full min-h-0 overflow-hidden pr-1.5">
+              {isFieldSidebarOpen ? (
+                <div className="relative h-full min-h-0 overflow-hidden">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="absolute top-3 right-3 z-10 h-8 w-8 rounded-xl border-slate-200 bg-white"
+                    onClick={() => setIsFieldSidebarOpen(false)}
+                    aria-label="Feldliste einklappen"
+                  >
+                    <PanelLeftClose className="h-4 w-4" />
+                  </Button>
+                  <PdfTemplateFieldSidebar
+                    fields={libraryFields}
+                    onInsertField={handleInsertField}
+                    onDragFieldStart={(field) => setDraggedFieldKey(field.key)}
+                    onDragFieldEnd={() => {
+                      setDraggedFieldKey(null);
+                      setIsCanvasDropActive(false);
+                    }}
+                    insertionMode={
+                      activeOverlay === 'footer' ? 'footer' : 'canvas'
+                    }
+                    footerTargetLabel={
+                      activeOverlay === 'footer' && activeFooterTarget.rowId
+                        ? `Zeile ${Math.max(
+                            1,
+                            (footerConfig?.rows.findIndex(
+                              (row) => row.id === activeFooterTarget.rowId
+                            ) ?? 0) + 1
+                          )}${
+                            footerConfig?.layout === 'two_column'
+                              ? activeFooterTarget.column === 'left'
+                                ? ', links'
+                                : ', rechts'
+                              : ''
+                          }`
+                        : null
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="flex h-full min-h-0 flex-col items-center rounded-[1.25rem] border border-slate-200 bg-white p-2.5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-xl"
+                    onClick={() => setIsFieldSidebarOpen(true)}
+                    aria-label="Feldliste ausklappen"
+                  >
+                    <PanelLeftOpen className="h-4 w-4" />
+                  </Button>
+                  <button
+                    type="button"
+                    className="mt-3 flex flex-1 items-center justify-center"
+                    onClick={() => setIsFieldSidebarOpen(true)}
+                    aria-label="Verfügbare Felder anzeigen"
+                  >
+                    <span className="rotate-180 text-[11px] font-semibold tracking-[0.24em] text-slate-600 uppercase [writing-mode:vertical-rl]">
+                      Felder
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex h-full min-h-0 items-center justify-center">
+              {isFieldSidebarOpen ? (
                 <button
                   type="button"
-                  className="mt-3 flex flex-1 items-center justify-center"
-                  onClick={() => setIsFieldSidebarOpen(true)}
-                  aria-label="Verfügbare Felder anzeigen"
+                  className="group flex h-full w-full cursor-col-resize items-center justify-center"
+                  aria-label="Breite der Feldnavigation anpassen"
+                  onPointerDown={(event) => startResize('left', event.clientX)}
                 >
-                  <span className="rotate-180 text-[11px] font-semibold tracking-[0.24em] text-slate-600 uppercase [writing-mode:vertical-rl]">
-                    Felder
-                  </span>
+                  <span className="h-24 w-1.5 rounded-full bg-slate-200 transition-colors group-hover:bg-slate-400" />
                 </button>
+              ) : null}
+            </div>
+
+            <div className="h-full min-h-0 min-w-0 px-1.5">
+              <PdfTemplateCanvasWorkspace
+                editorCanvasRef={editorCanvasRef}
+                footerZoneStyle={footerZoneStyle}
+                showGrid={showGrid}
+                gridSize={gridSize}
+                snapToGrid={snapToGrid}
+                zoomLevel={zoomLevel}
+                canUndo={undoStack.length > 0}
+                canRedo={redoStack.length > 0}
+                gridOverlayStyle={gridOverlayStyle}
+                isCanvasDropActive={isCanvasDropActive}
+                gridPatternSize={gridPatternSize}
+                editorSurfaceMaxWidth={editorSurfaceMaxWidth}
+                onToggleGrid={() => setShowGrid((current) => !current)}
+                onToggleSnap={() => setSnapToGrid((current) => !current)}
+                onZoomIn={() =>
+                  setZoomLevel((current) => Math.min(current + 10, 150))
+                }
+                onZoomOut={() =>
+                  setZoomLevel((current) => Math.max(current - 10, 60))
+                }
+                onUndo={undoTemplateChange}
+                onRedo={redoTemplateChange}
+                onDragOver={handleCanvasDragOver}
+                onDragLeave={handleCanvasDragLeave}
+                onDrop={handleCanvasDrop}
+                onPointerDownCapture={handleCanvasPointerDownCapture}
+                onDoubleClickCapture={handleCanvasDoubleClickCapture}
+                onContextMenuCapture={handleCanvasContextMenuCapture}
+              >
+                <div
+                  className="relative z-10"
+                  style={{ zoom: `${zoomLevel}%` }}
+                >
+                  <div
+                    ref={containerRef}
+                    className="relative min-h-[42rem] w-full"
+                  />
+                </div>
+
+                {canvasSchemaHotspots.map((hotspot) => (
+                  <div
+                    key={hotspot.key}
+                    className={cn(
+                      'pointer-events-none absolute z-30 rounded-md border transition-colors',
+                      selectedElementKey === hotspot.key
+                        ? 'border-sky-500 bg-sky-300/12 shadow-[0_0_0_3px_rgba(14,165,233,0.12)]'
+                        : 'border-transparent'
+                    )}
+                    style={{
+                      top: hotspot.y,
+                      left: hotspot.x,
+                      width: hotspot.width,
+                      height: hotspot.height,
+                    }}
+                  />
+                ))}
+
+                {footerInteractiveZoneStyle ? (
+                  <div
+                    ref={footerZoneRef}
+                    data-footer-zone="true"
+                    className={cn(
+                      'absolute z-30 rounded-md border transition-colors',
+                      isFooterSelected || activeOverlay === 'footer'
+                        ? 'border-sky-500 bg-sky-300/12 shadow-[0_0_0_3px_rgba(14,165,233,0.12)]'
+                        : 'border-transparent'
+                    )}
+                    style={footerInteractiveZoneStyle}
+                  >
+                    <div
+                      className="h-full w-full cursor-default"
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        startFooterZoneDrag(event.clientY);
+                      }}
+                      onDoubleClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        if (
+                          footerConfig?.enabled &&
+                          footerConfig.pageIndex !== currentPageIndex
+                        ) {
+                          setFooterConfig({
+                            ...footerConfig,
+                            pageIndex: currentPageIndex,
+                          });
+                        }
+
+                        openFooterOverlay(event.currentTarget);
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        if (
+                          footerConfig?.enabled &&
+                          footerConfig.pageIndex !== currentPageIndex
+                        ) {
+                          setFooterConfig({
+                            ...footerConfig,
+                            pageIndex: currentPageIndex,
+                          });
+                        }
+
+                        openFooterOverlay(event.currentTarget);
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </PdfTemplateCanvasWorkspace>
+            </div>
+
+            <div className="flex h-full min-h-0 items-center justify-center">
+              {isPreviewOpen ? (
+                <button
+                  type="button"
+                  className="group flex h-full w-full cursor-col-resize items-center justify-center"
+                  aria-label="Breite der rechten Seitenleiste anpassen"
+                  onPointerDown={(event) => startResize('right', event.clientX)}
+                >
+                  <span className="h-24 w-1.5 rounded-full bg-slate-200 transition-colors group-hover:bg-slate-400" />
+                </button>
+              ) : null}
+            </div>
+            {isPreviewOpen ? (
+              <PdfTemplateInspectorSidebar
+                previewAssignments={previewAssignments}
+                selectedPreviewEinsatzId={selectedPreviewEinsatzId}
+                onSelectPreviewEinsatzId={setSelectedPreviewEinsatzId}
+                onRefreshPreview={handleRefreshPreview}
+                isRefreshingPreview={previewInputQuery.isFetching}
+                onCollapse={closePreviewSidebar}
+                template={renderedTemplate}
+                input={previewInput}
+              />
+            ) : (
+              <div className="h-full min-h-0 overflow-hidden pl-1.5">
+                <div className="flex h-full flex-col items-center rounded-[1.25rem] border border-slate-200 bg-white p-2.5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-xl"
+                    onClick={() => setIsPreviewOpen(true)}
+                    aria-label="Seitenleiste ausklappen"
+                  >
+                    <PanelRightOpen className="h-4 w-4" />
+                  </Button>
+                  <button
+                    type="button"
+                    className="mt-3 flex flex-1 items-center justify-center"
+                    onClick={() => setIsPreviewOpen(true)}
+                    aria-label="Vorschau und Einstellungen anzeigen"
+                  >
+                    <span className="text-[11px] font-semibold tracking-[0.24em] text-slate-600 uppercase [writing-mode:vertical-rl]">
+                      Vorschau
+                    </span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
-
-          <div className="flex items-center justify-center" style={workspacePanelStyle}>
-            {isFieldSidebarOpen ? (
-              <button
-                type="button"
-                className="group flex h-full w-full cursor-col-resize items-center justify-center"
-                aria-label="Breite der Feldnavigation anpassen"
-                onPointerDown={(event) => startResize('left', event.clientX)}
-              >
-                <span className="h-24 w-1.5 rounded-full bg-slate-200 transition-colors group-hover:bg-slate-400" />
-              </button>
-            ) : null}
-          </div>
-
-          <div className="min-w-0 px-1.5">
-            <PdfTemplateCanvasWorkspace
-              editorCanvasRef={editorCanvasRef}
-              footerZoneStyle={footerZoneStyle}
-              showGrid={showGrid}
-              gridSize={gridSize}
-              snapToGrid={snapToGrid}
-              zoomLevel={zoomLevel}
-              canUndo={undoStack.length > 0}
-              canRedo={redoStack.length > 0}
-              gridOverlayStyle={gridOverlayStyle}
-              isCanvasDropActive={isCanvasDropActive}
-              gridPatternSize={gridPatternSize}
-              editorSurfaceMaxWidth={editorSurfaceMaxWidth}
-              onToggleGrid={() => setShowGrid((current) => !current)}
-              onToggleSnap={() => setSnapToGrid((current) => !current)}
-              onZoomIn={() => setZoomLevel((current) => Math.min(current + 10, 150))}
-              onZoomOut={() => setZoomLevel((current) => Math.max(current - 10, 60))}
-              onUndo={undoTemplateChange}
-              onRedo={redoTemplateChange}
-              onDragOver={handleCanvasDragOver}
-              onDragLeave={handleCanvasDragLeave}
-              onDrop={handleCanvasDrop}
-              onPointerDownCapture={handleCanvasPointerDownCapture}
-              onDoubleClickCapture={handleCanvasDoubleClickCapture}
-              onContextMenuCapture={handleCanvasContextMenuCapture}
-            >
-              <div className="relative z-10" style={{ zoom: `${zoomLevel}%` }}>
-                <div ref={containerRef} className="relative min-h-[42rem] w-full" />
-              </div>
-
-              {canvasSchemaHotspots.map((hotspot) => (
-                <div
-                  key={hotspot.key}
-                  className={cn(
-                    'pointer-events-none absolute z-30 rounded-md border transition-colors',
-                    selectedElementKey === hotspot.key
-                      ? 'border-sky-500 bg-sky-300/12 shadow-[0_0_0_3px_rgba(14,165,233,0.12)]'
-                      : 'border-transparent'
-                  )}
-                  style={{
-                    top: hotspot.y,
-                    left: hotspot.x,
-                    width: hotspot.width,
-                    height: hotspot.height,
-                  }}
-                />
-              ))}
-
-              {footerInteractiveZoneStyle ? (
-                <div
-                  ref={footerZoneRef}
-                  data-footer-zone="true"
-                  className={cn(
-                    'absolute z-30 rounded-md border transition-colors',
-                    isFooterSelected || activeOverlay === 'footer'
-                      ? 'border-sky-500 bg-sky-300/12 shadow-[0_0_0_3px_rgba(14,165,233,0.12)]'
-                      : 'border-transparent'
-                  )}
-                  style={footerInteractiveZoneStyle}
-                >
-                  <div
-                    className="h-full w-full cursor-default"
-                    onPointerDown={(event) => {
-                      event.preventDefault();
-                      startFooterZoneDrag(event.clientY);
-                    }}
-                    onDoubleClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-
-                      if (
-                        footerConfig?.enabled &&
-                        footerConfig.pageIndex !== currentPageIndex
-                      ) {
-                        setFooterConfig({
-                          ...footerConfig,
-                          pageIndex: currentPageIndex,
-                        });
-                      }
-
-                      openFooterOverlay(event.currentTarget);
-                    }}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-
-                      if (
-                        footerConfig?.enabled &&
-                        footerConfig.pageIndex !== currentPageIndex
-                      ) {
-                        setFooterConfig({
-                          ...footerConfig,
-                          pageIndex: currentPageIndex,
-                        });
-                      }
-
-                      openFooterOverlay(event.currentTarget);
-                    }}
-                  />
-                </div>
-              ) : null}
-
-            </PdfTemplateCanvasWorkspace>
-          </div>
-
-          <div className="flex items-center justify-center" style={workspacePanelStyle}>
-            {isPreviewOpen ? (
-              <button
-                type="button"
-                className="group flex h-full w-full cursor-col-resize items-center justify-center"
-                aria-label="Breite der rechten Seitenleiste anpassen"
-                onPointerDown={(event) => startResize('right', event.clientX)}
-              >
-                <span className="h-24 w-1.5 rounded-full bg-slate-200 transition-colors group-hover:bg-slate-400" />
-              </button>
-            ) : null}
-          </div>
-          {isPreviewOpen ? (
-            <PdfTemplateInspectorSidebar
-              previewAssignments={previewAssignments}
-              selectedPreviewEinsatzId={selectedPreviewEinsatzId}
-              onSelectPreviewEinsatzId={setSelectedPreviewEinsatzId}
-              onRefreshPreview={handleRefreshPreview}
-              isRefreshingPreview={previewInputQuery.isFetching}
-              onCollapse={closePreviewSidebar}
-              panelStyle={workspacePanelStyle}
-              template={renderedTemplate}
-              input={previewInput}
-            />
-          ) : (
-            <div className="min-h-0 self-start pl-1.5" style={workspacePanelStyle}>
-              <div className="flex h-full flex-col items-center rounded-[1.25rem] border border-slate-200 bg-white p-2.5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-xl"
-                  onClick={() => setIsPreviewOpen(true)}
-                  aria-label="Seitenleiste ausklappen"
-                >
-                  <PanelRightOpen className="h-4 w-4" />
-                </Button>
-                <button
-                  type="button"
-                  className="mt-3 flex flex-1 items-center justify-center"
-                  onClick={() => setIsPreviewOpen(true)}
-                  aria-label="Vorschau und Einstellungen anzeigen"
-                >
-                  <span className="text-[11px] font-semibold tracking-[0.24em] text-slate-600 uppercase [writing-mode:vertical-rl]">
-                    Vorschau
-                  </span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -2407,11 +2515,19 @@ export function PdfmeTemplateEditor({
                   onClose={closeActiveOverlay}
                   onMoveStart={(event) => {
                     event.preventDefault();
-                    startOverlayInteraction('move', event.clientX, event.clientY);
+                    startOverlayInteraction(
+                      'move',
+                      event.clientX,
+                      event.clientY
+                    );
                   }}
                   onResizeStart={(event) => {
                     event.preventDefault();
-                    startOverlayInteraction('resize', event.clientX, event.clientY);
+                    startOverlayInteraction(
+                      'resize',
+                      event.clientX,
+                      event.clientY
+                    );
                   }}
                   onUpdateBoundField={(fieldKey) =>
                     updateSelectedSchema((schema) => ({
@@ -2479,11 +2595,19 @@ export function PdfmeTemplateEditor({
                   onUpdateFooter={(nextFooter) => setFooterConfig(nextFooter)}
                   onMoveStart={(event) => {
                     event.preventDefault();
-                    startOverlayInteraction('move', event.clientX, event.clientY);
+                    startOverlayInteraction(
+                      'move',
+                      event.clientX,
+                      event.clientY
+                    );
                   }}
                   onResizeStart={(event) => {
                     event.preventDefault();
-                    startOverlayInteraction('resize', event.clientX, event.clientY);
+                    startOverlayInteraction(
+                      'resize',
+                      event.clientX,
+                      event.clientY
+                    );
                   }}
                 />
               ) : null}
