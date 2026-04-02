@@ -33,12 +33,22 @@ function buildUniqueKey(
     return baseKey;
   }
 
+  const stableId = slugifyPdfFieldKey(sourceId, `feld_${sourceId.slice(0, 8)}`)
+    .replace(/_/g, '')
+    .slice(0, 8);
+  const deterministicKey = `${baseKey}_${stableId || sourceId.slice(0, 8)}`;
+
+  if (!usedKeys.has(deterministicKey)) {
+    usedKeys.add(deterministicKey);
+    return deterministicKey;
+  }
+
   let suffix = 2;
-  while (usedKeys.has(`${baseKey}_${suffix}`)) {
+  while (usedKeys.has(`${deterministicKey}_${suffix}`)) {
     suffix += 1;
   }
 
-  const key = `${baseKey}_${suffix}`;
+  const key = `${deterministicKey}_${suffix}`;
   usedKeys.add(key);
   return key;
 }

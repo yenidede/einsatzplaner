@@ -8,6 +8,6 @@ export function interpolateText(text: string, viewModel: PdfViewModel): string {
     for (const key of path) {
       value = value?.[key];
     }
-    return value || match; // Fallback: Token behalten, wenn nicht gefunden
+    return value ?? match; // Fallback: Token nur bei null/undefined behalten
   });
 }

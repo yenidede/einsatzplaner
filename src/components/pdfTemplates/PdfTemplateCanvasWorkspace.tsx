@@ -3,6 +3,7 @@
 import type {
   CSSProperties,
   DragEvent,
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
   RefObject,
@@ -34,8 +35,8 @@ interface PdfTemplateCanvasWorkspaceProps {
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onPointerDownCapture?: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerUpCapture?: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onDoubleClickCapture?: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onContextMenuCapture?: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onDoubleClickCapture?: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  onContextMenuCapture?: (event: ReactMouseEvent<HTMLDivElement>) => void;
   children: ReactNode;
 }
 

@@ -57,7 +57,7 @@ export function OrganizationPdfExportForm({
               id="website-restriction"
               className="text-muted-foreground text-xs"
             >
-              Nur Superadmins koennen die Website aendern
+              Nur Superadmins können die Website ändern
             </p>
           )}
         </div>
@@ -82,7 +82,7 @@ export function OrganizationPdfExportForm({
           />
           {!isSuperadmin && (
             <p id="vat-restriction" className="text-muted-foreground text-xs">
-              Nur Superadmins koennen die UID aendern
+              Nur Superadmins können die UID ändern
             </p>
           )}
         </div>
@@ -102,14 +102,14 @@ export function OrganizationPdfExportForm({
           />
           {!isSuperadmin && (
             <p id="zvr-restriction" className="text-muted-foreground text-xs">
-              Nur Superadmins koennen die ZVR-Nummer aendern
+              Nur Superadmins können die ZVR-Nummer ändern
             </p>
           )}
         </div>
 
         <div className="space-y-2">
           {criticalFieldLabel(
-            'Zustaendige Behoerde',
+            'Zuständige Behörde',
             isSuperadmin,
             false,
             'org-authority'
@@ -122,7 +122,7 @@ export function OrganizationPdfExportForm({
             disabled={!isSuperadmin}
             placeholder="Magistrat Wien"
             className={criticalFieldClass(isSuperadmin)}
-            aria-label="Zustaendige Behoerde"
+            aria-label="Zuständige Behörde"
             aria-describedby={
               !isSuperadmin ? 'authority-restriction' : undefined
             }
@@ -132,7 +132,7 @@ export function OrganizationPdfExportForm({
               id="authority-restriction"
               className="text-muted-foreground text-xs"
             >
-              Nur Superadmins koennen dieses Feld aendern
+              Nur Superadmins können dieses Feld ändern
             </p>
           )}
         </div>
@@ -152,10 +152,10 @@ export function OrganizationPdfExportForm({
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="font-medium">
-              PDF-Vorlagen fuer Einsatz-Buchungsbestaetigungen
+              PDF-Vorlagen für Einsatz-Buchungsbestätigungen
             </p>
             <p className="text-muted-foreground text-sm">
-              Vorlagen koennen direkt hier fuer diese Organisation erstellt und
+              Vorlagen können direkt hier für diese Organisation erstellt und
               verwaltet werden.
             </p>
           </div>
@@ -163,7 +163,7 @@ export function OrganizationPdfExportForm({
             href={`/settings/pdf-templates?orgId=${organizationId}`}
             className="inline-block"
           >
-            <Button variant="secondary">Vollansicht oeffnen</Button>
+            <Button variant="secondary">Vollansicht öffnen</Button>
           </Link>
         </div>
 

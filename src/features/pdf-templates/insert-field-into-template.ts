@@ -10,6 +10,12 @@ const DEFAULT_FIELD_FONT_SIZE = 11;
 const FOOTER_TOP_MM = 270;
 const FOOTER_COLUMN_GAP_MM = 10;
 const FOOTER_ROW_GAP_MM = 4;
+const BODY_COLUMN_LEFT_X = 20;
+const BODY_COLUMN_RIGHT_X = 110;
+const BODY_START_Y = 24;
+const BODY_ROW_GAP_MM = 6;
+const BODY_COLUMN_SWITCH_CUTOFF_Y = 260;
+const BODY_COLUMN_TOLERANCE_MM = 12;
 const TRANSPARENT_IMAGE_PLACEHOLDER =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aYkAAAAASUVORK5CYII=';
 const FOOTER_FIELD_KEYS = new Set([
@@ -40,7 +46,35 @@ interface Position {
   y: number;
 }
 
+interface BodyPlacement {
+  pageIndexOffset: number;
+  position: Position;
+}
+
 type TemplateSchema = Template['schemas'][number][number];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+      return null;
+    }
+
+    const parsedValue = Number(trimmedValue);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
+  }
+
+  return null;
+}
 
 function generateSchemaId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -59,7 +93,24 @@ function isImageField(field: PdfTemplateFieldDefinition): boolean {
 }
 
 function isValidSchema(value: unknown): value is TemplateSchema {
-  return typeof value === 'object' && value !== null;
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  if (typeof value.name !== 'string' || !value.name.trim()) {
+    return false;
+  }
+
+  if (!isRecord(value.position)) {
+    return false;
+  }
+
+  return (
+    parseFiniteNumber(value.position.x) !== null &&
+    parseFiniteNumber(value.position.y) !== null &&
+    parseFiniteNumber(value.width) !== null &&
+    parseFiniteNumber(value.height) !== null
+  );
 }
 
 function sanitizeSchema(
@@ -67,8 +118,21 @@ function sanitizeSchema(
   pageIndex: number,
   schemaIndex: number
 ): TemplateSchema {
+  const positionX = parseFiniteNumber(schema.position.x) ?? 0;
+  const positionY = parseFiniteNumber(schema.position.y) ?? 0;
+  const width = parseFiniteNumber(schema.width) ?? DEFAULT_FIELD_WIDTH_MM;
+  const height = parseFiniteNumber(schema.height) ?? DEFAULT_FIELD_HEIGHT_MM;
+
   return {
     ...schema,
+    name: schema.name.trim(),
+    position: {
+      ...schema.position,
+      x: positionX,
+      y: positionY,
+    },
+    width,
+    height,
     id:
       typeof schema.id === 'string' && schema.id
         ? schema.id
@@ -123,24 +187,46 @@ function clampPosition(position: Position, dimensions: FieldDimensions): Positio
   };
 }
 
-function getNextBodyPosition(page: Template['schemas'][number]): Position {
-  if (page.length === 0) {
-    return { x: 20, y: 24 };
+function getNextBodyPosition(page: Template['schemas'][number]): BodyPlacement {
+  const bodySchemas = page.filter((schema) => schema.position.y < FOOTER_TOP_MM - 2);
+  const getColumnNextY = (columnX: number) => {
+    const columnSchemas = bodySchemas.filter(
+      (schema) => Math.abs(schema.position.x - columnX) <= BODY_COLUMN_TOLERANCE_MM
+    );
+
+    if (columnSchemas.length === 0) {
+      return BODY_START_Y;
+    }
+
+    const maxBottom = Math.max(
+      ...columnSchemas.map((schema) => schema.position.y + schema.height)
+    );
+
+    return maxBottom + BODY_ROW_GAP_MM;
+  };
+
+  const leftNextY = getColumnNextY(BODY_COLUMN_LEFT_X);
+
+  if (leftNextY <= BODY_COLUMN_SWITCH_CUTOFF_Y) {
+    return {
+      pageIndexOffset: 0,
+      position: { x: BODY_COLUMN_LEFT_X, y: leftNextY },
+    };
   }
 
-  const lastSchema = [...page].sort((left, right) => {
-    const leftBottom = left.position.y + left.height;
-    const rightBottom = right.position.y + right.height;
-    return leftBottom - rightBottom;
-  })[page.length - 1];
+  const rightNextY = getColumnNextY(BODY_COLUMN_RIGHT_X);
 
-  const nextY = lastSchema.position.y + lastSchema.height + 6;
-
-  if (nextY <= 260) {
-    return { x: 20, y: nextY };
+  if (rightNextY <= BODY_COLUMN_SWITCH_CUTOFF_Y) {
+    return {
+      pageIndexOffset: 0,
+      position: { x: BODY_COLUMN_RIGHT_X, y: rightNextY },
+    };
   }
 
-  return { x: 110, y: 24 };
+  return {
+    pageIndexOffset: 1,
+    position: { x: BODY_COLUMN_LEFT_X, y: BODY_START_Y },
+  };
 }
 
 function getNextFooterPosition(
@@ -229,23 +315,37 @@ export function insertFieldIntoTemplate(args: {
   const sanitizedSchemas = args.template.schemas.map((page, index) =>
     sanitizePage(page, index)
   );
-  const pageIndex = Math.min(
+  const requestedPageIndex = Math.min(
     Math.max(args.pageIndex, 0),
     Math.max(sanitizedSchemas.length - 1, 0)
   );
+  const initialPage = sanitizedSchemas[requestedPageIndex] ?? [];
   const nextTemplate: Template = {
     ...args.template,
     schemas: sanitizedSchemas.map((page, index) =>
-      index === pageIndex ? [...page] : page
+      index === requestedPageIndex ? [...page] : page
     ),
   };
-  const page = nextTemplate.schemas[pageIndex] ?? [];
   const dimensions = getFieldDimensions(args.field);
+  const bodyPlacement = !args.position && !isFooterField(args.field)
+    ? getNextBodyPosition(initialPage)
+    : null;
+  const pageIndex = bodyPlacement
+    ? requestedPageIndex + bodyPlacement.pageIndexOffset
+    : requestedPageIndex;
+
+  if (bodyPlacement?.pageIndexOffset) {
+    while (nextTemplate.schemas.length <= pageIndex) {
+      nextTemplate.schemas.push([]);
+    }
+  }
+
+  const page = nextTemplate.schemas[pageIndex] ?? [];
   const position = args.position
     ? clampPosition(args.position, dimensions)
-    : isFooterField(args.field)
+      : isFooterField(args.field)
       ? getNextFooterPosition(page, args.field, dimensions)
-      : getNextBodyPosition(page);
+      : bodyPlacement?.position ?? { x: BODY_COLUMN_LEFT_X, y: BODY_START_Y };
 
   const nextSchema: TemplateSchema = {
     id: generateSchemaId(),

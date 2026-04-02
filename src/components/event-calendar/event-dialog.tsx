@@ -1463,7 +1463,7 @@ export function EventDialogVerwaltung({
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="flex max-h-[90vh] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden sm:max-w-220">
-          <DialogHeader className="sticky top-0 z-60 shrink-0 border-b pb-4">
+          <DialogHeader className="sticky top-0 z-50 shrink-0 border-b pb-4">
             <DialogTitle className="bg-background mr-8 wrap-break-word">
               {isLoading
                 ? 'Laden...'
@@ -1598,7 +1598,7 @@ export function EventDialogVerwaltung({
             </div>
           </div>
 
-          <DialogFooter className="bg-background sticky bottom-0 z-60 shrink-0 flex-row border-t pt-4 sm:justify-between">
+          <DialogFooter className="bg-background sticky bottom-0 z-50 shrink-0 flex-row border-t pt-4 sm:justify-between">
             {
               <TooltipCustom text={einsatz_singular + ' löschen'}>
                 <Button
