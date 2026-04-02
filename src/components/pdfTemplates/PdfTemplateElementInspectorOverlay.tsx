@@ -144,17 +144,20 @@ export const PdfTemplateElementInspectorOverlay = memo(function PdfTemplateEleme
             </div>
 
             <div className="grid gap-1.5">
-              <Label className="text-[11px] text-slate-600">Zeilenhöhe</Label>
+              <Label className="text-[11px] text-slate-600">Zeichenabstand</Label>
               <Input
                 type="number"
                 min={0}
                 max={20}
                 value={selectedElement.letterSpacing}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const parsedValue = Number(event.target.value);
                   onUpdateLetterSpacing(
-                    Number(event.target.value) || selectedElement.letterSpacing
-                  )
-                }
+                    Number.isNaN(parsedValue)
+                      ? selectedElement.letterSpacing
+                      : parsedValue
+                  );
+                }}
                 className="h-9 rounded-xl bg-white text-sm"
               />
             </div>

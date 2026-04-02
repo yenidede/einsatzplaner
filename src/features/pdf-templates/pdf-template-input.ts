@@ -22,6 +22,8 @@ const currencyFormatter = new Intl.NumberFormat('de-AT', {
   style: 'currency',
   currency: 'EUR',
 });
+const REMOTE_IMAGE_FETCH_TIMEOUT_MS = 8000;
+const REMOTE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
 function formatCurrency(value: number | null | undefined): string {
   return typeof value === 'number' ? currencyFormatter.format(value) : '';
@@ -92,13 +94,60 @@ async function normalizeImageForPdf(value: string | null | undefined): Promise<s
     return '';
   }
 
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(
+    () => abortController.abort(),
+    REMOTE_IMAGE_FETCH_TIMEOUT_MS
+  );
+
   try {
-    const response = await fetch(source, { cache: 'no-store' });
+    const response = await fetch(source, {
+      cache: 'no-store',
+      signal: abortController.signal,
+    });
+
     if (!response.ok) {
       return '';
     }
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    const reader = response.body?.getReader();
+
+    if (!reader) {
+      return '';
+    }
+
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        break;
+      }
+
+      if (!value) {
+        continue;
+      }
+
+      totalBytes += value.byteLength;
+
+      if (totalBytes > REMOTE_IMAGE_MAX_BYTES) {
+        abortController.abort();
+        return '';
+      }
+
+      chunks.push(value);
+    }
+
+    const bytes = new Uint8Array(totalBytes);
+    let offset = 0;
+
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
     if (bytes.length === 0) {
       return '';
     }
@@ -117,6 +166,8 @@ async function normalizeImageForPdf(value: string | null | undefined): Promise<s
     return `data:${mimeType};base64,${Buffer.from(bytes).toString('base64')}`;
   } catch {
     return '';
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

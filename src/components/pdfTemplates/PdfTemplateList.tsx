@@ -36,10 +36,23 @@ export function PdfTemplateList({
       ? `/settings/pdf-templates/${templateId}/edit?orgId=${organizationId}`
       : `/settings/pdf-templates/${templateId}/edit`;
 
-  async function handleToggleActive(template: PdfTemplateListItem, isActive: boolean) {
-    await updatePdfTemplate(template.id, { isActive });
-    toast.success('Status aktualisiert');
-    router.refresh();
+  async function handleToggleActive(
+    template: PdfTemplateListItem,
+    isActive: boolean
+  ) {
+    try {
+      await updatePdfTemplate(template.id, { isActive });
+      toast.success('Status aktualisiert');
+      router.refresh();
+    } catch (error) {
+      console.error(
+        `Fehler beim Aktualisieren des Status der Vorlage "${template.name}" (${template.id}):`,
+        error
+      );
+      toast.error(
+        `Der Status der Vorlage „${template.name}“ konnte nicht aktualisiert werden.`
+      );
+    }
   }
 
   async function handleDelete(template: PdfTemplateListItem) {
@@ -47,21 +60,49 @@ export function PdfTemplateList({
       return;
     }
 
-    await deletePdfTemplate(template.id);
-    toast.success('Vorlage gelöscht');
-    router.refresh();
+    try {
+      await deletePdfTemplate(template.id);
+      toast.success('Vorlage gelöscht');
+      router.refresh();
+    } catch (error) {
+      console.error(
+        `Fehler beim Löschen der Vorlage "${template.name}" (${template.id}):`,
+        error
+      );
+      toast.error(`Die Vorlage „${template.name}“ konnte nicht gelöscht werden.`);
+    }
   }
 
   async function handleDuplicate(template: PdfTemplateListItem) {
-    await duplicatePdfTemplate(template.id);
-    toast.success('Vorlage dupliziert');
-    router.refresh();
+    try {
+      await duplicatePdfTemplate(template.id);
+      toast.success('Vorlage dupliziert');
+      router.refresh();
+    } catch (error) {
+      console.error(
+        `Fehler beim Duplizieren der Vorlage "${template.name}" (${template.id}):`,
+        error
+      );
+      toast.error(
+        `Die Vorlage „${template.name}“ konnte nicht dupliziert werden.`
+      );
+    }
   }
 
   async function handleSetDefault(template: PdfTemplateListItem) {
-    await setDefaultPdfTemplate(template.id);
-    toast.success('Standardvorlage gesetzt');
-    router.refresh();
+    try {
+      await setDefaultPdfTemplate(template.id);
+      toast.success('Standardvorlage gesetzt');
+      router.refresh();
+    } catch (error) {
+      console.error(
+        `Fehler beim Setzen der Standardvorlage "${template.name}" (${template.id}):`,
+        error
+      );
+      toast.error(
+        `Die Vorlage „${template.name}“ konnte nicht als Standard gesetzt werden.`
+      );
+    }
   }
 
   return (

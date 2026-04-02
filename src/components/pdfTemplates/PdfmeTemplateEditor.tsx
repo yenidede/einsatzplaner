@@ -11,6 +11,7 @@ import {
   useTransition,
   type CSSProperties,
   type DragEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useRouter } from 'next/navigation';
@@ -813,8 +814,8 @@ export function PdfmeTemplateEditor({
 
       const initialRenderedTemplate = applyFooterToTemplate({
         template: templateRef.current,
-        footer: footerConfig,
-        input: previewInput,
+        footer: footerConfigRef.current,
+        input: previewInputRef.current,
       });
 
       const instance = new Designer({
@@ -1211,7 +1212,7 @@ export function PdfmeTemplateEditor({
     [canvasSchemaHotspots]
   );
   const handleCanvasDoubleClickCapture = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
+    (event: ReactMouseEvent<HTMLDivElement>) => {
       if (!editorCanvasRef.current) {
         return;
       }
@@ -1248,7 +1249,7 @@ export function PdfmeTemplateEditor({
     [canvasSchemaHotspots]
   );
   const handleCanvasContextMenuCapture = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
+    (event: ReactMouseEvent<HTMLDivElement>) => {
       if (!editorCanvasRef.current) {
         return;
       }

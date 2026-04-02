@@ -24,16 +24,24 @@ interface GenerateBookingConfirmationButtonProps {
 }
 
 function downloadBase64Pdf(base64: string, mimeType: string, filename: string) {
-  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
-  const blob = new Blob([bytes], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  try {
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const blob = new Blob([bytes], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    throw new Error(
+      'Die PDF-Datei konnte nicht verarbeitet oder heruntergeladen werden.',
+      { cause: error }
+    );
+  }
 }
 
 export function GenerateBookingConfirmationButton({
@@ -70,16 +78,21 @@ export function GenerateBookingConfirmationButton({
         return;
       }
 
-      downloadBase64Pdf(
-        result.data.pdf,
-        result.data.mimeType,
-        result.data.filename
-      );
-      toast.success(
-        result.data.source === 'pdfme'
-          ? 'Buchungsbestätigung erzeugt'
-          : 'Legacy-PDF als Fallback erzeugt'
-      );
+      try {
+        downloadBase64Pdf(
+          result.data.pdf,
+          result.data.mimeType,
+          result.data.filename
+        );
+        toast.success(
+          result.data.source === 'pdfme'
+            ? 'Buchungsbestätigung erzeugt'
+            : 'Legacy-PDF als Fallback erzeugt'
+        );
+      } catch (error) {
+        console.error('Fehler beim Herunterladen der PDF-Datei:', error);
+        toast.error('Die PDF-Datei konnte nicht heruntergeladen werden.');
+      }
     });
   }
 
