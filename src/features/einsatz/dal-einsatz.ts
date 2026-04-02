@@ -1,13 +1,19 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import type { einsatz as Einsatz, einsatz_field } from '@/generated/prisma';
+import type { einsatz as Einsatz } from '@/generated/prisma';
+import {
+  isFieldTypeKey,
+  type FieldTypeKey,
+} from '../user_properties/field-type-definitions';
 import type {
   EinsatzForCalendar,
   EinsatzCreate,
   EinsatzDetailed,
   EinsatzDetailedForCalendar,
-  ETV,
+  EinsatzListCustomFieldMeta,
+  EinsatzListCustomFieldValue,
+  EinsatzListItem,
 } from '@/features/einsatz/types';
 import {
   addMonths,
@@ -18,12 +24,13 @@ import {
   subMonths,
 } from 'date-fns';
 import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
+import type { PermissionType } from '@/lib/auth/permissions';
 
 import { ValidateEinsatzCreate } from './validation-service';
 import z from 'zod';
 import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
 import { createChangeLogAuto } from '../activity_log/activity_log-dal';
-import { BadRequestError, ForbiddenError } from '@/lib/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/errors';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { ChangeTypeIds } from '../activity_log/changeTypeIds';
 import { checkEinsatzRequirementsAfterAssignment } from '@/lib/email/email-helpers';
@@ -51,6 +58,30 @@ export type EinsatzCreateResponse = {
   einsatz?: Einsatz;
   conflicts: EinsatzConflict[];
 };
+
+type AuthSession = Awaited<ReturnType<typeof requireAuth>>['session'];
+
+async function hasOrgPermission(
+  session: AuthSession,
+  orgId: string,
+  permission: PermissionType
+): Promise<boolean> {
+  if (!session.user.orgIds.includes(orgId)) {
+    return false;
+  }
+
+  return hasPermission(session, permission, orgId);
+}
+
+async function assertOrgPermission(
+  session: AuthSession,
+  orgId: string,
+  permission: PermissionType
+): Promise<void> {
+  if (!(await hasOrgPermission(session, orgId, permission))) {
+    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
+  }
+}
 
 /**
  * Check if users have conflicting time entries with an Einsatz
@@ -138,7 +169,6 @@ async function checkEinsatzConflicts(
   }));
 }
 
-// TODO: Add auth check
 export async function getEinsatzWithDetailsById(
   id: string
 ): Promise<EinsatzDetailed | null | Response> {
@@ -151,8 +181,7 @@ export async function getEinsatzWithDetailsById(
 
   if (!einsaetzeFromDb) return null;
 
-  // Prüfe ob User Zugriff auf diese Organisation hat
-  if (!session.user.orgIds.includes(einsaetzeFromDb.org_id)) {
+  if (!(await hasOrgPermission(session, einsaetzeFromDb.org_id, 'einsaetze:read'))) {
     return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
       status: 403,
     });
@@ -199,13 +228,53 @@ export async function getEinsatzWithDetailsById(
       affected_user: log.affected_user,
       user: log.user
         ? {
-            id: log.user.id,
-            firstname: log.user.firstname,
-            lastname: log.user.lastname,
-          }
+          id: log.user.id,
+          firstname: log.user.firstname,
+          lastname: log.user.lastname,
+        }
         : null,
     })),
   };
+}
+
+export async function getEinsatzRealtimeMetadataById(id: string): Promise<{
+  id: string;
+  org_id: string;
+  start: Date;
+  end: Date;
+} | null | Response> {
+  const { session } = await requireAuth();
+
+  if (!isValidUuid(id)) {
+    throw new BadRequestError('Invalid ID');
+  }
+
+  const einsatz = await prisma.einsatz.findFirst({
+    where: {
+      id,
+      organization: {
+        user_organization_role: { some: { user_id: session.user.id } },
+      },
+    },
+    select: {
+      id: true,
+      org_id: true,
+      start: true,
+      end: true,
+    },
+  });
+
+  if (!einsatz) {
+    return null;
+  }
+
+  if (!(await hasOrgPermission(session, einsatz.org_id, 'einsaetze:read'))) {
+    return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
+      status: 403,
+    });
+  }
+
+  return einsatz;
 }
 
 export async function getAllEinsaetze(org_ids: string[]) {
@@ -247,6 +316,24 @@ export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
 }
 
 export async function getEinsatzForCalendar(id: string) {
+  const { session } = await requireAuth();
+  if (!isValidUuid(id)) {
+    return new Response('Invalid ID', { status: 400 });
+  }
+
+  const einsatz = await prisma.einsatz.findUnique({
+    where: { id },
+    select: { org_id: true },
+  });
+
+  if (!einsatz) {
+    return null;
+  }
+
+  if (!(await hasOrgPermission(session, einsatz.org_id, 'einsaetze:read'))) {
+    return new Response('Unauthorized', { status: 403 });
+  }
+
   return getEinsatzForCalendarFromDb(id);
 }
 
@@ -302,18 +389,43 @@ export async function getDetailedEinsaetzeForAgenda(
   return rows.map((row) => mapRawEinsatzToDetailedForCalendar(row));
 }
 
+/**
+ * Builds a table-ready list of Einsätze for the specified organizations.
+ *
+ * @param active_org_ids - Organization IDs to filter by; when empty, the current user's organization IDs are used
+ * @returns A list of `EinsatzListItem` objects containing einsatz data plus computed helper names, category labels, and custom field data
+ */
 export async function getEinsaetzeForTableView(
   active_org_ids: string[]
-): Promise<ETV[]> {
+): Promise<EinsatzListItem[]> {
   const { session } = await requireAuth();
 
   const userOrgIds = session.user.orgIds;
-  const filterOrgIds = active_org_ids ? active_org_ids : userOrgIds;
+  const memberOrgIds =
+    active_org_ids.length > 0
+      ? active_org_ids.filter((orgId) => userOrgIds.includes(orgId))
+      : userOrgIds;
+
+  if (memberOrgIds.length === 0) {
+    return [];
+  }
+
+  const readableOrgIds = (
+    await Promise.all(
+      memberOrgIds.map(async (orgId) =>
+        (await hasPermission(session, 'einsaetze:read', orgId)) ? orgId : null
+      )
+    )
+  ).filter((orgId): orgId is string => orgId !== null);
+
+  if (readableOrgIds.length === 0) {
+    return [];
+  }
 
   const einsaetzeFromDb = await prisma.einsatz.findMany({
     where: {
       org_id: {
-        in: filterOrgIds,
+        in: readableOrgIds,
       },
     },
     include: {
@@ -339,6 +451,9 @@ export async function getEinsaetzeForTableView(
         include: {
           field: {
             select: {
+              name: true,
+              group_name: true,
+              allowed_values: true,
               type: {
                 select: {
                   name: true,
@@ -371,73 +486,284 @@ export async function getEinsaetzeForTableView(
     orderBy: { created_at: 'asc' },
   });
 
-  // Map DB result to ETV type
-  const mapped: ETV[] = einsaetzeFromDb.map((einsatz) => ({
-    id: einsatz.id,
-    created_at: einsatz.created_at,
-    title: einsatz.title,
-    updated_at: einsatz.updated_at,
-    start: einsatz.start,
-    participant_count: einsatz.participant_count,
-    price_per_person: einsatz.price_per_person,
-    total_price: einsatz.total_price,
-    org_id: einsatz.org_id,
-    created_by: einsatz.created_by,
-    template_id: einsatz.template_id,
-    all_day: einsatz.all_day,
-    end: einsatz.end,
-    helpers_needed: einsatz.helpers_needed,
-    status_id: einsatz.status_id,
-    einsatz_status: einsatz.einsatz_status,
-    anmerkung: einsatz.anmerkung,
-    organization: {
-      id: einsatz.organization.id,
-      name: einsatz.organization.name,
-    },
-    einsatz_helper: Array.from(
+  const mapped: EinsatzListItem[] = einsaetzeFromDb.map((einsatz) => {
+    const helperUsers = Array.from(
       new Map(
-        einsatz.einsatz_helper.map((helper) => [
-          helper.user.id,
-          {
-            id: helper.user.id,
-            firstname: helper.user.firstname ?? null,
-            lastname: helper.user.lastname ?? null,
-          },
-        ])
+        einsatz.einsatz_helper.map((helper) => [helper.user.id, helper.user])
       ).values()
-    ),
-    einsatz_categories: einsatz.einsatz_to_category.map(
-      (cat) => cat.einsatz_category
-    ),
-    einsatz_fields: einsatz.einsatz_field.map(
-      (f) =>
-        ({
-          id: f.id,
-          einsatz_id: f.einsatz_id,
-          value: f.value,
-          field_id: f.field_id,
-          datatype: f.field.type?.datatype ?? null,
-        }) as einsatz_field & { datatype: string | null }
-    ),
-    user: einsatz.user
-      ? {
-          id: einsatz.user.id,
-          firstname: einsatz.user.firstname ?? null,
-          lastname: einsatz.user.lastname ?? null,
-        }
-      : null,
-    einsatz_template: einsatz.einsatz_template
-      ? {
-          id: einsatz.einsatz_template.id,
-          name: einsatz.einsatz_template.name ?? null,
-        }
-      : null,
-    _count: einsatz._count,
-  }));
+    );
+
+    const helperNames = helperUsers
+      .map((helper) =>
+        [helper.firstname, helper.lastname]
+          .filter((value): value is string => Boolean(value))
+          .join(' ')
+          .trim()
+      )
+      .filter((name) => name.length > 0);
+
+    const categoryLabels = Array.from(
+      new Set(
+        einsatz.einsatz_to_category
+          .map((category) => {
+            const value = category.einsatz_category.value.trim();
+            const abbreviation = category.einsatz_category.abbreviation.trim();
+
+            return abbreviation ? `${value} (${abbreviation})` : value;
+          })
+          .filter((label) => label.length > 0)
+      )
+    );
+
+    const { customFields, customFieldMeta } = mapCustomFields(
+      einsatz.einsatz_field
+    );
+
+    return {
+      id: einsatz.id,
+      created_at: einsatz.created_at,
+      title: einsatz.title,
+      updated_at: einsatz.updated_at,
+      start: einsatz.start,
+      participant_count: einsatz.participant_count,
+      price_per_person: einsatz.price_per_person,
+      total_price: einsatz.total_price,
+      org_id: einsatz.org_id,
+      created_by: einsatz.created_by,
+      template_id: einsatz.template_id,
+      all_day: einsatz.all_day,
+      end: einsatz.end,
+      helpers_needed: einsatz.helpers_needed,
+      status_id: einsatz.status_id,
+      anmerkung: einsatz.anmerkung,
+      organization_name: einsatz.organization.name,
+      created_by_name: einsatz.user
+        ? [einsatz.user.firstname, einsatz.user.lastname]
+          .filter((value): value is string => Boolean(value))
+          .join(' ')
+          .trim() || null
+        : null,
+      template_name: einsatz.einsatz_template?.name ?? null,
+      status_verwalter_text: einsatz.einsatz_status.verwalter_text,
+      status_helper_text: einsatz.einsatz_status.helper_text,
+      status_verwalter_color: einsatz.einsatz_status.verwalter_color,
+      status_helper_color: einsatz.einsatz_status.helper_color,
+      category_labels: categoryLabels,
+      category_display: categoryLabels.join(', '),
+      helper_names: helperNames,
+      helper_display: helperNames.join(', '),
+      helper_count: einsatz._count?.einsatz_helper ?? einsatz.einsatz_helper.length,
+      custom_fields: customFields,
+      custom_field_meta: customFieldMeta,
+    };
+  });
 
   return mapped;
 }
 
+/**
+ * Builds custom-field values and metadata for the list view.
+ *
+ * @param fields - Custom field entries including field metadata such as name, group name, and datatype
+ * @returns An object containing the flattened custom-field values keyed by a formatted field-name key and the metadata needed to render matching columns
+ */
+function mapCustomFields(
+  fields: Array<{
+    id: string;
+    einsatz_id: string;
+    field_id: string;
+    value: string | null;
+    field: {
+      name: string | null;
+      group_name: string | null;
+      allowed_values: string[];
+      type: {
+        datatype: string | null;
+      } | null;
+    };
+  }>
+): {
+  customFields: Record<string, EinsatzListCustomFieldValue>;
+  customFieldMeta: EinsatzListCustomFieldMeta[];
+} {
+  const customFields: Record<string, EinsatzListCustomFieldValue> = {};
+  const customFieldMeta: EinsatzListCustomFieldMeta[] = [];
+
+  for (const fieldEntry of fields) {
+    const groupName = fieldEntry.field.group_name?.trim() || null;
+    const fieldName = fieldEntry.field.name?.trim() || null;
+    const label =
+      fieldName ?? (groupName ? `Eigenes Feld (${groupName})` : 'Eigenes Feld');
+    const key = formatCustomFieldKey(label);
+
+    customFields[key] = normalizeCustomFieldValue(
+      fieldEntry.field.type?.datatype ?? null,
+      fieldEntry.value
+    );
+    customFieldMeta.push({
+      key,
+      label,
+      datatype: fieldEntry.field.type?.datatype ?? null,
+      group_name: groupName,
+      allowed_values: fieldEntry.field.allowed_values,
+    });
+  }
+
+  return { customFields, customFieldMeta };
+}
+
+function normalizeCustomFieldValue(
+  datatype: string | null,
+  value: string | null
+): EinsatzListCustomFieldValue {
+  const normalizedValue = normalizeTextValue(value);
+
+  if (normalizedValue === null) {
+    return null;
+  }
+
+  const fieldType = normalizeFieldType(datatype);
+
+  if (fieldType === null) {
+    return normalizedValue;
+  }
+
+  switch (fieldType) {
+    case 'text':
+    case 'phone':
+    case 'mail':
+    case 'group':
+    case 'select':
+    case 'time':
+      return normalizeStringLikeFieldValue(fieldType, normalizedValue);
+    case 'number':
+    case 'currency':
+      return normalizeNumericFieldValue(normalizedValue);
+    case 'date':
+      return normalizeDateFieldValue(normalizedValue);
+    case 'boolean':
+      return normalizeBooleanFieldValue(normalizedValue);
+    default:
+      return normalizedValue;
+  }
+}
+
+function normalizeFieldType(datatype: string | null): FieldTypeKey | null {
+  if (!datatype) {
+    return null;
+  }
+
+  return isFieldTypeKey(datatype) ? datatype : null;
+}
+
+function normalizeTextValue(value: string | null): string | null {
+  if (value == null) {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+  return trimmedValue === '' ? null : trimmedValue;
+}
+
+function normalizeStringLikeFieldValue(
+  datatype: Extract<FieldTypeKey, 'text' | 'phone' | 'mail' | 'group' | 'select' | 'time'>,
+  value: string
+): string {
+  switch (datatype) {
+    default:
+      return value;
+    case 'mail':
+      return value.toLowerCase();
+    case 'time':
+      return normalizeTimeFieldValue(value);
+  }
+}
+
+function normalizeNumericFieldValue(value: string): number | string {
+  const normalizedNumber = Number(value.replace(',', '.'));
+  return Number.isFinite(normalizedNumber) ? normalizedNumber : value;
+}
+
+function normalizeBooleanFieldValue(value: string): string {
+  const normalizedValue = value.toLowerCase();
+
+  if (['true', '1', 'yes', 'ja', 'on'].includes(normalizedValue)) {
+    return 'true';
+  }
+
+  if (['false', '0', 'no', 'nein', 'off'].includes(normalizedValue)) {
+    return 'false';
+  }
+
+  return value;
+}
+
+function normalizeDateFieldValue(value: string): Date | string {
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    const numericYear = Number(year);
+    const numericMonth = Number(month);
+    const numericDay = Number(day);
+    const dateValue = new Date(
+      numericYear,
+      numericMonth - 1,
+      numericDay
+    );
+
+    if (
+      Number.isNaN(dateValue.getTime()) ||
+      dateValue.getFullYear() !== numericYear ||
+      dateValue.getMonth() + 1 !== numericMonth ||
+      dateValue.getDate() !== numericDay
+    ) {
+      return value;
+    }
+
+    return dateValue;
+  }
+
+  const dateValue = new Date(value);
+  return Number.isNaN(dateValue.getTime()) ? value : dateValue;
+}
+
+function normalizeTimeFieldValue(value: string): string {
+  const timeMatch = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value);
+
+  if (!timeMatch) {
+    return value;
+  }
+
+  const [, hours, minutes] = timeMatch;
+  return `${hours.padStart(2, '0')}:${minutes}`;
+}
+
+/**
+ * Formats a custom field key by normalizing the label and replacing special characters.
+ *
+ * @param label - The label to format
+ * @returns The formatted custom field key
+ */
+function formatCustomFieldKey(label: string): string {
+  const normalizedLabel = label
+    .normalize('NFKD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return `cf-${normalizedLabel || 'eigenes-feld'}`;
+}
+
+/**
+ * Fetch templates for an organization, including each template's icon URL and template fields with their field type name.
+ *
+ * @param org_id - Optional organization id to fetch templates for; if omitted, uses the user's single organization when possible
+ * @returns Template records for the resolved organization or a `Response` with status 403 when the caller lacks permission
+ * @throws {BadRequestError} When no organization can be resolved from `org_id` and the current user's memberships
+ */
 export async function getAllTemplatesWithFields(org_id?: string) {
   const { session, userIds } = await requireAuth();
 
@@ -507,16 +833,6 @@ export async function createEinsatz({
 }): Promise<EinsatzCreateResponse> {
   const { session, userIds } = await requireAuth();
 
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:create',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new ForbiddenError('Fehlende Berechtigungen');
-  }
-
   const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
   const useOrgId =
     data.org_id || (userOrgIds.length === 1 ? userOrgIds[0] : undefined);
@@ -525,9 +841,13 @@ export async function createEinsatz({
     throw new BadRequestError('Organisation muss angegeben werden');
   }
 
-  if (!userOrgIds.includes(useOrgId)) {
-    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
-  }
+  const einsatzWithAuth = {
+    ...data,
+    created_by: userIds.userId,
+    org_id: useOrgId,
+  };
+
+  await assertOrgPermission(session, useOrgId, 'einsaetze:create');
 
   // Check for conflicts when creating with assigned users (unless disabled)
   let conflicts: EinsatzConflict[] = [];
@@ -549,12 +869,6 @@ export async function createEinsatz({
       };
     }
   }
-
-  const einsatzWithAuth = {
-    ...data,
-    created_by: userIds.userId,
-    org_id: useOrgId,
-  };
 
   const createdEinsatz = await createEinsatzInDb({ data: einsatzWithAuth });
 
@@ -624,15 +938,6 @@ export async function updateEinsatzTime(data: {
   disableTimeConflicts?: boolean;
 }): Promise<EinsatzUpdateResponse> {
   const { session } = await requireAuth();
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:update',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new ForbiddenError('Fehlende Berechtigungen');
-  }
 
   const dataSchema = z.object({
     id: z.string(),
@@ -652,11 +957,18 @@ export async function updateEinsatzTime(data: {
   const existingEinsatz = await prisma.einsatz.findUnique({
     where: { id },
     select: {
+      org_id: true,
       einsatz_helper: {
         select: { user_id: true },
       },
     },
   });
+
+  if (!existingEinsatz) {
+    throw new NotFoundError(`Einsatz with ID ${id} not found`);
+  }
+
+  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
 
   let conflicts: EinsatzConflict[] = [];
 
@@ -689,6 +1001,32 @@ export async function updateEinsatzTime(data: {
     },
   });
 
+  if (session.user.id) {
+    try {
+      const changeLog = await createChangeLogAuto({
+        einsatzId: id,
+        userId: session.user.id,
+        typeId: ChangeTypeIds['E-Bearbeitet'],
+      });
+
+      if (!changeLog) {
+        throw new Error(
+          `Aktivitätenprotokoll für die Zeitänderung von Einsatz ${id} konnte nicht erstellt werden.`
+        );
+      }
+    } catch (error) {
+      console.error('Failed to create audit log for time update', {
+        einsatzId: id,
+        userId: session.user.id,
+        typeId: ChangeTypeIds['E-Bearbeitet'],
+        error,
+      });
+      throw new Error(
+        `Aktivitätenprotokoll für die Zeitänderung von Einsatz ${id} konnte nicht erstellt werden.`
+      );
+    }
+  }
+
   return {
     einsatz,
     conflicts: [],
@@ -719,13 +1057,17 @@ export async function toggleUserAssignmentToEinsatz(
   });
 
   if (!existingEinsatz) {
-    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
-      status: 404,
-    });
+    throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
   }
 
   const isSignedInUserAssigned = existingEinsatz.einsatz_helper.some(
     (helper) => helper.user_id === session.user.id
+  );
+
+  await assertOrgPermission(
+    session,
+    existingEinsatz.org_id,
+    isSignedInUserAssigned ? 'einsaetze:leave' : 'einsaetze:join'
   );
 
   // Check for conflicts only when assigning (not when removing)
@@ -749,7 +1091,7 @@ export async function toggleUserAssignmentToEinsatz(
 
   const newStatusId =
     existingEinsatz.helpers_needed >
-    existingEinsatz.einsatz_helper.length + addOrRemoveOne
+      existingEinsatz.einsatz_helper.length + addOrRemoveOne
       ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
       : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
 
@@ -790,6 +1132,11 @@ export async function toggleUserAssignmentToEinsatz(
     }
   } else {
     // USER IS NOT ASSIGNED → ADD THEM
+    const helperCreateData = {
+      user: { connect: { id: session.user.id } },
+      org_id: existingEinsatz.org_id,
+    };
+
     result = await prisma.einsatz.update({
       where: {
         id: einsatzId,
@@ -803,9 +1150,7 @@ export async function toggleUserAssignmentToEinsatz(
       },
       data: {
         einsatz_helper: {
-          create: {
-            user: { connect: { id: session.user.id } },
-          },
+          create: helperCreateData,
         },
         status_id: newStatusId,
       },
@@ -840,30 +1185,17 @@ export async function updateEinsatz({
   data: Partial<EinsatzCreate>;
   disableTimeConflicts?: boolean;
 }): Promise<EinsatzUpdateResponse> {
-  const { session, userIds } = await requireAuth();
-
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:update',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new ForbiddenError('Fehlende Berechtigungen');
-  }
+  const { session } = await requireAuth();
 
   if (data.template_id && false) {
     // TODO implement server side validation
-    const parsedDynamicFields = await ValidateEinsatzCreate(
-      data as EinsatzCreate
-    );
+    await ValidateEinsatzCreate(data as EinsatzCreate);
   }
   const {
     id,
     categories,
     einsatz_fields,
     assignedUsers,
-    org_id,
     userProperties,
     ...updateData
   } = data;
@@ -879,17 +1211,15 @@ export async function updateEinsatz({
       org_id: true,
       start: true,
       end: true,
+      template_id: true,
     },
   });
 
   if (!existingEinsatz) {
-    throw new Response(`Einsatz with ID ${id} not found`, { status: 404 });
+    throw new NotFoundError(`Einsatz with ID ${id} not found`);
   }
 
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
-  }
+  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
 
   // Check for conflicts when assigning users (unless disabled)
   let conflicts: EinsatzConflict[] = [];
@@ -912,6 +1242,11 @@ export async function updateEinsatz({
       };
     }
   }
+
+  const helperCreateData = (assignedUsers ?? []).map((userId) => ({
+    user: { connect: { id: userId } },
+    org_id: existingEinsatz.org_id,
+  }));
 
   try {
     const einsatz = await prisma.einsatz.update({
@@ -941,9 +1276,7 @@ export async function updateEinsatz({
         einsatz_helper: {
           ...(assignedUsers && {
             deleteMany: {},
-            create: (assignedUsers ?? []).map((userId) => ({
-              user: { connect: { id: userId } },
-            })),
+            create: helperCreateData,
           }),
         },
         einsatz_user_property: {
@@ -974,17 +1307,7 @@ export async function updateEinsatzStatus(
   einsatzId: string,
   statusId: string
 ): Promise<Einsatz> {
-  const { session, userIds } = await requireAuth();
-
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:update',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new ForbiddenError('Fehlende Berechtigungen');
-  }
+  const { session } = await requireAuth();
 
   const existingEinsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
@@ -992,15 +1315,10 @@ export async function updateEinsatzStatus(
   });
 
   if (!existingEinsatz) {
-    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
-      status: 404,
-    });
+    throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
   }
 
-  const userOrgIds = userIds?.orgIds || (userIds?.orgId ? [userIds.orgId] : []);
-  if (!userOrgIds.includes(existingEinsatz.org_id)) {
-    throw new ForbiddenError('Fehlende Berechtigungen für diese Organisation');
-  }
+  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
 
   const updatedEinsatz = await prisma.einsatz.update({
     where: { id: einsatzId },
@@ -1024,26 +1342,16 @@ export async function updateEinsatzStatus(
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
   const { session } = await requireAuth();
 
-  if (
-    !(await hasPermission(
-      session,
-      'einsaetze:delete',
-      session.user.activeOrganization?.id
-    ))
-  ) {
-    throw new Response('Unauthorized', { status: 403 });
-  }
-
   const einsatz = await prisma.einsatz.findUnique({
     where: { id: einsatzId },
     select: { id: true, org_id: true },
   });
 
   if (!einsatz) {
-    throw new Response(`Einsatz with ID ${einsatzId} not found`, {
-      status: 404,
-    });
+    throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
   }
+
+  await assertOrgPermission(session, einsatz.org_id, 'einsaetze:delete');
 
   try {
     await prisma.einsatz.delete({
@@ -1062,14 +1370,21 @@ export async function deleteEinsatzById(einsatzId: string): Promise<void> {
 export async function deleteEinsaetzeByIds(
   einsatzIds: string[]
 ): Promise<void> {
-  // TODO: check if logged in user has permission to delete this Einsatz
+  const { session } = await requireAuth();
 
   const einsatz = await prisma.einsatz.findMany({
     where: { id: { in: einsatzIds } },
+    select: { id: true, org_id: true },
   });
   if (!einsatz || einsatz.length === 0) {
     throw new BadRequestError(`No Einsaetze found: ${einsatzIds.join(', ')}`);
   }
+
+  await Promise.all(
+    einsatz.map(async (entry) => {
+      await assertOrgPermission(session, entry.org_id, 'einsaetze:delete');
+    })
+  );
 
   try {
     await prisma.einsatz.deleteMany({
@@ -1105,6 +1420,11 @@ async function createEinsatzInDb({
     all_day = false,
   } = data;
 
+  const helperCreateData = assignedUsers.map((userId) => ({
+    user: { connect: { id: userId } },
+    org_id,
+  }));
+
   return prisma.einsatz.create({
     data: {
       title,
@@ -1129,9 +1449,7 @@ async function createEinsatzInDb({
           })) || [],
       },
       einsatz_helper: {
-        create: assignedUsers.map((userId) => ({
-          user: { connect: { id: userId } },
-        })),
+        create: helperCreateData,
       },
       einsatz_user_property: {
         create:
@@ -1151,31 +1469,6 @@ function isValidUuid(id?: unknown): boolean {
   return /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(
     id
   );
-}
-
-async function getEinsatzByIdFromDb(
-  id: string,
-  org_id: string
-): Promise<Einsatz | null> {
-  /*   if (!isValidUuid(id)) {
-      console.error("ungültige IDs", { id});
-      return null;
-    }
-    if (!isValidUuid(org_id)) {
-      console.error("ungültige IDs", {org_id });
-      return null;
-    } */
-
-  return prisma.einsatz.findUnique({
-    where: { id, org_id },
-    include: {
-      organization: true,
-      einsatz_to_category: { include: { einsatz_category: true } },
-      einsatz_helper: { include: { user: true } },
-      einsatz_status: true,
-      user: true,
-    },
-  });
 }
 
 async function getAllEinsaetzeFromDb(
@@ -1355,10 +1648,10 @@ function mapRawEinsatzToDetailedForCalendar(
       affected_user: log.affected_user,
       user: log.user
         ? {
-            id: log.user.id,
-            firstname: log.user.firstname,
-            lastname: log.user.lastname,
-          }
+          id: log.user.id,
+          firstname: log.user.firstname,
+          lastname: log.user.lastname,
+        }
         : null,
     })),
     category_abbreviations,

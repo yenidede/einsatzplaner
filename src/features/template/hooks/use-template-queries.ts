@@ -3,14 +3,15 @@ import { queryKeys } from '@/features/einsatztemplate/queryKeys';
 import {
   getAllTemplatesWithIconByOrgId,
   getAllTemplatesByOrgIds,
-  getTemplateById,
+  getTemplateWithReuseGraphById,
   getAllTemplateIcons,
+  getTemplateFieldReuseCandidatesAction,
 } from '@/features/template/template-dal';
 
 export function useTemplate(templateId: string | null | undefined) {
   return useQuery({
-    queryKey: queryKeys.template(templateId ?? ''),
-    queryFn: () => getTemplateById(templateId ?? ''),
+    queryKey: queryKeys.templateWithReuseGraph(templateId ?? ''),
+    queryFn: () => getTemplateWithReuseGraphById(templateId ?? ''),
     enabled: !!templateId,
   });
 }
@@ -33,7 +34,25 @@ export function useTemplatesByOrgIds(orgIds: string[]) {
 
 export function useTemplateIcons() {
   return useQuery({
-    queryKey: ['template', 'icons'] as const,
+    queryKey: queryKeys.icons,
     queryFn: () => getAllTemplateIcons(),
+  });
+}
+
+export function useTemplateFieldReuseCandidates(
+  activeOrgId: string | null | undefined,
+  excludeTemplateId?: string | null
+) {
+  return useQuery({
+    queryKey: queryKeys.fieldReuseCandidates(
+      activeOrgId ?? '',
+      excludeTemplateId
+    ),
+    queryFn: () =>
+      getTemplateFieldReuseCandidatesAction(
+        activeOrgId ?? '',
+        excludeTemplateId
+      ),
+    enabled: !!activeOrgId,
   });
 }

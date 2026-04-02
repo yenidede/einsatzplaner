@@ -63,12 +63,12 @@ export function DataTableSortList<TData>({
   const sorting = table.getState().sorting;
   const onSortingChange = table.setSorting;
 
-  const { columnLabels, columns } = React.useMemo(() => {
+  const { columnLabels, columns } = (() => {
     const labels = new Map<string, string>();
     const sortingIds = new Set(sorting.map((s) => s.id));
     const availableColumns: { id: string; label: string }[] = [];
 
-    for (const column of table.getAllColumns()) {
+    for (const column of table.getAllLeafColumns()) {
       if (!column.getCanSort()) continue;
 
       const label = column.columnDef.meta?.label ?? column.id;
@@ -83,7 +83,7 @@ export function DataTableSortList<TData>({
       columnLabels: labels,
       columns: availableColumns,
     };
-  }, [sorting, table]);
+  })();
 
   const onSortAdd = React.useCallback(() => {
     const firstColumn = columns[0];
@@ -177,7 +177,7 @@ export function DataTableSortList<TData>({
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" onKeyDown={onTriggerKeyDown}>
             <ArrowDownUp />
-            Sort
+            Sortieren
             {sorting.length > 0 && (
               <Badge
                 variant="secondary"
@@ -381,6 +381,7 @@ function DataTableSortItem({
         </Select>
         <Button
           aria-controls={sortItemId}
+          aria-label="Sortierung entfernen"
           variant="outline"
           size="icon"
           className="size-8 shrink-0 rounded"
@@ -390,6 +391,7 @@ function DataTableSortItem({
         </Button>
         <SortableItemHandle asChild>
           <Button
+            aria-label="Sortierung verschieben"
             variant="outline"
             size="icon"
             className="size-8 shrink-0 rounded"

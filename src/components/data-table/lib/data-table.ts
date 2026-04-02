@@ -20,6 +20,7 @@ export function getCommonPinningStyles<TData>({
     isPinned === 'right' && column.getIsFirstColumn('right');
 
   return {
+    backgroundColor: isPinned ? 'var(--background)' : undefined,
     boxShadow: withBorder
       ? isLastLeftPinnedColumn
         ? '-4px 0 4px -4px hsl(var(--border)) inset'
@@ -33,11 +34,10 @@ export function getCommonPinningStyles<TData>({
         : undefined, // -8 to avoid gaps
     right:
       isPinned === 'right' ? `${column.getAfter('right') / 16}rem` : undefined,
-    opacity: isPinned ? 0.97 : 1,
+    opacity: isPinned ? 0.95 : undefined,
     position: isPinned ? 'sticky' : 'relative',
     marginLeft: isPinned === 'left' ? '-2px' : undefined,
     width: column.getSize(),
-    zIndex: isPinned ? 40 : 0,
   };
 }
 
@@ -75,7 +75,7 @@ export function getValidFilters<TData>(
       (Array.isArray(filter.value)
         ? filter.value.length > 0
         : filter.value !== '' &&
-          filter.value !== null &&
-          filter.value !== undefined)
+        filter.value !== null &&
+        filter.value !== undefined)
   );
 }

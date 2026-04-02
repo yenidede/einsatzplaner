@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { TimeTextInput } from '@/components/form/TimeTextInput';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { queryKeys } from '@/features/einsatz/queryKeys';
 import {
@@ -27,22 +28,48 @@ interface OrganizationDefaultValuesProps {
   maxParticipantsPerHelper: string;
   defaultStarttime: string;
   defaultEndtime: string;
+  defaultStarttimeError: string | null;
+  defaultEndtimeError: string | null;
   categories: CategoryItem[];
   onMaxParticipantsPerHelperChange: (value: string) => void;
   onDefaultStarttimeChange: (value: string) => void;
   onDefaultEndtimeChange: (value: string) => void;
+  onDefaultStarttimeErrorChange: (error: string | null) => void;
+  onDefaultEndtimeErrorChange: (error: string | null) => void;
 }
 
+/**
+ * Render the organization defaults UI for participant limits, default times, and category management.
+ *
+ * @param orgId - Organization identifier used for category mutations and queries
+ * @param helperSingular - Singular label for a helper used in the participant-limit field label
+ * @param maxParticipantsPerHelper - Current value for the maximum participants per helper
+ * @param defaultStarttime - Current default start time value (e.g. "09:00")
+ * @param defaultEndtime - Current default end time value (e.g. "10:00")
+ * @param defaultStarttimeError - Validation error message for the default start time, or `null` when valid
+ * @param defaultEndtimeError - Validation error message for the default end time, or `null` when valid
+ * @param categories - List of category records to render and manage
+ * @param onMaxParticipantsPerHelperChange - Callback invoked with the new participant-limit value
+ * @param onDefaultStarttimeChange - Callback invoked when the default start time value changes
+ * @param onDefaultEndtimeChange - Callback invoked when the default end time value changes
+ * @param onDefaultStarttimeErrorChange - Callback invoked with validation errors for the default start time (`string | null`)
+ * @param onDefaultEndtimeErrorChange - Callback invoked with validation errors for the default end time (`string | null`)
+ * @returns The JSX element for the organization defaults settings panel
+ */
 export function OrganizationDefaultValues({
   orgId,
   helperSingular,
   maxParticipantsPerHelper,
   defaultStarttime,
   defaultEndtime,
+  defaultStarttimeError,
+  defaultEndtimeError,
   categories,
   onMaxParticipantsPerHelperChange,
   onDefaultStarttimeChange,
   onDefaultEndtimeChange,
+  onDefaultStarttimeErrorChange,
+  onDefaultEndtimeErrorChange,
 }: OrganizationDefaultValuesProps) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
@@ -178,26 +205,50 @@ export function OrganizationDefaultValues({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="default-starttime">Standard-Startzeit</Label>
-            <Input
+            <TimeTextInput
               id="default-starttime"
-              type="time"
               value={defaultStarttime}
-              onChange={(e) => onDefaultStarttimeChange(e.target.value)}
+              onValueChange={onDefaultStarttimeChange}
+              onValidationChange={onDefaultStarttimeErrorChange}
+              invalidMessage="Bitte geben Sie eine gültige Standard-Startzeit ein, z. B. 09:00."
+              aria-describedby={
+                defaultStarttimeError ? 'default-starttime-error' : undefined
+              }
               aria-label="Standard-Startzeit für neue Einsätze"
             />
+            {defaultStarttimeError && (
+              <p
+                id="default-starttime-error"
+                className="text-destructive text-sm"
+              >
+                {defaultStarttimeError}
+              </p>
+            )}
             <p className="text-muted-foreground text-sm">
               Wird im Einsatz-Dialog als Vorgabe für die Startzeit verwendet.
             </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="default-endtime">Standard-Endzeit</Label>
-            <Input
+            <TimeTextInput
               id="default-endtime"
-              type="time"
               value={defaultEndtime}
-              onChange={(e) => onDefaultEndtimeChange(e.target.value)}
+              onValueChange={onDefaultEndtimeChange}
+              onValidationChange={onDefaultEndtimeErrorChange}
+              invalidMessage="Bitte geben Sie eine gültige Standard-Endzeit ein, z. B. 10:00."
+              aria-describedby={
+                defaultEndtimeError ? 'default-endtime-error' : undefined
+              }
               aria-label="Standard-Endzeit für neue Einsätze"
             />
+            {defaultEndtimeError && (
+              <p
+                id="default-endtime-error"
+                className="text-destructive text-sm"
+              >
+                {defaultEndtimeError}
+              </p>
+            )}
             <p className="text-muted-foreground text-sm">
               Wird im Einsatz-Dialog als Vorgabe für die Endzeit verwendet.
             </p>
@@ -286,14 +337,14 @@ export function OrganizationDefaultValues({
                 className="max-w-[200px]"
                 value={newValue}
                 onChange={(e) => setNewValue(e.target.value)}
-                placeholder="Name der Kategorie"
+                placeholder="Dauerausstellung"
                 aria-label="Neue Kategorie Name"
               />
               <Input
                 className="max-w-[120px]"
                 value={newAbbreviation}
                 onChange={(e) => setNewAbbreviation(e.target.value)}
-                placeholder="Kürzel (optional)"
+                placeholder="DA"
                 aria-label="Neue Kategorie Kürzel"
               />
               <Button

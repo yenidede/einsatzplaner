@@ -51,6 +51,75 @@ function toStringValue(value: string | number | boolean | null | undefined): str
   return String(value);
 }
 
+function isPng(bytes: Uint8Array): boolean {
+  return (
+    bytes.length > 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  );
+}
+
+function isJpeg(bytes: Uint8Array): boolean {
+  return (
+    bytes.length > 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[bytes.length - 2] === 0xff &&
+    bytes[bytes.length - 1] === 0xd9
+  );
+}
+
+async function normalizeImageForPdf(value: string | null | undefined): Promise<string> {
+  const source = value?.trim() ?? '';
+
+  if (!source) {
+    return '';
+  }
+
+  const lower = source.toLowerCase();
+
+  if (
+    lower.startsWith('data:image/png;base64,') ||
+    lower.startsWith('data:image/jpeg;base64,') ||
+    lower.startsWith('data:image/jpg;base64,')
+  ) {
+    return source;
+  }
+
+  if (!lower.startsWith('http://') && !lower.startsWith('https://')) {
+    return '';
+  }
+
+  try {
+    const response = await fetch(source, { cache: 'no-store' });
+    if (!response.ok) {
+      return '';
+    }
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.length === 0) {
+      return '';
+    }
+
+    const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
+    const mimeType = contentType.includes('png') || isPng(bytes)
+      ? 'image/png'
+      : contentType.includes('jpeg') || contentType.includes('jpg') || isJpeg(bytes)
+        ? 'image/jpeg'
+        : null;
+
+    if (!mimeType) {
+      return '';
+    }
+
+    return `data:${mimeType};base64,${Buffer.from(bytes).toString('base64')}`;
+  } catch {
+    return '';
+  }
+}
+
 export async function getBookingConfirmationPreviewOptions(
   organizationId: string
 ): Promise<Array<{ id: string; title: string }>> {
@@ -162,6 +231,7 @@ export async function buildBookingConfirmationPdfInput(
   const fieldDefinitions = await getPdfTemplateFieldDefinitions(einsatz.org_id);
   const fieldKeys = new Map(fieldDefinitions.map((field) => [field.label, field.key]));
   const orgDetails = einsatz.organization.organization_details[0] ?? null;
+  const logoImage = await normalizeImageForPdf(einsatz.organization.logo_url);
 
   const helperRows = einsatz.einsatz_helper.map((helper) => [
     joinText([helper.user.firstname, helper.user.lastname]),
@@ -184,7 +254,7 @@ export async function buildBookingConfirmationPdfInput(
     organisation_name: einsatz.organization.name,
     organisation_email: einsatz.organization.email ?? '',
     organisation_telefon: einsatz.organization.phone ?? '',
-    organisation_logo_url: einsatz.organization.logo_url ?? '',
+    organisation_logo_url: logoImage,
     organisation_website: orgDetails?.website ?? '',
     organisation_uid: orgDetails?.vat ?? '',
     organisation_zvr: orgDetails?.zvr ?? '',

@@ -54,6 +54,94 @@ function invalidateAllCalendarMonthsForOrg(
   });
 }
 
+function invalidateAgendaForOrg(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string
+) {
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.einsaetzeForAgenda(orgId),
+  });
+}
+
+function invalidateCalendarSnapshot(
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshot: CalendarCacheSnapshot
+) {
+  snapshot.forEach(([key]) => {
+    queryClient.invalidateQueries({
+      queryKey: key,
+    });
+  });
+}
+
+function invalidateActivityLogs(
+  queryClient: ReturnType<typeof useQueryClient>
+) {
+  queryClient.invalidateQueries({
+    queryKey: activityLogQueryKeys.all,
+  });
+}
+
+async function cancelEinsatzQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  activeOrgId: string | undefined,
+  einsatzId?: string
+) {
+  const queriesToCancel = [
+    queryClient.cancelQueries({
+      queryKey: queryKeys.einsaetzeListPrefix(),
+    }),
+  ];
+
+  if (activeOrgId) {
+    queriesToCancel.push(
+      queryClient.cancelQueries({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      })
+    );
+  }
+
+  if (einsatzId) {
+    queriesToCancel.push(
+      queryClient.cancelQueries({
+        queryKey: queryKeys.detailedEinsatz(einsatzId),
+      })
+    );
+  }
+
+  await Promise.all(queriesToCancel);
+}
+
+async function cancelMultipleEinsatzQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  activeOrgId: string | undefined,
+  einsatzIds: string[]
+) {
+  await Promise.all([
+    cancelEinsatzQueries(queryClient, activeOrgId),
+    ...einsatzIds.map((einsatzId) =>
+      queryClient.cancelQueries({
+        queryKey: queryKeys.detailedEinsatz(einsatzId),
+      })
+    ),
+  ]);
+}
+
+function invalidateEinsatzQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  einsatzId?: string
+) {
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.einsaetzeListPrefix(),
+  });
+
+  if (einsatzId) {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.detailedEinsatz(einsatzId),
+    });
+  }
+}
+
 import {
   createEinsatz,
   updateEinsatz,
@@ -106,7 +194,6 @@ export function useCreateEinsatz(
   onConflictCancel?: (eventId: string) => void
 ) {
   const queryClient = useQueryClient();
-  const calendarPrefixKey = queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? '');
   const { showDestructive } = useConfirmDialog();
 
   const mutation = useMutation({
@@ -120,7 +207,7 @@ export function useCreateEinsatz(
       return createEinsatz({ data: event, disableTimeConflicts });
     },
     onMutate: async ({ event }) => {
-      await queryClient.cancelQueries({ queryKey: calendarPrefixKey });
+      await cancelEinsatzQueries(queryClient, activeOrgId);
       if (!activeOrgId) return {};
       const dates = getDatesSpanningEvent({
         start: event.start,
@@ -159,7 +246,7 @@ export function useCreateEinsatz(
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht erstellt werden: ${errorMessage}`);
     },
-    onSuccess: async (data, vars, _ctx) => {
+    onSuccess: async (data, vars) => {
       if (data.conflicts && data.conflicts.length > 0) {
         // Show confirmation dialog
         const dialogResult = await showDestructive(
@@ -186,13 +273,19 @@ export function useCreateEinsatz(
     },
     onSettled: (data, _error, vars) => {
       const event = data?.einsatz ?? vars?.event;
+      invalidateEinsatzQueries(queryClient, data?.einsatz?.id);
+      if (data?.einsatz?.id) {
+        invalidateActivityLogs(queryClient);
+      }
       if (activeOrgId && event && hasDefinedStart(event)) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         const dates = getDatesSpanningEvent({
           start: event.start,
           end: 'end' in event && event.end != null ? event.end : undefined,
         });
         invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
@@ -211,7 +304,6 @@ export function useUpdateEinsatz(
   onConflictCancel?: (eventId: string) => void
 ) {
   const queryClient = useQueryClient();
-  const calendarPrefixKey = queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? '');
   const { showDestructive } = useConfirmDialog();
 
   const mutation = useMutation({
@@ -234,7 +326,7 @@ export function useUpdateEinsatz(
       }
     },
     onMutate: async ({ event }) => {
-      await queryClient.cancelQueries({ queryKey: calendarPrefixKey });
+      await cancelEinsatzQueries(queryClient, activeOrgId, event.id);
       if (!activeOrgId) return {};
       const eventId = event.id;
       if (!eventId) return {};
@@ -246,7 +338,7 @@ export function useUpdateEinsatz(
           : null;
       const previousData: CalendarCacheSnapshot = [];
       const queries = queryClient.getQueriesData<CalendarRangeData>({
-        queryKey: calendarPrefixKey,
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
       });
       for (const [key, data] of queries) {
         if (!data) continue;
@@ -317,15 +409,11 @@ export function useUpdateEinsatz(
       }
 
       if (einsatzId) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.detailedEinsatz(einsatzId),
-        });
-        queryClient.invalidateQueries({
-          queryKey: activityLogQueryKeys.allEinsatz(einsatzId),
-        });
+        invalidateEinsatzQueries(queryClient, einsatzId);
+        invalidateActivityLogs(queryClient);
       }
     },
-    onSettled: (data, _error, vars) => {
+    onSettled: (data, _error, vars, context) => {
       const event =
         data && 'einsatz' in data && data.einsatz
           ? data.einsatz
@@ -334,14 +422,24 @@ export function useUpdateEinsatz(
             : vars?.event && 'start' in vars.event
               ? vars.event
               : null;
+      const fallbackEinsatzId = vars?.event?.id;
+      if (!data && fallbackEinsatzId) {
+        invalidateEinsatzQueries(queryClient, fallbackEinsatzId);
+      }
+      if (activeOrgId) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
+      }
+      if (activeOrgId && context?.previousData?.length) {
+        invalidateCalendarSnapshot(queryClient, context.previousData);
+      } else if (activeOrgId) {
+        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
+      }
       if (activeOrgId && event && hasDefinedStart(event)) {
         const dates = getDatesSpanningEvent({
           start: event.start,
           end: 'end' in event && event.end != null ? event.end : undefined,
         });
         invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
-      } else if (activeOrgId) {
-        invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
   });
@@ -377,12 +475,7 @@ export function useConfirmEinsatz(
       );
     },
     onMutate: async (eventId) => {
-      await queryClient.cancelQueries({
-        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
-      });
-      await queryClient.cancelQueries({
-        queryKey: queryKeys.detailedEinsatz(eventId),
-      });
+      await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
       if (!activeOrgId) return {};
       const previousData: CalendarCacheSnapshot = [];
       const queries = queryClient.getQueriesData<CalendarRangeData>({
@@ -418,21 +511,19 @@ export function useConfirmEinsatz(
       toast.success(`${einsatzSingular} '${data.title}' wurde bestätigt.`);
     },
     onSettled: (data, _error, eventId) => {
+      invalidateEinsatzQueries(queryClient, eventId);
       if (eventId) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.detailedEinsatz(eventId),
-        });
-        queryClient.invalidateQueries({
-          queryKey: activityLogQueryKeys.allEinsatz(eventId),
-        });
+        invalidateActivityLogs(queryClient);
       }
       if (activeOrgId && data && hasDefinedStart(data)) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         const dates = getDatesSpanningEvent({
           start: data.start,
           end: 'end' in data && data.end != null ? data.end : undefined,
         });
         invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
@@ -451,9 +542,7 @@ export function useToggleUserAssignment(
       return await toggleUserAssignmentToEinsatz(eventId);
     },
     onMutate: async (eventId) => {
-      await queryClient.cancelQueries({
-        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
-      });
+      await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
       if (!activeOrgId || !userId) return {};
       const previousData: CalendarCacheSnapshot = [];
       const queries = queryClient.getQueriesData<CalendarRangeData>({
@@ -494,18 +583,19 @@ export function useToggleUserAssignment(
         toast.success(`Sie haben sich erfolgreich von ${data.title} ausgetragen`);
     },
     onSettled: (data) => {
+      invalidateEinsatzQueries(queryClient, data?.id);
       if (data?.id) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.detailedEinsatz(data.id),
-        });
+        invalidateActivityLogs(queryClient);
       }
       if (activeOrgId && data && hasDefinedStart(data)) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         const dates = getDatesSpanningEvent({
           start: data.start,
           end: 'end' in data && data.end != null ? data.end : undefined,
         });
         invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       } else if (activeOrgId) {
+        invalidateAgendaForOrg(queryClient, activeOrgId);
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
     },
@@ -528,9 +618,7 @@ export function useDeleteEinsatz(
       return deleteEinsatzById(eventId);
     },
     onMutate: async ({ eventId }) => {
-      await queryClient.cancelQueries({
-        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
-      });
+      await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
       if (!activeOrgId) return {};
       const previousData: CalendarCacheSnapshot = [];
       const queries = queryClient.getQueriesData<CalendarRangeData>({
@@ -558,11 +646,13 @@ export function useDeleteEinsatz(
       toast.success(`${einsatzSingular} '${title}' wurde gelöscht.`);
     },
     onSettled: (_data, _error, variables) => {
+      invalidateEinsatzQueries(queryClient);
       if (variables?.eventId) {
         queryClient.removeQueries({
           queryKey: queryKeys.detailedEinsatz(variables.eventId),
         });
       }
+      invalidateActivityLogs(queryClient);
       if (activeOrgId) {
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
@@ -582,9 +672,7 @@ export function useDeleteMultipleEinsaetze(
       return deleteEinsaetzeByIds(eventIds);
     },
     onMutate: async ({ eventIds }) => {
-      await queryClient.cancelQueries({
-        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId ?? ''),
-      });
+      await cancelMultipleEinsatzQueries(queryClient, activeOrgId, eventIds);
       if (!activeOrgId) return {};
       const idSet = new Set(eventIds);
       const previousData: CalendarCacheSnapshot = [];
@@ -614,6 +702,7 @@ export function useDeleteMultipleEinsaetze(
       );
     },
     onSettled: (_data, _error, variables) => {
+      invalidateEinsatzQueries(queryClient);
       if (variables?.eventIds) {
         variables.eventIds.forEach((id) => {
           queryClient.removeQueries({
@@ -621,6 +710,7 @@ export function useDeleteMultipleEinsaetze(
           });
         });
       }
+      invalidateActivityLogs(queryClient);
       if (activeOrgId) {
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }

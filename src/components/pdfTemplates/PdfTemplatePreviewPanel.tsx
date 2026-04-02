@@ -1,21 +1,36 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import type { Template } from '@pdfme/common';
 import type { PdfTemplateInput } from '@/features/pdf-templates/types';
 import { getPdfmePlugins } from '@/features/pdf-templates/pdf-template-default';
+import { cn } from '@/lib/utils';
 
 interface PdfTemplatePreviewPanelProps {
   template: Template;
   input: PdfTemplateInput;
+  className?: string;
+  viewerClassName?: string;
 }
 
-export function PdfTemplatePreviewPanel({
+export const PdfTemplatePreviewPanel = memo(function PdfTemplatePreviewPanel({
   template,
   input,
+  className,
+  viewerClassName,
 }: PdfTemplatePreviewPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<{ destroy: () => void; updateTemplate: (template: Template) => void; setInputs: (inputs: Record<string, string>[]) => void } | null>(null);
+  const normalizedInput = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(input).map(([key, value]) => [
+          key,
+          Array.isArray(value) ? JSON.stringify(value) : String(value ?? ''),
+        ])
+      ),
+    [input]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -35,7 +50,7 @@ export function PdfTemplatePreviewPanel({
       viewerRef.current = new Viewer({
         domContainer: containerRef.current,
         template,
-        inputs: [Object.fromEntries(Object.entries(input).map(([key, value]) => [key, Array.isArray(value) ? JSON.stringify(value) : String(value ?? '')]))],
+        inputs: [normalizedInput],
         options: {
           lang: 'de',
           sidebarOpen: true,
@@ -55,19 +70,20 @@ export function PdfTemplatePreviewPanel({
 
   useEffect(() => {
     viewerRef.current?.updateTemplate(template);
-    viewerRef.current?.setInputs([
-      Object.fromEntries(
-        Object.entries(input).map(([key, value]) => [
-          key,
-          Array.isArray(value) ? JSON.stringify(value) : String(value ?? ''),
-        ])
-      ),
-    ]);
-  }, [template, input]);
+    viewerRef.current?.setInputs([normalizedInput]);
+  }, [normalizedInput, template]);
 
   return (
-    <div className="h-full overflow-hidden rounded-md border bg-slate-50">
-      <div ref={containerRef} className="h-[calc(100vh-15rem)] min-h-[32rem] w-full" />
+    <div
+      className={cn(
+        'h-full overflow-hidden rounded-md border bg-slate-50',
+        className
+      )}
+    >
+      <div
+        ref={containerRef}
+        className={cn('h-[calc(100vh-15rem)] min-h-[32rem] w-full', viewerClassName)}
+      />
     </div>
   );
-}
+});

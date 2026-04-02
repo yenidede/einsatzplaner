@@ -2,6 +2,7 @@
 
 import type { Template } from '@pdfme/common';
 import type {
+  PdfTemplateFooterConfig,
   PdfTemplateListItem,
   PdfTemplateRecord,
 } from '@/features/pdf-templates/types';
@@ -30,6 +31,7 @@ export async function createPdfTemplate(data: {
   isDefault?: boolean;
   isActive?: boolean;
   sampleEinsatzId?: string | null;
+  footer?: PdfTemplateFooterConfig | null;
 }): Promise<PdfTemplateRecord> {
   return createPdfTemplateService({
     organizationId: data.organizationId,
@@ -39,6 +41,7 @@ export async function createPdfTemplate(data: {
     isDefault: data.isDefault,
     isActive: data.isActive,
     sampleEinsatzId: data.sampleEinsatzId,
+    footer: data.footer,
   });
 }
 
@@ -49,6 +52,7 @@ export async function updatePdfTemplate(
     template?: Template;
     isActive?: boolean;
     sampleEinsatzId?: string | null;
+    footer?: PdfTemplateFooterConfig | null;
   }
 ): Promise<PdfTemplateRecord> {
   return updatePdfTemplateService({
@@ -57,6 +61,7 @@ export async function updatePdfTemplate(
     template: data.template,
     isActive: data.isActive,
     sampleEinsatzId: data.sampleEinsatzId,
+    footer: data.footer,
   });
 }
 
