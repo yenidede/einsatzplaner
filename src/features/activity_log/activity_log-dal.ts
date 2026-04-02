@@ -6,6 +6,7 @@ import type {
   CreateChangeLogInput,
   ActivityLogFilters,
   ActivityLogResult,
+  NotificationReadState,
 } from './types';
 import { Prisma } from '@/generated/prisma';
 
@@ -395,6 +396,42 @@ export async function getOrganizationActivityLogs(
   offset = 0
 ): Promise<ActivityLogResult> {
   return getActivityLogs({ orgId, limit, offset });
+}
+
+export async function getNotificationReadState(
+  userId: string
+): Promise<NotificationReadState> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      last_read_notifications: true,
+    },
+  });
+
+  return {
+    lastReadNotifications: user?.last_read_notifications ?? null,
+  };
+}
+
+export async function markNotificationsAsRead(
+  userId: string
+): Promise<NotificationReadState> {
+  const readAt = new Date();
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      last_read_notifications: readAt,
+      updated_at: new Date(),
+    },
+    select: {
+      last_read_notifications: true,
+    },
+  });
+
+  return {
+    lastReadNotifications: user.last_read_notifications,
+  };
 }
 
 export async function deleteOldActivityLogs(olderThanDays: number = 90) {

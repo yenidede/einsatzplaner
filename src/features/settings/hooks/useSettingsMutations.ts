@@ -8,9 +8,29 @@ import {
 import {
   OrganizationUpdateData,
   updateOrganizationAction,
+  saveOrganizationDetailsAction,
 } from '../organization-action';
 import { toast } from 'sonner';
 import { queryKeys } from '@/features/organization/queryKeys';
+
+function invalidateOrganizationQueriesForOrg(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string
+) {
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.organization(orgId),
+  });
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.all,
+    predicate: (query) => {
+      const scope = query.queryKey[1];
+      return (
+        Array.isArray(scope) &&
+        scope.some((value): value is string => value === orgId)
+      );
+    },
+  });
+}
 
 export function useUpdateUserProfile(userId: string | undefined) {
   const queryClient = useQueryClient();
@@ -66,6 +86,9 @@ export function useLeaveOrganization(userId: string | undefined) {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.user.settings(userId || ''),
       });
+      queryClient.invalidateQueries({
+        queryKey: settingsQueryKeys.managedOrganizations(userId || ''),
+      });
     },
   });
 }
@@ -87,6 +110,10 @@ export function useUpdateOrganization(orgId: string | undefined) {
       default_starttime?: string;
       default_endtime?: string;
       allow_self_sign_out?: boolean;
+      website?: string;
+      vat?: string;
+      zvr?: string;
+      authority?: string;
     }) => {
       if (!orgId) {
         throw new Error('Organisation ID ist erforderlich');
@@ -108,7 +135,16 @@ export function useUpdateOrganization(orgId: string | undefined) {
         allow_self_sign_out: data.allow_self_sign_out,
       };
 
-      const resPromise = updateOrganizationAction(updateData);
+      const resPromise = Promise.all([
+        updateOrganizationAction(updateData),
+        saveOrganizationDetailsAction({
+          orgId,
+          website: data.website,
+          vat: data.vat,
+          zvr: data.zvr,
+          authority: data.authority,
+        }),
+      ]).then(([organization]) => organization);
       toast.promise(resPromise, {
         loading: 'Speichert Organisationsdaten ...',
         success: 'Organisationsdaten erfolgreich gespeichert!',
@@ -124,10 +160,7 @@ export function useUpdateOrganization(orgId: string | undefined) {
       queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.org.all(orgId),
       });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.all,
-        predicate: (query) => query.queryHash.includes(data.id),
-      });
+      invalidateOrganizationQueriesForOrg(queryClient, data.id);
     },
   });
 }

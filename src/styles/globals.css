@@ -26,6 +26,10 @@ h1 {
   @apply text-2xl leading-relaxed font-semibold tracking-tight;
 }
 
+button:where(:not(:disabled)) {
+  @apply cursor-pointer;
+}
+
 body {
   @apply bg-slate-50 text-slate-800;
 }

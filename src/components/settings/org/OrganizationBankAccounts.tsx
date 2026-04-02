@@ -6,16 +6,14 @@ import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Landmark } from 'lucide-react';
 import {
   createOrganizationBankAccountAction,
+  getOrganizationBankAccountsAction,
   updateOrganizationBankAccountAction,
   deleteOrganizationBankAccountAction,
 } from '@/features/settings/organization-action';
+import { queryKeys as organizationQueryKeys } from '@/features/organization/queryKeys';
 import { useOrganizationBankAccounts } from '@/features/organization/hooks/use-organization-queries';
+import TooltipCustom from '@/components/tooltip-custom';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 
 interface OrganizationBankAccountsProps {
@@ -29,6 +27,13 @@ interface BankAccountFormData {
   bic: string;
 }
 
+type OrganizationBankAccount = Awaited<
+  ReturnType<typeof getOrganizationBankAccountsAction>
+>[number];
+
+/**
+ * Manages an organization's bank accounts.
+ */
 export function OrganizationBankAccounts({
   organizationId,
   isSuperadmin = false,
@@ -50,7 +55,7 @@ export function OrganizationBankAccounts({
     mutationFn: createOrganizationBankAccountAction,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['org-bank-accounts', organizationId],
+        queryKey: organizationQueryKeys.bankAccounts(organizationId),
       });
       toast.success('Bankkonto erfolgreich hinzugefügt!');
       resetForm();
@@ -64,7 +69,7 @@ export function OrganizationBankAccounts({
     mutationFn: updateOrganizationBankAccountAction,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['org-bank-accounts', organizationId],
+        queryKey: organizationQueryKeys.bankAccounts(organizationId),
       });
       toast.success('Bankkonto erfolgreich aktualisiert!');
       resetForm();
@@ -79,7 +84,7 @@ export function OrganizationBankAccounts({
       deleteOrganizationBankAccountAction(id, organizationId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['org-bank-accounts', organizationId],
+        queryKey: organizationQueryKeys.bankAccounts(organizationId),
       });
       toast.success('Bankkonto erfolgreich gelöscht!');
     },
@@ -127,7 +132,7 @@ export function OrganizationBankAccounts({
     }
   };
 
-  const handleEdit = (account: any) => {
+  const handleEdit = (account: OrganizationBankAccount) => {
     setFormData({
       bank_name: account.bank_name,
       iban: account.iban,
@@ -158,24 +163,23 @@ export function OrganizationBankAccounts({
               Bankkonten
             </div>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handleAddClick}
-                disabled={!isSuperadmin}
-                size="sm"
-                variant={isSuperadmin ? 'default' : 'secondary'}
-              >
-                <Plus className="h-4 w-4" />
-                <span>Hinzufügen</span>
-              </Button>
-            </TooltipTrigger>
-            {!isSuperadmin && (
-              <TooltipContent>
-                Nur Superadmins können Bankkonten hinzufügen
-              </TooltipContent>
-            )}
-          </Tooltip>
+          <TooltipCustom
+            text={
+              !isSuperadmin
+                ? 'Nur Superadmins können Bankkonten hinzufügen'
+                : ''
+            }
+          >
+            <Button
+              onClick={handleAddClick}
+              disabled={!isSuperadmin}
+              size="sm"
+              variant={isSuperadmin ? 'default' : 'secondary'}
+            >
+              <Plus className="h-4 w-4" />
+              <span>Hinzufügen</span>
+            </Button>
+          </TooltipCustom>
         </div>
 
         <div className="flex flex-col gap-3 self-stretch py-2">
@@ -277,7 +281,7 @@ export function OrganizationBankAccounts({
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {accounts.map((account: any) => (
+              {accounts.map((account: OrganizationBankAccount) => (
                 <div
                   key={account.id}
                   className="flex items-start justify-between rounded-md border border-slate-200 bg-white p-3 transition-colors hover:bg-slate-50"
@@ -294,41 +298,41 @@ export function OrganizationBankAccounts({
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={() => handleEdit(account)}
-                          disabled={!isSuperadmin}
-                          variant="ghost"
-                          size="icon"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {!isSuperadmin
+                    <TooltipCustom
+                      text={
+                        !isSuperadmin
                           ? 'Nur Superadmins können Bankkonten bearbeiten'
-                          : 'Bankkonto bearbeiten'}
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={() => handleDelete(account.id)}
-                          disabled={!isSuperadmin || deleteMutation.isPending}
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      {!isSuperadmin && (
-                        <TooltipContent>
-                          Nur Superadmins können Bankkonten löschen
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
+                          : 'Bankkonto bearbeiten'
+                      }
+                    >
+                      <Button
+                        onClick={() => handleEdit(account)}
+                        disabled={!isSuperadmin}
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Bankkonto bearbeiten"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TooltipCustom>
+                    <TooltipCustom
+                      text={
+                        !isSuperadmin
+                          ? 'Nur Superadmins können Bankkonten löschen'
+                          : ''
+                      }
+                    >
+                      <Button
+                        onClick={() => handleDelete(account.id)}
+                        disabled={!isSuperadmin || deleteMutation.isPending}
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Bankkonto löschen"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipCustom>
                   </div>
                 </div>
               ))}

@@ -40,12 +40,13 @@ export default async function EditTemplatePage({
   ]);
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="w-full max-w-none px-3 pb-4 pt-10 sm:px-4 sm:pt-12 lg:px-6 xl:px-8">
       <PdfmeTemplateEditor
         organizationId={organizationId}
         templateId={template.id}
         initialName={template.name}
         initialTemplate={template.template}
+        initialFooterConfig={template.footer}
         initialSampleEinsatzId={template.sampleEinsatzId}
         previewAssignments={previewAssignments}
         fields={fields}

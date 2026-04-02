@@ -55,6 +55,7 @@ import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useEinsaetzeForAgenda } from '@/features/einsatz/hooks/useEinsatzQueries';
+import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -71,7 +72,7 @@ export interface EventCalendarProps {
   onEventTimeUpdate: (event: CalendarEvent) => void;
   onEventDelete: (eventId: string, eventTitle: string) => void;
   onEventConfirm?: (eventId: string) => void;
-  onMultiEventDelete: (eventIds: string[]) => void;
+  onMultiEventDelete: (eventIds: string[]) => Promise<void>;
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;
@@ -96,6 +97,7 @@ export function EventCalendar({
   mode,
   activeOrgId,
 }: EventCalendarProps) {
+  const todayStart = useTodayStart();
   const [internalDate, setInternalDate] = useState(new Date());
   const currentDate = currentDateProp ?? internalDate;
   const setCurrentDate = setCurrentDateProp ?? setInternalDate;
@@ -143,6 +145,14 @@ export function EventCalendar({
     activeOrgId
   );
 
+  const capitalizeFirst = (value?: string | null) =>
+    value && value.length > 0
+      ? value.charAt(0).toUpperCase() + value.slice(1)
+      : '';
+
+  const pastIndicatorTooltip = `${capitalizeFirst(
+    einsatz_singular
+  )} liegt in der Vergangenheit.`;
   // Add keyboard shortcuts for view switching
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -296,11 +306,6 @@ export function EventCalendar({
     onEventConfirm?.(eventId);
   };
 
-  const handleMultiEventDelete = (eventIds: string[]) => {
-    onMultiEventDelete?.(eventIds);
-    closeDialog();
-  };
-
   const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
     // Type guard to handle both types
     if ('org_id' in updatedEvent) {
@@ -311,6 +316,8 @@ export function EventCalendar({
   };
 
   const viewTitle = useMemo(() => {
+    const isPastCurrentDay = currentDate < todayStart;
+
     if (view === 'month') {
       return format(currentDate, 'MMMM yyyy', { locale: de });
     } else if (view === 'week') {
@@ -328,13 +335,27 @@ export function EventCalendar({
     } else if (view === 'day') {
       return (
         <>
-          <span className="min-[480px]:hidden" aria-hidden="true">
+          <span
+            className={cn(
+              'min-[480px]:hidden',
+              isPastCurrentDay && 'line-through'
+            )}
+            aria-hidden="true"
+          >
             {format(currentDate, 'MMM d, yyyy', { locale: de })}
           </span>
-          <span className="max-[479px]:hidden md:hidden" aria-hidden="true">
+          <span
+            className={cn(
+              'max-[479px]:hidden md:hidden',
+              isPastCurrentDay && 'line-through'
+            )}
+            aria-hidden="true"
+          >
             {format(currentDate, 'MMMM d, yyyy', { locale: de })}
           </span>
-          <span className="max-md:hidden">
+          <span
+            className={cn('max-md:hidden', isPastCurrentDay && 'line-through')}
+          >
             {format(currentDate, 'EEE MMMM d, yyyy', { locale: de })}
           </span>
         </>
@@ -345,13 +366,15 @@ export function EventCalendar({
     } else {
       return format(currentDate, 'MMMM yyyy', { locale: de });
     }
-  }, [currentDate, view]);
+  }, [currentDate, todayStart, view]);
 
   return (
     <div
-      className="flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
+      className="bg-card flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
       style={
         {
+          '--calendar-sticky-top': '4rem',
+          '--calendar-toolbar-height': '4rem',
           '--event-height': `${EventHeight}px`,
           '--event-gap': `${EventGap}px`,
           '--week-cells-height': `${WeekCellsHeight}px`,
@@ -362,125 +385,127 @@ export function EventCalendar({
         onEventUpdate={handleEventUpdate}
         mode={mode}
         disableDragAndDrop={mode !== 'verwaltung'}
+        pastIndicatorTooltip={pastIndicatorTooltip}
       >
         <div
-          className={cn(
-            'flex items-center justify-between px-1 py-2',
-            className
-          )}
+          className="bg-card sticky z-40 rounded-t-lg border-b"
+          style={{ top: 'var(--calendar-sticky-top)' }}
         >
-          {view !== 'list' && (
-            <div className="flex items-center gap-1 sm:gap-4">
-              {view !== 'agenda' && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="max-[479px]:aspect-square max-[479px]:p-0!"
-                    onClick={handleToday}
-                  >
-                    <RiCalendarCheckLine
-                      className="min-[480px]:hidden"
+          <div
+            className={cn(
+              'flex min-h-16 items-center justify-between px-1 py-2',
+              className
+            )}
+          >
+            {view !== 'list' && (
+              <div className="flex items-center gap-1 sm:gap-4">
+                {view !== 'agenda' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="max-[479px]:aspect-square max-[479px]:p-0!"
+                      onClick={handleToday}
+                    >
+                      <RiCalendarCheckLine
+                        className="min-[480px]:hidden"
+                        size={16}
+                        aria-hidden="true"
+                      />
+                      <span className="max-[479px]:sr-only">Heute</span>
+                    </Button>
+                    <div className="flex items-center sm:gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handlePrevious}
+                        aria-label="Previous"
+                      >
+                        <ChevronLeftIcon size={16} aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleNext}
+                        aria-label="Next"
+                      >
+                        <ChevronRightIcon size={16} aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </>
+                )}
+                <h2 className="m-0 text-sm font-semibold sm:text-lg md:text-xl">
+                  {viewTitle}
+                </h2>
+              </div>
+            )}
+
+            {view === 'list' && <h2 className="m-0">Tabellenansicht</h2>}
+            <div className="flex items-center gap-2">
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
+                    <span>
+                      <span className="min-[480px]:hidden" aria-hidden="true">
+                        {viewLabels[view].charAt(0)}
+                      </span>
+                      <span className="max-[479px]:sr-only">
+                        {viewLabels[view]}
+                      </span>
+                    </span>
+                    <ChevronDownIcon
+                      className="-me-1 opacity-60"
                       size={16}
                       aria-hidden="true"
                     />
-                    <span className="max-[479px]:sr-only">Heute</span>
                   </Button>
-                  <div className="flex items-center sm:gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handlePrevious}
-                      aria-label="Previous"
-                    >
-                      <ChevronLeftIcon size={16} aria-hidden="true" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleNext}
-                      aria-label="Next"
-                    >
-                      <ChevronRightIcon size={16} aria-hidden="true" />
-                    </Button>
-                  </div>
-                </>
-              )}
-              <h2 className="text-sm font-semibold sm:text-lg md:text-xl">
-                {viewTitle}
-              </h2>
-            </div>
-          )}
-
-          {view === 'list' && <h2>Tabellenansicht</h2>}
-          <div className="flex items-center gap-2">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
-                  <span>
-                    <span className="min-[480px]:hidden" aria-hidden="true">
-                      {viewLabels[view].charAt(0)}
-                    </span>
-                    <span className="max-[479px]:sr-only">
-                      {viewLabels[view]}
-                    </span>
-                  </span>
-                  <ChevronDownIcon
-                    className="-me-1 opacity-60"
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-32">
+                  <DropdownMenuItem onClick={() => setView('month')}>
+                    Monat <DropdownMenuShortcut>M</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView('week')}>
+                    Woche <DropdownMenuShortcut>W</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView('day')}>
+                    Tag <DropdownMenuShortcut>T</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView('agenda')}>
+                    Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
+                  </DropdownMenuItem>{' '}
+                  <DropdownMenuItem onClick={() => setView('list')}>
+                    Liste <DropdownMenuShortcut>L</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {mode === 'verwaltung' && (
+                <Button
+                  className="max-[479px]:aspect-square max-[479px]:p-0!"
+                  onClick={() => {
+                    openDialog(null); // Ensure we're creating a new event
+                  }}
+                >
+                  <PlusIcon
+                    className="opacity-60 sm:-ms-1"
                     size={16}
                     aria-hidden="true"
                   />
+                  <span className="max-sm:sr-only">
+                    {einsatz_singular} hinzufügen
+                  </span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-32">
-                <DropdownMenuItem onClick={() => setView('month')}>
-                  Monat <DropdownMenuShortcut>M</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView('week')}>
-                  Woche <DropdownMenuShortcut>W</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView('day')}>
-                  Tag <DropdownMenuShortcut>T</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView('agenda')}>
-                  Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
-                </DropdownMenuItem>{' '}
-                <DropdownMenuItem onClick={() => setView('list')}>
-                  Liste <DropdownMenuShortcut>L</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {mode === 'verwaltung' && (
-              <Button
-                className="max-[479px]:aspect-square max-[479px]:p-0!"
-                onClick={() => {
-                  openDialog(null); // Ensure we're creating a new event
-                }}
-              >
-                <PlusIcon
-                  className="opacity-60 sm:-ms-1"
-                  size={16}
-                  aria-hidden="true"
-                />
-                <span className="max-sm:sr-only">
-                  {einsatz_singular} hinzufügen
-                </span>
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex flex-1 flex-col">
-          {effectiveEvents.length === 0 && view !== 'list' && (
-            <div className="text-muted-foreground mx-2 flex items-center gap-2">
-              {effectiveIsEventsLoading ? (
-                <>
-                  Lade {einsatz_plural}... <Loader className="animate-spin" />
-                </>
-              ) : (
-                <>Noch keine {einsatz_plural} vorhanden.</>
-              )}
-            </div>
-          )}
+          {effectiveIsEventsLoading &&
+            effectiveEvents.length === 0 &&
+            view !== 'list' && (
+              <div className="text-muted-foreground mx-2 flex items-center gap-2">
+                Lade {einsatz_plural}... <Loader className="animate-spin" />
+              </div>
+            )}
           {view === 'month' && (
             <MonthView
               currentDate={currentDate}
@@ -489,6 +514,7 @@ export function EventCalendar({
               onEventCreate={handleEventCreate}
               mode={mode}
               onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'week' && (
@@ -499,6 +525,7 @@ export function EventCalendar({
               onEventCreate={handleEventCreate}
               mode={mode}
               onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'day' && (
@@ -509,6 +536,7 @@ export function EventCalendar({
               onEventCreate={handleEventCreate}
               mode={mode}
               onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'agenda' && (
@@ -518,6 +546,7 @@ export function EventCalendar({
               onEventSelect={handleEventSelect}
               mode={mode}
               onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'list' && (
@@ -525,7 +554,7 @@ export function EventCalendar({
               onEventEdit={handleEventSelect}
               onEventCreate={handleEventCreate}
               onEventDelete={handleEventDelete}
-              onMultiEventDelete={handleMultiEventDelete}
+              onMultiEventDelete={onMultiEventDelete}
               mode={mode}
             />
           )}

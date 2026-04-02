@@ -18,7 +18,7 @@ export function createDefaultPdfmeTemplate(): Template {
           height: 12,
           fontSize: 22,
           fontColor: '#0f172a',
-          content: 'Buchungsbestaetigung',
+          content: 'Buchungsbestätigung',
           readOnly: true,
         },
         {
@@ -119,7 +119,7 @@ export function createDefaultPdfmeTemplate(): Template {
           height: 24,
           fontSize: 10,
           content:
-            'Diese Buchungsbestaetigung wurde automatisch aus den Einsatzdaten erzeugt.',
+            'Diese Buchungsbestätigung wurde automatisch aus den Einsatzdaten erzeugt.',
           readOnly: true,
         },
       ],
@@ -134,6 +134,7 @@ export function createDefaultStoredPdfTemplate(): StoredPdfTemplateDocument {
       isDefault: false,
       version: 1,
       sampleEinsatzId: null,
+      footer: null,
     },
   };
 }
@@ -148,5 +149,5 @@ export function getPdfmePlugins(): Plugins {
 }
 
 export function createPdfTemplateName(): string {
-  return `Buchungsbestaetigung ${PDF_TEMPLATE_DOCUMENT_TYPE}`;
+  return `Buchungsbestätigung ${PDF_TEMPLATE_DOCUMENT_TYPE}`;
 }

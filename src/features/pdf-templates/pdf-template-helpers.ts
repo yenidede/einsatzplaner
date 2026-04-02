@@ -2,6 +2,7 @@ import type { Template } from '@pdfme/common';
 import type { Prisma } from '@/generated/prisma';
 import type { StoredPdfTemplateDocument } from './types';
 import { createDefaultStoredPdfTemplate } from './pdf-template-default';
+import { normalizeFooterConfig } from './pdf-template-footer';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -33,11 +34,13 @@ export function normalizeStoredPdfTemplateDocument(
               typeof value.meta.sampleEinsatzId === 'string'
                 ? value.meta.sampleEinsatzId
                 : null,
+            footer: normalizeFooterConfig(value.meta.footer),
           }
         : {
             isDefault: false,
             version: 1,
             sampleEinsatzId: null,
+            footer: null,
           },
     };
   }
@@ -49,6 +52,7 @@ export function normalizeStoredPdfTemplateDocument(
         isDefault: false,
         version: 1,
         sampleEinsatzId: null,
+        footer: null,
       },
     };
   }
@@ -66,6 +70,7 @@ export function serializeStoredPdfTemplateDocument(
         isDefault: document.meta?.isDefault ?? false,
         version: document.meta?.version ?? 1,
         sampleEinsatzId: document.meta?.sampleEinsatzId ?? null,
+        footer: document.meta?.footer ?? null,
       },
     })
   ) as Prisma.InputJsonValue;

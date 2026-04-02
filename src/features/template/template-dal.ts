@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { Prisma } from '@/generated/prisma';
 import type { einsatz_template as Template } from '@/generated/prisma';
 import type { PropertyConfig } from '@/features/user_properties/types';
 import { propertyConfigToFieldInput } from '@/features/user_properties/utils/config-to-field-input';
@@ -115,9 +116,54 @@ export async function getTemplateById(id: string) {
   return template;
 }
 
-/** Template as returned by getTemplateById (with relations). Use for typing components that consume this data. */
+export async function getTemplateWithReuseGraphById(id: string) {
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id },
+    include: {
+      template_icon: {
+        select: {
+          icon_url: true,
+        },
+      },
+      template_field: {
+        include: {
+          field: {
+            include: {
+              type: { select: { datatype: true } },
+              template_field: {
+                include: {
+                  einsatz_template: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      template_to_category: {
+        include: {
+          einsatz_category: true,
+        },
+      },
+      template_user_property: {
+        select: {
+          user_property_id: true,
+          is_required: true,
+          min_matching_users: true,
+        },
+      },
+    },
+  });
+  return template;
+}
+
+/** Template as returned by getTemplateWithReuseGraphById (including reuse graph relations). Use for typing components that consume this data. */
 export type TemplateWithRelations = NonNullable<
-  Awaited<ReturnType<typeof getTemplateById>>
+  Awaited<ReturnType<typeof getTemplateWithReuseGraphById>>
 >;
 
 export async function updateTemplate(
@@ -164,6 +210,150 @@ export async function getAllTemplateIcons() {
   });
 }
 
+export interface TemplateFieldReuseCandidate {
+  fieldId: string;
+  name: string;
+  description: string | null;
+  typeName: string | null;
+  datatype: string | null;
+  isRequired: boolean;
+  placeholder: string | null;
+  defaultValue: string | null;
+  allowedValues: string[];
+  linkedTemplateNames: string[];
+}
+
+export async function getTemplateFieldReuseCandidatesByOrgId(
+  orgId: string,
+  excludeTemplateId?: string | null
+): Promise<TemplateFieldReuseCandidate[]> {
+  const { session } = await requireAuth();
+
+  if (!(await hasPermission(session, 'templates:update', orgId))) {
+    throw new Error('Keine Berechtigung für diese Organisation.');
+  }
+
+  const excludedFieldIds = excludeTemplateId
+    ? (
+      await prisma.template_field.findMany({
+        where: {
+          template_id: excludeTemplateId,
+          einsatz_template: {
+            org_id: orgId,
+          },
+        },
+        select: {
+          field_id: true,
+        },
+      })
+    ).map((templateField) => templateField.field_id)
+    : [];
+
+  const templateFields = await prisma.template_field.findMany({
+    where: {
+      ...(excludedFieldIds.length > 0
+        ? {
+          field_id: {
+            notIn: excludedFieldIds,
+          },
+        }
+        : {}),
+      einsatz_template: {
+        org_id: orgId,
+        ...(excludeTemplateId ? { id: { not: excludeTemplateId } } : {}),
+      },
+      field: {
+        name: {
+          not: null,
+        },
+      },
+    },
+    include: {
+      einsatz_template: {
+        select: {
+          name: true,
+        },
+      },
+      field: {
+        include: {
+          type: {
+            select: {
+              name: true,
+              datatype: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: [
+      {
+        field: {
+          name: 'asc',
+        },
+      },
+      {
+        einsatz_template: {
+          name: 'asc',
+        },
+      },
+    ],
+  });
+
+  const candidatesByFieldId = new Map<string, TemplateFieldReuseCandidate>();
+
+  for (const templateField of templateFields) {
+    const field = templateField.field;
+    const fieldId = field.id;
+    const fieldName = field.name?.trim();
+
+    if (!fieldName) {
+      continue;
+    }
+
+    const existingCandidate = candidatesByFieldId.get(fieldId);
+    if (existingCandidate) {
+      const templateName = templateField.einsatz_template.name?.trim();
+      if (
+        templateName &&
+        !existingCandidate.linkedTemplateNames.includes(templateName)
+      ) {
+        existingCandidate.linkedTemplateNames.push(templateName);
+      }
+      continue;
+    }
+
+    candidatesByFieldId.set(fieldId, {
+      fieldId,
+      name: fieldName,
+      description: field.description ?? null,
+      typeName: field.type?.name ?? null,
+      datatype: field.type?.datatype ?? null,
+      isRequired: field.is_required,
+      placeholder: field.placeholder ?? null,
+      defaultValue: field.default_value ?? null,
+      allowedValues: field.allowed_values,
+      linkedTemplateNames: templateField.einsatz_template.name
+        ? [templateField.einsatz_template.name]
+        : [],
+    });
+  }
+
+  return Array.from(candidatesByFieldId.values()).sort((left, right) => {
+    const leftFirstTemplate = left.linkedTemplateNames[0] ?? '';
+    const rightFirstTemplate = right.linkedTemplateNames[0] ?? '';
+    const templateComparison = leftFirstTemplate.localeCompare(
+      rightFirstTemplate,
+      'de-AT'
+    );
+
+    if (templateComparison !== 0) {
+      return templateComparison;
+    }
+
+    return left.name.localeCompare(right.name, 'de-AT');
+  });
+}
+
 export type CreateTemplateFieldInput = {
   name: string;
   description?: string;
@@ -188,7 +378,7 @@ export type CreateTemplateFieldInput = {
 };
 
 async function ensureTypeExists(datatype: string): Promise<string> {
-  let type = await prisma.type.findFirst({
+  const type = await prisma.type.findFirst({
     where: { datatype },
   });
 
@@ -250,10 +440,76 @@ export async function createTemplateField(
   return field;
 }
 
-export async function createTemplateAction(input: CreateTemplateInput) {
-  const { session, userIds } = await requireAuth();
+export async function connectExistingFieldToTemplate(
+  templateId: string,
+  fieldId: string
+) {
+  const { session } = await requireAuth();
 
-  if (!(await hasPermission(session, 'templates:create', userIds.orgId))) {
+  const template = await prisma.einsatz_template.findUnique({
+    where: { id: templateId },
+    select: { org_id: true },
+  });
+
+  if (!template?.org_id) {
+    throw new Error('Vorlage nicht gefunden.');
+  }
+
+  if (!(await hasPermission(session, 'templates:update', template.org_id))) {
+    throw new Error(
+      'Keine Berechtigung, bestehende Felder mit dieser Vorlage zu verbinden.'
+    );
+  }
+
+  const fieldIsUsedInOrganization = await prisma.template_field.findFirst({
+    where: {
+      field_id: fieldId,
+      einsatz_template: {
+        org_id: template.org_id,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!fieldIsUsedInOrganization) {
+    throw new Error(
+      'Das ausgewählte Feld ist in dieser Organisation nicht verfügbar.'
+    );
+  }
+
+  try {
+    await prisma.template_field.create({
+      data: {
+        template_id: templateId,
+        field_id: fieldId,
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      throw new Error('Dieses Feld ist bereits mit der Vorlage verbunden.');
+    }
+    throw error;
+  }
+
+  return prisma.field.findUnique({
+    where: { id: fieldId },
+    include: {
+      type: {
+        select: {
+          datatype: true,
+        },
+      },
+    },
+  });
+}
+
+export async function createTemplateAction(input: CreateTemplateInput) {
+  const { session } = await requireAuth();
+
+  if (!(await hasPermission(session, 'templates:create', input.org_id))) {
     throw new Error('Fehlende Berechtigungen zum Erstellen der Vorlage.');
   }
 
@@ -498,4 +754,18 @@ export async function deleteTemplateFieldAction(
   fieldId: string
 ): Promise<void> {
   return deleteTemplateField(templateId, fieldId);
+}
+
+export async function getTemplateFieldReuseCandidatesAction(
+  orgId: string,
+  excludeTemplateId?: string | null
+) {
+  return getTemplateFieldReuseCandidatesByOrgId(orgId, excludeTemplateId);
+}
+
+export async function connectExistingFieldToTemplateAction(
+  templateId: string,
+  fieldId: string
+) {
+  return connectExistingFieldToTemplate(templateId, fieldId);
 }

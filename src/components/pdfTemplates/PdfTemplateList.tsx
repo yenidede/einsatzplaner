@@ -28,7 +28,7 @@ export function PdfTemplateList({
   organizationId,
   createHref = '/settings/pdf-templates/new',
   title = 'PDF-Vorlagen',
-  emptyMessage = 'Es gibt noch keine PDF-Vorlagen fuer diese Organisation.',
+  emptyMessage = 'Es gibt noch keine PDF-Vorlagen für diese Organisation.',
 }: PdfTemplateListProps) {
   const router = useRouter();
   const getEditHref = (templateId: string) =>
@@ -43,12 +43,12 @@ export function PdfTemplateList({
   }
 
   async function handleDelete(template: PdfTemplateListItem) {
-    if (!window.confirm(`Vorlage "${template.name}" loeschen?`)) {
+    if (!window.confirm(`Vorlage „${template.name}“ löschen?`)) {
       return;
     }
 
     await deletePdfTemplate(template.id);
-    toast.success('Vorlage geloescht');
+    toast.success('Vorlage gelöscht');
     router.refresh();
   }
 
@@ -125,7 +125,7 @@ export function PdfTemplateList({
               </Button>
               <Button variant="outline" onClick={() => void handleDelete(template)}>
                 <Trash2 className="mr-2 h-4 w-4" />
-                Loeschen
+                Löschen
               </Button>
             </CardContent>
           </Card>

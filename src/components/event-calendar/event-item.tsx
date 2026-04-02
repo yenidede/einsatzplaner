@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { format, isPast } from 'date-fns';
-import { useSession } from 'next-auth/react';
+import { Clock10 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import {
@@ -16,6 +16,8 @@ import { CalendarMode } from './types';
 import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
 import { ContextMenuEventRightClick } from '../context-menu';
 import { StatusValuePairs } from './constants';
+import TooltipCustom from '@/components/tooltip-custom';
+import { useSession } from 'next-auth/react';
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -23,6 +25,34 @@ import { StatusValuePairs } from './constants';
 const formatTimeWithOptionalMinutes = (date: Date) => {
   return format(date, 'HH:mm');
 };
+
+/**
+ * Marks an event as being in the past.
+ */
+function PastIndicator({
+  compact = false,
+  className,
+  tooltipText,
+}: {
+  compact?: boolean;
+  className?: string;
+  tooltipText: string;
+}) {
+  return (
+    <TooltipCustom text={tooltipText}>
+      <span
+        className={cn(
+          'inline-flex items-center justify-center rounded-full border border-current/15 bg-white/45 text-current/75 dark:bg-black/10',
+          compact ? 'size-5' : 'size-6',
+          className
+        )}
+        aria-label={tooltipText}
+      >
+        <Clock10 className={compact ? 'size-3' : 'size-3.5'} />
+      </span>
+    </TooltipCustom>
+  );
+}
 
 interface EventWrapperProps {
   event: CalendarEvent;
@@ -40,7 +70,9 @@ interface EventWrapperProps {
   mode: CalendarMode;
 }
 
-// Shared wrapper component for event styling
+/**
+ * Wraps an event with shared styling and interaction handling.
+ */
 function EventWrapper({
   event,
   isFirstDay = true,
@@ -78,7 +110,7 @@ function EventWrapper({
   return (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2',
+        'focus-visible:border-ring focus-visible:ring-ring/50 relative flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:opacity-75 data-past-event:saturate-50 sm:px-2',
         getEventColorClasses(statusForColor || 'fallback', mode),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
@@ -114,8 +146,12 @@ interface EventItemProps {
   mode: CalendarMode;
   onDelete?: (eventId: string, eventTitle: string) => void;
   onConfirm?: (eventId: string) => void;
+  pastIndicatorTooltip: string;
 }
 
+/**
+ * Renders a calendar event across the supported views.
+ */
 export function EventItem({
   event,
   view,
@@ -134,14 +170,16 @@ export function EventItem({
   mode,
   onDelete,
   onConfirm,
+  pastIndicatorTooltip,
 }: EventItemProps) {
+  const { data: session } = useSession();
   const canConfirm =
     (event.helpersNeeded ?? 0) > 0 &&
     (event.assignedUsers?.length ?? 0) >= (event.helpersNeeded ?? 0) &&
     event.status?.id !== StatusValuePairs.vergeben_bestaetigt;
 
   // Use the provided currentTime (for dragging) or the event's actual time
-  const userId = useSession().data?.user?.id;
+  const userId = session?.user?.id;
   let statusForColor: EinsatzStatus | string = event.status || 'fallback';
 
   if (
@@ -166,13 +204,14 @@ export function EventItem({
   }, [currentTime, event.start, event.end]);
 
   const getEventTime = () => {
-    if (event.allDay) return 'All day';
+    if (event.allDay) return 'Ganztägig';
 
     // Always show both start and end time for consistency
     return `${formatTimeWithOptionalMinutes(
       displayStart
     )} - ${formatTimeWithOptionalMinutes(displayEnd)}`;
   };
+  const isEventInPast = isPast(displayEnd);
 
   if (view === 'month') {
     const eventWrapper = (
@@ -195,19 +234,28 @@ export function EventItem({
         mode={mode}
       >
         {children || (
-          <div className="flex w-full flex-col">
-            {!event.allDay && (
-              <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
-                <span className="sm:hidden">
-                  {formatTimeWithOptionalMinutes(displayStart)}
-                </span>
-                <span className="hidden sm:inline">
-                  {formatTimeWithOptionalMinutes(displayStart)}
-                  {'-'}
-                  {formatTimeWithOptionalMinutes(displayEnd)}
-                </span>
-              </div>
+          <div className="flex w-full flex-col pr-6">
+            {isEventInPast && (
+              <PastIndicator
+                compact
+                className="absolute top-1 right-1"
+                tooltipText={pastIndicatorTooltip}
+              />
             )}
+            <div className="flex items-start gap-1">
+              {!event.allDay && (
+                <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
+                  <span className="sm:hidden">
+                    {formatTimeWithOptionalMinutes(displayStart)}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {formatTimeWithOptionalMinutes(displayStart)}
+                    {'-'}
+                    {formatTimeWithOptionalMinutes(displayEnd)}
+                  </span>
+                </div>
+              )}
+            </div>
             <div className="leading-tight wrap-break-word max-md:line-clamp-2">
               {event.title}
             </div>
@@ -249,14 +297,23 @@ export function EventItem({
         onTouchStart={onTouchStart}
         mode={mode}
       >
-        <div className="leading-tight font-medium wrap-break-word">
-          {event.title}
-        </div>
-        {showTime && (
-          <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
-            {getEventTime()}
-          </div>
+        {isEventInPast && (view === 'week' || view === 'day') && (
+          <PastIndicator
+            compact
+            className="absolute top-1 right-1"
+            tooltipText={pastIndicatorTooltip}
+          />
         )}
+        <div className="pr-6">
+          <div className="leading-tight font-medium wrap-break-word">
+            {event.title}
+          </div>
+          {showTime && (
+            <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
+              {getEventTime()}
+            </div>
+          )}
+        </div>
       </EventWrapper>
     );
     return (
@@ -277,17 +334,18 @@ export function EventItem({
   const agendaView = (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90',
+        'focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:opacity-75 data-past-event:saturate-50',
         getEventColorClasses(statusForColor, mode), // Use statusForColor instead of event.status
         className
       )}
-      data-past-event={isPast(new Date(event.end)) || undefined}
+      data-past-event={isEventInPast || undefined}
       onClick={onClick}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
       {...dndListeners}
       {...dndAttributes}
     >
+      {/* PastIndicator hier nicht benötigt, weil in Agenda sowieso nur zukünftige Events angezeigt werden */}
       <div className="text-sm font-medium">{event.title}</div>
       <div className="text-xs opacity-70">
         {event.allDay ? (

@@ -73,11 +73,9 @@ export function DataTableFilterMenu<TData>({
 }: DataTableFilterMenuProps<TData>) {
   const id = React.useId();
 
-  const columns = React.useMemo(() => {
-    return table
-      .getAllColumns()
-      .filter((column) => column.columnDef.enableColumnFilter);
-  }, [table]);
+  const columns = table
+    .getAllLeafColumns()
+    .filter((column) => column.columnDef.enableColumnFilter);
 
   const [open, setOpen] = React.useState(false);
   const [selectedColumn, setSelectedColumn] =
@@ -512,7 +510,7 @@ function DataTableFilterItem<TData>({
         >
           <SelectTrigger
             aria-controls={operatorListboxId}
-            className="h-8 rounded-none border-r-0 px-2.5 lowercase data-size:h-8 [&_svg]:hidden"
+            className="h-8 w-auto flex-none rounded-none border-r-0 px-2.5 lowercase data-size:h-8 [&>span]:flex-none [&_svg]:hidden"
           >
             <SelectValue placeholder={filter.operator} />
           </SelectTrigger>
@@ -567,19 +565,47 @@ function FilterValueSelector<TData>({
   onSelect,
 }: FilterValueSelectorProps<TData>) {
   const variant = column.columnDef.meta?.variant ?? 'text';
+  const [range, setRange] = React.useState<
+    { from?: Date; to?: Date } | undefined
+  >(undefined);
 
   switch (variant) {
     case 'boolean':
       return (
         <CommandGroup>
           <CommandItem value="true" onSelect={() => onSelect('true')}>
-            True
+            Ja
           </CommandItem>
           <CommandItem value="false" onSelect={() => onSelect('false')}>
-            False
+            Nein
           </CommandItem>
         </CommandGroup>
       );
+
+    case 'number':
+    case 'range': {
+      const trimmedValue = value.trim();
+      const normalizedNumericValue = trimmedValue.replace(',', '.');
+      const hasNumericValue =
+        trimmedValue.length > 0 &&
+        !Number.isNaN(Number(normalizedNumericValue));
+
+      return (
+        <CommandGroup>
+          <CommandItem
+            value={trimmedValue}
+            onSelect={() => onSelect(normalizedNumericValue)}
+            disabled={!hasNumericValue}
+          >
+            {hasNumericValue ? (
+              <span className="truncate">Ist {trimmedValue}</span>
+            ) : (
+              <span>Zahl eingeben...</span>
+            )}
+          </CommandItem>
+        </CommandGroup>
+      );
+    }
 
     case 'select':
     case 'multiSelect':
@@ -614,10 +640,6 @@ function FilterValueSelector<TData>({
         />
       );
     case 'dateRange': {
-      // Support picking both min and max before closing
-      const [range, setRange] = React.useState<
-        { from?: Date; to?: Date } | undefined
-      >(undefined);
       return (
         <Calendar
           autoFocus

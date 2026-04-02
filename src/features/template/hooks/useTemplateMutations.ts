@@ -10,6 +10,7 @@ import {
   updateTemplateAction,
   createTemplateFieldAction,
   updateTemplateFieldAction,
+  connectExistingFieldToTemplateAction,
   deleteTemplateAction,
   deleteTemplateFieldAction,
   setTemplateDefaultCategoriesAction,
@@ -109,6 +110,29 @@ export function useTemplateMutations() {
     onError: (err, _variables, context) => {
       toast.error(
         err instanceof Error ? err.message : 'Fehler beim Speichern des Feldes',
+        { id: context?.toastId }
+      );
+    },
+  });
+
+  const connectExistingTemplateFieldMutation = useMutation({
+    mutationFn: ({
+      templateId,
+      fieldId,
+    }: {
+      templateId: string;
+      fieldId: string;
+    }) => connectExistingFieldToTemplateAction(templateId, fieldId),
+    onMutate: () => ({
+      toastId: toast.loading('Bestehendes Feld wird verbunden…'),
+    }),
+    onSuccess: (_data, _variables, context) => {
+      queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
+      toast.success('Bestehendes Feld verbunden', { id: context?.toastId });
+    },
+    onError: (err, _variables, context) => {
+      toast.error(
+        err instanceof Error ? err.message : 'Fehler beim Verbinden des Feldes',
         { id: context?.toastId }
       );
     },
@@ -215,6 +239,7 @@ export function useTemplateMutations() {
     updateMutation,
     addTemplateFieldMutation,
     updateTemplateFieldMutation,
+    connectExistingTemplateFieldMutation,
     deleteTemplateFieldMutation,
     setDefaultCategoriesMutation,
     setTemplateRequiredUserPropertiesMutation,
@@ -224,6 +249,7 @@ export function useTemplateMutations() {
       updateMutation.isPending ||
       addTemplateFieldMutation.isPending ||
       updateTemplateFieldMutation.isPending ||
+      connectExistingTemplateFieldMutation.isPending ||
       deleteTemplateFieldMutation.isPending ||
       setDefaultCategoriesMutation.isPending ||
       setTemplateRequiredUserPropertiesMutation.isPending ||

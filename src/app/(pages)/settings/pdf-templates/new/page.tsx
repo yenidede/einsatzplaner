@@ -32,11 +32,12 @@ export default async function NewTemplatePage({
   ]);
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="w-full max-w-none px-3 pb-4 pt-10 sm:px-4 sm:pt-12 lg:px-6 xl:px-8">
       <PdfmeTemplateEditor
         organizationId={organizationId}
-        initialName="Neue Buchungsbestaetigung"
+        initialName="Neue Buchungsbestätigung"
         initialTemplate={createDefaultPdfmeTemplate()}
+        initialFooterConfig={null}
         initialSampleEinsatzId={null}
         previewAssignments={previewAssignments}
         fields={fields}

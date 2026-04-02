@@ -25,11 +25,14 @@ import {
 } from './pdf-template-helpers';
 import {
   PDF_TEMPLATE_DOCUMENT_TYPE,
+  type PdfTemplateFooterConfig,
   type PdfTemplateInput,
   type PdfTemplateListItem,
   type PdfTemplateRecord,
   type PrismaPdfTemplate,
 } from './types';
+import { applyFooterToTemplate } from './pdf-template-footer';
+import { applyImageBindingsToTemplate } from './pdf-template-image-binding';
 
 function mapRowToRecord(row: PrismaPdfTemplate): PdfTemplateRecord {
   const document = normalizeStoredPdfTemplateDocument(row.contentJson);
@@ -46,6 +49,7 @@ function mapRowToRecord(row: PrismaPdfTemplate): PdfTemplateRecord {
     updatedAt: row.updatedAt,
     template: document.template,
     sampleEinsatzId: document.meta?.sampleEinsatzId ?? null,
+    footer: document.meta?.footer ?? null,
   };
 }
 
@@ -98,6 +102,7 @@ export async function createPdfTemplate(args: {
   isActive?: boolean;
   isDefault?: boolean;
   sampleEinsatzId?: string | null;
+  footer?: PdfTemplateFooterConfig | null;
 }): Promise<PdfTemplateRecord> {
   await assertTemplatePermission(args.organizationId, 'templates:create');
 
@@ -113,6 +118,7 @@ export async function createPdfTemplate(args: {
         isDefault: args.isDefault ?? false,
         version: 1,
         sampleEinsatzId: args.sampleEinsatzId ?? null,
+        footer: args.footer ?? null,
       },
     }),
   });
@@ -139,6 +145,7 @@ export async function updatePdfTemplate(args: {
   template?: Template;
   isActive?: boolean;
   sampleEinsatzId?: string | null;
+  footer?: PdfTemplateFooterConfig | null;
 }): Promise<PdfTemplateRecord> {
   const existing = await findPdfTemplateById(args.id);
 
@@ -166,6 +173,7 @@ export async function updatePdfTemplate(args: {
           args.sampleEinsatzId !== undefined
             ? args.sampleEinsatzId
             : current.sampleEinsatzId,
+        footer: args.footer !== undefined ? args.footer : current.footer,
       },
     }),
   });
@@ -228,6 +236,7 @@ export async function duplicatePdfTemplate(id: string): Promise<PdfTemplateRecor
     isActive: current.isActive,
     isDefault: false,
     sampleEinsatzId: current.sampleEinsatzId,
+    footer: current.footer,
   });
 }
 
@@ -265,6 +274,7 @@ export async function setDefaultPdfTemplate(id: string): Promise<PdfTemplateReco
               isDefault: shouldBeDefault,
               version: document.meta?.version ?? 1,
               sampleEinsatzId: document.meta?.sampleEinsatzId ?? null,
+              footer: document.meta?.footer ?? null,
             },
           }),
           updatedAt: new Date(),
@@ -320,25 +330,41 @@ export async function getPdfTemplatePreviewData(args: {
   const previewEinsatzId = args.einsatzId ?? template.sampleEinsatzId;
 
   if (!previewEinsatzId) {
-    return {
+    const input: PdfTemplateInput = {
+      organisation_name: 'Beispielorganisation',
+      organisation_email: 'office@example.org',
+      organisation_logo_url:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAABaCAQAAAB2M8rWAAAAIElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAA4G4w2AABGq5W9QAAAABJRU5ErkJggg==',
+      einsatz_titel: 'Beispiel Einsatz',
+      einsatz_start_datum_formatiert: '24.03.2026',
+      einsatz_zeitraum_formatiert: '09:00 - 11:00',
+      einsatz_preis_gesamt_formatiert: 'EUR 0,00',
+    };
+
+    const footerTemplate = applyFooterToTemplate({
       template: template.template,
+      footer: template.footer,
+      input,
+    });
+
+    return {
+      template: applyImageBindingsToTemplate({ template: footerTemplate, input }),
       templateName: template.name,
       sampleEinsatzId: null,
-      input: {
-        organisation_name: 'Beispielorganisation',
-        organisation_email: 'office@example.org',
-        einsatz_titel: 'Beispiel Einsatz',
-        einsatz_start_datum_formatiert: '24.03.2026',
-        einsatz_zeitraum_formatiert: '09:00 - 11:00',
-        einsatz_preis_gesamt_formatiert: 'EUR 0,00',
-      },
+      input,
     };
   }
 
   const input = await buildBookingConfirmationPdfInput(previewEinsatzId);
 
-  return {
+  const footerTemplate = applyFooterToTemplate({
     template: template.template,
+    footer: template.footer,
+    input,
+  });
+
+  return {
+    template: applyImageBindingsToTemplate({ template: footerTemplate, input }),
     input,
     templateName: template.name,
     sampleEinsatzId: previewEinsatzId,
@@ -412,8 +438,16 @@ export async function generateBookingConfirmationPdf(
     }
 
     const input = await buildBookingConfirmationPdfInput(einsatzId);
-    const pdfBytes = await generatePdfmeDocument({
+    const footerTemplate = applyFooterToTemplate({
       template: selectedTemplate.template,
+      footer: selectedTemplate.footer,
+      input,
+    });
+    const pdfBytes = await generatePdfmeDocument({
+      template: applyImageBindingsToTemplate({
+        template: footerTemplate,
+        input,
+      }),
       input,
     });
 
