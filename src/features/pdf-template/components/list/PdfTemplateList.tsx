@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Copy, Pencil, Star, Trash2 } from 'lucide-react';
@@ -7,16 +8,17 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { pdfTemplateQueryKeys } from '@/features/pdf-template/lib/queryKeys';
+import {
+  getCreatePdfTemplateSettingsPath,
+  getEditPdfTemplateSettingsPath,
+} from '@/features/pdf-template/lib/pdf-template-routes';
 import {
   deletePdfTemplate,
   duplicatePdfTemplate,
   setDefaultPdfTemplate,
   updatePdfTemplate,
 } from '@/features/pdf-template/server/pdf-template.actions';
-import {
-  getCreatePdfTemplateSettingsPath,
-  getEditPdfTemplateSettingsPath,
-} from '@/features/pdf-template/lib/pdf-template-routes';
 import type { PdfTemplateListItem } from '@/features/pdf-template/types';
 
 interface PdfTemplateListProps {
@@ -33,9 +35,17 @@ export function PdfTemplateList({
   emptyMessage = 'Es gibt noch keine PDF-Vorlagen für diese Organisation.',
 }: PdfTemplateListProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const createHref = getCreatePdfTemplateSettingsPath(organizationId);
   const getEditHref = (templateId: string) =>
     getEditPdfTemplateSettingsPath(organizationId, templateId);
+
+  async function refreshTemplates() {
+    await queryClient.invalidateQueries({
+      queryKey: pdfTemplateQueryKeys.byOrganization(organizationId),
+    });
+    router.refresh();
+  }
 
   async function handleToggleActive(
     template: PdfTemplateListItem,
@@ -43,8 +53,8 @@ export function PdfTemplateList({
   ) {
     try {
       await updatePdfTemplate(template.id, { isActive });
+      await refreshTemplates();
       toast.success('Status aktualisiert');
-      router.refresh();
     } catch (error) {
       console.error(
         `Fehler beim Aktualisieren des Status der Vorlage "${template.name}" (${template.id}):`,
@@ -63,22 +73,24 @@ export function PdfTemplateList({
 
     try {
       await deletePdfTemplate(template.id);
+      await refreshTemplates();
       toast.success('Vorlage gelöscht');
-      router.refresh();
     } catch (error) {
       console.error(
         `Fehler beim Löschen der Vorlage "${template.name}" (${template.id}):`,
         error
       );
-      toast.error(`Die Vorlage „${template.name}“ konnte nicht gelöscht werden.`);
+      toast.error(
+        `Die Vorlage „${template.name}“ konnte nicht gelöscht werden.`
+      );
     }
   }
 
   async function handleDuplicate(template: PdfTemplateListItem) {
     try {
       await duplicatePdfTemplate(template.id);
+      await refreshTemplates();
       toast.success('Vorlage dupliziert');
-      router.refresh();
     } catch (error) {
       console.error(
         `Fehler beim Duplizieren der Vorlage "${template.name}" (${template.id}):`,
@@ -93,8 +105,8 @@ export function PdfTemplateList({
   async function handleSetDefault(template: PdfTemplateListItem) {
     try {
       await setDefaultPdfTemplate(template.id);
+      await refreshTemplates();
       toast.success('Standardvorlage gesetzt');
-      router.refresh();
     } catch (error) {
       console.error(
         `Fehler beim Setzen der Standardvorlage "${template.name}" (${template.id}):`,
@@ -128,11 +140,6 @@ export function PdfTemplateList({
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   {template.name}
-                  {template.isDefault ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
-                      Standard
-                    </span>
-                  ) : null}
                 </CardTitle>
                 <div className="text-muted-foreground text-sm">
                   Version {template.version} · {template.documentType}
@@ -142,7 +149,9 @@ export function PdfTemplateList({
                 <span className="text-sm">Aktiv</span>
                 <Switch
                   checked={template.isActive}
-                  onCheckedChange={(checked) => void handleToggleActive(template, checked)}
+                  onCheckedChange={(checked) =>
+                    void handleToggleActive(template, checked)
+                  }
                 />
               </div>
             </CardHeader>
@@ -153,7 +162,10 @@ export function PdfTemplateList({
                   Bearbeiten
                 </Button>
               </Link>
-              <Button variant="outline" onClick={() => void handleDuplicate(template)}>
+              <Button
+                variant="outline"
+                onClick={() => void handleDuplicate(template)}
+              >
                 <Copy className="mr-2 h-4 w-4" />
                 Duplizieren
               </Button>
@@ -162,10 +174,18 @@ export function PdfTemplateList({
                 disabled={template.isDefault}
                 onClick={() => void handleSetDefault(template)}
               >
-                <Star className="mr-2 h-4 w-4" />
+                <Star
+                  className={[
+                    'mr-2 h-4 w-4',
+                    template.isDefault ? 'fill-current' : '',
+                  ].join(' ')}
+                />
                 Als Standard
               </Button>
-              <Button variant="outline" onClick={() => void handleDelete(template)}>
+              <Button
+                variant="outline"
+                onClick={() => void handleDelete(template)}
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Löschen
               </Button>

@@ -36,13 +36,16 @@ export function PdfTemplateEditorPreviewDock({
 }: PdfTemplateEditorPreviewDockProps) {
   if (!isOpen) {
     return (
-      <PdfTemplateCollapsedRail
-        icon={PanelRightOpen}
-        label="Vorschau"
-        buttonAriaLabel="Seitenleiste ausklappen"
-        panelAriaLabel="Vorschau und Einstellungen anzeigen"
-        onOpen={onOpen}
-      />
+      <>
+        <div className="h-full min-h-0" aria-hidden="true" />
+        <PdfTemplateCollapsedRail
+          icon={PanelRightOpen}
+          label="Vorschau"
+          buttonAriaLabel="Seitenleiste ausklappen"
+          panelAriaLabel="Vorschau und Einstellungen anzeigen"
+          onOpen={onOpen}
+        />
+      </>
     );
   }
 
