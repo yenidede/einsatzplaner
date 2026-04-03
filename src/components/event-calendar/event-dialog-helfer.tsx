@@ -186,7 +186,7 @@ export function EventDialogHelfer({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex max-h-[90vh] max-w-220 flex-col">
-        <DialogHeader className="bg-background sticky top-0 z-10 shrink-0 border-b pb-4">
+        <DialogHeader className="bg-background sticky top-0 z-60 shrink-0 border-b pb-4">
           <DialogTitle>
             <div className="flex items-center">
               {isLoading
@@ -336,7 +336,7 @@ export function EventDialogHelfer({
             </div>
           </DefinitionList>
         </div>
-        <DialogFooter className="bg-background sticky bottom-0 z-10 shrink-0 flex-row border-t pt-4 sm:justify-between">
+        <DialogFooter className="bg-background sticky bottom-0 z-60 shrink-0 flex-row border-t pt-4 sm:justify-between">
           <TooltipCustom text="PDF-Bestätigung drucken">
             <Button
               autoFocus={false}

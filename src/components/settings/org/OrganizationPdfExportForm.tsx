@@ -7,6 +7,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { OrganizationAddresses } from '@/components/settings/org/OrganizationAddresses';
 import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
+import { OrganizationPdfTemplateManager } from './OrganizationPdfTemplateManager';
 
 interface OrganizationPdfExportFormProps {
   organizationId: string;
@@ -144,6 +145,10 @@ export function OrganizationPdfExportForm({
         organizationId={organizationId}
         isSuperadmin={isSuperadmin}
       />
+
+      <div className="space-y-4 rounded-lg border border-dashed border-slate-300 p-4">
+        <OrganizationPdfTemplateManager organizationId={organizationId} />
+      </div>
     </div>
   );
 }

@@ -1627,7 +1627,7 @@ export function TemplateForm({
         </div>
       )}
 
-      <footer className="bg-background/95 supports-backdrop-filter:bg-background/10 sticky bottom-0 z-40 flex items-center justify-between gap-2 border-t py-4 backdrop-blur-sm">
+      <footer className="bg-background/95 supports-backdrop-filter:bg-background/10 sticky bottom-0 z-60 flex items-center justify-between gap-2 border-t py-4 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           {isEdit && (
             <>
