@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { getPdfTemplatesByOrganization } from '@/features/pdf-template/server/pdf-template.actions';
 import { PdfTemplateList } from '@/features/pdf-template/components/list/PdfTemplateList';
+import { pdfTemplateQueryKeys } from '@/features/pdf-template/lib/queryKeys';
+import { getPdfTemplatesByOrganization } from '@/features/pdf-template/server/pdf-template.actions';
 import type { PdfTemplateListItem } from '@/features/pdf-template/types';
 
 interface OrganizationPdfTemplateManagerProps {
@@ -14,46 +15,23 @@ interface OrganizationPdfTemplateManagerProps {
 export function OrganizationPdfTemplateManager({
   organizationId,
 }: OrganizationPdfTemplateManagerProps) {
-  const [templates, setTemplates] = useState<PdfTemplateListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-
-    async function loadTemplates() {
-      setIsLoading(true);
-      setError(null);
-
+  const { data: templates = [], isLoading, error } = useQuery<
+    PdfTemplateListItem[]
+  >({
+    queryKey: pdfTemplateQueryKeys.byOrganization(organizationId),
+    queryFn: async () => {
       try {
-        const nextTemplates = await getPdfTemplatesByOrganization(organizationId);
-
-        if (alive) {
-          setTemplates(nextTemplates);
-        }
+        return await getPdfTemplatesByOrganization(organizationId);
       } catch (error) {
         console.error(
           `Fehler beim Laden der PDF-Vorlagen für Organisation ${organizationId}:`,
           error
         );
-
-        if (alive) {
-          setError('Die PDF-Vorlagen konnten nicht geladen werden.');
-          toast.error('Die PDF-Vorlagen konnten nicht geladen werden.');
-        }
-      } finally {
-        if (alive) {
-          setIsLoading(false);
-        }
+        toast.error('Die PDF-Vorlagen konnten nicht geladen werden.');
+        throw error;
       }
-    }
-
-    void loadTemplates();
-
-    return () => {
-      alive = false;
-    };
-  }, [organizationId]);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -67,15 +45,15 @@ export function OrganizationPdfTemplateManager({
   return (
     <div className="space-y-4">
       {error ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm">
+          Die PDF-Vorlagen konnten nicht geladen werden.
         </div>
       ) : null}
 
       <PdfTemplateList
         templates={templates}
         organizationId={organizationId}
-        title="Buchungsbestätigungen"
+        title="PDF-Vorlagen"
         emptyMessage="Es gibt noch keine PDF-Vorlagen für diese Organisation."
       />
     </div>

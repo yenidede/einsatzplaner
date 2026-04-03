@@ -1,15 +1,16 @@
 'use client';
 
-import { LoaderCircle, Save } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Kbd, KbdGroup } from '@/components/ui/kbd';
 
 interface PdfTemplateEditorToolbarProps {
   name: string;
   onNameChange: (value: string) => void;
   isDirty: boolean;
   isSaving: boolean;
+  onBack: () => void;
   onSave: () => void;
 }
 
@@ -18,6 +19,7 @@ export function PdfTemplateEditorToolbar({
   onNameChange,
   isDirty,
   isSaving,
+  onBack,
   onSave,
 }: PdfTemplateEditorToolbarProps) {
   return (
@@ -57,17 +59,38 @@ export function PdfTemplateEditorToolbar({
           </div>
 
           <Button
+            variant="ghost"
+            onClick={onBack}
+            size="sm"
+            className="min-h-9 min-w-0 touch-manipulation px-2.5 text-sm sm:min-h-9 sm:px-3"
+            type="button"
+          >
+            Zurück
+            <span className="ml-2 hidden sm:inline">
+              <Kbd>ESC</Kbd>
+            </span>
+          </Button>
+
+          <Button
             type="button"
             className="h-10 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800"
             onClick={onSave}
             disabled={isSaving}
           >
+            {' '}
+            Speichern
             {isSaving ? (
               <LoaderCircle className="h-4 w-4 animate-spin" />
             ) : (
-              <Save className="h-4 w-4" />
+              <KbdGroup className="ml-2 hidden sm:inline-flex">
+                <Kbd className="h-5 min-w-5 bg-white px-1 text-slate-700">
+                  ⌘
+                </Kbd>
+                <Kbd className="h-5 min-w-5 bg-white px-1 text-slate-700">
+                  S
+                </Kbd>
+              </KbdGroup>
             )}
-            Speichern
           </Button>
         </div>
       </div>

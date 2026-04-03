@@ -2,7 +2,10 @@
 
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { PdfTemplateFieldDefinition, PdfTemplateFooterConfig } from '@/features/pdf-template/types';
+import type {
+  PdfTemplateFieldDefinition,
+  PdfTemplateFooterConfig,
+} from '@/features/pdf-template/types';
 import type { PdfTemplateFooterTarget } from './PdfTemplateFooterBuilder';
 import { PdfTemplateFieldSidebar } from './PdfTemplateFieldSidebar';
 import { PdfTemplateCollapsedRail } from './PdfTemplateCollapsedRail';
@@ -32,8 +35,9 @@ function getFooterTargetLabel(
 
   return `Zeile ${Math.max(
     1,
-    (footerConfig?.rows.findIndex((row) => row.id === activeFooterTarget.rowId) ??
-      0) + 1
+    (footerConfig?.rows.findIndex(
+      (row) => row.id === activeFooterTarget.rowId
+    ) ?? 0) + 1
   )}${
     footerConfig?.layout === 'two_column'
       ? activeFooterTarget.column === 'left'
@@ -58,14 +62,17 @@ export function PdfTemplateEditorFieldDock({
 }: PdfTemplateEditorFieldDockProps) {
   if (!isOpen) {
     return (
-      <PdfTemplateCollapsedRail
-        icon={PanelLeftOpen}
-        label="Felder"
-        buttonAriaLabel="Feldliste ausklappen"
-        panelAriaLabel="Verfügbare Felder anzeigen"
-        onOpen={onOpen}
-        reverseText
-      />
+      <>
+        <PdfTemplateCollapsedRail
+          icon={PanelLeftOpen}
+          label="Felder"
+          buttonAriaLabel="Feldliste ausklappen"
+          panelAriaLabel="Verfügbare Felder anzeigen"
+          onOpen={onOpen}
+          reverseText
+        />
+        <div className="h-full min-h-0" aria-hidden="true" />
+      </>
     );
   }
 
@@ -97,6 +104,7 @@ export function PdfTemplateEditorFieldDock({
           />
         </div>
       </div>
+
       <div className="flex h-full min-h-0 items-center justify-center">
         <button
           type="button"

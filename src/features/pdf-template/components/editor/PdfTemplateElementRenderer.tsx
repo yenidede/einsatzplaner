@@ -118,7 +118,7 @@ export const PdfTemplateElementRenderer = memo(function PdfTemplateElementRender
               <SelectTrigger className="h-9 rounded-xl bg-white text-sm">
                 <SelectValue placeholder="Feld auswählen" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[140]">
                 {fields.map((field) => (
                   <SelectItem key={field.key} value={field.key}>
                     {field.label}
@@ -173,7 +173,7 @@ export const PdfTemplateElementRenderer = memo(function PdfTemplateElementRender
                 <SelectTrigger className="h-9 rounded-xl bg-white text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[140]">
                   <SelectItem value="left">Links</SelectItem>
                   <SelectItem value="center">Zentriert</SelectItem>
                   <SelectItem value="right">Rechts</SelectItem>

@@ -5,11 +5,8 @@ import {
   criticalFieldClass,
 } from '@/features/settings/utils/criticalFieldUtils';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { OrganizationAddresses } from '@/components/settings/org/OrganizationAddresses';
 import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
-import { getPdfTemplatesSettingsPath } from '@/features/pdf-template/lib/pdf-template-routes';
 import { OrganizationPdfTemplateManager } from './OrganizationPdfTemplateManager';
 
 interface OrganizationPdfExportFormProps {
@@ -150,24 +147,6 @@ export function OrganizationPdfExportForm({
       />
 
       <div className="space-y-4 rounded-lg border border-dashed border-slate-300 p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="font-medium">
-              PDF-Vorlagen für Einsatz-Buchungsbestätigungen
-            </p>
-            <p className="text-muted-foreground text-sm">
-              Vorlagen können direkt hier für diese Organisation erstellt und
-              verwaltet werden.
-            </p>
-          </div>
-          <Link
-            href={getPdfTemplatesSettingsPath(organizationId)}
-            className="inline-block"
-          >
-            <Button variant="secondary">Vollansicht öffnen</Button>
-          </Link>
-        </div>
-
         <OrganizationPdfTemplateManager organizationId={organizationId} />
       </div>
     </div>

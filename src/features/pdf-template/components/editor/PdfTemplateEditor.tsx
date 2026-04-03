@@ -873,6 +873,7 @@ export function PdfTemplateEditor({
           onNameChange={setName}
           isDirty={isDirty}
           isSaving={isSaving}
+          onBack={() => router.back()}
           onSave={() => void saveTemplate()}
         />
       </div>
