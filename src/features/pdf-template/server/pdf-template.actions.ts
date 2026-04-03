@@ -17,7 +17,7 @@ import {
   getPdfTemplatesByOrganization as getPdfTemplatesByOrganizationService,
   setDefaultPdfTemplate as setDefaultPdfTemplateService,
   updatePdfTemplate as updatePdfTemplateService,
-} from '@/features/pdf-template/server/pdf-template.service';
+} from '@/features/pdf-template/server/pdf-template-service';
 import {
   getBookingConfirmationPreviewOptions,
   buildBookingConfirmationPdfInput,
@@ -131,7 +131,7 @@ export async function generatePdfForAssignment(
 export async function getPdfTemplatePreview(
   templateId: string,
   einsatzId?: string | null
-): Promise<Awaited<ReturnType<typeof getPdfTemplatePreviewData>>> {
+) {
   return getPdfTemplatePreviewData({
     templateId,
     einsatzId,
@@ -141,7 +141,7 @@ export async function getPdfTemplatePreview(
 export async function getPdfPreviewAssignments(
   organizationId: string,
   preferredEinsatzId?: string | null
-): Promise<Awaited<ReturnType<typeof getBookingConfirmationPreviewOptions>>> {
+) {
   return getBookingConfirmationPreviewOptions(
     organizationId,
     preferredEinsatzId
@@ -153,10 +153,8 @@ export async function getPdfPreviewInput(einsatzId?: string | null) {
     return {
       organisation_name: 'Beispielorganisation',
       organisation_email: 'office@example.org',
-      organisation_adressen:
-        'Musterstraße 1, 1010 Wien, Österreich',
-      organisation_bankkonten:
-        'Musterbank, AT12 3456 7890 1234 5678, ABCDATWW',
+      organisation_adressen: 'Musterstraße 1, 1010 Wien, Österreich',
+      organisation_bankkonten: 'Musterbank, AT12 3456 7890 1234 5678, ABCDATWW',
       organisation_adressen_tabelle: [
         ['Hauptstandort', 'Musterstraße 1, 1010 Wien, Österreich'],
       ],
