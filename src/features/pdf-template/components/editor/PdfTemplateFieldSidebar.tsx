@@ -335,15 +335,6 @@ export function PdfTemplateFieldSidebar({
     () => displayGroups.reduce((sum, group) => sum + group.count, 0),
     [displayGroups]
   );
-  const insertionModeLabel =
-    insertionMode === 'footer' ? 'Footer-Modus' : 'Dokument-Modus';
-  const insertionDescription =
-    insertionMode === 'footer'
-      ? footerTargetLabel
-        ? `Ziehen Sie Felder in den Footer oder fügen Sie sie per Klick in ${footerTargetLabel} hinzu.`
-        : 'Ziehen Sie Felder in den Footer oder fügen Sie sie per Klick hinzu.'
-      : 'Ziehen Sie Datenbausteine in das Dokument oder fügen Sie sie per Klick hinzu.';
-
   async function copyFieldKey(field: PdfTemplateFieldDefinition) {
     await navigator.clipboard.writeText(field.key);
     toast.success(`Technischer Schlüssel für „${field.label}“ kopiert`);
@@ -362,12 +353,6 @@ export function PdfTemplateFieldSidebar({
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              <Badge
-                variant="outline"
-                className="rounded-full border-slate-200 bg-slate-50 px-2 py-0 text-[10px] font-semibold text-slate-600"
-              >
-                {insertionModeLabel}
-              </Badge>
               {insertionMode === 'footer' && footerTargetLabel ? (
                 <Badge
                   variant="outline"
@@ -377,9 +362,6 @@ export function PdfTemplateFieldSidebar({
                 </Badge>
               ) : null}
             </div>
-            <p className="mb-2 text-xs leading-5 text-slate-500">
-              {insertionDescription}
-            </p>
             <h2 className="text-sm font-semibold text-slate-950">
               Verfügbare Felder
             </h2>
@@ -407,7 +389,7 @@ export function PdfTemplateFieldSidebar({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/70 p-2.5">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50/70 p-2.5">
         {displayGroups.length === 0 ? (
           <div className="flex h-full min-h-56 items-center justify-center px-4">
             <div className="w-full rounded-3xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
