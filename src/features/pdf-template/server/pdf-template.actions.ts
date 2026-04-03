@@ -131,7 +131,7 @@ export async function generatePdfForAssignment(
 export async function getPdfTemplatePreview(
   templateId: string,
   einsatzId?: string | null
-) {
+): Promise<Awaited<ReturnType<typeof getPdfTemplatePreviewData>>> {
   return getPdfTemplatePreviewData({
     templateId,
     einsatzId,
@@ -141,7 +141,7 @@ export async function getPdfTemplatePreview(
 export async function getPdfPreviewAssignments(
   organizationId: string,
   preferredEinsatzId?: string | null
-) {
+): Promise<Awaited<ReturnType<typeof getBookingConfirmationPreviewOptions>>> {
   return getBookingConfirmationPreviewOptions(
     organizationId,
     preferredEinsatzId

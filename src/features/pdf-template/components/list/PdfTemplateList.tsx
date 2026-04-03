@@ -1,11 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Copy, Pencil, Star, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { pdfTemplateQueryKeys } from '@/features/pdf-template/lib/queryKeys';
@@ -20,6 +21,7 @@ import {
   updatePdfTemplate,
 } from '@/features/pdf-template/server/pdf-template.actions';
 import type { PdfTemplateListItem } from '@/features/pdf-template/types';
+import { cn } from '@/lib/utils';
 
 interface PdfTemplateListProps {
   templates: PdfTemplateListItem[];
@@ -36,6 +38,9 @@ export function PdfTemplateList({
 }: PdfTemplateListProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [mutatingTemplateId, setMutatingTemplateId] = useState<string | null>(
+    null
+  );
   const createHref = getCreatePdfTemplateSettingsPath(organizationId);
   const getEditHref = (templateId: string) =>
     getEditPdfTemplateSettingsPath(organizationId, templateId);
@@ -47,13 +52,35 @@ export function PdfTemplateList({
     router.refresh();
   }
 
+  async function withTemplateMutation(
+    template: PdfTemplateListItem,
+    action: () => Promise<void>
+  ) {
+    setMutatingTemplateId(template.id);
+
+    try {
+      await action();
+      await refreshTemplates();
+    } finally {
+      setMutatingTemplateId((current) =>
+        current === template.id ? null : current
+      );
+    }
+  }
+
   async function handleToggleActive(
     template: PdfTemplateListItem,
     isActive: boolean
   ) {
+    if (!isActive && template.isDefault) {
+      toast.error('Die Standardvorlage kann nicht deaktiviert werden.');
+      return;
+    }
+
     try {
-      await updatePdfTemplate(template.id, { isActive });
-      await refreshTemplates();
+      await withTemplateMutation(template, async () => {
+        await updatePdfTemplate(template.id, { isActive });
+      });
       toast.success('Status aktualisiert');
     } catch (error) {
       console.error(
@@ -72,8 +99,9 @@ export function PdfTemplateList({
     }
 
     try {
-      await deletePdfTemplate(template.id);
-      await refreshTemplates();
+      await withTemplateMutation(template, async () => {
+        await deletePdfTemplate(template.id);
+      });
       toast.success('Vorlage gelöscht');
     } catch (error) {
       console.error(
@@ -88,8 +116,9 @@ export function PdfTemplateList({
 
   async function handleDuplicate(template: PdfTemplateListItem) {
     try {
-      await duplicatePdfTemplate(template.id);
-      await refreshTemplates();
+      await withTemplateMutation(template, async () => {
+        await duplicatePdfTemplate(template.id);
+      });
       toast.success('Vorlage dupliziert');
     } catch (error) {
       console.error(
@@ -104,8 +133,9 @@ export function PdfTemplateList({
 
   async function handleSetDefault(template: PdfTemplateListItem) {
     try {
-      await setDefaultPdfTemplate(template.id);
-      await refreshTemplates();
+      await withTemplateMutation(template, async () => {
+        await setDefaultPdfTemplate(template.id);
+      });
       toast.success('Standardvorlage gesetzt');
     } catch (error) {
       console.error(
@@ -122,8 +152,12 @@ export function PdfTemplateList({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{title}</h1>
-        <Link href={createHref}>
-          <Button>Neue Vorlage</Button>
+        <Link
+          href={createHref}
+          className={buttonVariants({ variant: 'default' })}
+          aria-label="Neue PDF-Vorlage erstellen"
+        >
+          Neue Vorlage
         </Link>
       </div>
 
@@ -134,64 +168,73 @@ export function PdfTemplateList({
       ) : null}
 
       <div className="grid gap-4">
-        {templates.map((template) => (
-          <Card key={template.id}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  {template.name}
-                </CardTitle>
-                <div className="text-muted-foreground text-sm">
-                  Version {template.version} · {template.documentType}
+        {templates.map((template) => {
+          const isMutating = mutatingTemplateId === template.id;
+
+          return (
+            <Card key={template.id}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <div className="space-y-1">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    {template.name}
+                  </CardTitle>
+                  <div className="text-muted-foreground text-sm">
+                    Version {template.version} · {template.documentType}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">Aktiv</span>
-                <Switch
-                  checked={template.isActive}
-                  onCheckedChange={(checked) =>
-                    void handleToggleActive(template, checked)
-                  }
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Link href={getEditHref(template.id)}>
-                <Button variant="outline">
-                  <Pencil className="mr-2 h-4 w-4" />
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">Aktiv</span>
+                  <Switch
+                    checked={template.isActive}
+                    disabled={isMutating || template.isDefault}
+                    onCheckedChange={(checked) =>
+                      void handleToggleActive(template, checked)
+                    }
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                <Link
+                  href={getEditHref(template.id)}
+                  className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
+                  aria-label={`Vorlage ${template.name} bearbeiten`}
+                >
+                  <Pencil className="h-4 w-4" />
                   Bearbeiten
+                </Link>
+                <Button
+                  variant="outline"
+                  disabled={isMutating}
+                  onClick={() => void handleDuplicate(template)}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplizieren
                 </Button>
-              </Link>
-              <Button
-                variant="outline"
-                onClick={() => void handleDuplicate(template)}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Duplizieren
-              </Button>
-              <Button
-                variant="outline"
-                disabled={template.isDefault}
-                onClick={() => void handleSetDefault(template)}
-              >
-                <Star
-                  className={[
-                    'mr-2 h-4 w-4',
-                    template.isDefault ? 'fill-current' : '',
-                  ].join(' ')}
-                />
-                Als Standard
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => void handleDelete(template)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Löschen
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+                <Button
+                  variant="outline"
+                  disabled={isMutating || template.isDefault}
+                  onClick={() => void handleSetDefault(template)}
+                >
+                  <Star
+                    className={[
+                      'mr-2 h-4 w-4',
+                      template.isDefault ? 'fill-current text-amber-500' : '',
+                    ].join(' ')}
+                  />
+                  Als Standard
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={isMutating}
+                  onClick={() => void handleDelete(template)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Löschen
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

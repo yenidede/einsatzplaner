@@ -289,18 +289,24 @@ export function usePdfTemplateCanvasInteractions({
       const pageCursor = getCurrentPageCursor();
       setCurrentPageIndex(pageCursor);
 
-      const insertedTemplate = insertFieldIntoTemplate({
-        template: currentTemplate,
-        field,
-        pageIndex: pageCursor,
-        position,
-      });
-      const insertedPage = insertedTemplate.schemas[pageCursor] ?? [];
+      const { template: insertedTemplate, pageIndex: insertedPageIndex } =
+        insertFieldIntoTemplate({
+          template: currentTemplate,
+          field,
+          pageIndex: pageCursor,
+          position,
+        });
+      const insertedPage = insertedTemplate.schemas[insertedPageIndex] ?? [];
       const insertedSchema = insertedPage[insertedPage.length - 1];
       const insertedKey = insertedSchema
-        ? getSchemaKey(insertedSchema, pageCursor, insertedPage.length - 1)
+        ? getSchemaKey(
+            insertedSchema,
+            insertedPageIndex,
+            insertedPage.length - 1
+          )
         : null;
 
+      setCurrentPageIndex(insertedPageIndex);
       commitTemplateChange(insertedTemplate, insertedKey);
       setActiveOverlay('element');
       toast.success(`${field.label} wurde eingefügt`);

@@ -66,7 +66,7 @@ export const PdfTemplatePreview = memo(function PdfTemplatePreview({
       viewerRef.current?.destroy();
       viewerRef.current = null;
     };
-  }, []);
+  }, [normalizedInput, template]);
 
   useEffect(() => {
     viewerRef.current?.updateTemplate(template);

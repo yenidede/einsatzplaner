@@ -18,6 +18,7 @@ const BODY_COLUMN_SWITCH_CUTOFF_Y = 260;
 const BODY_COLUMN_TOLERANCE_MM = 12;
 const TRANSPARENT_IMAGE_PLACEHOLDER =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aYkAAAAASUVORK5CYII=';
+const IMAGE_FIELD_KEYS = new Set(['organisation_logo_url']);
 const FOOTER_FIELD_KEYS = new Set([
   'organisation_adressen',
   'organisation_bankkonten',
@@ -51,7 +52,14 @@ interface BodyPlacement {
   position: Position;
 }
 
+interface InsertFieldIntoTemplateResult {
+  template: Template;
+  pageIndex: number;
+}
+
 type TemplateSchema = Template['schemas'][number][number];
+
+let fallbackIdCounter = 0;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -81,7 +89,10 @@ function generateSchemaId(): string {
     return crypto.randomUUID();
   }
 
-  return `pdf-field-${Date.now()}`;
+  fallbackIdCounter += 1;
+  return `pdf-field-${Date.now()}-${fallbackIdCounter}-${Math.floor(
+    Math.random() * 1000000
+  )}`;
 }
 
 function isFooterField(field: PdfTemplateFieldDefinition): boolean {
@@ -89,7 +100,7 @@ function isFooterField(field: PdfTemplateFieldDefinition): boolean {
 }
 
 function isImageField(field: PdfTemplateFieldDefinition): boolean {
-  return field.key.includes('logo') || field.key.includes('image');
+  return IMAGE_FIELD_KEYS.has(field.key);
 }
 
 function isValidSchema(value: unknown): value is TemplateSchema {
@@ -311,7 +322,7 @@ export function insertFieldIntoTemplate(args: {
   field: PdfTemplateFieldDefinition;
   pageIndex: number;
   position?: Position;
-}): Template {
+}): InsertFieldIntoTemplateResult {
   const sanitizedSchemas = args.template.schemas.map((page, index) =>
     sanitizePage(page, index)
   );
@@ -367,6 +378,9 @@ export function insertFieldIntoTemplate(args: {
 
   nextTemplate.schemas[pageIndex] = page;
 
-  return nextTemplate;
+  return {
+    template: nextTemplate,
+    pageIndex,
+  };
 }
 

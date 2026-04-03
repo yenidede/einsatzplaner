@@ -2,7 +2,6 @@ import type { DragEvent } from 'react';
 import type { Template } from '@pdfme/common';
 import {
   applyFooterToTemplate,
-  stripFooterSchemas,
 } from '@/features/pdf-template/lib/pdf-template-footer';
 import {
   isLegacyPdfTemplateBlankBasePdf,
@@ -339,6 +338,7 @@ export function buildSelectedElementState(
         fontSize: typeof schema.fontSize === 'number' ? schema.fontSize : 11,
         fontColor:
           typeof schema.fontColor === 'string' ? schema.fontColor : '#0f172a',
+        // PDFme stores character spacing in lineHeight for these text schemas.
         letterSpacing:
           typeof schema.lineHeight === 'number' ? schema.lineHeight : 0,
         isBold:
@@ -402,10 +402,8 @@ export function normalizeBlankBasePdf(template: Template): Template {
 }
 
 export function sanitizeBaseTemplate(template: Template): Template {
-  return stripFooterSchemas(
-    applyFooterToTemplate({
-      template: normalizeBlankBasePdf(template),
-      footer: null,
-    })
-  );
+  return applyFooterToTemplate({
+    template: normalizeBlankBasePdf(template),
+    footer: null,
+  });
 }

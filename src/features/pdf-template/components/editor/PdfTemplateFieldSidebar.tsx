@@ -336,8 +336,18 @@ export function PdfTemplateFieldSidebar({
     [displayGroups]
   );
   async function copyFieldKey(field: PdfTemplateFieldDefinition) {
-    await navigator.clipboard.writeText(field.key);
-    toast.success(`Technischer Schlüssel für „${field.label}“ kopiert`);
+    try {
+      await navigator.clipboard.writeText(field.key);
+      toast.success(`Technischer Schlüssel für „${field.label}“ kopiert`);
+    } catch (error) {
+      console.error(
+        `Fehler beim Kopieren des Feldschlüssels "${field.key}":`,
+        error
+      );
+      toast.error(
+        `Der Schlüssel für „${field.label}“ konnte nicht kopiert werden.`
+      );
+    }
   }
 
   function toggleGroup(groupId: DisplayGroupId) {

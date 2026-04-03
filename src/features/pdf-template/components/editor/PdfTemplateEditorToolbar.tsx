@@ -77,7 +77,6 @@ export function PdfTemplateEditorToolbar({
             onClick={onSave}
             disabled={isSaving}
           >
-            {' '}
             Speichern
             {isSaving ? (
               <LoaderCircle className="h-4 w-4 animate-spin" />
