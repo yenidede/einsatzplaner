@@ -94,13 +94,7 @@ function normalizeColumn(value: unknown): PdfTemplateFooterColumn {
 }
 
 function separatorToGlyph(separator: PdfTemplateFooterSeparator): string {
-  const beforeNarrowingSeparator: PdfTemplateFooterSeparator = separator;
-
-  if (separator === 'dot') {
-    return '•';
-  }
-
-  switch (beforeNarrowingSeparator) {
+  switch (separator) {
     case 'dot':
       return '•';
     case 'dash':

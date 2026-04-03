@@ -75,8 +75,7 @@ export type PdfTemplateFieldValue =
   | number
   | boolean
   | null
-  | string[][]
-  | string;
+  | string[][];
 
 export type PdfTemplateInput = Record<string, PdfTemplateFieldValue>;
 

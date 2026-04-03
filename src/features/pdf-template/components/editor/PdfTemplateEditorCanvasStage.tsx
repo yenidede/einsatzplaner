@@ -46,6 +46,7 @@ interface PdfTemplateEditorCanvasStageProps {
   onDragLeave: (event: DragEvent<HTMLDivElement>) => void;
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onPointerDownCapture: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onPointerUpCapture?: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onDoubleClickCapture: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onContextMenuCapture: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onFooterZonePointerDown: (clientY: number) => void;
@@ -82,6 +83,7 @@ export function PdfTemplateEditorCanvasStage({
   onDragLeave,
   onDrop,
   onPointerDownCapture,
+  onPointerUpCapture,
   onDoubleClickCapture,
   onContextMenuCapture,
   onFooterZonePointerDown,
@@ -167,6 +169,7 @@ export function PdfTemplateEditorCanvasStage({
           onDragLeave={onDragLeave}
           onDrop={onDrop}
           onPointerDownCapture={onPointerDownCapture}
+          onPointerUpCapture={onPointerUpCapture}
           onDoubleClickCapture={onDoubleClickCapture}
           onContextMenuCapture={onContextMenuCapture}
         >
@@ -207,7 +210,6 @@ export function PdfTemplateEditorCanvasStage({
               <div
                 className="h-full w-full cursor-default"
                 onPointerDown={(event) => {
-                  event.preventDefault();
                   onFooterZonePointerDown(event.clientY);
                 }}
                 onDoubleClick={(event) => {

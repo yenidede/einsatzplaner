@@ -76,7 +76,11 @@ function mapRowToListItem(row: PrismaPdfTemplate): PdfTemplateListItem {
 
 async function assertTemplatePermission(
   organizationId: string,
-  action: 'templates:read' | 'templates:create' | 'templates:update' | 'templates:delete'
+  action:
+    | 'templates:read'
+    | 'templates:create'
+    | 'templates:update'
+    | 'templates:delete'
 ): Promise<void> {
   const { session } = await requireAuth();
   const allowed = await hasPermission(session, action, organizationId);
@@ -95,7 +99,10 @@ async function assertEinsatzReadPermission(orgId: string): Promise<void> {
   }
 }
 
-function templateChanged(previousTemplate: Template, nextTemplate: Template): boolean {
+function templateChanged(
+  previousTemplate: Template,
+  nextTemplate: Template
+): boolean {
   return JSON.stringify(previousTemplate) !== JSON.stringify(nextTemplate);
 }
 
@@ -210,7 +217,9 @@ export async function getPdfTemplatesByOrganization(
   return rows.map(mapRowToListItem);
 }
 
-export async function getPdfTemplateById(id: string): Promise<PdfTemplateRecord | null> {
+export async function getPdfTemplateById(
+  id: string
+): Promise<PdfTemplateRecord | null> {
   const row = await findPdfTemplateById(id);
 
   if (!row) {
@@ -234,7 +243,9 @@ export async function deletePdfTemplate(id: string): Promise<void> {
   revalidatePdfTemplatePaths(row.organizationId, id);
 }
 
-export async function duplicatePdfTemplate(id: string): Promise<PdfTemplateRecord> {
+export async function duplicatePdfTemplate(
+  id: string
+): Promise<PdfTemplateRecord> {
   const row = await findPdfTemplateById(id);
 
   if (!row) {
@@ -257,7 +268,9 @@ export async function duplicatePdfTemplate(id: string): Promise<PdfTemplateRecor
   });
 }
 
-export async function setDefaultPdfTemplate(id: string): Promise<PdfTemplateRecord> {
+export async function setDefaultPdfTemplate(
+  id: string
+): Promise<PdfTemplateRecord> {
   const targetRow = await findPdfTemplateById(id);
 
   if (!targetRow) {
@@ -350,10 +363,8 @@ export async function getPdfTemplatePreviewData(args: {
     const input: PdfTemplateInput = {
       organisation_name: 'Beispielorganisation',
       organisation_email: 'office@example.org',
-      organisation_adressen:
-        'Musterstraße 1, 1010 Wien, Österreich',
-      organisation_bankkonten:
-        'Musterbank, AT12 3456 7890 1234 5678, ABCDATWW',
+      organisation_adressen: 'Musterstraße 1, 1010 Wien, Österreich',
+      organisation_bankkonten: 'Musterbank, AT12 3456 7890 1234 5678, ABCDATWW',
       organisation_adressen_tabelle: [
         ['Hauptstandort', 'Musterstraße 1, 1010 Wien, Österreich'],
       ],
@@ -375,7 +386,10 @@ export async function getPdfTemplatePreviewData(args: {
     });
 
     return {
-      template: applyImageBindingsToTemplate({ template: footerTemplate, input }),
+      template: applyImageBindingsToTemplate({
+        template: footerTemplate,
+        input,
+      }),
       templateName: template.name,
       sampleEinsatzId: null,
       input,
@@ -438,7 +452,10 @@ export async function generateBookingConfirmationPdf(
           PDF_TEMPLATE_DOCUMENT_TYPE
         );
 
-    if (selectedTemplate && selectedTemplate.organizationId !== einsatz.org_id) {
+    if (
+      selectedTemplate &&
+      selectedTemplate.organizationId !== einsatz.org_id
+    ) {
       return {
         success: false,
         error: 'Vorlage gehört nicht zur aktiven Organisation',
@@ -495,7 +512,10 @@ export async function generateBookingConfirmationPdf(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'PDF konnte nicht erzeugt werden',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'PDF konnte nicht erzeugt werden',
     };
   }
 }

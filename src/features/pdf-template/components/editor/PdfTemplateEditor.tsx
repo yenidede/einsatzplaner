@@ -233,7 +233,7 @@ export function PdfTemplateEditor({
       page.map((schema, schemaIndex) => ({
         key: getSchemaKey(schema, pageIndex, schemaIndex),
         label: getElementLabel(schema, schemaIndex),
-        meta: `Seite ${pageIndex + 1} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${schema.type}`,
+        meta: `Seite ${pageIndex + 1} • ${schema.type}`,
       }))
     );
   }, [template]);
@@ -305,7 +305,7 @@ export function PdfTemplateEditor({
     }
 
     return !compareTemplates(template, baselineTemplateRef.current);
-  }, [footerConfig, name, selectedPreviewEinsatzId, template]);
+  }, [footerConfig, name, previewAssignmentId, template]);
 
   useEffect(() => {
     templateRef.current = template;

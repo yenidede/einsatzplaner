@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import {
   COLLAPSED_PANEL_WIDTH,
   getDockedEditorMinWidth,
@@ -30,9 +30,18 @@ export function usePdfTemplateDockLayout({
 }: UsePdfTemplateDockLayoutOptions): UsePdfTemplateDockLayoutResult {
   const [leftPanelWidth, setLeftPanelWidth] = useState(296);
   const [rightPanelWidth, setRightPanelWidth] = useState(360);
+  const cleanupResizeRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      cleanupResizeRef.current?.();
+      cleanupResizeRef.current = null;
+    };
+  }, []);
 
   const startResize = useCallback(
     (side: 'left' | 'right', clientX: number) => {
+      cleanupResizeRef.current?.();
       const initialX = clientX;
       const initialLeftWidth = leftPanelWidth;
       const initialRightWidth = rightPanelWidth;
@@ -82,14 +91,28 @@ export function usePdfTemplateDockLayout({
         window.removeEventListener('pointerup', handlePointerUp);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+        cleanupResizeRef.current = null;
       }
+
+      cleanupResizeRef.current = () => {
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
 
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
       window.addEventListener('pointermove', handlePointerMove);
       window.addEventListener('pointerup', handlePointerUp);
     },
-    [isFieldSidebarOpen, isPreviewOpen, layoutViewportRef, leftPanelWidth, rightPanelWidth]
+    [
+      isFieldSidebarOpen,
+      isPreviewOpen,
+      layoutViewportRef,
+      leftPanelWidth,
+      rightPanelWidth,
+    ]
   );
 
   return {

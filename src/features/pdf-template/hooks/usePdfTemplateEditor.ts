@@ -28,7 +28,6 @@ export function usePdfTemplateEditor({
   const previewInputQuery = useQuery<PdfTemplateInput>({
     queryKey: pdfTemplateQueryKeys.previewInput(previewAssignmentId),
     queryFn: () => getPdfPreviewInput(previewAssignmentId),
-    placeholderData: (previousData) => previousData,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });

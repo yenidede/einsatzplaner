@@ -3,5 +3,9 @@ export const pdfTemplateQueryKeys = {
   byOrganization: (organizationId: string) =>
     [...pdfTemplateQueryKeys.all, 'organization', organizationId] as const,
   previewInput: (einsatzId: string | null) =>
-    [...pdfTemplateQueryKeys.all, 'preview-input', einsatzId ?? 'mock:sentinel'] as const,
+    [
+      ...pdfTemplateQueryKeys.all,
+      'preview-input',
+      einsatzId ?? 'mock:sentinel',
+    ] as const,
 };
