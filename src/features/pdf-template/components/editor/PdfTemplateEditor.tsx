@@ -64,9 +64,7 @@ import {
 import { getEditPdfTemplateSettingsPath } from '@/features/pdf-template/lib/pdf-template-routes';
 import { usePdfTemplateCanvasInteractions } from '@/features/pdf-template/hooks/usePdfTemplateCanvasInteractions';
 import { usePdfTemplateDockLayout } from '@/features/pdf-template/hooks/usePdfTemplateDockLayout';
-import {
-  usePdfTemplateEditor,
-} from '@/features/pdf-template/hooks/usePdfTemplateEditor';
+import { usePdfTemplateEditor } from '@/features/pdf-template/hooks/usePdfTemplateEditor';
 import { usePdfTemplateOverlay } from '@/features/pdf-template/hooks/usePdfTemplateOverlay';
 import type {
   PdfTemplateFieldDefinition,
@@ -296,9 +294,7 @@ export function PdfTemplateEditor({
       return true;
     }
 
-    if (
-      previewAssignmentId !== baselineSampleRef.current
-    ) {
+    if (previewAssignmentId !== baselineSampleRef.current) {
       return true;
     }
 
@@ -310,8 +306,6 @@ export function PdfTemplateEditor({
 
     return !compareTemplates(template, baselineTemplateRef.current);
   }, [footerConfig, name, selectedPreviewEinsatzId, template]);
-
-  const saveStateLabel = isDirty ? 'Ungespeicherte ÃƒÆ’Ã¢â‚¬Å¾nderungen' : 'Gespeichert';
 
   useEffect(() => {
     templateRef.current = template;
@@ -668,9 +662,7 @@ export function PdfTemplateEditor({
         baselineFooterRef.current = footerConfig;
         baselineSampleRef.current = sampleEinsatzId;
         toast.success('Vorlage erstellt');
-        router.push(
-          getEditPdfTemplateSettingsPath(organizationId, created.id)
-        );
+        router.push(getEditPdfTemplateSettingsPath(organizationId, created.id));
         router.refresh();
       } catch (error) {
         toast.error(
@@ -708,7 +700,7 @@ export function PdfTemplateEditor({
 
   const gridPatternSize = `${Math.max(gridSize * 6, 18)}px`;
   const editorSurfaceMaxWidth = '100%';
-  const workspaceHeight = `calc(100vh - ${Math.max(
+  const workspaceHeight = `calc(100dvh - ${Math.max(
     workspaceViewportOffset + WORKSPACE_BOTTOM_GAP_PX,
     WORKSPACE_MIN_RESERVED_VIEWPORT_PX
   )}px)`;
@@ -874,18 +866,21 @@ export function PdfTemplateEditor({
   });
 
   return (
-    <div className="space-y-4 pt-4 pb-3">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden overscroll-none pt-2">
       <div ref={topBarRef}>
         <PdfTemplateEditorToolbar
           name={name}
           onNameChange={setName}
-          saveStateLabel={saveStateLabel}
+          isDirty={isDirty}
           isSaving={isSaving}
           onSave={() => void saveTemplate()}
         />
       </div>
 
-      <div ref={layoutViewportRef} className="min-w-0 pb-1.5">
+      <div
+        ref={layoutViewportRef}
+        className="min-h-0 min-w-0 flex-1 overflow-hidden"
+      >
         <div
           className="min-h-0 overflow-hidden"
           style={workspaceContainerStyle}

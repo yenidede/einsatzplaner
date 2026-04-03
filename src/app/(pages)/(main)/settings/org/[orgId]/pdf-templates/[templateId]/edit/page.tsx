@@ -32,7 +32,7 @@ export default async function EditTemplatePage({ params }: EditPageProps) {
   ]);
 
   return (
-    <div className="w-full max-w-none px-3 pb-4 pt-10 sm:px-4 sm:pt-12 lg:px-6 xl:px-8">
+    <div className="-mb-8 flex h-[calc(100dvh-6rem)] min-h-0 w-full max-w-none overflow-hidden overscroll-none px-3 sm:px-4 lg:px-6 xl:px-8">
       <PdfTemplateEditor
         organizationId={orgId}
         templateId={template.id}
