@@ -674,6 +674,35 @@ export function PdfTemplateEditor({
     });
   }
 
+  useEffect(() => {
+    function handleEditorShortcuts(event: KeyboardEvent) {
+      const isSaveShortcut =
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === 's';
+
+      if (isSaveShortcut) {
+        event.preventDefault();
+
+        if (!isSaving) {
+          void saveTemplate();
+        }
+
+        return;
+      }
+
+      if (event.key === 'Escape' && activeOverlay === null) {
+        event.preventDefault();
+        router.back();
+      }
+    }
+
+    document.addEventListener('keydown', handleEditorShortcuts);
+
+    return () => {
+      document.removeEventListener('keydown', handleEditorShortcuts);
+    };
+  }, [activeOverlay, isSaving, router]);
+
   function undoTemplateChange() {
     const previous = undoStack[undoStack.length - 1];
 
