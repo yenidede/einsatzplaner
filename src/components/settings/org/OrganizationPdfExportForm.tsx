@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { OrganizationAddresses } from '@/components/settings/org/OrganizationAddresses';
 import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
+import { getPdfTemplatesSettingsPath } from '@/features/pdf-template/lib/pdf-template-routes';
 import { OrganizationPdfTemplateManager } from './OrganizationPdfTemplateManager';
 
 interface OrganizationPdfExportFormProps {
@@ -160,7 +161,7 @@ export function OrganizationPdfExportForm({
             </p>
           </div>
           <Link
-            href={`/settings/pdf-templates?orgId=${organizationId}`}
+            href={getPdfTemplatesSettingsPath(organizationId)}
             className="inline-block"
           >
             <Button variant="secondary">Vollansicht öffnen</Button>

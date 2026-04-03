@@ -2,8 +2,8 @@
 
 import type { Template } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
-import { getPdfmePlugins } from '@/features/pdf-templates/pdf-template-default';
-import type { PdfTemplateInput } from '@/features/pdf-templates/types';
+import { getPdfmePlugins } from '@/features/pdf-template/lib/pdf-template-defaults';
+import type { PdfTemplateInput } from '@/features/pdf-template/types';
 
 function normalizePdfmeInputValue(value: PdfTemplateInput[string]): string {
   if (Array.isArray(value)) {

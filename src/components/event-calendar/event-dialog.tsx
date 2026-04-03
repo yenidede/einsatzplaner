@@ -56,7 +56,7 @@ import {
   calcPricePerPersonFromTotal,
 } from '../form/utils';
 import TooltipCustom from '@/components/tooltip-custom';
-import { GenerateBookingConfirmationButton } from '../pdfTemplates/GenerateBookingConfirmationButton';
+import { GenerateBookingConfirmationButton } from '@/features/pdf-template/components/dialogs/GenerateBookingConfirmationDialog';
 import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
@@ -69,7 +69,7 @@ import {
 import {
   getDefaultOrganizationPdfTemplate,
   getPdfTemplates,
-} from '@/app/actions/pdfTemplates';
+} from '@/features/pdf-template/server/pdf-template.actions';
 import {
   Select,
   SelectContent,

@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { getPdfTemplatesByOrganization } from '@/app/actions/pdfTemplates';
-import { PdfTemplateList } from '@/components/pdfTemplates/PdfTemplateList';
-import type { PdfTemplateListItem } from '@/features/pdf-templates/types';
+import { getPdfTemplatesByOrganization } from '@/features/pdf-template/server/pdf-template.actions';
+import { PdfTemplateList } from '@/features/pdf-template/components/list/PdfTemplateList';
+import type { PdfTemplateListItem } from '@/features/pdf-template/types';
 
 interface OrganizationPdfTemplateManagerProps {
   organizationId: string;
@@ -76,7 +76,6 @@ export function OrganizationPdfTemplateManager({
         templates={templates}
         organizationId={organizationId}
         title="Buchungsbestätigungen"
-        createHref={`/settings/pdf-templates/new?orgId=${organizationId}`}
         emptyMessage="Es gibt noch keine PDF-Vorlagen für diese Organisation."
       />
     </div>
