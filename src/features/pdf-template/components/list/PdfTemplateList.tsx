@@ -196,7 +196,10 @@ export function PdfTemplateList({
               <CardContent className="flex flex-wrap gap-2">
                 <Link
                   href={getEditHref(template.id)}
-                  className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
+                  className={cn(
+                    buttonVariants({ variant: 'outline' }),
+                    'gap-2'
+                  )}
                   aria-label={`Vorlage ${template.name} bearbeiten`}
                 >
                   <Pencil className="h-4 w-4" />
@@ -218,7 +221,7 @@ export function PdfTemplateList({
                   <Star
                     className={[
                       'mr-2 h-4 w-4',
-                      template.isDefault ? 'fill-current text-amber-500' : '',
+                      template.isDefault ? 'fill-current' : '',
                     ].join(' ')}
                   />
                   Als Standard
