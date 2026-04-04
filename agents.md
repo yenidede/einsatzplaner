@@ -1,10 +1,15 @@
-Use existing components wherever possible.
-Try to reuse components wherever possible.
-Save components to "@/components/...".
-Do not alter the schema.prisma at all but instead suggest changes to the database model to the user and explain why they are necessary and should be implemented.
+## Repo Rules
 
-Try not to use "as" or "any"; instead type correctly. Types should be inferred from '@/generated/prisma' wherever possible. These inferred types can be altered using TypeScript narrowers like Partial<> or Omit<>, ... The import could look like this: import { einsatz } from '@/generated/prisma';
+- Reuse existing components, hooks, utilities, and patterns before creating anything new.
+- Place reusable UI under `@/components/...`.
+- Do not edit `prisma/schema.prisma`. If a task requires a data-model change, explain the required database change to the user, why it is needed, and where the current model is limiting the implementation.
+- Avoid `as` and `any`. Prefer correct typing inferred from `@/generated/prisma`, then refine with utilities such as `Partial<>`, `Omit<>`, and narrowers where needed.
+- Cache client-side data with `useQuery`.
+- Never hardcode query keys. Define and use feature-local `QueryKeys.ts` or `queryKeys.ts` files.
+- All user-facing text must be German and use the Hoeflichkeitsform (`Sie`).
 
-Data should be locally cached using useQuery. useQuery QueryKeys should never be hardcoded but come from a seperate QueryKeys.ts file.
+## Test Rules
 
-Any User facing text should be in german. Use the Höflichkeitsform ("Sie" instead of "Du").
+- For every module you touch, try to add or update useful tests that cover the changed behavior.
+- Prefer behavior-focused tests over snapshot-like or superficial assertions.
+- If a touched module cannot reasonably be tested in the same change, document the gap and the reason instead of silently skipping it.
