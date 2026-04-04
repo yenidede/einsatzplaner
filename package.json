@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
+    "startb": "next build --turbopack && next start",
     "lint": "eslint . --ignore-pattern 'src/generated/**'",
     "postinstall": "npx prisma db pull && npx prisma generate",
     "prettier": "prettier . --write"
