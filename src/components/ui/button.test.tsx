@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-// TODO: Remove later, keep just for demo purposes. This is not a real test, just to show how to use vitest and to have some coverage for the token generation function.
+// TODO: Remove later if this demo test is no longer needed. It exists to show basic Vitest usage for the Button component.
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
