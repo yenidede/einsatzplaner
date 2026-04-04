@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { registerOrganizationSwitchConfirmation } from '../settings-navigation.utils';
 
 interface UseUnsavedChangesOptions<T extends string = string> {
   hasUnsavedChanges: boolean;
@@ -118,6 +119,23 @@ export function useUnsavedChanges<T extends string = string>({
     [hasUnsavedChanges, showDefault, onSectionChange]
   );
 
+  const confirmDiscardChanges = useCallback(async () => {
+    if (!hasUnsavedChangesRef.current) {
+      return true;
+    }
+
+    const result = await showDefault(
+      'Ungespeicherte Änderungen',
+      'Sie haben ungespeicherte Änderungen. Möchten Sie die Änderungen verwerfen und die Organisation wechseln?',
+      {
+        confirmText: 'Verwerfen und wechseln',
+        cancelText: 'Abbrechen',
+      }
+    );
+
+    return result === 'success';
+  }, [showDefault]);
+
   // Handle browser back/forward
   useEffect(() => {
     if (!hasUnsavedChanges) return;
@@ -186,6 +204,11 @@ export function useUnsavedChanges<T extends string = string>({
     };
   }, [hasUnsavedChanges, showDefault]);
 
+  useEffect(
+    () => registerOrganizationSwitchConfirmation(confirmDiscardChanges),
+    [confirmDiscardChanges]
+  );
+
   // Navigation guard function that can be used to intercept any navigation
   const navigateWithCheck = useCallback(
     async (url: string) => {
@@ -214,6 +237,7 @@ export function useUnsavedChanges<T extends string = string>({
   );
 
   return {
+    confirmDiscardChanges,
     handleSectionChangeWithCheck,
     navigateWithCheck,
   };
