@@ -48,7 +48,11 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
       return;
     }
 
-    await switchOrganization(orgId);
+    try {
+      await switchOrganization(orgId);
+    } catch {
+      return;
+    }
   };
 
   return (

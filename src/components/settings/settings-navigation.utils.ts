@@ -5,6 +5,7 @@ const SETTINGS_ORG_SWITCH_CONFIRM_EVENT =
   'settings:confirm-organization-switch';
 
 type SettingsOrganizationSwitchConfirmDetail = {
+  markHandled: () => void;
   respond: (confirmed: boolean) => void;
 };
 
@@ -15,6 +16,8 @@ function isSettingsOrganizationSwitchConfirmEvent(
     event instanceof CustomEvent &&
     typeof event.detail === 'object' &&
     event.detail !== null &&
+    'markHandled' in event.detail &&
+    typeof event.detail.markHandled === 'function' &&
     'respond' in event.detail &&
     typeof event.detail.respond === 'function'
   );
@@ -91,12 +94,25 @@ export function registerOrganizationSwitchConfirmation(
     return () => undefined;
   }
 
-  const handleConfirmationRequest = async (event: Event) => {
+  const handleConfirmationRequest = (event: Event) => {
     if (!isSettingsOrganizationSwitchConfirmEvent(event)) {
       return;
     }
 
-    event.detail.respond(await onConfirm());
+    event.detail.markHandled();
+    try {
+      const confirmation = onConfirm();
+
+      Promise.resolve(confirmation)
+        .then((confirmed) => {
+          event.detail.respond(confirmed);
+        })
+        .catch(() => {
+          event.detail.respond(false);
+        });
+    } catch {
+      event.detail.respond(false);
+    }
   };
 
   window.addEventListener(
@@ -119,13 +135,20 @@ export function requestOrganizationSwitchConfirmation(): Promise<boolean> {
 
   return new Promise((resolve) => {
     let resolved = false;
+    let handled = false;
 
     window.dispatchEvent(
       new CustomEvent<SettingsOrganizationSwitchConfirmDetail>(
         SETTINGS_ORG_SWITCH_CONFIRM_EVENT,
         {
           detail: {
+            markHandled: () => {
+              handled = true;
+            },
             respond: (confirmed) => {
+              if (resolved) {
+                return;
+              }
               resolved = true;
               resolve(confirmed);
             },
@@ -135,7 +158,8 @@ export function requestOrganizationSwitchConfirmation(): Promise<boolean> {
     );
 
     queueMicrotask(() => {
-      if (!resolved) {
+      if (!resolved && !handled) {
+        resolved = true;
         resolve(true);
       }
     });

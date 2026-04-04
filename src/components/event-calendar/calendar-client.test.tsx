@@ -101,16 +101,15 @@ vi.mock('@/features/einsatz/hooks/useEinsatzQueries', () => ({
   }),
 }));
 
-vi.mock('@/features/einsatz/dal-einsatz', async () => {
-  const actual = await vi.importActual<
-    typeof import('@/features/einsatz/dal-einsatz')
-  >('@/features/einsatz/dal-einsatz');
-
-  return {
-    ...actual,
-    toggleUserAssignmentToEinsatz: mockToggleUserAssignmentToEinsatz,
-  };
-});
+vi.mock('@/features/einsatz/dal-einsatz', () => ({
+  createEinsatz: vi.fn(),
+  updateEinsatz: vi.fn(),
+  updateEinsatzTime: vi.fn(),
+  updateEinsatzStatus: vi.fn(),
+  deleteEinsatzById: vi.fn(),
+  deleteEinsaetzeByIds: vi.fn(),
+  toggleUserAssignmentToEinsatz: mockToggleUserAssignmentToEinsatz,
+}));
 
 vi.mock('@/components/event-calendar', () => ({
   EventCalendar: ({

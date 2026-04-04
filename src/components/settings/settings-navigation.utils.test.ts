@@ -93,11 +93,19 @@ describe('settings-navigation.utils', () => {
   });
 
   it('fragt eine registrierte Bestätigung für den Organisationswechsel ab', async () => {
-    const onConfirm = vi.fn().mockResolvedValue(false);
+    let resolveConfirmation: ((value: boolean) => void) | undefined;
+    const onConfirm = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveConfirmation = resolve;
+        })
+    );
     const cleanup = registerOrganizationSwitchConfirmation(onConfirm);
 
-    await expect(requestOrganizationSwitchConfirmation()).resolves.toBe(false);
+    const confirmation = requestOrganizationSwitchConfirmation();
     expect(onConfirm).toHaveBeenCalledOnce();
+    resolveConfirmation?.(false);
+    await expect(confirmation).resolves.toBe(false);
 
     cleanup();
   });
