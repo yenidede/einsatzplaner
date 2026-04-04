@@ -197,10 +197,10 @@ export async function createUserWithOrgAndRoles(data: {
     const assignRoleIds = data.roleIds
       ? data.roleIds
       : data.roleNames
-          ?.map(
-            (roleName) => roleRecords.find((role) => role.name === roleName)?.id
-          )
-          .filter((id): id is string => !!id) || [];
+        ?.map(
+          (roleName) => roleRecords.find((role) => role.name === roleName)?.id
+        )
+        .filter((id): id is string => !!id) || [];
 
     return prisma.user.create({
       data: {
@@ -254,24 +254,6 @@ export async function createUserWithOrgAndRoles(data: {
 //#endregion
 
 //#region Organization Management
-export async function getOrCreateOrganizationByName(name: string) {
-  try {
-    let organization = await prisma.organization.findFirst({
-      where: { name },
-    });
-
-    if (!organization) {
-      organization = await prisma.organization.create({
-        data: { name },
-      });
-    }
-
-    return organization;
-  } catch (error: any) {
-    throw new Error(`Failed to get or create organization: ${error.message}`);
-  }
-}
-
 export async function getUsersWithRolesByOrgId(orgId: string) {
   try {
     return prisma.user.findMany({
