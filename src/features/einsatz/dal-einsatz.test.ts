@@ -155,7 +155,7 @@ describe('toggleUserAssignmentToEinsatz', () => {
     expect(mockCheckEinsatzRequirementsAfterAssignment).toHaveBeenCalledTimes(1);
   });
 
-  it('erzwingt bei einem idempotenten assign-no-op keine Join-Berechtigung', async () => {
+  it('erzwingt die Leave-Berechtigung auch bei einem idempotenten unassign-no-op', async () => {
     mockHasPermission
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false);
@@ -168,14 +168,30 @@ describe('toggleUserAssignmentToEinsatz', () => {
     });
 
     await expect(
-      toggleUserAssignmentToEinsatz('einsatz-1', 'assign')
-    ).resolves.toMatchObject({
-      id: 'einsatz-1',
-      title: 'Testeinsatz',
-    });
+      toggleUserAssignmentToEinsatz('einsatz-1', 'unassign')
+    ).rejects.toThrow('Fehlende Berechtigungen für diese Organisation');
 
     expect(mockUpdate).toHaveBeenCalledTimes(1);
     expect(mockCreateChangeLogAuto).toHaveBeenCalledTimes(1);
+  });
+
+  it('gibt bei einem unassign-no-op ohne Organisationsmitgliedschaft keine Einsatzdaten preis', async () => {
+    mockRequireAuth.mockResolvedValue({
+      session: {
+        user: {
+          id: 'user-1',
+          orgIds: ['org-2'],
+          activeOrganization: { id: 'org-2' },
+        },
+      },
+    });
+
+    await expect(
+      toggleUserAssignmentToEinsatz('einsatz-1', 'unassign')
+    ).rejects.toThrow('Fehlende Berechtigungen für diese Organisation');
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockCreateChangeLogAuto).not.toHaveBeenCalled();
   });
 
   it('verwendet nach zwei serialisierbaren Transaktionskonflikten die benutzerfreundliche Fehlermeldung', async () => {

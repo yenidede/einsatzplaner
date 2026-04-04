@@ -134,9 +134,12 @@ export default function OrganizationManagePage() {
 
   useSettingsSessionValidation();
 
-  const { data: userProfile, isLoading: isLoadingUser } = useUserProfile(
-    session?.user?.id
-  );
+  const {
+    data: userProfile,
+    isLoading: isLoadingUser,
+    error: userProfileError,
+    refetch: refetchUserProfile,
+  } = useUserProfile(session?.user?.id);
   const { isAuthorized, isLoading: isLoadingPermission } = usePermissionGuard({
     requiredPermissions: ['organization:update'],
     requireAll: false,
@@ -525,6 +528,17 @@ export default function OrganizationManagePage() {
 
   if (isLoadingUser || isLoadingPermission || isSwitchingOrganization) {
     return <SettingsLoadingSkeleton sidebarItems={7} />;
+  }
+
+  if (userProfileError) {
+    return (
+      <SettingsErrorCard
+        title="Fehler beim Laden des Profils"
+        description="Die verfügbaren Organisationen konnten nicht geladen werden."
+        error={userProfileError}
+        onRetry={() => void refetchUserProfile()}
+      />
+    );
   }
 
   if (requestedOrgId && !requestedOrganization) {

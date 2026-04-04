@@ -122,9 +122,7 @@ describe('useActiveOrganizationSwitch', () => {
 
     const { result } = renderHook(() => useActiveOrganizationSwitch());
 
-    await expect(
-      result.current.switchOrganization('org-2')
-    ).rejects.toThrowError('Kein Zugriff auf diese Organisation');
+    await result.current.switchOrganization('org-2');
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith(
@@ -135,5 +133,6 @@ describe('useActiveOrganizationSwitch', () => {
     expect(mockUpdateSession).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
     expect(mockToastSuccess).not.toHaveBeenCalled();
+    expect(result.current.isSwitching).toBe(false);
   });
 });
