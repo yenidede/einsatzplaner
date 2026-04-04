@@ -837,5 +837,3 @@ export function SignUpForm({
     </form>
   );
 }
-
-export default SignUpForm;
