@@ -41,6 +41,15 @@ vi.mock('../dal-einsatz', () => ({
 }));
 
 describe('useToggleUserAssignment', () => {
+  const createQueryClient = () =>
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
   beforeEach(() => {
     mockToggleUserAssignmentToEinsatz.mockReset();
     mockToastSuccess.mockReset();
@@ -53,7 +62,7 @@ describe('useToggleUserAssignment', () => {
   });
 
   it('entfernt den Benutzer bei einem zweiten assign-Intent nicht optimistisch aus dem Cache', async () => {
-    const queryClient = new QueryClient();
+    const queryClient = createQueryClient();
     queryClient.setQueryData(queryKeys.einsaetzeForCalendar('org-1', '2026-04'), {
       events: [
         {
@@ -88,7 +97,7 @@ describe('useToggleUserAssignment', () => {
   });
 
   it('entfernt den Benutzer bei unassign optimistisch aus dem Cache', async () => {
-    const queryClient = new QueryClient();
+    const queryClient = createQueryClient();
     queryClient.setQueryData(queryKeys.einsaetzeForCalendar('org-1', '2026-04'), {
       events: [
         {

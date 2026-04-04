@@ -179,10 +179,12 @@ describe('toggleUserAssignmentToEinsatz', () => {
   });
 
   it('verwendet nach zwei serialisierbaren Transaktionskonflikten die benutzerfreundliche Fehlermeldung', async () => {
-    const retryableError = Object.assign(
-      Object.create(Prisma.PrismaClientKnownRequestError.prototype),
+    const retryableError = new Prisma.PrismaClientKnownRequestError(
+      'Transaction failed due to a write conflict or a deadlock. Please retry your transaction',
       {
         code: 'P2034',
+        clientVersion: '6.0.0',
+        meta: {},
       }
     );
 

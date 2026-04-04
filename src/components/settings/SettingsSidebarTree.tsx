@@ -29,6 +29,7 @@ export interface SettingsSidebarTreeProps {
 }
 
 interface SidebarSectionProps {
+  id: string;
   title: string;
   description?: string;
   expanded: boolean;
@@ -37,6 +38,7 @@ interface SidebarSectionProps {
 }
 
 function SidebarSection({
+  id,
   title,
   description,
   expanded,
@@ -47,6 +49,8 @@ function SidebarSection({
     <section className="space-y-2">
       <Button
         type="button"
+        aria-controls={`${id}-panel`}
+        aria-expanded={expanded}
         variant={expanded ? 'secondary' : 'ghost'}
         className="h-auto w-full items-start justify-between px-3 py-3 text-left"
         onClick={onSelect}
@@ -67,7 +71,11 @@ function SidebarSection({
         />
       </Button>
 
-      {expanded ? <div className="space-y-1 pl-2">{children}</div> : null}
+      {expanded ? (
+        <div id={`${id}-panel`} className="space-y-1 pl-2">
+          {children}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -110,6 +118,7 @@ export function SettingsSidebarTree({
       aria-label="Einstellungen Navigation"
     >
       <SidebarSection
+        id="personal-settings"
         title="Persönliche Einstellungen"
         expanded={personalExpanded}
         onSelect={() => navigate('/settings/user')}
@@ -138,6 +147,7 @@ export function SettingsSidebarTree({
         <>
           <Separator />
           <SidebarSection
+            id="organization-settings"
             title="Organisationseinstellungen"
             description={`Aktive Organisation: ${activeOrganization.name}`}
             expanded={organizationExpanded}

@@ -508,6 +508,21 @@ export default function OrganizationManagePage() {
     setSelectedUserId(null);
   };
 
+  const handleSwitchToRequestedOrganization = async () => {
+    if (!requestedOrgId) {
+      return;
+    }
+
+    try {
+      await switchOrganization(requestedOrgId, {
+        showSuccessToast: false,
+        syncSettingsRoute: false,
+      });
+    } catch {
+      return;
+    }
+  };
+
   if (isLoadingUser || isLoadingPermission || isSwitchingOrganization) {
     return <SettingsLoadingSkeleton sidebarItems={7} />;
   }
@@ -529,12 +544,7 @@ export default function OrganizationManagePage() {
         title="Andere Organisation ausgewählt"
         description={`Für diese Seite muss zuerst die Organisation „${requestedOrganization.name}“ als aktive Organisation gesetzt werden.`}
         primaryActionLabel="Aktive Organisation wechseln"
-        onPrimaryAction={() =>
-          switchOrganization(requestedOrgId, {
-            showSuccessToast: false,
-            syncSettingsRoute: false,
-          })
-        }
+        onPrimaryAction={handleSwitchToRequestedOrganization}
       />
     );
   }
