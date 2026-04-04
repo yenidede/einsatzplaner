@@ -1,0 +1,150 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const {
+  mockRequireAuth,
+  mockHasPermission,
+  mockCreateChangeLogAuto,
+  mockCheckEinsatzRequirementsAfterAssignment,
+  mockTransaction,
+  mockFindUnique,
+  mockUpdate,
+  mockFindManyConflicts,
+} = vi.hoisted(() => ({
+  mockRequireAuth: vi.fn(),
+  mockHasPermission: vi.fn(),
+  mockCreateChangeLogAuto: vi.fn(),
+  mockCheckEinsatzRequirementsAfterAssignment: vi.fn(),
+  mockTransaction: vi.fn(),
+  mockFindUnique: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockFindManyConflicts: vi.fn(),
+}));
+
+vi.mock('@/lib/auth/authGuard', () => ({
+  requireAuth: mockRequireAuth,
+  hasPermission: mockHasPermission,
+}));
+
+vi.mock('@/features/activity_log/activity_log-dal', () => ({
+  createChangeLogAuto: mockCreateChangeLogAuto,
+}));
+
+vi.mock('@/lib/email/email-helpers', () => ({
+  checkEinsatzRequirementsAfterAssignment:
+    mockCheckEinsatzRequirementsAfterAssignment,
+}));
+
+vi.mock('@/lib/prisma', () => ({
+  default: {
+    $transaction: mockTransaction,
+    einsatz_helper: {
+      findMany: mockFindManyConflicts,
+    },
+  },
+}));
+
+import { ChangeTypeIds } from '@/features/activity_log/changeTypeIds';
+import { toggleUserAssignmentToEinsatz } from './dal-einsatz';
+
+describe('toggleUserAssignmentToEinsatz', () => {
+  beforeEach(() => {
+    let assigned = false;
+
+    mockRequireAuth.mockResolvedValue({
+      session: {
+        user: {
+          id: 'user-1',
+          orgIds: ['org-1'],
+          activeOrganization: { id: 'org-1' },
+        },
+      },
+    });
+    mockHasPermission.mockResolvedValue(true);
+    mockCreateChangeLogAuto.mockResolvedValue(undefined);
+    mockCheckEinsatzRequirementsAfterAssignment.mockResolvedValue(undefined);
+    mockFindManyConflicts.mockResolvedValue([]);
+
+    mockFindUnique.mockImplementation(async (_args?: { select?: object }) => {
+      if (assigned) {
+        return {
+          id: 'einsatz-1',
+          title: 'Testeinsatz',
+          org_id: 'org-1',
+          start: new Date('2026-04-04T08:00:00.000Z'),
+          end: new Date('2026-04-04T10:00:00.000Z'),
+          helpers_needed: 2,
+          einsatz_helper: [{ user_id: 'user-1' }],
+          status_id: 'status-assigned',
+        };
+      }
+
+      return {
+        id: 'einsatz-1',
+        title: 'Testeinsatz',
+        org_id: 'org-1',
+        start: new Date('2026-04-04T08:00:00.000Z'),
+        end: new Date('2026-04-04T10:00:00.000Z'),
+        helpers_needed: 2,
+        einsatz_helper: [],
+        status_id: 'status-open',
+      };
+    });
+
+    mockUpdate.mockImplementation(async () => {
+      assigned = true;
+
+      return {
+        id: 'einsatz-1',
+        title: 'Testeinsatz',
+        org_id: 'org-1',
+        start: new Date('2026-04-04T08:00:00.000Z'),
+        end: new Date('2026-04-04T10:00:00.000Z'),
+        helpers_needed: 2,
+        status_id: 'status-assigned',
+      };
+    });
+
+    mockTransaction.mockImplementation(
+      async (
+        callback: (tx: {
+          einsatz: {
+            findUnique: typeof mockFindUnique;
+            update: typeof mockUpdate;
+          };
+        }) => Promise<unknown>
+      ) =>
+        callback({
+          einsatz: {
+            findUnique: mockFindUnique,
+            update: mockUpdate,
+          },
+        })
+    );
+  });
+
+  it('behandelt doppelte Selbstzuweisung als No-op ohne zweiten Activity-Log-Eintrag oder Fehler', async () => {
+    await expect(
+      toggleUserAssignmentToEinsatz('einsatz-1', 'assign')
+    ).resolves.toMatchObject({
+      id: 'einsatz-1',
+      title: 'Testeinsatz',
+    });
+
+    await expect(
+      toggleUserAssignmentToEinsatz('einsatz-1', 'assign')
+    ).resolves.toMatchObject({
+      id: 'einsatz-1',
+      title: 'Testeinsatz',
+    });
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockCreateChangeLogAuto).toHaveBeenCalledTimes(1);
+    expect(mockCreateChangeLogAuto).toHaveBeenCalledWith({
+      einsatzId: 'einsatz-1',
+      userId: 'user-1',
+      typeId: ChangeTypeIds['N-Eingetragen'],
+      affectedUserId: 'user-1',
+    });
+    expect(mockCheckEinsatzRequirementsAfterAssignment).toHaveBeenCalledTimes(1);
+  });
+});
