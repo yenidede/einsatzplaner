@@ -288,7 +288,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
 
     // If user is removing themselves, no validation needed
     if (isCurrentlyAssigned) {
-      toggleUserAssignToEvent.mutate(eventId);
+      toggleUserAssignToEvent.mutate({ eventId, intent: 'unassign' });
       return;
     }
 
@@ -296,13 +296,12 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       if (!currentEinsatzString || !effectiveDetailedEinsatz) {
         throw new Error(`${einsatz_singular} konnte nicht geladen werden.`);
       }
-      toggleUserAssignToEvent.mutate(currentEinsatzString);
 
       const requiredProperties = effectiveDetailedEinsatz.user_properties || [];
 
       // No requirements? Proceed without validation
       if (requiredProperties.length === 0) {
-        toggleUserAssignToEvent.mutate(eventId);
+        toggleUserAssignToEvent.mutate({ eventId, intent: 'assign' });
         return;
       }
 
@@ -340,7 +339,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         if (confirmed !== 'success') return;
       }
 
-      toggleUserAssignToEvent.mutate(eventId);
+      toggleUserAssignToEvent.mutate({ eventId, intent: 'assign' });
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unbekannter Fehler';

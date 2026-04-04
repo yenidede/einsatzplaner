@@ -149,6 +149,7 @@ import {
   updateEinsatzStatus,
   deleteEinsatzById,
   toggleUserAssignmentToEinsatz,
+  type UserAssignmentIntent,
   deleteEinsaetzeByIds,
   type EinsatzConflict,
 } from '../dal-einsatz';
@@ -538,10 +539,16 @@ export function useToggleUserAssignment(
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (eventId: string) => {
-      return await toggleUserAssignmentToEinsatz(eventId);
+    mutationFn: async ({
+      eventId,
+      intent,
+    }: {
+      eventId: string;
+      intent: UserAssignmentIntent;
+    }) => {
+      return await toggleUserAssignmentToEinsatz(eventId, intent);
     },
-    onMutate: async (eventId) => {
+    onMutate: async ({ eventId }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
       if (!activeOrgId || !userId) return {};
       const previousData: CalendarCacheSnapshot = [];
@@ -574,13 +581,13 @@ export function useToggleUserAssignment(
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`);
     },
-    onSuccess: (data) => {
-      if (!Object.hasOwn(data, 'deleted'))
-        toast.success(
-          `Sie haben sich erfolgreich bei '${data.title}' eingetragen`
-        );
-      else
+    onSuccess: (data, vars) => {
+      if (vars.intent === 'unassign') {
         toast.success(`Sie haben sich erfolgreich von ${data.title} ausgetragen`);
+        return;
+      }
+
+      toast.success(`Sie haben sich erfolgreich bei '${data.title}' eingetragen`);
     },
     onSettled: (data) => {
       invalidateEinsatzQueries(queryClient, data?.id);
