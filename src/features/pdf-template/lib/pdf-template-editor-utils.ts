@@ -93,6 +93,27 @@ export const WORKSPACE_MIN_RESERVED_VIEWPORT_PX = 20;
 export const FOOTER_HIGHLIGHT_PADDING_X_MM = 2.5;
 export const FOOTER_HIGHLIGHT_PADDING_Y_MM = 1.5;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isTemplateSchemaLike(value: unknown): value is TemplateSchema {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const position = value.position;
+  return (
+    typeof value.name === 'string' &&
+    typeof value.type === 'string' &&
+    isRecord(position) &&
+    typeof position.x === 'number' &&
+    typeof position.y === 'number' &&
+    typeof value.width === 'number' &&
+    typeof value.height === 'number'
+  );
+}
+
 export function getDefaultOverlayLayout(
   kind: Exclude<ActiveOverlay, null>
 ): OverlayPanelLayout {
@@ -249,19 +270,27 @@ export function getDraggedFieldKey(
 }
 
 export function getSchemaKey(
-  schema: TemplateSchema,
+  schema: TemplateSchema | null | undefined,
   pageIndex: number,
   schemaIndex: number
 ): string {
+  if (!isTemplateSchemaLike(schema)) {
+    return `${pageIndex}:${schemaIndex}:invalid`;
+  }
+
   return typeof schema.id === 'string'
     ? schema.id
     : `${pageIndex}:${schemaIndex}:${schema.name}`;
 }
 
 export function getElementLabel(
-  schema: TemplateSchema,
+  schema: TemplateSchema | null | undefined,
   schemaIndex: number
 ): string {
+  if (!isTemplateSchemaLike(schema)) {
+    return `Element ${schemaIndex + 1}`;
+  }
+
   const content =
     typeof schema.content === 'string'
       ? schema.content.replace(/[{}]/g, '')
@@ -270,7 +299,13 @@ export function getElementLabel(
   return content || schema.name || `Element ${schemaIndex + 1}`;
 }
 
-export function parseBoundFieldKey(schema: TemplateSchema): string | null {
+export function parseBoundFieldKey(
+  schema: TemplateSchema | null | undefined
+): string | null {
+  if (!isTemplateSchemaLike(schema)) {
+    return null;
+  }
+
   const content = typeof schema.content === 'string' ? schema.content : '';
   const match = content.match(/^\{(.+)\}$/);
   return match ? match[1] : null;
@@ -293,6 +328,10 @@ export function detectFormatHint(boundFieldKey: string | null): string | null {
 }
 
 export function getSchemaAlignment(schema: TemplateSchema): Alignment {
+  if (!isTemplateSchemaLike(schema)) {
+    return 'left';
+  }
+
   const centeredX = (PDF_PAGE_WIDTH_MM - schema.width) / 2;
   const rightX = PDF_PAGE_WIDTH_MM - RIGHT_CANVAS_MARGIN_MM - schema.width;
 
@@ -317,6 +356,10 @@ export function buildSelectedElementState(
 
   for (const [pageIndex, page] of template.schemas.entries()) {
     for (const [schemaIndex, schema] of page.entries()) {
+      if (!isTemplateSchemaLike(schema)) {
+        continue;
+      }
+
       if (getSchemaKey(schema, pageIndex, schemaIndex) !== selectedElementKey) {
         continue;
       }
@@ -364,6 +407,10 @@ export function getSelectedElementPageIndex(
 
   for (const [pageIndex, page] of template.schemas.entries()) {
     for (const [schemaIndex, schema] of page.entries()) {
+      if (!isTemplateSchemaLike(schema)) {
+        continue;
+      }
+
       if (getSchemaKey(schema, pageIndex, schemaIndex) === selectedElementKey) {
         return pageIndex;
       }

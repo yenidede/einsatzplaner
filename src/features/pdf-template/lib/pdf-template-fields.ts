@@ -95,7 +95,9 @@ function createStandardField(
       label,
       key,
       groupLabel(group),
-      source === 'organization' ? 'standard organisation organization' : 'standard einsatz',
+      source === 'organization'
+        ? 'standard organisation organization'
+        : 'standard einsatz',
       extraSearchTerms,
     ]),
   };
@@ -170,20 +172,6 @@ const baseFieldDefinitions: PdfTemplateFieldDefinition[] = [
     'Bankkonten',
     'organization',
     'bank iban bic organisation organization',
-    'organization'
-  ),
-  createStandardField(
-    'organisation_adressen_tabelle',
-    'Adressen-Tabelle',
-    'organization',
-    'address standort tabelle table organisation organization',
-    'organization'
-  ),
-  createStandardField(
-    'organisation_bankkonten_tabelle',
-    'Bankkonten-Tabelle',
-    'organization',
-    'bank iban bic tabelle table organisation organization',
     'organization'
   ),
   createStandardField(

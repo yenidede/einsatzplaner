@@ -104,6 +104,26 @@ interface PendingCanvasInteraction {
   startY: number;
 }
 
+function isTemplateSchemaLike(
+  value: TemplateSchema | null | undefined
+): value is TemplateSchema {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const position = value.position;
+  return (
+    typeof value.name === 'string' &&
+    typeof value.type === 'string' &&
+    typeof value.width === 'number' &&
+    typeof value.height === 'number' &&
+    typeof position === 'object' &&
+    position !== null &&
+    typeof position.x === 'number' &&
+    typeof position.y === 'number'
+  );
+}
+
 export function PdfTemplateEditor({
   organizationId,
   templateId,
@@ -230,11 +250,19 @@ export function PdfTemplateEditor({
 
   const elementOptions = useMemo<ElementOption[]>(() => {
     return template.schemas.flatMap((page, pageIndex) =>
-      page.map((schema, schemaIndex) => ({
-        key: getSchemaKey(schema, pageIndex, schemaIndex),
-        label: getElementLabel(schema, schemaIndex),
-        meta: `Seite ${pageIndex + 1} • ${schema.type}`,
-      }))
+      page.flatMap((schema, schemaIndex) => {
+        if (!isTemplateSchemaLike(schema)) {
+          return [];
+        }
+
+        return [
+          {
+            key: getSchemaKey(schema, pageIndex, schemaIndex),
+            label: getElementLabel(schema, schemaIndex),
+            meta: `Seite ${pageIndex + 1} • ${schema.type}`,
+          },
+        ];
+      })
     );
   }, [template]);
 
@@ -275,18 +303,28 @@ export function PdfTemplateEditor({
 
     const page = template.schemas[currentPageIndex] ?? [];
 
-    return page.map((schema, schemaIndex) => ({
-      key: getSchemaKey(schema, currentPageIndex, schemaIndex),
-      pageIndex: currentPageIndex,
-      label: getElementLabel(schema, schemaIndex),
-      x: overlayLeft + (schema.position.x / PDF_PAGE_WIDTH_MM) * overlayWidth,
-      y: overlayTop + (schema.position.y / PDF_PAGE_HEIGHT_MM) * overlayHeight,
-      width: Math.max((schema.width / PDF_PAGE_WIDTH_MM) * overlayWidth, 24),
-      height: Math.max(
-        (schema.height / PDF_PAGE_HEIGHT_MM) * overlayHeight,
-        20
-      ),
-    }));
+    return page.flatMap((schema, schemaIndex) => {
+      if (!isTemplateSchemaLike(schema)) {
+        return [];
+      }
+
+      return [
+        {
+          key: getSchemaKey(schema, currentPageIndex, schemaIndex),
+          pageIndex: currentPageIndex,
+          label: getElementLabel(schema, schemaIndex),
+          x:
+            overlayLeft + (schema.position.x / PDF_PAGE_WIDTH_MM) * overlayWidth,
+          y:
+            overlayTop + (schema.position.y / PDF_PAGE_HEIGHT_MM) * overlayHeight,
+          width: Math.max((schema.width / PDF_PAGE_WIDTH_MM) * overlayWidth, 24),
+          height: Math.max(
+            (schema.height / PDF_PAGE_HEIGHT_MM) * overlayHeight,
+            20
+          ),
+        },
+      ];
+    });
   }, [currentPageIndex, gridOverlayStyle, template.schemas]);
 
   const isDirty = useMemo(() => {
@@ -596,6 +634,10 @@ export function PdfTemplateEditor({
       ...templateRef.current,
       schemas: templateRef.current.schemas.map((page, pageIndex) =>
         page.map((schema, schemaIndex) => {
+          if (!isTemplateSchemaLike(schema)) {
+            return schema;
+          }
+
           if (
             getSchemaKey(schema, pageIndex, schemaIndex) !== selectedElementKey
           ) {

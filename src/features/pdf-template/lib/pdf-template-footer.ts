@@ -17,13 +17,20 @@ export const PDF_PAGE_WIDTH_MM = 210;
 export const PDF_PAGE_HEIGHT_MM = 297;
 export const PDF_PAGE_PADDING_MM = 20;
 export const FOOTER_BOTTOM_SAFE_AREA_MM = 1;
+export const FOOTER_ZONE_ORDER = ['left', 'center', 'right'] as const;
+export type PdfFooterZone = (typeof FOOTER_ZONE_ORDER)[number];
+export const FOOTER_CONTENT_MAX_WIDTH_MM =
+  PDF_PAGE_WIDTH_MM - PDF_PAGE_PADDING_MM * 2;
+export const FOOTER_ZONE_MAX_LINES = 2;
+export const FOOTER_BOTTOM_PADDING_MM = 8;
 
-const FOOTER_MAX_WIDTH_MM = PDF_PAGE_WIDTH_MM - PDF_PAGE_PADDING_MM * 2;
 const FOOTER_MIN_TOP_MM = PDF_PAGE_PADDING_MM;
-const FOOTER_COLUMN_GAP_MM = 8;
+const FOOTER_COLUMN_GAP_MM = 6;
 const FOOTER_ROW_GAP_MM = 2.4;
 const FOOTER_DIVIDER_GAP_MM = 3;
-const FOOTER_DIVIDER_HEIGHT_MM = 3;
+const FOOTER_DIVIDER_HEIGHT_MM = 2;
+const FOOTER_CONTAINER_PADDING_TOP_MM = 1.8;
+const FOOTER_CONTAINER_PADDING_BOTTOM_MM = 1.8;
 const FOOTER_MIN_TEXT_HEIGHT_MM = 3.6;
 const FOOTER_TEXT_CHARS_PER_LINE_FACTOR = 5;
 const FOOTER_TEXT_HEIGHT_FACTOR = 0.34;
@@ -31,6 +38,7 @@ const FOOTER_TEXT_HEIGHT_PADDING_MM = 0.8;
 
 interface FooterContentLayout {
   id: string;
+  zone: PdfFooterZone;
   text: string;
   x: number;
   y: number;
@@ -45,6 +53,10 @@ interface FooterLayout {
   pageIndex: number;
   topY: number;
   bottomY: number;
+  contentTopY: number;
+  contentBottomY: number;
+  containerX: number;
+  containerWidth: number;
   items: FooterContentLayout[];
   showDivider: boolean;
 }
@@ -66,7 +78,11 @@ function generateId(prefix: string): string {
 }
 
 function normalizeAlignment(value: unknown): PdfTemplateFooterAlignment {
-  return value === 'center' ? 'center' : 'left';
+  if (value === 'center' || value === 'right') {
+    return value;
+  }
+
+  return 'left';
 }
 
 function normalizeLayout(value: unknown): PdfTemplateFooterLayout {
@@ -82,7 +98,15 @@ function normalizeLayout(value: unknown): PdfTemplateFooterLayout {
 }
 
 function normalizeSeparator(value: unknown): PdfTemplateFooterSeparator {
-  if (value === 'dot' || value === 'dash' || value === 'slash' || value === 'pipe') {
+  if (
+    value === 'dot' ||
+    value === 'dash' ||
+    value === 'slash' ||
+    value === 'pipe' ||
+    value === 'comma' ||
+    value === 'none' ||
+    value === 'line_break'
+  ) {
     return value;
   }
 
@@ -90,13 +114,23 @@ function normalizeSeparator(value: unknown): PdfTemplateFooterSeparator {
 }
 
 function normalizeColumn(value: unknown): PdfTemplateFooterColumn {
-  return value === 'right' ? 'right' : 'left';
+  if (value === 'center' || value === 'right') {
+    return value;
+  }
+
+  return 'left';
 }
 
 function separatorToGlyph(separator: PdfTemplateFooterSeparator): string {
   switch (separator) {
     case 'dot':
-      return '•';
+      return '\u00b7';
+    case 'comma':
+      return ',';
+    case 'none':
+      return '';
+    case 'line_break':
+      return '\n';
     case 'dash':
       return '-';
     case 'slash':
@@ -105,6 +139,18 @@ function separatorToGlyph(separator: PdfTemplateFooterSeparator): string {
     default:
       return '|';
   }
+}
+
+function separatorToJoinValue(separator: PdfTemplateFooterSeparator): string {
+  if (separator === 'line_break') {
+    return '\n';
+  }
+
+  if (separator === 'none') {
+    return '';
+  }
+
+  return ` ${separatorToGlyph(separator)} `;
 }
 
 function normalizeSegment(value: unknown): PdfTemplateFooterSegment | null {
@@ -149,9 +195,13 @@ function createFooterRow(
 
 function createDefaultRows(): PdfTemplateFooterRow[] {
   return [
-    createFooterRow(['{organisation_name}', '{organisation_adressen}']),
-    createFooterRow(['{organisation_email}', '{organisation_website}', '{organisation_telefon}']),
-    createFooterRow(['{organisation_bankkonten}']),
+    createFooterRow(['{organisation_name}', '{organisation_adressen}'], 'left', 'line_break'),
+    createFooterRow(['{organisation_website}'], 'center'),
+    createFooterRow(
+      ['{organisation_email}', '{organisation_telefon}'],
+      'right',
+      'dot'
+    ),
   ];
 }
 
@@ -214,14 +264,7 @@ function parseLineToSegments(line: string): string[] {
     return [];
   }
 
-  if (normalized.includes('•')) {
-    return normalized
-      .split('•')
-      .map((part) => part.trim())
-      .filter(Boolean);
-  }
-
-  const separators = ['|', '•', '-', '/'];
+  const separators = ['|', '\u00b7', '\u2022', ',', '-', '/'];
   for (const separator of separators) {
     if (normalized.includes(separator)) {
       return normalized
@@ -273,12 +316,12 @@ function rowsToLegacyContent(rows: PdfTemplateFooterRow[]): {
   secondaryContent: string | null;
 } {
   const leftLines = rows
-    .filter((row) => row.column === 'left')
+    .filter((row) => row.column === 'left' || row.column === 'center')
     .map((row) =>
       row.segments
         .map((segment) => segment.text.trim())
         .filter(Boolean)
-        .join(` ${separatorToGlyph(row.separator)} `)
+        .join(separatorToJoinValue(row.separator))
     )
     .filter(Boolean);
   const rightLines = rows
@@ -287,7 +330,7 @@ function rowsToLegacyContent(rows: PdfTemplateFooterRow[]): {
       row.segments
         .map((segment) => segment.text.trim())
         .filter(Boolean)
-        .join(` ${separatorToGlyph(row.separator)} `)
+        .join(separatorToJoinValue(row.separator))
     )
     .filter(Boolean);
 
@@ -387,11 +430,10 @@ function repeatFooterOnPage(
 }
 
 function rowToText(row: PdfTemplateFooterRow, input?: PdfTemplateInput): string {
-  const separator = ` ${separatorToGlyph(row.separator)} `;
   return row.segments
     .map((segment) => resolveFooterText(segment.text, input).trim())
     .filter(Boolean)
-    .join(separator);
+    .join(separatorToJoinValue(row.separator));
 }
 
 function buildContactLineRowId(rows: PdfTemplateFooterRow[]): string {
@@ -404,16 +446,72 @@ function buildContactLineRowId(rows: PdfTemplateFooterRow[]): string {
   return rows[0]?.id ? `${rows[0].id}-contact-line` : 'contact-line';
 }
 
-function stackRows(
-  rows: PdfTemplateFooterRow[],
-  x: number,
-  width: number,
-  fontSize: number,
-  lineHeight: number,
-  alignment: PdfTemplateFooterAlignment,
-  input?: PdfTemplateInput
-): { items: Omit<FooterContentLayout, 'y'>[]; height: number } {
-  const items = rows
+function normalizeRowsForDocumentFooter(
+  footer: PdfTemplateFooterConfig
+): PdfTemplateFooterRow[] {
+  const rows =
+    footer.rows.length > 0 ? footer.rows : createDefaultRows();
+
+  if (footer.layout === 'contact_line') {
+    const targetColumn: PdfTemplateFooterColumn =
+      footer.alignment === 'center'
+        ? 'center'
+        : footer.alignment === 'right'
+          ? 'right'
+          : 'left';
+
+    return [
+      {
+        id: buildContactLineRowId(rows),
+        separator: rows[0]?.separator ?? 'pipe',
+        column: targetColumn,
+        segments: rows.flatMap((row) => row.segments),
+      },
+    ];
+  }
+
+  if (
+    footer.layout === 'single_column' &&
+    rows.every((row) => row.column === 'left')
+  ) {
+    const targetColumn: PdfTemplateFooterColumn =
+      footer.alignment === 'center'
+        ? 'center'
+        : footer.alignment === 'right'
+          ? 'right'
+          : 'left';
+
+    return rows.map((row) => ({ ...row, column: targetColumn }));
+  }
+
+  return rows;
+}
+
+function getZoneAlignment(zone: PdfFooterZone): PdfTemplateFooterAlignment {
+  if (zone === 'center') {
+    return 'center';
+  }
+
+  if (zone === 'right') {
+    return 'right';
+  }
+
+  return 'left';
+}
+
+function buildZoneItems(args: {
+  rows: PdfTemplateFooterRow[];
+  zone: PdfFooterZone;
+  x: number;
+  width: number;
+  fontSize: number;
+  lineHeight: number;
+  input?: PdfTemplateInput;
+}): { items: Omit<FooterContentLayout, 'y'>[]; height: number } {
+  const { rows, zone, x, width, fontSize, lineHeight, input } = args;
+  const limitedRows = rows.slice(0, FOOTER_ZONE_MAX_LINES);
+  const alignment = getZoneAlignment(zone);
+  const items = limitedRows
     .map((row) => {
       const text = rowToText(row, input);
       if (!text) {
@@ -423,6 +521,7 @@ function stackRows(
       const height = estimateTextHeight(text, width, fontSize, lineHeight);
       return {
         id: row.id,
+        zone,
         text,
         x,
         width,
@@ -442,7 +541,9 @@ function stackRows(
 }
 
 function getFooterBottomLimitMm(): number {
-  return PDF_PAGE_HEIGHT_MM - FOOTER_BOTTOM_SAFE_AREA_MM;
+  return (
+    PDF_PAGE_HEIGHT_MM - FOOTER_BOTTOM_SAFE_AREA_MM - FOOTER_BOTTOM_PADDING_MM
+  );
 }
 
 function getFooterTopY(contentHeight: number, topSpacing: number): number {
@@ -463,7 +564,7 @@ export function createDefaultFooterConfig(pageIndex = 0): PdfTemplateFooterConfi
     repeatMode: 'disabled',
     layout: 'single_column',
     topSpacing: 2,
-    showDivider: false,
+    showDivider: true,
     alignment: 'left',
     fontSize: 8,
     lineHeight: 1.15,
@@ -500,7 +601,7 @@ export function normalizeFooterConfig(value: unknown): PdfTemplateFooterConfig |
       typeof value.topSpacing === 'number'
         ? clampNumber(value.topSpacing, 0, 24)
         : 2,
-    showDivider: value.showDivider === true,
+    showDivider: value.showDivider !== false,
     alignment: normalizeAlignment(value.alignment),
     fontSize:
       typeof value.fontSize === 'number' ? clampNumber(value.fontSize, 6, 12) : 8,
@@ -519,103 +620,77 @@ export function buildFooterLayout(
   footer: PdfTemplateFooterConfig,
   input?: PdfTemplateInput
 ): FooterLayout {
-  const fontSize =
-    footer.layout === 'contact_line'
-      ? clampNumber(footer.fontSize - 0.5, 6, 12)
-      : footer.fontSize;
-  const lineHeight =
-    footer.layout === 'contact_line'
-      ? clampNumber(footer.lineHeight, 1, 1.25)
-      : footer.lineHeight;
-  const baseX =
-    footer.alignment === 'center'
-      ? (PDF_PAGE_WIDTH_MM - FOOTER_MAX_WIDTH_MM) / 2
-      : PDF_PAGE_PADDING_MM;
+  const rows = normalizeRowsForDocumentFooter(footer);
+  const fontSize = clampNumber(footer.fontSize, 6, 10);
+  const lineHeight = clampNumber(footer.lineHeight, 1, 1.35);
+  const containerX = PDF_PAGE_PADDING_MM;
+  const hasCenterRows = rows.some((row) => row.column === 'center');
+  const hasRightRows = rows.some((row) => row.column === 'right');
+  const useSingleColumn = !hasCenterRows && !hasRightRows;
 
-  if (footer.layout === 'two_column') {
-    const leftRows = footer.rows.filter((row) => row.column === 'left');
-    const rightRows = footer.rows.filter((row) => row.column === 'right');
-    const columnWidth = (FOOTER_MAX_WIDTH_MM - FOOTER_COLUMN_GAP_MM) / 2;
+  const zones = useSingleColumn
+    ? [
+        buildZoneItems({
+          rows: rows.filter((row) => row.column === 'left'),
+          zone: 'left',
+          x: containerX,
+          width: FOOTER_CONTENT_MAX_WIDTH_MM,
+          fontSize,
+          lineHeight,
+          input,
+        }),
+      ]
+    : (() => {
+        const zoneWidth =
+          (FOOTER_CONTENT_MAX_WIDTH_MM - FOOTER_COLUMN_GAP_MM * 2) / 3;
 
-    const left = stackRows(
-      leftRows,
-      baseX,
-      columnWidth,
-      fontSize,
-      lineHeight,
-      'left',
-      input
-    );
-    const right = stackRows(
-      rightRows,
-      baseX + columnWidth + FOOTER_COLUMN_GAP_MM,
-      columnWidth,
-      fontSize,
-      lineHeight,
-      'left',
-      input
-    );
+        return FOOTER_ZONE_ORDER.map((zone, index) =>
+          buildZoneItems({
+            rows: rows.filter((row) => row.column === zone),
+            zone,
+            x: containerX + index * (zoneWidth + FOOTER_COLUMN_GAP_MM),
+            width: zoneWidth,
+            fontSize,
+            lineHeight,
+            input,
+          })
+        );
+      })();
 
-    const contentHeight = Math.max(left.height, right.height, 5);
-    const topY = getFooterTopY(contentHeight, footer.topSpacing);
-
-    const toPositionedItems = (
-      columnItems: Omit<FooterContentLayout, 'y'>[]
-    ): FooterContentLayout[] => {
-      let cursor = topY;
-      return columnItems.map((item) => {
-        const positioned = { ...item, y: cursor };
-        cursor += item.height + FOOTER_ROW_GAP_MM;
-        return positioned;
-      });
-    };
-
-    return {
-      pageIndex: footer.pageIndex,
-      topY,
-      bottomY: getFooterBottomLimitMm(),
-      items: [...toPositionedItems(left.items), ...toPositionedItems(right.items)],
-      showDivider: footer.showDivider,
-    };
-  }
-
-  const rowsForSingleColumn =
-    footer.layout === 'contact_line'
-      ? [
-          {
-            id: buildContactLineRowId(footer.rows),
-            separator: 'pipe' as const,
-            column: 'left' as const,
-            segments: footer.rows.flatMap((row) => row.segments),
-          },
-        ]
-      : footer.rows.filter((row) => row.column === 'left' || row.column === 'right');
-
-  const stacked = stackRows(
-    rowsForSingleColumn,
-    baseX,
-    FOOTER_MAX_WIDTH_MM,
-    fontSize,
-    lineHeight,
-    footer.alignment,
-    input
+  const contentHeight = Math.max(
+    FOOTER_MIN_TEXT_HEIGHT_MM,
+    ...zones.map((zone) => zone.height)
   );
-  const contentHeight = Math.max(stacked.height, 5);
-  const topY = getFooterTopY(contentHeight, footer.topSpacing);
+  const containerHeight =
+    FOOTER_CONTAINER_PADDING_TOP_MM +
+    contentHeight +
+    FOOTER_CONTAINER_PADDING_BOTTOM_MM;
+  const topY = getFooterTopY(containerHeight, footer.topSpacing);
+  const contentTopY = topY + FOOTER_CONTAINER_PADDING_TOP_MM;
+  const contentBottomY = contentTopY + contentHeight;
 
-  let cursor = topY;
-  const items = stacked.items.map((item) => {
-    const positioned = { ...item, y: cursor };
-    cursor += item.height + FOOTER_ROW_GAP_MM;
-    return positioned;
+  const items = zones.flatMap((zone) => {
+    let cursor = contentTopY;
+    return zone.items.map((item) => {
+      const positioned: FooterContentLayout = {
+        ...item,
+        y: cursor,
+      };
+      cursor += item.height + FOOTER_ROW_GAP_MM;
+      return positioned;
+    });
   });
 
   return {
     pageIndex: footer.pageIndex,
     topY,
-    bottomY: getFooterBottomLimitMm(),
+    bottomY: topY + containerHeight,
+    contentTopY,
+    contentBottomY,
+    containerX,
+    containerWidth: FOOTER_CONTENT_MAX_WIDTH_MM,
     items,
-    showDivider: footer.showDivider,
+    showDivider: true,
   };
 }
 
@@ -667,14 +742,14 @@ function buildFooterSchemasForPage(
           name: `${FOOTER_SCHEMA_PREFIX}-divider-${pageIndex}`,
           type: 'text' as const,
           position: {
-            x: PDF_PAGE_PADDING_MM,
+            x: layout.containerX,
             y: layout.topY - (FOOTER_DIVIDER_HEIGHT_MM + FOOTER_DIVIDER_GAP_MM),
           },
-          width: FOOTER_MAX_WIDTH_MM,
+          width: layout.containerWidth,
           height: FOOTER_DIVIDER_HEIGHT_MM,
           fontSize: 6,
           fontColor: '#94a3b8',
-          content: buildDividerText(FOOTER_MAX_WIDTH_MM),
+          content: buildDividerText(layout.containerWidth),
           readOnly: true,
         },
       ]
@@ -692,7 +767,8 @@ function buildFooterSchemasForPage(
     height: item.height,
     fontSize: item.fontSize,
     lineHeight: item.lineHeight,
-    fontColor: '#475569',
+    alignment: item.alignment,
+    fontColor: '#64748b',
     content: item.text,
     readOnly: true,
   }));

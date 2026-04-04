@@ -39,9 +39,13 @@ export function applyImageBindingsToTemplate(args: {
   return {
     ...args.template,
     schemas: args.template.schemas.map((page) =>
-      page.map((schema) => {
+      page.flatMap((schema) => {
+        if (!isRecord(schema) || typeof schema.name !== 'string') {
+          return [];
+        }
+
         if (!isImageSchema(schema)) {
-          return schema;
+          return [schema];
         }
 
         const mappedValue = input[schema.name];
@@ -55,10 +59,12 @@ export function applyImageBindingsToTemplate(args: {
           ? rawContent
           : SAFE_PNG_PLACEHOLDER;
 
-        return {
-          ...schema,
-          content,
-        };
+        return [
+          {
+            ...schema,
+            content,
+          },
+        ];
       })
     ),
   };

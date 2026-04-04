@@ -1,10 +1,10 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth.config';
+﻿import { getServerSession } from 'next-auth';
 import { notFound } from 'next/navigation';
-import { PdfTemplateEditor } from '@/features/pdf-template/components/editor/PdfTemplateEditor';
+import EditorLayout from '@/features/pdf-template/components/editor/EditorLayout';
 import { createDefaultPdfmeTemplate } from '@/features/pdf-template/lib/pdf-template-defaults';
 import { getPdfTemplateFieldDefinitions } from '@/features/pdf-template/lib/pdf-template-fields';
 import { getPdfPreviewAssignments } from '@/features/pdf-template/server/pdf-template.actions';
+import { authOptions } from '@/lib/auth.config';
 
 interface NewTemplatePageProps {
   params: Promise<{ orgId: string }>;
@@ -26,10 +26,10 @@ export default async function NewTemplatePage({
   ]);
 
   return (
-    <div className="-mb-8 flex h-[calc(100dvh-6rem)] min-h-0 w-full max-w-none overflow-hidden overscroll-none px-3 sm:px-4 lg:px-6 xl:px-8">
-      <PdfTemplateEditor
+    <div className="-mb-8 flex h-[calc(100dvh-6rem)] min-h-0 w-full max-w-none overflow-hidden overscroll-none px-2 sm:px-3 lg:px-4">
+      <EditorLayout
         organizationId={orgId}
-        initialName="Neue Buchungsbestätigung"
+        initialName="Neue BuchungsbestÃ¤tigung"
         initialTemplate={createDefaultPdfmeTemplate()}
         initialFooterConfig={null}
         initialSampleEinsatzId={null}
@@ -39,3 +39,4 @@ export default async function NewTemplatePage({
     </div>
   );
 }
+

@@ -15,13 +15,20 @@ export type PdfTemplateFooterContentType =
   | 'static_text'
   | 'mixed_text';
 
-export type PdfTemplateFooterAlignment = 'left' | 'center';
+export type PdfTemplateFooterAlignment = 'left' | 'center' | 'right';
 export type PdfTemplateFooterLayout =
   | 'single_column'
   | 'two_column'
   | 'contact_line';
-export type PdfTemplateFooterSeparator = 'pipe' | 'dot' | 'dash' | 'slash';
-export type PdfTemplateFooterColumn = 'left' | 'right';
+export type PdfTemplateFooterSeparator =
+  | 'pipe'
+  | 'dot'
+  | 'comma'
+  | 'none'
+  | 'line_break'
+  | 'dash'
+  | 'slash';
+export type PdfTemplateFooterColumn = 'left' | 'center' | 'right';
 
 export type PdfTemplateFooterRepeatMode =
   | 'disabled'

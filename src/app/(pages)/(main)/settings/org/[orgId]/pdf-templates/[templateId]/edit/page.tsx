@@ -1,12 +1,12 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth.config';
+﻿import { getServerSession } from 'next-auth';
 import { notFound } from 'next/navigation';
-import { PdfTemplateEditor } from '@/features/pdf-template/components/editor/PdfTemplateEditor';
+import EditorLayout from '@/features/pdf-template/components/editor/EditorLayout';
 import { getPdfTemplateFieldDefinitions } from '@/features/pdf-template/lib/pdf-template-fields';
 import {
   getPdfPreviewAssignments,
   getPdfTemplateById,
 } from '@/features/pdf-template/server/pdf-template.actions';
+import { authOptions } from '@/lib/auth.config';
 
 interface EditPageProps {
   params: Promise<{ orgId: string; templateId: string }>;
@@ -32,8 +32,8 @@ export default async function EditTemplatePage({ params }: EditPageProps) {
   ]);
 
   return (
-    <div className="-mb-8 flex h-[calc(100dvh-6rem)] min-h-0 w-full max-w-none overflow-hidden overscroll-none px-3 sm:px-4 lg:px-6 xl:px-8">
-      <PdfTemplateEditor
+    <div className="-mb-8 flex h-[calc(100dvh-6rem)] min-h-0 w-full max-w-none overflow-hidden overscroll-none px-2 sm:px-3 lg:px-4">
+      <EditorLayout
         organizationId={orgId}
         templateId={template.id}
         initialName={template.name}
@@ -46,3 +46,4 @@ export default async function EditTemplatePage({ params }: EditPageProps) {
     </div>
   );
 }
+
