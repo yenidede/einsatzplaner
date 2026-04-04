@@ -351,6 +351,9 @@ export const authOptions: NextAuthOptions = {
               select: { id: true, name: true, logo_url: true },
             })
           : null;
+        const resolvedActiveOrganization = userData?.active_org
+          ? activeOrgData ?? null
+          : null;
 
         const newToken: JWT = {
           ...token,
@@ -363,11 +366,7 @@ export const authOptions: NextAuthOptions = {
           description: session.user.description ?? token.description,
           hasLogoinCalendar:
             session.user.hasLogoinCalendar ?? token.hasLogoinCalendar,
-          activeOrganization:
-            activeOrgData ??
-            session.user.activeOrganization ??
-            token.activeOrganization ??
-            null,
+          activeOrganization: resolvedActiveOrganization,
         };
         return newToken;
       }
