@@ -7,7 +7,9 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import type { OrganizationForPDF } from '@/features/organization/types';
 import { hasPermission } from '@/lib/auth/authGuard';
-import { BadRequestError } from '@/lib/errors';
+import { BadRequestError, ForbiddenError } from '@/lib/errors';
+import { getAllRoles } from '../roles/roles-dal';
+import { redirect } from 'next/dist/server/api-utils';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -29,21 +31,9 @@ async function checkUserSession() {
   return session;
 }
 export async function getAllRolesExceptSuperAdmin() {
-  const roles = await prisma.role.findMany({
-    select: {
-      id: true,
-      name: true,
-      abbreviation: true,
-    },
-    orderBy: {
-      name: 'asc',
-    },
-    where: {
-      name: { not: 'Superadmin' },
-    },
-  });
+  const roles = await getAllRoles();
 
-  return roles;
+  return roles.filter((role) => role.name !== 'Superadmin');
 }
 export async function getOrganizationById(orgId: string) {
   const org = await prisma.organization.findUnique({
@@ -129,7 +119,55 @@ export async function getUserOrganizationsAction() {
     created_at: org.created_at.toISOString(),
   }));
 }
-export async function getUserOrganizationByIdAction(orgId: string) {
+
+export async function getUserManagedOrganizationsAction() {
+  const session = await checkUserSession();
+
+  const userOrgRoles = await prisma.user_organization_role.findMany({
+    where: {
+      user_id: session.user.id,
+      role: {
+        OR: [
+          {
+            name: { contains: 'Organisationsverwaltung', mode: 'insensitive' },
+          },
+          { name: { contains: 'Superadmin', mode: 'insensitive' } },
+          { abbreviation: 'OV' },
+          { name: 'OV' },
+        ],
+      },
+    },
+    include: {
+      organization: {
+        select: {
+          id: true,
+          name: true,
+          logo_url: true,
+        },
+      },
+    },
+  });
+
+  // Get unique organizations
+  const orgMap = new Map<
+    string,
+    { id: string; name: string; logo_url: string | null }
+  >();
+  userOrgRoles.forEach((uor) => {
+    if (!orgMap.has(uor.organization.id)) {
+      orgMap.set(uor.organization.id, {
+        id: uor.organization.id,
+        name: uor.organization.name,
+        logo_url: uor.organization.logo_url,
+      });
+    }
+  });
+
+  return Array.from(orgMap.values());
+}
+export async function getUserOrganizationByIdAction(orgId: string | undefined) {
+  if (!orgId) throw new Error('Organization ID is required');
+
   const session = await checkUserSession();
 
   const membership = await prisma.user_organization_role.findFirst({
@@ -140,12 +178,28 @@ export async function getUserOrganizationByIdAction(orgId: string) {
   });
 
   if (!membership) {
-    throw new Error('Forbidden - No access to this organization');
+    throw new ForbiddenError('You are not a member of this organization');
   }
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      logo_url: true,
+      small_logo_url: true,
+      email: true,
+      phone: true,
+      helper_name_singular: true,
+      helper_name_plural: true,
+      einsatz_name_singular: true,
+      einsatz_name_plural: true,
+      created_at: true,
+      max_participants_per_helper: true,
+      allow_self_sign_out: true,
+      default_starttime: true,
+      default_endtime: true,
       user_organization_role: {
         include: {
           user: {
@@ -176,6 +230,7 @@ export async function getUserOrganizationByIdAction(orgId: string) {
     name: org.name,
     description: org.description ?? '',
     logo_url: org.logo_url ?? '',
+    small_logo_url: org.small_logo_url ?? '',
     email: org.email ?? '',
     phone: org.phone ?? '',
     helper_name_singular: org.helper_name_singular ?? 'Helfer:in',
@@ -191,7 +246,26 @@ export async function getUserOrganizationByIdAction(orgId: string) {
       },
       role: uor.role,
     })),
+    allow_self_sign_out: org.allow_self_sign_out,
+    default_starttime: formatTimeToHHMM(org.default_starttime),
+    default_endtime: formatTimeToHHMM(org.default_endtime),
   };
+}
+
+function formatTimeToHHMM(date: Date | null | undefined): string {
+  if (!date || !(date instanceof Date) || Number.isNaN(date.getTime()))
+    return '09:00';
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function parseHHMMToDate(value: string): Date {
+  const match = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return new Date(1970, 0, 1, 9, 0, 0);
+  const hours = Math.min(23, Math.max(0, parseInt(match[1], 10)));
+  const minutes = Math.min(59, Math.max(0, parseInt(match[2], 10)));
+  return new Date(1970, 0, 1, hours, minutes, 0);
 }
 
 export type OrganizationUpdateData = {
@@ -206,6 +280,11 @@ export type OrganizationUpdateData = {
   einsatz_name_singular?: string;
   einsatz_name_plural?: string;
   logo_url?: string;
+  allow_self_sign_out?: boolean;
+  /** Time as "HH:mm" (e.g. "09:00") */
+  default_starttime?: string;
+  /** Time as "HH:mm" (e.g. "17:00") */
+  default_endtime?: string;
 };
 
 export async function updateOrganizationAction(data: OrganizationUpdateData) {
@@ -250,10 +329,22 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     }
     dataToUpdate.max_participants_per_helper = value;
   }
+  if (data.allow_self_sign_out !== undefined)
+    dataToUpdate.allow_self_sign_out = data.allow_self_sign_out;
+
+  const prismaData = {
+    ...dataToUpdate,
+    ...(data.default_starttime !== undefined && {
+      default_starttime: parseHHMMToDate(data.default_starttime),
+    }),
+    ...(data.default_endtime !== undefined && {
+      default_endtime: parseHHMMToDate(data.default_endtime),
+    }),
+  };
 
   const updated = await prisma.organization.update({
     where: { id: data.id },
-    data: dataToUpdate,
+    data: prismaData,
     select: {
       id: true,
       name: true,
@@ -266,11 +357,12 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
       helper_name_plural: true,
       einsatz_name_singular: true,
       einsatz_name_plural: true,
+      allow_self_sign_out: true,
     },
   });
 
   revalidatePath(`/organization/${data.id}`);
-  revalidatePath(`/organization/${data.id}/manage`);
+  revalidatePath(`/settings/org/${data.id}`);
 
   return {
     id: updated.id,
@@ -414,7 +506,7 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       }
     }
 
-    revalidatePath(`/organization/${orgId}/manage`);
+    revalidatePath(`/settings/org/${orgId}`);
 
     return { url: publicUrl };
   } catch (error) {
@@ -464,8 +556,154 @@ export async function removeOrganizationLogoAction(orgId: string) {
     where: { id: orgId },
     data: { logo_url: null },
   });
-  revalidatePath(`/organization/${orgId}/manage`);
+  revalidatePath(`/settings/org/${orgId}`);
   return { message: 'Logo erfolgreich entfernt' };
+}
+
+export async function uploadOrganizationSmallLogoAction(formData: FormData) {
+  try {
+    const session = await checkUserSession();
+
+    const orgId = formData.get('orgId') as string;
+    const file = formData.get('smallLogo') as File;
+
+    if (!file || !orgId) throw new Error('Missing file or orgId');
+
+    const userOrgRole = await prisma.user_organization_role.findFirst({
+      where: {
+        org_id: orgId,
+        user_id: session.user.id,
+      },
+      include: { role: true },
+    });
+
+    if (!userOrgRole) throw new Error('Forbidden');
+
+    if (!(await hasPermission(session, 'organization:update')))
+      throw new Error('Insufficient permissions');
+
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File must be an image');
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('File size must be less than 5MB');
+    }
+
+    const oldOrg = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { small_logo_url: true },
+    });
+
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const timestamp = Date.now();
+    const fileName = `${orgId}-small.${fileExt}`;
+    const filePath = `organizations/${orgId}/${fileName}`;
+
+    const buffer = await file.arrayBuffer();
+
+    const { error: uploadError } = await supabaseServer.storage
+      .from('logos')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError);
+      throw new Error(`Failed to upload image: ${uploadError.message}`);
+    }
+
+    const { data: urlData } = supabaseServer.storage
+      .from('logos')
+      .getPublicUrl(filePath);
+
+    const publicUrl = `${urlData.publicUrl}?t=${timestamp}`;
+
+    await prisma.organization.update({
+      where: { id: orgId },
+      data: { small_logo_url: publicUrl },
+    });
+
+    if (oldOrg?.small_logo_url && oldOrg.small_logo_url.includes('supabase')) {
+      try {
+        const urlParts = oldOrg.small_logo_url.split('/logos/');
+        if (urlParts[1]) {
+          const oldPathWithParams = urlParts[1];
+          const oldPath = oldPathWithParams.split('?')[0];
+
+          if (
+            oldPath !== filePath &&
+            oldPath.startsWith(`organizations/${orgId}/`)
+          ) {
+            const { error: deleteError } = await supabaseServer.storage
+              .from('logos')
+              .remove([oldPath]);
+
+            if (deleteError) {
+              console.warn('Failed to delete old small logo:', deleteError);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error while deleting old small logo:', error);
+      }
+    }
+
+    revalidatePath(`/settings/org/${orgId}`);
+
+    return { url: publicUrl };
+  } catch (error) {
+    console.error('uploadOrganizationSmallLogoAction error:', error);
+    throw error;
+  }
+}
+
+export async function removeOrganizationSmallLogoAction(orgId: string) {
+  const session = await checkUserSession();
+
+  const userOrgRole = await prisma.user_organization_role.findFirst({
+    where: {
+      org_id: orgId,
+      user_id: session.user.id,
+    },
+    include: { role: true },
+  });
+  if (!userOrgRole) throw new Error('Forbidden');
+
+  if (!(await hasPermission(session, 'organization:update')))
+    throw new Error('Insufficient permissions');
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { small_logo_url: true },
+  });
+  if (!org) throw new Error('Organization not found');
+
+  if (org.small_logo_url && org.small_logo_url.includes('supabase')) {
+    try {
+      const urlParts = org.small_logo_url.split('/logos/');
+      if (urlParts[1]) {
+        const pathWithParams = urlParts[1];
+        const path = pathWithParams.split('?')[0];
+        const { error: deleteError } = await supabaseServer.storage
+          .from('logos')
+          .remove([path]);
+        if (deleteError) {
+          console.warn('Failed to delete small logo from storage:', deleteError);
+        }
+      }
+    } catch (error) {
+      console.warn('Error while deleting small logo from storage:', error);
+    }
+  }
+
+  await prisma.organization.update({
+    where: { id: orgId },
+    data: { small_logo_url: null },
+  });
+  revalidatePath(`/settings/org/${orgId}`);
+  return { message: 'Kleines Logo erfolgreich entfernt' };
 }
 
 export async function getOrganizationWithRelations(orgId: string) {
@@ -521,11 +759,11 @@ export async function getOrganizationForPDF(
 
     details: details
       ? {
-          website: details.website,
-          vat: details.vat,
-          zvr: details.zvr,
-          authority: details.authority,
-        }
+        website: details.website,
+        vat: details.vat,
+        zvr: details.zvr,
+        authority: details.authority,
+      }
       : null,
   };
 }
@@ -565,7 +803,7 @@ export async function createOrganizationAddressAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, address };
   } catch (error) {
     console.error('Error creating address:', error);
@@ -594,7 +832,7 @@ export async function updateOrganizationAddressAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, address };
   } catch (error) {
     console.error('Error updating address:', error);
@@ -611,7 +849,7 @@ export async function deleteOrganizationAddressAction(
       where: { id },
     });
 
-    revalidatePath(`/organization/${orgId}/manage`);
+    revalidatePath(`/settings/org/${orgId}`);
     return { success: true };
   } catch (error) {
     console.error('Error deleting address:', error);
@@ -650,7 +888,7 @@ export async function createOrganizationBankAccountAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, account };
   } catch (error) {
     console.error('Error creating bank account:', error);
@@ -675,7 +913,7 @@ export async function updateOrganizationBankAccountAction(data: {
       },
     });
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, account };
   } catch (error) {
     console.error('Error updating bank account:', error);
@@ -692,7 +930,7 @@ export async function deleteOrganizationBankAccountAction(
       where: { id },
     });
 
-    revalidatePath(`/organization/${orgId}/manage`);
+    revalidatePath(`/settings/org/${orgId}`);
     return { success: true };
   } catch (error) {
     console.error('Error deleting bank account:', error);
@@ -750,7 +988,7 @@ export async function saveOrganizationDetailsAction(data: {
       });
     }
 
-    revalidatePath(`/organization/${data.orgId}/manage`);
+    revalidatePath(`/settings/org/${data.orgId}`);
     return { success: true, details };
   } catch (error) {
     console.error('Error saving organization details:', error);

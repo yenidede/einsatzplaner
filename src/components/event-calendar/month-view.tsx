@@ -34,6 +34,7 @@ import {
   DefaultStartHour,
   MaxEventsPerCellInMonthView,
 } from '@/components/event-calendar/constants';
+import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
 import { CalendarMode } from './types';
 
 interface MonthViewProps {
@@ -42,6 +43,8 @@ interface MonthViewProps {
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
   mode: CalendarMode;
+  onEventConfirm?: (eventId: string) => void;
+  pastIndicatorTooltip: string;
 }
 
 export function MonthView({
@@ -50,7 +53,11 @@ export function MonthView({
   onEventSelect,
   onEventCreate,
   mode,
+  onEventConfirm,
+  pastIndicatorTooltip,
 }: MonthViewProps) {
+  const todayStart = useTodayStart();
+
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
@@ -95,7 +102,12 @@ export function MonthView({
 
   return (
     <div data-slot="month-view" className="contents">
-      <div className="border-border/70 grid grid-cols-7 border-b">
+      <div
+        className="bg-card border-border/70 sticky z-30 grid grid-cols-7 border-b"
+        style={{
+          top: 'calc(var(--calendar-sticky-top, 0px) + var(--calendar-toolbar-height, 0px))',
+        }}
+      >
         {weekdays.map((day) => (
           <div
             key={day}
@@ -113,7 +125,6 @@ export function MonthView({
           >
             {week.map((day) => {
               if (!day) return null; // Skip if day is undefined
-              if (!events || events.length === 0) return null;
 
               // Get events for this day, normalizing multi-day events to separate instances
               const allDayEventsForDay: CalendarEvent[] = [];
@@ -160,6 +171,7 @@ export function MonthView({
               });
 
               const isCurrentMonth = isSameMonth(day, currentDate);
+              const isPastDay = day < todayStart;
               const cellId = `month-cell-${day.toISOString()}`;
               const allEvents = getAllEventsForDay(events, day);
 
@@ -186,7 +198,9 @@ export function MonthView({
                     }}
                   >
                     <div className="group-data-today:bg-primary group-data-today:text-primary-foreground mt-1 inline-flex size-6 items-center justify-center rounded-full text-sm">
-                      {format(day, 'd')}
+                      <span className={isPastDay ? 'line-through' : undefined}>
+                        {format(day, 'd')}
+                      </span>
                     </div>
                     <div>
                       {sortEvents(allDayEventsForDay).map((event, index) => {
@@ -216,6 +230,8 @@ export function MonthView({
                                 isFirstDay={isFirstDay}
                                 isLastDay={isLastDay}
                                 mode={mode}
+                                onConfirm={onEventConfirm}
+                                pastIndicatorTooltip={pastIndicatorTooltip}
                               />
                             </div>
                           );
@@ -234,6 +250,8 @@ export function MonthView({
                               isFirstDay={isFirstDay}
                               isLastDay={isLastDay}
                               mode={mode}
+                              onConfirm={onEventConfirm}
+                              pastIndicatorTooltip={pastIndicatorTooltip}
                             />
                           </div>
                         );
@@ -283,6 +301,10 @@ export function MonthView({
                                       isFirstDay={isFirstDay}
                                       isLastDay={isLastDay}
                                       mode={mode}
+                                      onConfirm={onEventConfirm}
+                                      pastIndicatorTooltip={
+                                        pastIndicatorTooltip
+                                      }
                                     />
                                   );
                                 })}

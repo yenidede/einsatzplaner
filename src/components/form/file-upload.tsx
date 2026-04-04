@@ -1,7 +1,14 @@
 'use client';
 
-import { useRef } from 'react';
-import { AlertCircleIcon, XIcon, CloudUpload, File } from 'lucide-react';
+import { useRef, useState } from 'react';
+import {
+  AlertCircleIcon,
+  XIcon,
+  CloudUpload,
+  File as FileIcon,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import {
   FileMetadata,
   formatBytes,
@@ -9,25 +16,90 @@ import {
   type FileWithPreview,
 } from '@/hooks/use-file-upload';
 import { Button } from '@/components/ui/button';
-import { optimizeImage } from '@/lib/utils';
+import { cn, optimizeImage } from '@/lib/utils';
 import { toast } from 'sonner';
 
-const getFileIcon = (file: { file: File | { type: string; name: string } }) => {
-  const fileType = file.file.type;
-  if (fileType.startsWith('image/')) {
-    // return preview
+export enum PreviewAspectRatio {
+  SQUARE = 'square', // 1:1
+  LANDSCAPE = 'landscape', // 16:9
+  PORTRAIT = 'portrait', // 9:16
+  WIDE = 'wide', // 4:3
+  TALL = 'tall', // 3:4
+}
+
+const getAspectRatioClass = (aspectRatio?: PreviewAspectRatio): string => {
+  switch (aspectRatio) {
+    case PreviewAspectRatio.SQUARE:
+      return 'aspect-square';
+    case PreviewAspectRatio.LANDSCAPE:
+      return 'aspect-video'; // 16:9
+    case PreviewAspectRatio.PORTRAIT:
+      return 'aspect-[9/16]';
+    case PreviewAspectRatio.WIDE:
+      return 'aspect-[4/3]';
+    case PreviewAspectRatio.TALL:
+      return 'aspect-[3/4]';
+    default:
+      return 'aspect-square'; // Default to square
+  }
+};
+
+function isFileMetadataType(value: unknown): value is FileMetadata {
+  return (
+    typeof File !== 'undefined' &&
+    !(value instanceof File) &&
+    typeof value === 'object' &&
+    value !== null &&
+    'url' in value &&
+    'id' in value
+  );
+}
+
+const getFileIcon = (
+  file: FileWithPreview,
+  aspectRatio?: PreviewAspectRatio
+) => {
+  const aspectClass = getAspectRatioClass(aspectRatio);
+  // Use preview if available (works for both File and FileMetadata)
+  if (file.preview) {
+    const fileType =
+      file.file instanceof File ? file.file.type : file.file.type;
+    if (fileType.startsWith('image/')) {
+      return (
+        <div className={cn('h-10 overflow-hidden rounded-md', aspectClass)}>
+          <img
+            src={file.preview}
+            className="h-full w-full object-cover"
+            alt={file.file instanceof File ? file.file.name : file.file.name}
+          />
+        </div>
+      );
+    }
+  } else if (file.file instanceof File) {
     return (
-      <div className="aspect-square size-10 overflow-hidden rounded-md">
-        <img
-          src={URL.createObjectURL(file.file as Blob)}
-          className="h-full w-full object-cover"
-        />
+      <div className="flex aspect-square size-10 items-center justify-center overflow-hidden rounded-full">
+        <FileIcon className="size-5 opacity-60" />
       </div>
     );
+  } else if (isFileMetadataType(file.file)) {
+    // FileMetadata - use url directly
+    const metadata = file.file;
+    const fileType = metadata.type;
+    if (fileType.startsWith('image/')) {
+      return (
+        <div className={cn('h-10 overflow-hidden rounded-md', aspectClass)}>
+          <img
+            src={metadata.url}
+            className="h-full w-full object-cover"
+            alt={metadata.name}
+          />
+        </div>
+      );
+    }
   }
   return (
     <div className="flex aspect-square size-10 items-center justify-center overflow-hidden rounded-full">
-      <File className="size-5 opacity-60" />
+      <FileIcon className="size-5 opacity-60" />
     </div>
   );
 };
@@ -40,14 +112,20 @@ export function FileUpload({
   required,
   setValue,
   accept,
+  onlyAllowImages = true,
   name,
   disabled,
   id,
   onUpload,
   onFileRemove,
+  initialFiles,
+  previewAspectRatio,
+  variant = 'default',
+  uploadLabel,
+  removeLabel,
 }: {
   maxFiles: number;
-  maxSize: number;
+  maxSize?: number; // Optional - no size restriction, will compress instead
   placeholder?: string;
   // description?: string;
   required?: boolean;
@@ -62,10 +140,19 @@ export function FileUpload({
     }
   ) => void;
   accept?: string;
+  onlyAllowImages?: boolean;
   name: string;
   id: string;
   onUpload: (optimizedFile: File) => Promise<string>;
-  onFileRemove?: (userId: string) => void;
+  onFileRemove?: (id: string) => void | Promise<void>;
+  initialFiles?: FileMetadata[];
+  previewAspectRatio?: PreviewAspectRatio;
+  /** Visual/layout variant. */
+  variant?: 'default' | 'buttons';
+  /** Optional button label for upload in `buttons` variant. */
+  uploadLabel?: string;
+  /** Optional button label for remove in `buttons` variant. */
+  removeLabel?: string;
 }) {
   const [
     { files, isDragging, errors },
@@ -75,30 +162,219 @@ export function FileUpload({
       handleDragOver,
       handleDrop,
       openFileDialog,
-      removeFile,
-      clearFiles,
+      confirmRemoveFile,
+      removeFileSilently,
+      setFilesSilently,
+      confirmClearFiles,
+      clearFilesSilently,
+      clearErrors,
       getInputProps,
     },
   ] = useFileUpload({
     multiple: maxFiles > 1,
     maxFiles,
-    maxSize,
+    maxSize: maxSize ?? Infinity, // No size restriction - will compress instead
     accept,
-    onFilesChange: (files) => {
-      queueMicrotask(() => {
-        optimizeFilesAndUpload(files, maxSize).then((optimizedFiles) => {
-          setValue(name, optimizedFiles, {
-            shouldValidate: true,
-            shouldDirty: true,
-            shouldTouch: true,
-          });
+    initialFiles,
+    onFilesAdded: (newFiles) => {
+      if (newFiles.length > 0) {
+        const previousFiles = maxFiles > 1 ? [] : files;
+
+        // Clear any previous errors before processing
+        clearErrors();
+        queueMicrotask(() => {
+          optimizeFilesAndUpload(newFiles)
+            .then(async (optimizedFiles) => {
+              setValue(name, optimizedFiles, {
+                shouldValidate: true,
+                shouldDirty: true,
+                shouldTouch: true,
+              });
+
+              if (previousFiles.length === 0) return;
+
+              const previousFileIds = previousFiles.map((file) => file.id);
+
+              try {
+                clearOptimizedFileEntries(previousFileIds);
+                revokePreviewUrls(previousFiles);
+              } catch (cleanupError) {
+                console.error(
+                  'Error cleaning up previous files:',
+                  cleanupError
+                );
+              }
+            })
+            .catch((error) => {
+              console.error('Error optimizing/uploading files:', error);
+              // Clear any errors and remove failed files from state
+              clearErrors();
+              setOptimizedFiles((prev) => {
+                const newMap = new Map(prev);
+                newFiles.forEach((file) => {
+                  newMap.delete(file.id);
+                });
+                return newMap;
+              });
+
+              if (previousFiles.length > 0) {
+                setFilesSilently(previousFiles);
+                return;
+              }
+
+              newFiles.forEach((file) => {
+                removeFileSilently(file.id);
+              });
+            });
         });
-      });
+      }
     },
   });
 
   const lastUploadKeyRef = useRef<string | null>(null);
   const lastUploadValueRef = useRef<string | null>(null);
+  // Store optimized files to show optimized size in UI (using state to trigger re-render)
+  const [optimizedFiles, setOptimizedFiles] = useState<Map<string, File>>(
+    new Map()
+  );
+
+  const resolvedUploadLabel =
+    uploadLabel ??
+    (accept?.startsWith('image/') ? 'Bild hochladen' : 'Datei hochladen');
+  const resolvedRemoveLabel = removeLabel ?? 'Entfernen';
+
+  const getPersistedFileIds = (fileList: FileWithPreview[]) =>
+    fileList.flatMap((file) => (file.file instanceof File ? [] : [file.id]));
+
+  const clearOptimizedFileEntries = (fileIds: string[]) => {
+    if (fileIds.length === 0) return;
+
+    setOptimizedFiles((prev) => {
+      const newMap = new Map(prev);
+      fileIds.forEach((fileId) => {
+        newMap.delete(fileId);
+      });
+      return newMap;
+    });
+  };
+
+  const removePersistedFiles = async (fileIds: string[]) => {
+    if (!onFileRemove || fileIds.length === 0) return;
+
+    for (const fileId of fileIds) {
+      await onFileRemove(fileId);
+    }
+  };
+
+  const revokePreviewUrls = (fileList: FileWithPreview[]) => {
+    fileList.forEach((file) => {
+      if (file.preview && file.file instanceof File) {
+        URL.revokeObjectURL(file.preview);
+      }
+    });
+  };
+
+  const finalizeFileRemoval = (fileIdsToClear: string[]) => {
+    clearOptimizedFileEntries(fileIdsToClear);
+
+    if (fileIdsToClear.length === files.length) {
+      clearFilesSilently();
+      return;
+    }
+
+    fileIdsToClear.forEach((fileId) => {
+      removeFileSilently(fileId);
+    });
+  };
+
+  const confirmAndRemoveFiles = async (
+    fileIdsToClear: string[],
+    persistedFileIds: string[],
+    confirmation: Promise<'success' | 'cancel'>
+  ) => {
+    const result = await confirmation;
+    if (result !== 'success') return;
+
+    try {
+      await removePersistedFiles(persistedFileIds);
+    } catch (error) {
+      console.error('Error removing persisted files:', error);
+      toast.error('Datei konnte nicht entfernt werden.');
+      return;
+    }
+
+    finalizeFileRemoval(fileIdsToClear);
+  };
+
+  if (variant === 'buttons') {
+    const firstFile = files[0];
+    const canRemove = files.length > 0;
+
+    return (
+      <div className="flex flex-col gap-2 pb-2">
+        <input
+          {...getInputProps()}
+          className="sr-only"
+          aria-label="Upload files"
+          required={required}
+          disabled={disabled}
+        />
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={openFileDialog}
+            disabled={disabled}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {resolvedUploadLabel}
+          </Button>
+
+          {canRemove && (
+            <Button
+              type="button"
+              variant="outline"
+              className="text-destructive hover:bg-destructive/10"
+              disabled={disabled}
+              onClick={async () => {
+                if (!firstFile) return;
+
+                const fileIdsToClear =
+                  maxFiles > 1 ? files.map((file) => file.id) : [firstFile.id];
+                const persistedFileIds =
+                  maxFiles > 1
+                    ? getPersistedFileIds(files)
+                    : firstFile.file instanceof File
+                      ? []
+                      : [firstFile.id];
+                await confirmAndRemoveFiles(
+                  fileIdsToClear,
+                  persistedFileIds,
+                  maxFiles > 1
+                    ? confirmClearFiles()
+                    : confirmRemoveFile(firstFile.id)
+                );
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {resolvedRemoveLabel}
+            </Button>
+          )}
+        </div>
+
+        {errors.length > 0 && (
+          <div
+            className="text-destructive flex items-center gap-1 text-xs"
+            role="alert"
+          >
+            <AlertCircleIcon className="size-3 shrink-0" />
+            <span>{errors[0]}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2 pb-2">
@@ -162,13 +438,22 @@ export function FileUpload({
               className="flex items-center justify-between gap-2 rounded-lg border p-2 pe-3"
             >
               <div className="flex items-center gap-1.5 overflow-hidden">
-                {getFileIcon(file)}
+                {getFileIcon(file, previewAspectRatio)}
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="max-w-[200px] truncate text-[11px] font-medium">
                     {file.file.name}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {formatBytes(file.file.size)}
+                    {(() => {
+                      // Show optimized size if available, otherwise show original size
+                      const optimizedFile = optimizedFiles.get(file.id);
+                      const sizeToShow = optimizedFile
+                        ? optimizedFile.size
+                        : file.file.size;
+                      return sizeToShow > 0
+                        ? formatBytes(sizeToShow)
+                        : 'Lokal geladen';
+                    })()}
                   </p>
                 </div>
               </div>
@@ -177,9 +462,12 @@ export function FileUpload({
                 size="icon"
                 variant="ghost"
                 className="text-muted-foreground/80 hover:text-foreground -me-2 size-8 hover:bg-transparent"
-                onClick={() => {
-                  removeFile(file.id);
-                  onFileRemove?.(file.id);
+                onClick={async () => {
+                  await confirmAndRemoveFiles(
+                    [file.id],
+                    file.file instanceof File ? [] : [file.id],
+                    confirmRemoveFile(file.id)
+                  );
                 }}
                 aria-label="Remove file"
               >
@@ -191,7 +479,19 @@ export function FileUpload({
           {/* Remove all files button */}
           {files.length > 1 && (
             <div className="flex justify-end">
-              <Button size="sm" variant="outline" onClick={clearFiles}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const fileIdsToClear = files.map((file) => file.id);
+                  const persistedFileIds = getPersistedFileIds(files);
+                  await confirmAndRemoveFiles(
+                    fileIdsToClear,
+                    persistedFileIds,
+                    confirmClearFiles()
+                  );
+                }}
+              >
                 Alle Dateien entfernen
               </Button>
             </div>
@@ -201,81 +501,101 @@ export function FileUpload({
     </div>
   );
 
-  function isFileMetadata(value: unknown): value is FileMetadata {
-    return (
-      typeof File !== 'undefined' && Object.hasOwn(value as object, 'path')
-    );
-  }
-
   function getFileUniqueKey(file: File | FileMetadata) {
-    if (isFileMetadata(file)) {
+    if (isFileMetadataType(file)) {
       return `metadata:${file.url}`;
     }
     return `file:${file.name}-${file.size}-${file.lastModified ?? 0}`;
   }
 
   async function optimizeFilesAndUpload(
-    files: FileWithPreview[],
-    maxSize: number
+    files: FileWithPreview[]
   ): Promise<string[]> {
     return Promise.all(
-      files.map((file) => optimizeAndUploadIfImage(file.file, maxSize))
+      files.map((file) =>
+        optimizeAndUploadIfImage(file.file, file.id, maxSize).then((path) => {
+          return path;
+        })
+      )
     );
   }
 
   async function optimizeAndUploadIfImage(
     file: File | FileMetadata,
-    maxSize: number
+    fileId: string,
+    maxSizeBytes?: number
   ): Promise<string> {
     const fileKey = getFileUniqueKey(file);
-    if (isFileMetadata(file)) {
+    if (isFileMetadataType(file)) {
+      const metadata = file;
       lastUploadKeyRef.current = fileKey;
-      lastUploadValueRef.current = file.url;
-      return file.url;
+      lastUploadValueRef.current = metadata.url;
+      return metadata.url;
     }
 
     if (fileKey === lastUploadKeyRef.current && lastUploadValueRef.current) {
       return lastUploadValueRef.current;
     }
 
-    if (!file.type.startsWith('image/')) {
-      throw new Error('Only image files are supported for upload.');
+    if (onlyAllowImages && !file.type.startsWith('image/')) {
+      throw new Error('Nur Bildformate sind erlaubt.');
     }
 
-    const targetSizeMB = Math.max(
-      0.25,
-      Math.min(2, maxSize / 1024 / 1024, file.size / 1024 / 1024)
-    );
-
     try {
-      console.log(
-        'before optimize:',
-        file.size / 1024 / 1024,
-        'targetSizeMB:',
-        targetSizeMB
-      );
-      const optimized = await optimizeImage(file);
-      const fileToUpload = optimized.size < file.size ? optimized : file;
+      const isSvg = file.type === 'image/svg+xml' || file.name.endsWith('.svg');
 
-      if (fileToUpload.size / 1024 / 1024 <= targetSizeMB) {
-        const uploadedPath = await onUpload(fileToUpload);
+      // Skip compression for SVG files (they're already vector graphics)
+      if (isSvg) {
+        // Validate SVG size if maxSize is provided
+        if (maxSizeBytes !== undefined && file.size > maxSizeBytes) {
+          throw new Error(
+            `Datei "${file.name}" überschreitet nach der Komprimierung die maximale Größe von ${formatBytes(maxSizeBytes)}.`
+          );
+        }
+        // Store original file for display (no optimization for SVG)
+        setOptimizedFiles((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(fileId, file);
+          return newMap;
+        });
+        const uploadedPath = await onUpload(file);
         lastUploadKeyRef.current = fileKey;
         lastUploadValueRef.current = uploadedPath;
         return uploadedPath;
-      } else {
-        toast.info(
-          `Die Datei ist noch immer zu groß. Bitte erneut versuchen. ${
-            fileToUpload.size / 1024 / 1024
-          } MB, Ziel: ${targetSizeMB} MB`
-        );
+      }
+
+      // Always compress images before upload (except SVG)
+      const optimized = await optimizeImage(file);
+
+      // Use the optimized version if it's smaller, otherwise use original
+      const fileToUpload = optimized.size < file.size ? optimized : file;
+
+      // Validate compressed file size if maxSize is provided
+      if (maxSizeBytes !== undefined && fileToUpload.size > maxSizeBytes) {
         throw new Error(
-          'Optimized image not smaller than original or exceeds target size'
+          `Datei "${file.name}" überschreitet nach der Komprimierung die maximale Größe von ${formatBytes(maxSizeBytes)}.`
         );
       }
-    } catch (error: unknown) {
-      toast.error(`Image optimization failed ${error}`, {
-        id: 'file-upload-optimize-error',
+
+      // Store optimized file for display
+      setOptimizedFiles((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(fileId, fileToUpload);
+        return newMap;
       });
+
+      const uploadedPath = await onUpload(fileToUpload);
+      lastUploadKeyRef.current = fileKey;
+      lastUploadValueRef.current = uploadedPath;
+      return uploadedPath;
+    } catch (error: unknown) {
+      console.error('Image optimization failed:', error);
+      toast.error(
+        `Bildkomprimierung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        {
+          id: 'file-upload-optimize-error',
+        }
+      );
       throw error;
     }
   }

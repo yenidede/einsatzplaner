@@ -12,20 +12,26 @@ datasource db {
 
 model change_log {
   id                                  String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  einsatz_id                          String      @db.Uuid
-  user_id                             String      @db.Uuid
+  einsatz_id                          String?     @db.Uuid
+  user_id                             String?     @db.Uuid
   type_id                             String      @db.Uuid
   created_at                          DateTime    @default(now())
   affected_user                       String?     @db.Uuid
   user_change_log_affected_userTouser user?       @relation("change_log_affected_userTouser", fields: [affected_user], references: [id])
-  einsatz                             einsatz     @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
+  einsatz                             einsatz?    @relation(fields: [einsatz_id], references: [id])
   change_type                         change_type @relation(fields: [type_id], references: [id], onDelete: NoAction)
-  user                                user        @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  user                                user?       @relation(fields: [user_id], references: [id])
+
+  @@index([einsatz_id, created_at])
+  @@index([user_id, created_at])
+  @@index([affected_user, created_at])
+  @@index([created_at])
+  @@index([einsatz_id, type_id])
 }
 
 model change_type {
   id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String
+  name            String       @unique
   message         String
   change_icon_url String
   change_color    String
@@ -48,25 +54,34 @@ model einsatz {
   end                   DateTime                @db.Timestamp(6)
   helpers_needed        Int                     @default(1) @db.SmallInt
   status_id             String                  @default(dbgenerated("'bb169357-920b-4b49-9e3d-1cf489409370'::uuid")) @db.Uuid
+  anmerkung             String?
   change_log            change_log[]
-  user                  user?                   @relation(fields: [created_by], references: [id])
+  user                  user?                   @relation(fields: [created_by], references: [id], onDelete: Cascade)
   organization          organization            @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  einsatz_status        einsatz_status          @relation(fields: [status_id], references: [id], onDelete: NoAction)
-  einsatz_template      einsatz_template?       @relation(fields: [template_id], references: [id])
+  einsatz_status        einsatz_status          @relation(fields: [status_id], references: [id], onDelete: Cascade)
+  einsatz_template      einsatz_template?       @relation(fields: [template_id], references: [id], onDelete: Cascade)
   einsatz_comment       einsatz_comment[]
   einsatz_field         einsatz_field[]
   einsatz_helper        einsatz_helper[]
   einsatz_to_category   einsatz_to_category[]
   einsatz_user_property einsatz_user_property[]
+
+  @@index([org_id, start])
+  @@index([org_id, status_id])
+  @@index([created_by])
+  @@index([template_id])
 }
 
 model einsatz_category {
-  value               String
-  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  abbreviation        String                @default("")
-  org_id              String                @db.Uuid
-  organization        organization          @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  einsatz_to_category einsatz_to_category[]
+  value                String
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  abbreviation         String                 @default("")
+  org_id               String                 @db.Uuid
+  organization         organization           @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  einsatz_to_category  einsatz_to_category[]
+  template_to_category template_to_category[]
+
+  @@index([org_id, value])
 }
 
 model einsatz_comment {
@@ -84,30 +99,49 @@ model einsatz_helper {
   user_id    String   @db.Uuid
   joined_at  DateTime @default(now())
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id     String   @db.Uuid
   einsatz    einsatz  @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([einsatz_id])
+  @@index([user_id])
+  @@index([org_id], map: "idx_einsatz_helper_org_id")
+  @@index([org_id, einsatz_id], map: "idx_einsatz_helper_org_id_einsatz_id")
 }
 
 model einsatz_template {
-  id                            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  org_id                        String?          @db.Uuid
-  name                          String?
-  created_by                    String?          @db.Uuid
-  created_at                    DateTime         @default(now())
+  id                            String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id                        String                   @db.Uuid
+  name                          String
+  created_by                    String?                  @db.Uuid
+  created_at                    DateTime                 @default(now())
   description                   String?
-  icon_id                       String           @default(dbgenerated("'17effde3-bacb-4cd9-9303-c0467a6e437b'::uuid")) @db.Uuid
-  participant_count_default     Int?             @db.SmallInt
-  participant_count_placeholder Int              @default(20) @db.SmallInt
-  price_person_default          Float?           @db.Real
-  price_person_placeholder      Float            @db.Real
-  helpers_needed_default        Int?             @db.SmallInt
-  helpers_needed_placeholder    Int              @default(1) @db.SmallInt
+  icon_id                       String                   @default(dbgenerated("'17effde3-bacb-4cd9-9303-c0467a6e437b'::uuid")) @db.Uuid
+  participant_count_default     Int?                     @db.SmallInt
+  participant_count_placeholder Int?                     @default(20) @db.SmallInt
+  price_person_default          Float?                   @db.Real
+  price_person_placeholder      Float?                   @db.Real
+  helpers_needed_default        Int?                     @db.SmallInt
+  helpers_needed_placeholder    Int?                     @default(1) @db.SmallInt
   all_day_default               Boolean?
+  is_paused                     Boolean                  @default(false)
+  anmerkung_default             String?
+  anmerkung_placeholder         String?
+  total_price_default           Float?                   @db.Real
+  total_price_placeholder       Float?                   @db.Real
+  time_start_default            DateTime?                @db.Time(6)
+  time_end_default              DateTime?                @db.Time(6)
+  einsatzname_default           String?
+  einsatzname_placeholder       String?
   einsatz                       einsatz[]
-  user                          user?            @relation(fields: [created_by], references: [id], onDelete: Cascade)
-  template_icon                 template_icon    @relation(fields: [icon_id], references: [id], onDelete: NoAction)
-  organization                  organization?    @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  user                          user?                    @relation(fields: [created_by], references: [id], onDelete: Cascade)
+  template_icon                 template_icon            @relation(fields: [icon_id], references: [id], onDelete: Cascade)
+  organization                  organization             @relation(fields: [org_id], references: [id], onDelete: Cascade)
   template_field                template_field[]
+  template_to_category          template_to_category[]
+  template_user_property        template_user_property[]
+
+  @@index([org_id, is_paused, name])
 }
 
 model organization {
@@ -127,6 +161,12 @@ model organization {
   verwalteransicht_description String?
   abbreviation                 String?
   max_participants_per_helper  Int?                        @default(25) @db.SmallInt
+  allow_self_sign_out          Boolean                     @default(false) @map("allow_self-sign-out")
+  default_starttime            DateTime                    @default(dbgenerated("'09:00:00'::time without time zone")) @map("default-starttime") @db.Time(6)
+  default_endtime              DateTime                    @default(dbgenerated("'10:00:00'::time without time zone")) @map("default-endtime") @db.Time(6)
+  small_logo_url               String?                     @map("small-logo_url")
+  analytics_chart              analytics_chart[]
+  analytics_chart1             analytics_chart1[]
   calendar_subscription        calendar_subscription[]
   einsatz                      einsatz[]
   einsatz_category             einsatz_category[]
@@ -135,6 +175,7 @@ model organization {
   organization_address         organization_address[]
   organization_bank_account    organization_bank_account[]
   organization_details         organization_details[]
+  pdfTemplate                  pdfTemplate[]
   user                         user[]
   user_organization_role       user_organization_role[]
   user_property                user_property[]
@@ -146,7 +187,7 @@ model type {
   description String?
   icon_url    String?
   sort_order  Int?    @db.SmallInt
-  datatype    String?
+  datatype    String  @unique
   field       field[]
 }
 
@@ -168,6 +209,8 @@ model user {
   resetTokenExpires                         DateTime?                @db.Timestamp(6)
   salutationId                              String?                  @db.Uuid
   active_org                                String?                  @map("active-org") @db.Uuid
+  analytics_chart                           analytics_chart[]
+  analytics_chart1                          analytics_chart1[]
   calendar_subscription                     calendar_subscription[]
   change_log_change_log_affected_userTouser change_log[]             @relation("change_log_affected_userTouser")
   change_log                                change_log[]
@@ -176,8 +219,8 @@ model user {
   einsatz_helper                            einsatz_helper[]
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
-  organization                              organization?            @relation(fields: [active_org], references: [id])
-  salutation                                salutation?              @relation(fields: [salutationId], references: [id], onDelete: Cascade)
+  organization                              organization?            @relation(fields: [active_org], references: [id], onDelete: Cascade)
+  salutation                                salutation?              @relation(fields: [salutationId], references: [id], onDelete: Restrict)
   user_organization_role                    user_organization_role[]
   user_property_value                       user_property_value[]
   user_session                              user_session[]
@@ -193,16 +236,24 @@ model user_organization_role {
   organization           organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
   role                   role         @relation(fields: [role_id], references: [id], onDelete: NoAction)
   user                   user         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, role_id])
+  @@index([org_id, user_id])
+  @@index([user_id, org_id])
 }
 
 model user_property {
-  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  field_id              String                  @db.Uuid
-  org_id                String                  @db.Uuid
-  einsatz_user_property einsatz_user_property[]
-  field                 field                   @relation(fields: [field_id], references: [id], onDelete: Cascade)
-  organization          organization            @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  user_property_value   user_property_value[]
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  field_id               String                   @db.Uuid
+  org_id                 String                   @db.Uuid
+  einsatz_user_property  einsatz_user_property[]
+  template_user_property template_user_property[]
+  field                  field                    @relation(fields: [field_id], references: [id], onDelete: Cascade)
+  organization           organization             @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  user_property_value    user_property_value[]
+
+  @@index([org_id, field_id])
+  @@index([org_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -219,7 +270,11 @@ model invitation {
   new_user_id  String       @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user         user         @relation(fields: [invited_by], references: [id], onDelete: Cascade)
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
-  role         role         @relation(fields: [role_id], references: [id], onDelete: NoAction)
+  role         role         @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, accepted])
+  @@index([email, org_id, accepted, expires_at])
+  @@index([token])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -230,6 +285,8 @@ model einsatz_field {
   id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz    einsatz @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   field      field   @relation(fields: [field_id], references: [id], onDelete: Cascade)
+
+  @@index([einsatz_id, field_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -245,6 +302,7 @@ model field {
   min            Int?             @db.SmallInt
   max            Int?             @db.SmallInt
   allowed_values String[]
+  description    String?
   einsatz_field  einsatz_field[]
   type           type?            @relation(fields: [type_id], references: [id], onDelete: Cascade, map: "custom_field_type_id_fkey")
   template_field template_field[]
@@ -259,6 +317,9 @@ model template_field {
   field_id         String           @db.Uuid
   field            field            @relation(fields: [field_id], references: [id], onDelete: Cascade)
   einsatz_template einsatz_template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@index([field_id, template_id])
+  @@index([template_id, field_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -268,6 +329,8 @@ model einsatz_to_category {
   id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   einsatz_category einsatz_category @relation(fields: [category_id], references: [id], onDelete: Cascade)
   einsatz          einsatz          @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
+
+  @@index([einsatz_id, category_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -304,6 +367,10 @@ model user_property_value {
   value            String
   user             user          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   user_property    user_property @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
+
+  @@index([user_property_id])
+  @@index([user_id])
+  @@index([user_id, user_property_id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -318,6 +385,8 @@ model calendar_subscription {
   last_accessed DateTime?    @db.Timestamptz(6)
   organization  organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
   user          user         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, user_id, is_active])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -329,6 +398,8 @@ model user_session {
   created_at    DateTime  @default(now()) @db.Timestamptz(6)
   updated_at    DateTime? @db.Timestamp(6)
   user          user?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, expires_at])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -349,6 +420,8 @@ model organization_address {
   city         String
   country      String
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, created_at])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -360,6 +433,8 @@ model organization_bank_account {
   iban         String
   bic          String
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, created_at])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -372,6 +447,9 @@ model organization_details {
   zvr          String?
   authority    String?
   organization organization @relation(fields: [org_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id, created_at])
+  @@index([org_id])
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -384,4 +462,84 @@ model einsatz_user_property {
   min_matching_users Int?          @db.SmallInt
   einsatz            einsatz       @relation(fields: [einsatz_id], references: [id], onDelete: Cascade)
   user_property      user_property @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
+
+  @@index([einsatz_id, user_property_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model template_to_category {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  template_id      String           @db.Uuid
+  category_id      String           @db.Uuid
+  einsatz_category einsatz_category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  einsatz_template einsatz_template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@index([template_id, category_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model template_user_property {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  template_id        String           @db.Uuid
+  user_property_id   String           @db.Uuid
+  is_required        Boolean          @default(false)
+  min_matching_users Int?             @db.SmallInt
+  einsatz_template   einsatz_template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user_property      user_property    @relation(fields: [user_property_id], references: [id], onDelete: Cascade)
+
+  @@index([template_id, user_property_id])
+}
+
+model pdfTemplate {
+  id             String       @id(map: "PdfTemplate_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @db.Uuid
+  name           String
+  documentType   String       @default("BOOKING_CONFIRMATION")
+  contentJson    Json
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "PdfTemplate_organizationId_fkey")
+
+  @@index([organizationId, documentType], map: "PdfTemplate_organizationId_documentType_idx")
+  @@index([organizationId, isActive], map: "PdfTemplate_organizationId_isActive_idx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model analytics_chart {
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id             String       @db.Uuid
+  created_by         String?      @db.Uuid
+  title              String
+  description        String?
+  chart_type         String
+  dataset            String
+  dimension_kind     String
+  dimension_key      String
+  metric_aggregation String
+  metric_key         String
+  layout_order       Int          @default(0)
+  is_demo            Boolean      @default(false)
+  system_key         String?
+  filters_json       Json         @default("{}")
+  display_json       Json         @default("{}")
+  created_at         DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime     @default(now()) @db.Timestamptz(6)
+  user               user?        @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  organization       organization @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([org_id])
+  @@index([org_id, layout_order])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model analytics_chart1 {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  org_id       String       @db.Uuid
+  created_by   String       @db.Uuid
+  title        String
+  description  String?
+  user         user         @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  organization organization @relation(fields: [org_id], references: [id], onDelete: NoAction)
 }

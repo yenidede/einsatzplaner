@@ -1,133 +1,100 @@
 'use client';
 
-import { Button } from '@/components/SimpleFormComponents';
+import { Link2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { FieldType } from '../types';
+import {
+  FIELD_TYPE_DEFINITIONS,
+  DEFAULT_SELECTABLE_FIELD_TYPES,
+  type FieldTypeKey,
+} from '../field-type-definitions';
 
 interface FieldTypeSelectorProps {
   onSelectType: (type: FieldType) => void;
   onBack: () => void;
+  onSelectExistingField?: () => void;
+  /** Which field types to show. Defaults to text, number, boolean, select (same as legacy). */
+  enabledFieldTypes?: readonly FieldTypeKey[];
 }
 
 export function FieldTypeSelector({
   onSelectType,
   onBack,
+  onSelectExistingField,
+  enabledFieldTypes = DEFAULT_SELECTABLE_FIELD_TYPES,
 }: FieldTypeSelectorProps) {
+  const typesToShow = FIELD_TYPE_DEFINITIONS.filter((def) =>
+    enabledFieldTypes.includes(def.key)
+  );
+
   return (
     <div className="flex flex-col items-start justify-start gap-2 self-stretch">
-      <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
+      {onSelectExistingField && (
+        <>
+          <div className="inline-flex items-center justify-start gap-2.5 self-stretch pt-2">
+            <button
+              type="button"
+              onClick={onSelectExistingField}
+              className="group flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left transition-colors hover:border-slate-300 hover:bg-slate-100"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-700 text-white shadow-xs ring-1 ring-slate-200">
+                  <Link2 className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-slate-900">
+                    Empfehlung: Bestehendes Feld verknüpfen
+                  </div>
+                  <div className="text-muted-foreground text-sm">
+                    Vorhandenes Feld wiederverwenden statt neues anzulegen
+                  </div>
+                </div>
+              </div>
+              <span className="text-sm font-medium text-slate-600 transition-colors group-hover:text-slate-900">
+                Öffnen
+              </span>
+            </button>
+          </div>
+        </>
+      )}
+      <div className="mt-2 inline-flex items-center justify-start gap-2.5 self-stretch pt-2">
         <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
-          Feldtyp auswählen
+          Neues Feld erstellen
         </div>
       </div>
       <div className="flex flex-col items-start justify-start gap-4 self-stretch border-t border-slate-200 py-4">
-        <div className="flex flex-col items-start justify-start gap-4 self-stretch px-4">
-          <div className="grid grid-cols-2 gap-4 self-stretch">
-            <div
-              onClick={() => onSelectType('text')}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-8 transition-all hover:border-slate-300"
-            >
-              <div className="text-4xl font-semibold text-slate-900">T</div>
-              <div className="text-center text-base font-medium text-slate-900">
-                Text
-              </div>
-            </div>
-
-            <div
-              onClick={() => onSelectType('number')}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-8 transition-all hover:border-slate-300"
-            >
-              <div className="text-4xl font-semibold text-slate-900">#</div>
-              <div className="text-center text-base font-medium text-slate-900">
-                Zahl
-              </div>
-            </div>
-
-            <div
-              onClick={() => onSelectType('boolean')}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-8 transition-all hover:border-slate-300"
-            >
-              <div className="flex items-center justify-center">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className="text-slate-900"
+        <div className="flex flex-col items-start justify-start gap-4 self-stretch">
+          <div className="grid grid-cols-2 gap-3 self-stretch sm:grid-cols-3">
+            {typesToShow.map((def) => {
+              const Icon = def.Icon;
+              return (
+                <button
+                  key={def.key}
+                  type="button"
+                  onClick={() => onSelectType(def.key)}
+                  className="group flex min-h-24 flex-col items-start justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
                 >
-                  <rect
-                    x="5"
-                    y="9"
-                    width="14"
-                    height="6"
-                    rx="3"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                  <circle cx="15" cy="12" r="2" fill="currentColor" />
-                </svg>
-              </div>
-              <div className="text-center text-base font-medium text-slate-900">
-                Ja/Nein
-              </div>
-            </div>
-
-            <div
-              onClick={() => onSelectType('select')}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-slate-200 bg-slate-50 px-6 py-8 transition-all hover:border-slate-300"
-            >
-              <div className="flex items-center justify-center">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className="text-slate-900"
-                >
-                  <rect
-                    x="4"
-                    y="6"
-                    width="16"
-                    height="3"
-                    rx="1.5"
-                    fill="currentColor"
-                  />
-                  <rect
-                    x="4"
-                    y="11"
-                    width="16"
-                    height="3"
-                    rx="1.5"
-                    fill="currentColor"
-                  />
-                  <rect
-                    x="4"
-                    y="16"
-                    width="16"
-                    height="3"
-                    rx="1.5"
-                    fill="currentColor"
-                  />
-                </svg>
-              </div>
-              <div className="text-center text-base font-medium text-slate-900">
-                Auswahl
-              </div>
-              <div className="text-center text-xs text-slate-500">
-                Dropdown mit Auswahlmöglichkeiten
-              </div>
-            </div>
+                  <span className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition-colors group-hover:border-slate-300 group-hover:bg-white group-hover:text-slate-900">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="space-y-0.5">
+                    <span className="block text-base leading-tight font-semibold tracking-tight text-slate-900">
+                      {def.label}
+                    </span>
+                    {def.subLabel && (
+                      <span className="text-muted-foreground block text-xs leading-snug">
+                        {def.subLabel}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <div className="inline-flex items-start justify-end gap-2 self-stretch px-4 pt-2">
-          <Button
-            onClick={onBack}
-            className="flex items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2 outline outline-offset-1 outline-slate-200"
-          >
-            <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-900">
-              Zurück
-            </div>
-          </Button>
+        <div className="inline-flex items-start justify-end gap-2 self-stretch pt-2">
+          <Button onClick={onBack}>Schließen</Button>
         </div>
       </div>
     </div>

@@ -22,6 +22,21 @@ export const calcPricePerPersonFromTotal = (
 
 // Dynamic form: build input props from datatype and field constraints
 import type { InputHTMLAttributes } from 'react';
+import {
+  getInputPropsForDatatype,
+  isInputPropDatatype,
+} from '@/lib/input-props';
+
+/**
+ * Construct HTML input attributes appropriate for a named datatype.
+ *
+ * @param datatype - The datatype name to build props for; if not a recognized datatype an empty object is returned.
+ * @param opts - Optional constraints applied to the generated props.
+ * @param opts.placeholder - Optional placeholder text to apply to the input.
+ * @param opts.min - Optional minimum numeric constraint to apply where applicable.
+ * @param opts.max - Optional maximum numeric constraint to apply where applicable.
+ * @returns An object of `InputHTMLAttributes<HTMLInputElement>` configured for `datatype`, or `{}` if `datatype` is not recognized.
+ */
 export function buildInputProps(
   datatype?: string | null,
   opts?: {
@@ -30,23 +45,9 @@ export function buildInputProps(
     max?: number | null;
   }
 ): InputHTMLAttributes<HTMLInputElement> {
-  const placeholder =
-    typeof opts?.placeholder === 'string' ? opts.placeholder : undefined;
-  const min = typeof opts?.min === 'number' ? opts.min : undefined;
-  const max = typeof opts?.max === 'number' ? opts.max : undefined;
-
-  switch (datatype) {
-    case 'text':
-      return { type: 'text', placeholder, minLength: min, maxLength: max };
-    case 'number':
-      return { type: 'number', step: 1, min, max };
-    case 'currency':
-      return { type: 'number', step: 0.01, inputMode: 'decimal', min, max };
-    case 'date':
-      return { type: 'date' };
-    case 'datetime':
-      return { type: 'datetime-local' };
-    default:
-      return {};
+  if (!isInputPropDatatype(datatype)) {
+    return {};
   }
+
+  return getInputPropsForDatatype(datatype, opts);
 }

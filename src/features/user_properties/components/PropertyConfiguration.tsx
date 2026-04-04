@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/SimpleFormComponents';
+import { Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import FormInputFieldCustom from '@/components/form/formInputFieldCustom';
 import { Input } from '@/components/ui/input';
 import type { PropertyConfig, ValidationError } from '../types';
@@ -14,6 +15,10 @@ import {
   validatePropertyConfig,
   getRequiredFieldWarning,
 } from '../utils/validation';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+
+export type FieldFormContext = 'person' | 'vorlage';
 
 interface PropertyConfigurationProps {
   config: PropertyConfig;
@@ -22,6 +27,16 @@ interface PropertyConfigurationProps {
   onCancel: () => void;
   existingPropertyNames?: string[];
   existingUserCount?: number;
+  /** Whether this form is for a person property or a template (Vorlage) field. Affects visibility of "Eingabe-Regeln für Personen". */
+  context?: FieldFormContext;
+  /** Optional label for name field (default: "Name der Eigenschaft *") */
+  nameLabel?: string;
+  /** Optional usage hint shown above the form fields. */
+  usageInfo?: React.ReactNode;
+  /** Optional save button text (default: "Speichern") */
+  saveButtonLabel?: string;
+  /** Optional: disable save button (e.g. while submitting) */
+  saveDisabled?: boolean;
 }
 
 export function PropertyConfiguration({
@@ -31,6 +46,11 @@ export function PropertyConfiguration({
   onCancel,
   existingPropertyNames = [],
   existingUserCount = 0,
+  context = 'person',
+  nameLabel = 'Name der Eigenschaft *',
+  usageInfo,
+  saveButtonLabel = 'Speichern',
+  saveDisabled = false,
 }: PropertyConfigurationProps) {
   const [errors, setErrors] = useState<ValidationError[]>([]);
 
@@ -54,44 +74,67 @@ export function PropertyConfiguration({
     }
   };
 
-  const warningMessage = getRequiredFieldWarning(
-    config.isRequired,
-    existingUserCount
-  );
+  const warningMessage =
+    context === 'person'
+      ? getRequiredFieldWarning(config.isRequired, existingUserCount)
+      : null;
 
   const getFieldError = (fieldName: string): string[] => {
     return errors.filter((e) => e.field === fieldName).map((e) => e.message);
   };
 
   return (
-    <div className="flex flex-col items-start justify-start gap-2 self-stretch">
-      <div className="inline-flex items-center justify-start gap-2.5 self-stretch px-4 pt-2">
-        <div className="justify-start font-['Inter'] text-sm leading-tight font-semibold text-slate-900">
-          Neue Eigenschaft konfigurieren
-        </div>
-      </div>
+    <div className="flex flex-col items-start justify-start gap-4 self-stretch">
+      <div className="flex flex-col items-start justify-start gap-5 self-stretch border-t border-slate-200 py-4">
+        {usageInfo && (
+          <div className="bg-muted/40 border-border flex w-full items-start gap-3 rounded-lg border px-4 py-3 text-sm">
+            <span className="bg-background flex size-8 shrink-0 items-center justify-center rounded-full border">
+              <Info className="text-muted-foreground h-4 w-4" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <div>{usageInfo}</div>
+            </div>
+          </div>
+        )}
 
-      <div className="flex flex-col items-start justify-start gap-6 self-stretch border-t border-slate-200 py-4">
-        <div className="flex flex-col gap-4 self-stretch px-4">
-          <h3 className="text-sm font-semibold text-slate-700">
+        <section className="bg-card flex flex-col gap-4 self-stretch rounded-xl border p-5 shadow-sm">
+          <h3 className="text-foreground text-base font-semibold">
             Grundinformationen
           </h3>
 
           <FormInputFieldCustom
-            name="Name der Eigenschaft *"
+            name={nameLabel}
             errors={getFieldError('name')}
+            className="space-y-2"
           >
             <Input
               value={config.name}
               onChange={(e) => onConfigChange({ name: e.target.value })}
-              placeholder="z.B. Hat Schlüssel"
+              placeholder={
+                context === 'person'
+                  ? 'Hat Schlüssel'
+                  : 'Eigene Feldbezeichnung'
+              }
               className="w-full"
             />
           </FormInputFieldCustom>
-        </div>
 
-        <div className="flex flex-col gap-4 self-stretch px-4">
-          <h3 className="text-sm font-semibold text-slate-700">
+          <FormInputFieldCustom
+            name="Beschreibung (optional)"
+            errors={getFieldError('description')}
+            className="space-y-2"
+          >
+            <Input
+              value={config.description ?? ''}
+              onChange={(e) => onConfigChange({ description: e.target.value })}
+              placeholder="Kurze Beschreibung des Feldes"
+              className="w-full"
+            />
+          </FormInputFieldCustom>
+        </section>
+
+        <section className="bg-card flex flex-col gap-4 self-stretch rounded-xl border p-5 shadow-sm">
+          <h3 className="text-foreground text-base font-semibold">
             Feldeinstellungen
           </h3>
 
@@ -132,7 +175,45 @@ export function PropertyConfiguration({
             />
           )}
 
-          {config.fieldType === 'number' &&
+          {(config.fieldType === 'currency' ||
+            config.fieldType === 'phone' ||
+            config.fieldType === 'mail' ||
+            config.fieldType === 'date' ||
+            config.fieldType === 'time') && (
+            <TextFieldSettings
+              placeholder={config.placeholder || ''}
+              maxLength={undefined}
+              isMultiline={false}
+              defaultValue={config.defaultValue}
+              onChange={onConfigChange}
+            />
+          )}
+
+          {config.fieldType === 'currency' && (
+            <NumberFieldSettings
+              isDecimal={true}
+              minValue={config.minValue}
+              maxValue={config.maxValue}
+              onChange={onConfigChange}
+            />
+          )}
+
+          {context === 'vorlage' && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={config.isRequired}
+                onCheckedChange={(checked) =>
+                  onConfigChange({ isRequired: checked === true })
+                }
+                id="isRequired"
+              />
+              <Label htmlFor="isRequired" className="text-sm font-medium">
+                Pflichtfeld
+              </Label>
+            </div>
+          )}
+
+          {(config.fieldType === 'number' || config.fieldType === 'currency') &&
             config.minValue !== undefined &&
             config.maxValue !== undefined &&
             config.minValue > config.maxValue && (
@@ -140,31 +221,25 @@ export function PropertyConfiguration({
                 {getFieldError('minValue')[0]}
               </p>
             )}
-        </div>
+        </section>
 
-        <UsageSettings
-          isRequired={config.isRequired}
-          onChange={onConfigChange}
-          warningMessage={warningMessage}
-        />
+        {context === 'person' && (
+          <UsageSettings
+            isRequired={config.isRequired}
+            onChange={onConfigChange}
+            warningMessage={warningMessage}
+          />
+        )}
 
-        <div className="inline-flex items-start justify-end gap-2 self-stretch border-t border-slate-200 px-4 pt-2">
-          <Button
-            onClick={onCancel}
-            className="flex items-center justify-center gap-2.5 rounded-md bg-white px-4 py-2 outline outline-1 outline-offset-[-1px] outline-slate-200"
-          >
-            <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-slate-900">
-              Abbrechen
-            </div>
+        <div className="inline-flex items-start justify-end gap-2 self-stretch border-t border-slate-200 pt-4">
+          <Button variant="secondary" onClick={onCancel}>
+            Abbrechen
           </Button>
           <Button
             onClick={handleSave}
-            disabled={errors.length > 0}
-            className="flex items-center justify-center gap-2.5 rounded-md bg-slate-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={errors.length > 0 || saveDisabled}
           >
-            <div className="justify-start font-['Inter'] text-sm leading-normal font-medium text-white">
-              Speichern
-            </div>
+            {saveButtonLabel}
           </Button>
         </div>
       </div>

@@ -1,11 +1,15 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   getSubscriptionAction,
   rotateSubscriptionAction,
   deactivateSubscriptionAction,
+  activateSubscriptionAction,
 } from '../actions';
+import { useSession } from 'next-auth/react';
+import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 
 export type CalendarSubscription = {
   id: string;
@@ -17,42 +21,79 @@ export type CalendarSubscription = {
   last_accessed: string | null;
 };
 
-const key = (orgId: string) => ['calendar-subscription', orgId];
+const key = (userId?: string, orgId?: string) =>
+  settingsQueryKeys.calendarSubscription(userId, orgId);
 
 export function useCalendarSubscription(orgId: string) {
   const queryClient = useQueryClient();
+  const session = useSession();
+  const userId = session.data?.user?.id;
+  const queryKey = key(userId, orgId);
 
   const query = useQuery({
-    queryKey: key(orgId),
+    queryKey,
     queryFn: () => getSubscriptionAction(orgId),
-    enabled: !!orgId,
+    enabled: !!orgId && !!userId,
     staleTime: 60000,
-    retry: 1,
+    retry: 3,
   });
 
   const rotate = useMutation({
     mutationFn: (id: string) => rotateSubscriptionAction(id),
     onSuccess: (data) => {
-      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
         prev
           ? {
-              ...prev,
-              token: data.token,
-              webcalUrl: data.webcalUrl,
-              httpUrl: data.httpUrl,
-            }
+            ...prev,
+            token: data.token,
+            webcalUrl: data.webcalUrl,
+            httpUrl: data.httpUrl,
+          }
           : prev
+      );
+      toast.success('Neuer Kalender-Link wurde generiert');
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Fehler beim Generieren des neuen Links'
       );
     },
   });
   const deactivate = useMutation({
     mutationFn: (id: string) => deactivateSubscriptionAction(id),
     onSuccess: () => {
-      queryClient.setQueryData<CalendarSubscription>(key(orgId), (prev) =>
+      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
         prev ? { ...prev, is_active: false } : prev
+      );
+      toast.success('Kalender-Integration wurde deaktiviert');
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Fehler beim Deaktivieren der Kalender-Integration'
       );
     },
   });
 
-  return { query, rotate, deactivate };
+  const activate = useMutation({
+    mutationFn: (id: string) => activateSubscriptionAction(id),
+    onSuccess: () => {
+      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
+        prev ? { ...prev, is_active: true } : prev
+      );
+      toast.success('Kalender-Integration wurde aktiviert');
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Fehler beim Aktivieren der Kalender-Integration'
+      );
+    },
+  });
+
+  return { query, rotate, deactivate, activate };
 }

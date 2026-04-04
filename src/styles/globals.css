@@ -23,7 +23,11 @@ html {
 }
 
 h1 {
-  @apply text-2xl leading-loose font-semibold;
+  @apply text-2xl leading-relaxed font-semibold tracking-tight;
+}
+
+button:where(:not(:disabled)) {
+  @apply cursor-pointer;
 }
 
 body {

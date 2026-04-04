@@ -9,6 +9,7 @@ export interface CalendarEvent {
   allDay?: boolean;
   status?: EinsatzStatus;
   assignedUsers: string[]; // Array of user IDs assigned to the event
+  helpersNeeded?: number;
 }
 
 export type CalendarMode = 'helper' | 'verwaltung';
@@ -26,7 +27,8 @@ export type FormFieldType =
   | 'textarea'
   | 'select'
   | 'multi-select'
-  | 'checkbox';
+  | 'checkbox'
+  | 'group';
 export type SupportedDataTypes =
   | 'text'
   | 'number'

@@ -38,15 +38,45 @@ function SignInContent() {
       });
 
       if (result?.error) {
-        setError('Ungültige Anmeldedaten');
+        // Check if it's a network-related error
+        const errorMessage = result.error.toLowerCase();
+        if (
+          errorMessage.includes('fetch') ||
+          errorMessage.includes('network') ||
+          errorMessage.includes('failed to fetch') ||
+          errorMessage.includes('networkerror')
+        ) {
+          setError(
+            'Keine Internetverbindung. Bitte überprüfen Sie Ihre Netzwerkverbindung.'
+          );
+        } else {
+          setError('Ungültige Anmeldedaten');
+        }
       } else {
         router.push(callbackUrl);
       }
     } catch (err) {
-      setError(
-        'Ein Fehler ist aufgetreten' +
-          (err instanceof Error && err.message ? ': ' + err.message : '')
-      );
+      // Catch block for unexpected errors
+      const errorMessage =
+        err instanceof Error ? err.message.toLowerCase() : '';
+
+      // Check if the caught error is network-related
+      if (
+        errorMessage.includes('fetch') ||
+        errorMessage.includes('network') ||
+        errorMessage.includes('failed to fetch') ||
+        errorMessage.includes('networkerror') ||
+        err instanceof TypeError
+      ) {
+        setError(
+          'Keine Internetverbindung. Bitte überprüfen Sie Ihre Netzwerkverbindung.'
+        );
+      } else {
+        setError(
+          'Ein Fehler ist aufgetreten' +
+            (err instanceof Error && err.message ? ': ' + err.message : '')
+        );
+      }
     } finally {
       setLoading(false);
     }

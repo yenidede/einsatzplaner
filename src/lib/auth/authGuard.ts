@@ -13,7 +13,14 @@ export const ROLE_NAME_MAP = {
   Organisationsverwaltung: 'd8c4c6ad-10bc-4947-bf16-1652f55298cc',
 };
 
-const ROLE_PERMISSION_MAP: Record<string, string[]> = {
+export const ROLE_ID_MAP: Record<string, string> = {
+  '559ed0cd-2644-47dd-9fb8-c6e333589e05': 'Superadmin',
+  '90f7c6ce-f696-419c-9a29-4c70c3ab4cef': 'Helfer',
+  'd54836b9-a1ff-4dd8-8633-20c98378aa87': 'Einsatzverwaltung',
+  'd8c4c6ad-10bc-4947-bf16-1652f55298cc': 'Organisationsverwaltung',
+};
+
+export const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Superadmin: [
     // Einsätze
     permission('einsaetze', 'read'),
@@ -63,6 +70,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     // Organization
     permission('organization', 'read'),
     permission('organization', 'update'),
+    permission('organization', 'manage'),
     // Roles
     permission('roles', 'read'),
     permission('roles', 'assign'),
@@ -70,6 +78,12 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     // Settings
     permission('settings', 'read'),
     permission('settings', 'update'),
+
+    // Templates
+    permission('templates', 'read'),
+    permission('templates', 'create'),
+    permission('templates', 'update'),
+    permission('templates', 'delete'),
 
     // Dashboard
     permission('dashboard', 'read'),
@@ -97,6 +111,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     permission('einsaetze', 'leave'),
 
     // Dashboard
+    permission('settings', 'read'),
     permission('dashboard', 'read'),
   ],
 };
@@ -115,7 +130,7 @@ export async function requireAuth() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    redirect('/signin');
+    redirect ('/signin');
   }
 
   const userId = session.user.id as string;

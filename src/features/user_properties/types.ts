@@ -1,4 +1,14 @@
-export type FieldType = 'text' | 'number' | 'boolean' | 'select';
+export type FieldType =
+  | 'text'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'currency'
+  | 'group'
+  | 'date'
+  | 'time'
+  | 'phone'
+  | 'mail';
 export type Step = 'overview' | 'typeSelection' | 'configuration';
 
 export interface PropertyConfig {

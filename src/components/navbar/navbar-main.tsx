@@ -16,45 +16,67 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import Link from 'next/link';
-import NavSwitchOrgSelect from './switch-org';
+import { usePathname } from 'next/navigation';
+import { NavSwitchOrgSelect } from './switch-org';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
-import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import {
+  useOrganizations,
+  useOrganization,
+} from '@/features/organization/hooks/use-organization-queries';
 import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
+import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 
 export default function Component() {
   const { data: session } = useSession();
+  const pathname = usePathname();
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
+  const activeOrgId = session?.user?.activeOrganization?.id;
+  const { data: activeOrganization } = useOrganization(activeOrgId);
+
+  const { helper_plural } = useOrganizationTerminology(
+    organizations,
+    activeOrgId
+  );
 
   const { data: userOrganization } = useUserOrgRoles(
-    session?.user?.id,
-    session?.user?.activeOrganization?.id
+    session?.user?.activeOrganization?.id,
+    session?.user?.id
   );
   const hasRoleInActiveOrg = (roleName: string): boolean => {
     if (!session || !userOrganization) {
       return false;
     }
-    return userOrganization.some((userRole) => userRole.role.name === roleName);
+    return userOrganization.some(
+      (userRole) => userRole.role.name.toLowerCase() === roleName.toLowerCase()
+    );
   };
 
   // Navigation links array to be used in both desktop and mobile menus
   const navigationLinks = [
     {
       href: '/helferansicht',
-      label: 'Helferansicht',
-      hidden: !hasRoleInActiveOrg('Helfer'),
+      label: `${helper_plural}ansicht`,
+      hidden:
+        !hasRoleInActiveOrg('Superadmin') && !hasRoleInActiveOrg('Helfer'),
     },
     {
       href: '/einsatzverwaltung',
-      label: 'Einsatzverwaltung',
-      hidden: !hasRoleInActiveOrg('Einsatzverwaltung'),
+      label: `Verwaltungsansicht`,
+      hidden:
+        !hasRoleInActiveOrg('Superadmin') &&
+        !hasRoleInActiveOrg('Einsatzverwaltung'),
     },
     { href: '/auswertungen', label: 'Auswertungen', hidden: true },
   ];
 
   return (
-    <header className={cn('position-fixed top-0 border-b px-4 md:px-6')}>
+    <header
+      className={cn(
+        'bg-background fixed top-0 right-0 left-0 z-50 border-b px-4 md:px-6'
+      )}
+    >
       <div className="flex h-16 items-center justify-between gap-4">
         {/* Left side */}
         <div className="flex items-center gap-2">
@@ -65,6 +87,7 @@ export default function Component() {
                 className="group size-8 md:hidden"
                 variant="ghost"
                 size="icon"
+                aria-label="Navigationsmenü umschalten"
               >
                 <svg
                   className="pointer-events-none"
@@ -93,18 +116,28 @@ export default function Component() {
                 </svg>
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-36 p-1 md:hidden">
-              <NavigationMenu className="max-w-none *:w-full">
+            <PopoverContent align="start" className="w-auto p-1 md:hidden">
+              <NavigationMenu className="max-w-none">
                 <NavigationMenuList className="flex-col items-start gap-0 md:gap-2">
                   {navigationLinks
                     .filter((link) => !link.hidden)
-                    .map((link, index) => (
-                      <NavigationMenuItem key={index} className="w-full">
-                        <NavigationMenuLink href={link.href} className="py-1.5">
-                          {link.label}
-                        </NavigationMenuLink>
-                      </NavigationMenuItem>
-                    ))}
+                    .map((link, index) => {
+                      const isActive = pathname === link.href;
+                      return (
+                        <NavigationMenuItem key={index}>
+                          <NavigationMenuLink
+                            href={link.href}
+                            className={cn(
+                              'py-1.5',
+                              isActive &&
+                                'text-primary border-primary font-semibold underline'
+                            )}
+                          >
+                            {link.label}
+                          </NavigationMenuLink>
+                        </NavigationMenuItem>
+                      );
+                    })}
                 </NavigationMenuList>
               </NavigationMenu>
             </PopoverContent>
@@ -112,23 +145,36 @@ export default function Component() {
           {/* Main nav */}
           <div className="flex items-center gap-6">
             <Link href="/" className="text-primary hover:text-primary/90">
-              <Logo />
+              <Logo
+                logoUrl={
+                  activeOrganization?.small_logo_url ||
+                  activeOrganization?.logo_url ||
+                  null
+                }
+              />
             </Link>
             {/* Navigation menu */}
             <NavigationMenu className="max-md:hidden">
               <NavigationMenuList className="gap-2">
                 {navigationLinks
                   .filter((link) => !link.hidden)
-                  .map((link, index) => (
-                    <NavigationMenuItem key={index}>
-                      <Link
-                        href={link.href}
-                        className="text-muted-foreground hover:text-primary data-active:focus:bg-accent data-active:hover:bg-accent data-active:bg-accent data-active:text-accent-foreground hover:bg-accent focus:bg-accent focus:text-accent-foreground focus-visible:ring-ring/50 [&_svg:not([class*='text-'])]:text-muted-foreground flex flex-col gap-1 rounded-sm p-2 py-1.5 text-sm font-medium transition-all outline-none focus-visible:ring-[3px] focus-visible:outline-1 [&_svg:not([class*='size-'])]:size-4"
-                      >
-                        {link.label}
-                      </Link>
-                    </NavigationMenuItem>
-                  ))}
+                  .map((link, index) => {
+                    const isActive = pathname === link.href;
+                    return (
+                      <NavigationMenuItem key={index}>
+                        <Link
+                          href={link.href}
+                          className={cn(
+                            'text-muted-foreground hover:text-primary hover:bg-accent focus:bg-accent focus:text-accent-foreground focus-visible:ring-ring/50 flex flex-col gap-1 rounded-sm p-2 py-1.5 text-sm font-medium transition-all outline-none focus-visible:ring-[3px] focus-visible:outline-1',
+                            isActive &&
+                              'text-primary border-primary rounded-none underline'
+                          )}
+                        >
+                          {link.label}
+                        </Link>
+                      </NavigationMenuItem>
+                    );
+                  })}
               </NavigationMenuList>
             </NavigationMenu>
           </div>

@@ -20,6 +20,7 @@ import {
 import { de } from 'date-fns/locale';
 
 import { cn } from '@/lib/utils';
+import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
 import {
   DraggableEvent,
   DroppableCell,
@@ -41,6 +42,8 @@ interface WeekViewProps {
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
   mode: CalendarMode;
+  onEventConfirm?: (eventId: string) => void;
+  pastIndicatorTooltip: string;
 }
 
 interface PositionedEvent {
@@ -58,7 +61,11 @@ export function WeekView({
   onEventSelect,
   onEventCreate,
   mode,
+  onEventConfirm,
+  pastIndicatorTooltip,
 }: WeekViewProps) {
+  const todayStart = useTodayStart();
+
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -318,24 +325,39 @@ export function WeekView({
 
   return (
     <div data-slot="week-view" className="flex h-full flex-col pt-2">
-      <div className="bg-background/80 border-border/70 sticky top-0 z-30 grid grid-cols-8 border-b backdrop-blur-md">
+      <div
+        className="bg-card border-border/70 sticky z-30 grid grid-cols-8 border-b"
+        style={{
+          top: 'calc(var(--calendar-sticky-top, 0px) + var(--calendar-toolbar-height, 0px))',
+        }}
+      >
         <div className="text-muted-foreground/70 px-2 py-2 text-left text-sm">
           <span className="max-[479px]:sr-only">MEZ (AT)</span>
         </div>
-        {days.map((day) => (
-          <div
-            key={day.toString()}
-            className="data-today:text-foreground text-muted-foreground/70 py-2 text-center text-sm data-today:font-medium"
-            data-today={isToday(day) || undefined}
-          >
-            <span className="sm:hidden" aria-hidden="true">
-              {format(day, 'E', { locale: de })[0]} {format(day, 'd')}
-            </span>
-            <span className="max-sm:hidden">
-              {format(day, 'EEE dd', { locale: de })}
-            </span>
-          </div>
-        ))}
+        {days.map((day) => {
+          const isPastDay = startOfDay(day) < todayStart;
+
+          return (
+            <div
+              key={day.toString()}
+              className="data-today:text-foreground text-muted-foreground/70 py-2 text-center text-sm data-today:font-medium"
+              data-today={isToday(day) || undefined}
+            >
+              <span className="sm:hidden" aria-hidden="true">
+                {format(day, 'E', { locale: de })[0]}{' '}
+                <span className={isPastDay ? 'line-through' : undefined}>
+                  {format(day, 'd')}
+                </span>
+              </span>
+              <span className="max-sm:hidden">
+                {format(day, 'EEE ', { locale: de })}
+                <span className={isPastDay ? 'line-through' : undefined}>
+                  {format(day, 'dd')}
+                </span>
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {showAllDaySection && (
@@ -383,6 +405,8 @@ export function WeekView({
                         isFirstDay={isFirstDay}
                         isLastDay={isLastDay}
                         mode={mode}
+                        onConfirm={onEventConfirm}
+                        pastIndicatorTooltip={pastIndicatorTooltip}
                       >
                         {/* Show title if it's the first day of the event or the first visible day in the week */}
                         <div
@@ -448,6 +472,8 @@ export function WeekView({
                     showTime
                     height={positionedEvent.height}
                     mode={mode}
+                    onConfirm={onEventConfirm}
+                    pastIndicatorTooltip={pastIndicatorTooltip}
                   />
                 </div>
               </div>

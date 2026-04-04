@@ -42,12 +42,20 @@ export const acceptInviteAndCreateNewAccount = actionClient
           organization: true,
         },
       });
+
+      if (!firstInvitation) {
+        return {
+          success: false,
+          message: 'Keine gültige Einladung gefunden',
+        };
+      }
+
       const [hashedPassword, invitations] = await Promise.all([
         hash(parsedInput.passwort, 12),
         prisma.invitation.findMany({
           where: {
             email: parsedInput.email,
-            token: firstInvitation?.token,
+            token: firstInvitation.token,
             expires_at: {
               gt: new Date(),
             },
@@ -58,8 +66,12 @@ export const acceptInviteAndCreateNewAccount = actionClient
           },
         }),
       ]);
-      if (invitations.length === 0 || !firstInvitation) {
-        throw new Error('Keine gültigen Einladungen gefunden');
+
+      if (invitations.length === 0) {
+        return {
+          success: false,
+          message: 'Keine gültigen Einladungen gefunden',
+        };
       }
 
       await createUserWithOrgAndRoles({
@@ -72,19 +84,30 @@ export const acceptInviteAndCreateNewAccount = actionClient
         roleIds: invitations.map((i) => i.role_id),
         salutationId: parsedInput.anredeId,
         userId: firstInvitation.new_user_id || undefined,
+        profilePictureUrl: parsedInput.pictureUrl,
       });
+
       await prisma.invitation.deleteMany({
         where: {
           email: parsedInput.email,
           token: firstInvitation.token,
         },
       });
+
       return {
         success: true,
-        message: 'Account erfolgreich erstellt. Sie werden nun eingeloggt.',
+        message: 'Account erfolgreich erstellt',
       };
-    } catch (error) {
-      throw error;
+    } catch (error: unknown) {
+      console.error('acceptInviteAndCreateNewAccount error:', error);
+
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Fehler beim Erstellen des Accounts',
+      };
     }
   });
 

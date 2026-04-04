@@ -10,10 +10,6 @@ type UserSettingsUpdate = {
   phone?: string;
 };
 
-type UserOrgSettingsUpdate = {
-  getMailFromOrganization?: boolean;
-};
-
 //#region User Retrieval
 export async function getUserByEmail(email: string) {
   try {
@@ -145,8 +141,6 @@ export async function getUserForAuth(email: string) {
 
 export async function getUserForSession(userId: string) {
   try {
-    console.log('getUserForSession called with userId:', userId);
-
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -159,12 +153,6 @@ export async function getUserForSession(userId: string) {
         description: true,
         hasLogoinCalendar: true,
       },
-    });
-
-    console.log('getUserForSession result:', {
-      found: !!user,
-      picture_url: user?.picture_url,
-      email: user?.email,
     });
 
     return user;
@@ -434,35 +422,6 @@ export async function updateUserSettings(
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Failed to update user settings: ${errorMessage}`);
-  }
-}
-
-export async function updateUserOrgSettings(
-  userOrgId: string,
-  body: UserOrgSettingsUpdate
-) {
-  try {
-    const currentUserOrg = await prisma.user_organization_role.findUnique({
-      where: { id: userOrgId },
-    });
-
-    if (!currentUserOrg) {
-      throw new Error('UserOrg not found');
-    }
-
-    // Note: hasGetMailNotification field does not exist in current schema
-    // This function is kept for future extensions
-    console.warn(
-      'updateUserOrgSettings called but no updatable fields exist in current schema'
-    );
-
-    return currentUserOrg;
-  } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(
-      `Failed to update user organization settings: ${errorMessage}`
-    );
   }
 }
 
@@ -736,4 +695,3 @@ export async function getUsersWithRolesByOrgIdOptimized(orgId: string) {
     );
   }
 }
-//#endregion

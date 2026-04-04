@@ -22,15 +22,18 @@ export default function DynamicFormFields({
   const getDefaultValue = (field: CustomFormField) => {
     switch (field.inputType) {
       case 'checkbox':
-        return false;
+        return field.defaultValue === 'TRUE' || field.defaultValue === true;
       case 'select':
         return field.defaultValue ?? null;
       case 'multi-select':
         return typeof field.defaultValue === 'string'
           ? field.defaultValue.split(',').map((item) => item.trim())
           : (field.defaultValue ?? []);
+      case 'textarea':
+        return field.defaultValue ?? '';
       default:
-        return '';
+        // text, number, currency, phone, mail, etc.
+        return field.defaultValue ?? '';
     }
   };
 
@@ -92,6 +95,23 @@ export default function DynamicFormFields({
           />
         );
       case 'default':
+        if (field.isMultiline === true) {
+          return (
+            <FormTextareaField
+              {...commonProps}
+              placeholder={field.placeholder ?? ''}
+              value={controllerField.value ?? ''}
+              required={field.required}
+              onChange={(e) => {
+                const convertedValue = mapStringValueToType(
+                  e.target.value,
+                  field.dataType
+                );
+                controllerField.onChange(convertedValue);
+              }}
+            />
+          );
+        }
         return (
           <FormInput
             {...commonProps}

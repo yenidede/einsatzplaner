@@ -3,12 +3,14 @@
 import type React from 'react';
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
   type DragEvent,
   type InputHTMLAttributes,
 } from 'react';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 export type FileMetadata = {
   name: string;
@@ -26,7 +28,7 @@ export type FileWithPreview = {
 
 export type FileUploadOptions = {
   maxFiles?: number; // Only used when multiple is true, defaults to Infinity
-  maxSize?: number; // in bytes
+  maxSize?: number; // in bytes (optional - if not provided, no size restriction)
   accept?: string;
   multiple?: boolean; // Defaults to false
   initialFiles?: FileMetadata[];
@@ -40,10 +42,53 @@ export type FileUploadState = {
   errors: string[];
 };
 
+const createClientSafeId = (): string => {
+  const webCrypto = globalThis.crypto;
+
+  if (webCrypto?.randomUUID) {
+    return webCrypto.randomUUID();
+  }
+
+  if (webCrypto?.getRandomValues) {
+    const bytes = webCrypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    const segments = [
+      Array.from(bytes.slice(0, 4)),
+      Array.from(bytes.slice(4, 6)),
+      Array.from(bytes.slice(6, 8)),
+      Array.from(bytes.slice(8, 10)),
+      Array.from(bytes.slice(10, 16)),
+    ];
+
+    return segments
+      .map((segment) =>
+        segment
+          .map((value) => value.toString(16).padStart(2, '0'))
+          .join('')
+      )
+      .join('-');
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
 export type FileUploadActions = {
   addFiles: (files: FileList | File[]) => void;
-  removeFile: (id: string) => void;
-  clearFiles: () => void;
+  /** Prompts for confirmation before removing a single file. */
+  confirmRemoveFile: (id: string) => Promise<'success' | 'cancel'>;
+  removeFile: (id: string) => Promise<'success' | 'cancel'>;
+  /** Removes file silently without prompting the user. Used eg. after image optimization */
+  removeFileSilently: (id: string) => void;
+  /** Replaces the current file list without prompting the user. */
+  setFilesSilently: (files: FileWithPreview[]) => void;
+  /** Prompts for confirmation before clearing all files. */
+  confirmClearFiles: () => Promise<'success' | 'cancel'>;
+  /** Clears all files after user confirmation. */
+  clearFiles: () => Promise<'success' | 'cancel'>;
+  /** Clears all files without prompting the user (internal use). */
+  clearFilesSilently: () => void;
   clearErrors: () => void;
   handleDragEnter: (e: DragEvent<HTMLElement>) => void;
   handleDragLeave: (e: DragEvent<HTMLElement>) => void;
@@ -81,17 +126,37 @@ export const useFileUpload = (
     errors: [],
   });
 
+  const { showDestructive } = useConfirmDialog();
+
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync internal files when initialFiles changes (e.g. after org data loads on settings page)
+  const initialFilesKey = initialFiles
+    .map((f) => `${f.id}:${f.url}`)
+    .join('|');
+  useEffect(() => {
+    setState((prev) => ({
+      ...prev,
+      files: initialFiles.map((file) => ({
+        file,
+        id: file.id,
+        preview: file.url,
+      })),
+    }));
+  }, [initialFilesKey]);
 
   const validateFile = useCallback(
     (file: File | FileMetadata): string | null => {
-      if (file instanceof File) {
-        if (file.size > maxSize) {
-          return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
-        }
-      } else {
-        if (file.size > maxSize) {
-          return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
+      // Only validate size if maxSize is provided and not Infinity
+      if (maxSize !== Infinity && maxSize !== undefined) {
+        if (file instanceof File) {
+          if (file.size > maxSize) {
+            return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
+          }
+        } else {
+          if (file.size > maxSize) {
+            return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`;
+          }
         }
       }
 
@@ -133,22 +198,50 @@ export const useFileUpload = (
 
   const generateUniqueId = useCallback((file: File | FileMetadata): string => {
     if (file instanceof File) {
-      return `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      return `${file.name}-${createClientSafeId()}`;
     }
     return file.id;
   }, []);
 
-  const clearFiles = useCallback(() => {
+  const revokePreviewUrl = useCallback((file: FileWithPreview) => {
+    if (file.preview && file.file instanceof File) {
+      URL.revokeObjectURL(file.preview);
+    }
+  }, []);
+
+  const setFilesSilently = useCallback(
+    (files: FileWithPreview[]) => {
+      setState((prev) => {
+        const nextFileIds = new Set(files.map((file) => file.id));
+
+        prev.files.forEach((file) => {
+          if (!nextFileIds.has(file.id)) {
+            revokePreviewUrl(file);
+          }
+        });
+
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
+
+        const newState = {
+          ...prev,
+          files,
+          errors: [],
+        };
+
+        onFilesChange?.(newState.files);
+        return newState;
+      });
+    },
+    [onFilesChange, revokePreviewUrl]
+  );
+
+  const clearFilesSilently = useCallback(() => {
     setState((prev) => {
       // Clean up object URLs
       prev.files.forEach((file) => {
-        if (
-          file.preview &&
-          file.file instanceof File &&
-          file.file.type.startsWith('image/')
-        ) {
-          URL.revokeObjectURL(file.preview);
-        }
+        revokePreviewUrl(file);
       });
 
       if (inputRef.current) {
@@ -164,7 +257,26 @@ export const useFileUpload = (
       onFilesChange?.(newState.files);
       return newState;
     });
-  }, [onFilesChange]);
+  }, [onFilesChange, revokePreviewUrl]);
+
+  const confirmClearFiles = useCallback(async (): Promise<
+    'success' | 'cancel'
+  > => {
+    return showDestructive(
+      'Alle Dateien entfernen',
+      'Möchten Sie wirklich alle Dateien entfernen?'
+    );
+  }, [showDestructive]);
+
+  const clearFiles = useCallback(
+    async (): Promise<'success' | 'cancel'> => {
+      const result = await confirmClearFiles();
+      if (result !== 'success') return result;
+      clearFilesSilently();
+      return result;
+    },
+    [clearFilesSilently, confirmClearFiles]
+  );
 
   const addFiles = useCallback(
     (newFiles: FileList | File[]) => {
@@ -175,11 +287,6 @@ export const useFileUpload = (
 
       // Clear existing errors when new files are uploaded
       setState((prev) => ({ ...prev, errors: [] }));
-
-      // In single file mode, clear existing files first
-      if (!multiple) {
-        clearFiles();
-      }
 
       // Check if adding these files would exceed maxFiles (only in multiple mode)
       if (
@@ -209,8 +316,12 @@ export const useFileUpload = (
           }
         }
 
-        // Check file size
-        if (file.size > maxSize) {
+        // Check file size only if maxSize is provided and not Infinity
+        if (
+          maxSize !== Infinity &&
+          maxSize !== undefined &&
+          file.size > maxSize
+        ) {
           errors.push(
             multiple
               ? `Some files exceed the maximum size of ${formatBytes(maxSize)}.`
@@ -233,13 +344,13 @@ export const useFileUpload = (
 
       // Only update state if we have valid files to add
       if (validFiles.length > 0) {
+        const filesToAdd = multiple ? validFiles : validFiles.slice(0, 1);
+
         // Call the onFilesAdded callback with the newly added valid files
-        onFilesAdded?.(validFiles);
+        onFilesAdded?.(filesToAdd);
 
         setState((prev) => {
-          const newFiles = !multiple
-            ? validFiles
-            : [...prev.files, ...validFiles];
+          const newFiles = multiple ? [...prev.files, ...filesToAdd] : filesToAdd;
           onFilesChange?.(newFiles);
           return {
             ...prev,
@@ -267,23 +378,17 @@ export const useFileUpload = (
       validateFile,
       createPreview,
       generateUniqueId,
-      clearFiles,
       onFilesChange,
       onFilesAdded,
     ]
   );
 
-  const removeFile = useCallback(
+  const removeFileSilently = useCallback(
     (id: string) => {
       setState((prev) => {
-        const fileToRemove = prev.files.find((file) => file.id === id);
-        if (
-          fileToRemove &&
-          fileToRemove.preview &&
-          fileToRemove.file instanceof File &&
-          fileToRemove.file.type.startsWith('image/')
-        ) {
-          URL.revokeObjectURL(fileToRemove.preview);
+        const fileToRemovePrev = prev.files.find((file) => file.id === id);
+        if (fileToRemovePrev) {
+          revokePreviewUrl(fileToRemovePrev);
         }
 
         const newFiles = prev.files.filter((file) => file.id !== id);
@@ -296,7 +401,34 @@ export const useFileUpload = (
         };
       });
     },
-    [onFilesChange]
+    [onFilesChange, revokePreviewUrl]
+  );
+
+  const confirmRemoveFile = useCallback(
+    async (id: string): Promise<'success' | 'cancel'> => {
+      const fileToRemove = state.files.find((file) => file.id === id);
+      const filename =
+        fileToRemove?.file instanceof File
+          ? fileToRemove.file.name
+          : fileToRemove?.file?.name;
+
+      return showDestructive(
+        'Datei entfernen',
+        `Möchten Sie "${filename ?? 'diese Datei'}" wirklich entfernen?`
+      );
+    },
+    [showDestructive, state.files]
+  );
+
+  const removeFile = useCallback(
+    async (id: string): Promise<'success' | 'cancel'> => {
+      const result = await confirmRemoveFile(id);
+      if (result !== 'success') return result;
+
+      removeFileSilently(id);
+      return result;
+    },
+    [confirmRemoveFile, removeFileSilently]
   );
 
   const clearErrors = useCallback(() => {
@@ -385,8 +517,13 @@ export const useFileUpload = (
     state,
     {
       addFiles,
+      confirmRemoveFile,
       removeFile,
+      removeFileSilently,
+      setFilesSilently,
+      confirmClearFiles,
       clearFiles,
+      clearFilesSilently,
       clearErrors,
       handleDragEnter,
       handleDragLeave,

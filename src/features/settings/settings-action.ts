@@ -6,8 +6,9 @@ import { authOptions } from '@/lib/auth.config';
 import prisma from '@/lib/prisma';
 import { hash, compare } from 'bcrypt';
 import { revalidatePath } from 'next/cache';
-import { OrganizationRole } from '@/types/next-auth';
 import { createClient } from '@supabase/supabase-js';
+import { hasPermission } from '@/lib/auth/authGuard';
+import type { RoleType } from '@/components/Roles';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -40,6 +41,124 @@ export type UserUpdateData = {
   hasGetMailNotification?: boolean;
   hasLogoinCalendar?: boolean;
 };
+
+type UserProfileRecord = NonNullable<
+  Awaited<ReturnType<typeof getUserProfileRecord>>
+>;
+
+async function getUserProfileRecord(userId: string) {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      firstname: true,
+      lastname: true,
+      picture_url: true,
+      phone: true,
+      hasLogoinCalendar: true,
+      created_at: true,
+      salutationId: true,
+      active_org: true,
+      user_organization_role: {
+        select: {
+          hasGetMailNotification: true,
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              logo_url: true,
+              small_logo_url: true,
+              helper_name_singular: true,
+              helper_name_plural: true,
+            },
+          },
+          role: {
+            select: {
+              id: true,
+              name: true,
+              abbreviation: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function mapUserProfile(user: UserProfileRecord) {
+  const organizationsMap = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      logo_url: string | null;
+      small_logo_url: string | null;
+      helper_name_singular: string | null;
+      helper_name_plural: string | null;
+      roles: RoleType[];
+      hasGetMailNotification: boolean;
+    }
+  >();
+
+  user.user_organization_role.forEach((uor) => {
+    const orgId = uor.organization.id;
+    if (!organizationsMap.has(orgId)) {
+      organizationsMap.set(orgId, {
+        id: orgId,
+        name: uor.organization.name,
+        logo_url: uor.organization.logo_url,
+        small_logo_url: uor.organization.small_logo_url,
+        helper_name_singular: uor.organization.helper_name_singular,
+        helper_name_plural: uor.organization.helper_name_plural,
+        roles: [],
+        hasGetMailNotification: uor.hasGetMailNotification ?? true,
+      });
+    }
+
+    const org = organizationsMap.get(orgId);
+    if (!org) {
+      return;
+    }
+
+    if (!org.roles.find((role) => role.id === uor.role.id)) {
+      org.roles.push({
+        id: uor.role.id,
+        name: uor.role.name,
+        abbreviation: uor.role.abbreviation,
+      });
+    }
+  });
+
+  const organizations = Array.from(organizationsMap.values());
+  const activeOrgId = user.active_org || organizations[0]?.id || null;
+  const activeOrgData = activeOrgId ? organizationsMap.get(activeOrgId) : null;
+
+  return {
+    id: user.id,
+    email: user.email,
+    firstname: user.firstname ?? '',
+    lastname: user.lastname ?? '',
+    picture_url: user.picture_url,
+    salutationId: user.salutationId ?? '',
+    orgIds: organizations.map((organization) => organization.id),
+    roleIds: user.user_organization_role.map((uor) => uor.role.id),
+    activeOrganization: activeOrgData
+      ? {
+          id: activeOrgData.id,
+          name: activeOrgData.name,
+          logo_url: activeOrgData.logo_url,
+        }
+      : null,
+    phone: user.phone ?? '',
+    hasLogoinCalendar: user.hasLogoinCalendar ?? true,
+    created_at: user.created_at.toISOString(),
+    organizations,
+    hasGetMailNotification: organizations.some(
+      (organization) => organization.hasGetMailNotification
+    ),
+  };
+}
 
 export async function getSalutationsAction() {
   try {
@@ -74,92 +193,44 @@ export async function getOneSalutationAction(salutationId: string) {
 
 export async function getUserProfileAction() {
   const session = await checkUserSession();
+  const user = await getUserProfileRecord(session.user.id);
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      email: true,
-      firstname: true,
-      lastname: true,
-      picture_url: true,
-      phone: true,
-      hasLogoinCalendar: true,
-      created_at: true,
-      salutationId: true,
-      active_org: true,
-      user_organization_role: {
-        include: {
-          organization: {
-            select: {
-              id: true,
-              name: true,
-              logo_url: true,
-            },
-          },
-          role: {
-            select: {
-              id: true,
-              name: true,
-              abbreviation: true,
-            },
-          },
-        },
-      },
-    },
-  });
+  if (!user) {
+    throw new Error('User not found');
+  }
 
-  if (!user) throw new Error('User not found');
-
-  const organizationsMap = new Map();
-  user.user_organization_role.forEach((uor) => {
-    const orgId = uor.organization.id;
-    if (!organizationsMap.has(orgId)) {
-      organizationsMap.set(orgId, {
-        id: orgId,
-        name: uor.organization.name,
-        logo_url: uor.organization.logo_url,
-        roles: [],
-        hasGetMailNotification: uor.hasGetMailNotification ?? true,
-      });
-    }
-
-    const org = organizationsMap.get(orgId);
-    if (!org.roles.find((r: OrganizationRole) => r.roleId === uor.role.id)) {
-      org.roles.push(uor.role);
-    }
-  });
-
-  const activeOrgId =
-    user.active_org || Array.from(organizationsMap.keys())[0] || null;
-  const activeOrgData = activeOrgId ? organizationsMap.get(activeOrgId) : null;
-
-  return {
-    id: user.id,
-    email: user.email,
-    firstname: user.firstname ?? '',
-    lastname: user.lastname ?? '',
-    picture_url: user.picture_url,
-    salutationId: user.salutationId ?? '',
-    orgIds: Array.from(organizationsMap.keys()),
-    roleIds: user.user_organization_role.map((uor) => uor.role.id),
-    activeOrganization: activeOrgData
-      ? {
-          id: activeOrgData.id,
-          name: activeOrgData.name,
-          logo_url: activeOrgData.logo_url,
-        }
-      : null,
-    phone: user.phone ?? '',
-    hasLogoinCalendar: user.hasLogoinCalendar ?? true,
-    created_at: user.created_at.toISOString(),
-    organizations: Array.from(organizationsMap.values()),
-    hasGetMailNotification: Array.from(organizationsMap.values()).some(
-      (org) => org.hasGetMailNotification
-    ),
-  };
+  return mapUserProfile(user);
 }
 
+export async function getUserProfileByIdAction(
+  userId: string,
+  organizationId: string
+) {
+  const session = await checkUserSession();
+  const targetUserInOrg = await prisma.user_organization_role.findFirst({
+    where: { user_id: userId, org_id: organizationId },
+    select: { id: true },
+  });
+
+  if (!targetUserInOrg) {
+    throw new Error('User is not part of the organization');
+  }
+
+  if (
+    !session.user.orgIds.includes(organizationId) ||
+    !(await hasPermission(session, 'organization:read', organizationId))
+  ) {
+    throw new Error('Insufficient permissions');
+  }
+
+  const user = await getUserProfileRecord(userId);
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  return mapUserProfile(user);
+}
 export async function updateUserProfileAction(data: UserUpdateData) {
   const session = await checkUserSession();
 
@@ -215,7 +286,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     },
   });
 
-  revalidatePath('/settings');
+  revalidatePath('/settings/user');
 
   return {
     id: updatedUser.id,
@@ -244,7 +315,7 @@ export async function updateOrgMailNotificationAction(
     },
   });
 
-  revalidatePath('/settings');
+  revalidatePath('/settings/user');
 
   return { success: true };
 }
@@ -257,8 +328,9 @@ export async function uploadProfilePictureAction(formData: FormData) {
   if (!file.type.startsWith('image/')) {
     throw new Error('File must be an image');
   }
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error('File size must be less than 5MB');
+  // Allow up to 1MB (compression should handle larger files on client side)
+  if (file.size > 1 * 1024 * 1024) {
+    throw new Error('File size must be less than 1MB');
   }
 
   const oldUser = await prisma.user.findUnique({
@@ -321,7 +393,7 @@ export async function uploadProfilePictureAction(formData: FormData) {
     }
   }
 
-  revalidatePath('/settings');
+  revalidatePath('/settings/user');
 
   return { picture_url: publicUrl };
 }
@@ -352,7 +424,7 @@ export async function removeProfilePictureAction() {
     where: { id: session.user.id },
     data: { picture_url: null },
   });
-  revalidatePath('/settings');
+  revalidatePath('/settings/user');
 
   return { success: true };
 }
@@ -463,7 +535,7 @@ export async function removeUserFromOrganizationAction(
       });
     }
 
-    revalidatePath('/settings');
+    revalidatePath('/settings/user');
     revalidatePath('/');
 
     return { success: true };

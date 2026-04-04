@@ -6,7 +6,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { handlePdfGenerate, handleDelete } from './event-calendar/utils';
-import { useAlertDialog } from '@/contexts/AlertDialogContext';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
 
 interface ContextMenuEventRightClickProps {
@@ -17,6 +17,8 @@ interface ContextMenuEventRightClickProps {
   eventTitle: string;
   onDelete: (eventId: string, eventTitle: string) => void;
   einsatzSingular?: string;
+  canConfirm?: boolean;
+  onConfirm?: (eventId: string) => void;
 }
 
 export function ContextMenuEventRightClick({
@@ -27,8 +29,10 @@ export function ContextMenuEventRightClick({
   eventTitle,
   onDelete,
   einsatzSingular = 'Einsatz',
+  canConfirm = false,
+  onConfirm,
 }: ContextMenuEventRightClickProps) {
-  const { showDialog } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
   const { generatePdf } = usePdfGenerator();
 
   const handleDeleteClick = async (e: React.MouseEvent) => {
@@ -36,7 +40,7 @@ export function ContextMenuEventRightClick({
     await handleDelete(
       einsatzSingular,
       { id: eventId, title: eventTitle },
-      showDialog,
+      showDestructive,
       onDelete
     );
   };
@@ -50,6 +54,11 @@ export function ContextMenuEventRightClick({
     );
   };
 
+  const handleConfirmClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onConfirm?.(eventId);
+  };
+
   return (
     <ContextMenu>
       <ContextMenuTrigger
@@ -60,6 +69,11 @@ export function ContextMenuEventRightClick({
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52" onClick={(e) => e.stopPropagation()}>
         {heading && <ContextMenuLabel>{heading}</ContextMenuLabel>}
+        {canConfirm && onConfirm && (
+          <ContextMenuItem onClick={handleConfirmClick}>
+            Als bestätigt markieren
+          </ContextMenuItem>
+        )}
         <ContextMenuItem onClick={handlePDFClick}>
           PDF Generieren
         </ContextMenuItem>

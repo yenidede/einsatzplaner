@@ -8,6 +8,7 @@ import { emailService } from '@/lib/email/EmailService';
 import { hasPermission } from '@/lib/auth/authGuard';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcrypt';
+import { getAdminRecipientsForInvitation } from '@/lib/email/email-helpers';
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -149,7 +150,7 @@ export async function createInvitationAction(data: {
     }
 
     // Revalidate paths
-    revalidatePath(`/organization/${data.organizationId}/manage`);
+    revalidatePath(`/settings/org/${data.organizationId}`);
 
     return {
       success: true,
@@ -276,6 +277,30 @@ export async function acceptInvitationAction(token: string) {
       }
     }
 
+    try {
+      const adminRecipients = await getAdminRecipientsForInvitation(
+        firstInvitation.org_id
+      );
+
+      if (adminRecipients.length > 0) {
+        await emailService.sendInvitationAcceptedNotificationEmail(
+          adminRecipients,
+          {
+            firstname: session.user.firstname || '',
+            lastname: session.user.lastname || '',
+            email: session.user.email || '',
+          },
+          { name: firstInvitation.organization.name },
+          invitations.map((inv) => inv.role.name)
+        );
+      }
+    } catch (emailError) {
+      console.error(
+        'Fehler beim Senden der Benachrichtigungs-E-Mail:',
+        emailError
+      );
+    }
+
     // Falls keine aktive Organisation, setze die neue Organisation als aktiv
     if (!activeOrganization) {
       activeOrganization = firstInvitation.organization;
@@ -319,8 +344,8 @@ export async function verifyInvitationAction(token: string) {
     const invitations = await prisma.invitation.findMany({
       where: {
         token,
-        accepted: false, // Nur nicht akzeptierte Einladungen
-        expires_at: { gt: new Date() }, // Nur nicht abgelaufene
+        accepted: false,
+        expires_at: { gt: new Date() },
       },
       include: {
         organization: {
@@ -335,7 +360,6 @@ export async function verifyInvitationAction(token: string) {
     });
 
     if (!invitations || invitations.length === 0) {
-      // Debug: Prüfen ob überhaupt eine Einladung mit diesem Token existiert
       const anyInvitation = await prisma.invitation.findFirst({
         where: { token },
         include: {
@@ -392,7 +416,7 @@ export async function verifyInvitationAction(token: string) {
       email: firstInvitation.email,
       organizationName: firstInvitation.organization?.name || 'Organisation',
       orgId: firstInvitation.org_id,
-      roleName: roleNames || 'Helfer',
+      roleName: roleNames || helperNameSingular,
       helperNameSingular,
       helperNamePlural,
       roles: invitations.map((inv) => ({
@@ -444,29 +468,43 @@ export async function createAccountFromInvitationAction(data: {
 
     const firstInvitation = invitations[0];
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: firstInvitation.email },
-    });
-
-    if (existingUser) {
-      throw new Error(
-        'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
-      );
-    }
-
-    // Passwort hashen
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     const result = await prisma.$transaction(async (tx) => {
-      const newUser = await tx.user.create({
-        data: {
-          email: firstInvitation.email,
-          firstname: data.firstname,
-          lastname: data.lastname,
-          password: hashedPassword,
-          active_org: firstInvitation.org_id,
-        },
+      const existingUser = await tx.user.findUnique({
+        where: { email: firstInvitation.email },
       });
+
+      if (existingUser) {
+        throw new Error(
+          'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
+        );
+      }
+
+      let newUser;
+      try {
+        newUser = await tx.user.create({
+          data: {
+            email: firstInvitation.email,
+            firstname: data.firstname,
+            lastname: data.lastname,
+            password: hashedPassword,
+            active_org: firstInvitation.org_id,
+          },
+        });
+      } catch (createError) {
+        if (
+          createError &&
+          typeof createError === 'object' &&
+          'code' in createError &&
+          createError.code === 'P2002'
+        ) {
+          throw new Error(
+            'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an.'
+          );
+        }
+        throw createError;
+      }
 
       await Promise.all(
         invitations.map((invitation) =>

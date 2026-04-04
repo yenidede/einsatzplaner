@@ -13,6 +13,7 @@ import {
 import { getCommonPinningStyles } from '@/components/data-table/lib/data-table';
 import { cn } from '@/lib/utils';
 import { DataTableSkeleton } from '../components/data-table-skeleton';
+import { Button } from '@/components/ui/button';
 
 interface DataTableProps<TData> extends React.ComponentProps<'div'> {
   table: TanstackTable<TData>;
@@ -29,85 +30,102 @@ export function DataTable<TData>({
   ...props
 }: DataTableProps<TData>) {
   return (
-    <div
-      className={cn('flex w-full flex-col gap-2.5 overflow-auto', className)}
-      {...props}
-    >
+    <div className={cn('flex w-full flex-col gap-2.5', className)} {...props}>
       {children}
       <div className="overflow-hidden rounded-md border">
         {isLoading ? (
           <DataTableSkeleton columnCount={8} />
         ) : (
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      style={{
-                        ...getCommonPinningStyles({ column: header.column }),
-                      }}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
+          <>
+            <div className="bg-background max-h-[70svh] overflow-auto">
+              <Table className="w-max min-w-full">
+                <TableHeader className="bg-background sticky top-0 z-40 border-b shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          colSpan={header.colSpan}
+                          className="bg-background"
+                          style={{
+                            ...getCommonPinningStyles({
+                              column: header.column,
+                              withBorder: true,
+                            }),
+                            zIndex: header.column.getIsPinned() ? 30 : 20,
+                          }}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && 'selected'}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        style={{
-                          ...getCommonPinningStyles({ column: cell.column }),
-                        }}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && 'selected'}
                       >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={cn(
+                              cell.column.getIsPinned() &&
+                                'bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted'
+                            )}
+                            style={{
+                              ...getCommonPinningStyles({
+                                column: cell.column,
+                              }),
+                              zIndex: cell.column.getIsPinned() ? 10 : undefined,
+                            }}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={table.getVisibleLeafColumns().length}
+                        className="h-24 text-center"
+                      >
+                        Keine Suchergebnisse.{' '}
+                        <Button
+                          variant="link"
+                          onClick={() => table.resetColumnFilters()}
+                        >
+                          Filter zurücksetzen.
+                        </Button>
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={table.getAllColumns().length}
-                    className="h-24 text-center"
-                  >
-                    Keine Suchergebnisse.{' '}
-                    <a
-                      className="cursor-pointer underline"
-                      onClick={() => table.resetColumnFilters()}
-                    >
-                      Filter zurücksetzen.
-                    </a>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="bg-background flex flex-col gap-2.5 border-t pt-2">
+              <DataTablePagination
+                table={table}
+                actionBar={
+                  table.getFilteredSelectedRowModel().rows.length > 0
+                    ? actionBar
+                    : null
+                }
+              />
+            </div>
+          </>
         )}
-      </div>
-      <div className="flex flex-col gap-2.5">
-        <DataTablePagination table={table} />
-        {actionBar &&
-          table.getFilteredSelectedRowModel().rows.length > 0 &&
-          actionBar}
       </div>
     </div>
   );

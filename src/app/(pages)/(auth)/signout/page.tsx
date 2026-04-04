@@ -6,7 +6,7 @@ import { signOut } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
-async function SignOutPage() {
+function SignOutPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/helferansicht';
@@ -24,18 +24,17 @@ async function SignOutPage() {
     }
   };
 
-  await handleSignOut();
+  handleSignOut();
   return (
     <div className="bg-secondary flex grow flex-col p-6 md:p-10">
-      <h1>Abmeldung fehlgeschlagen</h1>
+      <h1>Sie werden in Kürze abgemeldet</h1>
       <p>
-        Leider hat das Abmelden gerade nicht funktioniert. Bitte versuchen Sie
-        es in einem Moment erneut oder laden Sie die Seite neu (CMD / STRG +
-        SHIFT + R)
+        Sollte das Abmelden nicht funktionieren, versuchen Sie es in einem
+        Moment erneut oder laden Sie die Seite neu (CMD / STRG + SHIFT + R)
       </p>
       <div className="mt-4 flex gap-2">
         <Button variant="default" onClick={() => window.location.reload()}>
-          Seite neu laden
+          Jetzt Seite neu laden
         </Button>
       </div>
     </div>
@@ -44,7 +43,13 @@ async function SignOutPage() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div>Abmeldung läuft...</div>}>
+    <Suspense
+      fallback={
+        <div className="bg-secondary flex grow flex-col p-6 md:p-10">
+          Sie werden in Kürze abgemeldet...
+        </div>
+      }
+    >
       <SignOutPage />
     </Suspense>
   );

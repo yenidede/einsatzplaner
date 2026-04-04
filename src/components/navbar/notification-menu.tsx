@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { BellIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 import {
   Popover,
   PopoverContent,
@@ -12,11 +13,19 @@ import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useQueryClient } from '@tanstack/react-query';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
-import { getFormattedMessage } from '@/features/activity_log/utils';
+import {
+  getFormattedMessage,
+  isActivityRead,
+} from '@/features/activity_log/utils';
 import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useSession } from 'next-auth/react';
-import { useActivityLogs } from '@/features/activity_log/hooks/useActivityLogs';
+import {
+  useActivityLogs,
+  useMarkNotificationsAsRead,
+  useNotificationReadState,
+} from '@/features/activity_log/hooks/useActivityLogs';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { AllActivitiesModal } from '@/features/activity_log/components/AllActivitiesModal';
 
 function Dot({ className }: { className?: string }) {
   return (
@@ -79,25 +88,25 @@ const markAllActivitiesAsRead = (activityIds: string[]) => {
 export default function NotificationMenu() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [isOpen, setIsOpen] = useState(false);
+  const [allActivitiesModalOpen, setAllActivitiesModalOpen] = useState(false);
   const { openDialog } = useEventDialog();
   const queryClient = useQueryClient();
 
   const { data: session } = useSession();
 
   const { data, isLoading } = useActivityLogs({ limit: 10, offset: 0 });
+  const { data: notificationReadState } = useNotificationReadState();
+  const { mutateAsync: markNotificationsAsRead } =
+    useMarkNotificationsAsRead();
 
   const orgIds = session?.user.orgIds;
   const { data: orgsData } = useOrganizations(
     orgIds && orgIds.length > 1 ? orgIds : undefined
   );
 
-  const activeOrg = useMemo(() => {
-    return orgsData?.find(
-      (org) => org.id === session?.user.activeOrganization?.id
-    );
-  }, [orgsData, session?.user.activeOrganization?.id]);
-
   const activities = data || [];
+  const lastReadNotifications =
+    notificationReadState?.lastReadNotifications ?? null;
 
   // Read IDs beim Mount laden
   useEffect(() => {
@@ -115,22 +124,46 @@ export default function NotificationMenu() {
 
   const handleViewAll = () => {
     setIsOpen(false);
+    setAllActivitiesModalOpen(true);
+  };
+
+  const handleMarkAsRead = (id: string) => {
+    markActivityAsRead(id);
+    setReadIds((prev) => new Set([...prev, id]));
   };
 
   const unreadIds = new Set(
-    activities.filter((a) => !readIds.has(a.id)).map((a) => a.id)
+    activities
+      .filter(
+        (activity) =>
+          !isActivityRead(activity, readIds, lastReadNotifications)
+      )
+      .map((activity) => activity.id)
   );
   const unreadCount = unreadIds.size;
 
-  const handleMarkAllAsRead = () => {
-    const activityIds = activities.map((a) => a.id);
-    markAllActivitiesAsRead(activityIds);
-    setReadIds(new Set([...readIds, ...activityIds]));
+  const handleMarkAllAsRead = async (
+    activityIdsOrEvent?: string[] | React.MouseEvent
+  ) => {
+    const ids = Array.isArray(activityIdsOrEvent)
+      ? activityIdsOrEvent
+      : activities.map((a) => a.id);
+
+    markAllActivitiesAsRead(ids);
+    setReadIds((prev) => new Set([...prev, ...ids]));
+
+    try {
+      await markNotificationsAsRead();
+    } catch (error) {
+      console.error(
+        'Benachrichtigungsstatus konnte nicht gespeichert werden:',
+        error
+      );
+    }
   };
 
   const handleNotificationClick = (id: string) => {
-    markActivityAsRead(id);
-    setReadIds((prev) => new Set([...prev, id]));
+    handleMarkAsRead(id);
   };
 
   return (
@@ -157,7 +190,7 @@ export default function NotificationMenu() {
           {unreadCount > 0 && (
             <button
               className="cursor-pointer text-xs font-medium hover:underline"
-              onClick={handleMarkAllAsRead}
+              onClick={() => void handleMarkAllAsRead()}
             >
               Alle als gelesen markieren
             </button>
@@ -180,7 +213,11 @@ export default function NotificationMenu() {
             </div>
           ) : (
             activities.map((activity) => {
-              const isUnread = !readIds.has(activity.id);
+              const isUnread = !isActivityRead(
+                activity,
+                readIds,
+                lastReadNotifications
+              );
 
               return (
                 <div
@@ -191,14 +228,16 @@ export default function NotificationMenu() {
                     <div
                       className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                       style={{
-                        backgroundColor: `${activity.change_type.change_color}15`,
+                        backgroundColor: `${activity.change_type.change_color}40`,
                       }}
                     >
                       {activity.change_type.change_icon_url ? (
-                        <img
+                        <Image
                           src={activity.change_type.change_icon_url}
                           alt={activity.change_type.name}
                           className="h-4 w-4 object-contain"
+                          width={32}
+                          height={32}
                         />
                       ) : (
                         <div
@@ -226,9 +265,11 @@ export default function NotificationMenu() {
 
                         {orgsData && orgsData.length > 1 && (
                           <span className="ms-2 min-w-0 truncate">
-                            {orgsData.find(
-                              (org) => org.id === activity.einsatz.org_id
-                            )?.name ?? 'Ladefehler'}
+                            {activity.einsatz
+                              ? (orgsData.find(
+                                  (org) => org.id === activity.einsatz?.org_id
+                                )?.name ?? '–')
+                              : '–'}
                           </span>
                         )}
                       </div>
@@ -261,6 +302,15 @@ export default function NotificationMenu() {
           </>
         )}
       </PopoverContent>
+      <AllActivitiesModal
+        open={allActivitiesModalOpen}
+        onOpenChange={setAllActivitiesModalOpen}
+        openDialog={openDialog}
+        readIds={readIds}
+        lastReadNotifications={lastReadNotifications}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={(activityIds) => void handleMarkAllAsRead(activityIds)}
+      />
     </Popover>
   );
 }

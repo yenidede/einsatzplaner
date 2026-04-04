@@ -1,0 +1,688 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
+import {
+  updateUserRoleAction,
+  removeUserFromOrganizationAction,
+  promoteToSuperadminAction,
+  demoteFromSuperadminAction,
+} from '@/features/settings/users-action';
+import { settingsQueryKeys } from '../../features/settings/queryKeys/queryKey';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { UserProfileHeader } from './userProfile/UserProfileHeader';
+import { UserContactInfo } from './userProfile/UserContactInfo';
+import { UserPersonalProperties } from './userProfile/UserPersonalProperties';
+import { UserRoleManagement } from './userProfile/UserRoleManagement';
+import { UserDangerZone } from './userProfile/UserDangerZone';
+import { upsertUserPropertyValueAction } from '@/features/user_properties/user_property-actions';
+import {
+  useOrganizationById,
+  useOrganizationUserRoles,
+  useUserProfileById,
+  useUserPropertyValues,
+} from '@/features/settings/hooks/useUserProfile';
+import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
+import { useUserPropertiesByOrg } from '@/features/user_properties/hooks/use-user-property-queries';
+import { useSession } from 'next-auth/react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { createRoleNameOverrides } from '@/components/Roles';
+import { queryKeys as userQueryKeys } from '@/features/user/queryKeys';
+
+interface UserProfileDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  userId: string;
+  organizationId: string;
+  currentUserId?: string;
+}
+
+interface UserRole {
+  id: string;
+  role: {
+    id: string;
+    name: string;
+    abbreviation: string;
+  };
+}
+
+function invalidateUserQueriesForOrganization(
+  queryClient: ReturnType<typeof useQueryClient>,
+  organizationId: string
+) {
+  const queryKey = settingsQueryKeys.org.all(organizationId);
+
+  queryClient.invalidateQueries({
+    queryKey,
+  });
+
+  return queryClient.invalidateQueries({
+    queryKey: userQueryKeys.users(undefined),
+    predicate: (query) => {
+      if (query.queryKey[0] !== 'user') {
+        return false;
+      }
+
+      const orgIds = query.queryKey[1];
+
+      return (
+        Array.isArray(orgIds) &&
+        orgIds.some((orgId): orgId is string => orgId === organizationId)
+      );
+    },
+  });
+}
+
+export function UserProfileDialog({
+  isOpen,
+  onClose,
+  userId,
+  organizationId,
+  currentUserId,
+}: UserProfileDialogProps) {
+  const queryClient = useQueryClient();
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [originalRoles, setOriginalRoles] = useState<string[]>([]);
+  const [hasKey, setHasKey] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [propertyValues, setPropertyValues] = useState<Record<string, string>>(
+    {}
+  );
+  const [originalPropertyValues, setOriginalPropertyValues] = useState<
+    Record<string, string>
+  >({});
+
+  const { showDefault, showDestructive } = useConfirmDialog();
+  const { data: session } = useSession();
+
+  const {
+    data: userProfile,
+    isLoading: profileLoading,
+    error,
+  } = useUserProfileById(
+    isOpen ? userId : undefined,
+    isOpen ? organizationId : undefined
+  );
+
+  const { data: userOrgRoles = [] } = useUserOrgRoles(
+    isOpen ? organizationId : undefined,
+    isOpen ? userId : undefined
+  );
+  const { data: organization } = useOrganizationById(
+    isOpen ? organizationId : undefined
+  );
+
+  const { data: currentUserOrgRoles = [] } = useUserOrgRoles(
+    isOpen && currentUserId ? organizationId : undefined,
+    isOpen && currentUserId ? currentUserId : undefined
+  );
+
+  const isCurrentUserSuperadmin = currentUserOrgRoles.some(
+    (userRole) =>
+      userRole.role?.name === 'Superadmin' ||
+      userRole.role?.abbreviation === 'SA'
+  );
+
+  const { data: userProperties = [] } = useUserPropertiesByOrg(
+    isOpen ? organizationId : undefined
+  );
+
+  const { data: userPropertyValues = [] } = useUserPropertyValues(
+    isOpen ? userId : undefined,
+    isOpen ? organizationId : undefined
+  );
+  const { data: allOrgUserRoles = [] } = useOrganizationUserRoles(
+    isOpen ? organizationId : undefined
+  );
+
+  const superadminCount = Array.from(
+    new Set(
+      allOrgUserRoles
+        .filter(
+          (userRole) =>
+            userRole.role?.name === 'Superadmin' ||
+            userRole.role?.abbreviation === 'SA'
+        )
+        .map((userRole) => userRole.user.id)
+    )
+  ).length;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow || '';
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    const rolesChanged =
+      JSON.stringify([...userRoles].sort()) !==
+      JSON.stringify([...originalRoles].sort());
+
+    const propertyValuesChanged =
+      Object.keys(propertyValues).some(
+        (key) => propertyValues[key] !== originalPropertyValues[key]
+      ) ||
+      Object.keys(originalPropertyValues).some(
+        (key) => propertyValues[key] !== originalPropertyValues[key]
+      );
+
+    setHasChanges(rolesChanged || propertyValuesChanged);
+  }, [userRoles, originalRoles, propertyValues, originalPropertyValues]);
+
+  useEffect(() => {
+    if (userOrgRoles && userOrgRoles.length > 0) {
+      const roles: string[] = [];
+      userOrgRoles.forEach((userRole) => {
+        const roleAbbr =
+          userRole.role?.abbreviation || userRole.role?.name || '';
+        if (
+          roleAbbr === 'OV' ||
+          userRole.role?.name === 'Organisationsverwaltung'
+        ) {
+          if (!roles.includes('OV')) roles.push('OV');
+        } else if (
+          roleAbbr === 'EV' ||
+          userRole.role?.name === 'Einsatzverwaltung'
+        ) {
+          if (!roles.includes('EV')) roles.push('EV');
+        } else if (
+          roleAbbr === 'Helfer' ||
+          userRole.role?.name === 'Helfer:in' ||
+          userRole.role?.name === 'Helfer'
+        ) {
+          if (!roles.includes('Helfer')) roles.push('Helfer');
+        }
+        if (
+          userRole.role?.name === 'Superadmin' ||
+          userRole.role?.abbreviation === 'SA'
+        ) {
+          if (!roles.includes('OV')) roles.push('OV');
+          if (!roles.includes('EV')) roles.push('EV');
+          if (!roles.includes('Helfer')) roles.push('Helfer');
+        }
+      });
+      setUserRoles(roles);
+      setOriginalRoles([...roles]);
+      setHasKey(false);
+    }
+  }, [userOrgRoles]);
+
+  useEffect(() => {
+    if (userPropertyValues && userPropertyValues.length >= 0) {
+      const values: Record<string, string> = {};
+      userPropertyValues.forEach((pv) => {
+        values[pv.user_property_id] = pv.value;
+      });
+
+      const currentValuesString = JSON.stringify(propertyValues);
+      const newValuesString = JSON.stringify(values);
+
+      if (currentValuesString !== newValuesString) {
+        setPropertyValues(values);
+        setOriginalPropertyValues(values);
+      }
+    }
+  }, [userPropertyValues]);
+
+  const isSuperadmin = userOrgRoles.some(
+    (userRole) =>
+      userRole.role?.name === 'Superadmin' ||
+      userRole.role?.abbreviation === 'SA'
+  );
+  const isCurrentUserOV = currentUserOrgRoles.some(
+    (userRole) =>
+      userRole.role?.name === 'Organisationsverwaltung' ||
+      userRole.role?.abbreviation === 'OV'
+  );
+
+  const isTargetUserOV = userOrgRoles.some(
+    (userRole) =>
+      userRole.role?.name === 'Organisationsverwaltung' ||
+      userRole.role?.abbreviation === 'OV'
+  );
+
+  const saveChangesMutation = useMutation({
+    mutationFn: async () => {
+      const rolesToAdd: string[] = [];
+      const rolesToRemove: string[] = [];
+      userRoles.forEach((role) => {
+        if (!originalRoles.includes(role)) rolesToAdd.push(role);
+      });
+      originalRoles.forEach((role) => {
+        if (!userRoles.includes(role)) rolesToRemove.push(role);
+      });
+      const promises: Promise<any>[] = [];
+      rolesToAdd.forEach((role) => {
+        promises.push(
+          updateUserRoleAction(userId, organizationId, role, 'add')
+        );
+      });
+      rolesToRemove.forEach((role) => {
+        promises.push(
+          updateUserRoleAction(userId, organizationId, role, 'remove')
+        );
+      });
+      await Promise.all(promises);
+      return { rolesToAdd, rolesToRemove };
+    },
+    onMutate: () => {
+      return { toastId: toast.loading('Profil wird gespeichert...') };
+    },
+    onSuccess: async (data, variables, context) => {
+      setOriginalRoles([...userRoles]);
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.userProfile(organizationId, userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.roles(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.userRoles(organizationId, userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.users(organizationId),
+        }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
+      ]);
+
+      toast.success('Rollen erfolgreich aktualisiert', {
+        id: context.toastId,
+      });
+    },
+    onError: async (error, variables, context) => {
+      console.error('Error saving role changes:', error);
+      setUserRoles([...originalRoles]);
+
+      toast.error('Fehler beim Speichern der Rollenänderungen', {
+        id: context?.toastId,
+      });
+
+      await showDestructive(
+        'Fehler',
+        'Fehler beim Speichern der Rollenänderungen'
+      );
+    },
+  });
+
+  const removeUserMutation = useMutation({
+    mutationFn: () => removeUserFromOrganizationAction(userId, organizationId),
+    onMutate: () => {
+      return { toastId: toast.loading('Benutzer wird entfernt...') };
+    },
+    onSuccess: async (data, variables, context) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.users(organizationId),
+        }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
+      ]);
+
+      toast.success('Benutzer erfolgreich entfernt', {
+        id: context.toastId,
+      });
+      onClose();
+    },
+    onError: (error, variables, context) => {
+      toast.error('Fehler beim Entfernen des Benutzers', {
+        id: context?.toastId,
+      });
+    },
+  });
+
+  const promoteToSuperadminMutation = useMutation({
+    mutationFn: () => promoteToSuperadminAction(userId, organizationId),
+    onMutate: () => {
+      return { toastId: toast.loading('Wird zum Superadmin ernannt...') };
+    },
+    onSuccess: async (data, variables, context) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.userProfile(organizationId, userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.roles(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.userRoles(organizationId, userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.users(organizationId),
+        }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
+      ]);
+
+      toast.success('Erfolgreich zum Superadmin ernannt', {
+        id: context.toastId,
+      });
+      onClose();
+    },
+    onError: async (error: Error, variables, context) => {
+      toast.error(error.message || 'Fehler beim Ernennen zum Superadmin', {
+        id: context?.toastId,
+      });
+
+      await showDestructive(
+        'Fehler',
+        error.message || 'Fehler beim Ernennen zum Superadmin'
+      );
+    },
+  });
+
+  const demoteFromSuperadminMutation = useMutation({
+    mutationFn: () => demoteFromSuperadminAction(userId, organizationId),
+    onMutate: () => {
+      return { toastId: toast.loading('Superadmin-Rolle wird entfernt...') };
+    },
+    onSuccess: async (data, variables, context) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.userProfile(organizationId, userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.roles(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.userRoles(organizationId, userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.users(organizationId),
+        }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
+      ]);
+
+      toast.success('Superadmin-Rolle erfolgreich entfernt', {
+        id: context.toastId,
+      });
+      onClose();
+    },
+    onError: async (error: Error, variables, context) => {
+      toast.error(
+        error.message || 'Fehler beim Entfernen der Superadmin-Rolle',
+        {
+          id: context?.toastId,
+        }
+      );
+
+      await showDestructive(
+        'Fehler',
+        error.message || 'Fehler beim Entfernen der Superadmin-Rolle'
+      );
+    },
+  });
+
+  const toggleRole = (roleAbbreviation: string) => {
+    const isCurrentlyActive = userRoles.includes(roleAbbreviation);
+    if (isCurrentlyActive) {
+      setUserRoles((prev) => prev.filter((role) => role !== roleAbbreviation));
+    } else {
+      setUserRoles((prev) => [...prev, roleAbbreviation]);
+    }
+  };
+
+  const handlePropertyValueChange = (propertyId: string, value: string) => {
+    setPropertyValues((prev) => ({ ...prev, [propertyId]: value }));
+  };
+
+  const handleSaveAndClose = async () => {
+    if (!hasChanges) {
+      onClose();
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveChangesMutation.mutateAsync();
+
+      const promises: Promise<void>[] = [];
+      for (const [propertyId, value] of Object.entries(propertyValues)) {
+        if (value !== originalPropertyValues[propertyId]) {
+          promises.push(
+            upsertUserPropertyValueAction(userId, propertyId, value)
+          );
+        }
+      }
+      await Promise.all(promises);
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.userProfile(organizationId, userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.userProperties(
+            organizationId,
+            userId
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.org.users(organizationId),
+        }),
+        invalidateUserQueriesForOrganization(queryClient, organizationId),
+      ]);
+
+      setOriginalPropertyValues({ ...propertyValues });
+      setHasChanges(false);
+
+      toast.success('Änderungen erfolgreich gespeichert!');
+      onClose();
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      toast.error('Fehler beim Speichern der Änderungen');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClose = async () => {
+    if (hasChanges) {
+      const result = await showDefault(
+        'Ungespeicherte Änderungen',
+        'Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?'
+      );
+      if (result === 'success') {
+        setUserRoles([...originalRoles]);
+        setPropertyValues({ ...originalPropertyValues });
+        setHasChanges(false);
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
+  const handleRemoveUser = async () => {
+    const result = await showDestructive(
+      'Benutzer entfernen',
+      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich aus der Organisation entfernen?`
+    );
+    if (result === 'success') {
+      removeUserMutation.mutate();
+    }
+  };
+
+  const handlePromoteToSuperadmin = async () => {
+    const result = await showDestructive(
+      'Zum Superadmin ernennen',
+      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen? Diese Person erhält dann alle Berechtigungen.`
+    );
+    if (result === 'success') {
+      promoteToSuperadminMutation.mutate();
+    }
+  };
+
+  const handleDemoteFromSuperadmin = async () => {
+    const result = await showDestructive(
+      'Superadmin-Rolle entfernen',
+      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich die Superadmin-Rolle entziehen? Die Person behält alle anderen Rollen.`
+    );
+    if (result === 'success') {
+      demoteFromSuperadminMutation.mutate();
+    }
+  };
+
+  if (!isOpen) return null;
+  const isLoading = profileLoading;
+
+  if (isLoading) {
+    return createPortal(
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-white/20 backdrop-blur-sm" />
+        <Card className="relative p-8">
+          <CardContent className="flex items-center gap-3 p-0">
+            <Loader2 className="text-primary h-6 w-6 shrink-0 animate-spin" />
+            <span className="text-muted-foreground font-medium">
+              Lädt Benutzerdaten...
+            </span>
+          </CardContent>
+        </Card>
+      </div>,
+      document.body
+    );
+  }
+
+  if (error) {
+    return createPortal(
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-white/20 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        <Card className="border-destructive/50 relative p-8">
+          <CardContent className="flex flex-col gap-4 p-0">
+            <p className="text-destructive font-medium">
+              Fehler beim Laden der Benutzerdaten
+            </p>
+            <Button variant="secondary" onClick={onClose}>
+              Zurück
+            </Button>
+          </CardContent>
+        </Card>
+      </div>,
+      document.body
+    );
+  }
+
+  if (!userProfile) return null;
+
+  const activeOrgName =
+    session?.user?.activeOrganization?.name || 'keine Organisation geladen ...';
+
+  const content = (
+    <>
+      <div
+        className="fixed inset-0 z-40 flex items-center justify-center p-4"
+        aria-modal="true"
+        role="dialog"
+      >
+        <div
+          className="fixed inset-0 bg-white/20 backdrop-blur-md transition-opacity"
+          onClick={handleClose}
+        />
+        <div
+          ref={dialogRef}
+          onClick={(e) => e.stopPropagation()}
+          className="relative mt-10 flex h-[90vh] w-full max-w-[90vw] flex-col rounded-lg bg-white shadow-[0px_4px_6px_0px_rgba(0,0,0,0.09)] lg:max-w-[900px] xl:max-w-5xl"
+        >
+          {/* Fixed Header with Buttons */}
+          <div className="shrink-0 bg-white px-4 py-3 md:px-6 md:py-4">
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={handleClose}>
+                {hasChanges ? 'Abbrechen' : 'Zurück'}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveAndClose}
+                disabled={saving}
+                variant={hasChanges ? 'default' : 'secondary'}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Speichert...
+                  </>
+                ) : hasChanges ? (
+                  'Änderungen Speichern'
+                ) : (
+                  'Speichern'
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8">
+              <div className="flex flex-col gap-6 md:gap-8">
+                <UserProfileHeader
+                  firstname={userProfile.firstname}
+                  lastname={userProfile.lastname}
+                  pictureUrl={userProfile.picture_url}
+                  roleNameOverrides={createRoleNameOverrides(
+                    organization?.helper_name_singular ?? 'Helfer'
+                  )}
+                  userOrgRoles={userOrgRoles}
+                />
+                <UserContactInfo
+                  email={userProfile.email}
+                  phone={userProfile.phone}
+                />
+                {userProperties.length > 0 && (
+                  <UserPersonalProperties
+                    organizationName={activeOrgName}
+                    userProperties={userProperties}
+                    propertyValues={propertyValues}
+                    onPropertyValueChange={handlePropertyValueChange}
+                  />
+                )}
+
+                <UserRoleManagement
+                  organizationName={activeOrgName}
+                  userRoles={userRoles}
+                  saving={saving}
+                  onToggleRole={toggleRole}
+                  roleNameOverrides={createRoleNameOverrides(
+                    organization?.helper_name_singular ?? 'Helfer'
+                  )}
+                />
+                <UserDangerZone
+                  organizationName={activeOrgName}
+                  isSuperadmin={isSuperadmin}
+                  isCurrentUserSuperadmin={isCurrentUserSuperadmin}
+                  isCurrentUserOV={isCurrentUserOV}
+                  isTargetUserOV={isTargetUserOV}
+                  isRemovingUser={removeUserMutation.isPending}
+                  isDemoting={demoteFromSuperadminMutation.isPending}
+                  isPromoting={promoteToSuperadminMutation.isPending}
+                  onRemoveUser={handleRemoveUser}
+                  onDemoteFromSuperadmin={handleDemoteFromSuperadmin}
+                  onPromoteToSuperadmin={handlePromoteToSuperadmin}
+                  isCurrentUser={currentUserId === userId}
+                  superadminCount={superadminCount}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  return createPortal(content, document.body);
+}

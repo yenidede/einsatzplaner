@@ -2,6 +2,7 @@
 
 import FormInputFieldCustom from '@/components/form/formInputFieldCustom';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 
@@ -64,11 +65,20 @@ export function TextFieldSettings({
       </FormInputFieldCustom>
 
       <FormInputFieldCustom name="Standardwert (optional)" errors={[]}>
-        <Input
-          value={defaultValue || ''}
-          onChange={(e) => onChange({ defaultValue: e.target.value })}
-          placeholder="Wird vorausgefüllt, falls leer"
-        />
+        {isMultiline ? (
+          <Textarea
+            value={defaultValue || ''}
+            onChange={(e) => onChange({ defaultValue: e.target.value })}
+            placeholder="Wird vorausgefüllt, falls leer"
+            rows={4}
+          />
+        ) : (
+          <Input
+            value={defaultValue || ''}
+            onChange={(e) => onChange({ defaultValue: e.target.value })}
+            placeholder="Wird vorausgefüllt, falls leer"
+          />
+        )}
       </FormInputFieldCustom>
     </>
   );

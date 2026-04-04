@@ -2,11 +2,50 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
+/**
+ * Remove leading zeros from a numeric string while preserving at least one digit.
+ *
+ * @param value - The numeric string to normalize; may contain leading zeros.
+ * @returns The string with leading zeros removed; if the input is all zeros, a single `"0"` is preserved.
+ */
+function stripLeadingZeros(value: string): string {
+  return value.replace(/^0+(?=\d)/, '');
+}
+
+const Input = React.forwardRef<
+  HTMLInputElement,
+  React.ComponentProps<'input'> & { isStripLeadingZeros?: boolean }
+>(function Input(
+  {
+    className,
+    type,
+    onChange,
+    value,
+    isStripLeadingZeros = true,
+    ...props
+  },
+  ref
+) {
+  const displayValue =
+    type === 'number' && isStripLeadingZeros && value != null && value !== ''
+      ? stripLeadingZeros(String(value))
+      : value;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (type === 'number' && e.target.value !== '') {
+      const normalized = stripLeadingZeros(e.target.value);
+      Object.assign(e.target, { value: normalized });
+    }
+    onChange?.(e);
+  };
+
   return (
     <input
+      ref={ref}
       type={type}
       data-slot="input"
+      value={displayValue}
+      onChange={handleChange}
       className={cn(
         'border-input file:text-foreground placeholder:text-muted-foreground/70 flex h-10 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
         'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
@@ -20,6 +59,6 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
       {...props}
     />
   );
-}
+});
 
 export { Input };

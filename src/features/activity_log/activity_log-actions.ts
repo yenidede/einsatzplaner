@@ -1,13 +1,23 @@
 'use server';
 
 import { requireAuth } from '@/lib/auth/authGuard';
+import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import {
   getActivities,
   getActivityLogs,
   getEinsatzActivityLogs,
   createChangeLog,
+  getChangeTypes,
+  getNotificationReadState,
+  markNotificationsAsRead,
 } from './activity_log-dal';
 import type { CreateChangeLogInput, ActivityLogFilters } from './types';
+
+function throwIfIsRedirect(error: unknown): void {
+  if (isRedirectError(error)) {
+    throw error;
+  }
+}
 
 export async function getActivitiesAction() {
   try {
@@ -22,6 +32,7 @@ export async function getActivitiesAction() {
 
     return { success: true, data: activities };
   } catch (error) {
+    throwIfIsRedirect(error);
     console.error('Error fetching activities:', error);
     return {
       success: false,
@@ -41,6 +52,7 @@ export async function getActivitiesForEinsatzAction(
 
     return { success: true, data: activities };
   } catch (error) {
+    throwIfIsRedirect(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unbekannter Fehler',
@@ -50,12 +62,51 @@ export async function getActivitiesForEinsatzAction(
 
 export async function getActivityLogsAction(filters?: ActivityLogFilters) {
   try {
-    await requireAuth();
+    const { session } = await requireAuth();
 
-    const result = await getActivityLogs(filters);
+    const userOrgIds = session.user.orgIds || [];
 
-    return { success: true, data: result };
+    if (userOrgIds.length === 0) {
+      return { success: false, error: 'Keine Organisationen gefunden' };
+    }
+
+    let allowedOrgIds = userOrgIds;
+    if (filters?.orgId) {
+      if (!userOrgIds.includes(filters.orgId)) {
+        return {
+          success: false,
+          error: 'Keine Berechtigung für diese Organisation',
+        };
+      }
+      allowedOrgIds = [filters.orgId];
+    }
+
+    const allActivities = await Promise.all(
+      allowedOrgIds.map((orgId) =>
+        getActivityLogs({
+          ...filters,
+          orgId,
+        })
+      )
+    );
+
+    const combinedActivities = allActivities
+      .flatMap((result) => result.activities)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+      .slice(0, filters?.limit || 50);
+
+    const total = allActivities.reduce((sum, result) => sum + result.total, 0);
+
+    return {
+      success: true,
+      data: {
+        activities: combinedActivities,
+        total,
+        hasMore: combinedActivities.length < total,
+      },
+    };
   } catch (error) {
+    throwIfIsRedirect(error);
     console.error('Error fetching activity logs:', error);
     return {
       success: false,
@@ -72,6 +123,7 @@ export async function getEinsatzActivityLogsAction(einsatzId: string) {
 
     return { success: true, data: result };
   } catch (error) {
+    throwIfIsRedirect(error);
     console.error('Error fetching einsatz activity logs:', error);
     return {
       success: false,
@@ -88,7 +140,57 @@ export async function createActivityLogAction(input: CreateChangeLogInput) {
 
     return { success: true, data: log };
   } catch (error) {
+    throwIfIsRedirect(error);
     console.error('Error creating activity log:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unbekannter Fehler',
+    };
+  }
+}
+
+export async function getChangeTypesAction() {
+  try {
+    await requireAuth();
+    const types = await getChangeTypes();
+    return { success: true, data: types };
+  } catch (error) {
+    throwIfIsRedirect(error);
+    console.error('Error fetching change types:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unbekannter Fehler',
+    };
+  }
+}
+
+export async function getNotificationReadStateAction() {
+  try {
+    const { session } = await requireAuth();
+
+    const readState = await getNotificationReadState(session.user.id);
+
+    return { success: true, data: readState };
+  } catch (error) {
+    throwIfIsRedirect(error);
+    console.error('Error fetching notification read state:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unbekannter Fehler',
+    };
+  }
+}
+
+export async function markNotificationsAsReadAction() {
+  try {
+    const { session } = await requireAuth();
+
+    const readState = await markNotificationsAsRead(session.user.id);
+
+    return { success: true, data: readState };
+  } catch (error) {
+    throwIfIsRedirect(error);
+    console.error('Error updating notification read state:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unbekannter Fehler',

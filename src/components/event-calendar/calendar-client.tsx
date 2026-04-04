@@ -1,49 +1,227 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useEffect, useCallback, useState } from 'react';
+import { addMonths, subMonths } from 'date-fns';
 
 import { EventCalendar } from '@/components/event-calendar';
 import { CalendarMode, CalendarEvent } from './types';
-import { getEinsatzWithDetailsById } from '@/features/einsatz/dal-einsatz';
 import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
-import { getAllUsersWithRolesByOrgId } from '@/features/user/user-dal';
-import { getUserPropertiesByOrgId } from '@/features/user_properties/user_property-dal';
-import { userPropertyQueryKeys } from '@/features/user_properties/queryKeys';
-import { queryKeys as UserQueryKeys } from '@/features/user/queryKeys';
-import { useEinsaetze } from '@/features/einsatz/hooks/useEinsatzQueries';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import {
+  useDetailedEinsatz,
+  useEinsaetzeForCalendar,
+  usePrefetchEinsaetzeForCalendar,
+} from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import {
   useCreateEinsatz,
   useUpdateEinsatz,
+  useConfirmEinsatz,
   useToggleUserAssignment,
   useDeleteEinsatz,
   useDeleteMultipleEinsaetze,
 } from '@/features/einsatz/hooks/useEinsatzMutations';
-import { queryKeys as einsatzQueryKeys } from '@/features/einsatz/queryKeys';
-import type { EinsatzCreate } from '@/features/einsatz/types';
+import { useUserPropertiesByOrg } from '@/features/user_properties/hooks/use-user-property-queries';
+import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
+import type {
+  EinsatzCreate,
+  EinsatzUserProperty,
+} from '@/features/einsatz/types';
+import { useEventDialogFromContext } from '@/contexts/EventDialogContext';
+import type { UserPropertyWithField } from '@/features/user_properties/user_property-dal';
+
+interface UserWithProperties {
+  id: string;
+  firstname: string | null;
+  lastname: string | null;
+  email: string;
+  user_organization_role: Array<{
+    id: string;
+    role: {
+      id: string;
+      name: string | null;
+      abbreviation: string | null;
+    };
+  }>;
+  user_property_value: Array<{
+    id: string;
+    user_property_id: string;
+    value: string | null;
+  }>;
+}
+
+interface ValidationResult {
+  blocking: string[];
+  warnings: string[];
+}
+
+interface ValidateUserAssignmentParams {
+  requiredProperties: EinsatzUserProperty[];
+  userProperties: UserPropertyWithField[];
+  allUsers: UserWithProperties[];
+  currentAssignedUsers: string[];
+  userIdToAdd: string;
+  helpersNeeded: number;
+}
+
+function validateUserAssignment({
+  requiredProperties,
+  userProperties,
+  allUsers,
+  currentAssignedUsers,
+  userIdToAdd,
+  helpersNeeded,
+}: ValidateUserAssignmentParams): ValidationResult {
+  const blocking: string[] = [];
+  const warnings: string[] = [];
+
+  // Build property name and type maps
+  const propMap = userProperties.reduce(
+    (acc, prop) => {
+      acc[prop.id] = prop.field?.name ?? prop.id;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
+
+  const propTypeMap = userProperties.reduce(
+    (acc, prop) => {
+      acc[prop.id] = prop.field?.type?.datatype ?? null;
+      return acc;
+    },
+    {} as Record<string, string | null>
+  );
+
+  // Simulate assigned users after adding this user
+  const assignedAfterAdd = Array.from(
+    new Set([...currentAssignedUsers, userIdToAdd])
+  );
+
+  const slotsFilledAfterAdd =
+    helpersNeeded >= 0 && assignedAfterAdd.length >= helpersNeeded;
+
+  // Check each required property
+  for (const requirement of requiredProperties) {
+    if (!requirement.is_required) continue;
+
+    const minRequired = requirement.min_matching_users ?? 1;
+    const propId = requirement.user_property_id;
+    const propName = propMap[propId] ?? propId;
+    const datatype = propTypeMap[propId];
+
+    // Count how many assigned users match this requirement
+    const matchingCount = allUsers
+      .filter((user) => assignedAfterAdd.includes(user.id))
+      .filter((user) => {
+        const propertyValue = user.user_property_value?.find(
+          (v: any) => v.user_property_id === propId
+        );
+
+        if (!propertyValue?.value) return false;
+
+        // Handle boolean type specially
+        if (datatype === 'boolean') {
+          const val = String(propertyValue.value).toLowerCase().trim();
+          return val === 'true' || val === '1';
+        }
+
+        // For other types, check if value is non-empty
+        return String(propertyValue.value).trim() !== '';
+      }).length;
+
+    // If Input -1: Every assigned user must have this property
+    let msg: string;
+    let isViolation: boolean;
+
+    if (minRequired === -1) {
+      const totalAssigned = assignedAfterAdd.length;
+      msg = `Eigenschaft "${propName}": ALLE Helfer müssen diese Eigenschaft haben (aktuell: ${matchingCount}/${totalAssigned})`;
+      isViolation = matchingCount < totalAssigned;
+    } else {
+      msg = `Eigenschaft "${propName}": mindestens ${minRequired} Helfer benötigt (aktuell: ${matchingCount})`;
+      isViolation = matchingCount < minRequired;
+    }
+
+    if (isViolation) {
+      if (slotsFilledAfterAdd) {
+        blocking.push(msg);
+      } else {
+        warnings.push(msg);
+      }
+    }
+  }
+
+  return { blocking, warnings };
+}
 
 export default function Component({ mode }: { mode: CalendarMode }) {
   const { data: session } = useSession();
   const activeOrgId = session?.user?.activeOrganization?.id;
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
-  const queryClient = useQueryClient();
-  const queryKey = einsatzQueryKeys.einsaetze(activeOrgId ?? '');
+  const userId = session?.user?.id;
+  const { showDefault, showDestructive } = useConfirmDialog();
 
-  const { data: events } = useEinsaetze(activeOrgId);
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const { selectedEinsatz, setEinsatz } = useEventDialogFromContext();
+  const currentEinsatzString =
+    typeof selectedEinsatz === 'string' ? selectedEinsatz : undefined;
+  const {
+    data: calendarData,
+    isError: isCalendarError,
+    error: calendarError,
+    isLoading: isCalendarLoading,
+  } = useEinsaetzeForCalendar(activeOrgId, currentDate);
+  const prefetchEinsaetzeForCalendar =
+    usePrefetchEinsaetzeForCalendar(activeOrgId);
+  const events = calendarData?.events;
+  const detailedEinsaetze = calendarData?.detailedEinsaetze ?? [];
+  const cachedDetailedEinsatz =
+    typeof selectedEinsatz === 'string'
+      ? detailedEinsaetze.find((e) => e.id === selectedEinsatz)
+      : undefined;
 
+  // Prefetch previous and next month so navigation to adjacent months is instant
+  useEffect(() => {
+    prefetchEinsaetzeForCalendar(subMonths(currentDate, 1));
+    prefetchEinsaetzeForCalendar(addMonths(currentDate, 1));
+  }, [currentDate, prefetchEinsaetzeForCalendar]);
+
+  const {
+    data: detailedEinsatz,
+    error: detailedEinsatzError,
+    isError: isDetailedEinsatzError,
+  } = useDetailedEinsatz(cachedDetailedEinsatz ? null : currentEinsatzString);
+  const effectiveDetailedEinsatz = cachedDetailedEinsatz ?? detailedEinsatz;
   const { data: organizations } = useOrganizations(session?.user.orgIds);
+  const { data: userProperties } = useUserPropertiesByOrg(activeOrgId);
+  const { data: orgUsers } = useUsersByOrgIds(activeOrgId ? [activeOrgId] : []);
 
   const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
     organizations,
     activeOrgId
   );
 
+  // Stable callback for conflict cancellation
+  const handleConflictCancel = useCallback(
+    (einsatzId: string) => {
+      setEinsatz(einsatzId);
+    },
+    [setEinsatz]
+  );
+
   // Mutations with optimistic update
-  const createMutation = useCreateEinsatz(activeOrgId, einsatz_singular);
-  const updateMutation = useUpdateEinsatz(activeOrgId, einsatz_singular);
+  const createMutation = useCreateEinsatz(
+    activeOrgId,
+    einsatz_singular,
+    handleConflictCancel
+  );
+  const updateMutation = useUpdateEinsatz(
+    activeOrgId,
+    einsatz_singular,
+    handleConflictCancel
+  );
+  const confirmMutation = useConfirmEinsatz(activeOrgId, einsatz_singular);
   const toggleUserAssignToEvent = useToggleUserAssignment(
     activeOrgId,
     session?.user.id,
@@ -56,6 +234,29 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     einsatz_plural
   );
 
+  // Handle invalid einsatz ID
+  useEffect(() => {
+    if (isDetailedEinsatzError && currentEinsatzString) {
+      const errorMessage =
+        detailedEinsatzError instanceof Error
+          ? detailedEinsatzError.message
+          : '';
+      toast.error(
+        `${einsatz_singular} konnte nicht geladen werden: ${errorMessage}`,
+        {
+          duration: 10000, // should stay longer to avoid confusion
+        }
+      );
+      setEinsatz(null);
+    }
+  }, [
+    isDetailedEinsatzError,
+    detailedEinsatzError,
+    currentEinsatzString,
+    setEinsatz,
+    einsatz_singular,
+  ]);
+
   const handleEventAdd = (event: EinsatzCreate) => {
     createMutation.mutate(event);
   };
@@ -64,8 +265,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     updateMutation.mutate(updatedEvent);
   };
 
+  const handleEventConfirm = (eventId: string) => {
+    confirmMutation.mutate(eventId);
+  };
+
   const handleAssignToggleEvent = async (eventId: string) => {
-    const userId = session?.user?.id;
     if (!userId) {
       toast.error('Benutzer nicht angemeldet');
       return;
@@ -74,159 +278,74 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     const event = Array.isArray(events)
       ? events.find((e) => e.id === eventId)
       : undefined;
-    const isCurrentlyAssigned = !!event?.assignedUsers?.includes(userId);
 
+    if (!event) {
+      toast.error('Einsatz nicht gefunden');
+      return;
+    }
+
+    const isCurrentlyAssigned = event.assignedUsers?.includes(userId) ?? false;
+
+    // If user is removing themselves, no validation needed
     if (isCurrentlyAssigned) {
       toggleUserAssignToEvent.mutate(eventId);
       return;
     }
 
     try {
-      // 1) Try to read cached data first (fast)
-      const cachedDetail = queryClient.getQueryData(
-        einsatzQueryKeys.detailedEinsatz(eventId)
-      ) as any | undefined;
-
-      const cachedProps =
-        activeOrgId &&
-        queryClient.getQueryData(userPropertyQueryKeys.byOrg(activeOrgId))
-          ? (queryClient.getQueryData(
-              userPropertyQueryKeys.byOrg(activeOrgId)
-            ) as any[])
-          : undefined;
-
-      const cachedUsers =
-        activeOrgId && queryClient.getQueryData(UserQueryKeys.user(activeOrgId))
-          ? (queryClient.getQueryData(UserQueryKeys.user(activeOrgId)) as any[])
-          : undefined;
-
-      let einsatzDetail = cachedDetail;
-      let props = cachedProps;
-      let allUsers = cachedUsers;
-
-      // 2) Only fetch missing pieces (in parallel)
-      const fetchPromises: Promise<any>[] = [];
-      if (!einsatzDetail)
-        fetchPromises.push(getEinsatzWithDetailsById(eventId));
-      if (!props && activeOrgId)
-        fetchPromises.push(getUserPropertiesByOrgId(activeOrgId));
-      if (!allUsers && activeOrgId)
-        fetchPromises.push(getAllUsersWithRolesByOrgId(activeOrgId));
-
-      if (fetchPromises.length > 0) {
-        const results = await Promise.all(fetchPromises);
-        let i = 0;
-        if (!einsatzDetail) einsatzDetail = results[i++];
-        if (!props && activeOrgId) props = results[i++];
-        if (!allUsers && activeOrgId) allUsers = results[i++];
+      if (!currentEinsatzString || !effectiveDetailedEinsatz) {
+        throw new Error(`${einsatz_singular} konnte nicht geladen werden.`);
       }
+      toggleUserAssignToEvent.mutate(currentEinsatzString);
 
-      if (!einsatzDetail || einsatzDetail instanceof Response) {
+      const requiredProperties = effectiveDetailedEinsatz.user_properties || [];
+
+      // No requirements? Proceed without validation
+      if (requiredProperties.length === 0) {
         toggleUserAssignToEvent.mutate(eventId);
         return;
       }
 
-      const reqProps = einsatzDetail.einsatz_user_property || [];
-      if (reqProps.length === 0) {
-        toggleUserAssignToEvent.mutate(eventId);
-        return;
-      }
+      // Validate requirements
+      const validationResult = validateUserAssignment({
+        requiredProperties,
+        userProperties: userProperties || [],
+        allUsers: orgUsers || [],
+        currentAssignedUsers: event.assignedUsers || [],
+        userIdToAdd: userId,
+        helpersNeeded: effectiveDetailedEinsatz.helpers_needed ?? -1,
+      });
 
-      const helpersNeeded =
-        typeof einsatzDetail.helpers_needed === 'number'
-          ? einsatzDetail.helpers_needed
-          : -1;
-
-      const propMap = (props || []).reduce(
-        (acc: any, p: any) => {
-          acc[p.id] = p.field?.name ?? p.id;
-          return acc;
-        },
-        {} as Record<string, string>
-      );
-
-      const propTypeMap = (props || []).reduce(
-        (acc: any, p: any) => {
-          acc[p.id] = p.field?.type?.datatype ?? null;
-          return acc;
-        },
-        {} as Record<string, string | null>
-      );
-
-      const assignedAfterAdd = Array.from(
-        new Set([...(event?.assignedUsers || []), userId])
-      );
-
-      const blocking: string[] = [];
-      const warnings: string[] = [];
-
-      for (const req of reqProps) {
-        if (!req.is_required) continue;
-        const minRequired = req.min_matching_users ?? 1;
-        const propId = req.user_property_id;
-
-        const matchingCount = (allUsers || [])
-          .filter((u: any) => assignedAfterAdd.includes(u.id))
-          .filter((u: any) => {
-            const upv = (u.user_property_value || []).find(
-              (v: any) => v.user_property_id === propId
-            );
-            if (!upv || upv.value == null) return false;
-
-            const datatype = propTypeMap[propId];
-
-            if (datatype === 'boolean') {
-              const val = String(upv.value).toLowerCase().trim();
-              return val === 'true' || val === '1';
-            }
-
-            return String(upv.value).trim() !== '';
-          }).length;
-
-        const propName = propMap[propId] ?? propId;
-
-        const slotsFilledAfterAdd =
-          helpersNeeded >= 0 ? assignedAfterAdd.length >= helpersNeeded : false;
-
-        const msg = `Eigenschaft "${propName}": mindestens ${minRequired} Helfer benötigt (aktuell: ${matchingCount})`;
-
-        if (matchingCount < minRequired) {
-          if (slotsFilledAfterAdd) {
-            blocking.push(msg);
-          } else {
-            warnings.push(msg);
-          }
-        }
-      }
-
-      if (blocking.length > 0) {
+      // Handle blocking errors
+      /*       if (validationResult.blocking.length > 0) {
         await showDialog({
           title: 'Eintragung nicht möglich',
           description:
             'Die Eintragung würde die Anforderungen nicht erfüllen:\n\n' +
-            blocking.join('\n\n') +
-            '\n\nBitte wende dich an die Einsatzleitung.',
+            validationResult.blocking.join('\n\n') +
+            '\n\nBitte wenden Sie sich an die Einsatzleitung.',
           confirmText: 'OK',
           variant: 'destructive',
         });
         return;
-      }
+      } */
 
-      if (warnings.length > 0) {
-        const confirmed = await showDialog({
-          title: 'Warnung: Fehlende Eigenschaften',
-          description: warnings.join('\n\n') + '\n\nTrotzdem eintragen?',
-          confirmText: 'Trotzdem eintragen',
-          variant: 'destructive',
-        });
+      // Handle warnings
+      if (validationResult.warnings.length > 0) {
+        const confirmed = await showDestructive(
+          'Warnung: Fehlende Eigenschaften',
+          validationResult.warnings.join('\n\n') + '\n\nTrotzdem eintragen?'
+        );
 
         if (confirmed !== 'success') return;
       }
 
       toggleUserAssignToEvent.mutate(eventId);
     } catch (err) {
-      toast.error('Fehler beim Überprüfen der Anforderungen');
-      toggleUserAssignToEvent.mutate(eventId);
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unbekannter Fehler';
+      toast.error('Fehler beim Überprüfen der Anforderungen: ' + errorMessage);
+      console.error('Assignment validation error:', err);
     }
   };
 
@@ -238,35 +357,37 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     deleteMutation.mutate({ eventId, eventTitle });
   };
 
-  const handleMultiEventDelete = (eventIds: string[]) => {
-    deleteMultipleMutation.mutate({ eventIds });
+  const handleMultiEventDelete = async (eventIds: string[]) => {
+    await deleteMultipleMutation.mutateAsync({ eventIds });
   };
 
-  if (!events) {
-    return <div>Lade Daten...</div>;
+  if (isCalendarError) {
+    const msg =
+      calendarError instanceof Error
+        ? calendarError.message
+        : 'Unbekannter Fehler';
+    return <div>Fehler beim Laden der Einsätze: {msg}</div>;
   }
 
+  const calendarEvents = calendarData?.events ?? [];
   return (
     <>
-      {AlertDialogComponent}
       <EventCalendar
-        events={events as CalendarEvent[]}
+        events={calendarEvents}
+        isEventsLoading={isCalendarLoading}
+        currentDate={currentDate}
+        setCurrentDate={setCurrentDate}
+        cachedDetailedEinsatz={cachedDetailedEinsatz}
         onEventAdd={handleEventAdd}
         onEventUpdate={handleEventUpdate}
         onAssignToggleEvent={handleAssignToggleEvent}
         onEventTimeUpdate={handleEventTimeUpdate}
         onEventDelete={handleEventDelete}
+        onEventConfirm={handleEventConfirm}
         onMultiEventDelete={handleMultiEventDelete}
         mode={mode}
         activeOrgId={activeOrgId}
       />
     </>
   );
-}
-function deleteMultipleEinsaetze(eventIds: string[]): Promise<void> {
-  try {
-    throw new Error('Function not implemented.');
-  } catch (error: unknown) {
-    return Promise.reject(error);
-  }
 }

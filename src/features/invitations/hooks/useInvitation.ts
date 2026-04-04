@@ -6,7 +6,6 @@ import type {
   InviteUserFormData,
   CreateInvitationData,
   AcceptInvitationResult,
-  Invitation,
 } from '@/features/invitations/types/invitation';
 import {
   acceptInvitationAction,
@@ -35,6 +34,8 @@ function mapToCreateInvitationData(
   if (!organizationId) {
     throw new Error('organizationId is required');
   }
+
+  
   if (!roleId) {
     throw new Error('roleId is required');
   }
@@ -156,6 +157,8 @@ export interface InvitationDTO {
   organizationName: string;
 
   roleName: string;
+  helperNameSingular: string;
+  helperNamePlural: string;
   roles: { id: string; name: string }[];
 
   token: string;

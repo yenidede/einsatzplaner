@@ -1,12 +1,19 @@
 import { withAuth } from 'next-auth/middleware';
+import { NextResponse } from 'next/server';
 
-export default withAuth({
-  pages: {
-    signIn: '/signin',
-    error: '/signin',
+export default withAuth(
+  function middleware() {
+    return NextResponse.next();
   },
-  secret: process.env.NEXTAUTH_SECRET,
-});
+  {
+    pages: {
+      signIn: '/signin',
+      error: '/signin',
+    },
+    secret: process.env.NEXTAUTH_SECRET,
+  }
+);
+
 export const config = {
   matcher: [
     // Match all paths except the ones listed below

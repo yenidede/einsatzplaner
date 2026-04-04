@@ -3,8 +3,8 @@ import { queryKeys } from '../queryKeys';
 import { GetStatuses } from '../status-dal';
 
 export function useStatuses() {
-    return useQuery({
-        queryKey: queryKeys.statuses(),
-        queryFn: () => GetStatuses(),
-    });
+  return useQuery({
+    queryKey: queryKeys.statuses(),
+    queryFn: () => GetStatuses(),
+  });
 }

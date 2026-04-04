@@ -8,11 +8,19 @@ import { CalendarEvent, CalendarMode, FormFieldType } from './types';
 import { z } from 'zod';
 import {
   EinsatzCustomizable,
+  EinsatzDetailedForCalendar,
   EinsatzForCalendar,
 } from '@/features/einsatz/types';
+import {
+  getInputPropsForDatatype,
+  isInputPropDatatype,
+} from '@/lib/input-props';
 import React from 'react';
-import { getAllEinsaetzeForCalendar } from '@/features/einsatz/dal-einsatz';
-import { ShowDialogFn } from '@/contexts/AlertDialogContext';
+import {
+  getAllEinsaetzeForCalendar,
+  getDetailedEinsaetzeForAgenda,
+  getDetailedEinsaetzeForCalendarRange,
+} from '@/features/einsatz/dal-einsatz';
 import { toast } from 'sonner';
 import { PdfGenerationRequest } from '@/features/pdf/types/types';
 import { UsePdfGeneratorReturn } from '@/features/pdf/hooks/usePdfGenerator';
@@ -35,14 +43,17 @@ type ValidationOptions = {
 export const handleDelete = async (
   einsatz_singular: string,
   einsatz: { id: string | undefined; title: string },
-  showDialog: ShowDialogFn,
+  showDestructive: (
+    title: string,
+    description: string
+  ) => Promise<'success' | 'cancel'>,
   onDelete: (id: string, title: string) => void
 ) => {
   if (einsatz?.id) {
-    const result = await showDialog({
-      title: einsatz_singular + ' löschen',
-      description: `Sind Sie sicher, dass Sie "${einsatz.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
-    });
+    const result = await showDestructive(
+      einsatz_singular + ' löschen',
+      `Sind Sie sicher, dass Sie "${einsatz.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`
+    );
 
     if (result === 'success') {
       onDelete(einsatz.id, einsatz.title);
@@ -101,22 +112,69 @@ export function generateDynamicSchema(
 
     switch (type) {
       case 'text':
-        fieldSchema = z.string().min(1, 'Text darf nicht leer sein');
-        if (options.min) fieldSchema = fieldSchema.min(options.min);
-        if (options.max) fieldSchema = fieldSchema.max(options.max);
+        if (options.isRequired === true) {
+          fieldSchema = z.string().min(1, 'Text darf nicht leer sein');
+          if (options.min) fieldSchema = fieldSchema.min(options.min);
+          if (options.max) fieldSchema = fieldSchema.max(options.max);
+        } else {
+          fieldSchema = z
+            .union([z.string(), z.null(), z.literal('')])
+            .optional()
+            .transform((s) => (s == null || s === '' ? '' : String(s)));
+          let postTransform = z.string();
+          if (options.min != null) {
+            postTransform = postTransform.refine(
+              (s) => s === '' || s.length >= options.min!,
+              { message: `Mindestlänge: ${options.min} Zeichen` }
+            );
+          }
+          if (options.max != null) {
+            postTransform = postTransform.max(options.max);
+          }
+          fieldSchema = fieldSchema.pipe(postTransform);
+        }
         break;
       case 'number':
-        fieldSchema = z.int();
-        if (options.min) fieldSchema = fieldSchema.gte(options.min);
-        if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        if (options.isRequired === true) {
+          fieldSchema = z.int();
+          if (options.min) fieldSchema = fieldSchema.gte(options.min);
+          if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        } else {
+          fieldSchema = z
+            .union([z.number(), z.nan(), z.null(), z.undefined()])
+            .optional()
+            .transform((n) =>
+              n == null || Number.isNaN(n) ? undefined : Number(n)
+            );
+          let numSchema = z.number();
+          if (options.min != null) numSchema = numSchema.gte(options.min);
+          if (options.max != null) numSchema = numSchema.lte(options.max);
+          fieldSchema = fieldSchema.pipe(numSchema.optional());
+        }
         break;
       case 'currency':
-        fieldSchema = z.float64();
-        if (options.min) fieldSchema = fieldSchema.gte(options.min);
-        if (options.max) fieldSchema = fieldSchema.lte(options.max);
+        if (options.isRequired === true) {
+          fieldSchema = z.float64();
+          if (options.min != null) fieldSchema = fieldSchema.gte(options.min);
+          if (options.max != null) fieldSchema = fieldSchema.lte(options.max);
+        } else {
+          fieldSchema = z
+            .union([z.number(), z.nan(), z.null(), z.undefined()])
+            .optional()
+            .transform((n) =>
+              n == null || Number.isNaN(n) ? undefined : Number(n)
+            );
+          let numSchema = z.float64();
+          if (options.min != null) numSchema = numSchema.gte(options.min);
+          if (options.max != null) numSchema = numSchema.lte(options.max);
+          fieldSchema = fieldSchema.pipe(numSchema.optional());
+        }
         break;
       case 'boolean':
-        fieldSchema = z.boolean();
+        fieldSchema = z
+          .union([z.boolean(), z.null(), z.undefined()])
+          .optional()
+          .transform((v) => v ?? false);
         break;
       case 'phone':
         fieldSchema = z
@@ -148,7 +206,7 @@ export function generateDynamicSchema(
       default:
         throw new Error('Feldtyp ' + type + ' wird nicht unterstützt');
     }
-    if (options.isRequired !== true && type !== 'select')
+    if (options.isRequired !== true && type !== 'select' && type !== 'boolean')
       fieldSchema = fieldSchema?.optional();
 
     if (fieldSchema) schemaShape[fieldId] = fieldSchema;
@@ -201,8 +259,69 @@ export const mapEinsatzToCalendarEvent = (
     allDay: einsatz.all_day,
     status: einsatz.einsatz_status,
     assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
+    helpersNeeded: einsatz.helpers_needed,
   };
 };
+
+export const mapDetailedEinsatzToCalendarEvent = (
+  einsatz: EinsatzDetailedForCalendar | null
+): CalendarEvent | null => {
+  if (!einsatz) {
+    return null;
+  }
+  const abbr = einsatz.category_abbreviations;
+  const hasCategories = abbr && abbr.length > 0;
+  return {
+    id: einsatz.id,
+    title: hasCategories
+      ? `${einsatz.title} (${abbr.join(', ')})`
+      : einsatz.title,
+    start: einsatz.start,
+    end: einsatz.end,
+    allDay: einsatz.all_day,
+    status: einsatz.einsatz_status,
+    assignedUsers: einsatz.assigned_users ?? [],
+    helpersNeeded: einsatz.helpers_needed ?? undefined,
+  };
+};
+
+export type CalendarRangeData = {
+  events: CalendarEvent[];
+  detailedEinsaetze: EinsatzDetailedForCalendar[];
+};
+
+export async function getEinsaetzeDataForCalendarRange(
+  activeOrgId: string | null | undefined,
+  focusDate: Date
+): Promise<CalendarRangeData | Response> {
+  const raw = await getDetailedEinsaetzeForCalendarRange(
+    activeOrgId ? [activeOrgId] : [],
+    focusDate
+  );
+  if (raw instanceof Response) {
+    return raw;
+  }
+  const events = raw
+    .map(mapDetailedEinsatzToCalendarEvent)
+    .filter((e): e is CalendarEvent => e !== null);
+  return { events, detailedEinsaetze: raw };
+}
+
+/** All future events for agenda view (from today onwards). */
+export async function getEinsaetzeDataForAgenda(
+  activeOrgId: string | null | undefined
+): Promise<CalendarRangeData | Response> {
+  const raw = await getDetailedEinsaetzeForAgenda(
+    activeOrgId ? [activeOrgId] : []
+  );
+  if (raw instanceof Response) {
+    return raw;
+  }
+  const events = raw
+    .map(mapDetailedEinsatzToCalendarEvent)
+    .filter((e): e is CalendarEvent => e !== null);
+  return { events, detailedEinsaetze: raw };
+}
 
 export function mapStringValueToType(
   value: string | null | undefined,
@@ -216,6 +335,9 @@ export function mapStringValueToType(
     case 'text':
     case 'phone':
     case 'mail':
+    case 'date':
+    case 'time':
+    case 'group':
       result = value;
       break;
     case 'number':
@@ -285,7 +407,7 @@ export function mapFieldsForSchema(fields: fieldsForSchema) {
       type: f.field.type?.datatype,
       options: {
         isMultiline: f.field.is_multiline,
-        isRequired: f.field.is_required,
+        isRequired: f.field.is_required === true,
         min: f.field.min,
         max: f.field.max,
         allowedValues: f.field.allowed_values,
@@ -297,11 +419,20 @@ export function mapFieldsForSchema(fields: fieldsForSchema) {
 export function mapDbDataTypeToFormFieldType(
   datatype: string | null | undefined
 ): FormFieldType {
-  const defaultTypes = ['text', 'number', 'currency', 'phone', 'mail'];
+  const defaultTypes = [
+    'text',
+    'number',
+    'currency',
+    'phone',
+    'mail',
+    'date',
+    'time',
+  ];
   if (datatype) {
     if (defaultTypes.includes(datatype)) return 'default';
     if (datatype === 'boolean') return 'checkbox';
     if (datatype === 'select') return 'select';
+    if (datatype === 'group') return 'group';
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
@@ -310,17 +441,21 @@ export function mapDbDataTypeToFormFieldType(
   );
 }
 
+/**
+ * Map a database column datatype to HTML input element props.
+ *
+ * @param datatype - The database datatype identifier to map (may be `null` or `undefined`).
+ * @returns React input props appropriate for the given `datatype`, or `null` when the datatype has no corresponding input props (for example `'group'` or unsupported input-prop datatypes).
+ * @throws Error when `datatype` is falsy (null, undefined, or empty), indicating the datatype cannot be mapped to a form field.
+ */
 export function mapDbDataTypeToInputProps(
   datatype: string | null | undefined
 ): React.ComponentProps<'input'> | null {
-  const defaultTypes = ['text', 'number', 'currency', 'phone', 'mail'];
   if (datatype) {
-    if (!defaultTypes.includes(datatype)) return null;
-    if (datatype === 'text') return { type: 'text' };
-    if (datatype === 'phone') return { type: 'tel' };
-    if (datatype === 'mail') return { type: 'email' };
-    if (datatype === 'number') return { type: 'number' };
-    if (datatype === 'currency') return { type: 'number', step: '0.10' };
+    if (datatype === 'group') return null;
+    if (!isInputPropDatatype(datatype)) return null;
+    return getInputPropsForDatatype(datatype);
+    // if (datatype === 'group') return { type: 'group' }; // not supported yet
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +

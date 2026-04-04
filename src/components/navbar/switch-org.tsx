@@ -12,11 +12,20 @@ import {
 import { useSession } from 'next-auth/react';
 import { setUserActiveOrganization } from '@/features/user/user-dal';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 type Props = {
   organizations: OrganizationBasicVisualize[];
 };
 
+/**
+ * Render a dropdown to switch the user's active organization.
+ *
+ * Selecting an organization updates the session and persistent user record, shows a success toast on success, and restores the previous selection if an error occurs.
+ *
+ * @param organizations - Array of available organizations to display in the dropdown
+ * @returns The Select component that controls and displays the user's active organization
+ */
 export function NavSwitchOrgSelect({ organizations }: Props) {
   const { update: updateSession, data: session } = useSession();
   const [activeOrgId, setActiveOrgId] = React.useState<string>('');
@@ -61,8 +70,18 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
     }
   };
   return (
-    <Select value={activeOrgId} onValueChange={handleSetOrg} name="orgSwitch">
-      <SelectTrigger className="w-46">
+    <Select
+      value={activeOrgId}
+      onValueChange={handleSetOrg}
+      name="orgSwitch"
+      disabled={organizations.length <= 1}
+    >
+      <SelectTrigger
+        className={cn(
+          'w-46 min-w-0 text-left [&>span]:text-left max-md:w-auto max-md:min-w-0',
+          organizations.length <= 1 && 'max-md:hidden'
+        )}
+      >
         <SelectValue
           placeholder={
             session?.user?.activeOrganization?.name || 'Organisation wählen'
@@ -81,5 +100,3 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
     </Select>
   );
 }
-
-export default NavSwitchOrgSelect;

@@ -21,6 +21,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   PlusIcon,
+  Loader,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -47,21 +48,31 @@ import {
   ListView,
 } from '@/components/event-calendar';
 import { CalendarEvent, CalendarMode } from './types';
-import { EinsatzCreate } from '@/features/einsatz/types';
+import { EinsatzCreate, EinsatzDetailed } from '@/features/einsatz/types';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { useEventDialog } from '@/hooks/use-event-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
+import { useEinsaetzeForAgenda } from '@/features/einsatz/hooks/useEinsatzQueries';
+import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
+  /** True while the events query is loading (no data yet). Used to show loader vs empty state. */
+  isEventsLoading?: boolean;
+  /** When provided, calendar uses these instead of internal state (e.g. from CalendarClient). */
+  currentDate?: Date;
+  setCurrentDate?: (date: Date) => void;
+  /** Cached detailed einsatz for the selected id; dialogs use this to avoid refetch. */
+  cachedDetailedEinsatz?: EinsatzDetailed | null;
   onEventAdd: (event: EinsatzCreate) => void;
   onEventUpdate: (event: EinsatzCreate) => void;
   onAssignToggleEvent: (eventId: string) => void;
   onEventTimeUpdate: (event: CalendarEvent) => void;
   onEventDelete: (eventId: string, eventTitle: string) => void;
-  onMultiEventDelete: (eventIds: string[]) => void;
+  onEventConfirm?: (eventId: string) => void;
+  onMultiEventDelete: (eventIds: string[]) => Promise<void>;
   className?: string;
   initialView?: CalendarView;
   mode: CalendarMode;
@@ -70,21 +81,29 @@ export interface EventCalendarProps {
 // TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
   events = [],
+  isEventsLoading = false,
+  currentDate: currentDateProp,
+  setCurrentDate: setCurrentDateProp,
+  cachedDetailedEinsatz,
   onEventAdd,
   onEventUpdate,
   onAssignToggleEvent,
   onEventTimeUpdate,
   onEventDelete,
+  onEventConfirm,
   onMultiEventDelete,
   className,
   initialView = 'month',
   mode,
   activeOrgId,
 }: EventCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const todayStart = useTodayStart();
+  const [internalDate, setInternalDate] = useState(new Date());
+  const currentDate = currentDateProp ?? internalDate;
+  const setCurrentDate = setCurrentDateProp ?? setInternalDate;
   const {
     isOpen: isEventDialogOpen,
-    selectedEvent,
+    selectedEinsatz,
     openDialog,
     closeDialog,
   } = useEventDialog();
@@ -99,6 +118,14 @@ export function EventCalendar({
       'list',
     ]).withDefault(initialView)
   );
+
+  const { data: agendaData, isLoading: isAgendaLoading } =
+    useEinsaetzeForAgenda(activeOrgId, view === 'agenda');
+
+  const effectiveEvents =
+    view === 'agenda' ? (agendaData?.events ?? []) : events;
+  const effectiveIsEventsLoading =
+    view === 'agenda' ? isAgendaLoading : isEventsLoading;
 
   // German view names mapping
   const viewLabels = {
@@ -118,6 +145,14 @@ export function EventCalendar({
     activeOrgId
   );
 
+  const capitalizeFirst = (value?: string | null) =>
+    value && value.length > 0
+      ? value.charAt(0).toUpperCase() + value.slice(1)
+      : '';
+
+  const pastIndicatorTooltip = `${capitalizeFirst(
+    einsatz_singular
+  )} liegt in der Vergangenheit.`;
   // Add keyboard shortcuts for view switching
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -189,12 +224,17 @@ export function EventCalendar({
   };
 
   const handleEventSelect = (event: CalendarEvent | string) => {
-    openDialog(typeof event === 'string' ? event : event.id);
+    const eventId = typeof event === 'string' ? event : event.id;
+    if (eventId.includes('temp-')) {
+      toast.info(
+        `${einsatz_singular} wird gespeichert und muss erst aktualisiert werden. Bitte warten Sie ein paar Sekunden und versuchen Sie es erneut.`
+      );
+      return;
+    }
+    openDialog(eventId);
   };
 
   const handleEventCreate = (startTime: Date) => {
-    console.log('Creating new event at:', startTime); // Debug log
-
     // Snap to 15-minute intervals
     const minutes = startTime.getMinutes();
     const remainder = minutes % 15;
@@ -262,9 +302,8 @@ export function EventCalendar({
     closeDialog();
   };
 
-  const handleMultiEventDelete = (eventIds: string[]) => {
-    onMultiEventDelete?.(eventIds);
-    closeDialog();
+  const handleEventConfirm = (eventId: string) => {
+    onEventConfirm?.(eventId);
   };
 
   const handleEventUpdate = (updatedEvent: EinsatzCreate | CalendarEvent) => {
@@ -277,6 +316,8 @@ export function EventCalendar({
   };
 
   const viewTitle = useMemo(() => {
+    const isPastCurrentDay = currentDate < todayStart;
+
     if (view === 'month') {
       return format(currentDate, 'MMMM yyyy', { locale: de });
     } else if (view === 'week') {
@@ -294,41 +335,46 @@ export function EventCalendar({
     } else if (view === 'day') {
       return (
         <>
-          <span className="min-[480px]:hidden" aria-hidden="true">
+          <span
+            className={cn(
+              'min-[480px]:hidden',
+              isPastCurrentDay && 'line-through'
+            )}
+            aria-hidden="true"
+          >
             {format(currentDate, 'MMM d, yyyy', { locale: de })}
           </span>
-          <span className="max-[479px]:hidden md:hidden" aria-hidden="true">
+          <span
+            className={cn(
+              'max-[479px]:hidden md:hidden',
+              isPastCurrentDay && 'line-through'
+            )}
+            aria-hidden="true"
+          >
             {format(currentDate, 'MMMM d, yyyy', { locale: de })}
           </span>
-          <span className="max-md:hidden">
+          <span
+            className={cn('max-md:hidden', isPastCurrentDay && 'line-through')}
+          >
             {format(currentDate, 'EEE MMMM d, yyyy', { locale: de })}
           </span>
         </>
       );
     } else if (view === 'agenda') {
-      // Show the month range for agenda view
-      const start = currentDate;
-      const end = addDays(currentDate, AgendaDaysToShow - 1);
-
-      if (isSameMonth(start, end)) {
-        return format(start, 'MMMM yyyy', { locale: de });
-      } else {
-        return `${format(start, 'MMM', { locale: de })} - ${format(
-          end,
-          'MMM yyyy',
-          { locale: de }
-        )}`;
-      }
+      // Show "All Upcoming Events" for agenda view since it shows infinite future events
+      return 'Alle anstehenden Termine';
     } else {
       return format(currentDate, 'MMMM yyyy', { locale: de });
     }
-  }, [currentDate, view]);
+  }, [currentDate, todayStart, view]);
 
   return (
     <div
-      className="flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
+      className="bg-card flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
       style={
         {
+          '--calendar-sticky-top': '4rem',
+          '--calendar-toolbar-height': '4rem',
           '--event-height': `${EventHeight}px`,
           '--event-gap': `${EventGap}px`,
           '--week-cells-height': `${WeekCellsHeight}px`,
@@ -339,147 +385,168 @@ export function EventCalendar({
         onEventUpdate={handleEventUpdate}
         mode={mode}
         disableDragAndDrop={mode !== 'verwaltung'}
+        pastIndicatorTooltip={pastIndicatorTooltip}
       >
         <div
-          className={cn(
-            'flex items-center justify-between px-1 py-2',
-            className
-          )}
+          className="bg-card sticky z-40 rounded-t-lg border-b"
+          style={{ top: 'var(--calendar-sticky-top)' }}
         >
-          {view !== 'list' && (
-            <div className="flex items-center gap-1 sm:gap-4">
-              <Button
-                variant="outline"
-                className="max-[479px]:aspect-square max-[479px]:p-0!"
-                onClick={handleToday}
-              >
-                <RiCalendarCheckLine
-                  className="min-[480px]:hidden"
-                  size={16}
-                  aria-hidden="true"
-                />
-                <span className="max-[479px]:sr-only">Heute</span>
-              </Button>
-              <div className="flex items-center sm:gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handlePrevious}
-                  aria-label="Previous"
-                >
-                  <ChevronLeftIcon size={16} aria-hidden="true" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleNext}
-                  aria-label="Next"
-                >
-                  <ChevronRightIcon size={16} aria-hidden="true" />
-                </Button>
+          <div
+            className={cn(
+              'flex min-h-16 items-center justify-between px-1 py-2',
+              className
+            )}
+          >
+            {view !== 'list' && (
+              <div className="flex items-center gap-1 sm:gap-4">
+                {view !== 'agenda' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="max-[479px]:aspect-square max-[479px]:p-0!"
+                      onClick={handleToday}
+                    >
+                      <RiCalendarCheckLine
+                        className="min-[480px]:hidden"
+                        size={16}
+                        aria-hidden="true"
+                      />
+                      <span className="max-[479px]:sr-only">Heute</span>
+                    </Button>
+                    <div className="flex items-center sm:gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handlePrevious}
+                        aria-label="Previous"
+                      >
+                        <ChevronLeftIcon size={16} aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleNext}
+                        aria-label="Next"
+                      >
+                        <ChevronRightIcon size={16} aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </>
+                )}
+                <h2 className="m-0 text-sm font-semibold sm:text-lg md:text-xl">
+                  {viewTitle}
+                </h2>
               </div>
-              <h2 className="text-sm font-semibold sm:text-lg md:text-xl">
-                {viewTitle}
-              </h2>
-            </div>
-          )}
-          {view === 'list' && <h2>Tabellenansicht</h2>}
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
-                  <span>
-                    <span className="min-[480px]:hidden" aria-hidden="true">
-                      {viewLabels[view].charAt(0)}
+            )}
+
+            {view === 'list' && <h2 className="m-0">Tabellenansicht</h2>}
+            <div className="flex items-center gap-2">
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
+                    <span>
+                      <span className="min-[480px]:hidden" aria-hidden="true">
+                        {viewLabels[view].charAt(0)}
+                      </span>
+                      <span className="max-[479px]:sr-only">
+                        {viewLabels[view]}
+                      </span>
                     </span>
-                    <span className="max-[479px]:sr-only">
-                      {viewLabels[view]}
-                    </span>
-                  </span>
-                  <ChevronDownIcon
-                    className="-me-1 opacity-60"
+                    <ChevronDownIcon
+                      className="-me-1 opacity-60"
+                      size={16}
+                      aria-hidden="true"
+                    />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-32">
+                  <DropdownMenuItem onClick={() => setView('month')}>
+                    Monat <DropdownMenuShortcut>M</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView('week')}>
+                    Woche <DropdownMenuShortcut>W</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView('day')}>
+                    Tag <DropdownMenuShortcut>T</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView('agenda')}>
+                    Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
+                  </DropdownMenuItem>{' '}
+                  <DropdownMenuItem onClick={() => setView('list')}>
+                    Liste <DropdownMenuShortcut>L</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {mode === 'verwaltung' && (
+                <Button
+                  className="max-[479px]:aspect-square max-[479px]:p-0!"
+                  onClick={() => {
+                    openDialog(null); // Ensure we're creating a new event
+                  }}
+                >
+                  <PlusIcon
+                    className="opacity-60 sm:-ms-1"
                     size={16}
                     aria-hidden="true"
                   />
+                  <span className="max-sm:sr-only">
+                    {einsatz_singular} hinzufügen
+                  </span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-32">
-                <DropdownMenuItem onClick={() => setView('month')}>
-                  Monat <DropdownMenuShortcut>M</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView('week')}>
-                  Woche <DropdownMenuShortcut>W</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView('day')}>
-                  Tag <DropdownMenuShortcut>T</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setView('agenda')}>
-                  Agenda <DropdownMenuShortcut>A</DropdownMenuShortcut>
-                </DropdownMenuItem>{' '}
-                <DropdownMenuItem onClick={() => setView('list')}>
-                  Liste <DropdownMenuShortcut>L</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {mode === 'verwaltung' && (
-              <Button
-                className="max-[479px]:aspect-square max-[479px]:p-0!"
-                onClick={() => {
-                  openDialog(null); // Ensure we're creating a new event
-                }}
-              >
-                <PlusIcon
-                  className="opacity-60 sm:-ms-1"
-                  size={16}
-                  aria-hidden="true"
-                />
-                <span className="max-sm:sr-only">
-                  {einsatz_singular} hinzufügen
-                </span>
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex flex-1 flex-col">
-          {events.length === 0 && (
-            <div className="m-4 rounded-md bg-yellow-50 p-4 text-sm text-yellow-800">
-              Noch keine {einsatz_plural} vorhanden.
-            </div>
-          )}
+          {effectiveIsEventsLoading &&
+            effectiveEvents.length === 0 &&
+            view !== 'list' && (
+              <div className="text-muted-foreground mx-2 flex items-center gap-2">
+                Lade {einsatz_plural}... <Loader className="animate-spin" />
+              </div>
+            )}
           {view === 'month' && (
             <MonthView
               currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'week' && (
             <WeekView
               currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'day' && (
             <DayView
               currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'agenda' && (
             <AgendaView
-              currentDate={currentDate}
-              events={events}
+              events={effectiveEvents}
+              isEventsLoading={effectiveIsEventsLoading}
               onEventSelect={handleEventSelect}
               mode={mode}
+              onEventConfirm={handleEventConfirm}
+              pastIndicatorTooltip={pastIndicatorTooltip}
             />
           )}
           {view === 'list' && (
@@ -487,7 +554,7 @@ export function EventCalendar({
               onEventEdit={handleEventSelect}
               onEventCreate={handleEventCreate}
               onEventDelete={handleEventDelete}
-              onMultiEventDelete={handleMultiEventDelete}
+              onMultiEventDelete={onMultiEventDelete}
               mode={mode}
             />
           )}
@@ -495,7 +562,7 @@ export function EventCalendar({
 
         {mode === 'verwaltung' ? (
           <EventDialogVerwaltung
-            einsatz={selectedEvent}
+            einsatz={cachedDetailedEinsatz ?? selectedEinsatz}
             isOpen={isEventDialogOpen}
             onClose={closeDialog}
             onSave={handleEventSave}
@@ -504,10 +571,11 @@ export function EventCalendar({
         ) : mode === 'helper' ? (
           <EventDialogHelfer
             einsatz={
-              typeof selectedEvent === 'string'
-                ? selectedEvent
-                : selectedEvent?.id || null
+              typeof selectedEinsatz === 'string'
+                ? selectedEinsatz
+                : selectedEinsatz?.id || null
             }
+            cachedDetailedEinsatz={cachedDetailedEinsatz}
             isOpen={isEventDialogOpen}
             onClose={closeDialog}
             onAssignToggleEvent={handleAssignToggleEvent}

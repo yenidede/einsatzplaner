@@ -4,4 +4,5 @@ export const invitationQueryKeys = {
     [...invitationQueryKeys.all, organizationId] as const,
 
   invitation: ['invitation'] as const,
+  verify: (token: string) => [...invitationQueryKeys.invitation, token] as const,
 } as const;

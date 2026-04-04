@@ -24,12 +24,13 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import { motion } from 'framer-motion';
-import { useAlertDialog } from '@/hooks/use-alert-dialog';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import {
   useDetailedEinsatz,
   useCategories,
 } from '@/features/einsatz/hooks/useEinsatzQueries';
+import type { EinsatzDetailed } from '@/features/einsatz/types';
 import { useUsers } from '@/features/user/hooks/use-user-queries';
 import { useUserProperties } from '@/features/user_properties/hooks/use-user-property-queries';
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
@@ -37,25 +38,21 @@ import { useStatuses } from '@/features/einsatz_status/hooks/useStatuses';
 
 interface EventDialogProps {
   einsatz: string | null;
+  /** When provided and id matches einsatz, used instead of fetching (e.g. from calendar cache). */
+  cachedDetailedEinsatz?: EinsatzDetailed | null;
   isOpen: boolean;
   onClose: () => void;
   onAssignToggleEvent: (einsatzId: string) => void;
 }
 
-type UserPropertyWithField = {
-  id: string;
-  field?: {
-    name?: string | null;
-  };
-};
 export function EventDialogHelfer({
   einsatz,
+  cachedDetailedEinsatz,
   isOpen,
   onClose,
   onAssignToggleEvent,
 }: EventDialogProps) {
-  const [showAllActivities, setShowAllActivities] = useState(false);
-  const { showDialog, AlertDialogComponent } = useAlertDialog();
+  const { showDestructive } = useConfirmDialog();
 
   const { data: session } = useSession();
 
@@ -64,11 +61,17 @@ export function EventDialogHelfer({
 
   const { generatePdf } = usePdfGenerator();
 
-  // Fetch detailed einsatz data when einsatz is a string (UUID)
-  const { data: detailedEinsatz, isLoading } = useDetailedEinsatz(
-    typeof einsatz === 'string' ? einsatz : null,
+  const useCache =
+    !!cachedDetailedEinsatz &&
+    !!einsatz &&
+    cachedDetailedEinsatz.id === einsatz;
+  const { data: fetchedDetailedEinsatz, isLoading } = useDetailedEinsatz(
+    useCache ? null : einsatz,
     isOpen
   );
+  const detailedEinsatz = useCache
+    ? cachedDetailedEinsatz
+    : fetchedDetailedEinsatz;
 
   const categoriesQuery = useCategories(activeOrgId);
 
@@ -88,6 +91,10 @@ export function EventDialogHelfer({
   const creator = usersQuery.data?.find(
     (user) => user.id === detailedEinsatz?.created_by
   );
+
+  const disAllowSelfSignout = !organizations?.find(
+    (org) => org.id === activeOrgId
+  )?.allow_self_sign_out;
 
   // Return early without error toast during loading
   if (!activeOrgId || !currentUserId) {
@@ -145,32 +152,39 @@ export function EventDialogHelfer({
         userProperties?.find((p) => p.id === propConfig.user_property_id)?.field
           ?.name ?? propConfig.user_property_id;
 
-      if ((usersWithProp?.length ?? 0) < minRequired) {
+      if (minRequired === -1) {
+        // "Alle" bedeutet: Alle zugewiesenen Helfer müssen die Eigenschaft haben
+        const requiredCount = assignedDetails.length;
+
+        if ((usersWithProp?.length ?? 0) < requiredCount) {
+          warnings.push(
+            `Personeneigenschaft '${propertyName}': Alle zugewiesenen ${helper_plural} benötigen diese Eigenschaft (${
+              usersWithProp?.length ?? 0
+            }/${requiredCount} erfüllt)`
+          );
+        }
+      } else if ((usersWithProp?.length ?? 0) < minRequired) {
         warnings.push(
-          `Personeneigenschaft '${propertyName}': mind. ${minRequired} benötigte (aktuell: ${
+          `Personeneigenschaft '${propertyName}': mind. ${minRequired} benötigt (aktuell: ${
             usersWithProp?.length ?? 0
           })`
         );
       }
     }
-
     if (warnings.length === 0) return true;
 
-    await showDialog({
-      title: 'Eintragen nicht möglich',
-      description:
-        'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
+    const dialogResult = await showDestructive(
+      'Warnung: Kriterien nicht erfüllt',
+      'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
         warnings.map((w) => `• ${w}`).join('\n') +
-        '\n\nBitte wenden Sie sich an die Einsatzverwaltung, um die erforderlichen Personeneigenschaften zu klären.',
-      confirmText: 'OK',
-    });
-
+        '\n\nMöchten Sie trotzdem fortfahren?'
+    );
+    if (dialogResult === 'success') return true;
     return false;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      {AlertDialogComponent}
       <DialogContent className="flex max-h-[90vh] max-w-220 flex-col">
         <DialogHeader className="bg-background sticky top-0 z-10 shrink-0 border-b pb-4">
           <DialogTitle>
@@ -290,6 +304,11 @@ export function EventDialogHelfer({
               </div>
               <div>{creator?.email}</div>
             </DefinitionItem>
+            <DefinitionItem label="Anmerkung">
+              <div className="whitespace-pre-wrap">
+                {detailedEinsatz?.anmerkung || '-'}
+              </div>
+            </DefinitionItem>
             {!!detailedEinsatz && detailedEinsatz.einsatz_fields.length > 0 && (
               <>
                 <SectionDivider text="Eigene Felder" />
@@ -323,6 +342,7 @@ export function EventDialogHelfer({
               autoFocus={false}
               variant="outline"
               size="icon"
+              aria-label="PDF-Bestätigung drucken"
               onClick={() =>
                 handlePdfGenerate(
                   einsatz_singular,
@@ -335,7 +355,6 @@ export function EventDialogHelfer({
                   generatePdf
                 )
               }
-              aria-label="PDF-Bestätigung drucken"
             >
               <FileDown size={16} aria-hidden="true" />
             </Button>
@@ -368,19 +387,33 @@ export function EventDialogHelfer({
                 Eintragen
               </Button>
             ) : (
-              <Button
+              <div
                 onClick={() => {
-                  if (!detailedEinsatz?.id || !session?.user?.id) {
-                    toast.error(
-                      'Eintragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen.'
+                  if (disAllowSelfSignout) {
+                    toast.info(
+                      'Selbständiges Austragen ist in dieser Organisation nicht erlaubt. Bitte wenden Sie sich direkt an die Verwaltung.'
                     );
-                    return;
                   }
-                  onAssignToggleEvent(detailedEinsatz.id);
                 }}
               >
-                Austragen
-              </Button>
+                <Button
+                  disabled={disAllowSelfSignout}
+                  variant="destructive"
+                  onClick={() => {
+                    if (!detailedEinsatz?.id || !session?.user?.id) {
+                      toast.error(
+                        'Austragen nicht erfolgreich: Benutzerdaten oder Einsatzdaten fehlen.'
+                      );
+                      return;
+                    }
+                    if (!disAllowSelfSignout) {
+                      onAssignToggleEvent(detailedEinsatz.id);
+                    }
+                  }}
+                >
+                  Austragen
+                </Button>
+              </div>
             )}
           </div>
         </DialogFooter>
