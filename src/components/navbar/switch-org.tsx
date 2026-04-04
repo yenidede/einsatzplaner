@@ -10,9 +10,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useSession } from 'next-auth/react';
-import { setUserActiveOrganization } from '@/features/user/user-dal';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { requestOrganizationSwitchConfirmation } from '@/components/settings/settings-navigation.utils';
+import { useActiveOrganizationSwitch } from '@/hooks/use-active-organization-switch';
 
 type Props = {
   organizations: OrganizationBasicVisualize[];
@@ -21,14 +21,17 @@ type Props = {
 /**
  * Render a dropdown to switch the user's active organization.
  *
- * Selecting an organization updates the session and persistent user record, shows a success toast on success, and restores the previous selection if an error occurs.
+ * Selecting an organization updates the session and persistent user record and
+ * optionally asks the settings area to confirm unsaved changes first.
  *
  * @param organizations - Array of available organizations to display in the dropdown
  * @returns The Select component that controls and displays the user's active organization
  */
 export function NavSwitchOrgSelect({ organizations }: Props) {
-  const { update: updateSession, data: session } = useSession();
+  const { data: session } = useSession();
   const [activeOrgId, setActiveOrgId] = React.useState<string>('');
+  const [pendingOrgId, setPendingOrgId] = React.useState<string | null>(null);
+  const { isSwitching, switchOrganization } = useActiveOrganizationSwitch();
 
   React.useEffect(() => {
     const id = session?.user?.activeOrganization?.id;
@@ -36,49 +39,39 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
   }, [session?.user?.activeOrganization?.id]);
 
   const handleSetOrg = async (orgId: string) => {
-    const previousOrgId = activeOrgId;
+    if (!session || orgId === activeOrgId) {
+      return;
+    }
+
+    const canContinue = await requestOrganizationSwitchConfirmation();
+
+    if (!canContinue) {
+      return;
+    }
+
+    setPendingOrgId(orgId);
     try {
-      // UI-State
-      setActiveOrgId(orgId);
-      const newOrg = organizations.find((o) => o.id === orgId);
-      if (!newOrg || !session) {
-        throw new Error('Organisation nicht gefunden');
-      }
-      await Promise.all([
-        // database
-        setUserActiveOrganization(session?.user.id || '', orgId),
-        // session updateSession
-        updateSession({
-          user: {
-            ...session.user,
-            activeOrganization: {
-              id: newOrg.id,
-              name: newOrg.name,
-              logo_url: newOrg.logo_url,
-            },
-          },
-        }),
-      ]);
-      toast.success(
-        'Organisation erfolgreich zu ' +
-          organizations.find((o) => o.id === orgId)?.name +
-          ' gewechselt.'
-      );
-    } catch (error) {
-      toast.error('Fehler beim Wechseln der Organisation: ' + error);
-      setActiveOrgId(previousOrgId); // Rollback to previous organization
+      await switchOrganization(orgId);
+    } catch {
+      return;
+    } finally {
+      setPendingOrgId(null);
     }
   };
+
+  const selectedOrgId =
+    isSwitching && pendingOrgId ? pendingOrgId : activeOrgId;
+
   return (
     <Select
-      value={activeOrgId}
+      value={selectedOrgId}
       onValueChange={handleSetOrg}
       name="orgSwitch"
-      disabled={organizations.length <= 1}
+      disabled={organizations.length <= 1 || isSwitching}
     >
       <SelectTrigger
         className={cn(
-          'w-46 min-w-0 text-left [&>span]:text-left max-md:w-auto max-md:min-w-0',
+          'w-46 min-w-0 text-left max-md:w-auto max-md:min-w-0 [&>span]:text-left',
           organizations.length <= 1 && 'max-md:hidden'
         )}
       >

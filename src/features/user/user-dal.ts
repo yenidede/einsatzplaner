@@ -115,22 +115,6 @@ export async function getAllUsersWithRolesByOrgId(
   return users;
 }
 
-export async function setUserActiveOrganization(userId: string, orgId: string) {
-  try {
-    const user = await prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        active_org: orgId,
-      },
-    });
-    return user;
-  } catch (error: Error | unknown) {
-    console.error("Error updating user's active organization:", error);
-  }
-}
-
 export async function createAvatarUploadUrl(
   userId: string,
   invitationId: string

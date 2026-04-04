@@ -548,7 +548,7 @@ export function useToggleUserAssignment(
     }) => {
       return await toggleUserAssignmentToEinsatz(eventId, intent);
     },
-    onMutate: async ({ eventId }) => {
+    onMutate: async ({ eventId, intent }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
       if (!activeOrgId || !userId) return {};
       const previousData: CalendarCacheSnapshot = [];
@@ -561,10 +561,18 @@ export function useToggleUserAssignment(
         if (idx === -1) continue;
         previousData.push([key, data]);
         const prev = data.events[idx];
+        const assignedUsers = prev.assignedUsers ?? [];
         const isAssigned = prev.assignedUsers?.includes(userId) ?? false;
-        const newAssigned = isAssigned
-          ? (prev.assignedUsers ?? []).filter((id) => id !== userId)
-          : [...(prev.assignedUsers ?? []), userId];
+        const newAssigned =
+          intent === 'assign'
+            ? isAssigned
+              ? assignedUsers
+              : [...assignedUsers, userId]
+            : intent === 'unassign'
+              ? assignedUsers.filter((id) => id !== userId)
+              : isAssigned
+                ? assignedUsers.filter((id) => id !== userId)
+                : [...assignedUsers, userId];
         const newEvents = [...data.events];
         newEvents[idx] = { ...prev, assignedUsers: newAssigned };
         queryClient.setQueryData<CalendarRangeData>(key, {
