@@ -58,6 +58,11 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { isNormalizedTime } from '@/lib/time-input';
+import {
+  OrganizationNotificationDefaultsForm,
+  useOrganizationNotificationDefaults,
+  useUpdateOrganizationNotificationDefaults,
+} from '@/features/notification-preferences';
 
 /**
  * Page component for managing an organization's settings, templates, users, and PDF-export configuration.
@@ -102,6 +107,18 @@ export default function OrganizationManagePage() {
   const [vat, setVat] = useState('');
   const [zvr, setZvr] = useState('');
   const [authority, setAuthority] = useState('');
+  const [notificationEmailEnabledDefault, setNotificationEmailEnabledDefault] =
+    useState(true);
+  const [notificationDeliveryModeDefault, setNotificationDeliveryModeDefault] =
+    useState<'critical_only' | 'digest_only' | 'critical_and_digest'>(
+      'critical_and_digest'
+    );
+  const [
+    notificationMinimumPriorityDefault,
+    setNotificationMinimumPriorityDefault,
+  ] = useState<'info' | 'review' | 'critical'>('review');
+  const [notificationDigestIntervalDefault, setNotificationDigestIntervalDefault] =
+    useState<'daily' | 'twice_daily'>('daily');
 
   // Initial values for change detection
   const initialValuesRef = useRef<{
@@ -121,6 +138,13 @@ export default function OrganizationManagePage() {
     vat: string;
     zvr: string;
     authority: string;
+    notificationEmailEnabledDefault: boolean;
+    notificationDeliveryModeDefault:
+      | 'critical_only'
+      | 'digest_only'
+      | 'critical_and_digest';
+    notificationMinimumPriorityDefault: 'info' | 'review' | 'critical';
+    notificationDigestIntervalDefault: 'daily' | 'twice_daily';
   } | null>(null);
 
   useSettingsSessionValidation();
@@ -144,6 +168,11 @@ export default function OrganizationManagePage() {
 
   usePrefetchUserProfiles(orgId, userIds);
   const { data: orgDetails } = useOrganizationDetails(orgId);
+  const {
+    data: notificationDefaults,
+    isLoading: notificationDefaultsLoading,
+    error: notificationDefaultsError,
+  } = useOrganizationNotificationDefaults(orgId);
 
   const { data: categories = [] } = useCategories(orgId);
 
@@ -196,12 +225,20 @@ export default function OrganizationManagePage() {
         vat: '', // Loaded separately via useOrganizationDetails
         zvr: '', // Loaded separately via useOrganizationDetails
         authority: '', // Loaded separately via useOrganizationDetails
+        notificationEmailEnabledDefault:
+          notificationDefaults?.emailEnabledDefault ?? true,
+        notificationDeliveryModeDefault:
+          notificationDefaults?.deliveryModeDefault ?? 'critical_and_digest',
+        notificationMinimumPriorityDefault:
+          notificationDefaults?.minimumPriorityDefault ?? 'review',
+        notificationDigestIntervalDefault:
+          notificationDefaults?.digestIntervalDefault ?? 'daily',
       };
       // Clear logo files when data is refreshed
       setLogoFile(null);
       setSmallLogoFile(null);
     }
-  }, [orgData]);
+  }, [notificationDefaults, orgData]);
 
   // Update initial values when organization details load
   useEffect(() => {
@@ -227,6 +264,14 @@ export default function OrganizationManagePage() {
         vat: '',
         zvr: '',
         authority: '',
+        notificationEmailEnabledDefault:
+          notificationDefaults?.emailEnabledDefault ?? true,
+        notificationDeliveryModeDefault:
+          notificationDefaults?.deliveryModeDefault ?? 'critical_and_digest',
+        notificationMinimumPriorityDefault:
+          notificationDefaults?.minimumPriorityDefault ?? 'review',
+        notificationDigestIntervalDefault:
+          notificationDefaults?.digestIntervalDefault ?? 'daily',
       };
     }
 
@@ -243,7 +288,34 @@ export default function OrganizationManagePage() {
     setVat(orgDetails.vat ?? '');
     setZvr(orgDetails.zvr ?? '');
     setAuthority(orgDetails.authority ?? '');
-  }, [orgDetails, orgData]);
+  }, [notificationDefaults, orgDetails, orgData]);
+
+  useEffect(() => {
+    if (!notificationDefaults) {
+      return;
+    }
+
+    setNotificationEmailEnabledDefault(notificationDefaults.emailEnabledDefault);
+    setNotificationDeliveryModeDefault(notificationDefaults.deliveryModeDefault);
+    setNotificationMinimumPriorityDefault(
+      notificationDefaults.minimumPriorityDefault
+    );
+    setNotificationDigestIntervalDefault(notificationDefaults.digestIntervalDefault);
+
+    if (initialValuesRef.current) {
+      initialValuesRef.current = {
+        ...initialValuesRef.current,
+        notificationEmailEnabledDefault:
+          notificationDefaults.emailEnabledDefault,
+        notificationDeliveryModeDefault:
+          notificationDefaults.deliveryModeDefault,
+        notificationMinimumPriorityDefault:
+          notificationDefaults.minimumPriorityDefault,
+        notificationDigestIntervalDefault:
+          notificationDefaults.digestIntervalDefault,
+      };
+    }
+  }, [notificationDefaults]);
 
   const { data: currentUserWithRoles } = useOrganizationUserRoles(orgId);
 
@@ -257,6 +329,8 @@ export default function OrganizationManagePage() {
     );
 
   const updateMutation = useUpdateOrganization(orgId);
+  const notificationDefaultsMutation =
+    useUpdateOrganizationNotificationDefaults(orgId);
 
   const hasUnsavedChanges = (() => {
     if (!initialValuesRef.current) return false;
@@ -279,6 +353,13 @@ export default function OrganizationManagePage() {
       vat !== initial.vat ||
       zvr !== initial.zvr ||
       authority !== initial.authority ||
+      notificationEmailEnabledDefault !== initial.notificationEmailEnabledDefault ||
+      notificationDeliveryModeDefault !==
+        initial.notificationDeliveryModeDefault ||
+      notificationMinimumPriorityDefault !==
+        initial.notificationMinimumPriorityDefault ||
+      notificationDigestIntervalDefault !==
+        initial.notificationDigestIntervalDefault ||
       logoFile !== null ||
       smallLogoFile !== null
     );
@@ -295,6 +376,17 @@ export default function OrganizationManagePage() {
     }
 
     try {
+      const hasNotificationDefaultsChanges =
+        initialValuesRef.current === null ||
+        notificationEmailEnabledDefault !==
+          initialValuesRef.current.notificationEmailEnabledDefault ||
+        notificationDeliveryModeDefault !==
+          initialValuesRef.current.notificationDeliveryModeDefault ||
+        notificationMinimumPriorityDefault !==
+          initialValuesRef.current.notificationMinimumPriorityDefault ||
+        notificationDigestIntervalDefault !==
+          initialValuesRef.current.notificationDigestIntervalDefault;
+
       await updateMutation.mutateAsync({
         name,
         description,
@@ -315,6 +407,15 @@ export default function OrganizationManagePage() {
         zvr,
         authority,
       });
+
+      if (hasNotificationDefaultsChanges) {
+        await notificationDefaultsMutation.mutateAsync({
+          emailEnabledDefault: notificationEmailEnabledDefault,
+          deliveryModeDefault: notificationDeliveryModeDefault,
+          minimumPriorityDefault: notificationMinimumPriorityDefault,
+          digestIntervalDefault: notificationDigestIntervalDefault,
+        });
+      }
 
       // Note: Initial values will be updated automatically when orgData refetches
       // But we also update them here immediately to prevent false positives
@@ -337,6 +438,10 @@ export default function OrganizationManagePage() {
           vat,
           zvr,
           authority,
+          notificationEmailEnabledDefault,
+          notificationDeliveryModeDefault,
+          notificationMinimumPriorityDefault,
+          notificationDigestIntervalDefault,
         };
       }
       setLogoFile(null);
@@ -362,7 +467,12 @@ export default function OrganizationManagePage() {
     vat,
     zvr,
     authority,
+    notificationEmailEnabledDefault,
+    notificationDeliveryModeDefault,
+    notificationMinimumPriorityDefault,
+    notificationDigestIntervalDefault,
     allowSelfSignOut,
+    notificationDefaultsMutation,
     updateMutation,
   ]);
 
@@ -515,7 +625,7 @@ export default function OrganizationManagePage() {
     <PageHeader
       title={`${name} verwalten`}
       onSave={handleSave}
-      isSaving={updateMutation.isPending}
+      isSaving={updateMutation.isPending || notificationDefaultsMutation.isPending}
       onCancel={() => router.push('/')}
     />
   );
@@ -665,6 +775,51 @@ export default function OrganizationManagePage() {
                 onEinsatzPluralChange={setEinsatzPlural}
                 allowSelfSignOut={allowSelfSignOut}
                 onAllowSelfSignOutChange={setAllowSelfSignOut}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Notifications Section */}
+        <section
+          id="notifications"
+          ref={(el) => {
+            sectionRefs.current.notifications = el;
+          }}
+          aria-labelledby="notifications-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="notifications-heading">Benachrichtigungen</CardTitle>
+              <CardDescription>
+                Definieren Sie, welche E-Mails Mitglieder standardmäßig
+                erhalten. Mitglieder können diese Werte bei Bedarf mit einer
+                eigenen Einstellung überschreiben.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {notificationDefaultsError && (
+                <p className="text-destructive mb-4 text-sm">
+                  Benachrichtigungseinstellungen konnten nicht geladen werden.
+                </p>
+              )}
+              <OrganizationNotificationDefaultsForm
+                organizationName={name}
+                emailEnabledDefault={notificationEmailEnabledDefault}
+                deliveryModeDefault={notificationDeliveryModeDefault}
+                minimumPriorityDefault={notificationMinimumPriorityDefault}
+                digestIntervalDefault={notificationDigestIntervalDefault}
+                onEmailEnabledDefaultChange={setNotificationEmailEnabledDefault}
+                onDeliveryModeDefaultChange={setNotificationDeliveryModeDefault}
+                onMinimumPriorityDefaultChange={
+                  setNotificationMinimumPriorityDefault
+                }
+                onDigestIntervalDefaultChange={setNotificationDigestIntervalDefault}
+                disabled={
+                  notificationDefaultsMutation.isPending ||
+                  notificationDefaultsLoading ||
+                  !!notificationDefaultsError
+                }
               />
             </CardContent>
           </Card>
