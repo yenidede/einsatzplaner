@@ -8,7 +8,6 @@ export default function SignupPage() {
         <p>
           Bitte wenden Sie sich an einen Administrator, um einen Einladungslink
           zu erhalten.
-          
         </p>
       </div>
       <Image
