@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface PageHeaderProps {
   title: string;
+  description?: string;
   onSave: () => void;
   isSaving?: boolean;
   onCancel?: () => void;
@@ -18,6 +19,7 @@ interface PageHeaderProps {
 
 export function PageHeader({
   title,
+  description,
   onSave,
   isSaving = false,
   onCancel,
@@ -78,8 +80,10 @@ export function PageHeader({
           !disableHorizontalPadding && 'px-3 sm:px-6 lg:px-8'
         )}
       >
-        <div className="min-w-0 flex-1 pr-2">
-          <h1 className="truncate">{title}</h1>
+        <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
+          <h1 className="truncate">
+            {title} {description && `(${description})`}
+          </h1>
         </div>
         <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
           <Button
