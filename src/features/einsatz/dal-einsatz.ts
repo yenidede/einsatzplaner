@@ -1,7 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import type { einsatz as Einsatz } from '@/generated/prisma';
+import { Prisma, type einsatz as Einsatz } from '@/generated/prisma';
 import {
   isFieldTypeKey,
   type FieldTypeKey,
@@ -1033,149 +1033,206 @@ export async function updateEinsatzTime(data: {
   };
 }
 
+export type UserAssignmentIntent = 'toggle' | 'assign' | 'unassign';
+type UserAssignmentMutationResult = {
+  result: Einsatz;
+  actionTaken: 'assigned' | 'unassigned' | 'noop';
+};
+
+function isRetryableTransactionError(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2034'
+  );
+}
+
 export async function toggleUserAssignmentToEinsatz(
-  einsatzId: string
+  einsatzId: string,
+  intent: UserAssignmentIntent = 'toggle'
 ): Promise<Einsatz | { id: string; title: string; deleted: true }> {
-  // Adds the user if he isnt already assigned, removes him otherwise
   const { session } = await requireAuth();
 
   if (!session?.user.id) {
     throw new Response('User ID is required', { status: 400 });
   }
 
-  const existingEinsatz = await prisma.einsatz.findUnique({
-    where: { id: einsatzId },
-    select: {
-      id: true,
-      title: true,
-      org_id: true,
-      start: true,
-      end: true,
-      einsatz_helper: { select: { user_id: true } },
-      helpers_needed: true,
-    },
-  });
+  let attempt = 0;
 
-  if (!existingEinsatz) {
-    throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
-  }
+  while (attempt < 2) {
+    try {
+      const mutationResult = await prisma.$transaction(
+        async (tx) => {
+          const existingEinsatz = await tx.einsatz.findUnique({
+            where: { id: einsatzId },
+            select: {
+              id: true,
+              title: true,
+              org_id: true,
+              start: true,
+              end: true,
+              einsatz_helper: { select: { user_id: true } },
+              helpers_needed: true,
+            },
+          });
 
-  const isSignedInUserAssigned = existingEinsatz.einsatz_helper.some(
-    (helper) => helper.user_id === session.user.id
-  );
+          if (!existingEinsatz) {
+            throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
+          }
 
-  await assertOrgPermission(
-    session,
-    existingEinsatz.org_id,
-    isSignedInUserAssigned ? 'einsaetze:leave' : 'einsaetze:join'
-  );
+          const isSignedInUserAssigned = existingEinsatz.einsatz_helper.some(
+            (helper) => helper.user_id === session.user.id
+          );
+          const shouldAssign =
+            intent === 'assign'
+              ? true
+              : intent === 'unassign'
+                ? false
+                : !isSignedInUserAssigned;
 
-  // Check for conflicts only when assigning (not when removing)
-  if (!isSignedInUserAssigned) {
-    const conflicts = await checkEinsatzConflicts(
-      [session.user.id],
-      existingEinsatz.start,
-      existingEinsatz.end,
-      einsatzId
-    );
+          await assertOrgPermission(
+            session,
+            existingEinsatz.org_id,
+            shouldAssign ? 'einsaetze:join' : 'einsaetze:leave'
+          );
 
-    if (conflicts.length > 0) {
-      const conflict = conflicts[0];
-      throw new BadRequestError(
-        `Sie sind bereits für einen anderen Einsatz in diesem Zeitraum eingeteilt: "${conflict.conflictingEinsatz.title}" (${conflict.conflictingEinsatz.start.toLocaleString('de-AT')} - ${conflict.conflictingEinsatz.end.toLocaleString('de-AT')})`
+          if (shouldAssign === isSignedInUserAssigned) {
+            const unchangedEinsatz = await tx.einsatz.findUnique({
+              where: { id: einsatzId },
+            });
+
+            if (!unchangedEinsatz) {
+              throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
+            }
+
+            return {
+              result: unchangedEinsatz,
+              actionTaken: 'noop',
+            } satisfies UserAssignmentMutationResult;
+          }
+
+          if (shouldAssign) {
+            const conflicts = await checkEinsatzConflicts(
+              [session.user.id],
+              existingEinsatz.start,
+              existingEinsatz.end,
+              einsatzId
+            );
+
+            if (conflicts.length > 0) {
+              const conflict = conflicts[0];
+              throw new BadRequestError(
+                `Sie sind bereits für einen anderen Einsatz in diesem Zeitraum eingeteilt: "${conflict.conflictingEinsatz.title}" (${conflict.conflictingEinsatz.start.toLocaleString('de-AT')} - ${conflict.conflictingEinsatz.end.toLocaleString('de-AT')})`
+              );
+            }
+          }
+
+          const addOrRemoveOne = shouldAssign ? 1 : -1;
+          const newStatusId =
+            existingEinsatz.helpers_needed >
+              existingEinsatz.einsatz_helper.length + addOrRemoveOne
+              ? 'bb169357-920b-4b49-9e3d-1cf489409370'
+              : '15512bc7-fc64-4966-961f-c506a084a274';
+
+          if (!shouldAssign) {
+            const result = await tx.einsatz.update({
+              where: {
+                id: einsatzId,
+                organization: {
+                  user_organization_role: {
+                    some: {
+                      user_id: session.user.id,
+                    },
+                  },
+                },
+              },
+              data: {
+                einsatz_helper: {
+                  deleteMany: {
+                    user_id: session.user.id,
+                  },
+                },
+                status_id: newStatusId,
+              },
+            });
+            return {
+              result,
+              actionTaken: 'unassigned',
+            } satisfies UserAssignmentMutationResult;
+          }
+
+          const result = await tx.einsatz.update({
+            where: {
+              id: einsatzId,
+              organization: {
+                user_organization_role: {
+                  some: {
+                    user_id: session.user.id,
+                  },
+                },
+              },
+            },
+            data: {
+              einsatz_helper: {
+                create: {
+                  user: { connect: { id: session.user.id } },
+                  org_id: existingEinsatz.org_id,
+                },
+              },
+              status_id: newStatusId,
+            },
+          });
+          return {
+            result,
+            actionTaken: 'assigned',
+          } satisfies UserAssignmentMutationResult;
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        }
       );
+
+      if (mutationResult.actionTaken === 'unassigned') {
+        try {
+          await createChangeLogAuto({
+            einsatzId,
+            userId: session.user.id,
+            typeId: ChangeTypeIds['N-Abgesagt'],
+            affectedUserId: session.user.id,
+          });
+        } catch (error) {
+          console.error('Failed to create activity log for unassignment:', error);
+        }
+      }
+
+      if (mutationResult.actionTaken === 'assigned') {
+        try {
+          await createChangeLogAuto({
+            einsatzId,
+            userId: session.user.id,
+            typeId: ChangeTypeIds['N-Eingetragen'],
+            affectedUserId: session.user.id,
+          });
+        } catch (error) {
+          console.error('Failed to create activity log for assignment:', error);
+        }
+
+        try {
+          await checkEinsatzRequirementsAfterAssignment(einsatzId);
+        } catch (error) {
+          console.error('Failed to check einsatz requirements and notify:', error);
+        }
+      }
+
+      return mutationResult.result;
+    } catch (error) {
+      attempt += 1;
+      if (!isRetryableTransactionError(error) || attempt >= 2) {
+        throw error;
+      }
     }
   }
 
-  const addOrRemoveOne = isSignedInUserAssigned ? -1 : 1;
-
-  const newStatusId =
-    existingEinsatz.helpers_needed >
-      existingEinsatz.einsatz_helper.length + addOrRemoveOne
-      ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
-      : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
-
-  let result: Einsatz;
-
-  if (isSignedInUserAssigned) {
-    // USER IS ALREADY ASSIGNED → REMOVE THEM
-    result = await prisma.einsatz.update({
-      where: {
-        id: einsatzId,
-        organization: {
-          user_organization_role: {
-            some: {
-              user_id: session.user.id,
-            },
-          },
-        },
-      },
-      data: {
-        einsatz_helper: {
-          deleteMany: {
-            user_id: session.user.id,
-          },
-        },
-        status_id: newStatusId,
-      },
-    });
-
-    try {
-      await createChangeLogAuto({
-        einsatzId: einsatzId,
-        userId: session.user.id,
-        typeId: ChangeTypeIds['N-Abgesagt'],
-        affectedUserId: session.user.id,
-      });
-    } catch (error) {
-      console.error('Failed to create activity log for unassignment:', error);
-    }
-  } else {
-    // USER IS NOT ASSIGNED → ADD THEM
-    const helperCreateData = {
-      user: { connect: { id: session.user.id } },
-      org_id: existingEinsatz.org_id,
-    };
-
-    result = await prisma.einsatz.update({
-      where: {
-        id: einsatzId,
-        organization: {
-          user_organization_role: {
-            some: {
-              user_id: session.user.id,
-            },
-          },
-        },
-      },
-      data: {
-        einsatz_helper: {
-          create: helperCreateData,
-        },
-        status_id: newStatusId,
-      },
-    });
-
-    // **NEU: Activity Log für Eintragen erstellen**
-    try {
-      await createChangeLogAuto({
-        einsatzId: einsatzId,
-        userId: session.user.id,
-        typeId: ChangeTypeIds['N-Eingetragen'],
-        affectedUserId: session.user.id, // as the user is assigning themselves they are also the affected user
-      });
-    } catch (error) {
-      console.error('Failed to create activity log for assignment:', error);
-    }
-
-    try {
-      await checkEinsatzRequirementsAfterAssignment(einsatzId);
-    } catch (error) {
-      console.error('Failed to check einsatz requirements and notify:', error);
-    }
-  }
-
-  return result;
+  throw new Error('Die Selbstzuweisung konnte nicht abgeschlossen werden.');
 }
 
 export async function updateEinsatz({
