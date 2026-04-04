@@ -145,10 +145,10 @@ function mapUserProfile(user: UserProfileRecord) {
     roleIds: user.user_organization_role.map((uor) => uor.role.id),
     activeOrganization: activeOrgData
       ? {
-          id: activeOrgData.id,
-          name: activeOrgData.name,
-          logo_url: activeOrgData.logo_url,
-        }
+        id: activeOrgData.id,
+        name: activeOrgData.name,
+        logo_url: activeOrgData.logo_url,
+      }
       : null,
     phone: user.phone ?? '',
     hasLogoinCalendar: user.hasLogoinCalendar ?? true,
