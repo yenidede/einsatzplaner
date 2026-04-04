@@ -70,8 +70,8 @@
 
 ## Markierte Ambiguitäten
 
-- "`Helfer`" wird für mindestens drei Konzepte verwendet: eine Rolle, eine einer Organisation zugehörige Person und eine konkrete Zuordnung zu einem Einsatz. Empfehlung: Für die Beziehung immer **Helferzuweisung**, für die Berechtigung **Rolle**, für die Person **Benutzer** oder **Mitglied** verwenden.
+- "`Helfer`" wird für mindestens drei Konzepte verwendet: eine Rolle, eine einer Organisation zugehörige Person und eine konkrete Zuordnung zu einem Einsatz. Empfehlung: Für die Beziehung immer **Helferzuweisung**, für die Berechtigung **Rolle**, für die Person **Benutzer** verwenden.
 - "`User`", "`Benutzer`" und "`Mitglied`" werden vermischt. Empfehlung: **Benutzer** für die Person mit Login, **Mitgliedschaft** für die Zugehörigkeit zur Organisation.
-- "`Kategorie`" und "`Typ`" liegen semantisch nahe, meinen hier aber nicht dasselbe. Empfehlung: **Einsatzkategorie** für fachliche Einordnung, **Felddefinitionstyp** nur für Datentypen von Feldern.
+- "`Kategorie`" und "`Typ`" liegen semantisch nahe, meinen hier aber nicht dasselbe. Empfehlung: **Einsatzkategorie** für fachliche Einordnung, **Felddefinition** für Feldmetadaten.
 - "`Status`" ist zu allgemein. Empfehlung: Im fachlichen Kontext immer **Einsatzstatus** sagen.
 - Die Organisation kann Anzeigenamen wie **Einsatz** oder **Helfer** umbenennen. Empfehlung: Diese Bezeichnungen als konfigurierbare UI-Terminologie behandeln, nicht als neue Domänenkonzepte.
