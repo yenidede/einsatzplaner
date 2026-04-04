@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/popover';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import NavSwitchOrgSelect from './switch-org';
+import { NavSwitchOrgSelect } from './switch-org';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import {
