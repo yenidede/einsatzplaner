@@ -100,5 +100,3 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
     </Select>
   );
 }
-
-export default NavSwitchOrgSelect;

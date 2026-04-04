@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useState } from 'react';
-import SignUpForm, {
+import {
+  SignUpForm,
   AvailableTab,
 } from '@/features/auth/components/acceptAndRegister-Form';
 import { useInvitationVerify } from '@/features/invitations/hooks/useInvitationVerify';
