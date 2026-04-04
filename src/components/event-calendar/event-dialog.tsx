@@ -479,7 +479,10 @@ export function EventDialogVerwaltung({
 
         setPdfTemplates(templates);
         setSelectedPdfTemplateId((current) => {
-          if (current && templates.some((template) => template.id === current)) {
+          if (
+            current &&
+            templates.some((template) => template.id === current)
+          ) {
             return current;
           }
 
@@ -795,7 +798,7 @@ export function EventDialogVerwaltung({
         setActiveTemplateId((prev) =>
           prev === (currentEinsatz.template_id || null)
             ? prev
-            : (currentEinsatz.template_id || null)
+            : currentEinsatz.template_id || null
         );
         const editFormData: EinsatzFormData = {
           title: einsatzDetailed.title || '',

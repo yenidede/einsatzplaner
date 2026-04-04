@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import TooltipCustom from '@/components/tooltip-custom';
 
 interface GenerateBookingConfirmationButtonProps {
   assignmentId?: string;
@@ -55,12 +56,18 @@ export function GenerateBookingConfirmationButton({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const selectedTemplateName = useMemo(() => {
-    return templates.find((template) => template.id === templateId)?.name ?? null;
+    return (
+      templates.find((template) => template.id === templateId)?.name ?? null
+    );
   }, [templateId, templates]);
 
   const isSelectionDisabled = isLoading || templates.length === 0;
   const canGenerate =
-    !isLoading && !isPending && !!assignmentId && !!templateId && templates.length > 0;
+    !isLoading &&
+    !isPending &&
+    !!assignmentId &&
+    !!templateId &&
+    templates.length > 0;
 
   function handleGenerate() {
     if (!canGenerate) {
@@ -97,25 +104,26 @@ export function GenerateBookingConfirmationButton({
   }
 
   return (
-    <div className="flex h-9 min-w-80 overflow-hidden rounded-md border border-input bg-background shadow-xs">
-      <button
-        type="button"
-        onClick={handleGenerate}
-        disabled={!canGenerate}
-        className={cn(
-          'flex min-w-0 flex-1 items-center gap-2 px-4 text-sm font-medium transition-colors',
-          'hover:bg-accent hover:text-accent-foreground',
-          'focus-visible:border-ring focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]',
-          'disabled:pointer-events-none disabled:opacity-50'
-        )}
-      >
-        {isPending || isLoading ? (
-          <LoaderCircle className="h-4 w-4 animate-spin" />
-        ) : (
-          <FileDown className="h-4 w-4" />
-        )}
-        <span className="truncate">Buchungsbestätigung generieren</span>
-      </button>
+    <div className="border-input bg-background flex h-9 overflow-hidden rounded-md border shadow-xs">
+      <TooltipCustom text="Buchungsbestätigung generieren">
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={!canGenerate}
+          className={cn(
+            'flex min-w-0 items-center gap-2 px-4 text-sm font-medium transition-colors',
+            'hover:bg-accent hover:text-accent-foreground',
+            'focus-visible:border-ring focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]',
+            'disabled:pointer-events-none disabled:opacity-50'
+          )}
+        >
+          {isPending || isLoading ? (
+            <LoaderCircle className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileDown className="h-4 w-4" />
+          )}
+        </button>
+      </TooltipCustom>
 
       <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <DropdownMenuTrigger asChild>
@@ -124,7 +132,7 @@ export function GenerateBookingConfirmationButton({
             aria-label="PDF-Vorlage auswählen"
             disabled={isSelectionDisabled}
             className={cn(
-              'flex w-11 shrink-0 items-center justify-center border-l border-input transition-colors',
+              'border-input flex w-11 shrink-0 items-center justify-center border-l transition-colors',
               'hover:bg-accent hover:text-accent-foreground',
               'focus-visible:border-ring focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]',
               'disabled:pointer-events-none disabled:opacity-50'
