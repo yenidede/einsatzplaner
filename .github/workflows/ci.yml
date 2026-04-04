@@ -11,6 +11,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://foo:bar@localhost:5432/notneeded
+      DIRECT_URL: postgresql://foo:bar@localhost:5432/notneeded
 
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +29,9 @@ jobs:
 
       - name: Install
         run: pnpm install --ignore-scripts
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
 
       - name: Run tests
         run: pnpm test:run
