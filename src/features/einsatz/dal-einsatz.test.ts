@@ -1,3 +1,4 @@
+import { Prisma } from '@/generated/prisma';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
@@ -111,12 +112,18 @@ describe('toggleUserAssignmentToEinsatz', () => {
             findUnique: typeof mockFindUnique;
             update: typeof mockUpdate;
           };
+          einsatz_helper: {
+            findMany: typeof mockFindManyConflicts;
+          };
         }) => Promise<unknown>
       ) =>
         callback({
           einsatz: {
             findUnique: mockFindUnique,
             update: mockUpdate,
+          },
+          einsatz_helper: {
+            findMany: mockFindManyConflicts,
           },
         })
     );
@@ -146,5 +153,47 @@ describe('toggleUserAssignmentToEinsatz', () => {
       affectedUserId: 'user-1',
     });
     expect(mockCheckEinsatzRequirementsAfterAssignment).toHaveBeenCalledTimes(1);
+  });
+
+  it('erzwingt bei einem idempotenten assign-no-op keine Join-Berechtigung', async () => {
+    mockHasPermission
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+
+    await expect(
+      toggleUserAssignmentToEinsatz('einsatz-1', 'assign')
+    ).resolves.toMatchObject({
+      id: 'einsatz-1',
+      title: 'Testeinsatz',
+    });
+
+    await expect(
+      toggleUserAssignmentToEinsatz('einsatz-1', 'assign')
+    ).resolves.toMatchObject({
+      id: 'einsatz-1',
+      title: 'Testeinsatz',
+    });
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockCreateChangeLogAuto).toHaveBeenCalledTimes(1);
+  });
+
+  it('verwendet nach zwei serialisierbaren Transaktionskonflikten die benutzerfreundliche Fehlermeldung', async () => {
+    const retryableError = Object.assign(
+      Object.create(Prisma.PrismaClientKnownRequestError.prototype),
+      {
+        code: 'P2034',
+      }
+    );
+
+    mockTransaction.mockRejectedValue(retryableError);
+
+    await expect(
+      toggleUserAssignmentToEinsatz('einsatz-1', 'assign')
+    ).rejects.toThrow(
+      'Die Selbstzuweisung konnte nicht abgeschlossen werden.'
+    );
+
+    expect(mockTransaction).toHaveBeenCalledTimes(2);
   });
 });
