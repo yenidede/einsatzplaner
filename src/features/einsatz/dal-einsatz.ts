@@ -1092,6 +1092,12 @@ export async function toggleUserAssignmentToEinsatz(
                 ? false
                 : !isSignedInUserAssigned;
 
+          await assertOrgPermission(
+            session,
+            existingEinsatz.org_id,
+            shouldAssign ? 'einsaetze:join' : 'einsaetze:leave'
+          );
+
           if (shouldAssign === isSignedInUserAssigned) {
             const unchangedEinsatz = await tx.einsatz.findUnique({
               where: { id: einsatzId },
@@ -1106,12 +1112,6 @@ export async function toggleUserAssignmentToEinsatz(
               actionTaken: 'noop',
             } satisfies UserAssignmentMutationResult;
           }
-
-          await assertOrgPermission(
-            session,
-            existingEinsatz.org_id,
-            shouldAssign ? 'einsaetze:join' : 'einsaetze:leave'
-          );
 
           if (shouldAssign) {
             const conflicts = await checkEinsatzConflicts(

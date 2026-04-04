@@ -65,7 +65,6 @@ export function useActiveOrganizationSwitch() {
         toast.error(
           `Fehler beim Wechseln der Organisation${error instanceof Error ? `: ${error.message}` : '.'}`
         );
-        throw error;
       } finally {
         setIsSwitching(false);
       }

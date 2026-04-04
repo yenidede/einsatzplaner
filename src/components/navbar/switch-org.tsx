@@ -30,6 +30,7 @@ type Props = {
 export function NavSwitchOrgSelect({ organizations }: Props) {
   const { data: session } = useSession();
   const [activeOrgId, setActiveOrgId] = React.useState<string>('');
+  const [pendingOrgId, setPendingOrgId] = React.useState<string | null>(null);
   const { isSwitching, switchOrganization } = useActiveOrganizationSwitch();
 
   React.useEffect(() => {
@@ -48,16 +49,22 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
       return;
     }
 
+    setPendingOrgId(orgId);
     try {
       await switchOrganization(orgId);
     } catch {
       return;
+    } finally {
+      setPendingOrgId(null);
     }
   };
 
+  const selectedOrgId =
+    isSwitching && pendingOrgId ? pendingOrgId : activeOrgId;
+
   return (
     <Select
-      value={activeOrgId}
+      value={selectedOrgId}
       onValueChange={handleSetOrg}
       name="orgSwitch"
       disabled={organizations.length <= 1 || isSwitching}
