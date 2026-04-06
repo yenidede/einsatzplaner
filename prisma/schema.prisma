@@ -145,40 +145,45 @@ model einsatz_template {
 }
 
 model organization {
-  id                           String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                         String
-  logo_url                     String?
-  description                  String?
-  helper_name_singular         String?                     @default("Vermittler:in")
-  helper_name_plural           String?                     @default("Vermittler:innen")
-  created_at                   DateTime                    @default(now())
-  updated_at                   DateTime?
-  einsatz_name_singular        String                      @default("Einsatz")
-  einsatz_name_plural          String                      @default("Einsätze")
-  email                        String?
-  phone                        String?
-  helferansicht_description    String?
-  verwalteransicht_description String?
-  abbreviation                 String?
-  max_participants_per_helper  Int?                        @default(25) @db.SmallInt
-  allow_self_sign_out          Boolean                     @default(false) @map("allow_self-sign-out")
-  default_starttime            DateTime                    @default(dbgenerated("'09:00:00'::time without time zone")) @map("default-starttime") @db.Time(6)
-  default_endtime              DateTime                    @default(dbgenerated("'10:00:00'::time without time zone")) @map("default-endtime") @db.Time(6)
-  small_logo_url               String?                     @map("small-logo_url")
-  analytics_chart              analytics_chart[]
-  analytics_chart1             analytics_chart1[]
-  calendar_subscription        calendar_subscription[]
-  einsatz                      einsatz[]
-  einsatz_category             einsatz_category[]
-  einsatz_template             einsatz_template[]
-  invitation                   invitation[]
-  organization_address         organization_address[]
-  organization_bank_account    organization_bank_account[]
-  organization_details         organization_details[]
-  pdfTemplate                  pdfTemplate[]
-  user                         user[]
-  user_organization_role       user_organization_role[]
-  user_property                user_property[]
+  id                                        String                                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                                      String
+  logo_url                                  String?
+  description                               String?
+  helper_name_singular                      String?                                     @default("Vermittler:in")
+  helper_name_plural                        String?                                     @default("Vermittler:innen")
+  created_at                                DateTime                                    @default(now())
+  updated_at                                DateTime?
+  einsatz_name_singular                     String                                      @default("Einsatz")
+  einsatz_name_plural                       String                                      @default("Einsätze")
+  email                                     String?
+  phone                                     String?
+  helferansicht_description                 String?
+  verwalteransicht_description              String?
+  abbreviation                              String?
+  max_participants_per_helper               Int?                                        @default(25) @db.SmallInt
+  allow_self_sign_out                       Boolean                                     @default(false) @map("allow_self-sign-out")
+  default_starttime                         DateTime                                    @default(dbgenerated("'09:00:00'::time without time zone")) @map("default-starttime") @db.Time(6)
+  default_endtime                           DateTime                                    @default(dbgenerated("'10:00:00'::time without time zone")) @map("default-endtime") @db.Time(6)
+  small_logo_url                            String?                                     @map("small-logo_url")
+  trial_starts_at                           DateTime                                    @default(now()) @db.Timestamptz(6)
+  trial_ends_at                             DateTime?                                   @db.Timestamptz(6)
+  subscription_status                       String                                      @default("trial")
+  analytics_chart                           analytics_chart[]
+  analytics_chart1                          analytics_chart1[]
+  calendar_subscription                     calendar_subscription[]
+  einsatz                                   einsatz[]
+  einsatz_category                          einsatz_category[]
+  einsatz_template                          einsatz_template[]
+  invitation                                invitation[]
+  organization_address                      organization_address[]
+  organization_bank_account                 organization_bank_account[]
+  organization_details                      organization_details[]
+  organization_notification_settings        organization_notification_settings?
+  pdfTemplate                               pdfTemplate[]
+  user                                      user[]
+  user_organization_notification_preference user_organization_notification_preference[]
+  user_organization_role                    user_organization_role[]
+  user_property                             user_property[]
 }
 
 model type {
@@ -192,35 +197,36 @@ model type {
 }
 
 model user {
-  id                                        String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                                     String                   @unique
+  id                                        String                                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                                     String                                      @unique
   firstname                                 String
   lastname                                  String
   password                                  String
   phone                                     String?
-  created_at                                DateTime                 @default(now())
+  created_at                                DateTime                                    @default(now())
   updated_at                                DateTime?
   picture_url                               String?
   description                               String?
-  last_login                                DateTime?                @db.Timestamp(6)
-  hasLogoinCalendar                         Boolean                  @default(true)
-  last_read_notifications                   DateTime?                @db.Timestamptz(6)
+  last_login                                DateTime?                                   @db.Timestamp(6)
+  hasLogoinCalendar                         Boolean                                     @default(true)
+  last_read_notifications                   DateTime?                                   @db.Timestamptz(6)
   resetToken                                String?
-  resetTokenExpires                         DateTime?                @db.Timestamp(6)
-  salutationId                              String?                  @db.Uuid
-  active_org                                String?                  @map("active-org") @db.Uuid
+  resetTokenExpires                         DateTime?                                   @db.Timestamp(6)
+  salutationId                              String?                                     @db.Uuid
+  active_org                                String?                                     @map("active-org") @db.Uuid
   analytics_chart                           analytics_chart[]
   analytics_chart1                          analytics_chart1[]
   calendar_subscription                     calendar_subscription[]
-  change_log_change_log_affected_userTouser change_log[]             @relation("change_log_affected_userTouser")
+  change_log_change_log_affected_userTouser change_log[]                                @relation("change_log_affected_userTouser")
   change_log                                change_log[]
   einsatz                                   einsatz[]
   einsatz_comment                           einsatz_comment[]
   einsatz_helper                            einsatz_helper[]
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
-  organization                              organization?            @relation(fields: [active_org], references: [id], onDelete: Cascade)
-  salutation                                salutation?              @relation(fields: [salutationId], references: [id], onDelete: Restrict)
+  organization                              organization?                               @relation(fields: [active_org], references: [id], onDelete: Cascade)
+  salutation                                salutation?                                 @relation(fields: [salutationId], references: [id], onDelete: Restrict)
+  user_organization_notification_preference user_organization_notification_preference[]
   user_organization_role                    user_organization_role[]
   user_property_value                       user_property_value[]
   user_session                              user_session[]
@@ -542,4 +548,37 @@ model analytics_chart1 {
   description  String?
   user         user         @relation(fields: [created_by], references: [id], onDelete: SetNull)
   organization organization @relation(fields: [org_id], references: [id], onDelete: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model organization_notification_settings {
+  id                       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id          String       @unique @db.Uuid
+  email_enabled_default    Boolean      @default(true)
+  delivery_mode_default    String       @default("critical_and_digest")
+  minimum_priority_default String       @default("review")
+  digest_interval_default  String       @default("daily")
+  created_at               DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime     @default(now()) @db.Timestamptz(6)
+  organization             organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_organization_notification_preference {
+  id                        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                   String       @db.Uuid
+  organization_id           String       @db.Uuid
+  use_organization_defaults Boolean      @default(true)
+  email_enabled             Boolean?
+  delivery_mode             String?
+  minimum_priority          String?
+  digest_interval           String?
+  created_at                DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime     @default(now()) @db.Timestamptz(6)
+  organization              organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user                      user         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, organization_id], map: "user_organization_notification_preference_user_org_unique")
+  @@index([organization_id], map: "idx_user_organization_notification_preference_organization")
+  @@index([user_id], map: "idx_user_organization_notification_preference_user")
 }
