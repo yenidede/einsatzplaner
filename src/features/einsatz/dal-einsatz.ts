@@ -89,6 +89,8 @@ async function assertOrgPermission(
  * @param start Start time of the Einsatz
  * @param end End time of the Einsatz
  * @param exclude Optional ID of an Einsatz to exclude or true to exclude all Einsätze
+ * @param dbClient Optional Prisma client or transaction client used to keep
+ * conflict checks inside an existing transaction when needed
  * @returns Array of conflicts found
  */
 async function checkEinsatzConflicts(
