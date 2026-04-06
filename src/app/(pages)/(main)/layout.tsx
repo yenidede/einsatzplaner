@@ -25,20 +25,7 @@ export default async function MainLayout({
       const accessDecision = getOrganizationAccessDecision(activeOrganization);
 
       if (accessDecision.status === 'expired') {
-        return (
-          <main className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-3xl items-center px-4 py-8 pt-24 md:px-6">
-            <section className="bg-card w-full rounded-2xl border p-8 shadow-sm">
-              <h1 className="text-2xl font-semibold">
-                Ihre aktive Organisation ist derzeit nicht verfuegbar.
-              </h1>
-              <p className="text-muted-foreground mt-3">
-                Der Zugriff auf {activeOrganization.name} ist abgelaufen. Bitte
-                wenden Sie sich an Ihre Organisationsverwaltung, um den Zugriff
-                wieder freizuschalten.
-              </p>
-            </section>
-          </main>
-        );
+        redirect('/subscription-expired');
       }
     }
   }
