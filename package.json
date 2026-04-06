@@ -11,7 +11,11 @@
     "test:run": "vitest run",
     "lint": "eslint . --ignore-pattern 'src/generated/**'",
     "postinstall": "npx prisma db pull && npx prisma generate",
-    "prettier": "prettier . --write"
+    "prettier": "prettier . --write",
+    "ralph": "bash ./scripts/ralph-local/run-once.sh",
+    "ralph:loop": "bash ./scripts/ralph-local/run-loop.sh",
+    "ralph:tmux": "bash ./scripts/ralph-local/tmux-start.sh",
+    "ralph:doctor": "bash ./scripts/ralph-local/doctor.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
