@@ -44,3 +44,12 @@ Diese Datei ist die Uebergabe zwischen Ralph-Laeufen.
 - Erledigte Arbeit: Einen globalen Trial-Hinweis im Main-Layout ergaenzt, der nur fuer aktive Trial-Organisationen und nur fuer Nutzer:innen mit mindestens einer Nicht-Helfer-Rolle angezeigt wird; die Tageslogik fuer `endet heute`, `endet morgen` und mehrtaegige Restlaufzeit in eine eigene Organisations-Utility ausgelagert und mit Layout- sowie Unit-Tests abgesichert.
 - Offenes Risiko: `pnpm lint` ist weiterhin nur wegen bereits vorhandener Repo-Warnungen nicht sauber nullwarnungsfrei; aus diesem Slice sind keine neuen Lint-Fehler entstanden.
 - Naechster Schritt: Den Organisations-Switch fuer gemischte aktive und abgelaufene Organisationen mit deaktivierten Optionen und rollensensitiven Tooltips in Issue #389 umsetzen.
+
+### 2026-04-06 - Issue #389
+
+- Datum: 2026-04-06
+- Issue: #389 Org-Switch mit abgelaufenen Organisationen und Tooltips
+- Branch: codex/ralph-local-cli
+- Erledigte Arbeit: Den Navbar-Organisationswechsel fuer gemischte aktive und abgelaufene Organisationen erweitert; abgelaufene Organisationen bleiben jetzt sichtbar, werden deaktiviert und erhalten rollensensitive Hinweistexte passend zur Expired-Experience, waehrend der Wechsel von `/subscription-expired` in eine aktive Organisation direkt wieder in die Hauptansicht fuehrt; dazu wurden gezielte Tests fuer Disabled-State, Hinweisvarianten und Rueckkehr-Verhalten ergaenzt.
+- Offenes Risiko: `pnpm lint` bleibt weiterhin nur wegen bereits vorhandener Repo-Warnungen ohne Nullwarnungsstand; in diesem Slice sind keine neuen Lint-Fehler entstanden.
+- Naechster Schritt: Den naechsten unblocked Ralph-Issue auswaehlen; die aktuell offenen Signup-/Provisioning-Issues bleiben weiterhin von #391/#392/#393 abhaengig.

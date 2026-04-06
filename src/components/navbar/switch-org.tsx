@@ -1,6 +1,6 @@
 'use client';
 import * as React from 'react';
-import type { OrganizationBasicVisualize } from '@/features/organization/types';
+import type { OrganizationSwitchOption } from '@/components/navbar/switch-org-options';
 import {
   Select,
   SelectContent,
@@ -13,9 +13,11 @@ import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { requestOrganizationSwitchConfirmation } from '@/components/settings/settings-navigation.utils';
 import { useActiveOrganizationSwitch } from '@/hooks/use-active-organization-switch';
+import { useUserProfile } from '@/features/settings/hooks/useUserProfile';
+import { getOrganizationSwitchOptionState } from '@/components/navbar/switch-org-options';
 
 type Props = {
-  organizations: OrganizationBasicVisualize[];
+  organizations: OrganizationSwitchOption[];
 };
 
 /**
@@ -29,6 +31,7 @@ type Props = {
  */
 export function NavSwitchOrgSelect({ organizations }: Props) {
   const { data: session } = useSession();
+  const { data: userProfile } = useUserProfile(session?.user?.id);
   const [activeOrgId, setActiveOrgId] = React.useState<string>('');
   const [pendingOrgId, setPendingOrgId] = React.useState<string | null>(null);
   const { isSwitching, switchOrganization } = useActiveOrganizationSwitch();
@@ -77,17 +80,34 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
       >
         <SelectValue
           placeholder={
-            session?.user?.activeOrganization?.name || 'Organisation wählen'
+            session?.user?.activeOrganization?.name || 'Organisation waehlen'
           }
         />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          {organizations.map((org) => (
-            <SelectItem key={org.id} value={org.id}>
-              {org.name}
-            </SelectItem>
-          ))}
+          {organizations.map((org) => {
+            const roleNames =
+              userProfile?.organizations
+                ?.find((organization) => organization.id === org.id)
+                ?.roles.map((role) => role.name) ?? [];
+            const optionState = getOrganizationSwitchOptionState(
+              org,
+              roleNames
+            );
+
+            return (
+              <SelectItem
+                key={org.id}
+                value={org.id}
+                disabled={optionState.disabled}
+                title={optionState.tooltipText}
+                className="data-disabled:pointer-events-auto"
+              >
+                {org.name}
+              </SelectItem>
+            );
+          })}
         </SelectGroup>
       </SelectContent>
     </Select>

@@ -33,6 +33,8 @@ export function useActiveOrganizationSwitch() {
       const shouldShowSuccessToast = options?.showSuccessToast ?? true;
       const shouldSyncSettingsRoute =
         options?.syncSettingsRoute ?? isOrganizationSettingsPath(pathname);
+      const shouldReturnToAppFromExpiredRoute =
+        pathname === '/subscription-expired';
 
       setIsSwitching(true);
 
@@ -52,7 +54,9 @@ export function useActiveOrganizationSwitch() {
           },
         });
 
-        if (shouldSyncSettingsRoute) {
+        if (shouldReturnToAppFromExpiredRoute) {
+          router.push('/');
+        } else if (shouldSyncSettingsRoute) {
           router.push(getOrganizationSettingsHref(organizationId));
         }
 
