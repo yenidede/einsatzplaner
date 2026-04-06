@@ -4,7 +4,11 @@ import { getServerSession } from 'next-auth';
 import { getUserRolesInOrganization } from '@/DataAccessLayer/user';
 import { getOrganizationAccessDecision } from '@/features/organization/organization-access';
 import { getOrganizationAccessState } from '@/features/organization/org-dal';
-import { isHelperOnlyOrganizationRole } from '@/features/organization/subscription-expired';
+import {
+  EXPIRED_ORGANIZATION_CONTACT_EMAIL,
+  getExpiredOrganizationSupportText,
+  isHelperOnlyOrganizationRole,
+} from '@/features/organization/subscription-expired';
 import { authOptions } from '@/lib/auth.config';
 
 export default async function SubscriptionExpiredPage() {
@@ -40,6 +44,9 @@ export default async function SubscriptionExpiredPage() {
   const isHelperOnly = isHelperOnlyOrganizationRole(
     activeOrganizationRoles.map((userRole) => userRole.role.name)
   );
+  const supportText = getExpiredOrganizationSupportText(
+    activeOrganizationRoles.map((userRole) => userRole.role.name)
+  );
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-8 md:px-6">
@@ -52,18 +59,17 @@ export default async function SubscriptionExpiredPage() {
         </p>
         {isHelperOnly ? (
           <p className="text-muted-foreground mt-3">
-            Bitte wenden Sie sich an Ihre Organisationsverwaltung, um den
-            Zugriff wieder freizuschalten.
+            {supportText}
           </p>
         ) : (
           <p className="text-muted-foreground mt-3">
             Bitte kontaktieren Sie Ihre Organisationsverwaltung oder schreiben
             Sie an{' '}
             <Link
-              href="mailto:hello@davidkathrein.at"
+              href={`mailto:${EXPIRED_ORGANIZATION_CONTACT_EMAIL}`}
               className="text-primary font-medium underline underline-offset-4"
             >
-              hello@davidkathrein.at
+              {EXPIRED_ORGANIZATION_CONTACT_EMAIL}
             </Link>
             .
           </p>
