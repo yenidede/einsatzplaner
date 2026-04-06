@@ -620,6 +620,10 @@ export default function OrganizationManagePage() {
     />
   );
 
+  if (!orgId) {
+    return <div>Organisation kann nicht geladen werden.</div>;
+  }
+
   return (
     <>
       <SettingsPageLayout
