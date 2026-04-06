@@ -80,7 +80,7 @@ export function NavSwitchOrgSelect({ organizations }: Props) {
       >
         <SelectValue
           placeholder={
-            session?.user?.activeOrganization?.name || 'Organisation waehlen'
+            session?.user?.activeOrganization?.name || 'Organisation wählen'
           }
         />
       </SelectTrigger>
