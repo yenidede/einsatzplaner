@@ -7,6 +7,8 @@ import type { OrganizationBase } from '@/features/settings/types';
 import {
   findOrganizationById,
   getOrganizationSettingsHref,
+  getOrganizationSettingsRouteState,
+  getOrganizationSwitchDialogCopy,
   hasActiveOrganizationSettingsAccess,
   isOrganizationManagementRole,
   isOrganizationSettingsPath,
@@ -90,6 +92,75 @@ describe('settings-navigation.utils', () => {
     );
     expect(findOrganizationById(organizations, 'unbekannt')).toBeNull();
     expect(getOrganizationSettingsHref('org-1')).toBe('/settings/org/org-1');
+  });
+
+  it('bewertet den Route-Guard für aktive, fremde und unzulässige Organisationspfade', () => {
+    expect(
+      getOrganizationSettingsRouteState({
+        organizations,
+        activeOrganizationId: 'org-1',
+        requestedOrganizationId: 'org-1',
+        hasActiveOrganizationAccess: true,
+      })
+    ).toEqual({
+      type: 'allowed',
+      activeOrganization: organizations[0],
+    });
+
+    expect(
+      getOrganizationSettingsRouteState({
+        organizations,
+        activeOrganizationId: 'org-1',
+        requestedOrganizationId: 'org-2',
+        hasActiveOrganizationAccess: true,
+      })
+    ).toEqual({
+      type: 'requires-organization-switch',
+      requestedOrganization: organizations[1],
+    });
+
+    expect(
+      getOrganizationSettingsRouteState({
+        organizations,
+        activeOrganizationId: 'org-1',
+        requestedOrganizationId: 'org-unbekannt',
+        hasActiveOrganizationAccess: true,
+      })
+    ).toEqual({
+      type: 'organization-not-available',
+    });
+
+    expect(
+      getOrganizationSettingsRouteState({
+        organizations,
+        activeOrganizationId: 'org-2',
+        requestedOrganizationId: 'org-2',
+        hasActiveOrganizationAccess: false,
+      })
+    ).toEqual({
+      type: 'missing-permission',
+      activeOrganization: organizations[1],
+    });
+
+    expect(
+      getOrganizationSettingsRouteState({
+        organizations,
+        activeOrganizationId: null,
+        hasActiveOrganizationAccess: false,
+      })
+    ).toEqual({
+      type: 'missing-active-organization',
+    });
+  });
+
+  it('liefert den Bestätigungsdialog für einen Organisationswechsel mit Zielname', () => {
+    expect(getOrganizationSwitchDialogCopy('Feuerwehr Musterstadt')).toEqual({
+      title: 'Organisation wechseln',
+      description:
+        'Möchten Sie zu den Organisationseinstellungen von „Feuerwehr Musterstadt“ wechseln?',
+      confirmText: 'Organisation wechseln',
+      cancelText: 'Abbrechen',
+    });
   });
 
   it('fragt eine registrierte Bestätigung für den Organisationswechsel ab', async () => {

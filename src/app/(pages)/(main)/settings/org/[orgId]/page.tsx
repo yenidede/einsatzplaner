@@ -46,6 +46,7 @@ import { useSettingsSessionValidation } from '@/components/settings/hooks/useSet
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { useActiveOrganizationSwitch } from '@/hooks/use-active-organization-switch';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
 import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import {
@@ -59,7 +60,10 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { isNormalizedTime } from '@/lib/time-input';
-import { findOrganizationById } from '@/components/settings/settings-navigation.utils';
+import {
+  getOrganizationSettingsRouteState,
+  getOrganizationSwitchDialogCopy,
+} from '@/components/settings/settings-navigation.utils';
 
 /**
  * Page component for managing an organization's settings, templates, users, and PDF-export configuration.
@@ -144,16 +148,6 @@ export default function OrganizationManagePage() {
     requiredPermissions: ['organization:update'],
     requireAll: false,
   });
-  const activeOrganization = findOrganizationById(
-    userProfile?.organizations ?? [],
-    activeOrgId
-  );
-  const requestedOrganization = findOrganizationById(
-    userProfile?.organizations ?? [],
-    requestedOrgId
-  );
-  const isViewingInactiveOrganization =
-    !!requestedOrganization && requestedOrgId !== activeOrgId;
   const { isSwitching: isSwitchingOrganization, switchOrganization } =
     useActiveOrganizationSwitch();
   const {
@@ -282,6 +276,7 @@ export default function OrganizationManagePage() {
   );
 
   const updateMutation = useUpdateOrganization(orgId ?? '');
+  const { showDefault } = useConfirmDialog();
 
   const hasUnsavedChanges = (() => {
     if (!initialValuesRef.current) return false;
@@ -392,11 +387,18 @@ export default function OrganizationManagePage() {
   ]);
 
   // Use unsaved changes hook
-  const { handleSectionChangeWithCheck, navigateWithCheck } =
+  const { confirmDiscardChanges, handleSectionChangeWithCheck, navigateWithCheck } =
     useUnsavedChanges<OrgManageSectionId>({
       hasUnsavedChanges,
       onSectionChange: originalHandleSectionChange,
     });
+
+  const routeState = getOrganizationSettingsRouteState({
+    organizations: userProfile?.organizations ?? [],
+    activeOrganizationId: activeOrgId,
+    requestedOrganizationId: requestedOrgId,
+    hasActiveOrganizationAccess: isAuthorized,
+  });
 
   // Wrapper for section change that checks for unsaved changes
   const handleSectionChange = useCallback(
@@ -512,14 +514,35 @@ export default function OrganizationManagePage() {
   };
 
   const handleSwitchToRequestedOrganization = async () => {
-    if (!requestedOrgId) {
+    if (routeState.type !== 'requires-organization-switch' || !requestedOrgId) {
+      return;
+    }
+
+    const dialogCopy = getOrganizationSwitchDialogCopy(
+      routeState.requestedOrganization.name
+    );
+    const switchConfirmation = await showDefault(
+      dialogCopy.title,
+      dialogCopy.description,
+      {
+        confirmText: dialogCopy.confirmText,
+        cancelText: dialogCopy.cancelText,
+      }
+    );
+
+    if (switchConfirmation !== 'success') {
+      return;
+    }
+
+    const canDiscardChanges = await confirmDiscardChanges();
+    if (!canDiscardChanges) {
       return;
     }
 
     try {
       await switchOrganization(requestedOrgId, {
         showSuccessToast: false,
-        syncSettingsRoute: false,
+        syncSettingsRoute: true,
       });
     } catch {
       return;
@@ -541,7 +564,7 @@ export default function OrganizationManagePage() {
     );
   }
 
-  if (requestedOrgId && !requestedOrganization) {
+  if (routeState.type === 'organization-not-available') {
     return (
       <SettingsErrorCard
         title="Organisation nicht verfügbar"
@@ -552,18 +575,18 @@ export default function OrganizationManagePage() {
     );
   }
 
-  if (requestedOrgId && isViewingInactiveOrganization) {
+  if (routeState.type === 'requires-organization-switch') {
     return (
       <SettingsErrorCard
         title="Andere Organisation ausgewählt"
-        description={`Für diese Seite muss zuerst die Organisation „${requestedOrganization.name}“ als aktive Organisation gesetzt werden.`}
+        description={`Für diese Seite muss zuerst die Organisation „${routeState.requestedOrganization.name}“ als aktive Organisation gesetzt werden.`}
         primaryActionLabel="Aktive Organisation wechseln"
         onPrimaryAction={handleSwitchToRequestedOrganization}
       />
     );
   }
 
-  if (!activeOrgId || !activeOrganization) {
+  if (routeState.type === 'missing-active-organization') {
     return (
       <SettingsErrorCard
         title="Keine aktive Organisation"
@@ -574,7 +597,7 @@ export default function OrganizationManagePage() {
     );
   }
 
-  if (!isAuthorized) {
+  if (routeState.type === 'missing-permission') {
     return (
       <SettingsErrorCard
         title="Keine Berechtigung für Organisationseinstellungen"
@@ -584,6 +607,8 @@ export default function OrganizationManagePage() {
       />
     );
   }
+
+  const activeOrganizationFromRoute = routeState.activeOrganization;
 
   if (orgLoading) {
     return <SettingsLoadingSkeleton sidebarItems={7} />;
@@ -606,7 +631,7 @@ export default function OrganizationManagePage() {
   const header = (
     <PageHeader
       title="Organisationseinstellungen"
-      description={activeOrganization.name}
+      description={activeOrganizationFromRoute.name}
       onSave={handleSave}
       isSaving={updateMutation.isPending}
       onCancel={() => router.push('/')}

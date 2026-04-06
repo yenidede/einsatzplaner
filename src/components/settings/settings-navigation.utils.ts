@@ -9,6 +9,26 @@ type SettingsOrganizationSwitchConfirmDetail = {
   respond: (confirmed: boolean) => void;
 };
 
+export type OrganizationSettingsRouteState =
+  | {
+      type: 'allowed';
+      activeOrganization: OrganizationBase;
+    }
+  | {
+      type: 'organization-not-available';
+    }
+  | {
+      type: 'requires-organization-switch';
+      requestedOrganization: OrganizationBase;
+    }
+  | {
+      type: 'missing-active-organization';
+    }
+  | {
+      type: 'missing-permission';
+      activeOrganization: OrganizationBase;
+    };
+
 function isSettingsOrganizationSwitchConfirmEvent(
   event: Event
 ): event is CustomEvent<SettingsOrganizationSwitchConfirmDetail> {
@@ -85,6 +105,69 @@ export function findOrganizationById(
     organizations.find((organization) => organization.id === organizationId) ??
     null
   );
+}
+
+interface OrganizationSettingsRouteStateParams {
+  organizations: OrganizationBase[];
+  activeOrganizationId: string | null | undefined;
+  requestedOrganizationId?: string;
+  hasActiveOrganizationAccess: boolean;
+}
+
+export function getOrganizationSettingsRouteState({
+  organizations,
+  activeOrganizationId,
+  requestedOrganizationId,
+  hasActiveOrganizationAccess,
+}: OrganizationSettingsRouteStateParams): OrganizationSettingsRouteState {
+  const activeOrganization = findOrganizationById(
+    organizations,
+    activeOrganizationId
+  );
+  const requestedOrganization = findOrganizationById(
+    organizations,
+    requestedOrganizationId
+  );
+
+  if (requestedOrganizationId && !requestedOrganization) {
+    return { type: 'organization-not-available' };
+  }
+
+  if (
+    requestedOrganizationId &&
+    requestedOrganization &&
+    requestedOrganizationId !== activeOrganizationId
+  ) {
+    return {
+      type: 'requires-organization-switch',
+      requestedOrganization,
+    };
+  }
+
+  if (!activeOrganizationId || !activeOrganization) {
+    return { type: 'missing-active-organization' };
+  }
+
+  if (!hasActiveOrganizationAccess) {
+    return {
+      type: 'missing-permission',
+      activeOrganization,
+    };
+  }
+
+  return {
+    type: 'allowed',
+    activeOrganization,
+  };
+}
+
+export function getOrganizationSwitchDialogCopy(organizationName: string) {
+  return {
+    title: 'Organisation wechseln',
+    description: `Möchten Sie zu den Organisationseinstellungen von „${organizationName}“ wechseln?`,
+    confirmText: 'Organisation wechseln',
+    cancelText: 'Abbrechen',
+  };
 }
 
 export function registerOrganizationSwitchConfirmation(
