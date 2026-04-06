@@ -52,7 +52,7 @@ export default async function SubscriptionExpiredPage() {
     <main className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-8 md:px-6">
       <section className="bg-card w-full rounded-2xl border p-8 shadow-sm">
         <h1 className="text-2xl font-semibold">
-          Ihre aktive Organisation ist derzeit nicht verfuegbar.
+          Ihre aktive Organisation ist derzeit nicht verfügbar.
         </h1>
         <p className="text-muted-foreground mt-3">
           Der Zugriff auf {activeOrganization.name} ist abgelaufen.
