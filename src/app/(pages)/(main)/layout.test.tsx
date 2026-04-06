@@ -73,7 +73,9 @@ describe('MainLayout', () => {
     expect(markup).not.toContain('nicht verfuegbar');
   });
 
-  it('blockiert die Normalansicht fuer abgelaufene aktive Organisationen', async () => {
+  it('leitet fuer abgelaufene aktive Organisationen auf die Expired-Seite weiter', async () => {
+    const redirectError = new Error('NEXT_REDIRECT');
+
     mockGetServerSession.mockResolvedValue({
       user: {
         id: 'user-1',
@@ -87,17 +89,15 @@ describe('MainLayout', () => {
       trial_starts_at: new Date('2026-04-01T12:00:00.000Z'),
       trial_ends_at: new Date('2026-04-20T12:00:00.000Z'),
     });
+    mockRedirect.mockImplementation(() => {
+      throw redirectError;
+    });
 
-    const markup = renderToStaticMarkup(
-      await MainLayout({
+    await expect(
+      MainLayout({
         children: <div>Geschuetzter Inhalt</div>,
       })
-    );
-
-    expect(markup).toContain(
-      'Ihre aktive Organisation ist derzeit nicht verfuegbar.'
-    );
-    expect(markup).toContain('Der Zugriff auf Testverein ist abgelaufen.');
-    expect(markup).not.toContain('Geschuetzter Inhalt');
+    ).rejects.toThrow('NEXT_REDIRECT');
+    expect(mockRedirect).toHaveBeenCalledWith('/subscription-expired');
   });
 });
