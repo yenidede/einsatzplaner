@@ -71,3 +71,13 @@ Diese Datei ist die Uebergabe zwischen Ralph-Laeufen.
 - Erledigte Arbeit: Die serverseitige Organisations-Namenspruefung auf strukturierte Blocker erweitert; bestehende Organisationen und kuenftige aktive Fremd-Reservations koennen jetzt denselben Verfuegbarkeitspfad und dieselbe abgestimmte Nicht-Verfuegbar-Meldung nutzen, und gezielte Tests decken sowohl den bestehenden Organisationskonflikt als auch den vorbereiteten Reservation-Blocker ab.
 - Offenes Risiko: Die echte Pruefung gegen aktive Fremd-Reservations bleibt weiterhin datenmodellbedingt offen, weil im aktuellen Prisma-Schema noch kein Pending-Signup-/Reservation-Modell existiert; der neue Hook bereitet nur den serverseitigen Integrationspunkt dafuer vor.
 - Naechster Schritt: In Issue #393 das Pending-Signup-/Reservation-Modell einfuehren und den vorbereiteten Reservation-Blocker an die reale Datenquelle anbinden.
+
+### 2026-04-06 - Issue #392
+
+- Datum: 2026-04-06
+- Issue: #392 Signup-Schritt 2 mit Moduswechsel fuer neue, bestehende und eingeloggte Nutzer
+- Branch: codex/ralph-local-cli
+- Status: already done
+- Erledigte Arbeit: Den bereits umgesetzten Moduswechsel fuer neue E-Mail, bestehendes Konto und bereits angemeldete Person gegen die Acceptance-Kriterien verifiziert; die serverseitige Modusaufloesung ist vorhanden, der Organisations-Draft bleibt ueber die Schrittwechsel erhalten, bestehende Konten koennen per Passwort-Only-Anmeldung weitergehen und die vorhandenen Unit- sowie Flow-Tests decken diese Pfade bereits ab.
+- Offenes Risiko: `pnpm lint` bleibt weiterhin nur wegen bereits vorhandener Repo-Warnungen ohne Nullwarnungsstand; fuer dieses Issue waren keine weiteren Codeaenderungen noetig.
+- Naechster Schritt: Das naechste unblocked Ralph-Issue ist #393, das die echte Pending-Signup-/E-Mail-Bestaetigungsstrecke auf den bereits vorhandenen Moduswechsel aufsetzen muss.
