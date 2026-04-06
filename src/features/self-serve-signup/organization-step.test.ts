@@ -18,6 +18,7 @@ describe('checkOrganizationNameAvailability', () => {
         {
           organizationName: 'Testverein',
           organizationDescription: '',
+          email: 'test@example.com',
         },
         db
       )
@@ -49,6 +50,7 @@ describe('checkOrganizationNameAvailability', () => {
       {
         organizationName: '  Testverein  ',
         organizationDescription: '',
+        email: 'test@example.com',
       },
       db
     );
@@ -78,6 +80,7 @@ describe('checkOrganizationNameAvailability', () => {
         {
           organizationName: 'Testverein',
           organizationDescription: 'Probe',
+          email: 'test@example.com',
         },
         db
       )

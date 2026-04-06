@@ -53,3 +53,12 @@ Diese Datei ist die Uebergabe zwischen Ralph-Laeufen.
 - Erledigte Arbeit: Den Navbar-Organisationswechsel fuer gemischte aktive und abgelaufene Organisationen erweitert; abgelaufene Organisationen bleiben jetzt sichtbar, werden deaktiviert und erhalten rollensensitive Hinweistexte passend zur Expired-Experience, waehrend der Wechsel von `/subscription-expired` in eine aktive Organisation direkt wieder in die Hauptansicht fuehrt; dazu wurden gezielte Tests fuer Disabled-State, Hinweisvarianten und Rueckkehr-Verhalten ergaenzt.
 - Offenes Risiko: `pnpm lint` bleibt weiterhin nur wegen bereits vorhandener Repo-Warnungen ohne Nullwarnungsstand; in diesem Slice sind keine neuen Lint-Fehler entstanden.
 - Naechster Schritt: Den naechsten unblocked Ralph-Issue auswaehlen; die aktuell offenen Signup-/Provisioning-Issues bleiben weiterhin von #391/#392/#393 abhaengig.
+
+### 2026-04-06 - Issue #392
+
+- Datum: 2026-04-06
+- Issue: #392 Signup-Schritt 2 mit Moduswechsel fuer neue, bestehende und eingeloggte Nutzer
+- Branch: codex/ralph-local-cli
+- Erledigte Arbeit: Den Self-Serve-Signup um einen serverseitig aufgeloesten zweiten Schritt erweitert; nach der Organisationspruefung wird jetzt zwischen neuer E-Mail, bestehendem Konto und bereits angemeldeter Person unterschieden, der Kontoschritt entsprechend als Registrierungsformular, Passwort-Only-Anmeldung oder uebersprungener Schritt dargestellt und der Organisations-Draft ueber die Wechsel hinweg erhalten; dazu wurden gezielte Unit- und Flow-Tests fuer Modusauflosung, Draft-Erhalt und bestehende Kontoanmeldung ergaenzt.
+- Offenes Risiko: Fuer neue Konten endet der Flow derzeit noch in einer bewusst sichtbaren Fortsetzungsstufe, weil das echte Pending-Signup mit E-Mail-Bestaetigung erst in Issue #393 und das eigentliche Provisioning erst in Issue #394 folgt; das Issue bleibt deshalb vorerst offen.
+- Naechster Schritt: Auf diesem Moduswechsel in Issue #393 die Pending-Signup-/E-Mail-Bestaetigungsstrecke aufbauen und danach in #394 die echte Organisationsfinalisierung anschliessen.

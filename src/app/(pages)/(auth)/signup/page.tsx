@@ -1,7 +1,11 @@
 import Image from 'next/image';
+import { getServerSession } from 'next-auth';
 import { SelfServeSignupFlow } from '@/features/self-serve-signup/components/SelfServeSignupFlow';
+import { authOptions } from '@/lib/auth.config';
 
-export default function SignupPage() {
+export default async function SignupPage() {
+  const session = await getServerSession(authOptions);
+
   return (
     <div className="bg-secondary flex grow flex-col justify-end p-6 md:p-10">
       <div className="mb-8 grid w-full max-w-6xl gap-8 md:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] md:items-end">
@@ -16,7 +20,9 @@ export default function SignupPage() {
               wird der weitere Flow passend zu Ihrem Kontostatus fortgesetzt.
             </p>
           </div>
-          <SelfServeSignupFlow />
+          <SelfServeSignupFlow
+            authenticatedEmail={session?.user?.email ?? null}
+          />
         </div>
         <div className="hidden md:block">
           <Image
