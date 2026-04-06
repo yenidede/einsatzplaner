@@ -62,3 +62,12 @@ Diese Datei ist die Uebergabe zwischen Ralph-Laeufen.
 - Erledigte Arbeit: Den Self-Serve-Signup um einen serverseitig aufgeloesten zweiten Schritt erweitert; nach der Organisationspruefung wird jetzt zwischen neuer E-Mail, bestehendem Konto und bereits angemeldeter Person unterschieden, der Kontoschritt entsprechend als Registrierungsformular, Passwort-Only-Anmeldung oder uebersprungener Schritt dargestellt und der Organisations-Draft ueber die Wechsel hinweg erhalten; dazu wurden gezielte Unit- und Flow-Tests fuer Modusauflosung, Draft-Erhalt und bestehende Kontoanmeldung ergaenzt.
 - Offenes Risiko: Fuer neue Konten endet der Flow derzeit noch in einer bewusst sichtbaren Fortsetzungsstufe, weil das echte Pending-Signup mit E-Mail-Bestaetigung erst in Issue #393 und das eigentliche Provisioning erst in Issue #394 folgt; das Issue bleibt deshalb vorerst offen.
 - Naechster Schritt: Auf diesem Moduswechsel in Issue #393 die Pending-Signup-/E-Mail-Bestaetigungsstrecke aufbauen und danach in #394 die echte Organisationsfinalisierung anschliessen.
+
+### 2026-04-06 - Issue #391
+
+- Datum: 2026-04-06
+- Issue: #391 Self-Serve Signup Schritt 1 mit Organisationspruefung
+- Branch: codex/ralph-local-cli
+- Erledigte Arbeit: Die serverseitige Organisations-Namenspruefung auf strukturierte Blocker erweitert; bestehende Organisationen und kuenftige aktive Fremd-Reservations koennen jetzt denselben Verfuegbarkeitspfad und dieselbe abgestimmte Nicht-Verfuegbar-Meldung nutzen, und gezielte Tests decken sowohl den bestehenden Organisationskonflikt als auch den vorbereiteten Reservation-Blocker ab.
+- Offenes Risiko: Die echte Pruefung gegen aktive Fremd-Reservations bleibt weiterhin datenmodellbedingt offen, weil im aktuellen Prisma-Schema noch kein Pending-Signup-/Reservation-Modell existiert; der neue Hook bereitet nur den serverseitigen Integrationspunkt dafuer vor.
+- Naechster Schritt: In Issue #393 das Pending-Signup-/Reservation-Modell einfuehren und den vorbereiteten Reservation-Blocker an die reale Datenquelle anbinden.
