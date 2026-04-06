@@ -35,3 +35,12 @@ Diese Datei ist die Uebergabe zwischen Ralph-Laeufen.
 - Erledigte Arbeit: Das Main-Layout leitet bei abgelaufener aktiver Organisation jetzt auf die neue Route `/subscription-expired` um; dort wird serverseitig Session, aktiver Organisationszugriff und die Rollenlage der angemeldeten Person geprueft, die Standard-Navigation ausgeblendet und je nach Rollenlage entweder nur der allgemeine Verwaltungs-Hinweis oder zusaetzlich `hello@davidkathrein.at` als sichtbarer Mailto-Kontakt angezeigt; dazu wurden gezielte Tests fuer Redirect-Regeln, helper-only vs. Nicht-nur-Helfer sowie die Navbar-Ausblendung ergaenzt.
 - Offenes Risiko: Die Rueckkehr in eine alternative aktive Organisation erfolgt derzeit ueber den bestehenden Organisationswechsel; die erweiterte Switcher-UX fuer sichtbar deaktivierte abgelaufene Organisationen folgt erst im abhaengigen Issue #389.
 - Naechster Schritt: Den Organisations-Switch fuer gemischte aktive und abgelaufene Organisationen mit deaktivierten Optionen und rollensensitiven Tooltips umsetzen.
+
+### 2026-04-06 - Issue #390
+
+- Datum: 2026-04-06
+- Issue: #390 Trial-Hinweis im Hauptlayout fuer Nicht-nur-Helfer
+- Branch: codex/ralph-local-cli
+- Erledigte Arbeit: Einen globalen Trial-Hinweis im Main-Layout ergaenzt, der nur fuer aktive Trial-Organisationen und nur fuer Nutzer:innen mit mindestens einer Nicht-Helfer-Rolle angezeigt wird; die Tageslogik fuer `endet heute`, `endet morgen` und mehrtaegige Restlaufzeit in eine eigene Organisations-Utility ausgelagert und mit Layout- sowie Unit-Tests abgesichert.
+- Offenes Risiko: `pnpm lint` ist weiterhin nur wegen bereits vorhandener Repo-Warnungen nicht sauber nullwarnungsfrei; aus diesem Slice sind keine neuen Lint-Fehler entstanden.
+- Naechster Schritt: Den Organisations-Switch fuer gemischte aktive und abgelaufene Organisationen mit deaktivierten Optionen und rollensensitiven Tooltips in Issue #389 umsetzen.
