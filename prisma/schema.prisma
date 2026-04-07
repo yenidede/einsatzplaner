@@ -554,15 +554,17 @@ model analytics_chart1 {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model organization_notification_settings {
-  id                       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organization_id          String       @unique @db.Uuid
-  email_enabled_default    Boolean      @default(true)
-  delivery_mode_default    String       @default("critical_and_digest")
-  minimum_priority_default String       @default("review")
-  digest_interval_default  String       @default("daily")
-  created_at               DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime     @default(now()) @db.Timestamptz(6)
-  organization             organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id            String       @unique @db.Uuid
+  email_enabled_default      Boolean      @default(true)
+  delivery_mode_default      String       @default("critical_and_digest")
+  minimum_priority_default   String       @default("review")
+  digest_interval_default    String       @default("daily")
+  created_at                 DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime     @default(now()) @db.Timestamptz(6)
+  digest_time_default        DateTime     @default(dbgenerated("'08:00:00'::time without time zone")) @db.Time(6)
+  digest_second_time_default DateTime     @default(dbgenerated("'16:00:00'::time without time zone")) @db.Time(6)
+  organization               organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -577,12 +579,16 @@ model user_organization_notification_preference {
   digest_interval           String?
   created_at                DateTime     @default(now()) @db.Timestamptz(6)
   updated_at                DateTime     @default(now()) @db.Timestamptz(6)
+  digest_time               DateTime?    @db.Time(6)
+  digest_second_time        DateTime?    @db.Time(6)
   organization              organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user                      user         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([user_id, organization_id], map: "user_organization_notification_preference_user_org_unique")
   @@index([organization_id], map: "idx_user_organization_notification_preference_organization")
   @@index([user_id], map: "idx_user_organization_notification_preference_user")
+  @@index([organization_id], map: "user_org_notification_preference_org_idx")
+  @@index([user_id], map: "user_org_notification_preference_user_idx")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -616,15 +622,40 @@ model pending_self_serve_signup {
   first_name                       String
   last_name                        String
   password_hash                    String
-  verification_token_hash          String
-  verification_token_expires_at    DateTime  @db.Timestamptz(6)
   organization_name_reserved_until DateTime  @db.Timestamptz(6)
-  last_confirmation_email_sent_at  DateTime  @db.Timestamptz(6)
   created_at                       DateTime  @default(now()) @db.Timestamptz(6)
   updated_at                       DateTime  @default(now()) @db.Timestamptz(6)
-  confirmed_at                     DateTime? @db.Timestamptz(6)
   invalidated_at                   DateTime? @db.Timestamptz(6)
+  consumed_at                      DateTime? @db.Timestamptz(6)
+}
 
-  @@index([organization_name_reserved_until], map: "pending_self_serve_signup_reservation_expires_idx")
-  @@index([verification_token_expires_at], map: "pending_self_serve_signup_verification_expires_idx")
+model otp_challenge {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purpose         String
+  subject_type    String
+  subject_id      String    @db.Uuid
+  recipient       String
+  code_hash       String
+  failed_attempts Int       @default(0)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  last_sent_at    DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at      DateTime  @db.Timestamptz(6)
+  verified_at     DateTime? @db.Timestamptz(6)
+  invalidated_at  DateTime? @db.Timestamptz(6)
+
+  @@index([expires_at], map: "otp_challenge_expires_idx")
+  @@index([purpose, subject_type, subject_id, created_at(sort: Desc)], map: "otp_challenge_subject_created_idx")
+}
+
+model otp_verification_proof {
+  token        String    @id
+  purpose      String
+  subject_type String
+  subject_id   String    @db.Uuid
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at   DateTime  @db.Timestamptz(6)
+  consumed_at  DateTime? @db.Timestamptz(6)
+
+  @@index([expires_at], map: "otp_proof_expires_idx")
+  @@index([purpose, subject_type, subject_id, created_at(sort: Desc)], map: "otp_proof_subject_created_idx")
 }
