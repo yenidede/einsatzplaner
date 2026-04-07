@@ -7,6 +7,38 @@ import { FormField, Alert } from '@/components/SimpleFormComponents';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
+export function resolveCallbackUrl(
+  rawCallbackUrl: string | null,
+  depth = 0
+): string {
+  if (!rawCallbackUrl || depth > 5) {
+    return '/';
+  }
+
+  const decodedCallbackUrl = (() => {
+    try {
+      return decodeURIComponent(rawCallbackUrl);
+    } catch {
+      return rawCallbackUrl;
+    }
+  })();
+
+  try {
+    const callbackUrl = new URL(decodedCallbackUrl, 'http://localhost');
+    const nestedCallbackUrl = callbackUrl.searchParams.get('callbackUrl');
+
+    if (callbackUrl.pathname === '/signin' && nestedCallbackUrl) {
+      return resolveCallbackUrl(nestedCallbackUrl, depth + 1);
+    }
+
+    const normalizedCallbackUrl = `${callbackUrl.pathname}${callbackUrl.search}${callbackUrl.hash}`;
+
+    return normalizedCallbackUrl.startsWith('/') ? normalizedCallbackUrl : '/';
+  } catch {
+    return decodedCallbackUrl.startsWith('/') ? decodedCallbackUrl : '/';
+  }
+}
+
 function SignInContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,14 +48,13 @@ function SignInContent() {
   const searchParams = useSearchParams();
 
   const { data: session } = useSession();
+  const callbackUrl = resolveCallbackUrl(searchParams.get('callbackUrl'));
 
   useEffect(() => {
     if (session?.user?.id) {
-      router.push('/');
+      router.push(callbackUrl);
     }
-  }, [session?.user?.id, router]);
-
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  }, [callbackUrl, session?.user?.id, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +65,7 @@ function SignInContent() {
       const result = await signIn('credentials', {
         email,
         password,
+        callbackUrl,
         redirect: false,
       });
 
