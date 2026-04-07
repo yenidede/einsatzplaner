@@ -143,49 +143,99 @@ export const NotificationPreferenceForm = forwardRef<
 
     setIsSaving(true);
     try {
-      for (const item of changedCards) {
-        const { card, savedDraft, currentDraft } = item;
-        const sourceChanged =
-          currentDraft.useOrganizationDefaults !==
-          savedDraft.useOrganizationDefaults;
-        const emailChanged = currentDraft.emailEnabled !== savedDraft.emailEnabled;
+      const saveResults = await Promise.allSettled(
+        changedCards.map(async (item) => {
+          const { card, savedDraft, currentDraft } = item;
+          const sourceChanged =
+            currentDraft.useOrganizationDefaults !==
+            savedDraft.useOrganizationDefaults;
+          const emailChanged =
+            currentDraft.emailEnabled !== savedDraft.emailEnabled;
 
-        if (sourceChanged || (!currentDraft.useOrganizationDefaults && emailChanged)) {
-          await primaryMutation.mutateAsync({
+          if (
+            sourceChanged ||
+            (!currentDraft.useOrganizationDefaults && emailChanged)
+          ) {
+            await primaryMutation.mutateAsync({
+              organizationId: card.organizationId,
+              ...(sourceChanged
+                ? { useOrganizationDefaults: currentDraft.useOrganizationDefaults }
+                : {}),
+              ...(!currentDraft.useOrganizationDefaults
+                ? { emailEnabled: currentDraft.emailEnabled }
+                : {}),
+            });
+          }
+
+          const detailsChanged =
+            currentDraft.deliveryMode !== savedDraft.deliveryMode ||
+            currentDraft.minimumPriority !== savedDraft.minimumPriority ||
+            currentDraft.digestInterval !== savedDraft.digestInterval ||
+            currentDraft.digestTime !== savedDraft.digestTime ||
+            currentDraft.digestSecondTime !== savedDraft.digestSecondTime;
+
+          if (
+            !currentDraft.useOrganizationDefaults &&
+            currentDraft.emailEnabled &&
+            detailsChanged
+          ) {
+            await detailsMutation.mutateAsync({
+              organizationId: card.organizationId,
+              deliveryMode: currentDraft.deliveryMode,
+              minimumPriority: currentDraft.minimumPriority,
+              digestInterval: currentDraft.digestInterval,
+              digestTime: currentDraft.digestTime,
+              digestSecondTime: currentDraft.digestSecondTime,
+            });
+          }
+
+          return {
             organizationId: card.organizationId,
-            ...(sourceChanged
-              ? { useOrganizationDefaults: currentDraft.useOrganizationDefaults }
-              : {}),
-            ...(!currentDraft.useOrganizationDefaults
-              ? { emailEnabled: currentDraft.emailEnabled }
-              : {}),
-          });
+            organizationName: card.organizationName,
+          };
+        })
+      );
+
+      const failedSaves = saveResults.flatMap((result, index) => {
+        if (result.status === 'fulfilled') {
+          return [];
         }
 
-        const detailsChanged =
-          currentDraft.deliveryMode !== savedDraft.deliveryMode ||
-          currentDraft.minimumPriority !== savedDraft.minimumPriority ||
-          currentDraft.digestInterval !== savedDraft.digestInterval ||
-          currentDraft.digestTime !== savedDraft.digestTime ||
-          currentDraft.digestSecondTime !== savedDraft.digestSecondTime;
+        const card = changedCards[index]?.card;
+        const reason =
+          result.reason instanceof Error
+            ? result.reason.message
+            : 'Unbekannter Fehler';
 
-        if (
-          !currentDraft.useOrganizationDefaults &&
-          currentDraft.emailEnabled &&
-          detailsChanged
-        ) {
-          await detailsMutation.mutateAsync({
-            organizationId: card.organizationId,
-            deliveryMode: currentDraft.deliveryMode,
-            minimumPriority: currentDraft.minimumPriority,
-            digestInterval: currentDraft.digestInterval,
-            digestTime: currentDraft.digestTime,
-            digestSecondTime: currentDraft.digestSecondTime,
-          });
-        }
+        return [
+          {
+            organizationId: card?.organizationId ?? 'unbekannt',
+            organizationName: card?.organizationName ?? 'Unbekannte Organisation',
+            reason,
+          },
+        ];
+      });
+
+      const successfulSaves = changedCards.length - failedSaves.length;
+      if (successfulSaves > 0) {
+        toast.success(
+          successfulSaves === changedCards.length
+            ? 'Benachrichtigungseinstellungen wurden gespeichert.'
+            : `Benachrichtigungseinstellungen wurden für ${successfulSaves} Organisationen gespeichert.`
+        );
       }
 
-      toast.success('Benachrichtigungseinstellungen wurden gespeichert.');
+      if (failedSaves.length > 0) {
+        const failedSummary = failedSaves
+          .map(
+            (failure) =>
+              `${failure.organizationName} (${failure.organizationId}): ${failure.reason}`
+          )
+          .join(' | ');
+        toast.error(
+          `Einige Benachrichtigungseinstellungen konnten nicht gespeichert werden: ${failedSummary}`
+        );
+      }
     } finally {
       setIsSaving(false);
     }

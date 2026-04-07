@@ -73,7 +73,12 @@ export function splitWarningRecipientsByDelivery(input: {
         digestTime: settings.digestTime,
         digestSecondTime: settings.digestSecondTime,
       });
+      continue;
     }
+
+    console.debug(
+      `[email-warning-routing] Empfänger ausgeschlossen (delivery=none): userId=${recipient.userId}, email=${recipient.email}. Ursache: E-Mail deaktiviert oder durch Priorität gefiltert.`
+    );
   }
 
   return {

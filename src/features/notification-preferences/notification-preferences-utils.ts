@@ -104,7 +104,6 @@ export function getPreferenceSource(preference: {
 export function buildDigestScheduleLabel(input: {
   digestInterval: DigestInterval;
   digestTime: DigestTime;
-  digestSecondTime: DigestTime;
   short?: boolean;
 }): string {
   const { digestInterval, digestTime, short = false } = input;
@@ -138,7 +137,6 @@ function buildDeliverySummary(effective: EffectiveNotificationSettings): string 
   const scheduleLabel = buildDigestScheduleLabel({
     digestInterval: effective.digestInterval,
     digestTime: effective.digestTime,
-    digestSecondTime: effective.digestSecondTime,
   });
 
   if (effective.deliveryMode === 'digest_only') {

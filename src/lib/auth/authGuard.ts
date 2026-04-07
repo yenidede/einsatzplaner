@@ -172,7 +172,8 @@ export async function requireAuth() {
 export async function hasPermission(
   session: Session,
   permission: PermissionType,
-  orgId?: string
+  orgId?: string,
+  executor?: Parameters<typeof getUserRolesInOrganization>[2]
 ): Promise<boolean> {
   if (!session?.user?.id) return false;
 
@@ -183,7 +184,11 @@ export async function hasPermission(
     return false;
   }
 
-  const roles = await getUserRolesInOrganization(session.user.id, targetOrgId);
+  const roles = await getUserRolesInOrganization(
+    session.user.id,
+    targetOrgId,
+    executor
+  );
 
   if (roles.length === 0) {
     console.warn(`User has no roles in org ${targetOrgId}`);
