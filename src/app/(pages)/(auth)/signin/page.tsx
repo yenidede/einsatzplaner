@@ -7,6 +7,7 @@ import { FormField, Alert } from '@/components/SimpleFormComponents';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
+// only used for parsing. Thrown away after
 const CALLBACK_URL_BASE = 'http://localhost';
 
 export function resolveCallbackUrl(
@@ -27,7 +28,9 @@ export function resolveCallbackUrl(
 
   try {
     const allowedOrigin =
-      typeof window === 'undefined' ? CALLBACK_URL_BASE : window.location.origin;
+      typeof window === 'undefined'
+        ? CALLBACK_URL_BASE
+        : window.location.origin;
     const callbackUrl = new URL(decodedCallbackUrl, allowedOrigin);
     const isAbsoluteUrl = /^https?:\/\//.test(decodedCallbackUrl);
 
