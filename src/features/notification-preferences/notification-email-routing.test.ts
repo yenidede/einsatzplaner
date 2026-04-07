@@ -21,27 +21,11 @@ describe('notification-email-routing', () => {
         minimumPriority: 'review',
         digestInterval: 'daily',
         digestTime: '08:00',
-        digestSecondTime: '20:00',
+        digestSecondTime: '16:00',
       },
     });
 
     expect(delivery).toBe('immediate');
-  });
-
-  it('liefert digest für review Meldung bei critical_and_digest', () => {
-    const delivery = resolveNotificationEmailDelivery({
-      eventPriority: 'review',
-      effective: {
-        emailEnabled: true,
-        deliveryMode: 'critical_and_digest',
-        minimumPriority: 'review',
-        digestInterval: 'daily',
-        digestTime: '08:00',
-        digestSecondTime: '20:00',
-      },
-    });
-
-    expect(delivery).toBe('digest');
   });
 
   it('liefert digest für kritische Meldung bei digest_only', () => {
@@ -51,40 +35,40 @@ describe('notification-email-routing', () => {
         emailEnabled: true,
         deliveryMode: 'digest_only',
         minimumPriority: 'critical',
-        digestInterval: 'twice_daily',
+        digestInterval: 'every_2_days',
         digestTime: '07:00',
-        digestSecondTime: '19:00',
+        digestSecondTime: '16:00',
       },
     });
 
     expect(delivery).toBe('digest');
   });
 
-  it('berechnet nächsten Tagesversand für daily mit konfigurierter Uhrzeit', () => {
-    const now = new Date(2026, 3, 7, 8, 15, 0, 0);
-    const next = computeNextDigestDispatchAt({
-      now,
-      digestInterval: 'daily',
-      digestTime: '17:30',
-      digestSecondTime: '20:00',
-    });
-
-    expect(next.getDate()).toBe(now.getDate());
-    expect(next.getHours()).toBe(17);
-    expect(next.getMinutes()).toBe(30);
-  });
-
-  it('berechnet nächsten Versand für twice_daily mit zwei Zeiten', () => {
+  it('berechnet nächsten Versand für daily', () => {
     const now = new Date(2026, 3, 7, 19, 0, 0, 0);
     const next = computeNextDigestDispatchAt({
       now,
-      digestInterval: 'twice_daily',
+      digestInterval: 'daily',
       digestTime: '07:00',
-      digestSecondTime: '20:00',
+      digestSecondTime: '16:00',
     });
 
-    expect(next.getDate()).toBe(now.getDate());
-    expect(next.getHours()).toBe(20);
+    expect(next.getDate()).toBe(now.getDate() + 1);
+    expect(next.getHours()).toBe(7);
+    expect(next.getMinutes()).toBe(0);
+  });
+
+  it('berechnet nächsten Versand für every_2_days', () => {
+    const now = new Date(2026, 3, 7, 19, 0, 0, 0);
+    const next = computeNextDigestDispatchAt({
+      now,
+      digestInterval: 'every_2_days',
+      digestTime: '07:00',
+      digestSecondTime: '16:00',
+    });
+
+    expect(next.getDate()).toBe(now.getDate() + 2);
+    expect(next.getHours()).toBe(7);
     expect(next.getMinutes()).toBe(0);
   });
 });

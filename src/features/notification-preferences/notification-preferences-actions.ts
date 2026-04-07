@@ -187,7 +187,7 @@ export async function updateMyNotificationDetailsAction(input: {
   organizationId: string;
   deliveryMode: 'critical_only' | 'digest_only' | 'critical_and_digest';
   minimumPriority: 'info' | 'review' | 'critical';
-  digestInterval: 'daily' | 'twice_daily';
+  digestInterval: 'daily' | 'every_2_days';
   digestTime: string;
   digestSecondTime?: string;
 }) {
@@ -241,10 +241,7 @@ export async function updateMyNotificationDetailsAction(input: {
         minimumPriority: parsed.minimumPriority,
         digestInterval: parsed.digestInterval,
         digestTime: parsed.digestTime,
-        digestSecondTime:
-          parsed.digestInterval === 'twice_daily'
-            ? parsed.digestSecondTime ?? previousEffective.digestSecondTime
-            : previousEffective.digestSecondTime,
+        digestSecondTime: previousEffective.digestSecondTime,
       };
 
       await upsertUserOrganizationNotificationPreference(nextPreference, tx);
@@ -280,7 +277,7 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
   emailEnabledDefault: boolean;
   deliveryModeDefault: 'critical_only' | 'digest_only' | 'critical_and_digest';
   minimumPriorityDefault: 'info' | 'review' | 'critical';
-  digestIntervalDefault: 'daily' | 'twice_daily';
+  digestIntervalDefault: 'daily' | 'every_2_days';
   digestTimeDefault: string;
   digestSecondTimeDefault: string;
 }) {

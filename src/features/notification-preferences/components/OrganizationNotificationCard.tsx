@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -108,7 +108,9 @@ export function OrganizationNotificationCard({
             }
           >
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base">{card.organizationName}</CardTitle>
+              <CardTitle className="text-base">
+                {card.organizationName}
+              </CardTitle>
               <NotificationPreferenceSummary
                 summary={localSummary}
                 className="line-clamp-1 text-xs sm:text-sm"
@@ -143,7 +145,10 @@ export function OrganizationNotificationCard({
               }
             >
               {expanded ? (
-                <ChevronUp className="text-muted-foreground h-4 w-4" aria-hidden />
+                <ChevronUp
+                  className="text-muted-foreground h-4 w-4"
+                  aria-hidden
+                />
               ) : (
                 <ChevronDown
                   className="text-muted-foreground h-4 w-4"
@@ -179,7 +184,7 @@ export function OrganizationNotificationCard({
                   />
                   <Label
                     htmlFor={`notification-source-org-${card.organizationId}`}
-                    className="hover:text-foreground peer-data-[state=checked]:bg-background peer-data-[state=checked]:text-foreground peer-data-[state=checked]:shadow-xs flex min-h-9 cursor-pointer items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors"
+                    className="hover:text-foreground peer-data-[state=checked]:bg-background peer-data-[state=checked]:text-foreground text-muted-foreground flex min-h-9 cursor-pointer items-center rounded-md px-3 text-sm font-medium transition-colors peer-data-[state=checked]:shadow-xs"
                   >
                     Organisationsstandard
                   </Label>
@@ -192,7 +197,7 @@ export function OrganizationNotificationCard({
                   />
                   <Label
                     htmlFor={`notification-source-user-${card.organizationId}`}
-                    className="hover:text-foreground peer-data-[state=checked]:bg-background peer-data-[state=checked]:text-foreground peer-data-[state=checked]:shadow-xs flex min-h-9 cursor-pointer items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors"
+                    className="hover:text-foreground peer-data-[state=checked]:bg-background peer-data-[state=checked]:text-foreground text-muted-foreground flex min-h-9 cursor-pointer items-center rounded-md px-3 text-sm font-medium transition-colors peer-data-[state=checked]:shadow-xs"
                   >
                     Eigene Einstellung
                   </Label>
@@ -203,13 +208,6 @@ export function OrganizationNotificationCard({
             {draft.useOrganizationDefaults && (
               <p className="text-muted-foreground text-sm">
                 Sie verwenden derzeit den Organisationsstandard.
-              </p>
-            )}
-
-            {draft.useOrganizationDefaults && (
-              <p className="text-muted-foreground text-xs">
-                Für eine eigene Steuerung wechseln Sie zuerst auf
-                „Eigene Einstellung“.
               </p>
             )}
 

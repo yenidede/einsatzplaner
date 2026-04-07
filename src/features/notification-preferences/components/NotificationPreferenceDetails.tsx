@@ -30,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 
 interface NotificationPreferenceDetailsProps {
   idPrefix: string;
@@ -66,14 +65,8 @@ export function NotificationPreferenceDetails({
   const detailsDisabled = disabled || !emailEnabled;
   const showDigestSettings =
     emailEnabled && deliveryModeUsesDigest(deliveryMode);
-  const showSecondDigestTime =
-    showDigestSettings && digestInterval === 'twice_daily';
   const minimumPriorityDisabled =
     detailsDisabled || deliveryMode === 'critical_only';
-  const digestTimeGridClassName = cn(
-    'grid gap-4',
-    showSecondDigestTime ? 'md:grid-cols-2' : 'md:grid-cols-1'
-  );
 
   return (
     <div className="space-y-4">
@@ -149,17 +142,6 @@ export function NotificationPreferenceDetails({
               onValueChange={(value) => {
                 if (isDigestInterval(value)) {
                   onDigestIntervalChange(value);
-                  if (
-                    value === 'twice_daily' &&
-                    digestSecondTime === digestTime
-                  ) {
-                    const fallbackSecondTime = DIGEST_TIME_VALUES.find(
-                      (entry) => entry !== digestTime
-                    );
-                    if (fallbackSecondTime) {
-                      onDigestSecondTimeChange(fallbackSecondTime);
-                    }
-                  }
                 }
               }}
               disabled={detailsDisabled}
@@ -177,70 +159,38 @@ export function NotificationPreferenceDetails({
             </Select>
           </div>
 
-          <div className={digestTimeGridClassName}>
-            <div className="space-y-1.5">
-              <Label htmlFor={`${idPrefix}-digest-time`}>
-                Erste Versandzeit
-              </Label>
-              <Select
-                value={digestTime}
-                onValueChange={(value) => {
-                  if (isDigestTime(value)) {
-                    onDigestTimeChange(value);
-                    if (showSecondDigestTime && digestSecondTime === value) {
-                      const fallbackSecondTime = DIGEST_TIME_VALUES.find(
-                        (entry) => entry !== value
-                      );
-                      if (fallbackSecondTime) {
-                        onDigestSecondTimeChange(fallbackSecondTime);
-                      }
+          <div className="space-y-1.5">
+            <Label htmlFor={`${idPrefix}-digest-time`}>
+              Versandzeit für Sammelmail
+            </Label>
+            <Select
+              value={digestTime}
+              onValueChange={(value) => {
+                if (isDigestTime(value)) {
+                  onDigestTimeChange(value);
+                  if (digestSecondTime === value) {
+                    const fallbackSecondTime = DIGEST_TIME_VALUES.find(
+                      (entry) => entry !== value
+                    );
+                    if (fallbackSecondTime) {
+                      onDigestSecondTimeChange(fallbackSecondTime);
                     }
                   }
-                }}
-                disabled={detailsDisabled}
-              >
-                <SelectTrigger id={`${idPrefix}-digest-time`}>
-                  <SelectValue placeholder="Zeit auswählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DIGEST_TIME_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {showSecondDigestTime && (
-              <div className="space-y-1.5">
-                <Label htmlFor={`${idPrefix}-digest-second-time`}>
-                  Zweite Versandzeit
-                </Label>
-                <Select
-                  value={digestSecondTime}
-                  onValueChange={(value) => {
-                    if (isDigestTime(value)) {
-                      onDigestSecondTimeChange(value);
-                    }
-                  }}
-                  disabled={detailsDisabled}
-                >
-                  <SelectTrigger id={`${idPrefix}-digest-second-time`}>
-                    <SelectValue placeholder="Zeit auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DIGEST_TIME_VALUES.filter(
-                      (value) => value !== digestTime
-                    ).map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                }
+              }}
+              disabled={detailsDisabled}
+            >
+              <SelectTrigger id={`${idPrefix}-digest-time`}>
+                <SelectValue placeholder="Zeit auswählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {DIGEST_TIME_VALUES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}

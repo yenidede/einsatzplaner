@@ -25,7 +25,7 @@ export function isMinimumPriority(value: string): value is MinimumPriority {
 }
 
 export function isDigestInterval(value: string): value is DigestInterval {
-  return value === 'daily' || value === 'twice_daily';
+  return value === 'daily' || value === 'every_2_days';
 }
 
 export function isDigestTime(value: string): value is DigestTime {
@@ -107,15 +107,16 @@ export function buildDigestScheduleLabel(input: {
   digestSecondTime: DigestTime;
   short?: boolean;
 }): string {
-  const { digestInterval, digestTime, digestSecondTime, short = false } = input;
+  const { digestInterval, digestTime, short = false } = input;
 
   if (digestInterval === 'daily') {
     return short ? `täglich um ${digestTime}` : `1x täglich um ${digestTime}`;
   }
 
-  return short
-    ? `2x täglich um ${digestTime} und ${digestSecondTime}`
-    : `2x täglich um ${digestTime} und ${digestSecondTime}`;
+  if (digestInterval === 'every_2_days') {
+    return short ? `alle 2 Tage um ${digestTime}` : `alle 2 Tage um ${digestTime}`;
+  }
+  return short ? `täglich um ${digestTime}` : `1x täglich um ${digestTime}`;
 }
 
 function buildDeliverySummary(effective: EffectiveNotificationSettings): string {
@@ -157,7 +158,7 @@ const COMPACT_PRIORITY_LABELS: Record<MinimumPriority, string> = {
 
 const COMPACT_DIGEST_INTERVAL_LABELS: Record<DigestInterval, string> = {
   daily: 'täglich',
-  twice_daily: 'zweimal täglich',
+  every_2_days: 'alle 2 Tage',
 };
 
 export function buildNotificationPreferenceSummary(input: {
@@ -197,9 +198,7 @@ export function buildCompactNotificationPreferenceSummary(input: {
     COMPACT_DIGEST_INTERVAL_LABELS[effective.digestInterval];
   const priorityLabel = COMPACT_PRIORITY_LABELS[effective.minimumPriority];
   const scheduleLabel =
-    effective.digestInterval === 'daily'
-      ? `${digestIntervalLabel} um ${effective.digestTime}`
-      : `${digestIntervalLabel} um ${effective.digestTime} und ${effective.digestSecondTime}`;
+    `${digestIntervalLabel} um ${effective.digestTime}`;
 
   if (effective.deliveryMode === 'digest_only') {
     return `${sourceLabel}: ${priorityLabel} ${scheduleLabel} als Sammelmail`;

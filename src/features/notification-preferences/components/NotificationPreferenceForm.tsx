@@ -174,7 +174,7 @@ export const NotificationPreferenceForm = forwardRef<
             minimumPriority: currentDraft.minimumPriority,
             digestInterval: currentDraft.digestInterval,
             digestTime: currentDraft.digestTime,
-            digestSecondTime: currentDraft.digestSecondTime,
+            digestSecondTime: undefined,
           });
         }
       }

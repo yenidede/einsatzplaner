@@ -587,7 +587,9 @@ export class EmailService {
     }
 
     const intervalLabel =
-      input.digestInterval === 'daily' ? 'täglich' : 'zweimal täglich';
+      input.digestInterval === 'daily'
+        ? 'täglich'
+        : 'alle 2 Tage';
 
     const entryItems = input.entries
       .map((entry) => {

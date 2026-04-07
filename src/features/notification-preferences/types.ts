@@ -8,7 +8,7 @@ export type DeliveryMode =
 
 export type MinimumPriority = 'info' | 'review' | 'critical';
 
-export type DigestInterval = 'daily' | 'twice_daily';
+export type DigestInterval = 'daily' | 'every_2_days';
 export type DigestTime = string;
 
 const digestTimeSchema = z
@@ -90,31 +90,9 @@ export const updateMyNotificationDetailsInputSchema = z
       'critical_and_digest',
     ]),
     minimumPriority: z.enum(['info', 'review', 'critical']),
-    digestInterval: z.enum(['daily', 'twice_daily']),
+    digestInterval: z.enum(['daily', 'every_2_days']),
     digestTime: digestTimeSchema,
     digestSecondTime: digestTimeSchema.optional(),
-  })
-  .superRefine((value, ctx) => {
-    if (value.digestInterval !== 'twice_daily') {
-      return;
-    }
-
-    if (!value.digestSecondTime) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Bei 2x täglich ist eine zweite Uhrzeit erforderlich.',
-        path: ['digestSecondTime'],
-      });
-      return;
-    }
-
-    if (value.digestSecondTime === value.digestTime) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Die zwei Uhrzeiten müssen unterschiedlich sein.',
-        path: ['digestSecondTime'],
-      });
-    }
   });
 
 export type UpdateMyNotificationDetailsInput = z.infer<
@@ -131,21 +109,9 @@ export const updateOrganizationNotificationDefaultsInputSchema = z
       'critical_and_digest',
     ]),
     minimumPriorityDefault: z.enum(['info', 'review', 'critical']),
-    digestIntervalDefault: z.enum(['daily', 'twice_daily']),
+    digestIntervalDefault: z.enum(['daily', 'every_2_days']),
     digestTimeDefault: digestTimeSchema,
     digestSecondTimeDefault: digestTimeSchema,
-  })
-  .superRefine((value, ctx) => {
-    if (
-      value.digestIntervalDefault === 'twice_daily' &&
-      value.digestTimeDefault === value.digestSecondTimeDefault
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Die zwei Uhrzeiten müssen unterschiedlich sein.',
-        path: ['digestSecondTimeDefault'],
-      });
-    }
   });
 
 export type UpdateOrganizationNotificationDefaultsInput = z.infer<

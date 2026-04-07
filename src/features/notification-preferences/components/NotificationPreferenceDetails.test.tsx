@@ -7,16 +7,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { NotificationPreferenceDetails } from './NotificationPreferenceDetails';
 
 describe('NotificationPreferenceDetails', () => {
-  it('zeigt bei 2x täglich links das Intervall und rechts zwei Zeitfelder', () => {
+  it('zeigt bei aktiver Sammelmail genau ein Feld für die Versandzeit', () => {
     render(
       <NotificationPreferenceDetails
         idPrefix="test-notification"
         emailEnabled={true}
         deliveryMode="digest_only"
         minimumPriority="review"
-        digestInterval="twice_daily"
+        digestInterval="every_2_days"
         digestTime="08:00"
-        digestSecondTime="20:00"
+        digestSecondTime="16:00"
         onDeliveryModeChange={vi.fn()}
         onMinimumPriorityChange={vi.fn()}
         onDigestIntervalChange={vi.fn()}
@@ -25,33 +25,21 @@ describe('NotificationPreferenceDetails', () => {
       />
     );
 
-    const intervalLabel = screen.getByText(
-      'Wie oft soll die Sammelmail gesendet werden?'
-    );
-    const intervalContainer = intervalLabel.parentElement;
-    const digestRowGrid = intervalContainer?.parentElement;
-
-    expect(digestRowGrid).toBeTruthy();
-    expect(digestRowGrid?.className).toContain('md:grid-cols-2');
-
-    const secondTimeLabel = screen.getByText('Zweite Versandzeit für Sammelmail');
-    const secondTimeContainer = secondTimeLabel.parentElement;
-    const rightHalfGrid = secondTimeContainer?.parentElement;
-
-    expect(rightHalfGrid).toBeTruthy();
-    expect(rightHalfGrid?.className).toContain('md:grid-cols-2');
+    expect(screen.getByText('Wie oft soll die Sammelmail gesendet werden?')).toBeTruthy();
+    expect(screen.getByText('Versandzeit für Sammelmail')).toBeTruthy();
+    expect(screen.queryByText('Zweite Versandzeit')).toBeNull();
   });
 
-  it('zeigt bei 1x täglich kein zweites Zeitfeld', () => {
+  it('zeigt Versandintervall-Feld nicht bei reinen Sofortmeldungen', () => {
     render(
       <NotificationPreferenceDetails
         idPrefix="test-notification"
         emailEnabled={true}
-        deliveryMode="digest_only"
-        minimumPriority="review"
+        deliveryMode="critical_only"
+        minimumPriority="critical"
         digestInterval="daily"
         digestTime="08:00"
-        digestSecondTime="20:00"
+        digestSecondTime="16:00"
         onDeliveryModeChange={vi.fn()}
         onMinimumPriorityChange={vi.fn()}
         onDigestIntervalChange={vi.fn()}
@@ -61,7 +49,7 @@ describe('NotificationPreferenceDetails', () => {
     );
 
     expect(
-      screen.queryByText('Zweite Versandzeit für Sammelmail')
+      screen.queryByText('Wie oft soll die Sammelmail gesendet werden?')
     ).toBeNull();
   });
 });

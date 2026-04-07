@@ -27,7 +27,7 @@ describe('buildCompactNotificationPreferenceSummary', () => {
         emailEnabled: false,
         deliveryMode: 'digest_only',
         minimumPriority: 'info',
-        digestInterval: 'twice_daily',
+        digestInterval: 'every_2_days',
         digestTime: '08:00',
         digestSecondTime: '20:00',
       },

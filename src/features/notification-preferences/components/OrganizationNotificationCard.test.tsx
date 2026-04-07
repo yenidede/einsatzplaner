@@ -16,7 +16,7 @@ describe('OrganizationNotificationCard', () => {
       emailEnabled: true,
       deliveryMode: 'critical_and_digest',
       minimumPriority: 'review',
-      digestInterval: 'twice_daily',
+      digestInterval: 'every_2_days',
       digestTime: '08:00',
       digestSecondTime: '16:00',
     };
