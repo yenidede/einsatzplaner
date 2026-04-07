@@ -175,6 +175,7 @@ model organization {
   einsatz_category                          einsatz_category[]
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
+  notification_email_digest_queue           notification_email_digest_queue[]
   organization_address                      organization_address[]
   organization_bank_account                 organization_bank_account[]
   organization_details                      organization_details[]
@@ -224,6 +225,7 @@ model user {
   einsatz_helper                            einsatz_helper[]
   einsatz_template                          einsatz_template[]
   invitation                                invitation[]
+  notification_email_digest_queue           notification_email_digest_queue[]
   organization                              organization?                               @relation(fields: [active_org], references: [id], onDelete: Cascade)
   salutation                                salutation?                                 @relation(fields: [salutationId], references: [id], onDelete: Restrict)
   user_organization_notification_preference user_organization_notification_preference[]
@@ -581,4 +583,48 @@ model user_organization_notification_preference {
   @@unique([user_id, organization_id], map: "user_organization_notification_preference_user_org_unique")
   @@index([organization_id], map: "idx_user_organization_notification_preference_organization")
   @@index([user_id], map: "idx_user_organization_notification_preference_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model notification_email_digest_queue {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String       @db.Uuid
+  organization_id String       @db.Uuid
+  priority        String
+  digest_interval String
+  event_type      String
+  payload_json    Json
+  dedupe_key      String       @unique(map: "notification_email_digest_queue_dedupe_key_idx")
+  scheduled_for   DateTime     @db.Timestamptz(6)
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  sent_at         DateTime?    @db.Timestamptz(6)
+  message_id      String?
+  send_error      String?
+  organization    organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user            user         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sent_at, scheduled_for], map: "notification_email_digest_queue_due_idx")
+  @@index([organization_id, user_id, sent_at], map: "notification_email_digest_queue_org_user_idx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model pending_self_serve_signup {
+  id                               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                            String
+  organization_name                String
+  organization_description         String?
+  first_name                       String
+  last_name                        String
+  password_hash                    String
+  verification_token_hash          String
+  verification_token_expires_at    DateTime  @db.Timestamptz(6)
+  organization_name_reserved_until DateTime  @db.Timestamptz(6)
+  last_confirmation_email_sent_at  DateTime  @db.Timestamptz(6)
+  created_at                       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at                       DateTime  @default(now()) @db.Timestamptz(6)
+  confirmed_at                     DateTime? @db.Timestamptz(6)
+  invalidated_at                   DateTime? @db.Timestamptz(6)
+
+  @@index([organization_name_reserved_until], map: "pending_self_serve_signup_reservation_expires_idx")
+  @@index([verification_token_expires_at], map: "pending_self_serve_signup_verification_expires_idx")
 }
