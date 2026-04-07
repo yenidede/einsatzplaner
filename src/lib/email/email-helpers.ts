@@ -242,12 +242,13 @@ async function enqueueEinsatzWarningDigestNotifications(input: {
     : `/einsatzverwaltung?einsatz=${input.einsatz.id}`;
 
   for (const recipient of input.digestRecipients) {
+    const warningsSignature = JSON.stringify(input.warnings);
     const dedupeKey = [
       recipient.userId,
       input.organizationId,
       input.einsatz.id,
       input.einsatz.start.toISOString(),
-      input.warnings.join('|'),
+      warningsSignature,
     ].join(':');
 
     await enqueueNotificationDigestItem({

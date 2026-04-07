@@ -172,6 +172,16 @@ export default function SettingsPage() {
     if (!session?.user?.id) return;
 
     try {
+      let nextInitialProfileValues: {
+        email: string;
+        phone: string;
+        firstname: string;
+        lastname: string;
+        pictureUrl: string | null;
+        salutationId: string;
+        showLogos: boolean;
+      } | null = null;
+
       if (hasProfileUnsavedChanges) {
         const finalPictureUrl = pictureUrl;
 
@@ -204,20 +214,15 @@ export default function SettingsPage() {
         await queryClient.invalidateQueries({
           queryKey: settingsQueryKeys.user.settings(session?.user.id || ''),
         });
-
-        // Note: Initial values will be updated automatically when userData refetches
-        // But we also update them here immediately to prevent false positives
-        if (initialValuesRef.current) {
-          initialValuesRef.current = {
-            email,
-            phone,
-            firstname,
-            lastname,
-            pictureUrl: finalPictureUrl,
-            salutationId,
-            showLogos,
-          };
-        }
+        nextInitialProfileValues = {
+          email,
+          phone,
+          firstname,
+          lastname,
+          pictureUrl: finalPictureUrl,
+          salutationId,
+          showLogos,
+        };
       }
 
       if (notificationPreferenceFormRef.current?.hasUnsavedChanges()) {
@@ -227,6 +232,10 @@ export default function SettingsPage() {
         } finally {
           setIsSavingNotifications(false);
         }
+      }
+
+      if (nextInitialProfileValues) {
+        initialValuesRef.current = nextInitialProfileValues;
       }
     } catch (error) {
       toast.error(

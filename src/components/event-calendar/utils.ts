@@ -306,10 +306,13 @@ export async function getEinsaetzeDataForCalendarRange(
   if (raw instanceof Response) {
     return raw;
   }
+  const detailedEinsaetze = raw.map((einsatz) =>
+    normalizeEinsatzDatesFromDb(einsatz)
+  );
   const events = raw
     .map(mapDetailedEinsatzToCalendarEvent)
     .filter((e): e is CalendarEvent => e !== null);
-  return { events, detailedEinsaetze: raw };
+  return { events, detailedEinsaetze };
 }
 
 /** All future events for agenda view (from today onwards). */
@@ -322,10 +325,13 @@ export async function getEinsaetzeDataForAgenda(
   if (raw instanceof Response) {
     return raw;
   }
+  const detailedEinsaetze = raw.map((einsatz) =>
+    normalizeEinsatzDatesFromDb(einsatz)
+  );
   const events = raw
     .map(mapDetailedEinsatzToCalendarEvent)
     .filter((e): e is CalendarEvent => e !== null);
-  return { events, detailedEinsaetze: raw };
+  return { events, detailedEinsaetze };
 }
 
 export function mapStringValueToType(

@@ -144,11 +144,23 @@ function mapDefaultsRow(
 }
 
 function mapUserPreferenceRow(
-  row: UserPreferenceRow
+  row: UserPreferenceRow,
+  defaults?: OrganizationNotificationDefaults
 ): UserOrganizationNotificationPreference | null {
   if (!row.preferenceId || !row.userId) {
     return null;
   }
+
+  const deliveryModeFallback =
+    defaults?.deliveryModeDefault ?? NOTIFICATION_DEFAULTS.deliveryModeDefault;
+  const minimumPriorityFallback =
+    defaults?.minimumPriorityDefault ?? NOTIFICATION_DEFAULTS.minimumPriorityDefault;
+  const digestIntervalFallback =
+    defaults?.digestIntervalDefault ?? NOTIFICATION_DEFAULTS.digestIntervalDefault;
+  const digestTimeFallback =
+    defaults?.digestTimeDefault ?? NOTIFICATION_DEFAULTS.digestTimeDefault;
+  const digestSecondTimeFallback =
+    defaults?.digestSecondTimeDefault ?? NOTIFICATION_DEFAULTS.digestSecondTimeDefault;
 
   return {
     userId: row.userId,
@@ -158,26 +170,23 @@ function mapUserPreferenceRow(
     deliveryMode:
       row.deliveryMode === null
         ? null
-        : coerceDeliveryMode(row.deliveryMode, 'critical_and_digest'),
+        : coerceDeliveryMode(row.deliveryMode, deliveryModeFallback),
     minimumPriority:
       row.minimumPriority === null
         ? null
-        : coerceMinimumPriority(row.minimumPriority, 'review'),
+        : coerceMinimumPriority(row.minimumPriority, minimumPriorityFallback),
     digestInterval:
       row.digestInterval === null
         ? null
-        : coerceDigestInterval(row.digestInterval, NOTIFICATION_DEFAULTS.digestIntervalDefault),
+        : coerceDigestInterval(row.digestInterval, digestIntervalFallback),
     digestTime:
       row.digestTime === null
         ? null
-        : coerceDigestTime(row.digestTime, NOTIFICATION_DEFAULTS.digestTimeDefault),
+        : coerceDigestTime(row.digestTime, digestTimeFallback),
     digestSecondTime:
       row.digestSecondTime === null
         ? null
-        : coerceDigestTime(
-            row.digestSecondTime,
-            NOTIFICATION_DEFAULTS.digestSecondTimeDefault
-          ),
+        : coerceDigestTime(row.digestSecondTime, digestSecondTimeFallback),
   };
 }
 
@@ -223,7 +232,8 @@ export async function getOrganizationNotificationDefaults(
 export async function getUserOrganizationNotificationPreference(
   userId: string,
   organizationId: string,
-  executor: SqlExecutor = prisma
+  executor: SqlExecutor = prisma,
+  defaults?: OrganizationNotificationDefaults
 ): Promise<UserOrganizationNotificationPreference | null> {
   const rows = await executor.$queryRaw<UserPreferenceRow[]>(Prisma.sql`
     SELECT
@@ -255,7 +265,8 @@ export async function getUserOrganizationNotificationPreference(
       digestInterval: null,
       digestTime: null,
       digestSecondTime: null,
-    }
+    },
+    defaults
   );
 }
 
@@ -299,7 +310,7 @@ export async function getMyOrganizationNotificationCards(
 
   return rows.map((row) => {
     const defaults = mapDefaultsRow(row, row.organizationId);
-    const preference = mapUserPreferenceRow(row);
+    const preference = mapUserPreferenceRow(row, defaults);
     const effective = resolveEffectiveNotificationSettings({
       defaults,
       preference,
