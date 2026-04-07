@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import type { DigestInterval } from '@/features/notification-preferences/types';
 
 export class EmailService {
   private transporter: nodemailer.Transporter | null;
@@ -567,6 +568,91 @@ export class EmailService {
         }`
       );
     }
+  }
+
+  async sendNotificationDigestEmail(input: {
+    recipientEmail: string;
+    recipientName: string;
+    organizationName: string;
+    digestInterval: DigestInterval;
+    entries: Array<{
+      einsatzTitle: string;
+      einsatzStart: Date;
+      warningLines: string[];
+      einsatzUrl: string;
+    }>;
+  }) {
+    if (!this.transporter || input.entries.length === 0) {
+      return;
+    }
+
+    const intervalLabel =
+      input.digestInterval === 'daily' ? 'täglich' : 'zweimal täglich';
+
+    const entryItems = input.entries
+      .map((entry) => {
+        const warningItems = entry.warningLines
+          .map((warning) => `<li>${warning}</li>`)
+          .join('');
+
+        return `
+          <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 14px;">
+            <p style="margin: 0 0 8px 0;"><strong>Einsatz:</strong> ${entry.einsatzTitle}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Start:</strong> ${entry.einsatzStart.toLocaleString(
+              'de-DE',
+              {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }
+            )}</p>
+            <ul style="margin: 0 0 12px 20px; padding: 0;">
+              ${warningItems}
+            </ul>
+            <a href="${entry.einsatzUrl}" style="display: inline-block; background: #1d4ed8; color: #fff; text-decoration: none; border-radius: 6px; padding: 10px 14px;">
+              Einsatz öffnen
+            </a>
+          </div>
+        `;
+      })
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+          <div style="max-width: 680px; margin: 0 auto; padding: 20px;">
+            <h2 style="margin: 0 0 10px 0;">Sammelmail Benachrichtigungen</h2>
+            <p style="margin: 0 0 16px 0;">
+              Sehr geehrte/r ${input.recipientName},
+            </p>
+            <p style="margin: 0 0 16px 0;">
+              Sie erhalten diese Sammelmail für <strong>${input.organizationName}</strong> (${intervalLabel}).
+            </p>
+            ${entryItems}
+            <p style="margin-top: 18px; font-size: 12px; color: #475569;">
+              Diese E-Mail wurde automatisch erstellt.
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: `"${input.organizationName} - Einsatzplaner" <${process.env.SMTP_USER}>`,
+      to: input.recipientEmail,
+      subject: `Sammelmail Benachrichtigungen - ${input.organizationName}`,
+      html,
+    };
+
+    const info = await this.transporter.sendMail(mailOptions);
+    return { success: true, messageId: info.messageId };
   }
 }
 

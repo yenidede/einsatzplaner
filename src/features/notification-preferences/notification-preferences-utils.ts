@@ -1,10 +1,12 @@
-﻿import {
-  DIGEST_INTERVAL_LABELS,
+import { isNormalizedTime } from '@/lib/time-input';
+import {
   MINIMUM_PRIORITY_SUMMARY_LABELS,
+  NOTIFICATION_DEFAULTS,
 } from './constants';
 import type {
   DeliveryMode,
   DigestInterval,
+  DigestTime,
   EffectiveNotificationSettings,
   MinimumPriority,
   NotificationPreferenceContext,
@@ -26,12 +28,26 @@ export function isDigestInterval(value: string): value is DigestInterval {
   return value === 'daily' || value === 'twice_daily';
 }
 
+export function isDigestTime(value: string): value is DigestTime {
+  return isNormalizedTime(value);
+}
+
 export function deliveryModeUsesDigest(
   deliveryMode: EffectiveNotificationSettings['deliveryMode']
 ): boolean {
   return (
     deliveryMode === 'digest_only' || deliveryMode === 'critical_and_digest'
   );
+}
+
+function coerceDigestTime(
+  value: string | null | undefined,
+  fallback: DigestTime
+): DigestTime {
+  if (value && isDigestTime(value)) {
+    return value;
+  }
+  return fallback;
 }
 
 export function resolveEffectiveNotificationSettings({
@@ -47,6 +63,14 @@ export function resolveEffectiveNotificationSettings({
       deliveryMode: defaults.deliveryModeDefault,
       minimumPriority: defaults.minimumPriorityDefault,
       digestInterval: defaults.digestIntervalDefault,
+      digestTime: coerceDigestTime(
+        defaults.digestTimeDefault,
+        NOTIFICATION_DEFAULTS.digestTimeDefault
+      ),
+      digestSecondTime: coerceDigestTime(
+        defaults.digestSecondTimeDefault,
+        NOTIFICATION_DEFAULTS.digestSecondTimeDefault
+      ),
     };
   }
 
@@ -56,6 +80,14 @@ export function resolveEffectiveNotificationSettings({
     minimumPriority:
       preference.minimumPriority ?? defaults.minimumPriorityDefault,
     digestInterval: preference.digestInterval ?? defaults.digestIntervalDefault,
+    digestTime: coerceDigestTime(
+      preference.digestTime ?? defaults.digestTimeDefault,
+      NOTIFICATION_DEFAULTS.digestTimeDefault
+    ),
+    digestSecondTime: coerceDigestTime(
+      preference.digestSecondTime ?? defaults.digestSecondTimeDefault,
+      NOTIFICATION_DEFAULTS.digestSecondTimeDefault
+    ),
   };
 }
 
@@ -69,16 +101,39 @@ export function getPreferenceSource(preference: {
   return 'user';
 }
 
+export function buildDigestScheduleLabel(input: {
+  digestInterval: DigestInterval;
+  digestTime: DigestTime;
+  digestSecondTime: DigestTime;
+  short?: boolean;
+}): string {
+  const { digestInterval, digestTime, digestSecondTime, short = false } = input;
+
+  if (digestInterval === 'daily') {
+    return short ? `täglich um ${digestTime}` : `1x täglich um ${digestTime}`;
+  }
+
+  return short
+    ? `2x täglich um ${digestTime} und ${digestSecondTime}`
+    : `2x täglich um ${digestTime} und ${digestSecondTime}`;
+}
+
 function buildDeliverySummary(effective: EffectiveNotificationSettings): string {
   if (effective.deliveryMode === 'critical_only') {
     return 'Dringende Meldungen werden sofort per E-Mail gesendet.';
   }
 
+  const scheduleLabel = buildDigestScheduleLabel({
+    digestInterval: effective.digestInterval,
+    digestTime: effective.digestTime,
+    digestSecondTime: effective.digestSecondTime,
+  });
+
   if (effective.deliveryMode === 'digest_only') {
-    return `E-Mails werden als Sammelmail versendet (${DIGEST_INTERVAL_LABELS[effective.digestInterval]}).`;
+    return `E-Mails werden als Sammelmail versendet (${scheduleLabel}).`;
   }
 
-  return `Dringende Meldungen kommen sofort, sonst ${DIGEST_INTERVAL_LABELS[effective.digestInterval]} als Sammelmail.`;
+  return `Dringende Meldungen kommen sofort, sonst ${scheduleLabel} als Sammelmail.`;
 }
 
 function buildPrioritySummary(effective: EffectiveNotificationSettings): string {
@@ -88,6 +143,22 @@ function buildPrioritySummary(effective: EffectiveNotificationSettings): string 
 
   return `Sie erhalten E-Mails zu ${MINIMUM_PRIORITY_SUMMARY_LABELS[effective.minimumPriority]}.`;
 }
+
+const COMPACT_SOURCE_LABELS: Record<'organization' | 'user', string> = {
+  organization: 'Organisationsstandard',
+  user: 'Eigene Einstellung',
+};
+
+const COMPACT_PRIORITY_LABELS: Record<MinimumPriority, string> = {
+  info: 'alle Meldungen',
+  review: 'wichtige Meldungen',
+  critical: 'dringende Meldungen',
+};
+
+const COMPACT_DIGEST_INTERVAL_LABELS: Record<DigestInterval, string> = {
+  daily: 'täglich',
+  twice_daily: 'zweimal täglich',
+};
 
 export function buildNotificationPreferenceSummary(input: {
   source: 'organization' | 'user';
@@ -105,4 +176,38 @@ export function buildNotificationPreferenceSummary(input: {
   }
 
   return `${sourceSummary} ${buildDeliverySummary(effective)} ${buildPrioritySummary(effective)}`;
+}
+
+export function buildCompactNotificationPreferenceSummary(input: {
+  source: 'organization' | 'user';
+  effective: EffectiveNotificationSettings;
+}): string {
+  const { source, effective } = input;
+  const sourceLabel = COMPACT_SOURCE_LABELS[source];
+
+  if (!effective.emailEnabled) {
+    return `${sourceLabel}: E-Mails deaktiviert`;
+  }
+
+  if (effective.deliveryMode === 'critical_only') {
+    return `${sourceLabel}: Dringende Meldungen sofort`;
+  }
+
+  const digestIntervalLabel =
+    COMPACT_DIGEST_INTERVAL_LABELS[effective.digestInterval];
+  const priorityLabel = COMPACT_PRIORITY_LABELS[effective.minimumPriority];
+  const scheduleLabel =
+    effective.digestInterval === 'daily'
+      ? `${digestIntervalLabel} um ${effective.digestTime}`
+      : `${digestIntervalLabel} um ${effective.digestTime} und ${effective.digestSecondTime}`;
+
+  if (effective.deliveryMode === 'digest_only') {
+    return `${sourceLabel}: ${priorityLabel} ${scheduleLabel} als Sammelmail`;
+  }
+
+  if (effective.minimumPriority === 'critical') {
+    return `${sourceLabel}: Dringend sofort, zusätzlich ${scheduleLabel} als Sammelmail`;
+  }
+
+  return `${sourceLabel}: Dringend sofort, ${priorityLabel} ${scheduleLabel} als Sammelmail`;
 }

@@ -93,13 +93,18 @@ async function assertOrgPermission(
  * @param start Start time of the Einsatz
  * @param end End time of the Einsatz
  * @param exclude Optional ID of an Einsatz to exclude or true to exclude all Einsätze
+ * @param dbClient Optional Prisma client or transaction client used to keep
+ * conflict checks inside an existing transaction when needed
  * @returns Array of conflicts found
  */
 async function checkEinsatzConflicts(
   userIds: string[],
   start: Date,
   end: Date,
-  exclude: string | boolean = false
+  exclude: string | boolean = false,
+  dbClient:
+    | Pick<Prisma.TransactionClient, 'einsatz_helper'>
+    | Pick<typeof prisma, 'einsatz_helper'> = prisma
 ): Promise<EinsatzConflict[]> {
   if (userIds.length === 0) {
     return [];
@@ -110,7 +115,7 @@ async function checkEinsatzConflicts(
   }
 
   // Find all Einsätze assignments for these users that overlap with the given time range
-  const conflictingAssignments = await prisma.einsatz_helper.findMany({
+  const conflictingAssignments = await dbClient.einsatz_helper.findMany({
     where: {
       user_id: { in: userIds },
       einsatz: {
@@ -1129,7 +1134,8 @@ export async function toggleUserAssignmentToEinsatz(
               [session.user.id],
               existingEinsatz.start,
               existingEinsatz.end,
-              einsatzId
+              einsatzId,
+              tx
             );
 
             if (conflicts.length > 0) {
@@ -1240,8 +1246,12 @@ export async function toggleUserAssignmentToEinsatz(
       return mutationResult.result;
     } catch (error) {
       attempt += 1;
-      if (!isRetryableTransactionError(error) || attempt >= 2) {
+      if (!isRetryableTransactionError(error)) {
         throw error;
+      }
+
+      if (attempt >= 2) {
+        break;
       }
     }
   }

@@ -1,4 +1,5 @@
 export { NotificationPreferenceForm } from './components/NotificationPreferenceForm';
+export type { NotificationPreferenceFormHandle } from './components/NotificationPreferenceForm';
 export { OrganizationNotificationCard } from './components/OrganizationNotificationCard';
 export { NotificationPreferenceSummary } from './components/NotificationPreferenceSummary';
 export { NotificationPreferenceDetails } from './components/NotificationPreferenceDetails';
@@ -21,3 +22,5 @@ export {
   getPreferenceSource,
   resolveEffectiveNotificationSettings,
 } from './notification-preferences-utils';
+
+export { processNotificationDigestsAction } from './notification-digest-actions';

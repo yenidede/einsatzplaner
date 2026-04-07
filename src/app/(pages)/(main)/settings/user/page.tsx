@@ -61,6 +61,7 @@ import { createRoleNameOverrides, RolesList } from '@/components/Roles';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import {
   NotificationPreferenceForm,
+  type NotificationPreferenceFormHandle,
   notificationPreferenceQueryKeys,
 } from '@/features/notification-preferences';
 
@@ -77,6 +78,11 @@ export default function SettingsPage() {
   const [pictureUrl, setPictureUrl] = useState<string | null>(null);
   const [salutationId, setSalutationId] = useState<string>('');
   const [organizations, setOrganizations] = useState<OrganizationBase[]>([]);
+  const [notificationHasUnsavedChanges, setNotificationHasUnsavedChanges] =
+    useState(false);
+  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
+  const notificationPreferenceFormRef =
+    useRef<NotificationPreferenceFormHandle | null>(null);
 
   // Initial values for change detection
   const initialValuesRef = useRef<{
@@ -145,7 +151,7 @@ export default function SettingsPage() {
   const leaveOrgMutation = useLeaveOrganization(session?.user?.id);
 
   // Check for unsaved changes
-  const hasUnsavedChanges = (() => {
+  const hasProfileUnsavedChanges = (() => {
     if (!initialValuesRef.current) return false;
     const initial = initialValuesRef.current;
 
@@ -159,56 +165,68 @@ export default function SettingsPage() {
       showLogos !== initial.showLogos
     );
   })();
+  const hasUnsavedChanges =
+    hasProfileUnsavedChanges || notificationHasUnsavedChanges;
 
   const handleSave = useCallback(async () => {
     if (!session?.user?.id) return;
 
     try {
-      const finalPictureUrl = pictureUrl;
+      if (hasProfileUnsavedChanges) {
+        const finalPictureUrl = pictureUrl;
 
-      await mutation.mutateAsync({
-        id: session.user.id,
-        email,
-        firstname,
-        lastname,
-        phone,
-        picture_url: finalPictureUrl || undefined,
-        salutationId,
-        hasLogoinCalendar: showLogos,
-      }
-      );
-
-      if (session) {
-        await update({
-          user: {
-            ...session.user,
-            firstname,
-            lastname,
-            email,
-            phone,
-            picture_url: finalPictureUrl,
-            hasLogoinCalendar: showLogos,
-          },
-        });
-        setPictureUrl(finalPictureUrl);
-      }
-
-      await queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.user.settings(session?.user.id || ''),
-      });
-
-      // Note: Initial values will be updated automatically when userData refetches
-      // But we also update them here immediately to prevent false positives
-      if (initialValuesRef.current) {
-        initialValuesRef.current = {
+        await mutation.mutateAsync({
+          id: session.user.id,
           email,
-          phone,
           firstname,
           lastname,
-          pictureUrl: finalPictureUrl,
+          phone,
+          picture_url: finalPictureUrl || undefined,
           salutationId,
-          showLogos,
-        };
+          hasLogoinCalendar: showLogos,
+        });
+
+        if (session) {
+          await update({
+            user: {
+              ...session.user,
+              firstname,
+              lastname,
+              email,
+              phone,
+              picture_url: finalPictureUrl,
+              hasLogoinCalendar: showLogos,
+            },
+          });
+          setPictureUrl(finalPictureUrl);
+        }
+
+        await queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.user.settings(session?.user.id || ''),
+        });
+
+        // Note: Initial values will be updated automatically when userData refetches
+        // But we also update them here immediately to prevent false positives
+        if (initialValuesRef.current) {
+          initialValuesRef.current = {
+            email,
+            phone,
+            firstname,
+            lastname,
+            pictureUrl: finalPictureUrl,
+            salutationId,
+            showLogos,
+          };
+        }
+      }
+
+      if (notificationPreferenceFormRef.current?.hasUnsavedChanges()) {
+        setIsSavingNotifications(true);
+        try {
+          await notificationPreferenceFormRef.current.saveChanges();
+        } finally {
+          setIsSavingNotifications(false);
+        }
       }
     } catch (error) {
       toast.error(
@@ -218,6 +236,7 @@ export default function SettingsPage() {
   }, [
     session,
     pictureUrl,
+    hasProfileUnsavedChanges,
     mutation,
     email,
     firstname,
@@ -227,6 +246,7 @@ export default function SettingsPage() {
     showLogos,
     update,
     queryClient,
+    notificationPreferenceFormRef,
   ]);
 
   // Use unsaved changes hook
@@ -356,7 +376,7 @@ export default function SettingsPage() {
     <PageHeader
       title="Persönliche Einstellungen"
       onSave={handleSave}
-      isSaving={mutation.isPending}
+      isSaving={mutation.isPending || isSavingNotifications}
       onCancel={() => navigateWithCheck('/')}
     />
   );
@@ -567,7 +587,12 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <NotificationPreferenceForm userId={session?.user?.id} />
+              <NotificationPreferenceForm
+                ref={notificationPreferenceFormRef}
+                userId={session?.user?.id}
+                disabled={mutation.isPending || isSavingNotifications}
+                onUnsavedChangesChange={setNotificationHasUnsavedChanges}
+              />
             </CardContent>
           </Card>
         </section>

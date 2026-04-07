@@ -26,10 +26,12 @@ import {
 } from '@/features/organization/hooks/use-organization-queries';
 import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { shouldHideNavbar } from './navbar-visibility';
 
 export default function Component() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const hideNavbar = shouldHideNavbar(pathname);
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -70,6 +72,10 @@ export default function Component() {
     },
     { href: '/auswertungen', label: 'Auswertungen', hidden: true },
   ];
+
+  if (hideNavbar) {
+    return null;
+  }
 
   return (
     <header
