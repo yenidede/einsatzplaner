@@ -46,15 +46,15 @@ export function OrganizationNotificationDefaultsForm({
 }: OrganizationNotificationDefaultsFormProps) {
   const summary = buildNotificationPreferenceSummary({
     source: 'organization',
-      effective: {
-        emailEnabled: emailEnabledDefault,
-        deliveryMode: deliveryModeDefault,
-        minimumPriority: minimumPriorityDefault,
-        digestInterval: digestIntervalDefault,
-        digestTime: digestTimeDefault,
-        digestSecondTime: digestSecondTimeDefault,
-      },
-    });
+    effective: {
+      emailEnabled: emailEnabledDefault,
+      deliveryMode: deliveryModeDefault,
+      minimumPriority: minimumPriorityDefault,
+      digestInterval: digestIntervalDefault,
+      digestTime: digestTimeDefault,
+      digestSecondTime: digestSecondTimeDefault,
+    },
+  });
 
   return (
     <div className="space-y-4">

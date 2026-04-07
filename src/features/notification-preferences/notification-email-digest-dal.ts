@@ -536,6 +536,9 @@ export async function processNotificationDigestQueue(
           prisma
         );
       } catch (error) {
+        // Deliberates No-Retry-Verhalten: markQueueRowsWithError markiert pendingSend
+        // als terminal (sent_at), um Retry-Stürme bei dauerhaft fehlerhaften Einträgen zu vermeiden.
+        // TODO: Retry-Strategie mit attempt_count ergänzen und sent_at erst bei attempt_count >= MAX_ATTEMPTS setzen.
         await markQueueRowsWithError(
           {
             ids: pendingSend.rowIds,

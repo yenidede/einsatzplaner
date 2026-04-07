@@ -1,6 +1,28 @@
 import nodemailer from 'nodemailer';
 import type { DigestInterval } from '@/features/notification-preferences/types';
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function toSafeEmailUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return '#';
+    }
+
+    return encodeURI(url.toString());
+  } catch {
+    return '#';
+  }
+}
+
 export class EmailService {
   private transporter: nodemailer.Transporter | null;
 
@@ -594,13 +616,15 @@ export class EmailService {
 
       const entryItems = input.entries
         .map((entry) => {
+          const safeEinsatzTitle = escapeHtml(entry.einsatzTitle);
+          const safeEinsatzUrl = toSafeEmailUrl(entry.einsatzUrl);
           const warningItems = entry.warningLines
-            .map((warning) => `<li>${warning}</li>`)
+            .map((warning) => `<li>${escapeHtml(warning)}</li>`)
             .join('');
 
           return `
             <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 14px;">
-              <p style="margin: 0 0 8px 0;"><strong>Einsatz:</strong> ${entry.einsatzTitle}</p>
+              <p style="margin: 0 0 8px 0;"><strong>Einsatz:</strong> ${safeEinsatzTitle}</p>
               <p style="margin: 0 0 8px 0;"><strong>Start:</strong> ${entry.einsatzStart.toLocaleString(
                 'de-DE',
                 {
@@ -615,13 +639,16 @@ export class EmailService {
               <ul style="margin: 0 0 12px 20px; padding: 0;">
                 ${warningItems}
               </ul>
-              <a href="${entry.einsatzUrl}" style="display: inline-block; background: #1d4ed8; color: #fff; text-decoration: none; border-radius: 6px; padding: 10px 14px;">
+              <a href="${safeEinsatzUrl}" style="display: inline-block; background: #1d4ed8; color: #fff; text-decoration: none; border-radius: 6px; padding: 10px 14px;">
                 Einsatz öffnen
               </a>
             </div>
           `;
         })
         .join('');
+
+      const safeRecipientName = escapeHtml(input.recipientName);
+      const safeOrganizationName = escapeHtml(input.organizationName);
 
       const html = `
         <!DOCTYPE html>
@@ -633,10 +660,10 @@ export class EmailService {
             <div style="max-width: 680px; margin: 0 auto; padding: 20px;">
               <h2 style="margin: 0 0 10px 0;">Sammelmail Benachrichtigungen</h2>
               <p style="margin: 0 0 16px 0;">
-                Sehr geehrte/r ${input.recipientName},
+                Sehr geehrte/r ${safeRecipientName},
               </p>
               <p style="margin: 0 0 16px 0;">
-                Sie erhalten diese Sammelmail für <strong>${input.organizationName}</strong> (${intervalLabel}).
+                Sie erhalten diese Sammelmail für <strong>${safeOrganizationName}</strong> (${intervalLabel}).
               </p>
               ${entryItems}
               <p style="margin-top: 18px; font-size: 12px; color: #475569;">
@@ -657,6 +684,10 @@ export class EmailService {
       const info = await this.transporter.sendMail(mailOptions);
       return { success: true, messageId: info.messageId };
     } catch (error) {
+      console.error(
+        'Fehler beim Senden der Benachrichtigungs-Sammelmail:',
+        error
+      );
       throw new Error(
         `Failed to send notification digest email: ${
           error instanceof Error ? error.message : 'Unknown error'

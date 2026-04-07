@@ -58,6 +58,10 @@ describe('splitWarningRecipientsByDelivery', () => {
   });
 
   it('entfernt Empfaenger bei deaktivierten E-Mails', () => {
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {
+      // noop in tests
+    });
+
     const result = splitWarningRecipientsByDelivery({
       recipients: [
         {
@@ -83,6 +87,10 @@ describe('splitWarningRecipientsByDelivery', () => {
 
     expect(result.immediateRecipients).toEqual([]);
     expect(result.digestRecipients).toEqual([]);
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[email-warning-routing] Empfänger ausgeschlossen (delivery=none): userId=user-disabled, email=disabled@example.com. Ursache: E-Mail deaktiviert oder durch Priorität gefiltert.'
+    );
+    debugSpy.mockRestore();
   });
 
   it('faellt bei fehlenden Einstellungen auf Sofortversand zurueck und loggt den Fall', () => {

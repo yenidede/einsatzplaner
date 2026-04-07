@@ -35,6 +35,7 @@ import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { ChangeTypeIds } from '../activity_log/changeTypeIds';
 import { checkEinsatzRequirementsAfterAssignment } from '@/lib/email/email-helpers';
 import {
+  dbTimestampToCalendarDate,
   normalizeDateRangeForDb,
   normalizeEinsatzDatesFromDb,
 } from '@/features/einsatz/datetime';
@@ -1302,6 +1303,15 @@ export async function updateEinsatz({
 
   await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
 
+  const existingStartAsCalendarDate = dbTimestampToCalendarDate(
+    existingEinsatz.start
+  );
+  const existingEndAsCalendarDate = dbTimestampToCalendarDate(existingEinsatz.end);
+  const existingRangeForDb = normalizeDateRangeForDb({
+    start: existingStartAsCalendarDate,
+    end: existingEndAsCalendarDate,
+  });
+
   const hasUpdatedStart = updateData.start !== undefined;
   const hasUpdatedEnd = updateData.end !== undefined;
   const normalizedUpdateData =
@@ -1309,8 +1319,8 @@ export async function updateEinsatz({
       ? {
           ...updateData,
           ...normalizeDateRangeForDb({
-            start: updateData.start ?? existingEinsatz.start,
-            end: updateData.end ?? existingEinsatz.end,
+            start: updateData.start ?? existingStartAsCalendarDate,
+            end: updateData.end ?? existingEndAsCalendarDate,
           }),
         }
       : updateData;
@@ -1319,8 +1329,8 @@ export async function updateEinsatz({
   let conflicts: EinsatzConflict[] = [];
   if (!disableTimeConflicts && assignedUsers && assignedUsers.length > 0) {
     // Use the new start/end times if provided, otherwise use existing ones
-    const checkStart = normalizedUpdateData.start || existingEinsatz.start;
-    const checkEnd = normalizedUpdateData.end || existingEinsatz.end;
+    const checkStart = normalizedUpdateData.start ?? existingRangeForDb.start;
+    const checkEnd = normalizedUpdateData.end ?? existingRangeForDb.end;
 
     conflicts = await checkEinsatzConflicts(
       assignedUsers,

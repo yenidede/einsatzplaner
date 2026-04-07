@@ -301,7 +301,8 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
       const canUpdate = await hasPermission(
         session,
         'organization:update',
-        parsed.organizationId
+        parsed.organizationId,
+        tx
       );
 
       if (!canUpdate) {

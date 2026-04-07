@@ -237,9 +237,16 @@ async function enqueueEinsatzWarningDigestNotifications(input: {
   warnings: string[];
 }) {
   const appUrl = process.env.NEXTAUTH_URL;
-  const einsatzUrl = appUrl
-    ? `${appUrl}/einsatzverwaltung?einsatz=${input.einsatz.id}`
-    : `/einsatzverwaltung?einsatz=${input.einsatz.id}`;
+  if (!appUrl) {
+    throw new Error(
+      'NEXTAUTH_URL ist nicht gesetzt. Sammelmail-Links können nicht absolut erzeugt werden.'
+    );
+  }
+
+  const einsatzUrl = new URL(
+    `/einsatzverwaltung?einsatz=${encodeURIComponent(input.einsatz.id)}`,
+    appUrl
+  ).toString();
 
   for (const recipient of input.digestRecipients) {
     const warningsSignature = JSON.stringify(input.warnings);
