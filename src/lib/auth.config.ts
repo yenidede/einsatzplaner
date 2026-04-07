@@ -347,16 +347,14 @@ export const authOptions: NextAuthOptions = {
         });
         const activeOrgData = userData?.active_org
           ? await prisma.organization.findUnique({
-            where: { id: userData.active_org },
-            select: { id: true, name: true, logo_url: true },
-          })
+              where: { id: userData.active_org },
+              select: { id: true, name: true, logo_url: true },
+            })
           : null;
-        if (!activeOrgData) {
-          throw new Response(
-            "Selected Organization not found or user isn't assigned to it",
-            { status: 404 }
-          );
-        }
+        const resolvedActiveOrganization = userData?.active_org
+          ? activeOrgData ?? null
+          : null;
+
         const newToken: JWT = {
           ...token,
           firstname: session.user.firstname ?? token.firstname,
@@ -368,8 +366,7 @@ export const authOptions: NextAuthOptions = {
           description: session.user.description ?? token.description,
           hasLogoinCalendar:
             session.user.hasLogoinCalendar ?? token.hasLogoinCalendar,
-          activeOrganization:
-            session.user.activeOrganization ?? token.activeOrganization ?? null,
+          activeOrganization: resolvedActiveOrganization,
         };
         return newToken;
       }

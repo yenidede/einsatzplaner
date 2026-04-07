@@ -12,6 +12,7 @@ import {
 import { notificationPreferenceQueryKeys } from './queryKeys';
 import type {
   DigestInterval,
+  DigestTime,
   DeliveryMode,
   MinimumPriority,
   UpdateMyNotificationPrimaryInput,
@@ -96,6 +97,8 @@ export function useUpdateMyNotificationDetails(userId: string | undefined) {
       deliveryMode: DeliveryMode;
       minimumPriority: MinimumPriority;
       digestInterval: DigestInterval;
+      digestTime: DigestTime;
+      digestSecondTime?: DigestTime;
     }) => {
       const result = await updateMyNotificationDetailsAction(input);
       if (!result) {

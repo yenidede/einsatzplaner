@@ -6,6 +6,7 @@ import { NotificationPreferenceDetails } from './NotificationPreferenceDetails';
 import type {
   DeliveryMode,
   DigestInterval,
+  DigestTime,
   MinimumPriority,
 } from '../types';
 import { buildNotificationPreferenceSummary } from '../notification-preferences-utils';
@@ -16,10 +17,14 @@ interface OrganizationNotificationDefaultsFormProps {
   deliveryModeDefault: DeliveryMode;
   minimumPriorityDefault: MinimumPriority;
   digestIntervalDefault: DigestInterval;
+  digestTimeDefault: DigestTime;
+  digestSecondTimeDefault: DigestTime;
   onEmailEnabledDefaultChange: (value: boolean) => void;
   onDeliveryModeDefaultChange: (value: DeliveryMode) => void;
   onMinimumPriorityDefaultChange: (value: MinimumPriority) => void;
   onDigestIntervalDefaultChange: (value: DigestInterval) => void;
+  onDigestTimeDefaultChange: (value: DigestTime) => void;
+  onDigestSecondTimeDefaultChange: (value: DigestTime) => void;
   disabled?: boolean;
 }
 
@@ -29,21 +34,27 @@ export function OrganizationNotificationDefaultsForm({
   deliveryModeDefault,
   minimumPriorityDefault,
   digestIntervalDefault,
+  digestTimeDefault,
+  digestSecondTimeDefault,
   onEmailEnabledDefaultChange,
   onDeliveryModeDefaultChange,
   onMinimumPriorityDefaultChange,
   onDigestIntervalDefaultChange,
+  onDigestTimeDefaultChange,
+  onDigestSecondTimeDefaultChange,
   disabled = false,
 }: OrganizationNotificationDefaultsFormProps) {
   const summary = buildNotificationPreferenceSummary({
     source: 'organization',
-    effective: {
-      emailEnabled: emailEnabledDefault,
-      deliveryMode: deliveryModeDefault,
-      minimumPriority: minimumPriorityDefault,
-      digestInterval: digestIntervalDefault,
-    },
-  });
+      effective: {
+        emailEnabled: emailEnabledDefault,
+        deliveryMode: deliveryModeDefault,
+        minimumPriority: minimumPriorityDefault,
+        digestInterval: digestIntervalDefault,
+        digestTime: digestTimeDefault,
+        digestSecondTime: digestSecondTimeDefault,
+      },
+    });
 
   return (
     <div className="space-y-4">
@@ -68,10 +79,6 @@ export function OrganizationNotificationDefaultsForm({
             />
           </div>
         </div>
-        <p className="text-muted-foreground text-xs">
-          Diese Standardwerte gelten für alle Mitglieder, die keine eigene
-          Einstellung verwenden.
-        </p>
       </div>
 
       <NotificationPreferenceDetails
@@ -80,9 +87,13 @@ export function OrganizationNotificationDefaultsForm({
         deliveryMode={deliveryModeDefault}
         minimumPriority={minimumPriorityDefault}
         digestInterval={digestIntervalDefault}
+        digestTime={digestTimeDefault}
+        digestSecondTime={digestSecondTimeDefault}
         onDeliveryModeChange={onDeliveryModeDefaultChange}
         onMinimumPriorityChange={onMinimumPriorityDefaultChange}
         onDigestIntervalChange={onDigestIntervalDefaultChange}
+        onDigestTimeChange={onDigestTimeDefaultChange}
+        onDigestSecondTimeChange={onDigestSecondTimeDefaultChange}
         disabled={disabled}
       />
     </div>

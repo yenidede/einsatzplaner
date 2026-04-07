@@ -6,11 +6,14 @@ import {
 import {
   buildNotificationPreferenceSummary,
   getPreferenceSource,
+  isDigestTime,
   resolveEffectiveNotificationSettings,
 } from './notification-preferences-utils';
 import type {
   DeliveryMode,
   DigestInterval,
+  DigestTime,
+  EffectiveNotificationSettings,
   MinimumPriority,
   OrganizationNotificationCardData,
   OrganizationNotificationDefaults,
@@ -25,6 +28,8 @@ type OrganizationDefaultsRow = {
   deliveryModeDefault: string | null;
   minimumPriorityDefault: string | null;
   digestIntervalDefault: string | null;
+  digestTimeDefault: string | null;
+  digestSecondTimeDefault: string | null;
 };
 
 type UserPreferenceRow = {
@@ -36,6 +41,19 @@ type UserPreferenceRow = {
   deliveryMode: string | null;
   minimumPriority: string | null;
   digestInterval: string | null;
+  digestTime: string | null;
+  digestSecondTime: string | null;
+};
+
+type UserPreferenceBatchRow = {
+  userId: string;
+  useOrganizationDefaults: boolean | null;
+  emailEnabled: boolean | null;
+  deliveryMode: string | null;
+  minimumPriority: string | null;
+  digestInterval: string | null;
+  digestTime: string | null;
+  digestSecondTime: string | null;
 };
 
 type NotificationCardRow = OrganizationDefaultsRow &
@@ -80,6 +98,17 @@ function coerceDigestInterval(
   return fallback;
 }
 
+function coerceDigestTime(
+  value: string | null | undefined,
+  fallback: DigestTime
+): DigestTime {
+  if (value && isDigestTime(value)) {
+    return value;
+  }
+
+  return fallback;
+}
+
 function mapDefaultsRow(
   row: OrganizationDefaultsRow | null,
   organizationId: string
@@ -99,6 +128,14 @@ function mapDefaultsRow(
     digestIntervalDefault: coerceDigestInterval(
       row?.digestIntervalDefault,
       NOTIFICATION_DEFAULTS.digestIntervalDefault
+    ),
+    digestTimeDefault: coerceDigestTime(
+      row?.digestTimeDefault,
+      NOTIFICATION_DEFAULTS.digestTimeDefault
+    ),
+    digestSecondTimeDefault: coerceDigestTime(
+      row?.digestSecondTimeDefault,
+      NOTIFICATION_DEFAULTS.digestSecondTimeDefault
     ),
   };
 }
@@ -127,6 +164,17 @@ function mapUserPreferenceRow(
       row.digestInterval === null
         ? null
         : coerceDigestInterval(row.digestInterval, 'daily'),
+    digestTime:
+      row.digestTime === null
+        ? null
+        : coerceDigestTime(row.digestTime, NOTIFICATION_DEFAULTS.digestTimeDefault),
+    digestSecondTime:
+      row.digestSecondTime === null
+        ? null
+        : coerceDigestTime(
+            row.digestSecondTime,
+            NOTIFICATION_DEFAULTS.digestSecondTimeDefault
+          ),
   };
 }
 
@@ -158,7 +206,9 @@ export async function getOrganizationNotificationDefaults(
       email_enabled_default AS "emailEnabledDefault",
       delivery_mode_default AS "deliveryModeDefault",
       minimum_priority_default AS "minimumPriorityDefault",
-      digest_interval_default AS "digestIntervalDefault"
+      digest_interval_default AS "digestIntervalDefault",
+      TO_CHAR(digest_time_default, 'HH24:MI') AS "digestTimeDefault",
+      TO_CHAR(digest_second_time_default, 'HH24:MI') AS "digestSecondTimeDefault"
     FROM organization_notification_settings
     WHERE organization_id = CAST(${organizationId} AS UUID)
     LIMIT 1
@@ -181,7 +231,9 @@ export async function getUserOrganizationNotificationPreference(
       email_enabled AS "emailEnabled",
       delivery_mode AS "deliveryMode",
       minimum_priority AS "minimumPriority",
-      digest_interval AS "digestInterval"
+      digest_interval AS "digestInterval",
+      TO_CHAR(digest_time, 'HH24:MI') AS "digestTime",
+      TO_CHAR(digest_second_time, 'HH24:MI') AS "digestSecondTime"
     FROM user_organization_notification_preference
     WHERE user_id = CAST(${userId} AS UUID)
       AND organization_id = CAST(${organizationId} AS UUID)
@@ -198,6 +250,8 @@ export async function getUserOrganizationNotificationPreference(
       deliveryMode: null,
       minimumPriority: null,
       digestInterval: null,
+      digestTime: null,
+      digestSecondTime: null,
     }
   );
 }
@@ -214,13 +268,17 @@ export async function getMyOrganizationNotificationCards(
       ons.delivery_mode_default AS "deliveryModeDefault",
       ons.minimum_priority_default AS "minimumPriorityDefault",
       ons.digest_interval_default AS "digestIntervalDefault",
+      TO_CHAR(ons.digest_time_default, 'HH24:MI') AS "digestTimeDefault",
+      TO_CHAR(ons.digest_second_time_default, 'HH24:MI') AS "digestSecondTimeDefault",
       uop.id AS "preferenceId",
       uop.user_id AS "userId",
       uop.use_organization_defaults AS "useOrganizationDefaults",
       uop.email_enabled AS "emailEnabled",
       uop.delivery_mode AS "deliveryMode",
       uop.minimum_priority AS "minimumPriority",
-      uop.digest_interval AS "digestInterval"
+      uop.digest_interval AS "digestInterval",
+      TO_CHAR(uop.digest_time, 'HH24:MI') AS "digestTime",
+      TO_CHAR(uop.digest_second_time, 'HH24:MI') AS "digestSecondTime"
     FROM organization o
     LEFT JOIN organization_notification_settings ons
       ON ons.organization_id = o.id
@@ -260,6 +318,107 @@ export async function getMyOrganizationNotificationCards(
   });
 }
 
+export async function getEffectiveNotificationSettingsForUsers(input: {
+  organizationId: string;
+  userIds: string[];
+  executor?: SqlExecutor;
+}): Promise<Map<string, EffectiveNotificationSettings>> {
+  const executor = input.executor ?? prisma;
+  const uniqueUserIds = Array.from(new Set(input.userIds));
+
+  if (uniqueUserIds.length === 0) {
+    return new Map<string, EffectiveNotificationSettings>();
+  }
+
+  const defaults = await getOrganizationNotificationDefaults(
+    input.organizationId,
+    executor
+  );
+
+  const userIdFragments = uniqueUserIds.map(
+    (userId) => Prisma.sql`CAST(${userId} AS UUID)`
+  );
+  const rows = await executor.$queryRaw<UserPreferenceBatchRow[]>(Prisma.sql`
+    SELECT
+      uor.user_id AS "userId",
+      pref.use_organization_defaults AS "useOrganizationDefaults",
+      pref.email_enabled AS "emailEnabled",
+      pref.delivery_mode AS "deliveryMode",
+      pref.minimum_priority AS "minimumPriority",
+      pref.digest_interval AS "digestInterval",
+      TO_CHAR(pref.digest_time, 'HH24:MI') AS "digestTime",
+      TO_CHAR(pref.digest_second_time, 'HH24:MI') AS "digestSecondTime"
+    FROM user_organization_role uor
+    LEFT JOIN user_organization_notification_preference pref
+      ON pref.user_id = uor.user_id
+     AND pref.organization_id = uor.org_id
+    WHERE uor.org_id = CAST(${input.organizationId} AS UUID)
+      AND uor.user_id IN (${Prisma.join(userIdFragments)})
+  `);
+
+  const settingsByUserId = new Map<string, EffectiveNotificationSettings>();
+
+  for (const row of rows) {
+    const preference = {
+      userId: row.userId,
+      organizationId: input.organizationId,
+      useOrganizationDefaults: row.useOrganizationDefaults ?? true,
+      emailEnabled: row.emailEnabled,
+      deliveryMode:
+        row.deliveryMode === null
+          ? null
+          : coerceDeliveryMode(row.deliveryMode, defaults.deliveryModeDefault),
+      minimumPriority:
+        row.minimumPriority === null
+          ? null
+          : coerceMinimumPriority(
+              row.minimumPriority,
+              defaults.minimumPriorityDefault
+            ),
+      digestInterval:
+        row.digestInterval === null
+          ? null
+          : coerceDigestInterval(
+              row.digestInterval,
+              defaults.digestIntervalDefault
+            ),
+      digestTime:
+        row.digestTime === null
+          ? null
+          : coerceDigestTime(row.digestTime, defaults.digestTimeDefault),
+      digestSecondTime:
+        row.digestSecondTime === null
+          ? null
+          : coerceDigestTime(
+              row.digestSecondTime,
+              defaults.digestSecondTimeDefault
+            ),
+    };
+
+    settingsByUserId.set(
+      row.userId,
+      resolveEffectiveNotificationSettings({
+        defaults,
+        preference,
+      })
+    );
+  }
+
+  for (const userId of uniqueUserIds) {
+    if (!settingsByUserId.has(userId)) {
+      settingsByUserId.set(
+        userId,
+        resolveEffectiveNotificationSettings({
+          defaults,
+          preference: null,
+        })
+      );
+    }
+  }
+
+  return settingsByUserId;
+}
+
 export async function upsertOrganizationNotificationDefaults(
   input: OrganizationNotificationDefaults,
   executor: SqlExecutor = prisma
@@ -271,6 +430,8 @@ export async function upsertOrganizationNotificationDefaults(
       delivery_mode_default,
       minimum_priority_default,
       digest_interval_default,
+      digest_time_default,
+      digest_second_time_default,
       updated_at
     )
     VALUES (
@@ -279,6 +440,8 @@ export async function upsertOrganizationNotificationDefaults(
       ${input.deliveryModeDefault},
       ${input.minimumPriorityDefault},
       ${input.digestIntervalDefault},
+      CAST(${input.digestTimeDefault} AS TIME),
+      CAST(${input.digestSecondTimeDefault} AS TIME),
       NOW()
     )
     ON CONFLICT (organization_id)
@@ -287,6 +450,8 @@ export async function upsertOrganizationNotificationDefaults(
       delivery_mode_default = EXCLUDED.delivery_mode_default,
       minimum_priority_default = EXCLUDED.minimum_priority_default,
       digest_interval_default = EXCLUDED.digest_interval_default,
+      digest_time_default = EXCLUDED.digest_time_default,
+      digest_second_time_default = EXCLUDED.digest_second_time_default,
       updated_at = NOW()
   `);
 }
@@ -304,6 +469,8 @@ export async function upsertUserOrganizationNotificationPreference(
       delivery_mode,
       minimum_priority,
       digest_interval,
+      digest_time,
+      digest_second_time,
       updated_at
     )
     VALUES (
@@ -314,6 +481,8 @@ export async function upsertUserOrganizationNotificationPreference(
       ${input.deliveryMode},
       ${input.minimumPriority},
       ${input.digestInterval},
+      CAST(${input.digestTime} AS TIME),
+      CAST(${input.digestSecondTime} AS TIME),
       NOW()
     )
     ON CONFLICT (user_id, organization_id)
@@ -323,6 +492,8 @@ export async function upsertUserOrganizationNotificationPreference(
       delivery_mode = EXCLUDED.delivery_mode,
       minimum_priority = EXCLUDED.minimum_priority,
       digest_interval = EXCLUDED.digest_interval,
+      digest_time = EXCLUDED.digest_time,
+      digest_second_time = EXCLUDED.digest_second_time,
       updated_at = NOW()
   `);
 }

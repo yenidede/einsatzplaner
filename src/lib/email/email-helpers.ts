@@ -3,6 +3,20 @@
 import prisma from '@/lib/prisma';
 import { emailService } from '@/lib/email/EmailService';
 import { ChangeTypeIds } from '@/features/activity_log/changeTypeIds';
+import { getEffectiveNotificationSettingsForUsers } from '@/features/notification-preferences/notification-preferences-dal';
+import {
+  enqueueNotificationDigestItem,
+  isDigestQueueSchemaMissingError,
+} from '@/features/notification-preferences/notification-email-digest-dal';
+import type {
+  DigestInterval,
+  DigestTime,
+} from '@/features/notification-preferences/types';
+import {
+  splitWarningRecipientsByDelivery,
+  type RoutedWarningRecipients,
+  type WarningRecipient,
+} from '@/lib/email/email-warning-routing';
 
 const einsatzCheckLocks = new Map<string, Promise<void>>();
 
@@ -95,10 +109,13 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
   });
 
   if (!einsatz) {
-    return [];
+    return {
+      organizationId: null,
+      recipients: [],
+    };
   }
 
-  const recipientMap = new Map<string, { email: string; name: string }>();
+  const recipientMap = new Map<string, WarningRecipient>();
 
   if (einsatz.created_by) {
     const creator = await prisma.user.findUnique({
@@ -113,6 +130,7 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
 
     if (creator?.email) {
       recipientMap.set(creator.id, {
+        userId: creator.id,
         email: creator.email,
         name: `${creator.firstname} ${creator.lastname}`,
       });
@@ -129,9 +147,13 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
     },
   });
 
-  const editorUserIds = [
-    ...new Set(changeLogs.map((log) => log.user_id).filter(Boolean)),
-  ] as string[];
+  const editorUserIds = Array.from(
+    new Set(
+      changeLogs
+        .map((log) => log.user_id)
+        .filter((userId): userId is string => typeof userId === 'string')
+    )
+  );
 
   if (editorUserIds.length > 0) {
     const adminUserIds = await prisma.user_organization_role.findMany({
@@ -166,6 +188,7 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
       for (const user of adminUsers) {
         if (user.email && !recipientMap.has(user.id)) {
           recipientMap.set(user.id, {
+            userId: user.id,
             email: user.email,
             name: `${user.firstname} ${user.lastname}`,
           });
@@ -174,7 +197,77 @@ export async function getEinsatzWarningRecipients(einsatzId: string) {
     }
   }
 
-  return Array.from(recipientMap.values());
+  return {
+    organizationId: einsatz.org_id,
+    recipients: Array.from(recipientMap.values()),
+  };
+}
+
+export async function routeEinsatzWarningRecipientsByPreference(input: {
+  organizationId: string;
+  recipients: WarningRecipient[];
+}): Promise<RoutedWarningRecipients> {
+  const recipientUserIds = input.recipients.map((recipient) => recipient.userId);
+  const effectiveSettingsByUser = await getEffectiveNotificationSettingsForUsers({
+    organizationId: input.organizationId,
+    userIds: recipientUserIds,
+  });
+
+  return splitWarningRecipientsByDelivery({
+    recipients: input.recipients,
+    settingsByUserId: effectiveSettingsByUser,
+  });
+}
+
+async function enqueueEinsatzWarningDigestNotifications(input: {
+  organizationId: string;
+  digestRecipients: Array<{
+    userId: string;
+    email: string;
+    name: string;
+    digestInterval: DigestInterval;
+    digestTime: DigestTime;
+    digestSecondTime: DigestTime;
+  }>;
+  einsatz: {
+    id: string;
+    title: string;
+    start: Date;
+  };
+  warnings: string[];
+}) {
+  const appUrl = process.env.NEXTAUTH_URL;
+  const einsatzUrl = appUrl
+    ? `${appUrl}/einsatzverwaltung?einsatz=${input.einsatz.id}`
+    : `/einsatzverwaltung?einsatz=${input.einsatz.id}`;
+
+  for (const recipient of input.digestRecipients) {
+    const dedupeKey = [
+      recipient.userId,
+      input.organizationId,
+      input.einsatz.id,
+      input.einsatz.start.toISOString(),
+      input.warnings.join('|'),
+    ].join(':');
+
+    await enqueueNotificationDigestItem({
+      userId: recipient.userId,
+      organizationId: input.organizationId,
+      priority: 'critical',
+      digestInterval: recipient.digestInterval,
+      digestTime: recipient.digestTime,
+      digestSecondTime: recipient.digestSecondTime,
+      eventType: 'einsatz_requirements_warning',
+      dedupeKey,
+      payload: {
+        einsatzId: input.einsatz.id,
+        einsatzTitle: input.einsatz.title,
+        einsatzStartIso: input.einsatz.start.toISOString(),
+        warningLines: input.warnings,
+        einsatzUrl,
+      },
+    });
+  }
 }
 
 export async function checkEinsatzRequirementsAfterAssignment(
@@ -285,28 +378,79 @@ async function performEinsatzCheck(einsatzId: string) {
   }
 
   if (warnings.length > 0) {
-    const recipients = await getEinsatzWarningRecipients(einsatzId);
+    const recipientData = await getEinsatzWarningRecipients(einsatzId);
 
-    if (recipients.length > 0) {
+    if (
+      recipientData.organizationId &&
+      recipientData.recipients.length > 0
+    ) {
       try {
-        await emailService.sendEinsatzWarningEmail(
-          recipients,
-          {
-            id: einsatz.id,
-            title: einsatz.title,
-            start: einsatz.start,
-          },
-          warnings,
-          {
-            name: einsatz.organization.name,
-            einsatz_name_singular: einsatz.organization.einsatz_name_singular,
-            einsatz_name_plural: einsatz.organization.einsatz_name_plural,
-            helper_name_singular:
-              einsatz.organization.helper_name_singular || 'Helfer:in',
-            helper_name_plural:
-              einsatz.organization.helper_name_plural || 'Helfer:innen',
+        const routedRecipients = await routeEinsatzWarningRecipientsByPreference({
+          organizationId: recipientData.organizationId,
+          recipients: recipientData.recipients,
+        });
+
+        if (routedRecipients.immediateRecipients.length > 0) {
+          await emailService.sendEinsatzWarningEmail(
+            routedRecipients.immediateRecipients,
+            {
+              id: einsatz.id,
+              title: einsatz.title,
+              start: einsatz.start,
+            },
+            warnings,
+            {
+              name: einsatz.organization.name,
+              einsatz_name_singular: einsatz.organization.einsatz_name_singular,
+              einsatz_name_plural: einsatz.organization.einsatz_name_plural,
+              helper_name_singular:
+                einsatz.organization.helper_name_singular || 'Helfer:in',
+              helper_name_plural:
+                einsatz.organization.helper_name_plural || 'Helfer:innen',
+            }
+          );
+        }
+
+        if (routedRecipients.digestRecipients.length > 0) {
+          try {
+            await enqueueEinsatzWarningDigestNotifications({
+              organizationId: recipientData.organizationId,
+              digestRecipients: routedRecipients.digestRecipients,
+              einsatz: {
+                id: einsatz.id,
+                title: einsatz.title,
+                start: einsatz.start,
+              },
+              warnings,
+            });
+          } catch (error) {
+            if (isDigestQueueSchemaMissingError(error)) {
+              await emailService.sendEinsatzWarningEmail(
+                routedRecipients.digestRecipients.map((recipient) => ({
+                  email: recipient.email,
+                  name: recipient.name,
+                })),
+                {
+                  id: einsatz.id,
+                  title: einsatz.title,
+                  start: einsatz.start,
+                },
+                warnings,
+                {
+                  name: einsatz.organization.name,
+                  einsatz_name_singular: einsatz.organization.einsatz_name_singular,
+                  einsatz_name_plural: einsatz.organization.einsatz_name_plural,
+                  helper_name_singular:
+                    einsatz.organization.helper_name_singular || 'Helfer:in',
+                  helper_name_plural:
+                    einsatz.organization.helper_name_plural || 'Helfer:innen',
+                }
+              );
+            } else {
+              throw error;
+            }
           }
-        );
+        }
       } catch (error) {
         console.error('Fehler beim Senden der Warn-E-Mail:', error);
       }

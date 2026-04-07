@@ -44,6 +44,8 @@ import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavi
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
+import { usePermissionGuard } from '@/hooks/use-permission-guard';
+import { useActiveOrganizationSwitch } from '@/hooks/use-active-organization-switch';
 import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
 import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import {
@@ -56,13 +58,13 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { isNormalizedTime } from '@/lib/time-input';
 import {
   OrganizationNotificationDefaultsForm,
   useOrganizationNotificationDefaults,
   useUpdateOrganizationNotificationDefaults,
 } from '@/features/notification-preferences';
+import { findOrganizationById } from '@/components/settings/settings-navigation.utils';
 
 /**
  * Page component for managing an organization's settings, templates, users, and PDF-export configuration.
@@ -76,8 +78,11 @@ export default function OrganizationManagePage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const orgId = params?.orgId as string;
   const { data: session } = useSession();
+  const requestedOrgId =
+    typeof params?.orgId === 'string' ? params.orgId : undefined;
+  const activeOrgId = session?.user?.activeOrganization?.id;
+  const orgId = requestedOrgId ?? activeOrgId;
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
@@ -93,8 +98,12 @@ export default function OrganizationManagePage() {
   const [maxParticipantsPerHelper, setMaxParticipantsPerHelper] = useState('');
   const [defaultStarttime, setDefaultStarttime] = useState('09:00');
   const [defaultEndtime, setDefaultEndtime] = useState('10:00');
-  const [defaultStarttimeError, setDefaultStarttimeError] = useState<string | null>(null);
-  const [defaultEndtimeError, setDefaultEndtimeError] = useState<string | null>(null);
+  const [defaultStarttimeError, setDefaultStarttimeError] = useState<
+    string | null
+  >(null);
+  const [defaultEndtimeError, setDefaultEndtimeError] = useState<string | null>(
+    null
+  );
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [smallLogoUrl, setSmallLogoUrl] = useState<string>('');
@@ -117,8 +126,16 @@ export default function OrganizationManagePage() {
     notificationMinimumPriorityDefault,
     setNotificationMinimumPriorityDefault,
   ] = useState<'info' | 'review' | 'critical'>('review');
-  const [notificationDigestIntervalDefault, setNotificationDigestIntervalDefault] =
-    useState<'daily' | 'twice_daily'>('daily');
+  const [
+    notificationDigestIntervalDefault,
+    setNotificationDigestIntervalDefault,
+  ] = useState<'daily' | 'twice_daily'>('daily');
+  const [notificationDigestTimeDefault, setNotificationDigestTimeDefault] =
+    useState('08:00');
+  const [
+    notificationDigestSecondTimeDefault,
+    setNotificationDigestSecondTimeDefault,
+  ] = useState('16:00');
 
   // Initial values for change detection
   const initialValuesRef = useRef<{
@@ -145,15 +162,34 @@ export default function OrganizationManagePage() {
       | 'critical_and_digest';
     notificationMinimumPriorityDefault: 'info' | 'review' | 'critical';
     notificationDigestIntervalDefault: 'daily' | 'twice_daily';
+    notificationDigestTimeDefault: string;
+    notificationDigestSecondTimeDefault: string;
   } | null>(null);
 
   useSettingsSessionValidation();
 
-  const { isLoading: isLoadingUser } = useUserProfile(session?.user?.id);
+  const {
+    data: userProfile,
+    isLoading: isLoadingUser,
+    error: userProfileError,
+    refetch: refetchUserProfile,
+  } = useUserProfile(session?.user?.id);
   const { isAuthorized, isLoading: isLoadingPermission } = usePermissionGuard({
     requiredPermissions: ['organization:update'],
     requireAll: false,
   });
+  const activeOrganization = findOrganizationById(
+    userProfile?.organizations ?? [],
+    activeOrgId
+  );
+  const requestedOrganization = findOrganizationById(
+    userProfile?.organizations ?? [],
+    requestedOrgId
+  );
+  const isViewingInactiveOrganization =
+    !!requestedOrganization && requestedOrgId !== activeOrgId;
+  const { isSwitching: isSwitchingOrganization, switchOrganization } =
+    useActiveOrganizationSwitch();
   const {
     data: orgData,
     isLoading: orgLoading,
@@ -183,7 +219,7 @@ export default function OrganizationManagePage() {
   } = useSectionNavigation<OrgManageSectionId>({
     navItems: ORG_MANAGE_NAV_ITEMS,
     defaultSection: 'details',
-    basePath: `/settings/org/${orgId}`,
+    basePath: orgId ? `/settings/org/${orgId}` : '/settings/org',
     shouldSetDefault: !!orgData,
   });
 
@@ -233,6 +269,10 @@ export default function OrganizationManagePage() {
           notificationDefaults?.minimumPriorityDefault ?? 'review',
         notificationDigestIntervalDefault:
           notificationDefaults?.digestIntervalDefault ?? 'daily',
+        notificationDigestTimeDefault:
+          notificationDefaults?.digestTimeDefault ?? '08:00',
+        notificationDigestSecondTimeDefault:
+          notificationDefaults?.digestSecondTimeDefault ?? '16:00',
       };
       // Clear logo files when data is refreshed
       setLogoFile(null);
@@ -272,6 +312,10 @@ export default function OrganizationManagePage() {
           notificationDefaults?.minimumPriorityDefault ?? 'review',
         notificationDigestIntervalDefault:
           notificationDefaults?.digestIntervalDefault ?? 'daily',
+        notificationDigestTimeDefault:
+          notificationDefaults?.digestTimeDefault ?? '08:00',
+        notificationDigestSecondTimeDefault:
+          notificationDefaults?.digestSecondTimeDefault ?? '16:00',
       };
     }
 
@@ -295,12 +339,22 @@ export default function OrganizationManagePage() {
       return;
     }
 
-    setNotificationEmailEnabledDefault(notificationDefaults.emailEnabledDefault);
-    setNotificationDeliveryModeDefault(notificationDefaults.deliveryModeDefault);
+    setNotificationEmailEnabledDefault(
+      notificationDefaults.emailEnabledDefault
+    );
+    setNotificationDeliveryModeDefault(
+      notificationDefaults.deliveryModeDefault
+    );
     setNotificationMinimumPriorityDefault(
       notificationDefaults.minimumPriorityDefault
     );
-    setNotificationDigestIntervalDefault(notificationDefaults.digestIntervalDefault);
+    setNotificationDigestIntervalDefault(
+      notificationDefaults.digestIntervalDefault
+    );
+    setNotificationDigestTimeDefault(notificationDefaults.digestTimeDefault);
+    setNotificationDigestSecondTimeDefault(
+      notificationDefaults.digestSecondTimeDefault
+    );
 
     if (initialValuesRef.current) {
       initialValuesRef.current = {
@@ -313,6 +367,9 @@ export default function OrganizationManagePage() {
           notificationDefaults.minimumPriorityDefault,
         notificationDigestIntervalDefault:
           notificationDefaults.digestIntervalDefault,
+        notificationDigestTimeDefault: notificationDefaults.digestTimeDefault,
+        notificationDigestSecondTimeDefault:
+          notificationDefaults.digestSecondTimeDefault,
       };
     }
   }, [notificationDefaults]);
@@ -323,10 +380,9 @@ export default function OrganizationManagePage() {
     currentUserWithRoles?.filter(
       (userRole) => userRole.user.id === session?.user?.id
     ) ?? [];
-  const isSuperadmin =
-    currentUserRoles.some(
-      (role) => role.role.name.toLowerCase() === 'superadmin'
-    );
+  const isSuperadmin = currentUserRoles.some(
+    (role) => role.role.name.toLowerCase() === 'superadmin'
+  );
 
   const updateMutation = useUpdateOrganization(orgId);
   const notificationDefaultsMutation =
@@ -353,13 +409,17 @@ export default function OrganizationManagePage() {
       vat !== initial.vat ||
       zvr !== initial.zvr ||
       authority !== initial.authority ||
-      notificationEmailEnabledDefault !== initial.notificationEmailEnabledDefault ||
+      notificationEmailEnabledDefault !==
+        initial.notificationEmailEnabledDefault ||
       notificationDeliveryModeDefault !==
         initial.notificationDeliveryModeDefault ||
       notificationMinimumPriorityDefault !==
         initial.notificationMinimumPriorityDefault ||
       notificationDigestIntervalDefault !==
         initial.notificationDigestIntervalDefault ||
+      notificationDigestTimeDefault !== initial.notificationDigestTimeDefault ||
+      notificationDigestSecondTimeDefault !==
+        initial.notificationDigestSecondTimeDefault ||
       logoFile !== null ||
       smallLogoFile !== null
     );
@@ -385,7 +445,11 @@ export default function OrganizationManagePage() {
         notificationMinimumPriorityDefault !==
           initialValuesRef.current.notificationMinimumPriorityDefault ||
         notificationDigestIntervalDefault !==
-          initialValuesRef.current.notificationDigestIntervalDefault;
+          initialValuesRef.current.notificationDigestIntervalDefault ||
+        notificationDigestTimeDefault !==
+          initialValuesRef.current.notificationDigestTimeDefault ||
+        notificationDigestSecondTimeDefault !==
+          initialValuesRef.current.notificationDigestSecondTimeDefault;
 
       await updateMutation.mutateAsync({
         name,
@@ -414,6 +478,8 @@ export default function OrganizationManagePage() {
           deliveryModeDefault: notificationDeliveryModeDefault,
           minimumPriorityDefault: notificationMinimumPriorityDefault,
           digestIntervalDefault: notificationDigestIntervalDefault,
+          digestTimeDefault: notificationDigestTimeDefault,
+          digestSecondTimeDefault: notificationDigestSecondTimeDefault,
         });
       }
 
@@ -442,6 +508,8 @@ export default function OrganizationManagePage() {
           notificationDeliveryModeDefault,
           notificationMinimumPriorityDefault,
           notificationDigestIntervalDefault,
+          notificationDigestTimeDefault,
+          notificationDigestSecondTimeDefault,
         };
       }
       setLogoFile(null);
@@ -471,6 +539,8 @@ export default function OrganizationManagePage() {
     notificationDeliveryModeDefault,
     notificationMinimumPriorityDefault,
     notificationDigestIntervalDefault,
+    notificationDigestTimeDefault,
+    notificationDigestSecondTimeDefault,
     allowSelfSignOut,
     notificationDefaultsMutation,
     updateMutation,
@@ -501,7 +571,7 @@ export default function OrganizationManagePage() {
     try {
       const formData = new FormData();
       formData.append('logo', file);
-      formData.append('orgId', orgId);
+      formData.append('orgId', orgId ?? '');
       const uploadRes = await uploadOrganizationLogoAction(formData);
 
       if (!uploadRes) throw new Error('Upload fehlgeschlagen');
@@ -525,7 +595,7 @@ export default function OrganizationManagePage() {
   const handleLogoRemove = async () => {
     const toastId = toast.loading('Logo wird entfernt...');
     try {
-      await removeOrganizationLogoAction(orgId);
+      await removeOrganizationLogoAction(orgId ?? '');
 
       setLogoUrl('');
       setLogoFile(null);
@@ -546,7 +616,7 @@ export default function OrganizationManagePage() {
     try {
       const formData = new FormData();
       formData.append('smallLogo', file);
-      formData.append('orgId', orgId);
+      formData.append('orgId', orgId ?? '');
       const uploadRes = await uploadOrganizationSmallLogoAction(formData);
 
       if (!uploadRes) throw new Error('Upload fehlgeschlagen');
@@ -570,7 +640,7 @@ export default function OrganizationManagePage() {
   const handleSmallLogoRemove = async () => {
     const toastId = toast.loading('Kleines Logo wird entfernt...');
     try {
-      await removeOrganizationSmallLogoAction(orgId);
+      await removeOrganizationSmallLogoAction(orgId ?? '');
 
       setSmallLogoUrl('');
       setSmallLogoFile(null);
@@ -596,14 +666,81 @@ export default function OrganizationManagePage() {
     setSelectedUserId(null);
   };
 
-  if (isLoadingPermission) {
-    return <div>Lade Nutzerdaten...</div>;
+  const handleSwitchToRequestedOrganization = async () => {
+    if (!requestedOrgId) {
+      return;
+    }
+
+    try {
+      await switchOrganization(requestedOrgId, {
+        showSuccessToast: false,
+        syncSettingsRoute: false,
+      });
+    } catch {
+      return;
+    }
+  };
+
+  if (isLoadingUser || isLoadingPermission || isSwitchingOrganization) {
+    return <SettingsLoadingSkeleton sidebarItems={7} />;
+  }
+
+  if (userProfileError) {
+    return (
+      <SettingsErrorCard
+        title="Fehler beim Laden des Profils"
+        description="Die verfügbaren Organisationen konnten nicht geladen werden."
+        error={userProfileError}
+        onRetry={() => void refetchUserProfile()}
+      />
+    );
+  }
+
+  if (requestedOrgId && !requestedOrganization) {
+    return (
+      <SettingsErrorCard
+        title="Organisation nicht verfügbar"
+        description="Die angeforderte Organisation steht Ihnen nicht zur Verfügung."
+        primaryActionLabel="Zu den persönlichen Einstellungen"
+        onPrimaryAction={() => router.push('/settings/user')}
+      />
+    );
+  }
+
+  if (requestedOrgId && isViewingInactiveOrganization) {
+    return (
+      <SettingsErrorCard
+        title="Andere Organisation ausgewählt"
+        description={`Für diese Seite muss zuerst die Organisation „${requestedOrganization.name}“ als aktive Organisation gesetzt werden.`}
+        primaryActionLabel="Aktive Organisation wechseln"
+        onPrimaryAction={handleSwitchToRequestedOrganization}
+      />
+    );
+  }
+
+  if (!activeOrgId || !activeOrganization) {
+    return (
+      <SettingsErrorCard
+        title="Keine aktive Organisation"
+        description="Für Organisationseinstellungen muss zuerst eine aktive Organisation ausgewählt sein."
+        primaryActionLabel="Zu den persönlichen Einstellungen"
+        onPrimaryAction={() => router.push('/settings/user')}
+      />
+    );
   }
 
   if (!isAuthorized) {
-    return <div>Keine Berechtigung. Weiterleitung...</div>;
+    return (
+      <SettingsErrorCard
+        title="Keine Berechtigung für Organisationseinstellungen"
+        description="Sie haben für die aktuell aktive Organisation keine Berechtigung, Organisationseinstellungen zu verwalten."
+        primaryActionLabel="Zu den persönlichen Einstellungen"
+        onPrimaryAction={() => router.push('/settings/user')}
+      />
+    );
   }
-  if (isLoadingUser || orgLoading) {
+
+  if (orgLoading) {
     return <SettingsLoadingSkeleton sidebarItems={7} />;
   }
 
@@ -623,9 +760,12 @@ export default function OrganizationManagePage() {
 
   const header = (
     <PageHeader
-      title={`${name} verwalten`}
+      title="Organisationseinstellungen"
+      description={activeOrganization.name}
       onSave={handleSave}
-      isSaving={updateMutation.isPending || notificationDefaultsMutation.isPending}
+      isSaving={
+        updateMutation.isPending || notificationDefaultsMutation.isPending
+      }
       onCancel={() => router.push('/')}
     />
   );
@@ -636,6 +776,10 @@ export default function OrganizationManagePage() {
       onSectionChange={handleSectionChange}
     />
   );
+
+  if (!orgId) {
+    return <div>Organisation kann nicht geladen werden.</div>;
+  }
 
   return (
     <>
@@ -790,7 +934,9 @@ export default function OrganizationManagePage() {
         >
           <Card>
             <CardHeader>
-              <CardTitle id="notifications-heading">Benachrichtigungen</CardTitle>
+              <CardTitle id="notifications-heading">
+                Benachrichtigungen
+              </CardTitle>
               <CardDescription>
                 Definieren Sie, welche E-Mails Mitglieder standardmäßig
                 erhalten. Mitglieder können diese Werte bei Bedarf mit einer
@@ -809,12 +955,20 @@ export default function OrganizationManagePage() {
                 deliveryModeDefault={notificationDeliveryModeDefault}
                 minimumPriorityDefault={notificationMinimumPriorityDefault}
                 digestIntervalDefault={notificationDigestIntervalDefault}
+                digestTimeDefault={notificationDigestTimeDefault}
+                digestSecondTimeDefault={notificationDigestSecondTimeDefault}
                 onEmailEnabledDefaultChange={setNotificationEmailEnabledDefault}
                 onDeliveryModeDefaultChange={setNotificationDeliveryModeDefault}
                 onMinimumPriorityDefaultChange={
                   setNotificationMinimumPriorityDefault
                 }
-                onDigestIntervalDefaultChange={setNotificationDigestIntervalDefault}
+                onDigestIntervalDefaultChange={
+                  setNotificationDigestIntervalDefault
+                }
+                onDigestTimeDefaultChange={setNotificationDigestTimeDefault}
+                onDigestSecondTimeDefaultChange={
+                  setNotificationDigestSecondTimeDefault
+                }
                 disabled={
                   notificationDefaultsMutation.isPending ||
                   notificationDefaultsLoading ||

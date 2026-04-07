@@ -14,9 +14,7 @@ import {
   upsertOrganizationNotificationDefaults,
   upsertUserOrganizationNotificationPreference,
 } from './notification-preferences-dal';
-import {
-  resolveEffectiveNotificationSettings,
-} from './notification-preferences-utils';
+import { resolveEffectiveNotificationSettings } from './notification-preferences-utils';
 import {
   updateMyNotificationDetailsInputSchema,
   updateMyNotificationPrimaryInputSchema,
@@ -36,11 +34,11 @@ async function checkUserSession() {
 function normalizeSchemaError(error: unknown): never {
   if (
     error instanceof Error &&
-    error.message.includes('relation') &&
+    (error.message.includes('relation') || error.message.includes('column')) &&
     error.message.includes('does not exist')
   ) {
     throw new Error(
-      'Das Benachrichtigungsdatenmodell ist noch nicht in der Datenbank vorhanden. Bitte führen Sie zuerst das SQL-Migrationsskript aus.'
+      'Das Benachrichtigungsdatenmodell ist noch nicht in der Datenbank vorhanden. Bitte führen Sie docs/sql/notification-digest-queue.sql in Ihrer Datenbank aus.'
     );
   }
 
@@ -146,6 +144,15 @@ export async function updateMyNotificationPrimaryAction(input: {
           nextUseOrganizationDefaults
             ? currentPreference?.digestInterval ?? null
             : currentPreference?.digestInterval ?? previousEffective.digestInterval,
+        digestTime:
+          nextUseOrganizationDefaults
+            ? currentPreference?.digestTime ?? null
+            : currentPreference?.digestTime ?? previousEffective.digestTime,
+        digestSecondTime:
+          nextUseOrganizationDefaults
+            ? currentPreference?.digestSecondTime ?? null
+            : currentPreference?.digestSecondTime ??
+              previousEffective.digestSecondTime,
       };
 
       await upsertUserOrganizationNotificationPreference(nextPreference, tx);
@@ -181,6 +188,8 @@ export async function updateMyNotificationDetailsAction(input: {
   deliveryMode: 'critical_only' | 'digest_only' | 'critical_and_digest';
   minimumPriority: 'info' | 'review' | 'critical';
   digestInterval: 'daily' | 'twice_daily';
+  digestTime: string;
+  digestSecondTime?: string;
 }) {
   const parsed = updateMyNotificationDetailsInputSchema.parse(input);
   const session = await checkUserSession();
@@ -231,6 +240,11 @@ export async function updateMyNotificationDetailsAction(input: {
         deliveryMode: parsed.deliveryMode,
         minimumPriority: parsed.minimumPriority,
         digestInterval: parsed.digestInterval,
+        digestTime: parsed.digestTime,
+        digestSecondTime:
+          parsed.digestInterval === 'twice_daily'
+            ? parsed.digestSecondTime ?? previousEffective.digestSecondTime
+            : previousEffective.digestSecondTime,
       };
 
       await upsertUserOrganizationNotificationPreference(nextPreference, tx);
@@ -267,11 +281,16 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
   deliveryModeDefault: 'critical_only' | 'digest_only' | 'critical_and_digest';
   minimumPriorityDefault: 'info' | 'review' | 'critical';
   digestIntervalDefault: 'daily' | 'twice_daily';
+  digestTimeDefault: string;
+  digestSecondTimeDefault: string;
 }) {
   const parsed = updateOrganizationNotificationDefaultsInputSchema.parse(input);
   const session = await checkUserSession();
 
-  const isMember = await isUserInOrganization(session.user.id, parsed.organizationId);
+  const isMember = await isUserInOrganization(
+    session.user.id,
+    parsed.organizationId
+  );
   if (!isMember) {
     throw new Error('Sie sind kein Mitglied dieser Organisation.');
   }
@@ -300,6 +319,8 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
           deliveryModeDefault: parsed.deliveryModeDefault,
           minimumPriorityDefault: parsed.minimumPriorityDefault,
           digestIntervalDefault: parsed.digestIntervalDefault,
+          digestTimeDefault: parsed.digestTimeDefault,
+          digestSecondTimeDefault: parsed.digestSecondTimeDefault,
         },
         tx
       );
