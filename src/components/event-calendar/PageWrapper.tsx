@@ -66,7 +66,7 @@ export default function CalendarPageWrapper({
     ? description
     : mode === 'verwaltung'
       ? (activeOrg?.verwalteransicht_description ??
-        `Hier können ${einsatz_plural} bearbeitet, erstellt und gelöscht werden..`)
+        `Hier können ${einsatz_plural} bearbeitet, erstellt und gelöscht werden.`)
       : (activeOrg?.helferansicht_description ??
         `Hier sehen Sie alle ${einsatz_plural}. Bitte tragen Sie sich für die Termine ein, an denen Sie verfügbar sind.`);
 
