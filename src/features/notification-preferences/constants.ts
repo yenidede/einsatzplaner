@@ -19,7 +19,7 @@ export const MINIMUM_PRIORITY_VALUES = [
 
 export const DIGEST_INTERVAL_VALUES = [
   'daily',
-  'twice_daily',
+  'every_2_days',
 ] as const satisfies readonly DigestInterval[];
 
 function createDigestTimeValues(stepMinutes: number): DigestTime[] {
@@ -59,7 +59,7 @@ export const MINIMUM_PRIORITY_LABELS: Record<MinimumPriority, string> = {
 
 export const DIGEST_INTERVAL_LABELS: Record<DigestInterval, string> = {
   daily: '1x täglich',
-  twice_daily: '2x täglich',
+  every_2_days: 'alle 2 Tage',
 };
 
 export const MINIMUM_PRIORITY_SUMMARY_LABELS: Record<MinimumPriority, string> =

@@ -91,7 +91,10 @@ function coerceDigestInterval(
   value: string | null | undefined,
   fallback: DigestInterval
 ): DigestInterval {
-  if (value === 'daily' || value === 'twice_daily') {
+  if (
+    value === 'daily' ||
+    value === 'every_2_days'
+  ) {
     return value;
   }
 
@@ -163,7 +166,7 @@ function mapUserPreferenceRow(
     digestInterval:
       row.digestInterval === null
         ? null
-        : coerceDigestInterval(row.digestInterval, 'daily'),
+        : coerceDigestInterval(row.digestInterval, NOTIFICATION_DEFAULTS.digestIntervalDefault),
     digestTime:
       row.digestTime === null
         ? null

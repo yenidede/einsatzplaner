@@ -129,7 +129,7 @@ export default function OrganizationManagePage() {
   const [
     notificationDigestIntervalDefault,
     setNotificationDigestIntervalDefault,
-  ] = useState<'daily' | 'twice_daily'>('daily');
+  ] = useState<'daily' | 'every_2_days'>('daily');
   const [notificationDigestTimeDefault, setNotificationDigestTimeDefault] =
     useState('08:00');
   const [
@@ -161,7 +161,7 @@ export default function OrganizationManagePage() {
       | 'digest_only'
       | 'critical_and_digest';
     notificationMinimumPriorityDefault: 'info' | 'review' | 'critical';
-    notificationDigestIntervalDefault: 'daily' | 'twice_daily';
+    notificationDigestIntervalDefault: 'daily' | 'every_2_days';
     notificationDigestTimeDefault: string;
     notificationDigestSecondTimeDefault: string;
   } | null>(null);

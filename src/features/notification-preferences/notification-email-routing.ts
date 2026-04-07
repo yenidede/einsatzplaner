@@ -79,35 +79,17 @@ export function computeNextDigestDispatchAt(input: {
     NOTIFICATION_DEFAULTS.digestTimeDefault
   );
 
+  const todayAtDigestTime = buildTodayAt(firstDigestTime, now);
+  if (todayAtDigestTime.getTime() > now.getTime()) {
+    return todayAtDigestTime;
+  }
+
+  const nextDispatch = new Date(todayAtDigestTime);
   if (digestInterval === 'daily') {
-    const todayAtDigestTime = buildTodayAt(firstDigestTime, now);
-    if (todayAtDigestTime.getTime() > now.getTime()) {
-      return todayAtDigestTime;
-    }
-
-    const tomorrowAtDigestTime = new Date(todayAtDigestTime);
-    tomorrowAtDigestTime.setDate(tomorrowAtDigestTime.getDate() + 1);
-    return tomorrowAtDigestTime;
+    nextDispatch.setDate(nextDispatch.getDate() + 1);
+    return nextDispatch;
   }
 
-  const secondDigestTime = normalizeDigestTime(
-    input.digestSecondTime,
-    NOTIFICATION_DEFAULTS.digestSecondTimeDefault
-  );
-
-  const todayCandidates = [
-    buildTodayAt(firstDigestTime, now),
-    buildTodayAt(secondDigestTime, now),
-  ].sort((left, right) => left.getTime() - right.getTime());
-
-  const nextTodayCandidate = todayCandidates.find(
-    (candidate) => candidate.getTime() > now.getTime()
-  );
-  if (nextTodayCandidate) {
-    return nextTodayCandidate;
-  }
-
-  const tomorrowFirstCandidate = new Date(todayCandidates[0]);
-  tomorrowFirstCandidate.setDate(tomorrowFirstCandidate.getDate() + 1);
-  return tomorrowFirstCandidate;
+  nextDispatch.setDate(nextDispatch.getDate() + 2);
+  return nextDispatch;
 }
