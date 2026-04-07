@@ -135,4 +135,25 @@ describe('useActiveOrganizationSwitch', () => {
     expect(mockToastSuccess).not.toHaveBeenCalled();
     expect(result.current.isSwitching).toBe(false);
   });
+
+  it('fuehrt von der Expired-Route nach erfolgreichem Wechsel zur Hauptansicht zurueck', async () => {
+    mockPathname = '/subscription-expired';
+    mockUpdateActiveOrganizationAction.mockResolvedValue({
+      success: true,
+      organization: {
+        id: 'org-2',
+        name: 'Neuer Verein',
+        logo_url: 'logo.png',
+      },
+    });
+
+    const { result } = renderHook(() => useActiveOrganizationSwitch());
+
+    await result.current.switchOrganization('org-2');
+
+    expect(mockPush).toHaveBeenCalledWith('/');
+    expect(mockToastSuccess).toHaveBeenCalledWith(
+      'Organisation erfolgreich zu Neuer Verein gewechselt.'
+    );
+  });
 });
