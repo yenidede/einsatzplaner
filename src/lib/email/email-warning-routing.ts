@@ -41,6 +41,13 @@ export function splitWarningRecipientsByDelivery(input: {
   for (const recipient of recipients) {
     const settings = settingsByUserId.get(recipient.userId);
     if (!settings) {
+      console.warn(
+        `[email-warning-routing] Fehlende Benachrichtigungseinstellungen für userId=${recipient.userId}; Fallback auf Sofortversand.`
+      );
+      immediateRecipients.push({
+        email: recipient.email,
+        name: recipient.name,
+      });
       continue;
     }
 

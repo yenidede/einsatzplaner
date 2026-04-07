@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import {
   DIGEST_INTERVAL_LABELS,

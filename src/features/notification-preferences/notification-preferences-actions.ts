@@ -99,7 +99,8 @@ export async function updateMyNotificationPrimaryAction(input: {
       const currentPreference = await getUserOrganizationNotificationPreference(
         session.user.id,
         parsed.organizationId,
-        tx
+        tx,
+        defaults
       );
 
       const previousEffective = resolveEffectiveNotificationSettings({
@@ -213,7 +214,8 @@ export async function updateMyNotificationDetailsAction(input: {
       const currentPreference = await getUserOrganizationNotificationPreference(
         session.user.id,
         parsed.organizationId,
-        tx
+        tx,
+        defaults
       );
 
       const previousEffective = resolveEffectiveNotificationSettings({
@@ -241,7 +243,8 @@ export async function updateMyNotificationDetailsAction(input: {
         minimumPriority: parsed.minimumPriority,
         digestInterval: parsed.digestInterval,
         digestTime: parsed.digestTime,
-        digestSecondTime: previousEffective.digestSecondTime,
+        digestSecondTime:
+          parsed.digestSecondTime ?? previousEffective.digestSecondTime,
       };
 
       await upsertUserOrganizationNotificationPreference(nextPreference, tx);
@@ -284,26 +287,27 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
   const parsed = updateOrganizationNotificationDefaultsInputSchema.parse(input);
   const session = await checkUserSession();
 
-  const isMember = await isUserInOrganization(
-    session.user.id,
-    parsed.organizationId
-  );
-  if (!isMember) {
-    throw new Error('Sie sind kein Mitglied dieser Organisation.');
-  }
-
-  const canUpdate = await hasPermission(
-    session,
-    'organization:update',
-    parsed.organizationId
-  );
-
-  if (!canUpdate) {
-    throw new Error('Sie haben keine Berechtigung für diese Einstellung.');
-  }
-
   try {
     return await prisma.$transaction(async (tx) => {
+      const isMember = await isUserInOrganization(
+        session.user.id,
+        parsed.organizationId,
+        tx
+      );
+      if (!isMember) {
+        throw new Error('Sie sind kein Mitglied dieser Organisation.');
+      }
+
+      const canUpdate = await hasPermission(
+        session,
+        'organization:update',
+        parsed.organizationId
+      );
+
+      if (!canUpdate) {
+        throw new Error('Sie haben keine Berechtigung für diese Einstellung.');
+      }
+
       const previousDefaults = await getOrganizationNotificationDefaults(
         parsed.organizationId,
         tx

@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -115,7 +116,7 @@ export const NotificationPreferenceForm = forwardRef<
     });
   }, [savedDraftsByOrganizationId]);
 
-  const saveChanges = async () => {
+  const saveChanges = useCallback(async () => {
     if (!data || data.length === 0) {
       return;
     }
@@ -123,8 +124,13 @@ export const NotificationPreferenceForm = forwardRef<
     const changedCards = data
       .map((card) => {
         const savedDraft = savedDraftsByOrganizationId[card.organizationId];
-        const currentDraft = draftsByOrganizationId[card.organizationId] ?? savedDraft;
-        if (!savedDraft || !currentDraft || areDraftsEqual(currentDraft, savedDraft)) {
+        const currentDraft =
+          draftsByOrganizationId[card.organizationId] ?? savedDraft;
+        if (
+          !savedDraft ||
+          !currentDraft ||
+          areDraftsEqual(currentDraft, savedDraft)
+        ) {
           return null;
         }
         return { card, savedDraft, currentDraft };
@@ -174,7 +180,7 @@ export const NotificationPreferenceForm = forwardRef<
             minimumPriority: currentDraft.minimumPriority,
             digestInterval: currentDraft.digestInterval,
             digestTime: currentDraft.digestTime,
-            digestSecondTime: undefined,
+            digestSecondTime: currentDraft.digestSecondTime,
           });
         }
       }
@@ -183,7 +189,13 @@ export const NotificationPreferenceForm = forwardRef<
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [
+    data,
+    savedDraftsByOrganizationId,
+    draftsByOrganizationId,
+    primaryMutation,
+    detailsMutation,
+  ]);
 
   useImperativeHandle(
     ref,

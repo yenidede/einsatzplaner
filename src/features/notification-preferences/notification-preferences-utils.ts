@@ -114,7 +114,9 @@ export function buildDigestScheduleLabel(input: {
   }
 
   if (digestInterval === 'every_2_days') {
-    return short ? `alle 2 Tage um ${digestTime}` : `alle 2 Tage um ${digestTime}`;
+    return short
+      ? `alle 2 Tage um ${digestTime}`
+      : `alle 2 Tage um ${digestTime}`;
   }
   return short ? `täglich um ${digestTime}` : `1x täglich um ${digestTime}`;
 }
@@ -122,6 +124,15 @@ export function buildDigestScheduleLabel(input: {
 function buildDeliverySummary(effective: EffectiveNotificationSettings): string {
   if (effective.deliveryMode === 'critical_only') {
     return 'Dringende Meldungen werden sofort per E-Mail gesendet.';
+  }
+
+  const hasDigest =
+    effective.deliveryMode === 'digest_only' ||
+    (effective.deliveryMode === 'critical_and_digest' &&
+      effective.minimumPriority !== 'critical');
+
+  if (!hasDigest) {
+    return 'Dringende Meldungen kommen sofort per E-Mail.';
   }
 
   const scheduleLabel = buildDigestScheduleLabel({
@@ -138,7 +149,11 @@ function buildDeliverySummary(effective: EffectiveNotificationSettings): string 
 }
 
 function buildPrioritySummary(effective: EffectiveNotificationSettings): string {
-  if (effective.deliveryMode === 'critical_only') {
+  if (
+    effective.deliveryMode === 'critical_only' ||
+    (effective.deliveryMode === 'critical_and_digest' &&
+      effective.minimumPriority === 'critical')
+  ) {
     return 'Sie erhalten E-Mails nur zu dringenden Meldungen.';
   }
 
@@ -194,18 +209,22 @@ export function buildCompactNotificationPreferenceSummary(input: {
     return `${sourceLabel}: Dringende Meldungen sofort`;
   }
 
+  const hasDigest =
+    effective.deliveryMode === 'digest_only' ||
+    (effective.deliveryMode === 'critical_and_digest' &&
+      effective.minimumPriority !== 'critical');
+
+  if (!hasDigest) {
+    return `${sourceLabel}: Dringende Meldungen sofort`;
+  }
+
   const digestIntervalLabel =
     COMPACT_DIGEST_INTERVAL_LABELS[effective.digestInterval];
   const priorityLabel = COMPACT_PRIORITY_LABELS[effective.minimumPriority];
-  const scheduleLabel =
-    `${digestIntervalLabel} um ${effective.digestTime}`;
+  const scheduleLabel = `${digestIntervalLabel} um ${effective.digestTime}`;
 
   if (effective.deliveryMode === 'digest_only') {
     return `${sourceLabel}: ${priorityLabel} ${scheduleLabel} als Sammelmail`;
-  }
-
-  if (effective.minimumPriority === 'critical') {
-    return `${sourceLabel}: Dringend sofort, zusätzlich ${scheduleLabel} als Sammelmail`;
   }
 
   return `${sourceLabel}: Dringend sofort, ${priorityLabel} ${scheduleLabel} als Sammelmail`;

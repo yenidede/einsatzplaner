@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { splitWarningRecipientsByDelivery } from './email-warning-routing';
 
 describe('splitWarningRecipientsByDelivery', () => {
@@ -83,5 +83,32 @@ describe('splitWarningRecipientsByDelivery', () => {
 
     expect(result.immediateRecipients).toEqual([]);
     expect(result.digestRecipients).toEqual([]);
+  });
+
+  it('faellt bei fehlenden Einstellungen auf Sofortversand zurueck und loggt den Fall', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+      // noop in tests
+    });
+
+    const result = splitWarningRecipientsByDelivery({
+      recipients: [
+        {
+          userId: 'user-missing',
+          email: 'missing@example.com',
+          name: 'Missing User',
+        },
+      ],
+      settingsByUserId: new Map(),
+    });
+
+    expect(result.immediateRecipients).toEqual([
+      { email: 'missing@example.com', name: 'Missing User' },
+    ]);
+    expect(result.digestRecipients).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[email-warning-routing] Fehlende Benachrichtigungseinstellungen für userId=user-missing; Fallback auf Sofortversand.'
+    );
+
+    warnSpy.mockRestore();
   });
 });

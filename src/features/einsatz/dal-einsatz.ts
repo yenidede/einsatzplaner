@@ -1280,16 +1280,6 @@ export async function updateEinsatz({
     userProperties,
     ...updateData
   } = data;
-  const normalizedUpdateData =
-    updateData.start && updateData.end
-      ? {
-        ...updateData,
-        ...normalizeDateRangeForDb({
-          start: updateData.start,
-          end: updateData.end,
-        }),
-      }
-      : updateData;
 
   if (!id) {
     throw new BadRequestError('Einsatz must have an id for update');
@@ -1311,6 +1301,19 @@ export async function updateEinsatz({
   }
 
   await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
+
+  const hasUpdatedStart = updateData.start !== undefined;
+  const hasUpdatedEnd = updateData.end !== undefined;
+  const normalizedUpdateData =
+    hasUpdatedStart || hasUpdatedEnd
+      ? {
+          ...updateData,
+          ...normalizeDateRangeForDb({
+            start: updateData.start ?? existingEinsatz.start,
+            end: updateData.end ?? existingEinsatz.end,
+          }),
+        }
+      : updateData;
 
   // Check for conflicts when assigning users (unless disabled)
   let conflicts: EinsatzConflict[] = [];
@@ -1495,7 +1498,6 @@ async function createEinsatzInDb({
 }: {
   data: EinsatzCreate;
 }): Promise<Einsatz> {
-  const normalizedData = normalizeDateRangeForDb(data);
   const {
     title,
     start,
@@ -1510,7 +1512,7 @@ async function createEinsatzInDb({
     status_id = 'offen',
     template_id = null,
     all_day = false,
-  } = normalizedData;
+  } = data;
 
   const helperCreateData = assignedUsers.map((userId) => ({
     user: { connect: { id: userId } },

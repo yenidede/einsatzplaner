@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { processNotificationDigestQueue } from '@/features/notification-preferences/notification-email-digest-dal';
 
 function isAuthorized(request: Request, expectedSecret: string): boolean {
@@ -6,7 +7,19 @@ function isAuthorized(request: Request, expectedSecret: string): boolean {
     return false;
   }
 
-  return authorizationHeader === `Bearer ${expectedSecret}`;
+  const [scheme, token] = authorizationHeader.split(' ', 2);
+  if (scheme !== 'Bearer' || !token) {
+    return false;
+  }
+
+  const tokenBuffer = Buffer.from(token);
+  const expectedBuffer = Buffer.from(expectedSecret);
+
+  if (tokenBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(tokenBuffer, expectedBuffer);
 }
 
 export async function POST(request: Request) {
@@ -18,23 +31,33 @@ export async function GET(request: Request) {
 }
 
 async function handleDigestProcessing(request: Request) {
-  const expectedSecret = process.env.NOTIFICATION_DIGEST_CRON_SECRET;
+  const expectedSecret = process.env.CRON_SECRET;
   if (!expectedSecret) {
     return Response.json(
       {
         error:
-          'NOTIFICATION_DIGEST_CRON_SECRET ist nicht konfiguriert. Sammelmail-Verarbeitung ist deaktiviert.',
+          'CRON_SECRET ist nicht konfiguriert. Sammelmail-Verarbeitung ist deaktiviert.',
       },
       { status: 500 }
+    );
+  }
+
+  const authorizationHeader = request.headers.get('authorization');
+  if (!authorizationHeader) {
+    return Response.json(
+      {
+        error: 'Nicht autorisiert.',
+      },
+      { status: 401 }
     );
   }
 
   if (!isAuthorized(request, expectedSecret)) {
     return Response.json(
       {
-        error: 'Nicht autorisiert.',
+        error: 'Ungültiges Cron-Token.',
       },
-      { status: 401 }
+      { status: 403 }
     );
   }
 

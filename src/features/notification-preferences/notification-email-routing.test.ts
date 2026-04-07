@@ -58,6 +58,20 @@ describe('notification-email-routing', () => {
     expect(next.getMinutes()).toBe(0);
   });
 
+  it('rollt bei exakt gleicher Versandzeit auf den nächsten Tag', () => {
+    const now = new Date(2026, 3, 7, 7, 0, 0, 0);
+    const next = computeNextDigestDispatchAt({
+      now,
+      digestInterval: 'daily',
+      digestTime: '07:00',
+      digestSecondTime: '16:00',
+    });
+
+    expect(next.getDate()).toBe(now.getDate() + 1);
+    expect(next.getHours()).toBe(7);
+    expect(next.getMinutes()).toBe(0);
+  });
+
   it('berechnet nächsten Versand für every_2_days', () => {
     const now = new Date(2026, 3, 7, 19, 0, 0, 0);
     const next = computeNextDigestDispatchAt({
@@ -70,5 +84,19 @@ describe('notification-email-routing', () => {
     expect(next.getDate()).toBe(now.getDate() + 2);
     expect(next.getHours()).toBe(7);
     expect(next.getMinutes()).toBe(0);
+  });
+
+  it('arbeitet konsistent auch bei Date.UTC-basiertem Input', () => {
+    const now = new Date(Date.UTC(2026, 3, 7, 18, 30, 0, 0));
+    const next = computeNextDigestDispatchAt({
+      now,
+      digestInterval: 'every_2_days',
+      digestTime: '07:00',
+      digestSecondTime: '16:00',
+    });
+
+    expect(next.getHours()).toBe(7);
+    expect(next.getMinutes()).toBe(0);
+    expect(next.getTime()).toBeGreaterThan(now.getTime());
   });
 });
