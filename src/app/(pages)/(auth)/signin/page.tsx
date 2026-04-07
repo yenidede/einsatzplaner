@@ -7,6 +7,8 @@ import { FormField, Alert } from '@/components/SimpleFormComponents';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
+const CALLBACK_URL_BASE = 'http://localhost';
+
 export function resolveCallbackUrl(
   rawCallbackUrl: string | null,
   depth = 0
@@ -24,11 +26,21 @@ export function resolveCallbackUrl(
   })();
 
   try {
-    const callbackUrl = new URL(decodedCallbackUrl, 'http://localhost');
+    const allowedOrigin =
+      typeof window === 'undefined' ? CALLBACK_URL_BASE : window.location.origin;
+    const callbackUrl = new URL(decodedCallbackUrl, allowedOrigin);
+    const isAbsoluteUrl = /^https?:\/\//.test(decodedCallbackUrl);
+
+    if (isAbsoluteUrl && callbackUrl.origin !== allowedOrigin) {
+      return '/';
+    }
+
     const nestedCallbackUrl = callbackUrl.searchParams.get('callbackUrl');
 
-    if (callbackUrl.pathname === '/signin' && nestedCallbackUrl) {
-      return resolveCallbackUrl(nestedCallbackUrl, depth + 1);
+    if (callbackUrl.pathname === '/signin') {
+      return nestedCallbackUrl
+        ? resolveCallbackUrl(nestedCallbackUrl, depth + 1)
+        : '/';
     }
 
     const normalizedCallbackUrl = `${callbackUrl.pathname}${callbackUrl.search}${callbackUrl.hash}`;
