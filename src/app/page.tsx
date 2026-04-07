@@ -22,12 +22,14 @@ export default async function Home({
   // Build search params string
   const params = new URLSearchParams();
   Object.entries(resolvedSearchParams).forEach(([key, value]) => {
-    if (value) {
-      if (Array.isArray(value)) {
-        value.forEach((v) => params.append(key, v));
-      } else {
-        params.set(key, value);
-      }
+    if (!key || key === 'callbackUrl' || !value) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((v) => params.append(key, v));
+    } else {
+      params.set(key, value);
     }
   });
   const searchString = params.toString() ? `?${params.toString()}` : '';
