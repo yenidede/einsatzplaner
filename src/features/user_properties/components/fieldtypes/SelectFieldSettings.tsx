@@ -104,7 +104,9 @@ export function SelectFieldSettings({
             placeholder="Option eingeben..."
             className="flex-1"
           />
-          <Button type="button" onClick={handleAddOption}>Hinzufügen</Button>
+          <Button type="button" onClick={handleAddOption}>
+            Hinzufügen
+          </Button>
         </div>
 
         {errors.length > 0 && (

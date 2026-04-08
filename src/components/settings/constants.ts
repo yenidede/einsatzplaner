@@ -1,4 +1,3 @@
-
 // Navigation items for the settings sidebar
 export const NAV_ITEMS = [
   { id: 'account', label: 'Mein Account' },

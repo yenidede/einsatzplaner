@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 // only used for parsing. Thrown away after
-const CALLBACK_URL_BASE = 'http://localhost';
+const CALLBACK_URL_BASE = 'http://localhost:3000';
 
 export function resolveCallbackUrl(
   rawCallbackUrl: string | null,

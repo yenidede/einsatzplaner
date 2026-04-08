@@ -5,16 +5,16 @@ export type PropertyConfigFieldInput = {
   name: string;
   description?: string;
   datatype:
-  | 'text'
-  | 'number'
-  | 'boolean'
-  | 'select'
-  | 'currency'
-  | 'group'
-  | 'date'
-  | 'time'
-  | 'phone'
-  | 'mail';
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'currency'
+    | 'group'
+    | 'date'
+    | 'time'
+    | 'phone'
+    | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;

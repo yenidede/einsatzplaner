@@ -41,7 +41,9 @@ export function useTemplateMutations() {
     },
     onError: (err, _variables, context) => {
       toast.error(
-        err instanceof Error ? err.message : 'Fehler beim Erstellen der Vorlage',
+        err instanceof Error
+          ? err.message
+          : 'Fehler beim Erstellen der Vorlage',
         { id: context?.toastId }
       );
     },
@@ -61,9 +63,12 @@ export function useTemplateMutations() {
       toast.success('Vorlage gespeichert', { id: context?.toastId });
     },
     onError: (err, _variables, context) => {
-      toast.error(err instanceof Error ? err.message : 'Fehler beim Speichern', {
-        id: context?.toastId,
-      });
+      toast.error(
+        err instanceof Error ? err.message : 'Fehler beim Speichern',
+        {
+          id: context?.toastId,
+        }
+      );
     },
   });
 
@@ -84,7 +89,9 @@ export function useTemplateMutations() {
     },
     onError: (err, _variables, context) => {
       toast.error(
-        err instanceof Error ? err.message : 'Fehler beim Hinzufügen des Feldes',
+        err instanceof Error
+          ? err.message
+          : 'Fehler beim Hinzufügen des Feldes',
         { id: context?.toastId }
       );
     },
@@ -174,7 +181,9 @@ export function useTemplateMutations() {
     }),
     onSuccess: (_data, _variables, context) => {
       queryClient.invalidateQueries({ queryKey: templateQueryKeys.all });
-      toast.success('Standard-Kategorien gespeichert', { id: context?.toastId });
+      toast.success('Standard-Kategorien gespeichert', {
+        id: context?.toastId,
+      });
     },
     onError: (err, _variables, context) => {
       toast.error(
@@ -212,12 +221,8 @@ export function useTemplateMutations() {
   });
 
   const deleteTemplateMutation = useMutation({
-    mutationFn: ({
-      templateId,
-    }: {
-      templateId: string;
-      redirectTo: string;
-    }) => deleteTemplateAction(templateId),
+    mutationFn: ({ templateId }: { templateId: string; redirectTo: string }) =>
+      deleteTemplateAction(templateId),
     onMutate: () => ({
       toastId: toast.loading('Vorlage wird gelöscht…'),
     }),

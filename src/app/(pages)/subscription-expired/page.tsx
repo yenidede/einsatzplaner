@@ -58,9 +58,7 @@ export default async function SubscriptionExpiredPage() {
           Der Zugriff auf {activeOrganization.name} ist abgelaufen.
         </p>
         {isHelperOnly ? (
-          <p className="text-muted-foreground mt-3">
-            {supportText}
-          </p>
+          <p className="text-muted-foreground mt-3">{supportText}</p>
         ) : (
           <p className="text-muted-foreground mt-3">
             Bitte kontaktieren Sie Ihre Organisationsverwaltung oder schreiben

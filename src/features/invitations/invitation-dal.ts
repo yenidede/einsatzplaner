@@ -156,10 +156,11 @@ export async function getInvitationByToken(token: string) {
       email: firstInvitation.email,
       organization_id: firstInvitation.org_id,
       organizationName: firstInvitation.organization?.name || 'Organisation',
-      roleName: validInvitations
-        .map((inv) => formatRoleName(inv.role?.name))
-        .filter(Boolean)
-        .join(', ') || helperNameSingular,
+      roleName:
+        validInvitations
+          .map((inv) => formatRoleName(inv.role?.name))
+          .filter(Boolean)
+          .join(', ') || helperNameSingular,
       helperNameSingular,
       helperNamePlural,
       roles: validInvitations.map((inv) => ({

@@ -117,9 +117,7 @@ vi.mock('@/components/event-calendar', () => ({
   }: {
     onAssignToggleEvent: (eventId: string) => void;
   }) => (
-    <button onClick={() => onAssignToggleEvent('einsatz-1')}>
-      Eintragen
-    </button>
+    <button onClick={() => onAssignToggleEvent('einsatz-1')}>Eintragen</button>
   ),
 }));
 
@@ -158,7 +156,7 @@ describe('calendar-client Selbstzuweisung', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <Component mode="month" />
+        <Component mode="helper" />
       </QueryClientProvider>
     );
 
@@ -189,7 +187,7 @@ describe('calendar-client Selbstzuweisung', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <Component mode="month" />
+        <Component mode="helper" />
       </QueryClientProvider>
     );
 

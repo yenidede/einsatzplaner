@@ -200,9 +200,9 @@ export async function generateEinsatzPDF(
         lastname: user.lastname,
         salutation: user.salutation
           ? {
-            id: user.salutation.id,
-            salutation: user.salutation.salutation,
-          }
+              id: user.salutation.id,
+              salutation: user.salutation.salutation,
+            }
           : null,
       }));
 
@@ -228,16 +228,16 @@ export async function generateEinsatzPDF(
           assignedUsers,
           currentUser: currentUser
             ? {
-              id: currentUser.id,
-              firstname: currentUser.firstname,
-              lastname: currentUser.lastname,
-              salutation: currentUser.salutation
-                ? {
-                  id: currentUser.salutation.id,
-                  salutation: currentUser.salutation.salutation,
-                }
-                : null,
-            }
+                id: currentUser.id,
+                firstname: currentUser.firstname,
+                lastname: currentUser.lastname,
+                salutation: currentUser.salutation
+                  ? {
+                      id: currentUser.salutation.id,
+                      salutation: currentUser.salutation.salutation,
+                    }
+                  : null,
+              }
             : null,
           options,
         })

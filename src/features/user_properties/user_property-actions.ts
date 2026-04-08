@@ -14,9 +14,7 @@ import {
   type UserPropertyWithField,
 } from './user_property-dal';
 import type { PropertyConfig } from './types';
-import {
-  propertyConfigToFieldInput,
-} from './utils/config-to-field-input';
+import { propertyConfigToFieldInput } from './utils/config-to-field-input';
 
 export async function getUserPropertiesAction(
   orgId: string

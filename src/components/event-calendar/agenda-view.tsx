@@ -100,7 +100,9 @@ export function AgendaView({
             className="text-muted-foreground/50 mb-2"
           />
           <h3 className="text-lg font-medium">
-            {isEventsLoading ? `Lade ${einsatz_plural}...` : `Keine geplanten ${einsatz_plural}`}
+            {isEventsLoading
+              ? `Lade ${einsatz_plural}...`
+              : `Keine geplanten ${einsatz_plural}`}
           </h3>
           {isEventsLoading && (
             <p className="text-muted-foreground flex items-center gap-2">

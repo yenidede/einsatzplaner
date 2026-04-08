@@ -192,7 +192,9 @@ export async function getEinsatzWithDetailsById(
 
   if (!einsaetzeFromDb) return null;
 
-  if (!(await hasOrgPermission(session, einsaetzeFromDb.org_id, 'einsaetze:read'))) {
+  if (
+    !(await hasOrgPermission(session, einsaetzeFromDb.org_id, 'einsaetze:read'))
+  ) {
     return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
       status: 403,
     });
@@ -239,21 +241,25 @@ export async function getEinsatzWithDetailsById(
       affected_user: log.affected_user,
       user: log.user
         ? {
-          id: log.user.id,
-          firstname: log.user.firstname,
-          lastname: log.user.lastname,
-        }
+            id: log.user.id,
+            firstname: log.user.firstname,
+            lastname: log.user.lastname,
+          }
         : null,
     })),
   };
 }
 
-export async function getEinsatzRealtimeMetadataById(id: string): Promise<{
-  id: string;
-  org_id: string;
-  start: Date;
-  end: Date;
-} | null | Response> {
+export async function getEinsatzRealtimeMetadataById(id: string): Promise<
+  | {
+      id: string;
+      org_id: string;
+      start: Date;
+      end: Date;
+    }
+  | null
+  | Response
+> {
   const { session } = await requireAuth();
 
   if (!isValidUuid(id)) {
@@ -550,9 +556,9 @@ export async function getEinsaetzeForTableView(
       organization_name: einsatz.organization.name,
       created_by_name: einsatz.user
         ? [einsatz.user.firstname, einsatz.user.lastname]
-          .filter((value): value is string => Boolean(value))
-          .join(' ')
-          .trim() || null
+            .filter((value): value is string => Boolean(value))
+            .join(' ')
+            .trim() || null
         : null,
       template_name: einsatz.einsatz_template?.name ?? null,
       status_verwalter_text: einsatz.einsatz_status.verwalter_text,
@@ -563,7 +569,8 @@ export async function getEinsaetzeForTableView(
       category_display: categoryLabels.join(', '),
       helper_names: helperNames,
       helper_display: helperNames.join(', '),
-      helper_count: einsatz._count?.einsatz_helper ?? einsatz.einsatz_helper.length,
+      helper_count:
+        einsatz._count?.einsatz_helper ?? einsatz.einsatz_helper.length,
       custom_fields: customFields,
       custom_field_meta: customFieldMeta,
     };
@@ -677,7 +684,10 @@ function normalizeTextValue(value: string | null): string | null {
 }
 
 function normalizeStringLikeFieldValue(
-  datatype: Extract<FieldTypeKey, 'text' | 'phone' | 'mail' | 'group' | 'select' | 'time'>,
+  datatype: Extract<
+    FieldTypeKey,
+    'text' | 'phone' | 'mail' | 'group' | 'select' | 'time'
+  >,
   value: string
 ): string {
   switch (datatype) {
@@ -717,11 +727,7 @@ function normalizeDateFieldValue(value: string): Date | string {
     const numericYear = Number(year);
     const numericMonth = Number(month);
     const numericDay = Number(day);
-    const dateValue = new Date(
-      numericYear,
-      numericMonth - 1,
-      numericDay
-    );
+    const dateValue = new Date(numericYear, numericMonth - 1, numericDay);
 
     if (
       Number.isNaN(dateValue.getTime()) ||
@@ -983,7 +989,11 @@ export async function updateEinsatzTime(data: {
     throw new NotFoundError(`Einsatz with ID ${id} not found`);
   }
 
-  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
+  await assertOrgPermission(
+    session,
+    existingEinsatz.org_id,
+    'einsaetze:update'
+  );
 
   let conflicts: EinsatzConflict[] = [];
 
@@ -1150,7 +1160,7 @@ export async function toggleUserAssignmentToEinsatz(
           const addOrRemoveOne = shouldAssign ? 1 : -1;
           const newStatusId =
             existingEinsatz.helpers_needed >
-              existingEinsatz.einsatz_helper.length + addOrRemoveOne
+            existingEinsatz.einsatz_helper.length + addOrRemoveOne
               ? 'bb169357-920b-4b49-9e3d-1cf489409370'
               : '15512bc7-fc64-4966-961f-c506a084a274';
 
@@ -1221,7 +1231,10 @@ export async function toggleUserAssignmentToEinsatz(
             affectedUserId: session.user.id,
           });
         } catch (error) {
-          console.error('Failed to create activity log for unassignment:', error);
+          console.error(
+            'Failed to create activity log for unassignment:',
+            error
+          );
         }
       }
 
@@ -1240,7 +1253,10 @@ export async function toggleUserAssignmentToEinsatz(
         try {
           await checkEinsatzRequirementsAfterAssignment(einsatzId);
         } catch (error) {
-          console.error('Failed to check einsatz requirements and notify:', error);
+          console.error(
+            'Failed to check einsatz requirements and notify:',
+            error
+          );
         }
       }
 
@@ -1301,7 +1317,11 @@ export async function updateEinsatz({
     throw new NotFoundError(`Einsatz with ID ${id} not found`);
   }
 
-  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
+  await assertOrgPermission(
+    session,
+    existingEinsatz.org_id,
+    'einsaetze:update'
+  );
 
   const existingStartAsCalendarDate = dbTimestampToCalendarDate(
     existingEinsatz.start
@@ -1422,7 +1442,11 @@ export async function updateEinsatzStatus(
     throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
   }
 
-  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
+  await assertOrgPermission(
+    session,
+    existingEinsatz.org_id,
+    'einsaetze:update'
+  );
 
   const updatedEinsatz = await prisma.einsatz.update({
     where: { id: einsatzId },
@@ -1752,10 +1776,10 @@ function mapRawEinsatzToDetailedForCalendar(
       affected_user: log.affected_user,
       user: log.user
         ? {
-          id: log.user.id,
-          firstname: log.user.firstname,
-          lastname: log.user.lastname,
-        }
+            id: log.user.id,
+            firstname: log.user.firstname,
+            lastname: log.user.lastname,
+          }
         : null,
     })),
     category_abbreviations,

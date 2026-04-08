@@ -510,7 +510,7 @@ function DataTableFilterItem<TData>({
         >
           <SelectTrigger
             aria-controls={operatorListboxId}
-            className="h-8 w-auto flex-none rounded-none border-r-0 px-2.5 lowercase data-size:h-8 [&>span]:flex-none [&_svg]:hidden"
+            className="h-8 w-auto flex-none rounded-none border-r-0 px-2.5 lowercase data-size:h-8 [&_svg]:hidden [&>span]:flex-none"
           >
             <SelectValue placeholder={filter.operator} />
           </SelectTrigger>

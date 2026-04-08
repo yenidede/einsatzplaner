@@ -198,10 +198,10 @@ export async function createUserWithOrgAndRoles(data: {
     const assignRoleIds = data.roleIds
       ? data.roleIds
       : data.roleNames
-        ?.map(
-          (roleName) => roleRecords.find((role) => role.name === roleName)?.id
-        )
-        .filter((id): id is string => !!id) || [];
+          ?.map(
+            (roleName) => roleRecords.find((role) => role.name === roleName)?.id
+          )
+          .filter((id): id is string => !!id) || [];
 
     return prisma.user.create({
       data: {
