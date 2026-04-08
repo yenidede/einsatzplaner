@@ -3,11 +3,7 @@ import { NextResponse } from 'next/server';
 import { isPublicPath } from '@/lib/auth/public-paths';
 
 export default withAuth(
-  function middleware(request) {
-    if (isPublicPath(request.nextUrl.pathname)) {
-      return NextResponse.next();
-    }
-
+  function middleware() {
     return NextResponse.next();
   },
   {
@@ -16,6 +12,7 @@ export default withAuth(
       error: '/signin',
     },
     callbacks: {
+      // auto redirects to /signin if not a public page
       authorized: ({ req, token }) => {
         if (isPublicPath(req.nextUrl.pathname)) {
           return true;
@@ -29,7 +26,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
