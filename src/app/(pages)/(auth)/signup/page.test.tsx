@@ -3,7 +3,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import type { ImgHTMLAttributes, ReactNode } from 'react';
+import type { ImgHTMLAttributes } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import SignupPage from './page';
 
@@ -13,29 +13,17 @@ vi.mock('next/image', () => ({
   ),
 }));
 
-vi.mock('next/link', () => ({
-  default: ({
-    children,
-    href,
-  }: {
-    children: ReactNode;
-    href: string;
-  }) => <a href={href}>{children}</a>,
+vi.mock('@/features/auth/self-signup/SelfSignupForm', () => ({
+  SelfSignupForm: () => <div>Dynamisches Anmeldeformular</div>,
 }));
 
 describe('SignupPage', () => {
-  it('zeigt keine Self-Serve-Signup-Implementierung mehr an', () => {
+  it('zeigt das neue Self-Signup-Layout mit Bild und Formular', () => {
     render(<SignupPage />);
 
-    const heading = screen.getByRole('heading', {
-      name: 'Die Selbstregistrierung ist derzeit nicht verfuegbar',
-    });
-    const link = screen.getByRole('link', {
-      name: 'Zur Anmeldung',
-    });
-
-    expect(heading).toBeTruthy();
-    expect(link.getAttribute('href')).toBe('/signin');
-    expect(screen.queryByText('Organisation anlegen')).toBeNull();
+    expect(screen.getByText('Dynamisches Anmeldeformular')).toBeTruthy();
+    expect(
+      screen.getByAltText('Sehr schönes Museum mit altem Gemälde')
+    ).toBeTruthy();
   });
 });
