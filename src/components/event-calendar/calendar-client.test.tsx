@@ -156,7 +156,7 @@ describe('calendar-client Selbstzuweisung', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <Component mode="month" />
+        <Component mode="helper" />
       </QueryClientProvider>
     );
 
@@ -187,7 +187,7 @@ describe('calendar-client Selbstzuweisung', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <Component mode="month" />
+        <Component mode="helper" />
       </QueryClientProvider>
     );
 
