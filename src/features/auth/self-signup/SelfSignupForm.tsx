@@ -122,6 +122,7 @@ function TextField({
   type = 'text',
   description,
   className,
+  onBlur,
 }: {
   control: ReturnType<
     typeof useForm<SignupSchemaInput, unknown, SignupSchemaOutput>
@@ -133,6 +134,7 @@ function TextField({
   type?: React.ComponentProps<typeof Input>['type'];
   description?: string;
   className?: string;
+  onBlur?: () => void;
 }) {
   return (
     <Controller
@@ -153,6 +155,10 @@ function TextField({
             type={type}
             aria-invalid={fieldState.invalid}
             placeholder={placeholder}
+            onBlur={() => {
+              field.onBlur();
+              onBlur?.();
+            }}
           />
           {description ? (
             <FieldDescription>{description}</FieldDescription>
@@ -350,12 +356,14 @@ function AccountModeNotice({
 function AccountFields({
   accountMode,
   control,
+  onEmailBlur,
   sessionEmail,
 }: {
   accountMode: SelfSignupAccountMode;
   control: ReturnType<
     typeof useForm<SignupSchemaInput, unknown, SignupSchemaOutput>
   >['control'];
+  onEmailBlur?: () => void;
   sessionEmail: string;
 }) {
   return (
@@ -419,6 +427,7 @@ function AccountFields({
           description="An diese Adresse senden wir bei neuen Konten den Bestätigungscode und wichtige Informationen zu Ihrem Konto."
           required
           type="email"
+          onBlur={onEmailBlur}
         />
       ) : null}
       {accountMode === 'new' ? (
@@ -464,6 +473,7 @@ export function SelfSignupForm() {
   const [isAdvancingToVerificationStep, setIsAdvancingToVerificationStep] =
     useState(false);
   const [otpRequestedForEmail, setOtpRequestedForEmail] = useState('');
+  const [accountStatusEmail, setAccountStatusEmail] = useState('');
   const form = useForm<SignupSchemaInput, unknown, SignupSchemaOutput>({
     resolver: zodResolver(selfSignupBaseSchema),
     defaultValues: {
@@ -497,13 +507,16 @@ export function SelfSignupForm() {
   const normalizedEmail = email.trim().toLowerCase();
   const isLoggedIn = sessionStatus === 'authenticated';
   const shouldCheckAccountStatus =
-    !isLoggedIn && isValidEmail(normalizedEmail) && sessionStatus !== 'loading';
+    !isLoggedIn &&
+    accountStatusEmail === normalizedEmail &&
+    isValidEmail(accountStatusEmail) &&
+    sessionStatus !== 'loading';
   const accountStatusQuery = useQuery({
-    queryKey: authQueryKeys.selfSignup.accountStatus(normalizedEmail),
+    queryKey: authQueryKeys.selfSignup.accountStatus(accountStatusEmail),
     enabled: shouldCheckAccountStatus,
     queryFn: async () => {
       const result = await getSelfSignupAccountStatusAction({
-        email: normalizedEmail,
+        email: accountStatusEmail,
       });
 
       if (!result?.data) {
@@ -532,6 +545,12 @@ export function SelfSignupForm() {
   });
 
   useEffect(() => {
+    if (normalizedEmail !== accountStatusEmail) {
+      setAccountStatusEmail('');
+    }
+  }, [accountStatusEmail, normalizedEmail]);
+
+  useEffect(() => {
     form.clearErrors();
   }, [accountMode, form]);
 
@@ -551,6 +570,15 @@ export function SelfSignupForm() {
         <AccountFields
           accountMode={accountMode}
           control={control}
+          onEmailBlur={() => {
+            if (isLoggedIn || sessionStatus === 'loading') {
+              return;
+            }
+
+            setAccountStatusEmail(
+              isValidEmail(normalizedEmail) ? normalizedEmail : ''
+            );
+          }}
           sessionEmail={sessionEmail}
         />
       ),
@@ -737,6 +765,12 @@ export function SelfSignupForm() {
     setSubmitErrorMessage('');
 
     let result: Awaited<ReturnType<typeof createSelfSignupAction>> | undefined;
+    let credentialsForAutoSignIn:
+      | {
+          email: string;
+          password: string;
+        }
+      | null = null;
 
     if (accountMode === 'new') {
       const parsed = createFormSchema('new').safeParse(data);
@@ -779,6 +813,10 @@ export function SelfSignupForm() {
         password: signupPassword,
         challengeId: oneTimePassword.challengeId,
       });
+      credentialsForAutoSignIn = {
+        email: signupEmail.trim().toLowerCase(),
+        password: signupPassword,
+      };
     } else if (accountMode === 'existing') {
       const parsed = createFormSchema('existing').safeParse(data);
       if (!parsed.success) {
@@ -808,6 +846,10 @@ export function SelfSignupForm() {
         email: signupEmail,
         password: signupPassword,
       });
+      credentialsForAutoSignIn = {
+        email: signupEmail.trim().toLowerCase(),
+        password: signupPassword,
+      };
     } else {
       const parsed = createFormSchema('logged_in').safeParse(data);
       if (!parsed.success) {
@@ -850,10 +892,17 @@ export function SelfSignupForm() {
       return;
     }
 
+    if (!credentialsForAutoSignIn) {
+      setSubmitErrorMessage(
+        'Ihre Anmeldedaten konnten nicht verarbeitet werden. Bitte versuchen Sie es erneut.'
+      );
+      return;
+    }
+
     const signInResult = await signIn('credentials', {
-      email: data['user-email'],
-      password: data['user-password'],
-      redirect: true,
+      email: credentialsForAutoSignIn.email,
+      password: credentialsForAutoSignIn.password,
+      redirect: false,
       callbackUrl: '/',
     });
 
@@ -861,7 +910,10 @@ export function SelfSignupForm() {
       setSubmitErrorMessage(
         'Ihr Konto wurde erstellt, aber die automatische Anmeldung ist fehlgeschlagen.'
       );
+      return;
     }
+
+    router.push(signInResult?.url ?? '/');
   });
 
   return (
@@ -944,11 +996,9 @@ export function SelfSignupForm() {
               return true;
             }
 
-            setError('user-email', {
-              type: 'manual',
-              message:
-                'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse mit dem Bestätigungscode.',
-            });
+            setSubmitErrorMessage(
+              'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse mit dem Bestätigungscode.'
+            );
             return false;
           }
 
