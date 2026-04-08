@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryKey } from '@tanstack/react-query';
-import { addMonths, eachDayOfInterval, format, startOfDay, subMonths } from 'date-fns';
+import {
+  addMonths,
+  eachDayOfInterval,
+  format,
+  startOfDay,
+  subMonths,
+} from 'date-fns';
 import { queryKeys } from '../queryKeys';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
 import type { CalendarRangeData } from '@/components/event-calendar/utils';
@@ -37,7 +43,9 @@ function invalidateCalendarMonthsForDate(
   dates: Date[]
 ) {
   if (dates.length === 0) return;
-  const monthKeys = Array.from(new Set(dates.flatMap((date) => getMonthKeysForDate(date, false))));
+  const monthKeys = Array.from(
+    new Set(dates.flatMap((date) => getMonthKeysForDate(date, false)))
+  );
   monthKeys.forEach((monthKey) => {
     queryClient.invalidateQueries({
       queryKey: queryKeys.einsaetzeForCalendar(orgId, monthKey),
@@ -220,7 +228,8 @@ export function useCreateEinsatz(
       const optimisticEvent: CalendarEvent = {
         id: `temp-${Date.now()}`,
         title: event.title,
-        start: event.start instanceof Date ? event.start : new Date(event.start),
+        start:
+          event.start instanceof Date ? event.start : new Date(event.start),
         end: event.end instanceof Date ? event.end : new Date(event.end),
         allDay: event.all_day ?? false,
         assignedUsers: event.assignedUsers ?? [],
@@ -244,8 +253,11 @@ export function useCreateEinsatz(
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`${einsatzSingular} konnte nicht erstellt werden: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast.error(
+        `${einsatzSingular} konnte nicht erstellt werden: ${errorMessage}`
+      );
     },
     onSuccess: async (data, vars) => {
       if (data.conflicts && data.conflicts.length > 0) {
@@ -253,8 +265,8 @@ export function useCreateEinsatz(
         const dialogResult = await showDestructive(
           'Warnung: Zeitkonflikte erkannt',
           'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
-          formatConflictMessages(data.conflicts) +
-          '\n\nMöchten Sie trotzdem fortfahren?'
+            formatConflictMessages(data.conflicts) +
+            '\n\nMöchten Sie trotzdem fortfahren?'
         );
 
         if (dialogResult === 'success') {
@@ -264,12 +276,15 @@ export function useCreateEinsatz(
           // User cancelled, open the event dialog if callback provided
           if (onConflictCancel && data.conflicts.length > 0) {
             // Get the first conflicting einsatz ID
-            const conflictingEinsatzId = data.conflicts[0].conflictingEinsatz.id;
+            const conflictingEinsatzId =
+              data.conflicts[0].conflictingEinsatz.id;
             onConflictCancel(conflictingEinsatzId);
           }
         }
       } else if (data.einsatz) {
-        toast.success(`${einsatzSingular} '${vars.event.title}' wurde erstellt.`);
+        toast.success(
+          `${einsatzSingular} '${vars.event.title}' wurde erstellt.`
+        );
       }
     },
     onSettled: (data, _error, vars) => {
@@ -352,11 +367,13 @@ export function useUpdateEinsatz(
           ...(start && { start }),
           ...('end' in event &&
             event.end !== undefined && {
-            end: event.end instanceof Date ? event.end : new Date(event.end),
-          }),
+              end: event.end instanceof Date ? event.end : new Date(event.end),
+            }),
         };
-        if ('title' in event && event.title !== undefined) updated.title = event.title;
-        if ('all_day' in event && event.all_day !== undefined) updated.allDay = event.all_day;
+        if ('title' in event && event.title !== undefined)
+          updated.title = event.title;
+        if ('all_day' in event && event.all_day !== undefined)
+          updated.allDay = event.all_day;
         if ('assignedUsers' in event && event.assignedUsers !== undefined)
           updated.assignedUsers = event.assignedUsers;
         if ('helpersNeeded' in event && event.helpersNeeded !== undefined)
@@ -374,7 +391,8 @@ export function useUpdateEinsatz(
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       toast.error(
         `${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`
       );
@@ -389,8 +407,8 @@ export function useUpdateEinsatz(
         const dialogResult = await showDestructive(
           'Warnung: Zeitkonflikte erkannt',
           'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
-          formatConflictMessages(conflicts) +
-          '\n\nMöchten Sie trotzdem fortfahren?'
+            formatConflictMessages(conflicts) +
+            '\n\nMöchten Sie trotzdem fortfahren?'
         );
 
         if (dialogResult === 'success') {
@@ -405,7 +423,8 @@ export function useUpdateEinsatz(
           }
         }
       } else if (einsatz) {
-        const title = 'title' in vars.event ? vars.event.title : einsatzSingular;
+        const title =
+          'title' in vars.event ? vars.event.title : einsatzSingular;
         toast.success(`${einsatzSingular} '${title}' wurde aktualisiert.`);
       }
 
@@ -447,7 +466,8 @@ export function useUpdateEinsatz(
 
   return {
     ...mutation,
-    mutate: (event: EinsatzCreate | CalendarEvent) => mutation.mutate({ event }),
+    mutate: (event: EinsatzCreate | CalendarEvent) =>
+      mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate | CalendarEvent) =>
       mutation.mutateAsync({ event }),
   };
@@ -470,10 +490,7 @@ export function useConfirmEinsatz(
 
   return useMutation({
     mutationFn: async (eventId: string) => {
-      return updateEinsatzStatus(
-        eventId,
-        StatusValuePairs.vergeben_bestaetigt
-      );
+      return updateEinsatzStatus(eventId, StatusValuePairs.vergeben_bestaetigt);
     },
     onMutate: async (eventId) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
@@ -503,7 +520,8 @@ export function useConfirmEinsatz(
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       toast.error(
         `${einsatzSingular} konnte nicht bestätigt werden: ${errorMessage}`
       );
@@ -586,16 +604,23 @@ export function useToggleUserAssignment(
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast.error(
+        `${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`
+      );
     },
     onSuccess: (data, vars) => {
       if (vars.intent === 'unassign') {
-        toast.success(`Sie haben sich erfolgreich von ${data.title} ausgetragen`);
+        toast.success(
+          `Sie haben sich erfolgreich von ${data.title} ausgetragen`
+        );
         return;
       }
 
-      toast.success(`Sie haben sich erfolgreich bei '${data.title}' eingetragen`);
+      toast.success(
+        `Sie haben sich erfolgreich bei '${data.title}' eingetragen`
+      );
     },
     onSettled: (data) => {
       invalidateEinsatzQueries(queryClient, data?.id);
@@ -653,8 +678,11 @@ export function useDeleteEinsatz(
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast.error(
+        `${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`
+      );
     },
     onSuccess: (_data, vars) => {
       const title = vars.eventTitle || 'Unbenannt';
@@ -708,8 +736,11 @@ export function useDeleteMultipleEinsaetze(
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast.error(
+        `${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`
+      );
     },
     onSuccess: (_data, vars) => {
       toast.success(

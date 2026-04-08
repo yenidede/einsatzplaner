@@ -178,9 +178,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
 
       if (fieldsWithValues.length > 0) {
-        descriptionParts.push(
-          `${einsatzNameSingular} Information:`
-        );
+        descriptionParts.push(`${einsatzNameSingular} Information:`);
         fieldsWithValues.forEach((ef) => {
           if (ef.field.name && ef.value) {
             descriptionParts.push(`  ${ef.field.name}: ${ef.value}`);

@@ -157,7 +157,7 @@ export function useUnsavedChanges<T extends string = string>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (history.state as any) && typeof history.state === 'object'
           ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          { ...(history.state as any), __unsavedChangesGuard: true }
+            { ...(history.state as any), __unsavedChangesGuard: true }
           : { __unsavedChangesGuard: true };
       history.pushState(currentState, '', window.location.href);
       hasHistoryGuardRef.current = true;
@@ -189,7 +189,7 @@ export function useUnsavedChanges<T extends string = string>({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (history.state as any) && typeof history.state === 'object'
             ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            { ...(history.state as any), __unsavedChangesGuard: true }
+              { ...(history.state as any), __unsavedChangesGuard: true }
             : { __unsavedChangesGuard: true };
         history.pushState(currentState, '', window.location.href);
         hasHistoryGuardRef.current = true;

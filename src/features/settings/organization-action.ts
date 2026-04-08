@@ -690,7 +690,10 @@ export async function removeOrganizationSmallLogoAction(orgId: string) {
           .from('logos')
           .remove([path]);
         if (deleteError) {
-          console.warn('Failed to delete small logo from storage:', deleteError);
+          console.warn(
+            'Failed to delete small logo from storage:',
+            deleteError
+          );
         }
       }
     } catch (error) {
@@ -759,11 +762,11 @@ export async function getOrganizationForPDF(
 
     details: details
       ? {
-        website: details.website,
-        vat: details.vat,
-        zvr: details.zvr,
-        authority: details.authority,
-      }
+          website: details.website,
+          vat: details.vat,
+          zvr: details.zvr,
+          authority: details.authority,
+        }
       : null,
   };
 }

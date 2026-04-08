@@ -35,7 +35,6 @@ function mapToCreateInvitationData(
     throw new Error('organizationId is required');
   }
 
-  
   if (!roleId) {
     throw new Error('roleId is required');
   }

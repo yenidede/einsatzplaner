@@ -6,17 +6,13 @@ import { render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SignInPage, { resolveCallbackUrl } from './page';
 
-const {
-  mockPush,
-  mockSearchParamsGet,
-  mockUseSession,
-  mockSignIn,
-} = vi.hoisted(() => ({
-  mockPush: vi.fn(),
-  mockSearchParamsGet: vi.fn(),
-  mockUseSession: vi.fn(),
-  mockSignIn: vi.fn(),
-}));
+const { mockPush, mockSearchParamsGet, mockUseSession, mockSignIn } =
+  vi.hoisted(() => ({
+    mockPush: vi.fn(),
+    mockSearchParamsGet: vi.fn(),
+    mockUseSession: vi.fn(),
+    mockSignIn: vi.fn(),
+  }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({

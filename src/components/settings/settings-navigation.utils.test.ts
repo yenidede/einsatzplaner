@@ -81,7 +81,9 @@ describe('settings-navigation.utils', () => {
     expect(hasActiveOrganizationSettingsAccess(organizations, 'org-2')).toBe(
       false
     );
-    expect(hasActiveOrganizationSettingsAccess(organizations, null)).toBe(false);
+    expect(hasActiveOrganizationSettingsAccess(organizations, null)).toBe(
+      false
+    );
   });
 
   it('findet Organisationen und erzeugt kanonische Settings-Links', () => {

@@ -1,5 +1,7 @@
 export function isHelperOnlyOrganizationRole(roleNames: string[]): boolean {
-  return roleNames.length > 0 && roleNames.every((roleName) => roleName === 'Helfer');
+  return (
+    roleNames.length > 0 && roleNames.every((roleName) => roleName === 'Helfer')
+  );
 }
 
 export const EXPIRED_ORGANIZATION_CONTACT_EMAIL = 'hello@davidkathrein.at';

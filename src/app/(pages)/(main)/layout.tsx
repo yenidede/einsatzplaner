@@ -39,7 +39,9 @@ export default async function MainLayout({
       const trialReminder = getTrialReminderContent({
         accessDecision,
         trialEndsAt: activeOrganization.trial_ends_at,
-        roleNames: activeOrganizationRoles.map((userRole) => userRole.role.name),
+        roleNames: activeOrganizationRoles.map(
+          (userRole) => userRole.role.name
+        ),
       });
 
       trialReminderMessage = trialReminder?.message ?? null;

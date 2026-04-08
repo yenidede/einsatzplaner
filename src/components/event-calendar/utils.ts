@@ -253,16 +253,16 @@ export const mapEinsatzToCalendarEvent = (
   return {
     id: normalizedEinsatz.id,
     title: hasCategories
-      ? `${normalizedEinsatz.title} (${categories
-        .map((c) => c.einsatz_category.abbreviation)
-        .join(', ')})`
-      : normalizedEinsatz.title,
-    start: normalizedEinsatz.start,
-    end: normalizedEinsatz.end,
-    allDay: normalizedEinsatz.all_day,
-    status: normalizedEinsatz.einsatz_status,
-    assignedUsers: normalizedEinsatz.einsatz_helper.map((helper) => helper.user_id),
-    helpersNeeded: normalizedEinsatz.helpers_needed,
+      ? `${einsatz.title} (${categories
+          .map((c) => c.einsatz_category.abbreviation)
+          .join(', ')})`
+      : einsatz.title,
+    start: einsatz.start,
+    end: einsatz.end,
+    allDay: einsatz.all_day,
+    status: einsatz.einsatz_status,
+    assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
+    helpersNeeded: einsatz.helpers_needed,
   };
 };
 
@@ -447,8 +447,8 @@ export function mapDbDataTypeToFormFieldType(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-    datatype +
-    ' zu seinem FormField.'
+      datatype +
+      ' zu seinem FormField.'
   );
 }
 
@@ -470,8 +470,8 @@ export function mapDbDataTypeToInputProps(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-    datatype +
-    ' zu seinem FormField.'
+      datatype +
+      ' zu seinem FormField.'
   );
 }
 

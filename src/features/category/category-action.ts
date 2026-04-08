@@ -38,7 +38,9 @@ export async function updateCategoryAction(
     where: { id: categoryId, org_id: orgId },
   });
   if (!category) {
-    throw new Error('Kategorie nicht gefunden oder gehört nicht zu dieser Organisation.');
+    throw new Error(
+      'Kategorie nicht gefunden oder gehört nicht zu dieser Organisation.'
+    );
   }
   return updateCategoryDal(categoryId, input);
 }
@@ -54,7 +56,9 @@ export async function deleteCategoryAction(categoryId: string, orgId: string) {
     where: { id: categoryId, org_id: orgId },
   });
   if (!category) {
-    throw new Error('Kategorie nicht gefunden oder gehört nicht zu dieser Organisation.');
+    throw new Error(
+      'Kategorie nicht gefunden oder gehört nicht zu dieser Organisation.'
+    );
   }
   return deleteCategoryDal(categoryId);
 }
