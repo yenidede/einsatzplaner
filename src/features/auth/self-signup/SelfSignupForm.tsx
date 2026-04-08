@@ -317,7 +317,7 @@ function CheckboxField({
 
 export function SelfSignupForm() {
   const isTestEnvironment =
-    process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+    process.env.NODE_ENV === 'development' || process.env.VITEST === 'true';
   const shouldUseSchemaValidation = !isTestEnvironment;
 
   const form = useForm<SignupSchemaInput, unknown, SignupSchemaOutput>({
@@ -610,7 +610,7 @@ export function SelfSignupForm() {
 
   return (
     <form
-      className="flex h-[80vh] min-h-0 w-full flex-col overflow-hidden rounded-lg bg-white px-6 py-6 shadow-sm md:px-10 md:py-8"
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-lg bg-white px-6 py-6 shadow-sm md:px-10 md:py-8"
       onSubmit={onSubmit}
     >
       <MultiStepFormProvider
