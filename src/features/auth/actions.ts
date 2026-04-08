@@ -414,21 +414,19 @@ export const getSelfSignupAccountStatusAction = actionClient
 export const createSelfSignupAction = actionClient
   .inputSchema(createSelfSignupSchema)
   .action(async ({ parsedInput }) => {
-    let createdOrganization: {
-      id: string;
-      name: string;
-      logo_url: string | null;
-    } | null = null;
-    let notificationContext: {
-      creatorName: string | null;
-      creatorEmail: string | null;
+    let signupResult: {
+      organization: Awaited<ReturnType<typeof createSelfSignupOrganization>>;
+      notificationContext: {
+        creatorName: string | null;
+        creatorEmail: string | null;
+      };
     } | null = null;
 
     if (parsedInput.accountMode === 'new') {
       const passwordHash = await hash(parsedInput.password, 12);
       const normalizedEmail = parsedInput.email.trim().toLowerCase();
 
-      await prisma.$transaction(async (tx) => {
+      signupResult = await prisma.$transaction(async (tx) => {
         const existingUser = await tx.user.findUnique({
           where: { email: normalizedEmail },
           select: { id: true },
@@ -467,10 +465,12 @@ export const createSelfSignupAction = actionClient
           },
         });
 
-        createdOrganization = organization;
-        notificationContext = {
-          creatorName: `${parsedInput.firstName} ${parsedInput.lastName}`.trim(),
-          creatorEmail: normalizedEmail,
+        return {
+          organization,
+          notificationContext: {
+            creatorName: `${parsedInput.firstName} ${parsedInput.lastName}`.trim(),
+            creatorEmail: normalizedEmail,
+          },
         };
       });
     }
@@ -478,7 +478,7 @@ export const createSelfSignupAction = actionClient
     if (parsedInput.accountMode === 'existing') {
       const normalizedEmail = parsedInput.email.trim().toLowerCase();
 
-      await prisma.$transaction(async (tx) => {
+      signupResult = await prisma.$transaction(async (tx) => {
         const existingUser = await tx.user.findUnique({
           where: { email: normalizedEmail },
           select: {
@@ -504,10 +504,12 @@ export const createSelfSignupAction = actionClient
 
         const organization = await createSelfSignupOrganization(tx, parsedInput);
         await addUserToOrganizationWithAllRoles(tx, existingUser.id, organization.id);
-        createdOrganization = organization;
-        notificationContext = {
-          creatorName: null,
-          creatorEmail: normalizedEmail,
+        return {
+          organization,
+          notificationContext: {
+            creatorName: null,
+            creatorEmail: normalizedEmail,
+          },
         };
       });
     }
@@ -521,7 +523,7 @@ export const createSelfSignupAction = actionClient
         );
       }
 
-      await prisma.$transaction(async (tx) => {
+      signupResult = await prisma.$transaction(async (tx) => {
         const currentUser = await tx.user.findUnique({
           where: { id: session.user.id },
           select: {
@@ -537,25 +539,27 @@ export const createSelfSignupAction = actionClient
           session.user.id,
           organization.id
         );
-        createdOrganization = organization;
-        notificationContext = {
-          creatorName:
-            [currentUser?.firstname, currentUser?.lastname]
-              .filter((value): value is string => Boolean(value))
-              .join(' ')
-              .trim() || null,
-          creatorEmail: currentUser?.email ?? null,
+        return {
+          organization,
+          notificationContext: {
+            creatorName:
+              [currentUser?.firstname, currentUser?.lastname]
+                .filter((value): value is string => Boolean(value))
+                .join(' ')
+                .trim() || null,
+            creatorEmail: currentUser?.email ?? null,
+          },
         };
       });
     }
 
-    if (createdOrganization) {
+    if (signupResult) {
       try {
         await emailService.sendSelfSignupOrganizationCreatedNotificationEmail({
           recipientEmail: SELF_SIGNUP_NOTIFICATION_EMAIL,
-          organizationName: createdOrganization.name,
-          creatorName: notificationContext?.creatorName ?? null,
-          creatorEmail: notificationContext?.creatorEmail ?? null,
+          organizationName: signupResult.organization.name,
+          creatorName: signupResult.notificationContext.creatorName,
+          creatorEmail: signupResult.notificationContext.creatorEmail,
         });
       } catch (error) {
         console.error(
@@ -569,6 +573,6 @@ export const createSelfSignupAction = actionClient
       success: true as const,
       message:
         'Vielen Dank für Ihre Anmeldung. Ihr Konto wurde erfolgreich erstellt.',
-      organization: createdOrganization,
+      organization: signupResult?.organization ?? null,
     };
   });
