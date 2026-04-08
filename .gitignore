@@ -46,3 +46,10 @@ next-env.d.ts
 
 # ralph local runtime files
 plans/ralph/tmux.log
+
+# backups
+backups/
+*.dump
+*.sql
+*.tar.gz
+
