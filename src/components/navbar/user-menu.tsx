@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { useSessionSync } from '@/hooks/useSessionSync';
 import { JSX, useState } from 'react';
 import Link from 'next/link';
@@ -18,7 +17,6 @@ import { createRoleNameOverrides, RolesList } from '../Roles';
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
   useSessionSync();
@@ -50,8 +48,17 @@ export default function UserMenu(): JSX.Element | null {
   }
 
   if (session == null || !session.user) {
-    router.push('/signin');
-    return null;
+    return (
+      <Button
+        variant="ghost"
+        className="h-auto p-0 hover:bg-transparent"
+        asChild
+      >
+        <Link href="/signin">
+          <Avatar></Avatar>
+        </Link>
+      </Button>
+    );
   }
 
   const handleLogout = async () => {
