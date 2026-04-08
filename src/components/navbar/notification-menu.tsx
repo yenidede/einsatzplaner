@@ -96,8 +96,7 @@ export default function NotificationMenu() {
 
   const { data, isLoading } = useActivityLogs({ limit: 10, offset: 0 });
   const { data: notificationReadState } = useNotificationReadState();
-  const { mutateAsync: markNotificationsAsRead } =
-    useMarkNotificationsAsRead();
+  const { mutateAsync: markNotificationsAsRead } = useMarkNotificationsAsRead();
 
   const orgIds = session?.user.orgIds;
   const { data: orgsData } = useOrganizations(
@@ -135,8 +134,7 @@ export default function NotificationMenu() {
   const unreadIds = new Set(
     activities
       .filter(
-        (activity) =>
-          !isActivityRead(activity, readIds, lastReadNotifications)
+        (activity) => !isActivityRead(activity, readIds, lastReadNotifications)
       )
       .map((activity) => activity.id)
   );

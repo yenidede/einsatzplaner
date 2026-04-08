@@ -55,16 +55,14 @@ export function useSectionNavigation<T extends string>({
   // requestId gates all timeouts and scroll actions so stale retries from older navigations abort.
   const scrollToSection = useCallback(
     (section: T, skipDelay = false, attempt = 0, requestId?: number) => {
-      const myId =
-        attempt === 0 ? ++navigationIdRef.current : (requestId ?? 0);
+      const myId = attempt === 0 ? ++navigationIdRef.current : (requestId ?? 0);
 
       const element = sectionRefs.current[section];
       if (element) {
         if (myId !== navigationIdRef.current) return;
 
         const elementPosition = element.getBoundingClientRect().top;
-        const offsetPosition =
-          elementPosition + window.scrollY - SCROLL_OFFSET;
+        const offsetPosition = elementPosition + window.scrollY - SCROLL_OFFSET;
         const scrollFn = () => {
           if (myId !== navigationIdRef.current) return;
           window.scrollTo({

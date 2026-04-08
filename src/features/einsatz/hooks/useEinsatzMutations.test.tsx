@@ -63,18 +63,21 @@ describe('useToggleUserAssignment', () => {
 
   it('entfernt den Benutzer bei einem zweiten assign-Intent nicht optimistisch aus dem Cache', async () => {
     const queryClient = createQueryClient();
-    queryClient.setQueryData(queryKeys.einsaetzeForCalendar('org-1', '2026-04'), {
-      events: [
-        {
-          id: 'einsatz-1',
-          title: 'Testeinsatz',
-          start: new Date('2026-04-04T08:00:00.000Z'),
-          end: new Date('2026-04-04T10:00:00.000Z'),
-          assignedUsers: ['user-1'],
-        },
-      ],
-      detailedEinsaetze: [],
-    });
+    queryClient.setQueryData(
+      queryKeys.einsaetzeForCalendar('org-1', '2026-04'),
+      {
+        events: [
+          {
+            id: 'einsatz-1',
+            title: 'Testeinsatz',
+            start: new Date('2026-04-04T08:00:00.000Z'),
+            end: new Date('2026-04-04T10:00:00.000Z'),
+            assignedUsers: ['user-1'],
+          },
+        ],
+        detailedEinsaetze: [],
+      }
+    );
 
     const wrapper = ({ children }: PropsWithChildren) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -98,18 +101,21 @@ describe('useToggleUserAssignment', () => {
 
   it('entfernt den Benutzer bei unassign optimistisch aus dem Cache', async () => {
     const queryClient = createQueryClient();
-    queryClient.setQueryData(queryKeys.einsaetzeForCalendar('org-1', '2026-04'), {
-      events: [
-        {
-          id: 'einsatz-1',
-          title: 'Testeinsatz',
-          start: new Date('2026-04-04T08:00:00.000Z'),
-          end: new Date('2026-04-04T10:00:00.000Z'),
-          assignedUsers: ['user-1'],
-        },
-      ],
-      detailedEinsaetze: [],
-    });
+    queryClient.setQueryData(
+      queryKeys.einsaetzeForCalendar('org-1', '2026-04'),
+      {
+        events: [
+          {
+            id: 'einsatz-1',
+            title: 'Testeinsatz',
+            start: new Date('2026-04-04T08:00:00.000Z'),
+            end: new Date('2026-04-04T10:00:00.000Z'),
+            assignedUsers: ['user-1'],
+          },
+        ],
+        detailedEinsaetze: [],
+      }
+    );
 
     const wrapper = ({ children }: PropsWithChildren) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>

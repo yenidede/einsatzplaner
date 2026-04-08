@@ -201,8 +201,7 @@ export function AllActivitiesModal({
     }
     if (deferredFilters.unreadOnly) {
       list = list.filter(
-        (activity) =>
-          !isActivityRead(activity, readIds, lastReadNotifications)
+        (activity) => !isActivityRead(activity, readIds, lastReadNotifications)
       );
     }
 

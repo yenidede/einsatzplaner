@@ -262,8 +262,7 @@ export function TemplateForm({
     start: null,
     end: null,
   });
-  const timeRangeError =
-    timeRangeFieldErrors.start ?? timeRangeFieldErrors.end;
+  const timeRangeError = timeRangeFieldErrors.start ?? timeRangeFieldErrors.end;
   /** Required user properties for this template (Überprüfungen). */
   const [requiredUserPropertyConfigs, setRequiredUserPropertyConfigs] =
     useState<
@@ -711,7 +710,8 @@ export function TemplateForm({
         if (
           timeRangeFieldErrors.start !== null ||
           timeRangeFieldErrors.end !== null ||
-          (timeRangeStartValue !== '' && !isNormalizedTime(timeRangeStartValue)) ||
+          (timeRangeStartValue !== '' &&
+            !isNormalizedTime(timeRangeStartValue)) ||
           (timeRangeEndValue !== '' && !isNormalizedTime(timeRangeEndValue))
         ) {
           setTimeRangeFieldErrors((prev) => ({

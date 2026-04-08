@@ -67,14 +67,14 @@ type EinsatzHelperRecord = {
 
 type CalendarQueryDescriptor =
   | {
-    type: 'agenda';
-    queryKey: QueryKey;
-  }
+      type: 'agenda';
+      queryKey: QueryKey;
+    }
   | {
-    type: 'month';
-    monthKey: string;
-    queryKey: QueryKey;
-  };
+      type: 'month';
+      monthKey: string;
+      queryKey: QueryKey;
+    };
 
 type EinsatzBasePatch = Partial<
   Pick<
@@ -136,7 +136,8 @@ function buildEinsatzBasePatch(record: Partial<EinsatzRow>): EinsatzBasePatch {
   if (record.end !== undefined) patch.end = toDate(record.end);
   if (record.all_day !== undefined) patch.all_day = record.all_day;
   if (typeof record.status_id === 'string') patch.status_id = record.status_id;
-  if (record.helpers_needed !== undefined) patch.helpers_needed = record.helpers_needed;
+  if (record.helpers_needed !== undefined)
+    patch.helpers_needed = record.helpers_needed;
   if (record.participant_count !== undefined) {
     patch.participant_count = record.participant_count;
   }
@@ -146,14 +147,17 @@ function buildEinsatzBasePatch(record: Partial<EinsatzRow>): EinsatzBasePatch {
   if (record.total_price !== undefined) patch.total_price = record.total_price;
   if (record.anmerkung !== undefined) patch.anmerkung = record.anmerkung;
   if (record.template_id !== undefined) patch.template_id = record.template_id;
-  if (record.updated_at !== undefined) patch.updated_at = toDate(record.updated_at) ?? null;
+  if (record.updated_at !== undefined)
+    patch.updated_at = toDate(record.updated_at) ?? null;
 
   return patch;
 }
 
 function addUserId(userIds: string[] | undefined, userId: string): string[] {
   const currentUserIds = userIds ?? [];
-  return currentUserIds.includes(userId) ? currentUserIds : [...currentUserIds, userId];
+  return currentUserIds.includes(userId)
+    ? currentUserIds
+    : [...currentUserIds, userId];
 }
 
 function removeUserId(userIds: string[] | undefined, userId: string): string[] {
@@ -263,7 +267,9 @@ function applyPatchToDetailedEinsatz(
     start: patch.start ?? detailedEinsatz.start,
     end: patch.end ?? detailedEinsatz.end,
     updated_at:
-      patch.updated_at === undefined ? detailedEinsatz.updated_at : patch.updated_at,
+      patch.updated_at === undefined
+        ? detailedEinsatz.updated_at
+        : patch.updated_at,
     status_id: patch.status_id ?? detailedEinsatz.status_id,
   };
 }
@@ -278,7 +284,9 @@ function applyPatchToCalendarDetailedEinsatz(
     start: patch.start ?? detailedEinsatz.start,
     end: patch.end ?? detailedEinsatz.end,
     updated_at:
-      patch.updated_at === undefined ? detailedEinsatz.updated_at : patch.updated_at,
+      patch.updated_at === undefined
+        ? detailedEinsatz.updated_at
+        : patch.updated_at,
     status_id: patch.status_id ?? detailedEinsatz.status_id,
   };
 }
@@ -311,13 +319,16 @@ function applyPatchToListItem(
     ...patch,
     start: patch.start ?? listItem.start,
     end: patch.end ?? listItem.end,
-    updated_at: patch.updated_at === undefined ? listItem.updated_at : patch.updated_at,
+    updated_at:
+      patch.updated_at === undefined ? listItem.updated_at : patch.updated_at,
     status_id: patch.status_id ?? listItem.status_id,
-    status_verwalter_text: nextStatus?.verwalter_text ?? listItem.status_verwalter_text,
+    status_verwalter_text:
+      nextStatus?.verwalter_text ?? listItem.status_verwalter_text,
     status_helper_text: nextStatus?.helper_text ?? listItem.status_helper_text,
     status_verwalter_color:
       nextStatus?.verwalter_color ?? listItem.status_verwalter_color,
-    status_helper_color: nextStatus?.helper_color ?? listItem.status_helper_color,
+    status_helper_color:
+      nextStatus?.helper_color ?? listItem.status_helper_color,
   };
 }
 
@@ -364,21 +375,23 @@ function updateCalendarRangeWithPatch(
     eventIndex === -1
       ? data.events
       : sortCalendarEvents(
-        data.events.map((event) =>
-          event.id === einsatzId ? applyPatchToCalendarEvent(event, patch) : event
-        )
-      );
+          data.events.map((event) =>
+            event.id === einsatzId
+              ? applyPatchToCalendarEvent(event, patch)
+              : event
+          )
+        );
 
   const nextDetailedEinsaetze =
     detailedIndex === -1
       ? data.detailedEinsaetze
       : sortDetailedEinsaetze(
-        data.detailedEinsaetze.map((detailedEinsatz) =>
-          detailedEinsatz.id === einsatzId
-            ? applyPatchToCalendarDetailedEinsatz(detailedEinsatz, patch)
-            : detailedEinsatz
-        )
-      );
+          data.detailedEinsaetze.map((detailedEinsatz) =>
+            detailedEinsatz.id === einsatzId
+              ? applyPatchToCalendarDetailedEinsatz(detailedEinsatz, patch)
+              : detailedEinsatz
+          )
+        );
 
   return {
     nextData: {
@@ -446,13 +459,18 @@ function syncSimpleCalendarListCache(
   queryClient.setQueryData<CalendarEvent[]>(
     queryKeys.einsaetze(orgId),
     (currentData) => {
-      if (!currentData || !currentData.some((event) => event.id === einsatzId)) {
+      if (
+        !currentData ||
+        !currentData.some((event) => event.id === einsatzId)
+      ) {
         return currentData;
       }
 
       return sortCalendarEvents(
         currentData.map((event) =>
-          event.id === einsatzId ? applyPatchToCalendarEvent(event, patch) : event
+          event.id === einsatzId
+            ? applyPatchToCalendarEvent(event, patch)
+            : event
         )
       );
     }
@@ -470,7 +488,8 @@ function removeEinsatzFromCaches(
 
   queryClient.setQueryData<CalendarEvent[]>(
     queryKeys.einsaetze(orgId),
-    (currentData) => currentData?.filter((event) => event.id !== einsatzId) ?? currentData
+    (currentData) =>
+      currentData?.filter((event) => event.id !== einsatzId) ?? currentData
   );
 
   const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
@@ -482,7 +501,9 @@ function removeEinsatzFromCaches(
       return;
     }
 
-    const nextEvents = currentData.events.filter((event) => event.id !== einsatzId);
+    const nextEvents = currentData.events.filter(
+      (event) => event.id !== einsatzId
+    );
     const nextDetailedEinsaetze = currentData.detailedEinsaetze.filter(
       (detailedEinsatz) => detailedEinsatz.id !== einsatzId
     );
@@ -741,9 +762,7 @@ export function useSupabaseRealtime(orgId?: string) {
     }
 
     const updateConnectionState = () => {
-      setIsConnected(
-        einsatzConnectedRef.current && helperConnectedRef.current
-      );
+      setIsConnected(einsatzConnectedRef.current && helperConnectedRef.current);
     };
 
     const einsatzChannelName = `einsatz-changes:${orgId}:${Date.now()}`;
@@ -796,7 +815,8 @@ export function useSupabaseRealtime(orgId?: string) {
 
           queryClient.invalidateQueries({
             queryKey: queryKeys.allLists(),
-            predicate: (query) => matchesEinsatzListQueryForOrg(query.queryKey, orgId),
+            predicate: (query) =>
+              matchesEinsatzListQueryForOrg(query.queryKey, orgId),
           });
         }
       )

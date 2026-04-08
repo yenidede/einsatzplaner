@@ -241,7 +241,7 @@ export const MultiSelect = React.forwardRef<
             )}
           >
             {selectedValues.length > 0 ? (
-              <div className="flex min-w-0 w-full items-center justify-between gap-1">
+              <div className="flex w-full min-w-0 items-center justify-between gap-1">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
                   {selectedValues.slice(0, maxCount).map((value) => {
                     const option = options.find((o) => o.value === value);
@@ -271,7 +271,7 @@ export const MultiSelect = React.forwardRef<
                   {selectedValues.length > maxCount && (
                     <Badge
                       className={cn(
-                        'text-foreground border-foreground/1 bg-transparent hover:bg-transparent shrink-0',
+                        'text-foreground border-foreground/1 shrink-0 bg-transparent hover:bg-transparent',
                         isAnimating ? 'animate-bounce' : '',
                         multiSelectVariants({ variant })
                       )}

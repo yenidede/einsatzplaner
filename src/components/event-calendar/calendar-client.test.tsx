@@ -117,9 +117,7 @@ vi.mock('@/components/event-calendar', () => ({
   }: {
     onAssignToggleEvent: (eventId: string) => void;
   }) => (
-    <button onClick={() => onAssignToggleEvent('einsatz-1')}>
-      Eintragen
-    </button>
+    <button onClick={() => onAssignToggleEvent('einsatz-1')}>Eintragen</button>
   ),
 }));
 

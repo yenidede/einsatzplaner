@@ -79,8 +79,7 @@ function buildCsvColumns({
   registeredHelpersLabel,
   registeredHelpersCountLabel,
   neededHelpersCountLabel,
-}: BuildCsvColumnsOptions
-): CsvColumn[] {
+}: BuildCsvColumnsOptions): CsvColumn[] {
   const baseColumns: CsvColumn[] = [
     {
       header: 'Titel',
