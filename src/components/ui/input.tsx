@@ -16,14 +16,7 @@ const Input = React.forwardRef<
   HTMLInputElement,
   React.ComponentProps<'input'> & { isStripLeadingZeros?: boolean }
 >(function Input(
-  {
-    className,
-    type,
-    onChange,
-    value,
-    isStripLeadingZeros = true,
-    ...props
-  },
+  { className, type, onChange, value, isStripLeadingZeros = true, ...props },
   ref
 ) {
   const displayValue =

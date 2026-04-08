@@ -1,28 +1,26 @@
 import Image from 'next/image';
-import { getServerSession } from 'next-auth';
-import { SelfServeSignupFlow } from '@/features/self-serve-signup/components/SelfServeSignupFlow';
-import { authOptions } from '@/lib/auth.config';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
-export default async function SignupPage() {
-  const session = await getServerSession(authOptions);
-
+export default function SignupPage() {
   return (
     <div className="bg-secondary flex grow flex-col justify-end p-6 md:p-10">
       <div className="mb-8 grid w-full max-w-6xl gap-8 md:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] md:items-end">
         <div className="space-y-6">
           <div className="space-y-3">
-            <p className="text-muted-foreground text-sm font-medium uppercase tracking-[0.2em]">
-              Self-Serve Signup
+            <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
+              Anmeldung
             </p>
-            <h1>Starten Sie mit Ihrer Organisation</h1>
+            <h1>Die Selbstregistrierung ist derzeit nicht verfuegbar</h1>
             <p className="text-muted-foreground">
-              Legen Sie zuerst die grundlegenden Organisationsdaten fest. Danach
-              wird der weitere Flow passend zu Ihrem Kontostatus fortgesetzt.
+              Wenn Sie bereits Zugriff haben, melden Sie sich bitte an. Falls
+              Sie einen neuen Zugang benoetigen, kontaktieren Sie uns bitte
+              direkt.
             </p>
           </div>
-          <SelfServeSignupFlow
-            authenticatedEmail={session?.user?.email ?? null}
-          />
+          <Button asChild>
+            <Link href="/signin">Zur Anmeldung</Link>
+          </Button>
         </div>
         <div className="hidden md:block">
           <Image

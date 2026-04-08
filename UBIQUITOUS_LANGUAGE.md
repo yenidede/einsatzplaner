@@ -2,45 +2,45 @@
 
 ## Einsatzplanung
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Einsatz** | Ein geplanter Termin einer Organisation mit Zeitraum, Status und personeller Besetzung. | Event, Termin, Buchung |
-| **Einsatzstatus** | Der fachliche Zustand eines Einsatzes mit getrennten Anzeigen für Verwaltung und Helferansicht. | Status, Phase |
-| **Einsatzkategorie** | Ein frei definierbares Merkmal zur Einordnung eines Einsatzes innerhalb einer Organisation. | Typ, Gruppe, Tag |
-| **Einsatzkommentar** | Ein von einem Benutzer zu einem konkreten Einsatz erfasster Textbeitrag. | Notiz, Nachricht |
-| **Helferzuweisung** | Die Zuordnung eines Benutzers zu einem konkreten Einsatz. | Helfer, Teilnahme, Besetzung |
-| **Benötigte Helferanzahl** | Die Soll-Anzahl an Helferzuweisungen für einen Einsatz. | Plätze, Kapazität |
-| **Einsatzanforderung** | Eine an einen Einsatz gebundene Anforderung an Personeneigenschaften inklusive Pflichtgrad und Mindestanzahl passender Personen. | Qualifikation, Filter |
+| Term                       | Definition                                                                                                                       | Aliases to avoid             |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| **Einsatz**                | Ein geplanter Termin einer Organisation mit Zeitraum, Status und personeller Besetzung.                                          | Event, Termin, Buchung       |
+| **Einsatzstatus**          | Der fachliche Zustand eines Einsatzes mit getrennten Anzeigen für Verwaltung und Helferansicht.                                  | Status, Phase                |
+| **Einsatzkategorie**       | Ein frei definierbares Merkmal zur Einordnung eines Einsatzes innerhalb einer Organisation.                                      | Typ, Gruppe, Tag             |
+| **Einsatzkommentar**       | Ein von einem Benutzer zu einem konkreten Einsatz erfasster Textbeitrag.                                                         | Notiz, Nachricht             |
+| **Helferzuweisung**        | Die Zuordnung eines Benutzers zu einem konkreten Einsatz.                                                                        | Helfer, Teilnahme, Besetzung |
+| **Benötigte Helferanzahl** | Die Soll-Anzahl an Helferzuweisungen für einen Einsatz.                                                                          | Plätze, Kapazität            |
+| **Einsatzanforderung**     | Eine an einen Einsatz gebundene Anforderung an Personeneigenschaften inklusive Pflichtgrad und Mindestanzahl passender Personen. | Qualifikation, Filter        |
 
 ## Organisation und Personen
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Organisation** | Die fachliche Mandanteneinheit, in der Einsätze, Vorlagen, Rollen und Stammdaten verwaltet werden. | Verein, Kunde, Mandant |
-| **Benutzer** | Eine authentifizierbare Person mit persönlichem Profil und Zugang zum System. | User, Konto, Login |
-| **Mitgliedschaft** | Die Zugehörigkeit eines Benutzers zu einer Organisation über eine oder mehrere Rollen. | Teilnahme, Benutzer in Organisation |
-| **Rolle** | Eine Berechtigungs- und Verantwortlichkeitsklasse innerhalb einer Organisation. | Funktion, Recht |
-| **Einladung** | Ein zeitlich begrenztes Angebot, einer Organisation mit einer oder mehreren Rollen beizutreten. | Invite, Freischaltung |
-| **Personeneigenschaft** | Ein organisationsspezifisch definierter Profilbaustein, der für Benutzer gepflegt und in Einsätzen oder Vorlagen referenziert werden kann. | Benutzerfeld, Attribut, Qualifikation |
-| **Wert einer Personeneigenschaft** | Der konkrete, einem Benutzer zugeordnete Wert einer Personeneigenschaft. | Profilwert, Eigenschaftswert |
+| Term                               | Definition                                                                                                                                 | Aliases to avoid                      |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| **Organisation**                   | Die fachliche Mandanteneinheit, in der Einsätze, Vorlagen, Rollen und Stammdaten verwaltet werden.                                         | Verein, Kunde, Mandant                |
+| **Benutzer**                       | Eine authentifizierbare Person mit persönlichem Profil und Zugang zum System.                                                              | User, Konto, Login                    |
+| **Mitgliedschaft**                 | Die Zugehörigkeit eines Benutzers zu einer Organisation über eine oder mehrere Rollen.                                                     | Teilnahme, Benutzer in Organisation   |
+| **Rolle**                          | Eine Berechtigungs- und Verantwortlichkeitsklasse innerhalb einer Organisation.                                                            | Funktion, Recht                       |
+| **Einladung**                      | Ein zeitlich begrenztes Angebot, einer Organisation mit einer oder mehreren Rollen beizutreten.                                            | Invite, Freischaltung                 |
+| **Personeneigenschaft**            | Ein organisationsspezifisch definierter Profilbaustein, der für Benutzer gepflegt und in Einsätzen oder Vorlagen referenziert werden kann. | Benutzerfeld, Attribut, Qualifikation |
+| **Wert einer Personeneigenschaft** | Der konkrete, einem Benutzer zugeordnete Wert einer Personeneigenschaft.                                                                   | Profilwert, Eigenschaftswert          |
 
 ## Vorlagen und Stammdaten
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Einsatzvorlage** | Eine wiederverwendbare Voreinstellung für neue Einsätze mit Defaultwerten, Kategorien und Anforderungen. | Template, Muster, Standard-Einsatz |
+| Term                    | Definition                                                                                                           | Aliases to avoid                       |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| **Einsatzvorlage**      | Eine wiederverwendbare Voreinstellung für neue Einsätze mit Defaultwerten, Kategorien und Anforderungen.             | Template, Muster, Standard-Einsatz     |
 | **Vorlagenanforderung** | Eine an eine Einsatzvorlage gebundene Personeneigenschafts-Anforderung, die in neue Einsätze übernommen werden kann. | Vorlagen-Qualifikation, Standardfilter |
-| **Vorlagenkategorie** | Die Zuordnung einer Einsatzkategorie zu einer Einsatzvorlage. | Standardkategorie |
-| **Felddefinition** | Die technische und fachliche Beschreibung eines Eingabefelds inklusive Datentyp und Validierungsregeln. | Feld, Custom Field |
-| **PDF-Vorlage** | Eine organisationsbezogene Dokumentvorlage für einen bestimmten Dokumenttyp. | Druckvorlage, Dokumenttemplate |
+| **Vorlagenkategorie**   | Die Zuordnung einer Einsatzkategorie zu einer Einsatzvorlage.                                                        | Standardkategorie                      |
+| **Felddefinition**      | Die technische und fachliche Beschreibung eines Eingabefelds inklusive Datentyp und Validierungsregeln.              | Feld, Custom Field                     |
+| **PDF-Vorlage**         | Eine organisationsbezogene Dokumentvorlage für einen bestimmten Dokumenttyp.                                         | Druckvorlage, Dokumenttemplate         |
 
 ## Integration und Nachvollziehbarkeit
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Kalenderabonnement** | Ein persönlicher, tokenbasierter Kalenderzugang eines Benutzers für eine Organisation. | Kalenderlink, iCal-Link |
-| **Änderungsprotokoll** | Die chronologische Erfassung fachlich relevanter Änderungen an einem Einsatz oder Benutzerbezug. | History, Audit Log |
-| **Aktive Organisation** | Die aktuell im Benutzerkontext ausgewählte Organisation. | Gewählte Organisation, aktueller Mandant |
+| Term                    | Definition                                                                                       | Aliases to avoid                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| **Kalenderabonnement**  | Ein persönlicher, tokenbasierter Kalenderzugang eines Benutzers für eine Organisation.           | Kalenderlink, iCal-Link                  |
+| **Änderungsprotokoll**  | Die chronologische Erfassung fachlich relevanter Änderungen an einem Einsatz oder Benutzerbezug. | History, Audit Log                       |
+| **Aktive Organisation** | Die aktuell im Benutzerkontext ausgewählte Organisation.                                         | Gewählte Organisation, aktueller Mandant |
 
 ## Beziehungen
 

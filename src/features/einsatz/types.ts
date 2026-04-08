@@ -67,7 +67,11 @@ export type EinsatzDetailed = EinsatzRawDb & {
   })[];
   categories: string[];
   change_log: (ChangeLogRawDb & {
-    user: { id: string; firstname: string | null; lastname: string | null } | null;
+    user: {
+      id: string;
+      firstname: string | null;
+      lastname: string | null;
+    } | null;
   })[];
   user_properties: EinsatzUserProperty[];
 };

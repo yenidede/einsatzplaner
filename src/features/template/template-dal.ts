@@ -235,28 +235,28 @@ export async function getTemplateFieldReuseCandidatesByOrgId(
 
   const excludedFieldIds = excludeTemplateId
     ? (
-      await prisma.template_field.findMany({
-        where: {
-          template_id: excludeTemplateId,
-          einsatz_template: {
-            org_id: orgId,
+        await prisma.template_field.findMany({
+          where: {
+            template_id: excludeTemplateId,
+            einsatz_template: {
+              org_id: orgId,
+            },
           },
-        },
-        select: {
-          field_id: true,
-        },
-      })
-    ).map((templateField) => templateField.field_id)
+          select: {
+            field_id: true,
+          },
+        })
+      ).map((templateField) => templateField.field_id)
     : [];
 
   const templateFields = await prisma.template_field.findMany({
     where: {
       ...(excludedFieldIds.length > 0
         ? {
-          field_id: {
-            notIn: excludedFieldIds,
-          },
-        }
+            field_id: {
+              notIn: excludedFieldIds,
+            },
+          }
         : {}),
       einsatz_template: {
         org_id: orgId,
@@ -358,16 +358,16 @@ export type CreateTemplateFieldInput = {
   name: string;
   description?: string;
   datatype:
-  | 'text'
-  | 'number'
-  | 'boolean'
-  | 'select'
-  | 'currency'
-  | 'group'
-  | 'date'
-  | 'time'
-  | 'phone'
-  | 'mail';
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'currency'
+    | 'group'
+    | 'date'
+    | 'time'
+    | 'phone'
+    | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -406,7 +406,9 @@ export async function createTemplateField(
 
   const orgId = template.org_id;
   if (!orgId || !(await hasPermission(session, 'templates:create', orgId))) {
-    throw new Error('Keine Berechtigung, Felder zu dieser Vorlage hinzuzufügen.');
+    throw new Error(
+      'Keine Berechtigung, Felder zu dieser Vorlage hinzuzufügen.'
+    );
   }
 
   const typeId = await ensureTypeExists(input.datatype);

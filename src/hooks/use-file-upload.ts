@@ -64,9 +64,7 @@ const createClientSafeId = (): string => {
 
     return segments
       .map((segment) =>
-        segment
-          .map((value) => value.toString(16).padStart(2, '0'))
-          .join('')
+        segment.map((value) => value.toString(16).padStart(2, '0')).join('')
       )
       .join('-');
   }
@@ -131,9 +129,7 @@ export const useFileUpload = (
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync internal files when initialFiles changes (e.g. after org data loads on settings page)
-  const initialFilesKey = initialFiles
-    .map((f) => `${f.id}:${f.url}`)
-    .join('|');
+  const initialFilesKey = initialFiles.map((f) => `${f.id}:${f.url}`).join('|');
   useEffect(() => {
     setState((prev) => ({
       ...prev,
@@ -268,15 +264,12 @@ export const useFileUpload = (
     );
   }, [showDestructive]);
 
-  const clearFiles = useCallback(
-    async (): Promise<'success' | 'cancel'> => {
-      const result = await confirmClearFiles();
-      if (result !== 'success') return result;
-      clearFilesSilently();
-      return result;
-    },
-    [clearFilesSilently, confirmClearFiles]
-  );
+  const clearFiles = useCallback(async (): Promise<'success' | 'cancel'> => {
+    const result = await confirmClearFiles();
+    if (result !== 'success') return result;
+    clearFilesSilently();
+    return result;
+  }, [clearFilesSilently, confirmClearFiles]);
 
   const addFiles = useCallback(
     (newFiles: FileList | File[]) => {
@@ -350,7 +343,9 @@ export const useFileUpload = (
         onFilesAdded?.(filesToAdd);
 
         setState((prev) => {
-          const newFiles = multiple ? [...prev.files, ...filesToAdd] : filesToAdd;
+          const newFiles = multiple
+            ? [...prev.files, ...filesToAdd]
+            : filesToAdd;
           onFilesChange?.(newFiles);
           return {
             ...prev,

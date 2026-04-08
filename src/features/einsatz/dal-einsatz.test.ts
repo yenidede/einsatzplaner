@@ -152,13 +152,13 @@ describe('toggleUserAssignmentToEinsatz', () => {
       typeId: ChangeTypeIds['N-Eingetragen'],
       affectedUserId: 'user-1',
     });
-    expect(mockCheckEinsatzRequirementsAfterAssignment).toHaveBeenCalledTimes(1);
+    expect(mockCheckEinsatzRequirementsAfterAssignment).toHaveBeenCalledTimes(
+      1
+    );
   });
 
   it('erzwingt die Leave-Berechtigung auch bei einem idempotenten unassign-no-op', async () => {
-    mockHasPermission
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
+    mockHasPermission.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
     await expect(
       toggleUserAssignmentToEinsatz('einsatz-1', 'assign')
@@ -208,9 +208,7 @@ describe('toggleUserAssignmentToEinsatz', () => {
 
     await expect(
       toggleUserAssignmentToEinsatz('einsatz-1', 'assign')
-    ).rejects.toThrow(
-      'Die Selbstzuweisung konnte nicht abgeschlossen werden.'
-    );
+    ).rejects.toThrow('Die Selbstzuweisung konnte nicht abgeschlossen werden.');
 
     expect(mockTransaction).toHaveBeenCalledTimes(2);
   });

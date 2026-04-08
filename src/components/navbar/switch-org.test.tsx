@@ -61,7 +61,10 @@ vi.mock('@/components/ui/select', async () => {
   }>) {
     return (
       <SelectContext.Provider value={{ onValueChange, disabled }}>
-        <div data-testid="org-switch-root" data-disabled={disabled ? '' : undefined}>
+        <div
+          data-testid="org-switch-root"
+          data-disabled={disabled ? '' : undefined}
+        >
           {children}
         </div>
       </SelectContext.Provider>
@@ -189,7 +192,8 @@ describe('NavSwitchOrgSelect', () => {
     });
 
     expect(
-      expiredOrg.getAttribute('disabled') !== null || expiredOrg.matches(':disabled')
+      expiredOrg.getAttribute('disabled') !== null ||
+        expiredOrg.matches(':disabled')
     ).toBe(true);
     expect(expiredOrg.getAttribute('title')).toBe(
       'Der Zugriff auf Abgelaufener Verein ist abgelaufen. Bitte wenden Sie sich an Ihre Organisationsverwaltung, um den Zugriff wieder freizuschalten.'

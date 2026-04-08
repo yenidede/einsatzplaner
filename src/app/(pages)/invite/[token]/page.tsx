@@ -148,7 +148,8 @@ export default function InviteAcceptPage() {
                           ))
                         ) : (
                           <span className="text-sm">
-                            {invitation.roleName || invitation.helperNameSingular}
+                            {invitation.roleName ||
+                              invitation.helperNameSingular}
                           </span>
                         )}
                       </div>

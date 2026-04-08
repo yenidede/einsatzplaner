@@ -44,11 +44,11 @@ export function useCalendarSubscription(orgId: string) {
       queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
         prev
           ? {
-            ...prev,
-            token: data.token,
-            webcalUrl: data.webcalUrl,
-            httpUrl: data.httpUrl,
-          }
+              ...prev,
+              token: data.token,
+              webcalUrl: data.webcalUrl,
+              httpUrl: data.httpUrl,
+            }
           : prev
       );
       toast.success('Neuer Kalender-Link wurde generiert');

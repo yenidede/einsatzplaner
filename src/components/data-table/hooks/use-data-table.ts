@@ -249,7 +249,9 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
         ([rowId, isSelected]) => isSelected && visibleRowIds.has(rowId)
       );
 
-      if (nextSelectionEntries.length === Object.keys(previousSelection).length) {
+      if (
+        nextSelectionEntries.length === Object.keys(previousSelection).length
+      ) {
         return previousSelection;
       }
 

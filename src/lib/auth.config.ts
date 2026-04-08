@@ -352,7 +352,7 @@ export const authOptions: NextAuthOptions = {
             })
           : null;
         const resolvedActiveOrganization = userData?.active_org
-          ? activeOrgData ?? null
+          ? (activeOrgData ?? null)
           : null;
 
         const newToken: JWT = {

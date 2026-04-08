@@ -568,6 +568,38 @@ export class EmailService {
       );
     }
   }
+
+  async sendOtpCodeEmail(recipientEmail: string, code: string) {
+    if (!this.transporter) {
+      return;
+    }
+
+    const mailOptions = {
+      from: `"Einsatzplaner" <${process.env.SMTP_USER}>`,
+      to: recipientEmail,
+      subject: 'Ihr Bestätigungscode für den Einsatzplaner',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; text-align: center;">E-Mail-Adresse bestätigen</h2>
+          <div style="background: #f5f7fb; padding: 24px; border-radius: 12px; margin: 24px 0;">
+            <p>Hallo,</p>
+            <p>bitte geben Sie den folgenden 6-stelligen Bestätigungscode im Einsatzplaner ein:</p>
+            <div style="text-align: center; margin: 32px 0;">
+              <div style="display: inline-block; letter-spacing: 0.35em; font-size: 32px; font-weight: 700; color: #1f2937; background: white; padding: 16px 24px; border-radius: 10px; border: 1px solid #dbe3f0;">
+                ${code}
+              </div>
+            </div>
+            <p>Der Code ist 10 Minuten gültig. Falls Sie diese Anfrage nicht erwartet haben, können Sie diese E-Mail ignorieren.</p>
+          </div>
+          <p style="color: #666; font-size: 12px; text-align: center;">
+            Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+          </p>
+        </div>
+      `,
+    };
+
+    await this.transporter.sendMail(mailOptions);
+  }
 }
 
 export const emailService = new EmailService();

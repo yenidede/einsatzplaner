@@ -80,7 +80,7 @@ export function useMarkNotificationsAsRead() {
       if (!result.success || !result.data) {
         throw new Error(
           result.error ??
-          'Benachrichtigungsstatus konnte nicht gespeichert werden.'
+            'Benachrichtigungsstatus konnte nicht gespeichert werden.'
         );
       }
 
@@ -91,10 +91,9 @@ export function useMarkNotificationsAsRead() {
         queryKey: activityLogQueryKeys.notificationReadState,
       });
 
-      const previousState =
-        queryClient.getQueryData<NotificationReadState>(
-          activityLogQueryKeys.notificationReadState
-        );
+      const previousState = queryClient.getQueryData<NotificationReadState>(
+        activityLogQueryKeys.notificationReadState
+      );
 
       queryClient.setQueryData<NotificationReadState>(
         activityLogQueryKeys.notificationReadState,
@@ -120,7 +119,10 @@ export function useMarkNotificationsAsRead() {
       );
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(activityLogQueryKeys.notificationReadState, data);
+      queryClient.setQueryData(
+        activityLogQueryKeys.notificationReadState,
+        data
+      );
     },
   });
 }

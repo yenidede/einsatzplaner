@@ -65,7 +65,10 @@ export function UserListItem({
               </span>
             )}
           </div>
-          <RolesList unsortedRoles={roles} roleNameOverrides={roleNameOverrides} />
+          <RolesList
+            unsortedRoles={roles}
+            roleNameOverrides={roleNameOverrides}
+          />
         </div>
       </div>
 

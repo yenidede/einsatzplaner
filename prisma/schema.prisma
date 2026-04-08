@@ -185,6 +185,8 @@ model organization {
   user_organization_notification_preference user_organization_notification_preference[]
   user_organization_role                    user_organization_role[]
   user_property                             user_property[]
+
+  @@index([name])
 }
 
 model type {
@@ -587,8 +589,6 @@ model user_organization_notification_preference {
   @@unique([user_id, organization_id], map: "user_organization_notification_preference_user_org_unique")
   @@index([organization_id], map: "idx_user_organization_notification_preference_organization")
   @@index([user_id], map: "idx_user_organization_notification_preference_user")
-  @@index([organization_id], map: "user_org_notification_preference_org_idx")
-  @@index([user_id], map: "user_org_notification_preference_user_idx")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

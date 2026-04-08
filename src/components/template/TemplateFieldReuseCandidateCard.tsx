@@ -46,7 +46,8 @@ export function TemplateFieldReuseCandidateCard({
               </Badge>
             </div>
             <CardDescription>
-              {candidate.description?.trim() || 'Keine Beschreibung hinterlegt.'}
+              {candidate.description?.trim() ||
+                'Keine Beschreibung hinterlegt.'}
             </CardDescription>
           </div>
           {candidate.linkedTemplateNames.length > 0 && (
