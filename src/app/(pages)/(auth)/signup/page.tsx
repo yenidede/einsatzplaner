@@ -1,12 +1,14 @@
 import Image from 'next/image';
+import { AuthScrollLock } from '@/app/(pages)/(auth)/AuthScrollLock';
 import { SelfSignupForm } from '@/features/auth/self-signup/SelfSignupForm';
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen bg-[#f7f6f3] px-4 py-8 md:px-8 md:py-12">
-      <div className="mx-auto flex min-h-[80vh] w-full max-w-[1800px] items-start gap-8 lg:gap-12">
-        <aside className="bg-secondary/50 hidden w-full max-w-[32rem] min-w-0 md:flex md:flex-[0.55]">
-          <div className="h-[80vh] w-full overflow-hidden rounded-lg">
+    <div className="h-dvh overflow-hidden bg-[#f7f6f3]">
+      <AuthScrollLock />
+      <div className="mx-auto box-border flex h-full min-h-0 w-full max-w-[1800px] items-stretch gap-4 p-4 md:p-8 md:py-12">
+        <aside className="bg-secondary/50 hidden h-full w-full max-w-[32rem] min-w-0 md:flex md:flex-[0.55]">
+          <div className="h-full w-full overflow-hidden rounded-lg">
             <Image
               src="https://fgxvzejucaxteqvnhojt.supabase.co/storage/v1/object/public/images/signup2.jpg"
               alt="Sehr schönes Museum mit altem Gemälde"
@@ -17,8 +19,8 @@ export default function SignupPage() {
             />
           </div>
         </aside>
-        <main className="flex min-w-0 flex-1 items-start justify-end">
-          <div className="w-full max-w-[70rem]">
+        <main className="flex min-h-0 min-w-0 flex-1 items-stretch justify-end">
+          <div className="h-full min-h-0 w-full max-w-[70rem]">
             <SelfSignupForm />
           </div>
         </main>

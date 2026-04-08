@@ -58,7 +58,7 @@ const SubmitButton = (
 ) => {
   const { isLastStep } = useMultiStepForm();
   if (!isLastStep) return null;
-  return <Button size="sm" type="button" {...props} />;
+  return <Button size="sm" type="submit" {...props} />;
 };
 
 const ResetButton = (

@@ -32,16 +32,16 @@ const getFileIcon = (file: FileWithPreview) => {
 };
 
 /**
- * Minimaler Upload-Wrapper fuer den Self-Signup-Flow.
+ * Minimaler Upload-Wrapper für den Self-Signup-Flow.
  *
  * Wir verwenden hier bewusst nicht den globalen Upload aus
  * `@/components/form/file-upload`, weil dieser auf persistente Uploads
- * waehrend der Formulareingabe ausgelegt ist und dafuer zusaetzliche
+ * während der Formulareingabe ausgelegt ist und dafür zusätzliche
  * Infrastruktur wie `id`, `onUpload`, Remove-Callbacks und bestehende Dateien
  * erwartet.
  *
- * Im Self-Signup benoetigen wir nur lokale Dateiauswahl mit Vorschau und die
- * Uebergabe genau einer Datei an react-hook-form, ohne sofortigen Storage-Upload.
+ * Im Self-Signup benötigen wir nur lokale Dateiauswahl mit Vorschau und die
+ * Übergabe genau einer Datei an react-hook-form, ohne sofortigen Storage-Upload.
  * Diese Komponente kapselt deshalb nur die gemeinsame `useFileUpload`-Basis in
  * einer kleineren, flow-spezifischen API.
  */
@@ -199,7 +199,7 @@ export function FileUpload<TFieldName extends string>({
             Upload
           </p> */}
           <p className="text-foreground mb-2 text-sm font-medium">
-            Datei hier ablegen oder zum Auswaehlen klicken
+            Datei hier ablegen oder zum Auswählen klicken
           </p>
           <div className="text-muted-foreground/70 flex flex-wrap justify-center gap-1 text-xs">
             {placeholder}
