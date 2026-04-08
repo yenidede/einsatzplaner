@@ -169,6 +169,8 @@ export const OTPCustom = forwardRef<HTMLDivElement, OTPCustomProps>(
     return (
       <div
         ref={containerRef}
+        role="group"
+        aria-label="Bestätigungscode"
         className={cn('flex items-center gap-2', className)}
         data-slot="otp-custom"
       >
@@ -184,6 +186,7 @@ export const OTPCustom = forwardRef<HTMLDivElement, OTPCustomProps>(
                 ref={(element) => {
                   inputRefs.current[index] = element;
                 }}
+                aria-label={`Ziffer ${index + 1} von ${length}`}
                 aria-invalid={ariaInvalid}
                 autoComplete={index === 0 ? 'one-time-code' : 'off'}
                 className={cn(

@@ -248,7 +248,12 @@ export function useOneTimePassword({
     }
 
     const intervalId = window.setInterval(() => {
-      setCurrentTimestamp(Date.now());
+      const now = Date.now();
+      setCurrentTimestamp(now);
+
+      if (now >= resendAvailableAt) {
+        window.clearInterval(intervalId);
+      }
     }, 1000);
 
     return () => {

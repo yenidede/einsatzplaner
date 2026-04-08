@@ -532,7 +532,7 @@ export function SelfSignupForm() {
 
   const accountMode: SelfSignupAccountMode = isLoggedIn
     ? 'logged_in'
-    : accountStatusQuery.data?.accountExists
+    : accountStatusQuery.isSuccess && accountStatusQuery.data.accountExists
       ? 'existing'
       : 'new';
   const hasVerificationStep = accountMode === 'new';
@@ -961,6 +961,18 @@ export function SelfSignupForm() {
             }
 
             if (!isBaseValid || stepSpecificIssues.length > 0) {
+              return false;
+            }
+
+            if (
+              shouldCheckAccountStatus &&
+              accountStatusQuery.isError
+            ) {
+              setSubmitErrorMessage(
+                accountStatusQuery.error instanceof Error
+                  ? accountStatusQuery.error.message
+                  : 'Der Kontostatus konnte nicht geprüft werden.'
+              );
               return false;
             }
 

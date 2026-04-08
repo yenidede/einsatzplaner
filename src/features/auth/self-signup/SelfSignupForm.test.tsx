@@ -946,4 +946,69 @@ describe('SelfSignupForm', () => {
     });
   });
 
+  it('blockiert den Wechsel in den nächsten Schritt, wenn die Kontostatus-Prüfung fehlschlägt', async () => {
+    mockGetSelfSignupAccountStatusAction.mockRejectedValueOnce(
+      new Error('Der Kontostatus konnte nicht geprüft werden.')
+    );
+
+    const { container } = renderWithQueryClient();
+
+    fireEvent.change(
+      container.querySelector<HTMLInputElement>('input[name="orga-name"]')!,
+      {
+        target: { value: 'Jüdisches Museum Hohenems' },
+      }
+    );
+    fireEvent.change(
+      container.querySelector<HTMLInputElement>('input[name="user-vorname"]')!,
+      {
+        target: { value: 'David' },
+      }
+    );
+    fireEvent.change(
+      container.querySelector<HTMLInputElement>('input[name="user-nachname"]')!,
+      {
+        target: { value: 'Kathrein' },
+      }
+    );
+    fireEvent.change(
+      container.querySelector<HTMLInputElement>('input[name="user-email"]')!,
+      {
+        target: { value: 'david@example.com' },
+      }
+    );
+    fireEvent.blur(
+      container.querySelector<HTMLInputElement>('input[name="user-email"]')!
+    );
+    fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), {
+      target: { value: 'geheimespasswort' },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Bitte wiederholen Sie Ihr Passwort'),
+      {
+        target: { value: 'geheimespasswort' },
+      }
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {
+          name: 'Weiter',
+        })
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Der Kontostatus konnte nicht geprüft werden.')
+      ).toBeTruthy();
+    });
+    expect(
+      screen.getByRole('heading', { name: 'Registrierung' })
+    ).toBeTruthy();
+    expect(mockSendOneTimePasswordAction).not.toHaveBeenCalled();
+  });
+
 });

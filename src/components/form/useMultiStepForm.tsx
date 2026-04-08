@@ -48,10 +48,10 @@ export function MultiStepFormProvider({
   useEffect(() => {
     setStepsState(stepsFields);
 
-    if (currentStepIndex > stepsFields.length) {
-      setCurrentStepIndex(1);
-    }
-  }, [currentStepIndex, stepsFields]);
+    setCurrentStepIndex((prevIndex) =>
+      prevIndex > stepsFields.length ? 1 : prevIndex
+    );
+  }, [stepsFields]);
 
   const goToNext = async () => {
     const currentStepData = steps[currentStepIndex - 1];

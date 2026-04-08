@@ -1,6 +1,9 @@
 import { randomInt } from 'crypto';
 import { compare, hash } from 'bcryptjs';
-import type { otp_challenge as OtpChallenge } from '@/generated/prisma';
+import type {
+  Prisma,
+  otp_challenge as OtpChallenge,
+} from '@/generated/prisma';
 import prisma from '@/lib/prisma';
 
 const OTP_CODE_LENGTH = 6;
@@ -38,7 +41,7 @@ function createOtpCode(length: number): string {
   return digits.join('');
 }
 
-type OtpTransactionClient = Pick<typeof prisma, 'otp_challenge' | 'otp_code'>;
+type OtpTransactionClient = Prisma.TransactionClient;
 
 async function invalidateOpenChallengesByEmail(
   email: string,
@@ -161,6 +164,8 @@ export async function createAndSendOneTimePasswordChallenge(input: {
   const codeHash = await hash(code, 10);
 
   const challenge = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${email}))`;
+
     const activeChallenge = await getActiveChallengeByEmail(email, tx);
 
     if (activeChallenge) {

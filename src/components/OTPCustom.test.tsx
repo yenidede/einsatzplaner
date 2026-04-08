@@ -55,4 +55,14 @@ describe('OTPCustom', () => {
     expect((inputs[0] as HTMLInputElement).value).toBe('1');
     expect((inputs[1] as HTMLInputElement).value).toBe('2');
   });
+
+  it('beschriftet jedes OTP-Feld barrierefrei', () => {
+    render(<OTPCustom value="" onChange={() => {}} />);
+
+    expect(
+      screen.getByRole('group', { name: 'Bestätigungscode' })
+    ).toBeTruthy();
+    expect(screen.getByLabelText('Ziffer 1 von 6')).toBeTruthy();
+    expect(screen.getByLabelText('Ziffer 6 von 6')).toBeTruthy();
+  });
 });
