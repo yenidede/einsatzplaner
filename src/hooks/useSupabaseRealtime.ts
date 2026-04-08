@@ -25,6 +25,7 @@ import type {
   EinsatzListItem,
 } from '@/features/einsatz/types';
 import type { CalendarEvent } from '@/components/event-calendar/types';
+import { dbTimestampToCalendarDate } from '@/features/einsatz/datetime';
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
@@ -95,13 +96,22 @@ type EinsatzBasePatch = Partial<
   updated_at?: Date | null;
 };
 
-function toDate(value: string | null | undefined): Date | undefined {
+function toInstantDate(value: string | null | undefined): Date | undefined {
   if (!value) {
     return undefined;
   }
 
   const parsedDate = new Date(value);
   return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+}
+
+function toCalendarDate(value: string | null | undefined): Date | undefined {
+  const parsedDate = toInstantDate(value);
+  if (!parsedDate) {
+    return undefined;
+  }
+
+  return dbTimestampToCalendarDate(parsedDate);
 }
 
 function isEinsatzRow(value: unknown): value is EinsatzRow {
@@ -132,8 +142,8 @@ function buildEinsatzBasePatch(record: Partial<EinsatzRow>): EinsatzBasePatch {
   const patch: EinsatzBasePatch = {};
 
   if (record.title !== undefined) patch.title = record.title;
-  if (record.start !== undefined) patch.start = toDate(record.start);
-  if (record.end !== undefined) patch.end = toDate(record.end);
+  if (record.start !== undefined) patch.start = toCalendarDate(record.start);
+  if (record.end !== undefined) patch.end = toCalendarDate(record.end);
   if (record.all_day !== undefined) patch.all_day = record.all_day;
   if (typeof record.status_id === 'string') patch.status_id = record.status_id;
   if (record.helpers_needed !== undefined)
@@ -147,8 +157,9 @@ function buildEinsatzBasePatch(record: Partial<EinsatzRow>): EinsatzBasePatch {
   if (record.total_price !== undefined) patch.total_price = record.total_price;
   if (record.anmerkung !== undefined) patch.anmerkung = record.anmerkung;
   if (record.template_id !== undefined) patch.template_id = record.template_id;
-  if (record.updated_at !== undefined)
-    patch.updated_at = toDate(record.updated_at) ?? null;
+  if (record.updated_at !== undefined) {
+    patch.updated_at = toInstantDate(record.updated_at) ?? null;
+  }
 
   return patch;
 }
@@ -234,8 +245,8 @@ function isRecordInCalendarQuery(
   record: Partial<EinsatzRow>,
   descriptor: CalendarQueryDescriptor
 ): boolean {
-  const start = toDate(record.start);
-  const end = toDate(record.end) ?? start;
+  const start = toCalendarDate(record.start);
+  const end = toCalendarDate(record.end) ?? start;
 
   if (!start || !end) {
     return false;

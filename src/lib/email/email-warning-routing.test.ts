@@ -1,0 +1,122 @@
+import { describe, expect, it, vi } from 'vitest';
+import { splitWarningRecipientsByDelivery } from './email-warning-routing';
+
+describe('splitWarningRecipientsByDelivery', () => {
+  it('ordnet kritische Meldungen in immediate und digest nach Einstellungen ein', () => {
+    const result = splitWarningRecipientsByDelivery({
+      recipients: [
+        {
+          userId: 'user-immediate',
+          email: 'immediate@example.com',
+          name: 'Immediate User',
+        },
+        {
+          userId: 'user-digest',
+          email: 'digest@example.com',
+          name: 'Digest User',
+        },
+      ],
+      settingsByUserId: new Map([
+        [
+          'user-immediate',
+          {
+            emailEnabled: true,
+            deliveryMode: 'critical_and_digest',
+            minimumPriority: 'review',
+            digestInterval: 'daily',
+            digestTime: '08:00',
+            digestSecondTime: '20:00',
+          },
+        ],
+        [
+          'user-digest',
+          {
+            emailEnabled: true,
+            deliveryMode: 'digest_only',
+            minimumPriority: 'critical',
+            digestInterval: 'every_2_days',
+            digestTime: '09:00',
+            digestSecondTime: '21:00',
+          },
+        ],
+      ]),
+    });
+
+    expect(result.immediateRecipients).toEqual([
+      { email: 'immediate@example.com', name: 'Immediate User' },
+    ]);
+    expect(result.digestRecipients).toEqual([
+      {
+        userId: 'user-digest',
+        email: 'digest@example.com',
+        name: 'Digest User',
+        digestInterval: 'every_2_days',
+        digestTime: '09:00',
+        digestSecondTime: '21:00',
+      },
+    ]);
+  });
+
+  it('entfernt Empfaenger bei deaktivierten E-Mails', () => {
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {
+      // noop in tests
+    });
+
+    const result = splitWarningRecipientsByDelivery({
+      recipients: [
+        {
+          userId: 'user-disabled',
+          email: 'disabled@example.com',
+          name: 'Disabled User',
+        },
+      ],
+      settingsByUserId: new Map([
+        [
+          'user-disabled',
+          {
+            emailEnabled: false,
+            deliveryMode: 'critical_and_digest',
+            minimumPriority: 'info',
+            digestInterval: 'daily',
+            digestTime: '08:00',
+            digestSecondTime: '20:00',
+          },
+        ],
+      ]),
+    });
+
+    expect(result.immediateRecipients).toEqual([]);
+    expect(result.digestRecipients).toEqual([]);
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[email-warning-routing] Empfänger ausgeschlossen (delivery=none): userId=user-disabled, email=disabled@example.com. Ursache: E-Mail deaktiviert oder durch Priorität gefiltert.'
+    );
+    debugSpy.mockRestore();
+  });
+
+  it('faellt bei fehlenden Einstellungen auf Sofortversand zurueck und loggt den Fall', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+      // noop in tests
+    });
+
+    const result = splitWarningRecipientsByDelivery({
+      recipients: [
+        {
+          userId: 'user-missing',
+          email: 'missing@example.com',
+          name: 'Missing User',
+        },
+      ],
+      settingsByUserId: new Map(),
+    });
+
+    expect(result.immediateRecipients).toEqual([
+      { email: 'missing@example.com', name: 'Missing User' },
+    ]);
+    expect(result.digestRecipients).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[email-warning-routing] Fehlende Benachrichtigungseinstellungen für userId=user-missing; Fallback auf Sofortversand.'
+    );
+
+    warnSpy.mockRestore();
+  });
+});

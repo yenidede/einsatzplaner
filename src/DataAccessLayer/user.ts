@@ -1,5 +1,6 @@
 import { unstable_cache as cache } from 'next/cache';
 import prisma from '@/lib/prisma';
+import type { Prisma } from '@/generated/prisma';
 
 type UserSettingsUpdate = {
   email?: string;
@@ -488,10 +489,13 @@ export async function removeUserRolesFromOrganization(
  */
 export async function getUserRolesInOrganization(
   userId: string,
-  orgId: string
+  orgId: string,
+  executor:
+    | Pick<Prisma.TransactionClient, 'user_organization_role'>
+    | Pick<typeof prisma, 'user_organization_role'> = prisma
 ) {
   try {
-    return await prisma.user_organization_role.findMany({
+    return await executor.user_organization_role.findMany({
       where: {
         user_id: userId,
         org_id: orgId,
