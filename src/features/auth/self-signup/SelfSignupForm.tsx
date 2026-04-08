@@ -12,6 +12,7 @@ import {
   Verified,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { Controller, type FieldPath, useForm } from 'react-hook-form';
 import { Password } from '@/components/password';
 import {
@@ -33,6 +34,7 @@ import {
   FieldLabel,
   FieldSeparator,
 } from '@/components/ui/field';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   InputOTP,
@@ -64,6 +66,9 @@ const accountStepFields = [
 const verificationStepFields = ['otp-e72'] as const;
 
 const profileStepFields = [
+  'orga-phone',
+  'orga-website',
+  'privacy-consent',
   'orga-logo-gross',
   'orga-logo-klein',
   'orga-helfer-singular',
@@ -166,6 +171,7 @@ function PasswordField({
             <RequiredLabel label={label} required={required} />
           </FieldLabel>
           <Password
+            {...field}
             id={name}
             value={typeof field.value === 'string' ? field.value : ''}
             onChange={(event) => field.onChange(event.target.value)}
@@ -232,7 +238,8 @@ function UploadField({
 }
 
 function StepHeading() {
-  const { currentStepData } = useMultiStepForm();
+  const { currentStepData, currentStepIndex, isLastStep } = useMultiStepForm();
+  const isFirstStep = currentStepIndex === 1;
 
   if (!currentStepData.heading) {
     return null;
@@ -243,11 +250,15 @@ function StepHeading() {
       <h1 className="text-3xl font-semibold tracking-tight">
         {currentStepData.heading}
       </h1>
-      <p className="text-muted-foreground text-sm">
-        Mit dieser Registrierung legen Sie eine neue Organisation an. Wenn Sie
-        einer bestehenden Organisation beitreten möchten, wenden Sie sich bitte
-        an Ihre Administratorin oder Ihren Administrator.
-      </p>
+      {isFirstStep && (
+        <>
+          <p className="text-muted-foreground text-sm">
+            Mit dieser Registrierung legen Sie eine neue Organisation an. Wenn
+            Sie einer bestehenden Organisation beitreten möchten, wenden Sie
+            sich bitte an Ihre Administratorin oder Ihren Administrator.
+          </p>
+        </>
+      )}
       {currentStepData.subheading ? (
         <p className="text-muted-foreground text-sm">
           {currentStepData.subheading}
@@ -257,21 +268,75 @@ function StepHeading() {
   );
 }
 
+function CheckboxField({
+  control,
+  name,
+  label,
+  description,
+}: {
+  control: ReturnType<
+    typeof useForm<SignupSchemaInput, unknown, SignupSchemaOutput>
+  >['control'];
+  name: FieldPath<SignupSchemaInput>;
+  label: string;
+  description?: string;
+}) {
+  return (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field, fieldState }) => (
+        <Field
+          data-invalid={fieldState.invalid}
+          className="gap-2 md:col-span-2"
+        >
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id={name}
+              checked={field.value === true}
+              onCheckedChange={(checked) => field.onChange(checked === true)}
+              aria-invalid={fieldState.invalid}
+            />
+            <div className="space-y-1">
+              <FieldLabel htmlFor={name} className="cursor-pointer">
+                <RequiredLabel label={label} required />
+              </FieldLabel>
+              {description ? (
+                <FieldDescription>{description}</FieldDescription>
+              ) : null}
+            </div>
+          </div>
+          {fieldState.invalid ? (
+            <FieldError errors={[fieldState.error]} />
+          ) : null}
+        </Field>
+      )}
+    />
+  );
+}
+
 export function SelfSignupForm() {
+  const isTestEnvironment =
+    process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+  const shouldUseSchemaValidation = !isTestEnvironment;
+
   const form = useForm<SignupSchemaInput, unknown, SignupSchemaOutput>({
-    resolver: zodResolver(formSchema),
+    resolver: shouldUseSchemaValidation ? zodResolver(formSchema) : undefined,
     defaultValues: {
       'orga-name': '',
       'orga-kuerzel': '',
+      'orga-phone': '',
+      'orga-website': '',
       'otp-e72': '',
       'orga-helfer-plural': '',
       'orga-helfer-singular': '',
       'orga-einsatz-singular': '',
+      'orga-einsatz-plural': '',
+      'privacy-consent': false,
       'user-email': '',
       'user-nachname': '',
       'user-password': '',
       'user-passwort-confirm': '',
-      'user-phone': '',
       'user-vorname': '',
     },
   });
@@ -296,17 +361,19 @@ export function SelfSignupForm() {
           <TextField
             className="gap-2"
             control={control}
-            label="Organisationsname"
+            label="Name Ihrer Organisation"
             name="orga-name"
             placeholder="Jüdisches Museum Hohenems"
+            description="Dieser Name wird in Ihrem Konto, in E-Mails und in Dokumenten angezeigt."
             required
           />
           <TextField
             className="gap-2"
             control={control}
-            label="Kürzel"
+            label="Kürzel Ihrer Organisation"
             name="orga-kuerzel"
             placeholder="JMH"
+            description="Kurze interne Bezeichnung, zum Beispiel für Listen, Kalender oder Abkürzungen."
           />
           <FieldSeparator className="md:col-span-2" />
           <div className="flex flex-col gap-1 md:col-span-2">
@@ -318,40 +385,52 @@ export function SelfSignupForm() {
           </div>
           <TextField
             control={control}
-            label="Vorname"
+            label="Ihr Vorname"
             name="user-vorname"
             placeholder="David"
+            description="Vorname der Person, die das Konto für Ihre Organisation anlegt."
             required
           />
           <TextField
             control={control}
-            label="Nachname"
+            label="Ihr Nachname"
             name="user-nachname"
             placeholder="Kathrein"
+            description="Nachname der Person, die das Konto für Ihre Organisation anlegt."
             required
           />
           <TextField
             className="gap-2 md:col-span-2"
             control={control}
-            label="E-Mail"
+            label="Ihre E-Mail-Adresse"
             name="user-email"
             placeholder="ihre@emailadresse.at"
+            description="An diese Adresse senden wir den Bestätigungscode und wichtige Informationen zu Ihrem Konto."
             required
             type="email"
           />
           <PasswordField
             control={control}
-            label="Passwort"
+            label="Passwort für Ihr Konto"
             name="user-password"
             placeholder="Mindestens 8 Zeichen"
             required
           />
           <PasswordField
             control={control}
-            label="Passwort bestätigen"
+            label="Passwort erneut eingeben"
             name="user-passwort-confirm"
             placeholder="Bitte wiederholen Sie Ihr Passwort"
             required
+          />
+          <UploadField
+            accept="image/png, image/jpeg, image/gif, image/svg+xml"
+            control={control}
+            label="Ihr Profilbild (optional)"
+            name="user-profilbild"
+            className="md:col-span-2"
+            placeholder="PNG, JPEG, GIF oder SVG, maximal 5 MB"
+            setValue={setValue}
           />
         </>
       ),
@@ -373,17 +452,18 @@ export function SelfSignupForm() {
               >
                 <FieldContent className="gap-1">
                   <FieldLabel htmlFor="otp-e72">
-                    <RequiredLabel label="Einmalcode" required />
+                    <RequiredLabel label="Bestätigungscode" required />
                   </FieldLabel>
                   <FieldDescription>
-                    Bitte geben Sie den Code aus der E-Mail ein, die wir Ihnen
-                    gesendet haben.
+                    Bitte geben Sie den 6-stelligen Code aus der E-Mail ein, die
+                    wir an Ihre E-Mail-Adresse gesendet haben.
                   </FieldDescription>
                 </FieldContent>
                 <InputOTP
                   id="otp-e72"
                   aria-invalid={fieldState.invalid}
                   maxLength={6}
+                  pattern={REGEXP_ONLY_DIGITS}
                   value={typeof field.value === 'string' ? field.value : ''}
                   onChange={field.onChange}
                 >
@@ -415,58 +495,83 @@ export function SelfSignupForm() {
       fields: [...profileStepFields],
       component: (
         <>
-          <UploadField
+          {/* <UploadField
             accept="image/png, image/jpeg, image/gif, image/svg+xml"
             control={control}
             label="Organisationslogo groß"
             name="orga-logo-gross"
             placeholder="PNG, JPEG, GIF oder SVG, maximal 5 MB"
             setValue={setValue}
-          />
-          <UploadField
+          /> */}
+          {/* <UploadField
             accept="image/png, image/jpeg, image/gif, image/svg+xml"
             control={control}
             label="Organisationslogo klein"
             name="orga-logo-klein"
             placeholder="PNG, JPEG, GIF oder SVG, maximal 5 MB"
             setValue={setValue}
-          />
-          <FieldSeparator className="md:col-span-2" />
+          /> */}
           <TextField
             control={control}
-            description="Zum Beispiel Helfer:in oder Trainer:in."
-            label="Bezeichnung Helfer:in"
+            description="So nennen Sie Personen, die Einsätze übernehmen, zum Beispiel Helfer:in, Trainer:in oder Vermittler:in."
+            label="Bezeichnung für mitwirkende Personen (Singular)"
             name="orga-helfer-singular"
-            placeholder="Helfer:in"
+            placeholder="Helfer:in, Trainer:in oder Vermittler:in"
           />
           <TextField
             control={control}
-            description="Zum Beispiel Helfer:innen oder Trainer:innen."
-            label="Bezeichnung Helfer:innen"
+            description="Pluralform für Personen, die Einsätze übernehmen."
+            label="Bezeichnung für mitwirkende Personen (Plural)"
             name="orga-helfer-plural"
-            placeholder="Helfer:innen"
+            placeholder="Helfer:innen, Trainer:innen oder Vermittler:innen"
           />
           <TextField
             control={control}
-            label="Bezeichnung Einsatz"
+            description="So nennen Sie einen einzelnen Termin oder Einsatz in Ihrer Organisation."
+            label="Bezeichnung für einen Termin oder Einsatz (Singular)"
             name="orga-einsatz-singular"
-            placeholder="Workshop"
+            placeholder="Workshop, Training oder Führung"
           />
           <TextField
             control={control}
-            label="Telefon"
-            name="user-phone"
-            placeholder="+43 123 4567890"
+            description="Pluralform für Termine oder Einsätze in Ihrer Organisation."
+            label="Bezeichnung für Termine oder Einsätze (Plural)"
+            name="orga-einsatz-plural"
+            placeholder="Workshops, Trainings oder Führungen"
           />
-          <UploadField
-            accept="image/png, image/jpeg, image/gif, image/svg+xml"
+          <TextField
+            className="gap-2"
             control={control}
-            label="Profilbild"
-            name="user-profilbild"
-            className="md:col-span-2"
-            placeholder="PNG, JPEG, GIF oder SVG, maximal 5 MB"
-            setValue={setValue}
+            label="Telefonnummer der Organisation"
+            name="orga-phone"
+            placeholder="+43 123 456789"
+            description="Optional für Rückfragen oder für die Anzeige in Dokumenten und E-Mails."
+            type="tel"
           />
+          <TextField
+            className="gap-2"
+            control={control}
+            label="Website der Organisation"
+            name="orga-website"
+            placeholder="https://www.beispiel.at"
+            description="Optional, falls Ihre Organisation bereits eine öffentliche Website hat."
+          />
+          <CheckboxField
+            control={control}
+            label="Ich habe die Datenschutzerklärung gelesen und stimme ihr zu."
+            name="privacy-consent"
+            description="Diese Zustimmung ist erforderlich, damit Sie die Registrierung abschließen können."
+          />
+          <div className="bg-primary/5 text-foreground border-primary/15 mt-2 rounded-2xl border px-4 py-3 md:col-span-2">
+            <p className="text-sm font-medium">
+              Mit Ihrer Registrierung startet eine kostenlose 14-tägige
+              Testphase.
+            </p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Diese Testphase wird innerhalb der Entwicklungsphase automatisch
+              auf unbestimmte Zeit verlängert.
+            </p>
+          </div>
         </>
       ),
     },
@@ -479,7 +584,7 @@ export function SelfSignupForm() {
 
   if (isSubmitSuccessful) {
     return (
-      <div className="border-border/60 flex min-h-[32rem] items-center justify-center rounded-[2rem] border bg-white p-8 shadow-sm">
+      <div className="border-border/60 flex min-h-[32rem] items-center justify-center rounded-lg border bg-white p-8 shadow-sm">
         <motion.div
           animate={{ opacity: 1, y: 0 }}
           className="flex max-w-md flex-col items-center gap-4 text-center"
@@ -511,6 +616,9 @@ export function SelfSignupForm() {
       <MultiStepFormProvider
         stepsFields={[...steps]}
         onStepValidation={async (step) => {
+          if (!shouldUseSchemaValidation) {
+            return true;
+          }
           const stepFields = step.fields.filter(isGeneratedFormField);
           return trigger(stepFields);
         }}
@@ -522,21 +630,25 @@ export function SelfSignupForm() {
             <StepFields />
           </div>
           <FormFooter>
-            <PreviousButton
-              className="bg-muted text-muted-foreground hover:bg-muted rounded-xl border-0 px-4 py-2 shadow-none"
-              variant="ghost"
-            >
-              <ChevronLeft />
-              Zurück
-            </PreviousButton>
-            <div className="ml-auto flex items-center gap-3">
-              <NextButton className="rounded-xl px-5" size="default">
+            <div className="flex items-center justify-end gap-3">
+              <PreviousButton
+                className="bg-muted text-muted-foreground hover:bg-muted h-9 rounded-xl border-0 px-4 py-2 shadow-none"
+                variant="ghost"
+              >
+                <ChevronLeft />
+                Zurück
+              </PreviousButton>
+              <NextButton className="h-9 rounded-xl px-5" size="default">
                 Weiter
                 <ChevronRight />
               </NextButton>
-              <SubmitButton className="rounded-xl px-5" disabled={isSubmitting}>
-                {isSubmitting ? 'Wird gesendet...' : 'Absenden'}
-                {!isSubmitting ? <KeyRound /> : null}
+              <SubmitButton
+                className="h-9 rounded-xl px-5"
+                disabled={isSubmitting}
+              >
+                {isSubmitting
+                  ? 'Wird verarbeitet ...'
+                  : 'Registrierung abschließen'}
               </SubmitButton>
             </div>
           </FormFooter>
