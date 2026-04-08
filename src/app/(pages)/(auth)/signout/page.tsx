@@ -1,30 +1,36 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { buildSignInCallbackUrl } from '@/features/auth/callback-url';
 import { useQueryClient } from '@tanstack/react-query';
 import { signOut } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 
 function SignOutPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/helferansicht';
+  const callbackUrl = searchParams.get('callbackUrl');
 
-  const handleSignOut = async () => {
-    try {
-      await signOut({
-        callbackUrl: `/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`,
-        redirect: true,
-      });
+  useEffect(() => {
+    const handleSignOut = async () => {
+      try {
+        await signOut({
+          callbackUrl: buildSignInCallbackUrl(
+            callbackUrl || '/einsatzverwaltung'
+          ),
+          redirect: true,
+        });
 
-      queryClient.clear();
-    } catch (error) {
-      console.error('Fehler beim Abmelden:', error);
-    }
-  };
+        queryClient.clear();
+      } catch (error) {
+        console.error('Fehler beim Abmelden:', error);
+      }
+    };
 
-  handleSignOut();
+    void handleSignOut();
+  }, [callbackUrl, queryClient]);
+
   return (
     <div className="bg-secondary flex grow flex-col p-6 md:p-10">
       <h1>Sie werden in Kürze abgemeldet</h1>

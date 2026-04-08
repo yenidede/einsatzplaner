@@ -4,7 +4,11 @@
 
 import { render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import SignInPage, { resolveCallbackUrl } from './page';
+import SignInPage from './page';
+import {
+  buildSignInCallbackUrl,
+  resolveCallbackUrl,
+} from '@/features/auth/callback-url';
 
 const { mockPush, mockSearchParamsGet, mockUseSession, mockSignIn } =
   vi.hoisted(() => ({
@@ -68,6 +72,20 @@ describe('resolveCallbackUrl', () => {
     }
 
     expect(resolveCallbackUrl(nestedCallbackUrl)).toBe('/');
+  });
+});
+
+describe('buildSignInCallbackUrl', () => {
+  it('normalisiert bereits encodierte Callback-Urls fuer den Sign-out-Redirect', () => {
+    expect(buildSignInCallbackUrl('/helferansicht')).toBe(
+      '/signin?callbackUrl=%2Fhelferansicht'
+    );
+    expect(buildSignInCallbackUrl('%2Fhelferansicht')).toBe(
+      '/signin?callbackUrl=%2Fhelferansicht'
+    );
+    expect(buildSignInCallbackUrl('/signin?callbackUrl=%2F')).toBe(
+      '/signin?callbackUrl=%2F'
+    );
   });
 });
 
