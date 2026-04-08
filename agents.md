@@ -6,7 +6,7 @@
 - Avoid `as` and `any`. Prefer correct typing inferred from `@/generated/prisma`, then refine with utilities such as `Partial<>`, `Omit<>`, and narrowers where needed.
 - Cache client-side data with `useQuery`.
 - Never hardcode query keys. Define and use feature-local `QueryKeys.ts` or `queryKeys.ts` files.
-- All user-facing text must be German and use the Hoeflichkeitsform (`Sie`).
+- All user-facing text must be German and use the Höflichkeitsform (`Sie`). Umlaute (Ä, Ö, Ü) must not be written in the english equivalent (Ae, Oe, Ue).
 
 ## Test Rules
 
