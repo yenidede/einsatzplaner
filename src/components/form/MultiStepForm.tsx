@@ -91,11 +91,11 @@ const FormHeader = (props: React.ComponentProps<'div'>) => {
               step={stepNumber}
               className="items-center not-last:flex-1"
             >
-              <StepperTrigger className="items-center gap-3 rounded-2xl">
+              <StepperTrigger className="items-center gap-2 rounded-2xl md:gap-3">
                 <StepperIndicator className="size-9 rounded-full text-xs">
                   {step.icon}
                 </StepperIndicator>
-                <div className="flex min-w-0 flex-col gap-0.5 text-left">
+                <div className="flex min-w-0 flex-col gap-0.5 text-left max-[479px]:hidden">
                   {step.title ? (
                     <StepperTitle>{step.title}</StepperTitle>
                   ) : null}

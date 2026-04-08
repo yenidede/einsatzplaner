@@ -613,22 +613,6 @@ model notification_email_digest_queue {
   @@index([organization_id, user_id, sent_at], map: "notification_email_digest_queue_org_user_idx")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model pending_self_serve_signup {
-  id                               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                            String
-  organization_name                String
-  organization_description         String?
-  first_name                       String
-  last_name                        String
-  password_hash                    String
-  organization_name_reserved_until DateTime  @db.Timestamptz(6)
-  created_at                       DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at                       DateTime  @default(now()) @db.Timestamptz(6)
-  invalidated_at                   DateTime? @db.Timestamptz(6)
-  consumed_at                      DateTime? @db.Timestamptz(6)
-}
-
 model otp_challenge {
   id          String     @id(map: "otp_challenge_pkey1") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   status      String     @default("pending")
