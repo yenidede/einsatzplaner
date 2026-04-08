@@ -73,6 +73,46 @@ async function invalidateOpenChallengesByEmail(
   });
 }
 
+export async function invalidateOneTimePasswordChallenge(
+  input: {
+    challengeId: string;
+    email: string;
+  },
+  tx: OtpTransactionClient = prisma
+) {
+  const email = normalizeEmail(input.email);
+  const now = new Date();
+
+  await tx.otp_challenge.updateMany({
+    where: {
+      id: input.challengeId,
+      email,
+      status: {
+        in: [...ACTIVE_OTP_STATUSES],
+      },
+    },
+    data: {
+      status: OTP_INVALIDATED_STATUS,
+      consumed_at: now,
+    },
+  });
+
+  await tx.otp_code.updateMany({
+    where: {
+      email,
+      consumed_at: null,
+      otp_challenge: {
+        id: input.challengeId,
+        email,
+        status: OTP_INVALIDATED_STATUS,
+      },
+    },
+    data: {
+      consumed_at: now,
+    },
+  });
+}
+
 async function getActiveChallengeByEmail(
   email: string,
   tx: OtpTransactionClient = prisma
@@ -208,25 +248,38 @@ export async function verifyOneTimePasswordChallenge(input: {
     const isValid = await compare(code, otpCode.code_hash);
 
     if (!isValid) {
-      const attempts = challenge.attempts + 1;
-      const shouldInvalidate = attempts >= OTP_MAX_ATTEMPTS;
-
-      await tx.otp_challenge.update({
-        where: { id: challenge.id },
+      await tx.otp_challenge.updateMany({
+        where: {
+          id: challenge.id,
+          status: OTP_PENDING_STATUS,
+          attempts: {
+            lt: OTP_MAX_ATTEMPTS,
+          },
+        },
         data: {
-          attempts,
-          status: shouldInvalidate ? OTP_INVALIDATED_STATUS : challenge.status,
-          consumed_at: shouldInvalidate ? now : challenge.consumed_at,
+          attempts: {
+            increment: 1,
+          },
         },
       });
 
+      const updatedChallenge = await tx.otp_challenge.findUnique({
+        where: { id: challenge.id },
+      });
+
+      const attempts = updatedChallenge?.attempts ?? OTP_MAX_ATTEMPTS;
+      const shouldInvalidate =
+        attempts >= OTP_MAX_ATTEMPTS &&
+        updatedChallenge?.status === OTP_PENDING_STATUS;
+
       if (shouldInvalidate) {
-        await tx.otp_code.update({
-          where: { id: otpCode.id },
-          data: {
-            consumed_at: now,
+        await invalidateOneTimePasswordChallenge(
+          {
+            challengeId: challenge.id,
+            email,
           },
-        });
+          tx
+        );
         throw new Error(
           'Der Bestätigungscode wurde zu oft falsch eingegeben. Bitte fordern Sie einen neuen Code an.'
         );

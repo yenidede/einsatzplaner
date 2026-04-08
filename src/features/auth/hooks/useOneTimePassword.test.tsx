@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { authQueryKeys } from '@/features/auth/queryKeys';
 import { useOneTimePassword } from './useOneTimePassword';
 
 const { mockSendOneTimePasswordAction, mockVerifyOneTimePasswordAction } =
@@ -146,7 +147,7 @@ describe('useOneTimePassword', () => {
   });
 
   it('setzt Code, Status und Challenge zurück, wenn sich die E-Mail-Adresse ändert', async () => {
-    const { wrapper } = createWrapper();
+    const { queryClient, wrapper } = createWrapper();
     const { result, rerender } = renderHook(
       ({ email }) =>
         useOneTimePassword({
@@ -181,6 +182,17 @@ describe('useOneTimePassword', () => {
       expect(result.current.isVerified).toBe(false);
       expect(result.current.challengeId).toBeNull();
     });
+
+    expect(
+      queryClient.getQueryState(
+        authQueryKeys.oneTimePassword.status('david@example.com')
+      )
+    ).toBeUndefined();
+    expect(
+      queryClient.getQueryState(
+        authQueryKeys.oneTimePassword.verifiedChallenge('david@example.com')
+      )
+    ).toBeUndefined();
   });
 
   it('entprellt parallele Send- und Verify-Aufrufe', async () => {

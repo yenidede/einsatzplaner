@@ -9,6 +9,7 @@ import {
 import { authQueryKeys } from '@/features/auth/queryKeys';
 
 const DEFAULT_CODE_LENGTH = 6;
+const OTP_CACHE_GC_TIME_MS = 5 * 60 * 1000;
 
 interface OneTimePasswordStatus {
   challengeId: string | null;
@@ -76,7 +77,7 @@ export function useOneTimePassword({
       ) as OneTimePasswordStatus | undefined) ?? EMPTY_OTP_STATUS,
     initialData: EMPTY_OTP_STATUS,
     staleTime: Infinity,
-    gcTime: Infinity,
+    gcTime: OTP_CACHE_GC_TIME_MS,
   });
 
   const verifiedChallengeQuery = useQuery({
@@ -87,7 +88,7 @@ export function useOneTimePassword({
       ) as VerifiedChallengeState | undefined) ?? EMPTY_VERIFIED_CHALLENGE,
     initialData: EMPTY_VERIFIED_CHALLENGE,
     staleTime: Infinity,
-    gcTime: Infinity,
+    gcTime: OTP_CACHE_GC_TIME_MS,
   });
 
   const status = statusQuery.data ?? EMPTY_OTP_STATUS;
@@ -222,12 +223,20 @@ export function useOneTimePassword({
 
     if (previousEmail !== normalizedEmail) {
       resetLocalState(previousEmail);
+      queryClient.removeQueries({
+        queryKey: authQueryKeys.oneTimePassword.status(previousEmail),
+        exact: true,
+      });
+      queryClient.removeQueries({
+        queryKey: authQueryKeys.oneTimePassword.verifiedChallenge(previousEmail),
+        exact: true,
+      });
       previousEmailRef.current = normalizedEmail;
       lastAutoSentEmailRef.current = null;
       sendRequestKeyRef.current = null;
       verifyRequestKeyRef.current = null;
     }
-  }, [normalizedEmail, resetLocalState]);
+  }, [normalizedEmail, queryClient, resetLocalState]);
 
   useEffect(() => {
     const resendAvailableAt = status.resendAvailableAt

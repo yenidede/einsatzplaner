@@ -2,6 +2,10 @@
 
 import { compare, hash } from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import {
+  isValidPhoneNumber,
+  parsePhoneNumberWithError,
+} from 'libphonenumber-js';
 import { getServerSession } from 'next-auth';
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma';
@@ -20,6 +24,7 @@ import prisma from '@/lib/prisma';
 import {
   createAndSendOneTimePasswordChallenge,
   consumeVerifiedOneTimePasswordChallenge,
+  invalidateOneTimePasswordChallenge,
   verifyOneTimePasswordChallenge,
 } from './one-time-password';
 
@@ -48,14 +53,35 @@ const getSelfSignupAccountStatusSchema = z.object({
   email: z.string().trim().email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
 });
 
+const optionalOrganizationPhoneSchema = z
+  .string()
+  .trim()
+  .optional()
+  .refine(
+    (value) => !value || isValidPhoneNumber(value),
+    'Bitte geben Sie eine gültige Telefonnummer im Format +436601234567 ein'
+  )
+  .transform((value) => {
+    if (!value) {
+      return value;
+    }
+
+    return parsePhoneNumberWithError(value).format('E.164');
+  });
+
 const selfSignupOrganizationSchema = z.object({
   organizationName: z
     .string()
     .trim()
     .min(1, 'Der Organisationsname ist erforderlich'),
   organizationAbbreviation: z.string().trim().max(5).optional(),
-  organizationPhone: z.string().trim().optional(),
-  organizationWebsite: z.string().trim().optional(),
+  organizationPhone: optionalOrganizationPhoneSchema,
+  organizationWebsite: z
+    .string()
+    .trim()
+    .url('Bitte geben Sie eine gültige Website-URL ein')
+    .or(z.literal(''))
+    .optional(),
   helperSingular: z.string().trim().optional(),
   helperPlural: z.string().trim().optional(),
   einsatzSingular: z.string().trim().optional(),
@@ -332,11 +358,23 @@ export const sendOneTimePasswordAction = actionClient
       email: parsedInput.email,
     });
 
-    await emailService.sendOneTimePasswordEmail(
-      challenge.email,
-      challenge.code,
-      challenge.expiresAt
-    );
+    try {
+      await emailService.sendOneTimePasswordEmail(
+        challenge.email,
+        challenge.code,
+        challenge.expiresAt
+      );
+    } catch (error) {
+      await invalidateOneTimePasswordChallenge({
+        challengeId: challenge.challengeId,
+        email: challenge.email,
+      });
+
+      console.error('OTP email send error:', error);
+      throw new Error(
+        'Der Bestätigungscode konnte nicht gesendet werden. Bitte versuchen Sie es erneut.'
+      );
+    }
 
     return {
       challengeId: challenge.challengeId,

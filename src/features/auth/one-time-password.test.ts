@@ -161,21 +161,30 @@ describe('one-time-password server logic', () => {
 
   it('erhöht bei einem falschen Code die Versuchsanzahl', async () => {
     const codeHash = await hash('654321', 10);
+    const expiresAt = new Date(Date.now() + 60_000);
     mockChallengeFindFirst.mockResolvedValue({
       id: 'challenge-1',
       email: 'david@example.com',
       status: 'pending',
       attempts: 1,
-      expires_at: new Date(Date.now() + 60_000),
+      expires_at: expiresAt,
       consumed_at: null,
       otp_code: [
         {
           id: 'code-1',
           code_hash: codeHash,
-          expires_at: new Date(Date.now() + 60_000),
+          expires_at: expiresAt,
           consumed_at: null,
         },
       ],
+    });
+    mockChallengeFindUnique.mockResolvedValue({
+      id: 'challenge-1',
+      email: 'david@example.com',
+      status: OTP_PENDING_STATUS,
+      attempts: 2,
+      expires_at: expiresAt,
+      consumed_at: null,
     });
 
     await expect(
@@ -185,11 +194,86 @@ describe('one-time-password server logic', () => {
       })
     ).rejects.toThrow('Ungültiger Code. Bitte versuchen Sie es erneut.');
 
-    expect(mockChallengeUpdate).toHaveBeenCalledWith(
+    expect(mockChallengeUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'challenge-1' },
+        where: expect.objectContaining({
+          id: 'challenge-1',
+          status: OTP_PENDING_STATUS,
+        }),
         data: expect.objectContaining({
-          attempts: 2,
+          attempts: {
+            increment: 1,
+          },
+        }),
+      })
+    );
+  });
+
+  it('invalidiert die Challenge, sobald die maximale Anzahl an Fehlversuchen erreicht ist', async () => {
+    const codeHash = await hash('654321', 10);
+    const expiresAt = new Date(Date.now() + 60_000);
+
+    mockChallengeFindFirst.mockResolvedValue({
+      id: 'challenge-max',
+      email: 'david@example.com',
+      status: OTP_PENDING_STATUS,
+      attempts: 4,
+      expires_at: expiresAt,
+      consumed_at: null,
+      otp_code: [
+        {
+          id: 'code-max',
+          code_hash: codeHash,
+          expires_at: expiresAt,
+          consumed_at: null,
+        },
+      ],
+    });
+    mockChallengeFindUnique.mockResolvedValue({
+      id: 'challenge-max',
+      email: 'david@example.com',
+      status: OTP_PENDING_STATUS,
+      attempts: 5,
+      expires_at: expiresAt,
+      consumed_at: null,
+    });
+
+    await expect(
+      verifyOneTimePasswordChallenge({
+        email: 'david@example.com',
+        code: '123456',
+      })
+    ).rejects.toThrow('zu oft falsch eingegeben');
+
+    expect(mockChallengeUpdateMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'challenge-max',
+        }),
+        data: {
+          attempts: {
+            increment: 1,
+          },
+        },
+      })
+    );
+    expect(mockChallengeUpdateMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'challenge-max',
+          email: 'david@example.com',
+        }),
+        data: expect.objectContaining({
+          status: OTP_INVALIDATED_STATUS,
+        }),
+      })
+    );
+    expect(mockCodeUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          email: 'david@example.com',
         }),
       })
     );

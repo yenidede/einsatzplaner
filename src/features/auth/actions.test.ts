@@ -3,8 +3,10 @@ import { z } from 'zod';
 
 const {
   mockCompare,
+  mockCreateAndSendOneTimePasswordChallenge,
   mockHash,
   mockGetServerSession,
+  mockInvalidateOneTimePasswordChallenge,
   mockSendPasswordResetEmail,
   mockSendOneTimePasswordEmail,
   mockTransaction,
@@ -12,8 +14,10 @@ const {
   mockConsumeVerifiedOneTimePasswordChallenge,
 } = vi.hoisted(() => ({
   mockCompare: vi.fn(),
+  mockCreateAndSendOneTimePasswordChallenge: vi.fn(),
   mockHash: vi.fn(),
   mockGetServerSession: vi.fn(),
+  mockInvalidateOneTimePasswordChallenge: vi.fn(),
   mockSendPasswordResetEmail: vi.fn(),
   mockSendOneTimePasswordEmail: vi.fn(),
   mockTransaction: vi.fn(),
@@ -38,8 +42,10 @@ vi.mock('@/lib/email/EmailService', () => ({
 }));
 
 vi.mock('@/features/auth/one-time-password', () => ({
-  createAndSendOneTimePasswordChallenge: vi.fn(),
+  createAndSendOneTimePasswordChallenge:
+    mockCreateAndSendOneTimePasswordChallenge,
   verifyOneTimePasswordChallenge: vi.fn(),
+  invalidateOneTimePasswordChallenge: mockInvalidateOneTimePasswordChallenge,
   consumeVerifiedOneTimePasswordChallenge:
     mockConsumeVerifiedOneTimePasswordChallenge,
 }));
@@ -78,13 +84,18 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { createSelfSignupAction } from '@/features/auth/actions';
+import {
+  createSelfSignupAction,
+  sendOneTimePasswordAction,
+} from '@/features/auth/actions';
 
 describe('createSelfSignupAction', () => {
   beforeEach(() => {
     mockCompare.mockReset();
+    mockCreateAndSendOneTimePasswordChallenge.mockReset();
     mockHash.mockReset();
     mockGetServerSession.mockReset();
+    mockInvalidateOneTimePasswordChallenge.mockReset();
     mockSendPasswordResetEmail.mockReset();
     mockSendOneTimePasswordEmail.mockReset();
     mockTransaction.mockReset();
@@ -93,6 +104,13 @@ describe('createSelfSignupAction', () => {
 
     mockHash.mockResolvedValue('hashed-password');
     mockUserFindUnique.mockResolvedValue(null);
+    mockCreateAndSendOneTimePasswordChallenge.mockResolvedValue({
+      challengeId: 'challenge-1',
+      email: 'david@example.com',
+      expiresAt: new Date('2026-04-08T18:00:00.000Z'),
+      resendAvailableAt: new Date('2026-04-08T17:30:30.000Z'),
+      code: '123456',
+    });
 
     mockTransaction.mockImplementation(
       async (
@@ -151,5 +169,26 @@ describe('createSelfSignupAction', () => {
       'Es existiert bereits ein Konto mit dieser E-Mail-Adresse.'
     );
     expect(mockConsumeVerifiedOneTimePasswordChallenge).not.toHaveBeenCalled();
+  });
+
+  it('invalidiert die OTP-Challenge wieder, wenn der E-Mail-Versand fehlschlägt', async () => {
+    mockSendOneTimePasswordEmail.mockRejectedValueOnce(
+      new Error('SMTP backend unavailable')
+    );
+
+    const result = await sendOneTimePasswordAction({
+      email: 'David@example.com',
+    });
+
+    expect(mockCreateAndSendOneTimePasswordChallenge).toHaveBeenCalledWith({
+      email: 'David@example.com',
+    });
+    expect(mockInvalidateOneTimePasswordChallenge).toHaveBeenCalledWith({
+      challengeId: 'challenge-1',
+      email: 'david@example.com',
+    });
+    expect(result?.serverError).toBe(
+      'Der Bestätigungscode konnte nicht gesendet werden. Bitte versuchen Sie es erneut.'
+    );
   });
 });

@@ -120,6 +120,7 @@ async function fillAccountStep(container: HTMLElement) {
   fireEvent.change(firstNameInput!, { target: { value: 'David' } });
   fireEvent.change(lastNameInput!, { target: { value: 'Kathrein' } });
   fireEvent.change(emailInput!, { target: { value: 'david@example.com' } });
+  fireEvent.blur(emailInput!);
   await waitFor(() => {
     expect(mockGetSelfSignupAccountStatusAction).toHaveBeenCalledWith({
       email: 'david@example.com',
@@ -203,6 +204,7 @@ async function fillExistingAccountStep(container: HTMLElement) {
     target: { value: 'Jüdisches Museum Hohenems' },
   });
   fireEvent.change(emailInput!, { target: { value: 'david@example.com' } });
+  fireEvent.blur(emailInput!);
 
   await waitFor(() => {
     expect(mockGetSelfSignupAccountStatusAction).toHaveBeenCalledWith({
@@ -358,6 +360,9 @@ describe('SelfSignupForm', () => {
       {
         target: { value: 'david@example.com' },
       }
+    );
+    fireEvent.blur(
+      container.querySelector<HTMLInputElement>('input[name="user-email"]')!
     );
 
     await waitFor(() => {
@@ -676,7 +681,7 @@ describe('SelfSignupForm', () => {
       expect(signIn).toHaveBeenCalledWith('credentials', {
         email: 'david@example.com',
         password: 'geheimespasswort',
-        redirect: true,
+        redirect: false,
         callbackUrl: '/',
       });
     });
@@ -725,7 +730,7 @@ describe('SelfSignupForm', () => {
       expect(signIn).toHaveBeenCalledWith('credentials', {
         email: 'david@example.com',
         password: 'geheimespasswort',
-        redirect: true,
+        redirect: false,
         callbackUrl: '/',
       });
     });
@@ -856,6 +861,11 @@ describe('SelfSignupForm', () => {
       screen.getByRole('heading', { name: 'E-Mail bestätigen' })
     ).toBeTruthy();
     expect(mockCreateSelfSignupAction).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse mit dem Bestätigungscode.'
+      )
+    ).toBeTruthy();
 
     const otpInputs = container.querySelectorAll<HTMLInputElement>(
       'input[data-otp-index]'
@@ -912,6 +922,27 @@ describe('SelfSignupForm', () => {
 
     otpInputs.forEach((input) => {
       expect(input.getAttribute('aria-invalid')).toBe('true');
+    });
+  });
+
+  it('prüft den Kontostatus der E-Mail-Adresse erst beim Verlassen des Felds', async () => {
+    const { container } = renderWithQueryClient();
+    const emailInput = container.querySelector<HTMLInputElement>(
+      'input[name="user-email"]'
+    );
+
+    fireEvent.change(emailInput!, {
+      target: { value: 'david@example.com' },
+    });
+
+    expect(mockGetSelfSignupAccountStatusAction).not.toHaveBeenCalled();
+
+    fireEvent.blur(emailInput!);
+
+    await waitFor(() => {
+      expect(mockGetSelfSignupAccountStatusAction).toHaveBeenCalledWith({
+        email: 'david@example.com',
+      });
     });
   });
 
