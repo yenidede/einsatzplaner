@@ -13,7 +13,10 @@ import {
   StepperTitle,
   StepperTrigger,
 } from '@/components/ui/stepper';
-import { useMultiStepForm } from '@/hooks/use-multi-step-form';
+import {
+  MultiStepFormProvider,
+  useMultiStepForm,
+} from '@/components/form/useMultiStepForm';
 
 const NextButton = (
   props: React.ComponentProps<'button'> &
@@ -109,12 +112,15 @@ const FormHeader = (props: React.ComponentProps<'div'>) => {
     </div>
   );
 };
-const FormFooter = (props: React.ComponentProps<'div'>) => {
+const FormFooter = ({ children, ...props }: React.ComponentProps<'div'>) => {
   return (
     <div
-      className="flex w-full shrink-0 items-center justify-between pt-2"
+      className="flex w-full shrink-0 items-end justify-between pt-2"
       {...props}
-    />
+    >
+      <p className="text-muted-foreground text-xs">*Pflichtfeld</p>
+      {children}
+    </div>
   );
 };
 
@@ -158,6 +164,7 @@ function MultiStepFormContent({
 }
 
 export {
+  MultiStepFormProvider,
   MultiStepFormContent,
   FormHeader,
   FormFooter,

@@ -17,12 +17,14 @@ import { Password } from '@/components/password';
 import {
   FormFooter,
   FormHeader,
+  MultiStepFormProvider,
   MultiStepFormContent,
   NextButton,
   PreviousButton,
   StepFields,
   SubmitButton,
 } from '@/components/form/MultiStepForm';
+import { useMultiStepForm } from '@/components/form/useMultiStepForm';
 import {
   Field,
   FieldContent,
@@ -38,10 +40,6 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from '@/components/ui/input-otp';
-import {
-  MultiStepFormProvider,
-  useMultiStepForm,
-} from '@/hooks/use-multi-step-form';
 import { FileUpload } from '@/features/auth/self-signup/SelfSignupFileUpload';
 import { formSchema } from '@/features/auth/self-signup/schema';
 import { cn } from '@/lib/utils';
