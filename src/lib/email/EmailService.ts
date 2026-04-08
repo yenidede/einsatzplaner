@@ -482,6 +482,48 @@ export class EmailService {
     }
   }
 
+  async sendSelfSignupOrganizationCreatedNotificationEmail(input: {
+    recipientEmail: string;
+    organizationName: string;
+    creatorName?: string | null;
+    creatorEmail?: string | null;
+  }) {
+    if (!this.transporter) {
+      return;
+    }
+
+    const safeOrganizationName = escapeHtml(input.organizationName);
+    const safeCreatorName = input.creatorName
+      ? escapeHtml(input.creatorName)
+      : 'Unbekannt';
+    const safeCreatorEmail = input.creatorEmail
+      ? escapeHtml(input.creatorEmail)
+      : 'Unbekannt';
+
+    await this.transporter.sendMail({
+      from: `"Einsatzplaner" <${process.env.SMTP_USER}>`,
+      to: input.recipientEmail,
+      subject: `Neue Organisation erstellt: ${safeOrganizationName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; text-align: center;">Neue Organisation erstellt</h2>
+
+          <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p>Hallo,</p>
+            <p>soeben wurde eine neue Organisation im Einsatzplaner erstellt.</p>
+            <p><strong>Organisation:</strong> ${safeOrganizationName}</p>
+            <p><strong>Erstellt von:</strong> ${safeCreatorName}</p>
+            <p><strong>E-Mail-Adresse:</strong> ${safeCreatorEmail}</p>
+          </div>
+
+          <p style="color: #666; font-size: 12px; text-align: center;">
+            Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+          </p>
+        </div>
+      `,
+    });
+  }
+
   async sendEinsatzWarningEmail(
     recipients: { email: string; name: string }[],
     einsatz: {

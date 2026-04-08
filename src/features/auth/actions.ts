@@ -107,6 +107,8 @@ const createSelfSignupSchema = z.discriminatedUnion('accountMode', [
   }),
 ]);
 
+const SELF_SIGNUP_NOTIFICATION_EMAIL = 'hello@davidkathrein.at';
+
 async function createSelfSignupOrganization(
   tx: Prisma.TransactionClient,
   parsedInput: z.infer<typeof selfSignupOrganizationSchema>
@@ -417,6 +419,10 @@ export const createSelfSignupAction = actionClient
       name: string;
       logo_url: string | null;
     } | null = null;
+    let notificationContext: {
+      creatorName: string | null;
+      creatorEmail: string | null;
+    } | null = null;
 
     if (parsedInput.accountMode === 'new') {
       const passwordHash = await hash(parsedInput.password, 12);
@@ -462,6 +468,10 @@ export const createSelfSignupAction = actionClient
         });
 
         createdOrganization = organization;
+        notificationContext = {
+          creatorName: `${parsedInput.firstName} ${parsedInput.lastName}`.trim(),
+          creatorEmail: normalizedEmail,
+        };
       });
     }
 
@@ -495,6 +505,10 @@ export const createSelfSignupAction = actionClient
         const organization = await createSelfSignupOrganization(tx, parsedInput);
         await addUserToOrganizationWithAllRoles(tx, existingUser.id, organization.id);
         createdOrganization = organization;
+        notificationContext = {
+          creatorName: null,
+          creatorEmail: normalizedEmail,
+        };
       });
     }
 
@@ -508,6 +522,15 @@ export const createSelfSignupAction = actionClient
       }
 
       await prisma.$transaction(async (tx) => {
+        const currentUser = await tx.user.findUnique({
+          where: { id: session.user.id },
+          select: {
+            email: true,
+            firstname: true,
+            lastname: true,
+          },
+        });
+
         const organization = await createSelfSignupOrganization(tx, parsedInput);
         await addUserToOrganizationWithAllRoles(
           tx,
@@ -515,7 +538,31 @@ export const createSelfSignupAction = actionClient
           organization.id
         );
         createdOrganization = organization;
+        notificationContext = {
+          creatorName:
+            [currentUser?.firstname, currentUser?.lastname]
+              .filter((value): value is string => Boolean(value))
+              .join(' ')
+              .trim() || null,
+          creatorEmail: currentUser?.email ?? null,
+        };
       });
+    }
+
+    if (createdOrganization) {
+      try {
+        await emailService.sendSelfSignupOrganizationCreatedNotificationEmail({
+          recipientEmail: SELF_SIGNUP_NOTIFICATION_EMAIL,
+          organizationName: createdOrganization.name,
+          creatorName: notificationContext?.creatorName ?? null,
+          creatorEmail: notificationContext?.creatorEmail ?? null,
+        });
+      } catch (error) {
+        console.error(
+          'Fehler beim Senden der Selbstregistrierungs-Benachrichtigung:',
+          error
+        );
+      }
     }
 
     return {

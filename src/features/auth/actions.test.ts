@@ -8,6 +8,7 @@ const {
   mockGetServerSession,
   mockInvalidateOneTimePasswordChallenge,
   mockSendPasswordResetEmail,
+  mockSendSelfSignupOrganizationCreatedNotificationEmail,
   mockSendOneTimePasswordEmail,
   mockTransaction,
   mockUserFindUnique,
@@ -19,6 +20,7 @@ const {
   mockGetServerSession: vi.fn(),
   mockInvalidateOneTimePasswordChallenge: vi.fn(),
   mockSendPasswordResetEmail: vi.fn(),
+  mockSendSelfSignupOrganizationCreatedNotificationEmail: vi.fn(),
   mockSendOneTimePasswordEmail: vi.fn(),
   mockTransaction: vi.fn(),
   mockUserFindUnique: vi.fn(),
@@ -37,6 +39,8 @@ vi.mock('next-auth', () => ({
 vi.mock('@/lib/email/EmailService', () => ({
   emailService: {
     sendPasswordResetEmail: mockSendPasswordResetEmail,
+    sendSelfSignupOrganizationCreatedNotificationEmail:
+      mockSendSelfSignupOrganizationCreatedNotificationEmail,
     sendOneTimePasswordEmail: mockSendOneTimePasswordEmail,
   },
 }));
@@ -97,6 +101,7 @@ describe('createSelfSignupAction', () => {
     mockGetServerSession.mockReset();
     mockInvalidateOneTimePasswordChallenge.mockReset();
     mockSendPasswordResetEmail.mockReset();
+    mockSendSelfSignupOrganizationCreatedNotificationEmail.mockReset();
     mockSendOneTimePasswordEmail.mockReset();
     mockTransaction.mockReset();
     mockUserFindUnique.mockReset();
@@ -111,6 +116,12 @@ describe('createSelfSignupAction', () => {
       resendAvailableAt: new Date('2026-04-08T17:30:30.000Z'),
       code: '123456',
     });
+    const mockOrganizationCreate = vi.fn().mockResolvedValue({
+      id: 'org-1',
+      name: 'Jüdisches Museum Hohenems',
+      logo_url: null,
+    });
+    const mockRoleFindMany = vi.fn().mockResolvedValue([{ id: 'role-1' }]);
 
     mockTransaction.mockImplementation(
       async (
@@ -138,13 +149,13 @@ describe('createSelfSignupAction', () => {
             update: vi.fn(),
           },
           organization: {
-            create: vi.fn(),
+            create: mockOrganizationCreate,
           },
           organization_details: {
             create: vi.fn(),
           },
           role: {
-            findMany: vi.fn(),
+            findMany: mockRoleFindMany,
           },
         })
     );
@@ -169,6 +180,52 @@ describe('createSelfSignupAction', () => {
       'Es existiert bereits ein Konto mit dieser E-Mail-Adresse.'
     );
     expect(mockConsumeVerifiedOneTimePasswordChallenge).not.toHaveBeenCalled();
+    expect(
+      mockSendSelfSignupOrganizationCreatedNotificationEmail
+    ).not.toHaveBeenCalled();
+  });
+
+  it('sendet nach erfolgreicher Selbstregistrierung eine interne Benachrichtigung über die neue Organisation', async () => {
+    const result = await createSelfSignupAction({
+      accountMode: 'new',
+      organizationName: 'Jüdisches Museum Hohenems',
+      firstName: 'David',
+      lastName: 'Kathrein',
+      email: 'David@example.com',
+      password: 'geheimespasswort',
+      challengeId: '7f4c9d44-74b0-4b32-8668-6a38ab30b578',
+    });
+
+    expect(result?.data?.success).toBe(true);
+    expect(
+      mockSendSelfSignupOrganizationCreatedNotificationEmail
+    ).toHaveBeenCalledWith({
+      recipientEmail: 'hello@davidkathrein.at',
+      organizationName: 'Jüdisches Museum Hohenems',
+      creatorName: 'David Kathrein',
+      creatorEmail: 'david@example.com',
+    });
+  });
+
+  it('lässt die Selbstregistrierung erfolgreich durchlaufen, wenn die interne Benachrichtigung nicht versendet werden kann', async () => {
+    mockSendSelfSignupOrganizationCreatedNotificationEmail.mockRejectedValueOnce(
+      new Error('SMTP nicht erreichbar')
+    );
+
+    const result = await createSelfSignupAction({
+      accountMode: 'new',
+      organizationName: 'Jüdisches Museum Hohenems',
+      firstName: 'David',
+      lastName: 'Kathrein',
+      email: 'david@example.com',
+      password: 'geheimespasswort',
+      challengeId: '7f4c9d44-74b0-4b32-8668-6a38ab30b578',
+    });
+
+    expect(result?.data?.success).toBe(true);
+    expect(
+      mockSendSelfSignupOrganizationCreatedNotificationEmail
+    ).toHaveBeenCalledOnce();
   });
 
   it('invalidiert die OTP-Challenge wieder, wenn der E-Mail-Versand fehlschlägt', async () => {
