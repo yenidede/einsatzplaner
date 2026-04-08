@@ -238,7 +238,7 @@ function UploadField({
 }
 
 function StepHeading() {
-  const { currentStepData, currentStepIndex, isLastStep } = useMultiStepForm();
+  const { currentStepData, currentStepIndex } = useMultiStepForm();
   const isFirstStep = currentStepIndex === 1;
 
   if (!currentStepData.heading) {
