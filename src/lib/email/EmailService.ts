@@ -96,6 +96,49 @@ export class EmailService {
     await this.transporter.sendMail(mailOptions);
   }
 
+  async sendOneTimePasswordEmail(email: string, code: string, expiresAt: Date) {
+    if (!this.transporter) {
+      return;
+    }
+
+    const expiresAtText = expiresAt.toLocaleTimeString('de-DE', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const mailOptions = {
+      from: `"Einsatzplaner" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Ihr Bestätigungscode für Einsatzplaner',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; text-align: center;">E-Mail-Adresse bestätigen</h2>
+
+          <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p>Hallo,</p>
+
+            <p>bitte geben Sie den folgenden 6-stelligen Bestätigungscode im Einsatzplaner ein:</p>
+
+            <div style="margin: 24px 0; text-align: center;">
+              <div style="display: inline-block; letter-spacing: 0.35em; font-size: 32px; font-weight: 700; color: #111827; background: white; padding: 16px 20px; border-radius: 10px; border: 1px solid #d1d5db;">
+                ${escapeHtml(code)}
+              </div>
+            </div>
+
+            <p>Der Code ist bis <strong>${escapeHtml(expiresAtText)} Uhr</strong> gültig.</p>
+            <p>Falls Sie diese Anfrage nicht ausgelöst haben, können Sie diese E-Mail ignorieren.</p>
+          </div>
+
+          <p style="color: #666; font-size: 12px; text-align: center;">
+            Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+          </p>
+        </div>
+      `,
+    };
+
+    await this.transporter.sendMail(mailOptions);
+  }
+
   async sendInvitationEmail(
     email: string,
     inviterName: string,

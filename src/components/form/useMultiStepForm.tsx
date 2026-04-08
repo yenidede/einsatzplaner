@@ -1,7 +1,7 @@
 'use client';
 
 import type { JSX, ReactNode } from 'react';
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 export interface MultiStepFormStep {
   fields: readonly string[];
@@ -44,6 +44,14 @@ export function MultiStepFormProvider({
 }: MultiStepFormProviderProps) {
   const [steps, setStepsState] = useState<MultiStepFormStep[]>(stepsFields);
   const [currentStepIndex, setCurrentStepIndex] = useState(1);
+
+  useEffect(() => {
+    setStepsState(stepsFields);
+
+    if (currentStepIndex > stepsFields.length) {
+      setCurrentStepIndex(1);
+    }
+  }, [currentStepIndex, stepsFields]);
 
   const goToNext = async () => {
     const currentStepData = steps[currentStepIndex - 1];

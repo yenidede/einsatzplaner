@@ -1,25 +1,26 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  BadgeCheck,
   Building2,
   Check,
   ChevronLeft,
   ChevronRight,
-  KeyRound,
   Verified,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { REGEXP_ONLY_DIGITS } from 'input-otp';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Controller, type FieldPath, useForm } from 'react-hook-form';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { OTPCustom } from '@/components/OTPCustom';
 import { Password } from '@/components/password';
 import {
   FormFooter,
   FormHeader,
-  MultiStepFormProvider,
   MultiStepFormContent,
+  MultiStepFormProvider,
   NextButton,
   PreviousButton,
   StepFields,
@@ -37,45 +38,64 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from '@/components/ui/input-otp';
-import { FileUpload } from '@/features/auth/self-signup/SelfSignupFileUpload';
-import { formSchema } from '@/features/auth/self-signup/schema';
-import { cn } from '@/lib/utils';
+  createSelfSignupAction,
+  getSelfSignupAccountStatusAction,
+} from '@/features/auth/actions';
+import { useOneTimePassword } from '@/features/auth/hooks/useOneTimePassword';
+import { authQueryKeys } from '@/features/auth/queryKeys';
+import {
+  createFormSchema,
+  selfSignupBaseSchema,
+  type SelfSignupAccountMode,
+  type SelfSignupFormValues,
+} from '@/features/auth/self-signup/schema';
 
-type SignupSchemaInput = z.input<typeof formSchema>;
-type SignupSchemaOutput = z.output<typeof formSchema>;
+type SignupSchemaInput = SelfSignupFormValues;
+type SignupSchemaOutput = z.output<typeof selfSignupBaseSchema>;
 
 const isGeneratedFormField = (
   value: string
-): value is FieldPath<SignupSchemaInput> => value in formSchema.shape;
+): value is FieldPath<SignupSchemaInput> => value in selfSignupBaseSchema.shape;
 
-const accountStepFields = [
-  'orga-name',
-  'orga-kuerzel',
-  'user-vorname',
-  'user-nachname',
-  'user-email',
-  'user-password',
-  'user-passwort-confirm',
-] as const;
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
-const verificationStepFields = ['otp-e72'] as const;
+function getAccountStepFields(accountMode: SelfSignupAccountMode) {
+  if (accountMode === 'logged_in') {
+    return ['orga-name', 'orga-kuerzel'] as const;
+  }
+
+  if (accountMode === 'existing') {
+    return [
+      'orga-name',
+      'orga-kuerzel',
+      'user-email',
+      'user-password',
+    ] as const;
+  }
+
+  return [
+    'orga-name',
+    'orga-kuerzel',
+    'user-vorname',
+    'user-nachname',
+    'user-email',
+    'user-password',
+    'user-passwort-confirm',
+  ] as const;
+}
+
+const verificationStepFields = [] as const;
 
 const profileStepFields = [
   'orga-phone',
   'orga-website',
   'privacy-consent',
-  'orga-logo-gross',
-  'orga-logo-klein',
   'orga-helfer-singular',
   'orga-helfer-plural',
   'orga-einsatz-singular',
-  'user-phone',
-  'user-profilbild',
+  'orga-einsatz-plural',
 ] as const;
 
 function RequiredLabel({
@@ -187,56 +207,6 @@ function PasswordField({
   );
 }
 
-function UploadField({
-  control,
-  setValue,
-  name,
-  label,
-  placeholder,
-  accept,
-  className,
-}: {
-  control: ReturnType<
-    typeof useForm<SignupSchemaInput, unknown, SignupSchemaOutput>
-  >['control'];
-  setValue: ReturnType<
-    typeof useForm<SignupSchemaInput, unknown, SignupSchemaOutput>
-  >['setValue'];
-  name: 'orga-logo-gross' | 'orga-logo-klein' | 'user-profilbild';
-  label: string;
-  placeholder: string;
-  accept: string;
-  className?: string;
-}) {
-  return (
-    <Controller
-      name={name}
-      control={control}
-      render={({ fieldState }) => (
-        <div className={cn('md:col-span-1', className)}>
-          <Field data-invalid={fieldState.invalid} className="gap-2">
-            <FieldLabel htmlFor={name}>{label}</FieldLabel>
-            <FieldDescription>
-              Wählen Sie eine Datei von Ihrem Gerät aus.
-            </FieldDescription>
-            <FileUpload
-              accept={accept}
-              disabled={false}
-              maxSize={5242880}
-              name={name}
-              placeholder={placeholder}
-              setValue={setValue}
-            />
-          </Field>
-          {fieldState.invalid ? (
-            <FieldError errors={[fieldState.error]} />
-          ) : null}
-        </div>
-      )}
-    />
-  );
-}
-
 function StepHeading() {
   const { currentStepData, currentStepIndex } = useMultiStepForm();
   const isFirstStep = currentStepIndex === 1;
@@ -250,15 +220,13 @@ function StepHeading() {
       <h1 className="text-3xl font-semibold tracking-tight">
         {currentStepData.heading}
       </h1>
-      {isFirstStep && (
-        <>
-          <p className="text-muted-foreground text-sm">
-            Mit dieser Registrierung legen Sie eine neue Organisation an. Wenn
-            Sie einer bestehenden Organisation beitreten möchten, wenden Sie
-            sich bitte an Ihre Administratorin oder Ihren Administrator.
-          </p>
-        </>
-      )}
+      {isFirstStep ? (
+        <p className="text-muted-foreground text-sm">
+          Mit dieser Registrierung legen Sie eine neue Organisation an. Wenn Sie
+          einer bestehenden Organisation beitreten möchten, wenden Sie sich
+          bitte an Ihre Administratorin oder Ihren Administrator.
+        </p>
+      ) : null}
       {currentStepData.subheading ? (
         <p className="text-muted-foreground text-sm">
           {currentStepData.subheading}
@@ -315,74 +283,114 @@ function CheckboxField({
   );
 }
 
-export function SelfSignupForm() {
-  const isTestEnvironment =
-    process.env.NODE_ENV === 'development' || process.env.VITEST === 'true';
-  const shouldUseSchemaValidation = !isTestEnvironment;
+function AutoAdvanceAfterOtpVerification({
+  isVerified,
+  isVerifying,
+}: {
+  isVerified: boolean;
+  isVerifying: boolean;
+}) {
+  const { currentStepIndex, goToNext } = useMultiStepForm();
+  const previousIsVerifiedRef = useRef(isVerified);
 
-  const form = useForm<SignupSchemaInput, unknown, SignupSchemaOutput>({
-    resolver: shouldUseSchemaValidation ? zodResolver(formSchema) : undefined,
-    defaultValues: {
-      'orga-name': '',
-      'orga-kuerzel': '',
-      'orga-phone': '',
-      'orga-website': '',
-      'otp-e72': '',
-      'orga-helfer-plural': '',
-      'orga-helfer-singular': '',
-      'orga-einsatz-singular': '',
-      'orga-einsatz-plural': '',
-      'privacy-consent': false,
-      'user-email': '',
-      'user-nachname': '',
-      'user-password': '',
-      'user-passwort-confirm': '',
-      'user-vorname': '',
-    },
-  });
+  useEffect(() => {
+    const verificationJustCompleted =
+      !previousIsVerifiedRef.current && isVerified;
 
-  const {
-    control,
-    formState: { isSubmitSuccessful, isSubmitting },
-    handleSubmit,
-    reset,
-    setValue,
-    trigger,
-  } = form;
+    previousIsVerifiedRef.current = isVerified;
 
-  const steps = [
-    {
-      title: 'Ihre Angaben',
-      heading: 'Registrierung',
-      icon: <Building2 className="size-4" />,
-      fields: [...accountStepFields],
-      component: (
+    if (currentStepIndex !== 2 || !verificationJustCompleted || isVerifying) {
+      return;
+    }
+
+    void goToNext();
+  }, [currentStepIndex, goToNext, isVerified, isVerifying]);
+
+  return null;
+}
+
+function AccountModeNotice({
+  accountMode,
+  sessionEmail,
+}: {
+  accountMode: SelfSignupAccountMode;
+  sessionEmail: string;
+}) {
+  if (accountMode === 'logged_in') {
+    return (
+      <div className="bg-primary/5 border-primary/15 text-foreground rounded-2xl border px-4 py-3 md:col-span-2">
+        <p className="text-sm font-medium">
+          Sie sind bereits als {sessionEmail} angemeldet.
+        </p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Für diese Registrierung benötigen wir deshalb weder Ihre
+          E-Mail-Adresse noch ein Passwort erneut.
+        </p>
+      </div>
+    );
+  }
+
+  if (accountMode === 'existing') {
+    return (
+      <div className="bg-primary/5 border-primary/15 text-foreground rounded-2xl border px-4 py-3 md:col-span-2">
+        <p className="text-sm font-medium">
+          Zu dieser E-Mail-Adresse existiert bereits ein Konto.
+        </p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Bitte melden Sie sich mit Ihrem bestehenden Passwort an. Ein neues
+          Passwort müssen Sie hier nicht erstellen.
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function AccountFields({
+  accountMode,
+  control,
+  sessionEmail,
+}: {
+  accountMode: SelfSignupAccountMode;
+  control: ReturnType<
+    typeof useForm<SignupSchemaInput, unknown, SignupSchemaOutput>
+  >['control'];
+  sessionEmail: string;
+}) {
+  return (
+    <>
+      <TextField
+        className="gap-2"
+        control={control}
+        label="Name Ihrer Organisation"
+        name="orga-name"
+        placeholder="Jüdisches Museum Hohenems"
+        required
+      />
+      <TextField
+        className="gap-2"
+        control={control}
+        label="Kürzel Ihrer Organisation"
+        name="orga-kuerzel"
+        placeholder="JMH"
+        description="Kurze interne Bezeichnung, zum Beispiel für Listen, Kalender oder Abkürzungen."
+      />
+      <FieldSeparator className="md:col-span-2" />
+      <div className="flex flex-col gap-1 md:col-span-2">
+        <div className="text-lg font-medium">Ihr Zugang</div>
+        <p className="text-muted-foreground text-sm">
+          {accountMode === 'new'
+            ? 'Daraus wird Ihr persönlicher Account erstellt, mit dem Sie sich künftig anmelden.'
+            : 'Wir verknüpfen Ihre neue Organisation mit Ihrem bestehenden Zugang.'}
+        </p>
+      </div>
+      <AccountModeNotice
+        accountMode={accountMode}
+        sessionEmail={sessionEmail}
+      />
+      {accountMode === 'new' ? (
         <>
-          <TextField
-            className="gap-2"
-            control={control}
-            label="Name Ihrer Organisation"
-            name="orga-name"
-            placeholder="Jüdisches Museum Hohenems"
-            description="Dieser Name wird in Ihrem Konto, in E-Mails und in Dokumenten angezeigt."
-            required
-          />
-          <TextField
-            className="gap-2"
-            control={control}
-            label="Kürzel Ihrer Organisation"
-            name="orga-kuerzel"
-            placeholder="JMH"
-            description="Kurze interne Bezeichnung, zum Beispiel für Listen, Kalender oder Abkürzungen."
-          />
-          <FieldSeparator className="md:col-span-2" />
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <div className="text-lg font-medium">Ihre Kontaktdaten</div>
-            <p className="text-muted-foreground text-sm">
-              Daraus wird Ihr persönlicher Account erstellt, mit dem Sie sich
-              künftig anmelden.
-            </p>
-          </div>
           <TextField
             control={control}
             label="Ihr Vorname"
@@ -399,16 +407,22 @@ export function SelfSignupForm() {
             description="Nachname der Person, die das Konto für Ihre Organisation anlegt."
             required
           />
-          <TextField
-            className="gap-2 md:col-span-2"
-            control={control}
-            label="Ihre E-Mail-Adresse"
-            name="user-email"
-            placeholder="ihre@emailadresse.at"
-            description="An diese Adresse senden wir den Bestätigungscode und wichtige Informationen zu Ihrem Konto."
-            required
-            type="email"
-          />
+        </>
+      ) : null}
+      {accountMode !== 'logged_in' ? (
+        <TextField
+          className="gap-2 md:col-span-2"
+          control={control}
+          label="Ihre E-Mail-Adresse"
+          name="user-email"
+          placeholder="ihre@emailadresse.at"
+          description="An diese Adresse senden wir bei neuen Konten den Bestätigungscode und wichtige Informationen zu Ihrem Konto."
+          required
+          type="email"
+        />
+      ) : null}
+      {accountMode === 'new' ? (
+        <>
           <PasswordField
             control={control}
             label="Passwort für Ihr Konto"
@@ -423,94 +437,132 @@ export function SelfSignupForm() {
             placeholder="Bitte wiederholen Sie Ihr Passwort"
             required
           />
-          <UploadField
-            accept="image/png, image/jpeg, image/gif, image/svg+xml"
-            control={control}
-            label="Ihr Profilbild (optional)"
-            name="user-profilbild"
-            className="md:col-span-2"
-            placeholder="PNG, JPEG, GIF oder SVG, maximal 5 MB"
-            setValue={setValue}
-          />
         </>
-      ),
+      ) : null}
+      {accountMode === 'existing' ? (
+        <PasswordField
+          control={control}
+          label="Ihr bestehendes Passwort"
+          name="user-password"
+          placeholder="Bitte geben Sie Ihr Passwort ein"
+          required
+        />
+      ) : null}
+    </>
+  );
+}
+
+export function SelfSignupForm() {
+  const router = useRouter();
+  const {
+    data: session,
+    status: sessionStatus,
+    update: updateSession,
+  } = useSession();
+  const sessionEmail = session?.user?.email ?? '';
+  const [submitErrorMessage, setSubmitErrorMessage] = useState('');
+  const [isAdvancingToVerificationStep, setIsAdvancingToVerificationStep] =
+    useState(false);
+  const [otpRequestedForEmail, setOtpRequestedForEmail] = useState('');
+  const form = useForm<SignupSchemaInput, unknown, SignupSchemaOutput>({
+    resolver: zodResolver(selfSignupBaseSchema),
+    defaultValues: {
+      'orga-name': '',
+      'orga-kuerzel': '',
+      'orga-phone': '',
+      'orga-website': '',
+      'orga-helfer-plural': '',
+      'orga-helfer-singular': '',
+      'orga-einsatz-singular': '',
+      'orga-einsatz-plural': '',
+      'privacy-consent': false,
+      'user-email': '',
+      'user-nachname': '',
+      'user-password': '',
+      'user-passwort-confirm': '',
+      'user-vorname': '',
     },
-    {
-      title: 'Verifizierung',
-      heading: 'E-Mail bestätigen',
-      icon: <Verified className="size-4" />,
-      fields: [...verificationStepFields],
+  });
+
+  const {
+    control,
+    formState: { isSubmitting },
+    getValues,
+    handleSubmit,
+    setError,
+    watch,
+    trigger,
+  } = form;
+  const email = watch('user-email') ?? '';
+  const normalizedEmail = email.trim().toLowerCase();
+  const isLoggedIn = sessionStatus === 'authenticated';
+  const shouldCheckAccountStatus =
+    !isLoggedIn && isValidEmail(normalizedEmail) && sessionStatus !== 'loading';
+  const accountStatusQuery = useQuery({
+    queryKey: authQueryKeys.selfSignup.accountStatus(normalizedEmail),
+    enabled: shouldCheckAccountStatus,
+    queryFn: async () => {
+      const result = await getSelfSignupAccountStatusAction({
+        email: normalizedEmail,
+      });
+
+      if (!result?.data) {
+        throw new Error(
+          result?.serverError ?? 'Der Kontostatus konnte nicht geprüft werden.'
+        );
+      }
+
+      return result.data;
+    },
+    staleTime: 60_000,
+  });
+
+  const accountMode: SelfSignupAccountMode = isLoggedIn
+    ? 'logged_in'
+    : accountStatusQuery.data?.accountExists
+      ? 'existing'
+      : 'new';
+  const hasVerificationStep = accountMode === 'new';
+  const accountStepFields = getAccountStepFields(accountMode);
+  const oneTimePassword = useOneTimePassword({
+    email,
+    enabled: hasVerificationStep,
+    autoSend: false,
+    codeLength: 6,
+  });
+
+  useEffect(() => {
+    form.clearErrors();
+  }, [accountMode, form]);
+
+  useEffect(() => {
+    if (otpRequestedForEmail && otpRequestedForEmail !== normalizedEmail) {
+      setOtpRequestedForEmail('');
+    }
+  }, [normalizedEmail, otpRequestedForEmail]);
+
+  const steps = useMemo(() => {
+    const accountStep = {
+      title: 'Ihre Angaben',
+      heading: 'Registrierung',
+      icon: <Building2 className="size-4" />,
+      fields: [...accountStepFields],
       component: (
-        <>
-          <Controller
-            name="otp-e72"
-            control={control}
-            render={({ field, fieldState }) => (
-              <Field
-                data-invalid={fieldState.invalid}
-                className="gap-3 md:col-span-2 md:max-w-md"
-              >
-                <FieldContent className="gap-1">
-                  <FieldLabel htmlFor="otp-e72">
-                    <RequiredLabel label="Bestätigungscode" required />
-                  </FieldLabel>
-                  <FieldDescription>
-                    Bitte geben Sie den 6-stelligen Code aus der E-Mail ein, die
-                    wir an Ihre E-Mail-Adresse gesendet haben.
-                  </FieldDescription>
-                </FieldContent>
-                <InputOTP
-                  id="otp-e72"
-                  aria-invalid={fieldState.invalid}
-                  maxLength={6}
-                  pattern={REGEXP_ONLY_DIGITS}
-                  value={typeof field.value === 'string' ? field.value : ''}
-                  onChange={field.onChange}
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-                {fieldState.invalid ? (
-                  <FieldError errors={[fieldState.error]} />
-                ) : null}
-              </Field>
-            )}
-          />
-        </>
+        <AccountFields
+          accountMode={accountMode}
+          control={control}
+          sessionEmail={sessionEmail}
+        />
       ),
-    },
-    {
+    };
+
+    const optionalStep = {
       title: 'Optional',
       heading: 'Weitere Angaben',
       icon: <Check className="size-4" />,
       fields: [...profileStepFields],
       component: (
         <>
-          {/* <UploadField
-            accept="image/png, image/jpeg, image/gif, image/svg+xml"
-            control={control}
-            label="Organisationslogo groß"
-            name="orga-logo-gross"
-            placeholder="PNG, JPEG, GIF oder SVG, maximal 5 MB"
-            setValue={setValue}
-          /> */}
-          {/* <UploadField
-            accept="image/png, image/jpeg, image/gif, image/svg+xml"
-            control={control}
-            label="Organisationslogo klein"
-            name="orga-logo-klein"
-            placeholder="PNG, JPEG, GIF oder SVG, maximal 5 MB"
-            setValue={setValue}
-          /> */}
           <TextField
             control={control}
             description="So nennen Sie Personen, die Einsätze übernehmen, zum Beispiel Helfer:in, Trainer:in oder Vermittler:in."
@@ -520,21 +572,21 @@ export function SelfSignupForm() {
           />
           <TextField
             control={control}
-            description="Pluralform für Personen, die Einsätze übernehmen."
+            description="So nennen Sie Personen, die Einsätze übernehmen, zum Beispiel Helfer:innen, Trainer:innen oder Vermittler:innen."
             label="Bezeichnung für mitwirkende Personen (Plural)"
             name="orga-helfer-plural"
             placeholder="Helfer:innen, Trainer:innen oder Vermittler:innen"
           />
           <TextField
             control={control}
-            description="So nennen Sie einen einzelnen Termin oder Einsatz in Ihrer Organisation."
+            description="So nennen Sie Termine, Workshops oder Einsätze in Ihrer Organisation."
             label="Bezeichnung für einen Termin oder Einsatz (Singular)"
             name="orga-einsatz-singular"
             placeholder="Workshop, Training oder Führung"
           />
           <TextField
             control={control}
-            description="Pluralform für Termine oder Einsätze in Ihrer Organisation."
+            description="So nennen Sie Termine, Workshops oder Einsätze in Ihrer Organisation."
             label="Bezeichnung für Termine oder Einsätze (Plural)"
             name="orga-einsatz-plural"
             placeholder="Workshops, Trainings oder Führungen"
@@ -545,7 +597,7 @@ export function SelfSignupForm() {
             label="Telefonnummer der Organisation"
             name="orga-phone"
             placeholder="+43 123 456789"
-            description="Optional für Rückfragen oder für die Anzeige in Dokumenten und E-Mails."
+            description="Optional für Rückfragen Ihrer Mitarbeiter oder für die Anzeige in Dokumenten und E-Mails."
             type="tel"
           />
           <TextField
@@ -574,39 +626,243 @@ export function SelfSignupForm() {
           </div>
         </>
       ),
-    },
-  ] as const;
+    };
+
+    if (!hasVerificationStep) {
+      return [accountStep, optionalStep];
+    }
+
+    return [
+      accountStep,
+      {
+        title: 'Verifizierung',
+        heading: 'E-Mail bestätigen',
+        icon: <Verified className="size-4" />,
+        fields: [...verificationStepFields],
+        component: (
+          <Field
+            data-invalid={!!oneTimePassword.errorMessage}
+            className="gap-3 md:col-span-2 md:max-w-md"
+          >
+            <FieldContent className="gap-1">
+              <FieldLabel htmlFor="otp-e72">
+                <RequiredLabel label="Bestätigungscode" required />
+              </FieldLabel>
+              <FieldDescription>
+                Sobald Sie diesen Schritt öffnen, senden wir einen 6-stelligen
+                Code an Ihre E-Mail-Adresse. Bitte geben Sie ihn hier ein.
+              </FieldDescription>
+            </FieldContent>
+            <OTPCustom
+              id="otp-e72"
+              ariaInvalid={!!oneTimePassword.errorMessage}
+              length={6}
+              pattern={/\d/}
+              value={oneTimePassword.code}
+              onChange={oneTimePassword.setCode}
+              separatorAfter={[2]}
+            />
+            <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+              {oneTimePassword.isSending ? (
+                <span>Bestätigungscode wird gesendet ...</span>
+              ) : null}
+              {oneTimePassword.isVerifying ? (
+                <span>Code wird geprüft ...</span>
+              ) : null}
+              {oneTimePassword.isVerified ? (
+                <span className="text-emerald-700">
+                  Ihre E-Mail-Adresse wurde erfolgreich bestätigt.
+                </span>
+              ) : null}
+              {!oneTimePassword.isVerified &&
+              !oneTimePassword.isSending &&
+              !oneTimePassword.isVerifying &&
+              email.trim() ? (
+                <span>
+                  Bitte geben Sie den Code aus Ihrer E-Mail ein, um
+                  fortzufahren.
+                </span>
+              ) : null}
+            </div>
+            {!oneTimePassword.canResend ? (
+              <FieldDescription>
+                Sie können in {oneTimePassword.resendRemainingSeconds} Sekunden
+                einen neuen Code anfordern.
+              </FieldDescription>
+            ) : (
+              <FieldDescription>
+                Kein Code angekommen? Sie können jetzt einen neuen Code
+                anfordern.
+              </FieldDescription>
+            )}
+            <button
+              className="text-primary inline-flex w-fit items-center text-sm font-medium underline underline-offset-4 disabled:no-underline"
+              type="button"
+              disabled={!oneTimePassword.canResend || oneTimePassword.isSending}
+              onClick={() => {
+                void oneTimePassword.resend();
+              }}
+            >
+              Code erneut senden
+            </button>
+            {oneTimePassword.errorMessage ? (
+              <FieldError
+                errors={[{ message: oneTimePassword.errorMessage }]}
+              />
+            ) : null}
+          </Field>
+        ),
+      },
+      optionalStep,
+    ];
+  }, [
+    accountMode,
+    accountStepFields,
+    control,
+    email,
+    hasVerificationStep,
+    oneTimePassword.canResend,
+    oneTimePassword.code,
+    oneTimePassword.errorMessage,
+    oneTimePassword.isSending,
+    oneTimePassword.isVerified,
+    oneTimePassword.isVerifying,
+    oneTimePassword.resend,
+    oneTimePassword.resendRemainingSeconds,
+    oneTimePassword.setCode,
+    sessionEmail,
+  ]);
 
   const onSubmit = handleSubmit(async (data: SignupSchemaOutput) => {
-    console.log(data);
-    reset();
-  });
+    setSubmitErrorMessage('');
 
-  if (isSubmitSuccessful) {
-    return (
-      <div className="border-border/60 flex min-h-[32rem] items-center justify-center rounded-lg border bg-white p-8 shadow-sm">
-        <motion.div
-          animate={{ opacity: 1, y: 0 }}
-          className="flex max-w-md flex-col items-center gap-4 text-center"
-          initial={{ opacity: 0, y: 12 }}
-          transition={{ duration: 0.25 }}
-        >
-          <div className="bg-primary text-primary-foreground flex size-14 items-center justify-center rounded-full">
-            <BadgeCheck className="size-7" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold">
-              Vielen Dank für Ihre Anmeldung
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Ihre Angaben wurden erfasst. Wir melden uns zeitnah mit den
-              nächsten Schritten bei Ihnen.
-            </p>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
+    let result: Awaited<ReturnType<typeof createSelfSignupAction>> | undefined;
+
+    if (accountMode === 'new') {
+      const parsed = createFormSchema('new').safeParse(data);
+      if (!parsed.success) {
+        return;
+      }
+
+      if (!oneTimePassword.isVerified || !oneTimePassword.challengeId) {
+        setSubmitErrorMessage(
+          'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse mit dem Bestätigungscode.'
+        );
+        return;
+      }
+
+      const firstName = parsed.data['user-vorname'];
+      const lastName = parsed.data['user-nachname'];
+      const signupEmail = parsed.data['user-email'];
+      const signupPassword = parsed.data['user-password'];
+
+      if (!firstName || !lastName || !signupEmail || !signupPassword) {
+        setSubmitErrorMessage(
+          'Die Registrierungsdaten sind unvollständig. Bitte prüfen Sie Ihre Angaben.'
+        );
+        return;
+      }
+
+      result = await createSelfSignupAction({
+        accountMode: 'new',
+        organizationName: parsed.data['orga-name'],
+        organizationAbbreviation: parsed.data['orga-kuerzel'] || undefined,
+        organizationPhone: parsed.data['orga-phone'] || undefined,
+        organizationWebsite: parsed.data['orga-website'] || undefined,
+        helperSingular: parsed.data['orga-helfer-singular'] || undefined,
+        helperPlural: parsed.data['orga-helfer-plural'] || undefined,
+        einsatzSingular: parsed.data['orga-einsatz-singular'] || undefined,
+        einsatzPlural: parsed.data['orga-einsatz-plural'] || undefined,
+        firstName,
+        lastName,
+        email: signupEmail,
+        password: signupPassword,
+        challengeId: oneTimePassword.challengeId,
+      });
+    } else if (accountMode === 'existing') {
+      const parsed = createFormSchema('existing').safeParse(data);
+      if (!parsed.success) {
+        return;
+      }
+
+      const signupEmail = parsed.data['user-email'];
+      const signupPassword = parsed.data['user-password'];
+
+      if (!signupEmail || !signupPassword) {
+        setSubmitErrorMessage(
+          'Bitte geben Sie Ihre E-Mail-Adresse und Ihr Passwort ein.'
+        );
+        return;
+      }
+
+      result = await createSelfSignupAction({
+        accountMode: 'existing',
+        organizationName: parsed.data['orga-name'],
+        organizationAbbreviation: parsed.data['orga-kuerzel'] || undefined,
+        organizationPhone: parsed.data['orga-phone'] || undefined,
+        organizationWebsite: parsed.data['orga-website'] || undefined,
+        helperSingular: parsed.data['orga-helfer-singular'] || undefined,
+        helperPlural: parsed.data['orga-helfer-plural'] || undefined,
+        einsatzSingular: parsed.data['orga-einsatz-singular'] || undefined,
+        einsatzPlural: parsed.data['orga-einsatz-plural'] || undefined,
+        email: signupEmail,
+        password: signupPassword,
+      });
+    } else {
+      const parsed = createFormSchema('logged_in').safeParse(data);
+      if (!parsed.success) {
+        return;
+      }
+
+      result = await createSelfSignupAction({
+        accountMode: 'logged_in',
+        organizationName: parsed.data['orga-name'],
+        organizationAbbreviation: parsed.data['orga-kuerzel'] || undefined,
+        organizationPhone: parsed.data['orga-phone'] || undefined,
+        organizationWebsite: parsed.data['orga-website'] || undefined,
+        helperSingular: parsed.data['orga-helfer-singular'] || undefined,
+        helperPlural: parsed.data['orga-helfer-plural'] || undefined,
+        einsatzSingular: parsed.data['orga-einsatz-singular'] || undefined,
+        einsatzPlural: parsed.data['orga-einsatz-plural'] || undefined,
+      });
+    }
+
+    if (!result?.data?.success) {
+      setSubmitErrorMessage(
+        result?.serverError ??
+          'Die Registrierung konnte nicht abgeschlossen werden.'
+      );
+      return;
+    }
+
+    if (accountMode === 'logged_in') {
+      if (!session?.user) {
+        setSubmitErrorMessage(
+          'Ihre Sitzung konnte nicht aktualisiert werden. Bitte laden Sie die Seite neu.'
+        );
+        return;
+      }
+
+      await updateSession({
+        user: session.user,
+      });
+      router.push('/');
+      return;
+    }
+
+    const signInResult = await signIn('credentials', {
+      email: data['user-email'],
+      password: data['user-password'],
+      redirect: true,
+      callbackUrl: '/',
+    });
+
+    if (signInResult?.error) {
+      setSubmitErrorMessage(
+        'Ihr Konto wurde erstellt, aber die automatische Anmeldung ist fehlgeschlagen.'
+      );
+    }
+  });
 
   return (
     <form
@@ -614,23 +870,111 @@ export function SelfSignupForm() {
       onSubmit={onSubmit}
     >
       <MultiStepFormProvider
-        stepsFields={[...steps]}
+        stepsFields={steps}
         onStepValidation={async (step) => {
-          if (!shouldUseSchemaValidation) {
+          if (step.title === 'Ihre Angaben') {
+            setSubmitErrorMessage('');
+
+            const stepFields = step.fields.filter(isGeneratedFormField);
+            const isBaseValid = await trigger(stepFields);
+
+            const modeValidation =
+              createFormSchema(accountMode).safeParse(getValues());
+            const stepSpecificIssues = !modeValidation.success
+              ? modeValidation.error.issues.filter((issue) => {
+                  const path = issue.path[0];
+                  return (
+                    typeof path === 'string' &&
+                    isGeneratedFormField(path) &&
+                    stepFields.includes(path)
+                  );
+                })
+              : [];
+
+            if (stepSpecificIssues.length > 0) {
+              for (const issue of stepSpecificIssues) {
+                const path = issue.path[0];
+
+                if (
+                  typeof path === 'string' &&
+                  isGeneratedFormField(path) &&
+                  stepFields.includes(path)
+                ) {
+                  setError(path, {
+                    type: 'manual',
+                    message: issue.message,
+                  });
+                }
+              }
+            }
+
+            if (!isBaseValid || stepSpecificIssues.length > 0) {
+              return false;
+            }
+
+            if (
+              shouldCheckAccountStatus &&
+              (accountStatusQuery.isFetching || !accountStatusQuery.isFetched)
+            ) {
+              return false;
+            }
+
+            if (
+              hasVerificationStep &&
+              !oneTimePassword.isVerified &&
+              otpRequestedForEmail !== normalizedEmail
+            ) {
+              setIsAdvancingToVerificationStep(true);
+              try {
+                const sendResult = await oneTimePassword.send();
+
+                if (sendResult) {
+                  setOtpRequestedForEmail(normalizedEmail);
+                }
+              } finally {
+                setIsAdvancingToVerificationStep(false);
+              }
+            }
+
             return true;
           }
+
+          if (step.title === 'Verifizierung') {
+            if (oneTimePassword.isVerified) {
+              return true;
+            }
+
+            setError('user-email', {
+              type: 'manual',
+              message:
+                'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse mit dem Bestätigungscode.',
+            });
+            return false;
+          }
+
           const stepFields = step.fields.filter(isGeneratedFormField);
           return trigger(stepFields);
         }}
       >
         <MultiStepFormContent className="gap-4">
+          {hasVerificationStep ? (
+            <AutoAdvanceAfterOtpVerification
+              isVerified={oneTimePassword.isVerified}
+              isVerifying={oneTimePassword.isVerifying}
+            />
+          ) : null}
           <FormHeader />
           <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-1">
             <StepHeading />
             <StepFields />
+            {submitErrorMessage ? (
+              <div className="text-destructive mt-4 text-sm">
+                {submitErrorMessage}
+              </div>
+            ) : null}
           </div>
           <FormFooter>
-            <div className="flex items-center justify-end gap-3">
+            <div className="ml-auto flex items-center justify-end gap-3">
               <PreviousButton
                 className="bg-muted text-muted-foreground hover:bg-muted h-9 rounded-xl border-0 px-4 py-2 shadow-none"
                 variant="ghost"
@@ -638,8 +982,23 @@ export function SelfSignupForm() {
                 <ChevronLeft />
                 Zurück
               </PreviousButton>
-              <NextButton className="h-9 rounded-xl px-5" size="default">
-                Weiter
+              <NextButton
+                className="h-9 rounded-xl px-5"
+                size="default"
+                disabled={
+                  isAdvancingToVerificationStep ||
+                  (shouldCheckAccountStatus &&
+                    (accountStatusQuery.isLoading ||
+                      accountStatusQuery.isFetching))
+                }
+              >
+                {isAdvancingToVerificationStep
+                  ? 'E-Mail wird gesendet ...'
+                  : shouldCheckAccountStatus &&
+                      (accountStatusQuery.isLoading ||
+                        accountStatusQuery.isFetching)
+                    ? 'Konto wird geprüft ...'
+                    : 'Weiter'}
                 <ChevronRight />
               </NextButton>
               <SubmitButton
