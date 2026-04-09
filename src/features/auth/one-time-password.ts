@@ -164,7 +164,7 @@ export async function createAndSendOneTimePasswordChallenge(input: {
   const codeHash = await hash(code, 10);
 
   const challenge = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${email}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${email}))`;
 
     const activeChallenge = await getActiveChallengeByEmail(email, tx);
 

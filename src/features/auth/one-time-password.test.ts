@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockTransaction,
-  mockQueryRaw,
+  mockExecuteRaw,
   mockChallengeUpdateMany,
   mockCodeUpdateMany,
   mockChallengeCreate,
@@ -14,7 +14,7 @@ const {
   mockChallengeFindUnique,
 } = vi.hoisted(() => ({
   mockTransaction: vi.fn(),
-  mockQueryRaw: vi.fn(),
+  mockExecuteRaw: vi.fn(),
   mockChallengeUpdateMany: vi.fn(),
   mockCodeUpdateMany: vi.fn(),
   mockChallengeCreate: vi.fn(),
@@ -46,7 +46,7 @@ import {
 describe('one-time-password server logic', () => {
   beforeEach(() => {
     mockChallengeUpdateMany.mockReset();
-    mockQueryRaw.mockReset();
+    mockExecuteRaw.mockReset();
     mockCodeUpdateMany.mockReset();
     mockChallengeCreate.mockReset();
     mockChallengeFindFirst.mockReset();
@@ -71,7 +71,7 @@ describe('one-time-password server logic', () => {
             updateMany: typeof mockCodeUpdateMany;
             update: typeof mockCodeUpdate;
           };
-          $queryRaw: typeof mockQueryRaw;
+          $executeRaw: typeof mockExecuteRaw;
         }) => Promise<unknown>
       ) =>
         callback({
@@ -87,7 +87,7 @@ describe('one-time-password server logic', () => {
             updateMany: mockCodeUpdateMany,
             update: mockCodeUpdate,
           },
-          $queryRaw: mockQueryRaw,
+          $executeRaw: mockExecuteRaw,
         })
     );
   });
@@ -117,7 +117,7 @@ describe('one-time-password server logic', () => {
       email: 'Test@Example.com',
     });
 
-    expect(mockQueryRaw).toHaveBeenCalledOnce();
+    expect(mockExecuteRaw).toHaveBeenCalledOnce();
     expect(mockChallengeUpdateMany).toHaveBeenCalledOnce();
     expect(mockChallengeUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
