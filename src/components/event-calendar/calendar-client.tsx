@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
-import { useEffect, useCallback, useMemo, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { addMonths, subMonths } from 'date-fns';
 
 import { EventCalendar } from '@/components/event-calendar';
@@ -31,7 +31,6 @@ import type {
 } from '@/features/einsatz/types';
 import { useEventDialogFromContext } from '@/contexts/EventDialogContext';
 import type { UserPropertyWithField } from '@/features/user_properties/user_property-dal';
-import { normalizeCalendarDateValue } from '@/features/einsatz/datetime';
 
 interface UserWithProperties {
   id: string;
@@ -175,24 +174,8 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   } = useEinsaetzeForCalendar(activeOrgId, currentDate);
   const prefetchEinsaetzeForCalendar =
     usePrefetchEinsaetzeForCalendar(activeOrgId);
-  const events = useMemo(
-    () =>
-      (calendarData?.events ?? []).map((event) => ({
-        ...event,
-        start: normalizeCalendarDateValue(event.start) ?? event.start,
-        end: normalizeCalendarDateValue(event.end) ?? event.end,
-      })),
-    [calendarData?.events]
-  );
-  const detailedEinsaetze = useMemo(
-    () =>
-      (calendarData?.detailedEinsaetze ?? []).map((einsatz) => ({
-        ...einsatz,
-        start: normalizeCalendarDateValue(einsatz.start) ?? einsatz.start,
-        end: normalizeCalendarDateValue(einsatz.end) ?? einsatz.end,
-      })),
-    [calendarData?.detailedEinsaetze]
-  );
+  const events = calendarData?.events;
+  const detailedEinsaetze = calendarData?.detailedEinsaetze ?? [];
   const cachedDetailedEinsatz =
     typeof selectedEinsatz === 'string'
       ? detailedEinsaetze.find((e) => e.id === selectedEinsatz)
@@ -385,7 +368,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     return <div>Fehler beim Laden der Einsätze: {msg}</div>;
   }
 
-  const calendarEvents = events ?? [];
+  const calendarEvents = calendarData?.events ?? [];
   return (
     <>
       <EventCalendar
