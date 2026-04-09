@@ -38,13 +38,16 @@ export function parseCalendarDateTimeString(
   }
 
   const timestampWithoutTimezoneMatch =
-    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/.exec(
+    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,6}))?)?$/.exec(
       value
     );
 
   if (timestampWithoutTimezoneMatch) {
     const [, year, month, day, hours, minutes, seconds, milliseconds] =
       timestampWithoutTimezoneMatch;
+    const normalizedMilliseconds = Number(
+      (milliseconds ?? '0').slice(0, 3).padEnd(3, '0')
+    );
 
     return new Date(
       Number(year),
@@ -53,7 +56,7 @@ export function parseCalendarDateTimeString(
       Number(hours),
       Number(minutes),
       Number(seconds ?? 0),
-      Number((milliseconds ?? '0').padEnd(3, '0'))
+      normalizedMilliseconds
     );
   }
 

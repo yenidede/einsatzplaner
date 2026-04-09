@@ -86,6 +86,16 @@ describe('datetime normalization', () => {
     expect(parsed?.getMinutes()).toBe(15);
   });
 
+  it('parst Realtime-Strings mit Mikrosekunden deterministisch auf Millisekunden', () => {
+    const parsed = parseCalendarDateTimeString('2026-04-09 10:15:00.123456');
+
+    expect(parsed).toBeDefined();
+    expect(parsed?.getHours()).toBe(10);
+    expect(parsed?.getMinutes()).toBe(15);
+    expect(parsed?.getSeconds()).toBe(0);
+    expect(parsed?.getMilliseconds()).toBe(123);
+  });
+
   it('parst Wire-Strings mit Zeitzone weiter über UTC-Komponenten', () => {
     const parsed = parseCalendarDateTimeString('2026-04-09T10:15:00.000Z');
 
