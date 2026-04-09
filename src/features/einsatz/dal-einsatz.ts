@@ -35,9 +35,9 @@ import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { ChangeTypeIds } from '../activity_log/changeTypeIds';
 import { checkEinsatzRequirementsAfterAssignment } from '@/lib/email/email-helpers';
 import {
-  dbTimestampToCalendarDate,
   normalizeDateRangeForDb,
   normalizeEinsatzDatesFromDb,
+  prismaTimestampToCalendarDate,
 } from '@/features/einsatz/datetime';
 
 // Helper type for conflict information
@@ -1323,10 +1323,12 @@ export async function updateEinsatz({
     'einsaetze:update'
   );
 
-  const existingStartAsCalendarDate = dbTimestampToCalendarDate(
+  const existingStartAsCalendarDate = prismaTimestampToCalendarDate(
     existingEinsatz.start
   );
-  const existingEndAsCalendarDate = dbTimestampToCalendarDate(existingEinsatz.end);
+  const existingEndAsCalendarDate = prismaTimestampToCalendarDate(
+    existingEinsatz.end
+  );
   const existingRangeForDb = normalizeDateRangeForDb({
     start: existingStartAsCalendarDate,
     end: existingEndAsCalendarDate,

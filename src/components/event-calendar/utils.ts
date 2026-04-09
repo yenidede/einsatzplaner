@@ -257,12 +257,14 @@ export const mapEinsatzToCalendarEvent = (
           .map((c) => c.einsatz_category.abbreviation)
           .join(', ')})`
       : einsatz.title,
-    start: einsatz.start,
-    end: einsatz.end,
-    allDay: einsatz.all_day,
-    status: einsatz.einsatz_status,
-    assignedUsers: einsatz.einsatz_helper.map((helper) => helper.user_id),
-    helpersNeeded: einsatz.helpers_needed,
+    start: normalizedEinsatz.start,
+    end: normalizedEinsatz.end,
+    allDay: normalizedEinsatz.all_day,
+    status: normalizedEinsatz.einsatz_status,
+    assignedUsers: normalizedEinsatz.einsatz_helper.map(
+      (helper) => helper.user_id
+    ),
+    helpersNeeded: normalizedEinsatz.helpers_needed,
   };
 };
 
