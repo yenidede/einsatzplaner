@@ -13,6 +13,8 @@ type TimeDefaultRange = Pick<
   'default_starttime' | 'default_endtime'
 >;
 
+type CalendarDateValue = Date | string | null | undefined;
+
 /**
  * Realtime / wire payloads expose these calendar timestamps as UTC-like instants while the
  * column type is "timestamp without time zone". For calendar UX we treat them as floating
@@ -64,6 +66,20 @@ export function parseCalendarDateTimeString(
   return Number.isNaN(parsedDate.getTime())
     ? undefined
     : dbTimestampToCalendarDate(parsedDate);
+}
+
+export function normalizeCalendarDateValue(
+  value: CalendarDateValue
+): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (value instanceof Date) {
+    return prismaTimestampToCalendarDate(value);
+  }
+
+  return parseCalendarDateTimeString(value);
 }
 
 /**
