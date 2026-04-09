@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dbTimestampToCalendarDate,
   normalizeDateRangeFromDb,
+  normalizeCalendarDateValue,
   parseCalendarDateTimeString,
   prismaTimestampToCalendarDate,
 } from './datetime';
@@ -102,5 +103,15 @@ describe('datetime normalization', () => {
     expect(parsed).toBeDefined();
     expect(parsed?.getHours()).toBe(10);
     expect(parsed?.getMinutes()).toBe(15);
+  });
+
+  it('normalisiert Calendar-Date-Werte tolerant für Date-Instanzen aus dem Cache', () => {
+    const normalized = normalizeCalendarDateValue(
+      new Date(2026, 3, 9, 14, 30, 0, 0)
+    );
+
+    expect(normalized).toBeDefined();
+    expect(normalized?.getHours()).toBe(14);
+    expect(normalized?.getMinutes()).toBe(30);
   });
 });
