@@ -32,19 +32,13 @@ export function resolveNotificationEmailDelivery(input: {
     return 'none';
   }
 
-  if (!isNotificationPriorityAllowed(effective.minimumPriority, eventPriority)) {
-    return 'none';
-  }
+  const deliveryByPriority: Record<MinimumPriority, NotificationEmailDelivery> = {
+    critical: effective.urgentDelivery === 'immediate' ? 'immediate' : 'digest',
+    review: effective.importantDelivery === 'immediate' ? 'immediate' : 'digest',
+    info: effective.generalDelivery === 'digest' ? 'digest' : 'none',
+  };
 
-  if (effective.deliveryMode === 'critical_only') {
-    return eventPriority === 'critical' ? 'immediate' : 'none';
-  }
-
-  if (effective.deliveryMode === 'digest_only') {
-    return 'digest';
-  }
-
-  return eventPriority === 'critical' ? 'immediate' : 'digest';
+  return deliveryByPriority[eventPriority];
 }
 
 function buildTodayAt(time: DigestTime, now: Date): Date {

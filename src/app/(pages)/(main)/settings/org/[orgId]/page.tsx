@@ -126,6 +126,14 @@ export default function OrganizationManagePage() {
     notificationMinimumPriorityDefault,
     setNotificationMinimumPriorityDefault,
   ] = useState<'info' | 'review' | 'critical'>('review');
+  const [notificationUrgentDeliveryDefault, setNotificationUrgentDeliveryDefault] =
+    useState<'immediate' | 'digest'>('immediate');
+  const [
+    notificationImportantDeliveryDefault,
+    setNotificationImportantDeliveryDefault,
+  ] = useState<'immediate' | 'digest'>('digest');
+  const [notificationGeneralDeliveryDefault, setNotificationGeneralDeliveryDefault] =
+    useState<'digest' | 'off'>('off');
   const [
     notificationDigestIntervalDefault,
     setNotificationDigestIntervalDefault,
@@ -161,6 +169,9 @@ export default function OrganizationManagePage() {
       | 'digest_only'
       | 'critical_and_digest';
     notificationMinimumPriorityDefault: 'info' | 'review' | 'critical';
+    notificationUrgentDeliveryDefault: 'immediate' | 'digest';
+    notificationImportantDeliveryDefault: 'immediate' | 'digest';
+    notificationGeneralDeliveryDefault: 'digest' | 'off';
     notificationDigestIntervalDefault: 'daily' | 'every_2_days';
     notificationDigestTimeDefault: string;
     notificationDigestSecondTimeDefault: string;
@@ -267,6 +278,12 @@ export default function OrganizationManagePage() {
           notificationDefaults?.deliveryModeDefault ?? 'critical_and_digest',
         notificationMinimumPriorityDefault:
           notificationDefaults?.minimumPriorityDefault ?? 'review',
+        notificationUrgentDeliveryDefault:
+          notificationDefaults?.urgentDeliveryDefault ?? 'immediate',
+        notificationImportantDeliveryDefault:
+          notificationDefaults?.importantDeliveryDefault ?? 'digest',
+        notificationGeneralDeliveryDefault:
+          notificationDefaults?.generalDeliveryDefault ?? 'off',
         notificationDigestIntervalDefault:
           notificationDefaults?.digestIntervalDefault ?? 'daily',
         notificationDigestTimeDefault:
@@ -310,6 +327,12 @@ export default function OrganizationManagePage() {
           notificationDefaults?.deliveryModeDefault ?? 'critical_and_digest',
         notificationMinimumPriorityDefault:
           notificationDefaults?.minimumPriorityDefault ?? 'review',
+        notificationUrgentDeliveryDefault:
+          notificationDefaults?.urgentDeliveryDefault ?? 'immediate',
+        notificationImportantDeliveryDefault:
+          notificationDefaults?.importantDeliveryDefault ?? 'digest',
+        notificationGeneralDeliveryDefault:
+          notificationDefaults?.generalDeliveryDefault ?? 'off',
         notificationDigestIntervalDefault:
           notificationDefaults?.digestIntervalDefault ?? 'daily',
         notificationDigestTimeDefault:
@@ -348,6 +371,11 @@ export default function OrganizationManagePage() {
     setNotificationMinimumPriorityDefault(
       notificationDefaults.minimumPriorityDefault
     );
+    setNotificationUrgentDeliveryDefault(notificationDefaults.urgentDeliveryDefault);
+    setNotificationImportantDeliveryDefault(
+      notificationDefaults.importantDeliveryDefault
+    );
+    setNotificationGeneralDeliveryDefault(notificationDefaults.generalDeliveryDefault);
     setNotificationDigestIntervalDefault(
       notificationDefaults.digestIntervalDefault
     );
@@ -365,6 +393,12 @@ export default function OrganizationManagePage() {
           notificationDefaults.deliveryModeDefault,
         notificationMinimumPriorityDefault:
           notificationDefaults.minimumPriorityDefault,
+        notificationUrgentDeliveryDefault:
+          notificationDefaults.urgentDeliveryDefault,
+        notificationImportantDeliveryDefault:
+          notificationDefaults.importantDeliveryDefault,
+        notificationGeneralDeliveryDefault:
+          notificationDefaults.generalDeliveryDefault,
         notificationDigestIntervalDefault:
           notificationDefaults.digestIntervalDefault,
         notificationDigestTimeDefault: notificationDefaults.digestTimeDefault,
@@ -415,6 +449,12 @@ export default function OrganizationManagePage() {
         initial.notificationDeliveryModeDefault ||
       notificationMinimumPriorityDefault !==
         initial.notificationMinimumPriorityDefault ||
+      notificationUrgentDeliveryDefault !==
+        initial.notificationUrgentDeliveryDefault ||
+      notificationImportantDeliveryDefault !==
+        initial.notificationImportantDeliveryDefault ||
+      notificationGeneralDeliveryDefault !==
+        initial.notificationGeneralDeliveryDefault ||
       notificationDigestIntervalDefault !==
         initial.notificationDigestIntervalDefault ||
       notificationDigestTimeDefault !== initial.notificationDigestTimeDefault ||
@@ -444,6 +484,12 @@ export default function OrganizationManagePage() {
           initialValuesRef.current.notificationDeliveryModeDefault ||
         notificationMinimumPriorityDefault !==
           initialValuesRef.current.notificationMinimumPriorityDefault ||
+        notificationUrgentDeliveryDefault !==
+          initialValuesRef.current.notificationUrgentDeliveryDefault ||
+        notificationImportantDeliveryDefault !==
+          initialValuesRef.current.notificationImportantDeliveryDefault ||
+        notificationGeneralDeliveryDefault !==
+          initialValuesRef.current.notificationGeneralDeliveryDefault ||
         notificationDigestIntervalDefault !==
           initialValuesRef.current.notificationDigestIntervalDefault ||
         notificationDigestTimeDefault !==
@@ -477,6 +523,9 @@ export default function OrganizationManagePage() {
           emailEnabledDefault: notificationEmailEnabledDefault,
           deliveryModeDefault: notificationDeliveryModeDefault,
           minimumPriorityDefault: notificationMinimumPriorityDefault,
+          urgentDeliveryDefault: notificationUrgentDeliveryDefault,
+          importantDeliveryDefault: notificationImportantDeliveryDefault,
+          generalDeliveryDefault: notificationGeneralDeliveryDefault,
           digestIntervalDefault: notificationDigestIntervalDefault,
           digestTimeDefault: notificationDigestTimeDefault,
           digestSecondTimeDefault: notificationDigestSecondTimeDefault,
@@ -507,6 +556,9 @@ export default function OrganizationManagePage() {
           notificationEmailEnabledDefault,
           notificationDeliveryModeDefault,
           notificationMinimumPriorityDefault,
+          notificationUrgentDeliveryDefault,
+          notificationImportantDeliveryDefault,
+          notificationGeneralDeliveryDefault,
           notificationDigestIntervalDefault,
           notificationDigestTimeDefault,
           notificationDigestSecondTimeDefault,
@@ -538,6 +590,9 @@ export default function OrganizationManagePage() {
     notificationEmailEnabledDefault,
     notificationDeliveryModeDefault,
     notificationMinimumPriorityDefault,
+    notificationUrgentDeliveryDefault,
+    notificationImportantDeliveryDefault,
+    notificationGeneralDeliveryDefault,
     notificationDigestIntervalDefault,
     notificationDigestTimeDefault,
     notificationDigestSecondTimeDefault,
@@ -954,6 +1009,11 @@ export default function OrganizationManagePage() {
                 emailEnabledDefault={notificationEmailEnabledDefault}
                 deliveryModeDefault={notificationDeliveryModeDefault}
                 minimumPriorityDefault={notificationMinimumPriorityDefault}
+                urgentDeliveryDefault={notificationUrgentDeliveryDefault}
+                importantDeliveryDefault={
+                  notificationImportantDeliveryDefault
+                }
+                generalDeliveryDefault={notificationGeneralDeliveryDefault}
                 digestIntervalDefault={notificationDigestIntervalDefault}
                 digestTimeDefault={notificationDigestTimeDefault}
                 digestSecondTimeDefault={notificationDigestSecondTimeDefault}
@@ -961,6 +1021,15 @@ export default function OrganizationManagePage() {
                 onDeliveryModeDefaultChange={setNotificationDeliveryModeDefault}
                 onMinimumPriorityDefaultChange={
                   setNotificationMinimumPriorityDefault
+                }
+                onUrgentDeliveryDefaultChange={
+                  setNotificationUrgentDeliveryDefault
+                }
+                onImportantDeliveryDefaultChange={
+                  setNotificationImportantDeliveryDefault
+                }
+                onGeneralDeliveryDefaultChange={
+                  setNotificationGeneralDeliveryDefault
                 }
                 onDigestIntervalDefaultChange={
                   setNotificationDigestIntervalDefault

@@ -10,6 +10,7 @@ import type {
   EffectiveNotificationSettings,
   MinimumPriority,
   NotificationPreferenceContext,
+  PriorityDeliveryMode,
 } from './types';
 
 export function isDeliveryMode(value: string): value is DeliveryMode {
@@ -32,6 +33,24 @@ export function isDigestTime(value: string): value is DigestTime {
   return isNormalizedTime(value);
 }
 
+export function isUrgentDeliveryMode(
+  value: string
+): value is Exclude<PriorityDeliveryMode, 'off'> {
+  return value === 'immediate' || value === 'digest';
+}
+
+export function isImportantDeliveryMode(
+  value: string
+): value is Exclude<PriorityDeliveryMode, 'off'> {
+  return value === 'immediate' || value === 'digest';
+}
+
+export function isGeneralDeliveryMode(
+  value: string
+): value is Exclude<PriorityDeliveryMode, 'immediate'> {
+  return value === 'digest' || value === 'off';
+}
+
 export function deliveryModeUsesDigest(
   deliveryMode: EffectiveNotificationSettings['deliveryMode']
 ): boolean {
@@ -50,6 +69,56 @@ function coerceDigestTime(
   return fallback;
 }
 
+export function deriveRulesFromLegacy(input: {
+  deliveryMode: DeliveryMode;
+  minimumPriority: MinimumPriority;
+}): {
+  urgentDelivery: Exclude<PriorityDeliveryMode, 'off'>;
+  importantDelivery: Exclude<PriorityDeliveryMode, 'off'>;
+  generalDelivery: Exclude<PriorityDeliveryMode, 'immediate'>;
+} {
+  const { deliveryMode, minimumPriority } = input;
+
+  const urgentDelivery: Exclude<PriorityDeliveryMode, 'off'> =
+    deliveryMode === 'digest_only' ? 'digest' : 'immediate';
+
+  const importantDelivery: Exclude<PriorityDeliveryMode, 'off'> =
+    deliveryMode === 'critical_and_digest' && minimumPriority !== 'critical'
+      ? 'digest'
+      : 'immediate';
+
+  const generalDelivery: Exclude<PriorityDeliveryMode, 'immediate'> =
+    minimumPriority === 'info' &&
+    (deliveryMode === 'critical_and_digest' || deliveryMode === 'digest_only')
+      ? 'digest'
+      : 'off';
+
+  return { urgentDelivery, importantDelivery, generalDelivery };
+}
+
+export function deriveLegacyFromRules(input: {
+  urgentDelivery: Exclude<PriorityDeliveryMode, 'off'>;
+  importantDelivery: Exclude<PriorityDeliveryMode, 'off'>;
+  generalDelivery: Exclude<PriorityDeliveryMode, 'immediate'>;
+}): {
+  deliveryMode: DeliveryMode;
+  minimumPriority: MinimumPriority;
+} {
+  const { urgentDelivery, importantDelivery, generalDelivery } = input;
+
+  const deliveryMode: DeliveryMode =
+    urgentDelivery === 'digest' ? 'digest_only' : 'critical_and_digest';
+
+  const minimumPriority: MinimumPriority =
+    generalDelivery === 'digest'
+      ? 'info'
+      : importantDelivery === 'digest' || importantDelivery === 'immediate'
+        ? 'review'
+        : 'critical';
+
+  return { deliveryMode, minimumPriority };
+}
+
 export function resolveEffectiveNotificationSettings({
   defaults,
   preference,
@@ -57,35 +126,65 @@ export function resolveEffectiveNotificationSettings({
   const usesOrganizationDefaults =
     !preference || preference.useOrganizationDefaults === true;
 
-  if (usesOrganizationDefaults) {
-    return {
-      emailEnabled: defaults.emailEnabledDefault,
-      deliveryMode: defaults.deliveryModeDefault,
-      minimumPriority: defaults.minimumPriorityDefault,
-      digestInterval: defaults.digestIntervalDefault,
-      digestTime: coerceDigestTime(
-        defaults.digestTimeDefault,
-        NOTIFICATION_DEFAULTS.digestTimeDefault
-      ),
-      digestSecondTime: coerceDigestTime(
-        defaults.digestSecondTimeDefault,
-        NOTIFICATION_DEFAULTS.digestSecondTimeDefault
-      ),
-    };
-  }
+  const base = usesOrganizationDefaults
+    ? {
+        emailEnabled: defaults.emailEnabledDefault,
+        deliveryMode: defaults.deliveryModeDefault,
+        minimumPriority: defaults.minimumPriorityDefault,
+        urgentDelivery: defaults.urgentDeliveryDefault,
+        importantDelivery: defaults.importantDeliveryDefault,
+        generalDelivery: defaults.generalDeliveryDefault,
+        digestInterval: defaults.digestIntervalDefault,
+        digestTime: defaults.digestTimeDefault,
+        digestSecondTime: defaults.digestSecondTimeDefault,
+      }
+    : {
+        emailEnabled: preference.emailEnabled ?? defaults.emailEnabledDefault,
+        deliveryMode: preference.deliveryMode ?? defaults.deliveryModeDefault,
+        minimumPriority:
+          preference.minimumPriority ?? defaults.minimumPriorityDefault,
+        urgentDelivery:
+          preference.urgentDelivery ?? defaults.urgentDeliveryDefault,
+        importantDelivery:
+          preference.importantDelivery ?? defaults.importantDeliveryDefault,
+        generalDelivery:
+          preference.generalDelivery ?? defaults.generalDeliveryDefault,
+        digestInterval: preference.digestInterval ?? defaults.digestIntervalDefault,
+        digestTime: preference.digestTime ?? defaults.digestTimeDefault,
+        digestSecondTime:
+          preference.digestSecondTime ?? defaults.digestSecondTimeDefault,
+      };
+
+  const legacyFallbackRules = deriveRulesFromLegacy({
+    deliveryMode: base.deliveryMode,
+    minimumPriority: base.minimumPriority,
+  });
+
+  const urgentDelivery = base.urgentDelivery ?? legacyFallbackRules.urgentDelivery;
+  const importantDelivery =
+    base.importantDelivery ?? legacyFallbackRules.importantDelivery;
+  const generalDelivery = base.generalDelivery ?? legacyFallbackRules.generalDelivery;
+
+  const normalizedLegacy = deriveLegacyFromRules({
+    urgentDelivery,
+    importantDelivery,
+    generalDelivery,
+  });
 
   return {
-    emailEnabled: preference.emailEnabled ?? defaults.emailEnabledDefault,
-    deliveryMode: preference.deliveryMode ?? defaults.deliveryModeDefault,
-    minimumPriority:
-      preference.minimumPriority ?? defaults.minimumPriorityDefault,
-    digestInterval: preference.digestInterval ?? defaults.digestIntervalDefault,
+    emailEnabled: base.emailEnabled,
+    deliveryMode: normalizedLegacy.deliveryMode,
+    minimumPriority: normalizedLegacy.minimumPriority,
+    urgentDelivery,
+    importantDelivery,
+    generalDelivery,
+    digestInterval: base.digestInterval,
     digestTime: coerceDigestTime(
-      preference.digestTime ?? defaults.digestTimeDefault,
+      base.digestTime,
       NOTIFICATION_DEFAULTS.digestTimeDefault
     ),
     digestSecondTime: coerceDigestTime(
-      preference.digestSecondTime ?? defaults.digestSecondTimeDefault,
+      base.digestSecondTime,
       NOTIFICATION_DEFAULTS.digestSecondTimeDefault
     ),
   };
@@ -109,29 +208,24 @@ export function buildDigestScheduleLabel(input: {
   const { digestInterval, digestTime, short = false } = input;
 
   if (digestInterval === 'daily') {
-    return short ? `täglich um ${digestTime}` : `1x täglich um ${digestTime}`;
+    return short ? `täglich um ${digestTime}` : `Täglich um ${digestTime}`;
   }
 
   if (digestInterval === 'every_2_days') {
-    return short
-      ? `alle 2 Tage um ${digestTime}`
-      : `alle 2 Tage um ${digestTime}`;
+    return `alle 2 Tage um ${digestTime}`;
   }
-  return short ? `täglich um ${digestTime}` : `1x täglich um ${digestTime}`;
+
+  return short ? `täglich um ${digestTime}` : `Täglich um ${digestTime}`;
 }
 
 function buildDeliverySummary(effective: EffectiveNotificationSettings): string {
-  if (effective.deliveryMode === 'critical_only') {
-    return 'Dringende Meldungen werden sofort per E-Mail gesendet.';
-  }
-
   const hasDigest =
-    effective.deliveryMode === 'digest_only' ||
-    (effective.deliveryMode === 'critical_and_digest' &&
-      effective.minimumPriority !== 'critical');
+    effective.urgentDelivery === 'digest' ||
+    effective.importantDelivery === 'digest' ||
+    effective.generalDelivery === 'digest';
 
   if (!hasDigest) {
-    return 'Dringende Meldungen kommen sofort per E-Mail.';
+    return 'Meldungen werden sofort per E-Mail gesendet.';
   }
 
   const scheduleLabel = buildDigestScheduleLabel({
@@ -139,23 +233,33 @@ function buildDeliverySummary(effective: EffectiveNotificationSettings): string 
     digestTime: effective.digestTime,
   });
 
-  if (effective.deliveryMode === 'digest_only') {
+  if (
+    effective.urgentDelivery === 'immediate' &&
+    effective.importantDelivery === 'digest' &&
+    effective.generalDelivery === 'digest'
+  ) {
     return `E-Mails werden als Sammelmail versendet (${scheduleLabel}).`;
   }
 
-  return `Dringende Meldungen kommen sofort, sonst ${scheduleLabel} als Sammelmail.`;
+  return `Sammelmails werden ${scheduleLabel} versendet.`;
 }
 
 function buildPrioritySummary(effective: EffectiveNotificationSettings): string {
   if (
-    effective.deliveryMode === 'critical_only' ||
-    (effective.deliveryMode === 'critical_and_digest' &&
-      effective.minimumPriority === 'critical')
+    effective.importantDelivery === 'immediate' &&
+    effective.generalDelivery === 'off'
   ) {
-    return 'Sie erhalten E-Mails nur zu dringenden Meldungen.';
+    return 'Sie erhalten E-Mails zu dringenden und wichtigen Meldungen.';
   }
 
-  return `Sie erhalten E-Mails zu ${MINIMUM_PRIORITY_SUMMARY_LABELS[effective.minimumPriority]}.`;
+  if (
+    effective.importantDelivery === 'digest' &&
+    effective.generalDelivery === 'off'
+  ) {
+    return `Sie erhalten E-Mails zu ${MINIMUM_PRIORITY_SUMMARY_LABELS.review}.`;
+  }
+
+  return `Sie erhalten E-Mails zu ${MINIMUM_PRIORITY_SUMMARY_LABELS.info}.`;
 }
 
 const COMPACT_SOURCE_LABELS: Record<'organization' | 'user', string> = {
@@ -201,29 +305,21 @@ export function buildCompactNotificationPreferenceSummary(input: {
     COMPACT_DIGEST_INTERVAL_LABELS[effective.digestInterval];
   const scheduleLabel = `Sammelmail ${digestIntervalLabel} um ${effective.digestTime}`;
 
-  if (effective.deliveryMode === 'critical_only') {
-    return `${sourceLabel}: Dringende Meldungen`;
-  }
-
-  if (effective.deliveryMode === 'digest_only') {
-    if (effective.minimumPriority === 'critical') {
-      return `${sourceLabel}: Dringende Meldungen als ${scheduleLabel}`;
-    }
-
-    if (effective.minimumPriority === 'review') {
-      return `${sourceLabel}: Wichtige Meldungen als ${scheduleLabel}`;
-    }
-
-    return `${sourceLabel}: ${scheduleLabel}`;
-  }
-
-  if (effective.minimumPriority === 'info') {
-    return `${sourceLabel}: ${scheduleLabel}`;
-  }
-
-  if (effective.minimumPriority === 'review') {
+  if (
+    effective.urgentDelivery === 'immediate' &&
+    effective.importantDelivery === 'immediate' &&
+    effective.generalDelivery === 'off'
+  ) {
     return `${sourceLabel}: Nur wichtige Meldungen`;
   }
 
-  return `${sourceLabel}: Dringende Meldungen`;
+  if (
+    effective.urgentDelivery === 'digest' &&
+    effective.importantDelivery === 'digest' &&
+    effective.generalDelivery === 'digest'
+  ) {
+    return `${sourceLabel}: ${scheduleLabel}`;
+  }
+
+  return `${sourceLabel}: Individuell angepasst`;
 }

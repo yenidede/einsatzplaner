@@ -12,6 +12,9 @@ describe('buildCompactNotificationPreferenceSummary', () => {
         emailEnabled: true,
         deliveryMode: 'critical_and_digest',
         minimumPriority: 'review',
+        urgentDelivery: 'immediate',
+        importantDelivery: 'immediate',
+        generalDelivery: 'off',
         digestInterval: 'daily',
         digestTime: '08:00',
         digestSecondTime: '20:00',
@@ -26,8 +29,11 @@ describe('buildCompactNotificationPreferenceSummary', () => {
       source: 'organization',
       effective: {
         emailEnabled: false,
-        deliveryMode: 'digest_only',
-        minimumPriority: 'info',
+        deliveryMode: 'critical_and_digest',
+        minimumPriority: 'review',
+        urgentDelivery: 'immediate',
+        importantDelivery: 'immediate',
+        generalDelivery: 'off',
         digestInterval: 'every_2_days',
         digestTime: '08:00',
         digestSecondTime: '20:00',
@@ -37,13 +43,16 @@ describe('buildCompactNotificationPreferenceSummary', () => {
     expect(summary).toBe('Organisationsstandard: Keine E-Mails');
   });
 
-  it('zeigt bei critical_and_digest + critical eine kurze Dringend-Zusammenfassung', () => {
+  it('zeigt Digest-Preset mit Zeitplan', () => {
     const compactSummary = buildCompactNotificationPreferenceSummary({
       source: 'user',
       effective: {
         emailEnabled: true,
         deliveryMode: 'critical_and_digest',
-        minimumPriority: 'critical',
+        minimumPriority: 'info',
+        urgentDelivery: 'immediate',
+        importantDelivery: 'digest',
+        generalDelivery: 'digest',
         digestInterval: 'daily',
         digestTime: '08:00',
         digestSecondTime: '16:00',
@@ -55,34 +64,37 @@ describe('buildCompactNotificationPreferenceSummary', () => {
       effective: {
         emailEnabled: true,
         deliveryMode: 'critical_and_digest',
-        minimumPriority: 'critical',
+        minimumPriority: 'info',
+        urgentDelivery: 'immediate',
+        importantDelivery: 'digest',
+        generalDelivery: 'digest',
         digestInterval: 'daily',
         digestTime: '08:00',
         digestSecondTime: '16:00',
       },
     });
 
-    expect(compactSummary).toBe('Eigene Einstellung: Dringende Meldungen');
-    expect(fullSummary).toBe(
-      'Eigene Einstellung wird verwendet. Dringende Meldungen kommen sofort per E-Mail. Sie erhalten E-Mails nur zu dringenden Meldungen.'
-    );
+    expect(compactSummary).toBe('Eigene Einstellung: Sammelmail täglich um 08:00');
+    expect(fullSummary).toContain('Eigene Einstellung wird verwendet.');
   });
 
-  it('zeigt bei digest_only + critical weiterhin Sammelmail an', () => {
+  it('zeigt bei nicht-Preset-Regeln „Individuell angepasst“', () => {
     const summary = buildCompactNotificationPreferenceSummary({
       source: 'user',
       effective: {
         emailEnabled: true,
-        deliveryMode: 'digest_only',
-        minimumPriority: 'critical',
+        deliveryMode: 'critical_and_digest',
+        minimumPriority: 'review',
+        urgentDelivery: 'digest',
+        importantDelivery: 'digest',
+        generalDelivery: 'off',
         digestInterval: 'every_2_days',
         digestTime: '08:00',
         digestSecondTime: '16:00',
       },
     });
 
-    expect(summary).toBe(
-      'Eigene Einstellung: Dringende Meldungen als Sammelmail alle 2 Tage um 08:00'
-    );
+    expect(summary).toBe('Eigene Einstellung: Individuell angepasst');
   });
 });
+
