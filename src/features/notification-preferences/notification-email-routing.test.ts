@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import {
   computeNextDigestDispatchAt,
   isNotificationPriorityAllowed,
@@ -48,6 +48,76 @@ describe('notification-email-routing', () => {
     });
 
     expect(delivery).toBe('digest');
+  });
+
+  it('nutzt importantDelivery für review-Meldungen', () => {
+    const immediateDelivery = resolveNotificationEmailDelivery({
+      eventPriority: 'review',
+      effective: {
+        emailEnabled: true,
+        deliveryMode: 'critical_and_digest',
+        minimumPriority: 'review',
+        urgentDelivery: 'immediate',
+        importantDelivery: 'immediate',
+        generalDelivery: 'off',
+        digestInterval: 'daily',
+        digestTime: '08:00',
+        digestSecondTime: '16:00',
+      },
+    });
+
+    const digestDelivery = resolveNotificationEmailDelivery({
+      eventPriority: 'review',
+      effective: {
+        emailEnabled: true,
+        deliveryMode: 'critical_and_digest',
+        minimumPriority: 'review',
+        urgentDelivery: 'immediate',
+        importantDelivery: 'digest',
+        generalDelivery: 'off',
+        digestInterval: 'daily',
+        digestTime: '08:00',
+        digestSecondTime: '16:00',
+      },
+    });
+
+    expect(immediateDelivery).toBe('immediate');
+    expect(digestDelivery).toBe('digest');
+  });
+
+  it('nutzt generalDelivery für info-Meldungen', () => {
+    const digestDelivery = resolveNotificationEmailDelivery({
+      eventPriority: 'info',
+      effective: {
+        emailEnabled: true,
+        deliveryMode: 'critical_and_digest',
+        minimumPriority: 'info',
+        urgentDelivery: 'immediate',
+        importantDelivery: 'digest',
+        generalDelivery: 'digest',
+        digestInterval: 'daily',
+        digestTime: '08:00',
+        digestSecondTime: '16:00',
+      },
+    });
+
+    const noneDelivery = resolveNotificationEmailDelivery({
+      eventPriority: 'info',
+      effective: {
+        emailEnabled: true,
+        deliveryMode: 'digest_only',
+        minimumPriority: 'review',
+        urgentDelivery: 'digest',
+        importantDelivery: 'immediate',
+        generalDelivery: 'off',
+        digestInterval: 'every_2_days',
+        digestTime: '07:00',
+        digestSecondTime: '16:00',
+      },
+    });
+
+    expect(digestDelivery).toBe('digest');
+    expect(noneDelivery).toBe('none');
   });
 
   it('berechnet nächsten Versand für daily', () => {

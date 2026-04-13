@@ -345,6 +345,10 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
         minimumPriority: parsed.minimumPriorityDefault,
       });
 
+      // Backward compatibility: legacy callers may omit the explicit
+      // urgent/important/general defaults. In that case, we derive them from the
+      // legacy fields (deliveryModeDefault + minimumPriorityDefault) before upsert.
+      // The current UI sends all three fields explicitly.
       await upsertOrganizationNotificationDefaults(
         {
           organizationId: parsed.organizationId,

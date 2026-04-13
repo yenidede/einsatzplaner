@@ -1,4 +1,4 @@
-﻿import { isNormalizedTime } from '@/lib/time-input';
+import { isNormalizedTime } from '@/lib/time-input';
 import {
   MINIMUM_PRIORITY_SUMMARY_LABELS,
   NOTIFICATION_DEFAULTS,
@@ -82,6 +82,9 @@ export function deriveRulesFromLegacy(input: {
   const urgentDelivery: Exclude<PriorityDeliveryMode, 'off'> =
     deliveryMode === 'digest_only' ? 'digest' : 'immediate';
 
+  // Intentional exception: "wichtig" bleibt für legacy digest_only auf immediate,
+  // damit wichtige/akute Hinweise weiterhin ohne Verzögerung zugestellt werden.
+  // Das kontrastiert zu urgent/general, die im digest_only-Pfad gebündelt werden.
   const importantDelivery: Exclude<PriorityDeliveryMode, 'off'> =
     deliveryMode === 'critical_and_digest' && minimumPriority !== 'critical'
       ? 'digest'
@@ -112,7 +115,7 @@ export function deriveLegacyFromRules(input: {
   const minimumPriority: MinimumPriority =
     generalDelivery === 'digest'
       ? 'info'
-      : importantDelivery === 'digest' || importantDelivery === 'immediate'
+      : importantDelivery === 'digest'
         ? 'review'
         : 'critical';
 

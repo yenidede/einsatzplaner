@@ -79,6 +79,9 @@ describe('simple-notification-presets', () => {
       emailEnabled: true,
       deliveryMode: 'critical_and_digest',
       minimumPriority: 'review',
+      urgentDelivery: 'immediate',
+      importantDelivery: 'immediate',
+      generalDelivery: 'off',
     });
   });
 });

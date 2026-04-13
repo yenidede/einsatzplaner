@@ -54,6 +54,8 @@ export function resolveSimpleNotificationPreset(
     | 'generalDelivery'
   >
 ): SimpleNotificationPreset {
+  // Intentional UI fallback: when E-Mail is disabled we keep the default preset
+  // selection on "important", while the separate master toggle conveys "aus".
   if (!state.emailEnabled) {
     return 'important';
   }
@@ -97,6 +99,8 @@ export function applySimpleNotificationPreset<T extends SimpleNotificationState>
     };
   }
 
+  // "Individuell" ist kein eigenes Mapping, sondern bewahrt die aktuell
+  // gewählten Regelkanäle und stellt nur sicher, dass E-Mail aktiviert ist.
   return {
     ...state,
     emailEnabled: true,
