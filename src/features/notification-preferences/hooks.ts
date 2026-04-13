@@ -96,6 +96,9 @@ export function useUpdateMyNotificationDetails(userId: string | undefined) {
       organizationId: string;
       deliveryMode: DeliveryMode;
       minimumPriority: MinimumPriority;
+      urgentDelivery: 'immediate' | 'digest';
+      importantDelivery: 'immediate' | 'digest';
+      generalDelivery: 'digest' | 'off';
       digestInterval: DigestInterval;
       digestTime: DigestTime;
       digestSecondTime?: DigestTime;

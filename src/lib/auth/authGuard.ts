@@ -59,7 +59,6 @@ export const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Organisationsverwaltung: [
     // Einsätze (nur lesen)
     permission('einsaetze', 'read'),
-
     // Users
     permission('users', 'read'),
     permission('users', 'create'),

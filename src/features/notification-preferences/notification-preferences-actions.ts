@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth.config';
@@ -14,7 +14,10 @@ import {
   upsertOrganizationNotificationDefaults,
   upsertUserOrganizationNotificationPreference,
 } from './notification-preferences-dal';
-import { resolveEffectiveNotificationSettings } from './notification-preferences-utils';
+import {
+  deriveRulesFromLegacy,
+  resolveEffectiveNotificationSettings,
+} from './notification-preferences-utils';
 import {
   updateMyNotificationDetailsInputSchema,
   updateMyNotificationPrimaryInputSchema,
@@ -38,7 +41,7 @@ function normalizeSchemaError(error: unknown): never {
     error.message.includes('does not exist')
   ) {
     throw new Error(
-      'Das Benachrichtigungsdatenmodell ist noch nicht in der Datenbank vorhanden. Bitte führen Sie docs/sql/notification-digest-queue.sql in Ihrer Datenbank aus.'
+      'Das Benachrichtigungsdatenmodell ist noch nicht vollständig in der Datenbank vorhanden. Bitte führen Sie docs/sql/notification-priority-rules.sql und docs/sql/notification-digest-queue.sql in Ihrer Datenbank aus.'
     );
   }
 
@@ -141,6 +144,21 @@ export async function updateMyNotificationPrimaryAction(input: {
             ? currentPreference?.minimumPriority ?? null
             : currentPreference?.minimumPriority ??
               previousEffective.minimumPriority,
+        urgentDelivery:
+          nextUseOrganizationDefaults
+            ? currentPreference?.urgentDelivery ?? null
+            : currentPreference?.urgentDelivery ??
+              previousEffective.urgentDelivery,
+        importantDelivery:
+          nextUseOrganizationDefaults
+            ? currentPreference?.importantDelivery ?? null
+            : currentPreference?.importantDelivery ??
+              previousEffective.importantDelivery,
+        generalDelivery:
+          nextUseOrganizationDefaults
+            ? currentPreference?.generalDelivery ?? null
+            : currentPreference?.generalDelivery ??
+              previousEffective.generalDelivery,
         digestInterval:
           nextUseOrganizationDefaults
             ? currentPreference?.digestInterval ?? null
@@ -188,6 +206,9 @@ export async function updateMyNotificationDetailsAction(input: {
   organizationId: string;
   deliveryMode: 'critical_only' | 'digest_only' | 'critical_and_digest';
   minimumPriority: 'info' | 'review' | 'critical';
+  urgentDelivery: 'immediate' | 'digest';
+  importantDelivery: 'immediate' | 'digest';
+  generalDelivery: 'digest' | 'off';
   digestInterval: 'daily' | 'every_2_days';
   digestTime: string;
   digestSecondTime?: string;
@@ -241,6 +262,9 @@ export async function updateMyNotificationDetailsAction(input: {
           currentPreference.emailEnabled ?? previousEffective.emailEnabled,
         deliveryMode: parsed.deliveryMode,
         minimumPriority: parsed.minimumPriority,
+        urgentDelivery: parsed.urgentDelivery,
+        importantDelivery: parsed.importantDelivery,
+        generalDelivery: parsed.generalDelivery,
         digestInterval: parsed.digestInterval,
         digestTime: parsed.digestTime,
         digestSecondTime:
@@ -280,6 +304,9 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
   emailEnabledDefault: boolean;
   deliveryModeDefault: 'critical_only' | 'digest_only' | 'critical_and_digest';
   minimumPriorityDefault: 'info' | 'review' | 'critical';
+  urgentDeliveryDefault?: 'immediate' | 'digest';
+  importantDeliveryDefault?: 'immediate' | 'digest';
+  generalDeliveryDefault?: 'digest' | 'off';
   digestIntervalDefault: 'daily' | 'every_2_days';
   digestTimeDefault: string;
   digestSecondTimeDefault: string;
@@ -313,13 +340,27 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
         parsed.organizationId,
         tx
       );
+      const fallbackRules = deriveRulesFromLegacy({
+        deliveryMode: parsed.deliveryModeDefault,
+        minimumPriority: parsed.minimumPriorityDefault,
+      });
 
+      // Backward compatibility: legacy callers may omit the explicit
+      // urgent/important/general defaults. In that case, we derive them from the
+      // legacy fields (deliveryModeDefault + minimumPriorityDefault) before upsert.
+      // The current UI sends all three fields explicitly.
       await upsertOrganizationNotificationDefaults(
         {
           organizationId: parsed.organizationId,
           emailEnabledDefault: parsed.emailEnabledDefault,
           deliveryModeDefault: parsed.deliveryModeDefault,
           minimumPriorityDefault: parsed.minimumPriorityDefault,
+          urgentDeliveryDefault:
+            parsed.urgentDeliveryDefault ?? fallbackRules.urgentDelivery,
+          importantDeliveryDefault:
+            parsed.importantDeliveryDefault ?? fallbackRules.importantDelivery,
+          generalDeliveryDefault:
+            parsed.generalDeliveryDefault ?? fallbackRules.generalDelivery,
           digestIntervalDefault: parsed.digestIntervalDefault,
           digestTimeDefault: parsed.digestTimeDefault,
           digestSecondTimeDefault: parsed.digestSecondTimeDefault,
@@ -345,3 +386,4 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
     normalizeSchemaError(error);
   }
 }
+

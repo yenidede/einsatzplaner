@@ -590,9 +590,7 @@ export default function SettingsPage() {
                 Benachrichtigungen
               </CardTitle>
               <CardDescription>
-                Legen Sie pro Organisation fest, ob E-Mails sofort oder als
-                Sammelmail ankommen und ab welchen Meldungsstufen Sie informiert
-                werden.
+                Legen Sie fest, wie Sie per E-Mail informiert werden möchten.
               </CardDescription>
             </CardHeader>
             <CardContent>

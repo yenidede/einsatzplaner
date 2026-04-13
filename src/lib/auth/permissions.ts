@@ -25,6 +25,7 @@ export type ActionType<R extends ResourceType> =
 export type PermissionType = {
   [R in ResourceType]: `${R}:${ActionType<R>}`;
 }[ResourceType];
+
 export function permission<R extends ResourceType>(
   resource: R,
   action: ActionType<R>

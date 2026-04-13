@@ -38,6 +38,9 @@ function createSavedDraftFromCard(
     emailEnabled: card.effective.emailEnabled,
     deliveryMode: card.effective.deliveryMode,
     minimumPriority: card.effective.minimumPriority,
+    urgentDelivery: card.effective.urgentDelivery,
+    importantDelivery: card.effective.importantDelivery,
+    generalDelivery: card.effective.generalDelivery,
     digestInterval: card.effective.digestInterval,
     digestTime: card.effective.digestTime,
     digestSecondTime: card.effective.digestSecondTime,
@@ -50,6 +53,9 @@ function areDraftsEqual(left: NotificationCardDraft, right: NotificationCardDraf
     left.emailEnabled === right.emailEnabled &&
     left.deliveryMode === right.deliveryMode &&
     left.minimumPriority === right.minimumPriority &&
+    left.urgentDelivery === right.urgentDelivery &&
+    left.importantDelivery === right.importantDelivery &&
+    left.generalDelivery === right.generalDelivery &&
     left.digestInterval === right.digestInterval &&
     left.digestTime === right.digestTime &&
     left.digestSecondTime === right.digestSecondTime
@@ -170,6 +176,9 @@ export const NotificationPreferenceForm = forwardRef<
           const detailsChanged =
             currentDraft.deliveryMode !== savedDraft.deliveryMode ||
             currentDraft.minimumPriority !== savedDraft.minimumPriority ||
+            currentDraft.urgentDelivery !== savedDraft.urgentDelivery ||
+            currentDraft.importantDelivery !== savedDraft.importantDelivery ||
+            currentDraft.generalDelivery !== savedDraft.generalDelivery ||
             currentDraft.digestInterval !== savedDraft.digestInterval ||
             currentDraft.digestTime !== savedDraft.digestTime ||
             currentDraft.digestSecondTime !== savedDraft.digestSecondTime;
@@ -183,6 +192,9 @@ export const NotificationPreferenceForm = forwardRef<
               organizationId: card.organizationId,
               deliveryMode: currentDraft.deliveryMode,
               minimumPriority: currentDraft.minimumPriority,
+              urgentDelivery: currentDraft.urgentDelivery,
+              importantDelivery: currentDraft.importantDelivery,
+              generalDelivery: currentDraft.generalDelivery,
               digestInterval: currentDraft.digestInterval,
               digestTime: currentDraft.digestTime,
               digestSecondTime: currentDraft.digestSecondTime,

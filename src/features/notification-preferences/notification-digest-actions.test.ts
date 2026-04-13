@@ -64,7 +64,9 @@ describe('processNotificationDigestsAction', () => {
       },
     });
 
-    await expect(processNotificationDigestsAction({ limit: 10 })).rejects.toThrow(
+    await expect(
+      processNotificationDigestsAction({ limit: 10 })
+    ).rejects.toThrow(
       'Sie haben keine Berechtigung, den Sammelmail-Versand auszuführen.'
     );
   });
