@@ -1,4 +1,4 @@
-import { isNormalizedTime } from '@/lib/time-input';
+﻿import { isNormalizedTime } from '@/lib/time-input';
 import {
   MINIMUM_PRIORITY_SUMMARY_LABELS,
   NOTIFICATION_DEFAULTS,
@@ -163,12 +163,6 @@ const COMPACT_SOURCE_LABELS: Record<'organization' | 'user', string> = {
   user: 'Eigene Einstellung',
 };
 
-const COMPACT_PRIORITY_LABELS: Record<MinimumPriority, string> = {
-  info: 'alle Meldungen',
-  review: 'wichtige Meldungen',
-  critical: 'dringende Meldungen',
-};
-
 const COMPACT_DIGEST_INTERVAL_LABELS: Record<DigestInterval, string> = {
   daily: 'täglich',
   every_2_days: 'alle 2 Tage',
@@ -200,30 +194,36 @@ export function buildCompactNotificationPreferenceSummary(input: {
   const sourceLabel = COMPACT_SOURCE_LABELS[source];
 
   if (!effective.emailEnabled) {
-    return `${sourceLabel}: E-Mails deaktiviert`;
-  }
-
-  if (effective.deliveryMode === 'critical_only') {
-    return `${sourceLabel}: Dringende Meldungen sofort`;
-  }
-
-  const hasDigest =
-    effective.deliveryMode === 'digest_only' ||
-    (effective.deliveryMode === 'critical_and_digest' &&
-      effective.minimumPriority !== 'critical');
-
-  if (!hasDigest) {
-    return `${sourceLabel}: Dringende Meldungen sofort`;
+    return `${sourceLabel}: Keine E-Mails`;
   }
 
   const digestIntervalLabel =
     COMPACT_DIGEST_INTERVAL_LABELS[effective.digestInterval];
-  const priorityLabel = COMPACT_PRIORITY_LABELS[effective.minimumPriority];
-  const scheduleLabel = `${digestIntervalLabel} um ${effective.digestTime}`;
+  const scheduleLabel = `Sammelmail ${digestIntervalLabel} um ${effective.digestTime}`;
 
-  if (effective.deliveryMode === 'digest_only') {
-    return `${sourceLabel}: ${priorityLabel} ${scheduleLabel} als Sammelmail`;
+  if (effective.deliveryMode === 'critical_only') {
+    return `${sourceLabel}: Dringende Meldungen`;
   }
 
-  return `${sourceLabel}: Dringend sofort, ${priorityLabel} ${scheduleLabel} als Sammelmail`;
+  if (effective.deliveryMode === 'digest_only') {
+    if (effective.minimumPriority === 'critical') {
+      return `${sourceLabel}: Dringende Meldungen als ${scheduleLabel}`;
+    }
+
+    if (effective.minimumPriority === 'review') {
+      return `${sourceLabel}: Wichtige Meldungen als ${scheduleLabel}`;
+    }
+
+    return `${sourceLabel}: ${scheduleLabel}`;
+  }
+
+  if (effective.minimumPriority === 'info') {
+    return `${sourceLabel}: ${scheduleLabel}`;
+  }
+
+  if (effective.minimumPriority === 'review') {
+    return `${sourceLabel}: Nur wichtige Meldungen`;
+  }
+
+  return `${sourceLabel}: Dringende Meldungen`;
 }

@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import {
   buildCompactNotificationPreferenceSummary,
   buildNotificationPreferenceSummary,
 } from './notification-preferences-utils';
 
 describe('buildCompactNotificationPreferenceSummary', () => {
-  it('liefert eine kompakte Zusammenfassung für eigene Einstellungen mit Sofort+Sammelmail', () => {
+  it('liefert eine einfache Zusammenfassung für wichtige Meldungen', () => {
     const summary = buildCompactNotificationPreferenceSummary({
       source: 'user',
       effective: {
@@ -18,9 +18,7 @@ describe('buildCompactNotificationPreferenceSummary', () => {
       },
     });
 
-    expect(summary).toBe(
-      'Eigene Einstellung: Dringend sofort, wichtige Meldungen täglich um 08:00 als Sammelmail'
-    );
+    expect(summary).toBe('Eigene Einstellung: Nur wichtige Meldungen');
   });
 
   it('kennzeichnet deaktivierte E-Mails klar', () => {
@@ -36,10 +34,10 @@ describe('buildCompactNotificationPreferenceSummary', () => {
       },
     });
 
-    expect(summary).toBe('Organisationsstandard: E-Mails deaktiviert');
+    expect(summary).toBe('Organisationsstandard: Keine E-Mails');
   });
 
-  it('zeigt bei critical_and_digest + critical keine Sammelmail in der Zusammenfassung', () => {
+  it('zeigt bei critical_and_digest + critical eine kurze Dringend-Zusammenfassung', () => {
     const compactSummary = buildCompactNotificationPreferenceSummary({
       source: 'user',
       effective: {
@@ -64,7 +62,7 @@ describe('buildCompactNotificationPreferenceSummary', () => {
       },
     });
 
-    expect(compactSummary).toBe('Eigene Einstellung: Dringende Meldungen sofort');
+    expect(compactSummary).toBe('Eigene Einstellung: Dringende Meldungen');
     expect(fullSummary).toBe(
       'Eigene Einstellung wird verwendet. Dringende Meldungen kommen sofort per E-Mail. Sie erhalten E-Mails nur zu dringenden Meldungen.'
     );
@@ -84,8 +82,7 @@ describe('buildCompactNotificationPreferenceSummary', () => {
     });
 
     expect(summary).toBe(
-      'Eigene Einstellung: dringende Meldungen alle 2 Tage um 08:00 als Sammelmail'
+      'Eigene Einstellung: Dringende Meldungen als Sammelmail alle 2 Tage um 08:00'
     );
   });
 });
-
