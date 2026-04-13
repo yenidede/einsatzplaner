@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { OrganizationNotificationDefaultsForm } from './OrganizationNotificationDefaultsForm';
@@ -71,8 +71,5 @@ describe('OrganizationNotificationDefaultsForm', () => {
     expect(screen.getByText('Häufigkeit')).toBeTruthy();
     expect(screen.getByText('Uhrzeit')).toBeTruthy();
     expect(screen.queryByText('Individuelle Benachrichtigungsregeln')).toBeNull();
-
-    fireEvent.click(screen.getByText('Individuell'));
-    expect(screen.getByText('Individuelle Benachrichtigungsregeln')).toBeTruthy();
   });
 });

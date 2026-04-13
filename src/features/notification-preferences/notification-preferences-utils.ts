@@ -314,7 +314,7 @@ export function buildCompactNotificationPreferenceSummary(input: {
   }
 
   if (
-    effective.urgentDelivery === 'digest' &&
+    effective.urgentDelivery === 'immediate' &&
     effective.importantDelivery === 'digest' &&
     effective.generalDelivery === 'digest'
   ) {
