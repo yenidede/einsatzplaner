@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
 import {
   DIGEST_INTERVAL_LABELS,
@@ -206,6 +206,7 @@ export function OrganizationNotificationCard({
   const [expanded, setExpanded] = useState(false);
   const [selectedMode, setSelectedMode] =
     useState<SimpleNotificationPreset | null>(null);
+  const lastHandledInteractionRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (draft.useOrganizationDefaults) {
@@ -263,7 +264,26 @@ export function OrganizationNotificationCard({
     });
   };
 
+  const shouldHandleInteraction = (interactionKey: string) => {
+    if (lastHandledInteractionRef.current === interactionKey) {
+      return false;
+    }
+
+    lastHandledInteractionRef.current = interactionKey;
+    queueMicrotask(() => {
+      if (lastHandledInteractionRef.current === interactionKey) {
+        lastHandledInteractionRef.current = null;
+      }
+    });
+
+    return true;
+  };
+
   const handlePresetChange = (value: string) => {
+    if (!shouldHandleInteraction(`preset:${value}`)) {
+      return;
+    }
+
     if (draft.useOrganizationDefaults || !isSimpleNotificationPreset(value)) {
       return;
     }
@@ -278,6 +298,10 @@ export function OrganizationNotificationCard({
   };
 
   const handleSourceChange = (value: string) => {
+    if (!shouldHandleInteraction(`source:${value}`)) {
+      return;
+    }
+
     setSelectedMode(null);
 
     if (value === 'organization') {

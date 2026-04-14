@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EmailService } from './EmailService';
 
-const sendMail = vi.fn(async () => ({ messageId: 'test-message-id' }));
+const { sendMail } = vi.hoisted(() => ({
+  sendMail: vi.fn(async () => ({ messageId: 'test-message-id' })),
+}));
 
 vi.mock('nodemailer', () => ({
   default: {

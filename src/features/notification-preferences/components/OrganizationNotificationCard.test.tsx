@@ -138,6 +138,18 @@ describe('OrganizationNotificationCard', () => {
     );
   });
 
+  it('ruft onDraftChange pro Tab-Klick nur einmal auf', () => {
+    const onDraftChange = vi.fn();
+    renderCard(createDraft(), onDraftChange);
+
+    fireEvent.click(
+      screen.getAllByLabelText(/Details für HAK Bregenz anzeigen/)[0]
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Keine E-Mails' }));
+
+    expect(onDraftChange).toHaveBeenCalledTimes(1);
+  });
+
   it('lässt Presets bei deaktivierter E-Mail sichtbar und zeigt deaktivierte Zusammenfassung', () => {
     const onDraftChange = vi.fn();
     renderCard(
