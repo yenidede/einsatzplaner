@@ -25,10 +25,18 @@ export const DIGEST_INTERVAL_VALUES = [
   'every_7_days',
 ] as const satisfies readonly DigestInterval[];
 
-function createDigestTimeValues(stepMinutes: number): DigestTime[] {
+function createDigestTimeValues(
+  stepMinutes: number,
+  startHour = 8,
+  endHour = 16,
+  endMinute = 0
+): DigestTime[] {
   const values: DigestTime[] = [];
-  for (let hour = 0; hour < 24; hour += 1) {
+  for (let hour = startHour; hour <= endHour; hour += 1) {
     for (let minute = 0; minute < 60; minute += stepMinutes) {
+      if (hour === endHour && minute > endMinute) {
+        continue;
+      }
       values.push(
         `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
       );
@@ -37,7 +45,7 @@ function createDigestTimeValues(stepMinutes: number): DigestTime[] {
   return values;
 }
 
-export const DIGEST_TIME_VALUES = createDigestTimeValues(30);
+export const DIGEST_TIME_VALUES = createDigestTimeValues(60);
 
 export const NOTIFICATION_DEFAULTS = {
   emailEnabledDefault: true,

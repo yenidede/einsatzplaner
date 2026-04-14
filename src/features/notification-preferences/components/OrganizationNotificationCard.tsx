@@ -180,7 +180,7 @@ function PriorityRow({
           return (
             <div
               key={option.value}
-              className="hover:border-primary/50 flex items-center gap-3 rounded-md border px-3 py-2 transition-colors"
+              className="flex items-center gap-3 px-3"
             >
               <RadioGroupItem id={id} value={option.value} />
               <Label

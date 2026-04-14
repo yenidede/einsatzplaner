@@ -99,12 +99,12 @@ function PriorityRow({
         {options.map((option) => {
           const id = `org-notification-priority-${rowId}-${option.value}`;
           return (
-            <div
-              key={option.value}
-              className="hover:border-primary/50 flex items-center gap-3 rounded-md border px-3 py-2 transition-colors"
-            >
+            <div key={option.value} className="flex items-center gap-3 px-3">
               <RadioGroupItem id={id} value={option.value} />
-              <Label htmlFor={id} className="cursor-pointer text-sm font-normal">
+              <Label
+                htmlFor={id}
+                className="cursor-pointer text-sm font-normal"
+              >
                 {option.label}
               </Label>
             </div>
@@ -270,12 +270,9 @@ export function OrganizationNotificationDefaultsForm({
                 <RadioGroupItem
                   id={id}
                   value={option.value}
-                  className="peer sr-only"
+                  className="sr-only"
                 />
-                <Label
-                  htmlFor={id}
-                  className="peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:border-primary/50 flex min-h-11 cursor-pointer items-center justify-center rounded-md border px-3 text-center text-sm transition-colors"
-                >
+                <Label htmlFor={id} className="border px-3 text-center text-sm">
                   {option.label}
                 </Label>
               </div>
