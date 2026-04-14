@@ -1,6 +1,30 @@
 import nodemailer from 'nodemailer';
 import type { DigestInterval } from '@/features/notification-preferences/types';
 
+function buildDigestIntervalLabel(digestInterval: DigestInterval): string {
+  if (digestInterval === 'daily') {
+    return 'täglich';
+  }
+
+  if (digestInterval === 'every_2_days') {
+    return 'alle 2 Tage';
+  }
+
+  if (digestInterval === 'every_3_days') {
+    return 'alle 3 Tage';
+  }
+
+  if (digestInterval === 'every_5_days') {
+    return 'alle 5 Tage';
+  }
+
+  if (digestInterval === 'every_7_days') {
+    return 'alle 7 Tage';
+  }
+
+  return 'täglich';
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -726,8 +750,7 @@ export class EmailService {
     }
 
     try {
-      const intervalLabel =
-        input.digestInterval === 'daily' ? 'täglich' : 'alle 2 Tage';
+      const intervalLabel = buildDigestIntervalLabel(input.digestInterval);
 
       const entryItems = input.entries
         .map((entry) => {

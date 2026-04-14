@@ -36,7 +36,13 @@ type EinsatzRequirementsWarningPayload = {
 };
 
 function isDigestInterval(value: string): value is DigestInterval {
-  return value === 'daily' || value === 'every_2_days';
+  return (
+    value === 'daily' ||
+    value === 'every_2_days' ||
+    value === 'every_3_days' ||
+    value === 'every_5_days' ||
+    value === 'every_7_days'
+  );
 }
 
 function isMinimumPriority(value: string): value is MinimumPriority {

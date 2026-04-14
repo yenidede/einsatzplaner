@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { OrganizationNotificationDefaultsForm } from './OrganizationNotificationDefaultsForm';
@@ -71,5 +71,20 @@ describe('OrganizationNotificationDefaultsForm', () => {
     expect(screen.getByText('Häufigkeit')).toBeTruthy();
     expect(screen.getByText('Uhrzeit')).toBeTruthy();
     expect(screen.queryByText('Individuelle Benachrichtigungsregeln')).toBeNull();
+  });
+
+  it('rendert die Regeln als Radio-Auswahl unter dem Titel', () => {
+    const onGeneralDeliveryDefaultChange = vi.fn();
+
+    renderForm({
+      urgentDeliveryDefault: 'digest',
+      importantDeliveryDefault: 'digest',
+      generalDeliveryDefault: 'digest',
+      onGeneralDeliveryDefaultChange,
+    });
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Keine E-Mail' }));
+
+    expect(onGeneralDeliveryDefaultChange).toHaveBeenCalledWith('off');
   });
 });

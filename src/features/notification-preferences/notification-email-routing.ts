@@ -61,6 +61,21 @@ function normalizeDigestTime(
   return fallback;
 }
 
+function getDigestIntervalInDays(digestInterval: DigestInterval): number {
+  switch (digestInterval) {
+    case 'daily':
+      return 1;
+    case 'every_2_days':
+      return 2;
+    case 'every_3_days':
+      return 3;
+    case 'every_5_days':
+      return 5;
+    case 'every_7_days':
+      return 7;
+  }
+}
+
 export function computeNextDigestDispatchAt(input: {
   now: Date;
   digestInterval: DigestInterval;
@@ -79,11 +94,8 @@ export function computeNextDigestDispatchAt(input: {
   }
 
   const nextDispatch = new Date(todayAtDigestTime);
-  if (digestInterval === 'daily') {
-    nextDispatch.setDate(nextDispatch.getDate() + 1);
-    return nextDispatch;
-  }
-
-  nextDispatch.setDate(nextDispatch.getDate() + 2);
+  nextDispatch.setDate(
+    nextDispatch.getDate() + getDigestIntervalInDays(digestInterval)
+  );
   return nextDispatch;
 }

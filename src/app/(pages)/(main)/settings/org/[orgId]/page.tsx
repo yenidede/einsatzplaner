@@ -64,6 +64,7 @@ import {
   useOrganizationNotificationDefaults,
   useUpdateOrganizationNotificationDefaults,
 } from '@/features/notification-preferences';
+import type { DigestInterval } from '@/features/notification-preferences/types';
 import { findOrganizationById } from '@/components/settings/settings-navigation.utils';
 
 /**
@@ -137,7 +138,7 @@ export default function OrganizationManagePage() {
   const [
     notificationDigestIntervalDefault,
     setNotificationDigestIntervalDefault,
-  ] = useState<'daily' | 'every_2_days'>('daily');
+  ] = useState<DigestInterval>('daily');
   const [notificationDigestTimeDefault, setNotificationDigestTimeDefault] =
     useState('08:00');
   const [
@@ -172,7 +173,7 @@ export default function OrganizationManagePage() {
     notificationUrgentDeliveryDefault: 'immediate' | 'digest';
     notificationImportantDeliveryDefault: 'immediate' | 'digest';
     notificationGeneralDeliveryDefault: 'digest' | 'off';
-    notificationDigestIntervalDefault: 'daily' | 'every_2_days';
+    notificationDigestIntervalDefault: DigestInterval;
     notificationDigestTimeDefault: string;
     notificationDigestSecondTimeDefault: string;
   } | null>(null);

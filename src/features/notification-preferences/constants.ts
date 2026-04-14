@@ -20,12 +20,23 @@ export const MINIMUM_PRIORITY_VALUES = [
 export const DIGEST_INTERVAL_VALUES = [
   'daily',
   'every_2_days',
+  'every_3_days',
+  'every_5_days',
+  'every_7_days',
 ] as const satisfies readonly DigestInterval[];
 
-function createDigestTimeValues(stepMinutes: number): DigestTime[] {
+function createDigestTimeValues(
+  stepMinutes: number,
+  startHour = 8,
+  endHour = 16,
+  endMinute = 0
+): DigestTime[] {
   const values: DigestTime[] = [];
-  for (let hour = 0; hour < 24; hour += 1) {
+  for (let hour = startHour; hour <= endHour; hour += 1) {
     for (let minute = 0; minute < 60; minute += stepMinutes) {
+      if (hour === endHour && minute > endMinute) {
+        continue;
+      }
       values.push(
         `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
       );
@@ -34,7 +45,7 @@ function createDigestTimeValues(stepMinutes: number): DigestTime[] {
   return values;
 }
 
-export const DIGEST_TIME_VALUES = createDigestTimeValues(30);
+export const DIGEST_TIME_VALUES = createDigestTimeValues(60);
 
 export const NOTIFICATION_DEFAULTS = {
   emailEnabledDefault: true,
@@ -58,16 +69,19 @@ export const MINIMUM_PRIORITY_LABELS: Record<MinimumPriority, string> = {
 };
 
 export const DIGEST_INTERVAL_LABELS: Record<DigestInterval, string> = {
-  daily: '1x täglich',
+  daily: 'täglich',
   every_2_days: 'alle 2 Tage',
+  every_3_days: 'alle 3 Tage',
+  every_5_days: 'alle 5 Tage',
+  every_7_days: 'alle 7 Tage',
 };
 
 export const MINIMUM_PRIORITY_SUMMARY_LABELS: Record<MinimumPriority, string> =
-  {
-    info: 'allgemeine Informationen, wichtige und dringende Meldungen',
-    review: 'wichtige und dringende Meldungen',
-    critical: 'dringende Meldungen',
-  };
+{
+  info: 'allgemeine Informationen, wichtige und dringende Meldungen',
+  review: 'wichtige und dringende Meldungen',
+  critical: 'dringende Meldungen',
+};
 
 export const MINIMUM_PRIORITY_EXPLANATIONS: Record<
   MinimumPriority,

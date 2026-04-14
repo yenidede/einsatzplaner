@@ -26,7 +26,13 @@ export function isMinimumPriority(value: string): value is MinimumPriority {
 }
 
 export function isDigestInterval(value: string): value is DigestInterval {
-  return value === 'daily' || value === 'every_2_days';
+  return (
+    value === 'daily' ||
+    value === 'every_2_days' ||
+    value === 'every_3_days' ||
+    value === 'every_5_days' ||
+    value === 'every_7_days'
+  );
 }
 
 export function isDigestTime(value: string): value is DigestTime {
@@ -218,6 +224,18 @@ export function buildDigestScheduleLabel(input: {
     return `alle 2 Tage um ${digestTime}`;
   }
 
+  if (digestInterval === 'every_3_days') {
+    return `alle 3 Tage um ${digestTime}`;
+  }
+
+  if (digestInterval === 'every_5_days') {
+    return `alle 5 Tage um ${digestTime}`;
+  }
+
+  if (digestInterval === 'every_7_days') {
+    return `alle 7 Tage um ${digestTime}`;
+  }
+
   return short ? `täglich um ${digestTime}` : `Täglich um ${digestTime}`;
 }
 
@@ -273,6 +291,9 @@ const COMPACT_SOURCE_LABELS: Record<'organization' | 'user', string> = {
 const COMPACT_DIGEST_INTERVAL_LABELS: Record<DigestInterval, string> = {
   daily: 'täglich',
   every_2_days: 'alle 2 Tage',
+  every_3_days: 'alle 3 Tage',
+  every_5_days: 'alle 5 Tage',
+  every_7_days: 'alle 7 Tage',
 };
 
 export function buildNotificationPreferenceSummary(input: {

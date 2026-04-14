@@ -1,7 +1,7 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
 import {
   DIGEST_INTERVAL_LABELS,
   DIGEST_INTERVAL_VALUES,
@@ -25,7 +25,9 @@ import type {
   OrganizationNotificationCardData,
 } from '../types';
 import { NotificationPreferenceSummary } from './NotificationPreferenceSummary';
+import { NotificationDefaultBadge } from './NotificationDefaultBadge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -36,7 +38,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch as EmailSwitch } from '@/components/ui/switch';
 
 export interface NotificationCardDraft {
   useOrganizationDefaults: boolean;
@@ -84,9 +87,7 @@ function isSimpleNotificationPreset(
   return value === 'important' || value === 'digest' || value === 'individual';
 }
 
-function getPriorityRuleModes(
-  draft: NotificationCardDraft
-): {
+function getPriorityRuleModes(draft: NotificationCardDraft): {
   urgent: Extract<PriorityRuleMode, 'immediate' | 'digest'>;
   important: Extract<PriorityRuleMode, 'immediate' | 'digest'>;
   general: Extract<PriorityRuleMode, 'digest' | 'off'>;
@@ -122,6 +123,31 @@ function applyPriorityRuleModes(
   };
 }
 
+function buildUserDraftFromCard(
+  card: OrganizationNotificationCardData
+): NotificationCardDraft {
+  const preference =
+    card.preference && !card.preference.useOrganizationDefaults
+      ? card.preference
+      : null;
+
+  return {
+    useOrganizationDefaults: false,
+    emailEnabled: preference?.emailEnabled ?? card.effective.emailEnabled,
+    deliveryMode: preference?.deliveryMode ?? card.effective.deliveryMode,
+    minimumPriority:
+      preference?.minimumPriority ?? card.effective.minimumPriority,
+    urgentDelivery: preference?.urgentDelivery ?? card.effective.urgentDelivery,
+    importantDelivery:
+      preference?.importantDelivery ?? card.effective.importantDelivery,
+    generalDelivery: preference?.generalDelivery ?? card.effective.generalDelivery,
+    digestInterval: preference?.digestInterval ?? card.effective.digestInterval,
+    digestTime: preference?.digestTime ?? card.effective.digestTime,
+    digestSecondTime:
+      preference?.digestSecondTime ?? card.effective.digestSecondTime,
+  };
+}
+
 function PriorityRow({
   title,
   value,
@@ -140,22 +166,26 @@ function PriorityRow({
   rowKey: string;
 }) {
   return (
-    <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
+    <div className="flex flex-col gap-3">
       <p className="text-sm font-medium">{title}</p>
       <RadioGroup
         value={value}
         onValueChange={onChange}
         disabled={disabled}
-        className="grid grid-cols-2 gap-2"
+        aria-label={title}
+        className="flex flex-col gap-2"
       >
         {options.map((option) => {
           const id = `notification-priority-${rowKey}-${organizationId}-${option.value}`;
           return (
-            <div key={option.value}>
-              <RadioGroupItem id={id} value={option.value} className="peer sr-only" />
+            <div
+              key={option.value}
+              className="flex items-center gap-3 px-3"
+            >
+              <RadioGroupItem id={id} value={option.value} />
               <Label
                 htmlFor={id}
-                className="peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:border-primary/50 flex min-h-10 min-w-40 cursor-pointer items-center justify-center rounded-md border px-3 text-center text-sm transition-colors"
+                className="cursor-pointer text-sm font-normal"
               >
                 {option.label}
               </Label>
@@ -174,9 +204,9 @@ export function OrganizationNotificationCard({
   disabled = false,
 }: OrganizationNotificationCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<SimpleNotificationPreset | null>(
-    null
-  );
+  const [selectedMode, setSelectedMode] =
+    useState<SimpleNotificationPreset | null>(null);
+  const lastHandledInteractionRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (draft.useOrganizationDefaults) {
@@ -192,30 +222,31 @@ export function OrganizationNotificationCard({
   });
   const activePreset = selectedMode ?? derivedPreset;
 
-  const sourceLabel = draft.useOrganizationDefaults
-    ? 'Organisationsstandard'
-    : 'Eigene Einstellung';
-
-  const digestFrequencyLabel =
-    draft.digestInterval === 'daily' ? 'täglich' : 'alle 2 Tage';
-
-  const summary =
-    !draft.emailEnabled
-      ? `${sourceLabel}: E-Mail-Benachrichtigungen deaktiviert`
-      : activePreset === 'important'
-        ? `${sourceLabel}: Nur wichtige Meldungen`
-        : activePreset === 'digest'
-          ? `${sourceLabel}: Sammelmail ${digestFrequencyLabel} um ${draft.digestTime}`
-          : `${sourceLabel}: Individuell angepasst`;
-
   const priorityRuleModes = getPriorityRuleModes(draft);
   const hasDigestInIndividualRules =
     priorityRuleModes.urgent === 'digest' ||
     priorityRuleModes.important === 'digest' ||
     priorityRuleModes.general === 'digest';
 
+  const digestFrequencyLabel =
+    draft.digestInterval === 'daily'
+      ? 'täglich'
+      : DIGEST_INTERVAL_LABELS[draft.digestInterval];
+
+  const explanation = !draft.emailEnabled
+    ? 'Sie erhalten keine E-Mails.'
+    : activePreset === 'important'
+      ? 'Dringende und wichtige Meldungen kommen sofort per E-Mail.\nAllgemeine Informationen werden nicht per E-Mail gesendet.'
+      : activePreset === 'digest'
+        ? `Dringende Meldungen kommen sofort per E-Mail.\nWichtige Meldungen und allgemeine Informationen kommen ${digestFrequencyLabel} um ${draft.digestTime} als Sammelmail.`
+        : hasDigestInIndividualRules
+          ? `Eigene Regeln je Meldungsstufe.\nSammelmails werden ${digestFrequencyLabel} um ${draft.digestTime} versendet.`
+          : 'Eigene Regeln je Meldungsstufe.\nAktuell werden nur Sofort-E-Mails versendet.';
+
   const showIndividualRules =
-    !draft.useOrganizationDefaults && draft.emailEnabled && activePreset === 'individual';
+    !draft.useOrganizationDefaults &&
+    draft.emailEnabled &&
+    activePreset === 'individual';
 
   const showDigestSettings =
     !draft.useOrganizationDefaults &&
@@ -226,17 +257,33 @@ export function OrganizationNotificationCard({
   const detailsId = `notification-details-${card.organizationId}`;
 
   const handleMainToggleChange = (checked: boolean) => {
-    if (draft.useOrganizationDefaults) {
-      return;
-    }
-
     onDraftChange({
       ...draft,
+      useOrganizationDefaults: false,
       emailEnabled: checked,
     });
   };
 
+  const shouldHandleInteraction = (interactionKey: string) => {
+    if (lastHandledInteractionRef.current === interactionKey) {
+      return false;
+    }
+
+    lastHandledInteractionRef.current = interactionKey;
+    queueMicrotask(() => {
+      if (lastHandledInteractionRef.current === interactionKey) {
+        lastHandledInteractionRef.current = null;
+      }
+    });
+
+    return true;
+  };
+
   const handlePresetChange = (value: string) => {
+    if (!shouldHandleInteraction(`preset:${value}`)) {
+      return;
+    }
+
     if (draft.useOrganizationDefaults || !isSimpleNotificationPreset(value)) {
       return;
     }
@@ -251,6 +298,10 @@ export function OrganizationNotificationCard({
   };
 
   const handleSourceChange = (value: string) => {
+    if (!shouldHandleInteraction(`source:${value}`)) {
+      return;
+    }
+
     setSelectedMode(null);
 
     if (value === 'organization') {
@@ -269,23 +320,30 @@ export function OrganizationNotificationCard({
       return;
     }
 
-    onDraftChange({
-      useOrganizationDefaults: false,
-      emailEnabled: card.effective.emailEnabled,
-      deliveryMode: card.effective.deliveryMode,
-      minimumPriority: card.effective.minimumPriority,
-      urgentDelivery: card.effective.urgentDelivery,
-      importantDelivery: card.effective.importantDelivery,
-      generalDelivery: card.effective.generalDelivery,
-      digestInterval: card.effective.digestInterval,
-      digestTime: card.effective.digestTime,
-      digestSecondTime: card.effective.digestSecondTime,
-    });
+    if (value === 'off') {
+      onDraftChange({
+        ...draft,
+        useOrganizationDefaults: false,
+        emailEnabled: false,
+      });
+      return;
+    }
+
+    if (!draft.useOrganizationDefaults) {
+      onDraftChange({
+        ...draft,
+        useOrganizationDefaults: false,
+        emailEnabled: true,
+      });
+      return;
+    }
+
+    onDraftChange(buildUserDraftFromCard(card));
   };
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="px-4 py-3">
+    <Card className="overflow-hidden py-4">
+      <CardHeader className="px-4">
         <div className="flex items-start justify-between gap-3">
           <button
             type="button"
@@ -299,144 +357,148 @@ export function OrganizationNotificationCard({
                 : `Details für ${card.organizationName} anzeigen`
             }
           >
-            <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base">{card.organizationName}</CardTitle>
+            <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <CardTitle className="min-w-0 text-base">
+                  {card.organizationName}
+                </CardTitle>
+                <NotificationDefaultBadge
+                  source={
+                    draft.useOrganizationDefaults ? 'organization' : 'user'
+                  }
+                />
+                <Badge
+                  variant={draft.emailEnabled ? 'secondary' : 'outline'}
+                  className={
+                    draft.emailEnabled
+                      ? 'bg-emerald-100 text-[11px] text-emerald-900'
+                      : 'border-amber-300 bg-amber-50 text-[11px] text-amber-900'
+                  }
+                >
+                  {draft.emailEnabled ? 'E-Mail aktiv' : 'E-Mail deaktiviert'}
+                </Badge>
+              </div>
               <NotificationPreferenceSummary
-                summary={summary}
-                className="line-clamp-1 text-xs sm:text-sm"
+                explanation={explanation}
+                className="text-xs sm:text-sm"
               />
             </div>
           </button>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setExpanded((current) => !current)}
-            aria-expanded={expanded}
-            aria-controls={detailsId}
-            aria-label={
-              expanded
-                ? `Details für ${card.organizationName} ausblenden`
-                : `Details für ${card.organizationName} anzeigen`
-            }
-          >
-            {expanded ? (
-              <ChevronUp className="text-muted-foreground h-4 w-4" aria-hidden />
-            ) : (
-              <ChevronDown className="text-muted-foreground h-4 w-4" aria-hidden />
-            )}
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Label
+              htmlFor={`notification-quick-email-${card.organizationId}`}
+              className="bg-muted/50 flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium"
+            >
+              E-Mail
+              <EmailSwitch
+                id={`notification-quick-email-${card.organizationId}`}
+                checked={draft.emailEnabled}
+                onCheckedChange={handleMainToggleChange}
+                disabled={disabled}
+                aria-label={`E-Mail für ${card.organizationName} ${draft.emailEnabled ? 'deaktivieren' : 'aktivieren'}`}
+              />
+            </Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setExpanded((current) => !current)}
+              aria-expanded={expanded}
+              aria-controls={detailsId}
+              aria-label={
+                expanded
+                  ? `Details für ${card.organizationName} ausblenden`
+                  : `Details für ${card.organizationName} anzeigen`
+              }
+            >
+              {expanded ? (
+                <ChevronUp className="text-muted-foreground" aria-hidden />
+              ) : (
+                <ChevronDown className="text-muted-foreground" aria-hidden />
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
 
       {expanded && (
         <CardContent id={detailsId} className="border-t px-4 pt-4 pb-4">
-          <div className="space-y-5">
-            <div className="space-y-2">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
               <p className="text-sm font-medium">
                 Welche Einstellung möchten Sie verwenden?
               </p>
-              <RadioGroup
-                value={draft.useOrganizationDefaults ? 'organization' : 'user'}
+              <Tabs
+                value={
+                  draft.useOrganizationDefaults
+                    ? 'organization'
+                    : draft.emailEnabled
+                      ? 'user'
+                      : 'off'
+                }
                 onValueChange={handleSourceChange}
-                className="bg-muted grid w-full grid-cols-2 gap-1 rounded-lg p-1 sm:w-fit"
-                disabled={disabled}
               >
-                <div>
-                  <RadioGroupItem
-                    id={`notification-source-org-${card.organizationId}`}
+                <TabsList className="grid w-full grid-cols-3 sm:w-fit">
+                  <TabsTrigger
+                    value="off"
+                    disabled={disabled}
+                    onClick={() => handleSourceChange('off')}
+                  >
+                    Keine E-Mails
+                  </TabsTrigger>
+                  <TabsTrigger
                     value="organization"
-                    className="peer sr-only"
-                  />
-                  <Label
-                    htmlFor={`notification-source-org-${card.organizationId}`}
-                    className="hover:text-foreground peer-data-[state=checked]:bg-background peer-data-[state=checked]:text-foreground text-muted-foreground flex min-h-9 cursor-pointer items-center rounded-md px-3 text-sm font-medium transition-colors peer-data-[state=checked]:shadow-xs"
+                    disabled={disabled}
+                    onClick={() => handleSourceChange('organization')}
                   >
                     Organisationsstandard
-                  </Label>
-                </div>
-                <div>
-                  <RadioGroupItem
-                    id={`notification-source-user-${card.organizationId}`}
+                  </TabsTrigger>
+                  <TabsTrigger
                     value="user"
-                    className="peer sr-only"
-                  />
-                  <Label
-                    htmlFor={`notification-source-user-${card.organizationId}`}
-                    className="hover:text-foreground peer-data-[state=checked]:bg-background peer-data-[state=checked]:text-foreground text-muted-foreground flex min-h-9 cursor-pointer items-center rounded-md px-3 text-sm font-medium transition-colors peer-data-[state=checked]:shadow-xs"
+                    disabled={disabled}
+                    onClick={() => handleSourceChange('user')}
                   >
                     Eigene Einstellung
-                  </Label>
-                </div>
-              </RadioGroup>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
             {draft.useOrganizationDefaults && (
               <p className="text-muted-foreground text-sm">
-                Sie verwenden derzeit den Organisationsstandard.
+                Diese Organisation gibt die Benachrichtigungseinstellungen vor.
+                Wechseln Sie zu „Eigene Einstellung“, wenn Sie davon abweichende
+                Regeln festlegen möchten.
               </p>
             )}
 
             {!draft.useOrganizationDefaults && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <Label
-                    htmlFor={`notification-email-enabled-${card.organizationId}`}
-                    className="text-sm font-medium"
-                  >
-                    E-Mail-Benachrichtigungen
-                  </Label>
-                  <Switch
-                    id={`notification-email-enabled-${card.organizationId}`}
-                    checked={draft.emailEnabled}
-                    onCheckedChange={handleMainToggleChange}
-                    disabled={disabled}
-                    aria-label={`E-Mail-Benachrichtigungen für ${card.organizationName}`}
-                  />
-                </div>
-
-                {!draft.emailEnabled && (
-                  <p className="text-muted-foreground rounded-md border border-dashed p-3 text-sm">
-                    Sie erhalten keine E-Mails. Hinweise sehen Sie weiterhin in
-                    der App.
-                  </p>
-                )}
-
-                <div className="space-y-2">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
                   <p className="text-sm font-medium">
                     Wie möchten Sie benachrichtigt werden?
                   </p>
-                  <RadioGroup
-                    value={activePreset}
-                    onValueChange={handlePresetChange}
-                    disabled={disabled || !draft.emailEnabled}
-                    className="grid gap-2 sm:grid-cols-3"
-                  >
-                    {SIMPLE_PRESET_OPTIONS.map((option) => {
-                      const id = `notification-preset-${card.organizationId}-${option.value}`;
-                      return (
-                        <div key={option.value}>
-                          <RadioGroupItem
-                            id={id}
-                            value={option.value}
-                            className="peer sr-only"
-                          />
-                          <Label
-                            htmlFor={id}
-                            className="peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:border-primary/50 flex min-h-11 cursor-pointer items-center justify-center rounded-md border px-3 text-center text-sm transition-colors"
-                          >
-                            {option.title}
-                          </Label>
-                        </div>
-                      );
-                    })}
-                  </RadioGroup>
+                  <Tabs value={activePreset} onValueChange={handlePresetChange}>
+                    <TabsList className="grid h-auto w-full grid-cols-1 md:grid-cols-3">
+                      {SIMPLE_PRESET_OPTIONS.map((option) => (
+                        <TabsTrigger
+                          key={option.value}
+                          value={option.value}
+                          disabled={disabled || !draft.emailEnabled}
+                          onClick={() => handlePresetChange(option.value)}
+                          className="h-auto px-4 py-2 whitespace-normal"
+                        >
+                          {option.title}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
                 </div>
 
                 {showDigestSettings && (
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col gap-1.5">
                       <Label
                         htmlFor={`notification-digest-interval-${card.organizationId}`}
                       >
@@ -466,7 +528,7 @@ export function OrganizationNotificationCard({
                       </Select>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col gap-1.5">
                       <Label
                         htmlFor={`notification-digest-time-${card.organizationId}`}
                       >
@@ -499,19 +561,18 @@ export function OrganizationNotificationCard({
                 )}
 
                 {showIndividualRules && (
-                  <div className="space-y-4 rounded-lg border p-4">
+                  <div className="flex flex-col gap-4 rounded-lg border p-4">
                     <p className="text-sm font-medium">
                       Individuelle Benachrichtigungsregeln
                     </p>
-                    <p className="text-muted-foreground text-sm">
-                      Legen Sie fest, wie einzelne Meldungsstufen behandelt werden.
-                    </p>
-                    <p className="text-muted-foreground text-xs leading-relaxed">
-                      Die einfache Auswahl oben setzt eine Voreinstellung. Hier
-                      können Sie diese bei Bedarf anpassen.
+                    <p className="text-muted-foreground">
+                      Oben wählen Sie eine einfache Voreinstellung. Hier können
+                      Sie für jede Meldungsstufe separat festlegen, ob Sie
+                      sofort, gesammelt oder gar nicht per E-Mail informiert
+                      werden möchten.
                     </p>
 
-                    <div className="space-y-3">
+                    <div className="flex flex-col gap-3">
                       <PriorityRow
                         organizationId={card.organizationId}
                         rowKey="urgent"
@@ -588,10 +649,16 @@ export function OrganizationNotificationCard({
                       />
                     </div>
 
-                    <p className="text-muted-foreground text-xs leading-relaxed">
-                      Dringend = sofortiger Handlungsbedarf, wichtig = relevant,
-                      aber nicht akut, allgemein = reine Information.
-                    </p>
+                    <div className="text-muted-foreground mt-4 flex flex-row items-start gap-1 text-xs">
+                      <InfoIcon
+                        className="text-muted-foreground mt-0.5 shrink-0"
+                        aria-hidden
+                        size={14}
+                      />
+                      Dringend bedeutet unmittelbarer Handlungsbedarf. Wichtig
+                      bedeutet relevant, aber nicht akut. Allgemeine
+                      Informationen dienen nur zur Information.
+                    </div>
                   </div>
                 )}
               </div>

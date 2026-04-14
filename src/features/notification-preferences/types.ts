@@ -9,7 +9,12 @@ export type DeliveryMode =
 export type MinimumPriority = 'info' | 'review' | 'critical';
 export type PriorityDeliveryMode = 'immediate' | 'digest' | 'off';
 
-export type DigestInterval = 'daily' | 'every_2_days';
+export type DigestInterval =
+  | 'daily'
+  | 'every_2_days'
+  | 'every_3_days'
+  | 'every_5_days'
+  | 'every_7_days';
 export type DigestTime = string;
 
 const digestTimeSchema = z
@@ -98,7 +103,13 @@ export const updateMyNotificationDetailsInputSchema = z.object({
   urgentDelivery: z.enum(['immediate', 'digest']),
   importantDelivery: z.enum(['immediate', 'digest']),
   generalDelivery: z.enum(['digest', 'off']),
-  digestInterval: z.enum(['daily', 'every_2_days']),
+  digestInterval: z.enum([
+    'daily',
+    'every_2_days',
+    'every_3_days',
+    'every_5_days',
+    'every_7_days',
+  ]),
   digestTime: digestTimeSchema,
   digestSecondTime: digestTimeSchema.optional(),
 });
@@ -115,7 +126,13 @@ export const updateOrganizationNotificationDefaultsInputSchema = z.object({
   urgentDeliveryDefault: z.enum(['immediate', 'digest']).optional(),
   importantDeliveryDefault: z.enum(['immediate', 'digest']).optional(),
   generalDeliveryDefault: z.enum(['digest', 'off']).optional(),
-  digestIntervalDefault: z.enum(['daily', 'every_2_days']),
+  digestIntervalDefault: z.enum([
+    'daily',
+    'every_2_days',
+    'every_3_days',
+    'every_5_days',
+    'every_7_days',
+  ]),
   digestTimeDefault: digestTimeSchema,
   digestSecondTimeDefault: digestTimeSchema,
 });
