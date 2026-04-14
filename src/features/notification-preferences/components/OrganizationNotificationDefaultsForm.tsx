@@ -56,13 +56,18 @@ interface OrganizationNotificationDefaultsFormProps {
   disabled?: boolean;
 }
 
-const PRESET_OPTIONS: ReadonlyArray<{ value: SimpleNotificationPreset; label: string }> = [
+const PRESET_OPTIONS: ReadonlyArray<{
+  value: SimpleNotificationPreset;
+  label: string;
+}> = [
   { value: 'important', label: 'Nur wichtige Meldungen' },
   { value: 'digest', label: 'Alle Meldungen als Sammelmail' },
   { value: 'individual', label: 'Individuell' },
 ];
 
-function isSimpleNotificationPreset(value: string): value is SimpleNotificationPreset {
+function isSimpleNotificationPreset(
+  value: string
+): value is SimpleNotificationPreset {
   return value === 'important' || value === 'digest' || value === 'individual';
 }
 
@@ -82,23 +87,24 @@ function PriorityRow({
   const rowId = title.toLowerCase().replace(/\s+/g, '-');
 
   return (
-    <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
+    <div className="flex flex-col gap-3">
       <p className="text-sm font-medium">{title}</p>
       <RadioGroup
         value={value}
         onValueChange={onChange}
         disabled={disabled}
-        className="grid grid-cols-2 gap-2"
+        aria-label={title}
+        className="flex flex-col gap-2"
       >
         {options.map((option) => {
           const id = `org-notification-priority-${rowId}-${option.value}`;
           return (
-            <div key={option.value}>
-              <RadioGroupItem id={id} value={option.value} className="peer sr-only" />
-              <Label
-                htmlFor={id}
-                className="peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:border-primary/50 flex min-h-10 min-w-40 cursor-pointer items-center justify-center rounded-md border px-3 text-center text-sm transition-colors"
-              >
+            <div
+              key={option.value}
+              className="hover:border-primary/50 flex items-center gap-3 rounded-md border px-3 py-2 transition-colors"
+            >
+              <RadioGroupItem id={id} value={option.value} />
+              <Label htmlFor={id} className="cursor-pointer text-sm font-normal">
                 {option.label}
               </Label>
             </div>
@@ -143,10 +149,12 @@ export function OrganizationNotificationDefaultsForm({
     importantDeliveryDefault === 'digest' ||
     generalDeliveryDefault === 'digest';
 
-  const showIndividualRules = emailEnabledDefault && activePreset === 'individual';
+  const showIndividualRules =
+    emailEnabledDefault && activePreset === 'individual';
   const showDigestSettings =
     emailEnabledDefault &&
-    (activePreset === 'digest' || (activePreset === 'individual' && hasDigestInRules));
+    (activePreset === 'digest' ||
+      (activePreset === 'individual' && hasDigestInRules));
 
   const summary = buildCompactNotificationPreferenceSummary({
     source: 'organization',
@@ -240,12 +248,15 @@ export function OrganizationNotificationDefaultsForm({
 
       {!emailEnabledDefault && (
         <p className="text-muted-foreground rounded-md border border-dashed p-3 text-sm">
-          Mitglieder erhalten keine E-Mails. Hinweise sehen Sie weiterhin in der App.
+          Mitglieder erhalten keine E-Mails. Hinweise sehen Sie weiterhin in der
+          App.
         </p>
       )}
 
       <div className="space-y-2">
-        <p className="text-sm font-medium">Wie möchten Sie benachrichtigt werden?</p>
+        <p className="text-sm font-medium">
+          Wie möchten Sie benachrichtigt werden?
+        </p>
         <RadioGroup
           value={activePreset}
           onValueChange={handlePresetChange}
@@ -256,7 +267,11 @@ export function OrganizationNotificationDefaultsForm({
             const id = `org-notification-preset-${option.value}`;
             return (
               <div key={option.value}>
-                <RadioGroupItem id={id} value={option.value} className="peer sr-only" />
+                <RadioGroupItem
+                  id={id}
+                  value={option.value}
+                  className="peer sr-only"
+                />
                 <Label
                   htmlFor={id}
                   className="peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:border-primary/50 flex min-h-11 cursor-pointer items-center justify-center rounded-md border px-3 text-center text-sm transition-colors"
@@ -331,12 +346,12 @@ export function OrganizationNotificationDefaultsForm({
 
       {showIndividualRules && (
         <div className="space-y-4 rounded-lg border p-4">
-          <p className="text-sm font-medium">Individuelle Benachrichtigungsregeln</p>
-          <p className="text-muted-foreground text-sm">
-            Legen Sie fest, wie einzelne Meldungsstufen behandelt werden.
+          <p className="text-sm font-medium">
+            Individuelle Benachrichtigungsregeln
           </p>
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Die einfache Auswahl oben setzt eine Voreinstellung. Hier können Sie diese bei Bedarf anpassen.
+          <p className="text-muted-foreground">
+            Die einfache Auswahl oben setzt eine Voreinstellung. Hier können Sie
+            diese bei Bedarf anpassen.
           </p>
 
           <div className="space-y-3">
@@ -405,7 +420,8 @@ export function OrganizationNotificationDefaultsForm({
           </div>
 
           <p className="text-muted-foreground text-xs leading-relaxed">
-            Dringend = sofortiger Handlungsbedarf, wichtig = relevant, aber nicht akut, allgemein = reine Information.
+            Dringend = sofortiger Handlungsbedarf, wichtig = relevant, aber
+            nicht akut, allgemein = reine Information.
           </p>
         </div>
       )}

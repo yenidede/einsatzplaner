@@ -107,7 +107,10 @@ function coerceDigestInterval(
 ): DigestInterval {
   if (
     value === 'daily' ||
-    value === 'every_2_days'
+    value === 'every_2_days' ||
+    value === 'every_3_days' ||
+    value === 'every_5_days' ||
+    value === 'every_7_days'
   ) {
     return value;
   }

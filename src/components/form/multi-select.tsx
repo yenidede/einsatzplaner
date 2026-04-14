@@ -128,7 +128,7 @@ export const MultiSelect = React.forwardRef<
       variant,
       value,
       defaultValue = [],
-      placeholder = 'Select options',
+      placeholder = 'Optionen auswählen',
       animation = 0,
       allowedActiveItems,
       allowedActiveItemsReachedMessage = 'Maximale Anzahl an Elementen erreicht.',
@@ -324,7 +324,7 @@ export const MultiSelect = React.forwardRef<
               onKeyDown={handleInputKeyDown}
             />
             <CommandList>
-              <CommandEmpty>No results found.</CommandEmpty>
+              <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
               <CommandGroup>
                 <CommandItem
                   key="all"
@@ -336,7 +336,7 @@ export const MultiSelect = React.forwardRef<
                     onCheckedChange={toggleAll}
                     className="mr-2 h-4 w-4"
                   />
-                  <span>(Select All)</span>
+                  <span>Alle auswählen</span>
                 </CommandItem>
                 {options.map((option) => {
                   const isSelected = selectedValues.includes(option.value);
@@ -365,7 +365,7 @@ export const MultiSelect = React.forwardRef<
                         onSelect={handleClear}
                         className="flex-1 cursor-pointer justify-center"
                       >
-                        Clear
+                        Auswahl löschen
                       </CommandItem>
                       <Separator
                         orientation="vertical"
@@ -377,7 +377,7 @@ export const MultiSelect = React.forwardRef<
                     onSelect={() => setIsPopoverOpen(false)}
                     className="max-w-full flex-1 cursor-pointer justify-center"
                   >
-                    Close
+                    Schließen
                   </CommandItem>
                 </div>
               </CommandGroup>

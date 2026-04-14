@@ -209,7 +209,12 @@ export async function updateMyNotificationDetailsAction(input: {
   urgentDelivery: 'immediate' | 'digest';
   importantDelivery: 'immediate' | 'digest';
   generalDelivery: 'digest' | 'off';
-  digestInterval: 'daily' | 'every_2_days';
+  digestInterval:
+    | 'daily'
+    | 'every_2_days'
+    | 'every_3_days'
+    | 'every_5_days'
+    | 'every_7_days';
   digestTime: string;
   digestSecondTime?: string;
 }) {
@@ -307,7 +312,12 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
   urgentDeliveryDefault?: 'immediate' | 'digest';
   importantDeliveryDefault?: 'immediate' | 'digest';
   generalDeliveryDefault?: 'digest' | 'off';
-  digestIntervalDefault: 'daily' | 'every_2_days';
+  digestIntervalDefault:
+    | 'daily'
+    | 'every_2_days'
+    | 'every_3_days'
+    | 'every_5_days'
+    | 'every_7_days';
   digestTimeDefault: string;
   digestSecondTimeDefault: string;
 }) {
@@ -386,4 +396,3 @@ export async function updateOrganizationNotificationDefaultsAction(input: {
     normalizeSchemaError(error);
   }
 }
-

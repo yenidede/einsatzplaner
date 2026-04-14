@@ -162,6 +162,20 @@ describe('notification-email-routing', () => {
     expect(next.getMinutes()).toBe(0);
   });
 
+  it('berechnet nächsten Versand für every_7_days', () => {
+    const now = new Date(2026, 3, 7, 19, 0, 0, 0);
+    const next = computeNextDigestDispatchAt({
+      now,
+      digestInterval: 'every_7_days',
+      digestTime: '07:00',
+      digestSecondTime: '16:00',
+    });
+
+    expect(next.getDate()).toBe(now.getDate() + 7);
+    expect(next.getHours()).toBe(7);
+    expect(next.getMinutes()).toBe(0);
+  });
+
   it('arbeitet konsistent auch bei Date.UTC-basiertem Input', () => {
     const now = new Date(Date.UTC(2026, 3, 7, 18, 30, 0, 0));
     const next = computeNextDigestDispatchAt({
