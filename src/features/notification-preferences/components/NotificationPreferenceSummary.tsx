@@ -12,9 +12,12 @@ export function NotificationPreferenceSummary({
   className,
 }: NotificationPreferenceSummaryProps) {
   return (
-    <div className={cn('flex min-w-0 flex-col gap-2', className)}>
+    <div className="flex min-w-0 flex-col gap-2">
       <p
-        className="text-muted-foreground text-sm whitespace-pre-line"
+        className={cn(
+          'text-muted-foreground text-sm whitespace-pre-line',
+          className
+        )}
         title={explanation}
       >
         {explanation}

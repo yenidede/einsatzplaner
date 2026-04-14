@@ -247,4 +247,36 @@ describe('OrganizationNotificationCard', () => {
       })
     );
   });
+
+  it('bewahrt ungespeicherte Regeln beim Wechsel von „Keine E-Mails“ zu „Eigene Einstellung“', () => {
+    const onDraftChange = vi.fn();
+    renderCard(
+      createDraft({
+        emailEnabled: false,
+        urgentDelivery: 'digest',
+        importantDelivery: 'digest',
+        generalDelivery: 'digest',
+        digestInterval: 'every_5_days',
+        digestTime: '16:00',
+      }),
+      onDraftChange
+    );
+
+    fireEvent.click(
+      screen.getAllByLabelText(/Details für HAK Bregenz anzeigen/)[0]
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Eigene Einstellung' }));
+
+    expect(onDraftChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        useOrganizationDefaults: false,
+        emailEnabled: true,
+        urgentDelivery: 'digest',
+        importantDelivery: 'digest',
+        generalDelivery: 'digest',
+        digestInterval: 'every_5_days',
+        digestTime: '16:00',
+      })
+    );
+  });
 });

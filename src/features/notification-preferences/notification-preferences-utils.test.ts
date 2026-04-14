@@ -97,22 +97,29 @@ describe('buildCompactNotificationPreferenceSummary', () => {
     expect(summary).toBe('Eigene Einstellung: Individuell angepasst');
   });
 
-  it('zeigt neue Digest-Intervalle in der kompakten Zusammenfassung', () => {
-    const summary = buildCompactNotificationPreferenceSummary({
-      source: 'user',
-      effective: {
-        emailEnabled: true,
-        deliveryMode: 'critical_and_digest',
-        minimumPriority: 'info',
-        urgentDelivery: 'immediate',
-        importantDelivery: 'digest',
-        generalDelivery: 'digest',
-        digestInterval: 'every_5_days',
-        digestTime: '08:00',
-        digestSecondTime: '16:00',
-      },
-    });
+  it.each([
+    ['every_3_days', 'Eigene Einstellung: Sammelmail alle 3 Tage um 08:00'],
+    ['every_5_days', 'Eigene Einstellung: Sammelmail alle 5 Tage um 08:00'],
+    ['every_7_days', 'Eigene Einstellung: Sammelmail alle 7 Tage um 08:00'],
+  ] as const)(
+    'zeigt neue Digest-Intervalle in der kompakten Zusammenfassung: %s',
+    (digestInterval, expectedSummary) => {
+      const summary = buildCompactNotificationPreferenceSummary({
+        source: 'user',
+        effective: {
+          emailEnabled: true,
+          deliveryMode: 'critical_and_digest',
+          minimumPriority: 'info',
+          urgentDelivery: 'immediate',
+          importantDelivery: 'digest',
+          generalDelivery: 'digest',
+          digestInterval,
+          digestTime: '08:00',
+          digestSecondTime: '16:00',
+        },
+      });
 
-    expect(summary).toBe('Eigene Einstellung: Sammelmail alle 5 Tage um 08:00');
-  });
+      expect(summary).toBe(expectedSummary);
+    }
+  );
 });

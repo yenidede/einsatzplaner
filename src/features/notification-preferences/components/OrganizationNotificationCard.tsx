@@ -123,6 +123,31 @@ function applyPriorityRuleModes(
   };
 }
 
+function buildUserDraftFromCard(
+  card: OrganizationNotificationCardData
+): NotificationCardDraft {
+  const preference =
+    card.preference && !card.preference.useOrganizationDefaults
+      ? card.preference
+      : null;
+
+  return {
+    useOrganizationDefaults: false,
+    emailEnabled: preference?.emailEnabled ?? card.effective.emailEnabled,
+    deliveryMode: preference?.deliveryMode ?? card.effective.deliveryMode,
+    minimumPriority:
+      preference?.minimumPriority ?? card.effective.minimumPriority,
+    urgentDelivery: preference?.urgentDelivery ?? card.effective.urgentDelivery,
+    importantDelivery:
+      preference?.importantDelivery ?? card.effective.importantDelivery,
+    generalDelivery: preference?.generalDelivery ?? card.effective.generalDelivery,
+    digestInterval: preference?.digestInterval ?? card.effective.digestInterval,
+    digestTime: preference?.digestTime ?? card.effective.digestTime,
+    digestSecondTime:
+      preference?.digestSecondTime ?? card.effective.digestSecondTime,
+  };
+}
+
 function PriorityRow({
   title,
   value,
@@ -280,18 +305,16 @@ export function OrganizationNotificationCard({
       return;
     }
 
-    onDraftChange({
-      useOrganizationDefaults: false,
-      emailEnabled: card.effective.emailEnabled,
-      deliveryMode: card.effective.deliveryMode,
-      minimumPriority: card.effective.minimumPriority,
-      urgentDelivery: card.effective.urgentDelivery,
-      importantDelivery: card.effective.importantDelivery,
-      generalDelivery: card.effective.generalDelivery,
-      digestInterval: card.effective.digestInterval,
-      digestTime: card.effective.digestTime,
-      digestSecondTime: card.effective.digestSecondTime,
-    });
+    if (!draft.useOrganizationDefaults) {
+      onDraftChange({
+        ...draft,
+        useOrganizationDefaults: false,
+        emailEnabled: true,
+      });
+      return;
+    }
+
+    onDraftChange(buildUserDraftFromCard(card));
   };
 
   return (
@@ -390,6 +413,7 @@ export function OrganizationNotificationCard({
                       ? 'user'
                       : 'off'
                 }
+                onValueChange={handleSourceChange}
               >
                 <TabsList className="grid w-full grid-cols-3 sm:w-fit">
                   <TabsTrigger
@@ -431,7 +455,7 @@ export function OrganizationNotificationCard({
                   <p className="text-sm font-medium">
                     Wie möchten Sie benachrichtigt werden?
                   </p>
-                  <Tabs value={activePreset}>
+                  <Tabs value={activePreset} onValueChange={handlePresetChange}>
                     <TabsList className="grid h-auto w-full grid-cols-1 md:grid-cols-3">
                       {SIMPLE_PRESET_OPTIONS.map((option) => (
                         <TabsTrigger

@@ -8,6 +8,7 @@ import {
   deriveLegacyFromRules,
   deriveRulesFromLegacy,
   getPreferenceSource,
+  isDigestInterval,
   isGeneralDeliveryMode,
   isImportantDeliveryMode,
   isUrgentDeliveryMode,
@@ -105,13 +106,7 @@ function coerceDigestInterval(
   value: string | null | undefined,
   fallback: DigestInterval
 ): DigestInterval {
-  if (
-    value === 'daily' ||
-    value === 'every_2_days' ||
-    value === 'every_3_days' ||
-    value === 'every_5_days' ||
-    value === 'every_7_days'
-  ) {
+  if (value && isDigestInterval(value)) {
     return value;
   }
 
