@@ -1,4 +1,3 @@
-import React from 'react';
 import { Label } from '@/components/ui/label';
 import { MultiSelect } from '@/components/form/multi-select';
 import type { MultiSelectProps } from '@/components/form/multi-select';
