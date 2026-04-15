@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { CalendarIcon } from 'lucide-react';
 import { de } from 'date-fns/locale';
-import { parseISO } from 'date-fns';
+import { format, parseISO, subDays } from 'date-fns';
 
 import { cn } from '@/lib/utils';
 import {
@@ -117,6 +117,14 @@ function getRangeCalendarSelection(value: DateInputRangeValue):
   };
 }
 
+function getDefaultRangePlaceholder() {
+  const today = new Date();
+  return `${format(subDays(today, 7), 'dd.MM.yy')} - ${format(
+    today,
+    'dd.MM.yy'
+  )}`;
+}
+
 const RangeDateInput = React.forwardRef<HTMLInputElement, RangeDateInputProps>(
   function RangeDateInput(
     {
@@ -226,7 +234,7 @@ const RangeDateInput = React.forwardRef<HTMLInputElement, RangeDateInputProps>(
               type="text"
               inputMode="numeric"
               data-slot="date-input"
-              placeholder={placeholder ?? 'Zeitraum eingeben...'}
+              placeholder={placeholder ?? getDefaultRangePlaceholder()}
               value={draftValue}
               aria-invalid={Boolean(
                 localError !== null || inputProps['aria-invalid']

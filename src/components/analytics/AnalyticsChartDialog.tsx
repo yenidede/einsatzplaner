@@ -3,7 +3,6 @@
 import { useEffect, useMemo } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format, subDays } from 'date-fns';
 import { z } from 'zod';
 import {
   Area,
@@ -500,14 +499,6 @@ export function AnalyticsChartDialog({
     'thisYear',
     'custom',
   ];
-  const customTimeframePlaceholder = useMemo(() => {
-    const today = new Date();
-    return `${format(subDays(today, 7), 'dd.MM.yy')} - ${format(
-      today,
-      'dd.MM.yy'
-    )}`;
-  }, []);
-
   const dimensionOptions = fields.map((field) => ({
     value: `${field.kind}:${field.key}`,
     label: getFieldOptionLabel(field),
@@ -723,7 +714,6 @@ export function AnalyticsChartDialog({
               }}
               aria-invalid={!!errors.timeframeFrom || !!errors.timeframeTo}
               inputClassName="w-full"
-              placeholder={customTimeframePlaceholder}
             />
           </FieldContent>
             {(errors.timeframeFrom || errors.timeframeTo) && (

@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DateInput } from '@/components/ui/date-input';
+import { DateInput, type DateInputRangeValue } from '@/components/ui/date-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
@@ -321,6 +321,14 @@ export function AllActivitiesModal({
     setFilters(defaultFilters);
   };
 
+  const activityDateRange: DateInputRangeValue =
+    filters.startDate || filters.endDate
+      ? {
+          from: filters.startDate,
+          to: filters.endDate,
+        }
+      : null;
+
   const handleMarkAllAsRead = () => {
     onMarkAllAsRead?.(filteredActivities.map((a) => a.id));
   };
@@ -412,28 +420,19 @@ export function AllActivitiesModal({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Von</Label>
+                <div className="space-y-1.5 lg:col-span-2">
+                  <Label className="text-xs">Zeitraum</Label>
                   <DateInput
+                    id="activity-date-range"
+                    aria-label="Zeitraum"
+                    mode="range"
                     inputClassName="h-9"
-                    value={filters.startDate}
+                    value={activityDateRange}
                     onValueChange={(value) =>
                       setFilters((prev) => ({
                         ...prev,
-                        startDate: value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Bis</Label>
-                  <DateInput
-                    inputClassName="h-9"
-                    value={filters.endDate}
-                    onValueChange={(value) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        endDate: value,
+                        startDate: value?.from ?? '',
+                        endDate: value?.to ?? '',
                       }))
                     }
                   />

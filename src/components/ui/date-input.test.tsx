@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { DateInput, type DateInputRangeValue } from './date-input';
@@ -36,6 +36,19 @@ function RangeDateHarness() {
     from: '2026-04-01',
     to: '2026-04-01',
   });
+
+  return (
+    <DateInput
+      aria-label="Zeitraum"
+      mode="range"
+      value={value}
+      onValueChange={setValue}
+    />
+  );
+}
+
+function EmptyRangeDateHarness() {
+  const [value, setValue] = useState<DateInputRangeValue>(null);
 
   return (
     <DateInput
@@ -121,5 +134,18 @@ describe('DateInput', () => {
     screen.getByRole('button', {
       name: /12\. April 2026/,
     });
+  });
+
+  it('verwendet im Range-Modus einen Default-Placeholder mit 7-Tage-Spanne', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-15T12:00:00.000Z'));
+
+    render(<EmptyRangeDateHarness />);
+
+    expect(
+      screen.getByPlaceholderText('08.04.26 - 15.04.26')
+    ).toBeTruthy();
+
+    vi.useRealTimers();
   });
 });
