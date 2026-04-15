@@ -180,7 +180,10 @@ export function AnalyticsChartCard({
                     </DropdownMenuItem>
                   ) : null}
                   {chart.canDelete ? (
-                    <DropdownMenuItem onClick={() => onDelete(chart)}>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => onDelete(chart)}
+                    >
                       Löschen
                     </DropdownMenuItem>
                   ) : null}
