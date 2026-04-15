@@ -26,7 +26,14 @@ import type {
 
 type AnalyticsTerminology = {
   einsatzSingular?: string;
+  einsatzPlural?: string;
   helperPlural?: string;
+};
+
+type AnalyticsChartTitleOptions = {
+  dimensionLabel: string;
+  metricAggregation: AnalyticsChartRecord['metricAggregation'];
+  einsatzPlural?: string;
 };
 
 function getStaticDimensions({
@@ -152,6 +159,30 @@ export function getDefaultAnalyticsFilters(): AnalyticsFilterConfig {
   };
 }
 
+function getNormalizedChartDimensionLabel(label: string) {
+  return label === 'Kategorien' ? 'Kategorie' : label;
+}
+
+function humanizeChartDimensionKey(key: string) {
+  return key
+    .replace(/^(cf|custom)[-_]/i, '')
+    .replace(/[-_]+/g, ' ')
+    .trim()
+    .replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());
+}
+
+export function getAnalyticsChartTitle({
+  dimensionLabel,
+  metricAggregation,
+  einsatzPlural = 'Einsätze',
+}: AnalyticsChartTitleOptions) {
+  const fieldTitle = getNormalizedChartDimensionLabel(dimensionLabel);
+
+  return metricAggregation === 'participant_sum'
+    ? `Teilnehmende Personen pro ${fieldTitle}`
+    : `${einsatzPlural} pro ${fieldTitle}`;
+}
+
 export function getAnalyticsDimensionByKey(
   rows: EinsatzListItem[],
   chart: Pick<
@@ -169,11 +200,17 @@ export function getAnalyticsDimensionByKey(
     return descriptor;
   }
 
+  const fallbackLabel =
+    chart.display.dimensionLabel ??
+    (chart.dimensionKind === 'custom'
+      ? humanizeChartDimensionKey(chart.dimensionKey) || chart.dimensionKey
+      : chart.dimensionKey);
+
   return {
     kind: chart.dimensionKind,
     key: chart.dimensionKey,
-    label: chart.display.dimensionLabel,
-    datatype: chart.display.dimensionDatatype,
+    label: fallbackLabel,
+    datatype: 'text',
   } satisfies AnalyticsDimensionDescriptor;
 }
 
@@ -503,6 +540,11 @@ export function buildAnalyticsChartAggregation(
       ? 'Teilnehmende Personen'
       : 'Gruppen';
   const dimensionLabel = descriptor.label;
+  const chartLabel = getAnalyticsChartTitle({
+    dimensionLabel,
+    metricAggregation: chart.metricAggregation,
+    einsatzPlural: terminology.einsatzPlural,
+  });
 
   if (descriptor.datatype === 'number') {
     const numericRows = filteredRows.flatMap((row) =>
@@ -518,7 +560,7 @@ export function buildAnalyticsChartAggregation(
         chart.chartType
       ),
       metricLabel,
-      chartLabel: chart.title,
+      chartLabel,
       dimensionLabel,
     };
   }
@@ -547,7 +589,7 @@ export function buildAnalyticsChartAggregation(
   return {
     rows: sortAggregationRows(Array.from(aggregated.values()), chart.chartType),
     metricLabel,
-    chartLabel: chart.title,
+    chartLabel,
     dimensionLabel,
   };
 }

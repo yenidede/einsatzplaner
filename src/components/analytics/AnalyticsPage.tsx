@@ -39,6 +39,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  getAnalyticsChartTitle,
+  getAnalyticsDimensionByKey,
+} from '@/features/analytics/analytics-utils';
 
 export function AnalyticsPage() {
   const queryClient = useQueryClient();
@@ -138,9 +142,22 @@ export function AnalyticsPage() {
   };
 
   const handleDelete = async (chart: AnalyticsChartRecord) => {
+    const descriptor = getAnalyticsDimensionByKey(
+      einsaetze,
+      chart,
+      {
+        einsatzSingular: einsatz_singular,
+        helperPlural: helper_plural,
+      }
+    );
+
     const result = await showDestructive(
       'Diagramm löschen',
-      `Möchten Sie das Diagramm "${chart.title}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
+      `Möchten Sie das Diagramm "${getAnalyticsChartTitle({
+        dimensionLabel: descriptor.label,
+        metricAggregation: chart.metricAggregation,
+        einsatzPlural: einsatz_plural,
+      })}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
     );
 
     if (result === 'success') {
@@ -200,6 +217,7 @@ export function AnalyticsPage() {
                 rows={einsaetze}
                 terminology={{
                   einsatzSingular: einsatz_singular,
+                  einsatzPlural: einsatz_plural,
                   helperPlural: helper_plural,
                 }}
                 onEdit={handleEdit}

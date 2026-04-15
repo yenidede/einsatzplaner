@@ -92,7 +92,6 @@ type AnalyticsChartDialogProps = {
 };
 
 const DEFAULT_FORM_VALUES: AnalyticsChartFormValues = {
-  title: '',
   description: '',
   chartType: 'bar',
   dimensionKind: 'static',
@@ -105,7 +104,6 @@ const DEFAULT_FORM_VALUES: AnalyticsChartFormValues = {
 
 const analyticsChartSchema = z
   .object({
-    title: z.string(),
     description: z.string(),
     chartType: z.enum(['bar', 'line', 'area', 'pie']),
     dimensionKind: z.enum(['static', 'custom']),
@@ -182,7 +180,6 @@ function getFormValuesFromChart(
   }
 
   return {
-    title: chart.title,
     description: chart.description ?? '',
     chartType: chart.chartType,
     dimensionKind: chart.dimensionKind,
@@ -206,20 +203,6 @@ function getFieldLabel(
 
 function getFieldOptionLabel(field: AnalyticsDimensionDescriptor) {
   return field.kind === 'custom' ? `Eigenes Feld: ${field.label}` : field.label;
-}
-
-function getGeneratedFieldTitle(label: string) {
-  if (label === 'Kategorien') {
-    return 'Kategorie';
-  }
-
-  return label;
-}
-
-function getStepDescription(step: 1 | 2) {
-  return step === 1
-    ? 'Wählen Sie zuerst einen Diagrammtyp mit Vorschau aus.'
-    : 'Konfigurieren Sie Feld, Auswertungsmodus und Zeitraum.';
 }
 
 function getChartTypeLabel(chartType: AnalyticsChartFormValues['chartType']) {
@@ -407,18 +390,6 @@ export function AnalyticsChartDialog({
     );
   }, [fields, formValues.dimensionKey, formValues.dimensionKind]);
 
-  const generatedTitle = useMemo(() => {
-    if (!selectedField) {
-      return '';
-    }
-
-    const fieldTitle = getGeneratedFieldTitle(selectedField.label);
-
-    return formValues.metricAggregation === 'participant_sum'
-      ? `Teilnehmende Personen pro ${fieldTitle}`
-      : `${einsatzPlural} pro ${fieldTitle}`;
-  }, [einsatzPlural, formValues.metricAggregation, selectedField]);
-
   const handleSave: SubmitHandler<AnalyticsChartFormData> = async (data) => {
     if (!selectedField) {
       setError('dimensionKey', {
@@ -444,9 +415,7 @@ export function AnalyticsChartDialog({
               preset: data.timeframePreset,
             },
           };
-
     await onSave(chart?.id ?? null, {
-      title: generatedTitle.trim(),
       description: data.description.trim() || null,
       chartType: data.chartType,
       dimensionKind: data.dimensionKind,
@@ -454,8 +423,8 @@ export function AnalyticsChartDialog({
       metricAggregation: data.metricAggregation,
       filters,
       display: {
+        visualChartType: data.chartType,
         dimensionLabel: selectedField.label,
-        dimensionDatatype: selectedField.datatype,
       },
     });
   };

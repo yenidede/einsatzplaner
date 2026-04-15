@@ -28,10 +28,8 @@ export type AnalyticsFilterConfig = {
 };
 
 export type AnalyticsDisplayConfig = {
-  dimensionLabel: string;
-  dimensionDatatype: AnalyticsDimensionDatatype;
   visualChartType?: AnalyticsChartType;
-  storedDimensionKind?: 'standard' | 'time' | 'user_property';
+  dimensionLabel?: string;
 };
 
 export type AnalyticsDimensionDescriptor = {
@@ -42,7 +40,6 @@ export type AnalyticsDimensionDescriptor = {
 };
 
 export type AnalyticsChartFormValues = {
-  title: string;
   description: string;
   chartType: AnalyticsChartType;
   dimensionKind: AnalyticsDimensionKind;
@@ -54,7 +51,6 @@ export type AnalyticsChartFormValues = {
 };
 
 export type AnalyticsChartInput = {
-  title: string;
   description: string | null;
   chartType: AnalyticsChartType;
   dimensionKind: AnalyticsDimensionKind;
@@ -69,14 +65,12 @@ export type AnalyticsChartRecord = {
   orgId: string;
   createdBy: string | null;
   createdByName: string | null;
-  title: string;
   description: string | null;
   chartType: AnalyticsChartType;
   dataset: string;
   dimensionKind: AnalyticsDimensionKind;
   dimensionKey: string;
   metricAggregation: AnalyticsMetricAggregation;
-  metricKey: string;
   filters: AnalyticsFilterConfig;
   display: AnalyticsDisplayConfig;
   createdAt: Date;

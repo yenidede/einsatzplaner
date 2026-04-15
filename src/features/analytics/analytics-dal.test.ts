@@ -79,18 +79,15 @@ describe('analytics dal', () => {
         id: 'chart-1',
         org_id: 'org-1',
         created_by: 'user-2',
-        title: 'Test',
         description: null,
         chart_type: 'bar',
         dataset: 'einsatz',
         dimension_kind: 'static',
         dimension_key: 'status',
         metric_aggregation: 'group_count',
-        metric_key: 'value',
         filters_json: { timeframe: { preset: 'all', from: null, to: null } },
         display_json: {
-          dimensionLabel: 'Status',
-          dimensionDatatype: 'select',
+          visualChartType: 'bar',
         },
         created_at: new Date('2026-04-10T10:00:00.000Z'),
         updated_at: new Date('2026-04-10T10:00:00.000Z'),
@@ -109,19 +106,15 @@ describe('analytics dal', () => {
         id: 'chart-1',
         org_id: 'org-1',
         created_by: 'user-2',
-        title: 'Test',
         description: null,
         chart_type: 'bar',
         dataset: 'einsatz',
-        dimension_kind: 'standard',
+        dimension_kind: 'user_property',
         dimension_key: 'custom_field',
         metric_aggregation: 'group_count',
-        metric_key: 'value',
         filters_json: { timeframe: { preset: 'all', from: null, to: null } },
         display_json: {
-          dimensionLabel: 'Eigenes Feld',
-          dimensionDatatype: 'text',
-          storedDimensionKind: 'user_property',
+          visualChartType: 'bar',
         },
         created_at: new Date('2026-04-10T10:00:00.000Z'),
         updated_at: new Date('2026-04-10T10:00:00.000Z'),
@@ -140,18 +133,15 @@ describe('analytics dal', () => {
         id: 'chart-1',
         org_id: 'org-1',
         created_by: 'user-2',
-        title: 'Test',
         description: null,
         chart_type: 'bar',
         dataset: 'einsatz',
         dimension_kind: 'user_property',
         dimension_key: 'custom_field',
         metric_aggregation: 'group_count',
-        metric_key: 'value',
         filters_json: { timeframe: { preset: 'all', from: null, to: null } },
         display_json: {
-          dimensionLabel: 'Eigenes Feld',
-          dimensionDatatype: 'text',
+          visualChartType: 'bar',
         },
         created_at: new Date('2026-04-10T10:00:00.000Z'),
         updated_at: new Date('2026-04-10T10:00:00.000Z'),
@@ -202,7 +192,6 @@ describe('analytics dal', () => {
   it('validiert benutzerdefinierte Zeiträume vor dem Speichern', async () => {
     await expect(
       createAnalyticsChart('org-1', {
-        title: 'Eigenes Feld',
         description: null,
         chartType: 'bar',
         dimensionKind: 'custom',
@@ -216,8 +205,7 @@ describe('analytics dal', () => {
           },
         },
         display: {
-          dimensionLabel: 'Eigenes Feld',
-          dimensionDatatype: 'text',
+          visualChartType: 'bar',
         },
       })
     ).rejects.toThrow('Bitte wählen Sie einen gültigen benutzerdefinierten Zeitraum.');
@@ -230,20 +218,15 @@ describe('analytics dal', () => {
       id: 'chart-1',
       org_id: 'org-1',
       created_by: 'user-1',
-      title: 'Tage',
       description: null,
       chart_type: 'bar',
       dataset: 'einsatz',
       dimension_kind: 'time',
       dimension_key: 'start_day',
       metric_aggregation: 'count',
-      metric_key: 'value',
       filters_json: { timeframe: { preset: 'all', from: null, to: null } },
       display_json: {
-        dimensionLabel: 'Auswertung',
-        dimensionDatatype: 'date',
         visualChartType: 'bar',
-        storedDimensionKind: 'time',
       },
       created_at: new Date('2026-04-10T10:00:00.000Z'),
       updated_at: new Date('2026-04-10T10:00:00.000Z'),
@@ -251,7 +234,6 @@ describe('analytics dal', () => {
     });
 
     await createAnalyticsChart('org-1', {
-      title: 'Tage',
       description: null,
       chartType: 'bar',
       dimensionKind: 'static',
@@ -265,8 +247,7 @@ describe('analytics dal', () => {
         },
       },
       display: {
-        dimensionLabel: 'Auswertung',
-        dimensionDatatype: 'date',
+        visualChartType: 'bar',
       },
     });
 
@@ -289,7 +270,6 @@ describe('analytics dal', () => {
 
     await expect(
       updateAnalyticsChart('chart-1', {
-        title: 'Eigenes Feld',
         description: null,
         chartType: 'bar',
         dimensionKind: 'custom',
@@ -303,8 +283,7 @@ describe('analytics dal', () => {
           },
         },
         display: {
-          dimensionLabel: 'Eigenes Feld',
-          dimensionDatatype: 'text',
+          visualChartType: 'bar',
         },
       })
     ).rejects.toThrow('Diagramm nicht gefunden.');
@@ -332,20 +311,15 @@ describe('analytics dal', () => {
       id: 'chart-1',
       org_id: 'org-1',
       created_by: 'user-1',
-      title: 'Eigenes Feld',
       description: null,
       chart_type: 'bar',
       dataset: 'einsatz',
       dimension_kind: 'user_property',
       dimension_key: 'custom_field',
       metric_aggregation: 'count',
-      metric_key: 'value',
       filters_json: { timeframe: { preset: 'all', from: null, to: null } },
       display_json: {
-        dimensionLabel: 'Eigenes Feld',
-        dimensionDatatype: 'text',
         visualChartType: 'bar',
-        storedDimensionKind: 'user_property',
       },
       created_at: new Date('2026-04-10T10:00:00.000Z'),
       updated_at: new Date('2026-04-10T10:00:00.000Z'),
@@ -353,7 +327,6 @@ describe('analytics dal', () => {
     });
 
     const result = await createAnalyticsChart('org-1', {
-      title: 'Eigenes Feld',
       description: null,
       chartType: 'bar',
       dimensionKind: 'custom',
@@ -367,8 +340,7 @@ describe('analytics dal', () => {
         },
       },
       display: {
-        dimensionLabel: 'Eigenes Feld',
-        dimensionDatatype: 'text',
+        visualChartType: 'bar',
       },
     });
 
@@ -377,7 +349,7 @@ describe('analytics dal', () => {
         data: expect.objectContaining({
           dimension_kind: 'user_property',
           display_json: expect.objectContaining({
-            storedDimensionKind: 'user_property',
+            visualChartType: 'bar',
           }),
         }),
       })

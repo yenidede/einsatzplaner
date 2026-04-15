@@ -66,6 +66,7 @@ type AnalyticsChartCardProps = {
   rows: EinsatzListItem[];
   terminology?: {
     einsatzSingular?: string;
+    einsatzPlural?: string;
     helperPlural?: string;
   };
   onEdit: (chart: AnalyticsChartRecord) => void;
@@ -147,10 +148,10 @@ export function AnalyticsChartCard({
   const titleWithTimeframe = useMemo(() => {
     const timeframeLabel = getTimeframeLabel(chart.filters.timeframe);
     if (!timeframeLabel) {
-      return chart.title;
+      return aggregation.chartLabel;
     }
-    return `${chart.title} (${timeframeLabel})`;
-  }, [chart.filters.timeframe, chart.title]);
+    return `${aggregation.chartLabel} (${timeframeLabel})`;
+  }, [aggregation.chartLabel, chart.filters.timeframe]);
 
   return (
     <Card className="h-full">

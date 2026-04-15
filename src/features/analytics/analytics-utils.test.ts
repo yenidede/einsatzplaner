@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAnalyticsChartAggregation,
+  getAnalyticsChartTitle,
+  getAnalyticsDimensionByKey,
   getDefaultAnalyticsFilters,
   getTimeframeRange,
   getTimeframeLabel,
@@ -17,18 +19,16 @@ function createChart(
     orgId: 'org-1',
     createdBy: 'user-1',
     createdByName: 'Max Mustermann',
-    title: 'Statusauswertung',
     description: null,
     chartType: 'bar',
     dataset: 'einsatz',
     dimensionKind: 'static',
     dimensionKey: 'status',
     metricAggregation: 'group_count',
-    metricKey: 'value',
     filters: getDefaultAnalyticsFilters(),
     display: {
+      visualChartType: 'bar',
       dimensionLabel: 'Status',
-      dimensionDatatype: 'select',
     },
     createdAt: new Date('2026-04-10T10:00:00.000Z'),
     updatedAt: new Date('2026-04-10T10:00:00.000Z'),
@@ -75,6 +75,16 @@ function createRow(overrides: Partial<EinsatzListItem> = {}): EinsatzListItem {
 }
 
 describe('analytics utils', () => {
+  it('bildet Diagrammtitel aus Feld und Metrik', () => {
+    expect(
+      getAnalyticsChartTitle({
+        dimensionLabel: 'Kategorien',
+        metricAggregation: 'group_count',
+        einsatzPlural: 'Einsätze',
+      })
+    ).toBe('Einsätze pro Kategorie');
+  });
+
   it('aggregiert Gruppen pro Status', () => {
     const chart = createChart();
     const result = buildAnalyticsChartAggregation(chart, [
@@ -92,10 +102,6 @@ describe('analytics utils', () => {
   it('summiert Teilnehmende pro Kategorie mehrfach bei Mehrfachkategorien', () => {
     const chart = createChart({
       dimensionKey: 'categories',
-      display: {
-        dimensionLabel: 'Kategorien',
-        dimensionDatatype: 'multi-select',
-      },
       metricAggregation: 'participant_sum',
     });
     const result = buildAnalyticsChartAggregation(chart, [
@@ -115,10 +121,6 @@ describe('analytics utils', () => {
   it('bucketiert numerische Felder auf maximal zehn Bereiche', () => {
     const chart = createChart({
       dimensionKey: 'helpers_needed',
-      display: {
-        dimensionLabel: 'Anzahl benötigte Helfer',
-        dimensionDatatype: 'number',
-      },
     });
 
     const rows = Array.from({ length: 12 }).map((_, index) =>
@@ -150,10 +152,6 @@ describe('analytics utils', () => {
   it('aggregiert Datumsfelder nach Wochentag', () => {
     const chart = createChart({
       dimensionKey: 'start_day',
-      display: {
-        dimensionLabel: 'Einsatzdatum (Wochentag)',
-        dimensionDatatype: 'date',
-      },
     });
 
     const result = buildAnalyticsChartAggregation(chart, [
@@ -178,6 +176,44 @@ describe('analytics utils', () => {
       expect.objectContaining({ label: 'Montag', value: 2 }),
       expect.objectContaining({ label: 'Mittwoch', value: 1 }),
     ]);
+  });
+
+  it('humanisiert unbekannte Custom-Dimensionen', () => {
+    const chart: Pick<
+      AnalyticsChartRecord,
+      'dimensionKey' | 'dimensionKind' | 'display'
+    > = {
+      dimensionKey: 'cf-raum',
+      dimensionKind: 'custom',
+      display: {
+        visualChartType: 'bar',
+      },
+    };
+
+    const descriptor = getAnalyticsDimensionByKey(
+      [],
+      chart,
+      {}
+    );
+
+    expect(descriptor.label).toBe('Raum');
+  });
+
+  it('bevorzugt gespeicherte Dimension-Labels für den Titel', () => {
+    const descriptor = getAnalyticsDimensionByKey(
+      [],
+      {
+        dimensionKey: 'cf-raum',
+        dimensionKind: 'custom',
+        display: {
+          visualChartType: 'bar',
+          dimensionLabel: 'Raum',
+        },
+      },
+      {}
+    );
+
+    expect(descriptor.label).toBe('Raum');
   });
 
   it('filtert nach benutzerdefiniertem Zeitraum über Start oder Ende', () => {

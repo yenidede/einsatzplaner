@@ -16,7 +16,6 @@ import {
 } from './permissions';
 
 const ANALYTICS_DATASET = 'einsatz';
-const ANALYTICS_METRIC_KEY = 'value';
 
 const DEFAULT_FILTERS: AnalyticsFilterConfig = {
   timeframe: {
@@ -24,11 +23,6 @@ const DEFAULT_FILTERS: AnalyticsFilterConfig = {
     from: null,
     to: null,
   },
-};
-
-const DEFAULT_DISPLAY: AnalyticsDisplayConfig = {
-  dimensionLabel: 'Auswertung',
-  dimensionDatatype: 'text',
 };
 
 function toStoredChartType(chartType: AnalyticsChartInput['chartType']) {
@@ -47,12 +41,6 @@ function toStoredDimensionKind(
   return input.dimensionKind === 'custom'
     ? ('user_property' as const)
     : ('standard' as const);
-}
-
-function toChartDimensionKind(
-  storedDimensionKind: AnalyticsDisplayConfig['storedDimensionKind'] | string
-) {
-  return storedDimensionKind === 'user_property' ? 'custom' : 'static';
 }
 
 function toStoredMetricAggregation(
@@ -94,23 +82,7 @@ function parseFilters(filtersJson: unknown): AnalyticsFilterConfig {
 function parseDisplay(displayJson: unknown): AnalyticsDisplayConfig {
   if (typeof displayJson === 'object' && displayJson !== null) {
     const rawDisplay = displayJson as Record<string, unknown>;
-    const dimensionLabel =
-      typeof rawDisplay.dimensionLabel === 'string'
-        ? rawDisplay.dimensionLabel
-        : DEFAULT_DISPLAY.dimensionLabel;
-    const dimensionDatatype =
-      rawDisplay.dimensionDatatype === 'text' ||
-      rawDisplay.dimensionDatatype === 'number' ||
-      rawDisplay.dimensionDatatype === 'date' ||
-      rawDisplay.dimensionDatatype === 'boolean' ||
-      rawDisplay.dimensionDatatype === 'select' ||
-      rawDisplay.dimensionDatatype === 'multi-select'
-        ? rawDisplay.dimensionDatatype
-        : DEFAULT_DISPLAY.dimensionDatatype;
-
     return {
-      dimensionLabel,
-      dimensionDatatype,
       visualChartType:
         rawDisplay.visualChartType === 'bar' ||
         rawDisplay.visualChartType === 'line' ||
@@ -118,16 +90,14 @@ function parseDisplay(displayJson: unknown): AnalyticsDisplayConfig {
         rawDisplay.visualChartType === 'pie'
           ? rawDisplay.visualChartType
           : undefined,
-      storedDimensionKind:
-        rawDisplay.storedDimensionKind === 'standard' ||
-        rawDisplay.storedDimensionKind === 'time' ||
-        rawDisplay.storedDimensionKind === 'user_property'
-          ? rawDisplay.storedDimensionKind
+      dimensionLabel:
+        typeof rawDisplay.dimensionLabel === 'string'
+          ? rawDisplay.dimensionLabel
           : undefined,
     };
   }
 
-  return DEFAULT_DISPLAY;
+  return {};
 }
 
 function getUserDisplayName(user: {
@@ -159,14 +129,12 @@ function mapChartRecord(
     id: string;
     org_id: string;
     created_by: string | null;
-    title: string;
     description: string | null;
     chart_type: string;
     dataset: string;
     dimension_kind: string;
     dimension_key: string;
     metric_aggregation: string;
-    metric_key: string;
     filters_json: unknown;
     display_json: unknown;
     created_at: Date;
@@ -186,7 +154,6 @@ function mapChartRecord(
     orgId: chart.org_id,
     createdBy: chart.created_by,
     createdByName: chart.user ? getUserDisplayName(chart.user) : null,
-    title: chart.title,
     description: chart.description,
     chartType:
       chart.chart_type === 'bar' ||
@@ -195,15 +162,13 @@ function mapChartRecord(
         ? (display.visualChartType ?? chart.chart_type)
         : 'bar',
     dataset: chart.dataset,
-    dimensionKind: toChartDimensionKind(
-      display.storedDimensionKind ?? chart.dimension_kind
-    ),
+    dimensionKind:
+      chart.dimension_kind === 'user_property' ? 'custom' : 'static',
     dimensionKey: chart.dimension_key,
     metricAggregation:
       chart.metric_aggregation === 'sum'
         ? 'participant_sum'
         : 'group_count',
-    metricKey: chart.metric_key,
     filters: parseFilters(chart.filters_json),
     display,
     createdAt: chart.created_at,
@@ -214,12 +179,7 @@ function mapChartRecord(
 }
 
 function validateChartInput(input: AnalyticsChartInput) {
-  const normalizedTitle = input.title.trim();
   const normalizedDimensionKey = input.dimensionKey.trim();
-
-  if (normalizedTitle.length === 0) {
-    throw new Error('Bitte geben Sie einen Titel ein.');
-  }
 
   if (normalizedDimensionKey.length === 0) {
     throw new Error('Bitte wählen Sie ein Feld für die Auswertung aus.');
@@ -309,22 +269,31 @@ export async function createAnalyticsChart(
     data: {
       org_id: orgId,
       created_by: session.user.id,
-      title: input.title.trim(),
       description: input.description?.trim() || null,
       chart_type: toStoredChartType(input.chartType),
       dataset: ANALYTICS_DATASET,
       dimension_kind: toStoredDimensionKind(input),
       dimension_key: input.dimensionKey.trim(),
       metric_aggregation: toStoredMetricAggregation(input.metricAggregation),
-      metric_key: ANALYTICS_METRIC_KEY,
       filters_json: input.filters,
       display_json: {
-        ...input.display,
         visualChartType: input.chartType,
-        storedDimensionKind: toStoredDimensionKind(input),
       },
     },
-    include: {
+    select: {
+      id: true,
+      org_id: true,
+      created_by: true,
+      description: true,
+      chart_type: true,
+      dataset: true,
+      dimension_kind: true,
+      dimension_key: true,
+      metric_aggregation: true,
+      filters_json: true,
+      display_json: true,
+      created_at: true,
+      updated_at: true,
       user: {
         select: {
           firstname: true,
@@ -375,7 +344,6 @@ export async function updateAnalyticsChart(
   const chart = await prisma.analytics_chart.update({
     where: { id: chartId },
     data: {
-      title: input.title.trim(),
       description: input.description?.trim() || null,
       chart_type: toStoredChartType(input.chartType),
       dimension_kind: toStoredDimensionKind(input),
@@ -383,12 +351,23 @@ export async function updateAnalyticsChart(
       metric_aggregation: toStoredMetricAggregation(input.metricAggregation),
       filters_json: input.filters,
       display_json: {
-        ...input.display,
         visualChartType: input.chartType,
-        storedDimensionKind: toStoredDimensionKind(input),
       },
     },
-    include: {
+    select: {
+      id: true,
+      org_id: true,
+      created_by: true,
+      description: true,
+      chart_type: true,
+      dataset: true,
+      dimension_kind: true,
+      dimension_key: true,
+      metric_aggregation: true,
+      filters_json: true,
+      display_json: true,
+      created_at: true,
+      updated_at: true,
       user: {
         select: {
           firstname: true,
