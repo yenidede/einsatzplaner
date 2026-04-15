@@ -57,6 +57,7 @@ describe('AnalyticsChartDialog', () => {
 
     expect(screen.getByText('Beschreibung')).toBeTruthy();
     expect(screen.getByText('Auswertungsmodus')).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: 'Zeitraum' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Zurück' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Diagramm erstellen' })).toBeTruthy();
   });

@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { format, subDays } from 'date-fns';
 import { z } from 'zod';
 import {
   Area,
@@ -48,6 +49,13 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { DateInput } from '@/components/ui/date-input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   FormHeader,
   MultiStepFormContent,
@@ -492,6 +500,13 @@ export function AnalyticsChartDialog({
     'thisYear',
     'custom',
   ];
+  const customTimeframePlaceholder = useMemo(() => {
+    const today = new Date();
+    return `${format(subDays(today, 7), 'dd.MM.yy')} - ${format(
+      today,
+      'dd.MM.yy'
+    )}`;
+  }, []);
 
   const dimensionOptions = fields.map((field) => ({
     value: `${field.kind}:${field.key}`,
@@ -639,84 +654,86 @@ export function AnalyticsChartDialog({
         )}
       </Field>
 
-      <Field data-invalid={!!errors.timeframePreset}>
-        <FieldLabel>Zeitraum</FieldLabel>
-        <FieldContent>
-          <RadioGroup
-            value={formValues.timeframePreset}
-            onValueChange={(value) => {
-              const selectedPreset = timeframeOptions.find(
-                (preset) => preset === value
-              );
-
-              if (selectedPreset) {
-                setValue('timeframePreset', selectedPreset);
-              }
-            }}
-            aria-label="Zeitraum wählen"
-            className="grid gap-2"
-          >
-            {timeframeOptions.map((preset) => {
-              const id = `analytics-timeframe-${preset}`;
-
-              return (
-                <Field
-                  key={preset}
-                  orientation="horizontal"
-                  className="items-center gap-3"
-                  data-invalid={!!errors.timeframePreset}
-                >
-                  <RadioGroupItem
-                    id={id}
-                    value={preset}
-                    aria-invalid={!!errors.timeframePreset}
-                  />
-                  <FieldLabel htmlFor={id} className="font-normal">
-                    {timeframeLabel(preset)}
-                  </FieldLabel>
-                </Field>
-              );
-            })}
-          </RadioGroup>
-        </FieldContent>
-        {errors.timeframePreset && (
-          <FieldError errors={[errors.timeframePreset]} />
-        )}
-      </Field>
-
-      {formValues.timeframePreset === 'custom' ? (
-        <Field data-invalid={!!errors.timeframeFrom || !!errors.timeframeTo}>
-          <FieldLabel htmlFor="analytics-timeframe">Zeitraum</FieldLabel>
+      <FieldGroup className="gap-4 md:flex-row md:items-start">
+        <Field
+          className="md:max-w-xs"
+          data-invalid={!!errors.timeframePreset}
+        >
+          <FieldLabel htmlFor="analytics-timeframe-preset">Zeitraum</FieldLabel>
           <FieldContent>
-            <DateInput
-              id="analytics-timeframe"
-              mode="range"
-              value={
-                formValues.timeframeFrom || formValues.timeframeTo
-                  ? {
-                      from: formValues.timeframeFrom,
-                      to: formValues.timeframeTo,
-                    }
-                  : null
-              }
-              onValueChange={(nextValue) => {
-                setValue('timeframeFrom', nextValue?.from ?? '');
-                setValue('timeframeTo', nextValue?.to ?? '');
-                if (nextValue) {
-                  clearErrors(['timeframeFrom', 'timeframeTo']);
+            <Select
+              value={formValues.timeframePreset}
+              onValueChange={(value) => {
+                const selectedPreset = timeframeOptions.find(
+                  (preset) => preset === value
+                );
+
+                if (selectedPreset) {
+                  setValue('timeframePreset', selectedPreset);
+                  if (selectedPreset !== 'custom') {
+                    clearErrors(['timeframeFrom', 'timeframeTo']);
+                  }
                 }
+              }}
+            >
+              <SelectTrigger
+                id="analytics-timeframe-preset"
+                aria-invalid={!!errors.timeframePreset}
+              >
+                <SelectValue placeholder="Zeitraum wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {timeframeOptions.map((preset) => (
+                  <SelectItem key={preset} value={preset}>
+                    {timeframeLabel(preset)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldContent>
+          {errors.timeframePreset && (
+            <FieldError errors={[errors.timeframePreset]} />
+          )}
+        </Field>
+
+        {formValues.timeframePreset === 'custom' ? (
+          <Field
+            className="flex-1"
+            data-invalid={!!errors.timeframeFrom || !!errors.timeframeTo}
+          >
+            <FieldLabel htmlFor="analytics-timeframe">Von Bis</FieldLabel>
+            <FieldContent>
+              <DateInput
+                id="analytics-timeframe"
+                mode="range"
+                value={
+                  formValues.timeframeFrom || formValues.timeframeTo
+                    ? {
+                        from: formValues.timeframeFrom,
+                        to: formValues.timeframeTo,
+                      }
+                    : null
+                }
+                onValueChange={(nextValue) => {
+                  setValue('timeframeFrom', nextValue?.from ?? '');
+                  setValue('timeframeTo', nextValue?.to ?? '');
+                  if (nextValue) {
+                    clearErrors(['timeframeFrom', 'timeframeTo']);
+                  }
               }}
               aria-invalid={!!errors.timeframeFrom || !!errors.timeframeTo}
               inputClassName="w-full"
+              placeholder={customTimeframePlaceholder}
             />
           </FieldContent>
-          {(errors.timeframeFrom || errors.timeframeTo) && (
-            <FieldError
-              errors={[errors.timeframeFrom, errors.timeframeTo]}
-            />
-          )}
-        </Field>
-      ) : null}
+            {(errors.timeframeFrom || errors.timeframeTo) && (
+              <FieldError
+                errors={[errors.timeframeFrom, errors.timeframeTo]}
+              />
+            )}
+          </Field>
+        ) : null}
+      </FieldGroup>
     </FieldGroup>
   );
 
