@@ -59,7 +59,9 @@ describe('AnalyticsChartDialog', () => {
     expect(screen.getByText('Auswertungsmodus')).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Zeitraum' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Zurück' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Diagramm erstellen' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Diagramm erstellen' })
+    ).toBeTruthy();
   });
 
   it('übermittelt beim Bearbeiten nur die abgeleiteten Felder', async () => {
@@ -117,5 +119,52 @@ describe('AnalyticsChartDialog', () => {
         })
       );
     });
+  });
+
+  it('zeigt bei benutzerdefiniertem Zeitraum im Dropdown immer den festen Text', () => {
+    render(
+      <AnalyticsChartDialog
+        chart={{
+          id: 'chart-2',
+          orgId: 'org-1',
+          createdBy: 'user-1',
+          createdByName: 'Max Mustermann',
+          description: null,
+          chartType: 'bar',
+          dataset: 'einsatz',
+          dimensionKind: 'static',
+          dimensionKey: 'status',
+          metricAggregation: 'group_count',
+          filters: {
+            timeframe: {
+              preset: 'custom',
+              from: '2026-08-04',
+              to: '2026-12-10',
+            },
+          },
+          display: {
+            visualChartType: 'bar',
+            dimensionLabel: 'Status',
+          },
+          createdAt: new Date('2026-04-10T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-10T10:00:00.000Z'),
+          canEdit: true,
+          canDelete: true,
+        }}
+        fields={fields}
+        einsatzSingular="Einsatz"
+        einsatzPlural="Einsätze"
+        isOpen
+        isPending={false}
+        onOpenChange={vi.fn()}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const timeframeSelect = screen.getByRole('combobox', { name: 'Zeitraum' });
+    expect(timeframeSelect.textContent).toContain('Benutzerdefiniert');
+    expect(timeframeSelect.textContent).not.toContain('2026');
   });
 });

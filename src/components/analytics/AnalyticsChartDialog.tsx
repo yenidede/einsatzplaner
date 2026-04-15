@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -75,7 +75,6 @@ import {
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
 import { useMultiStepForm } from '@/components/form/useMultiStepForm';
-import { getTimeframeLabel } from '@/features/analytics/analytics-utils';
 
 const CHART_TYPE_OPTIONS = ['bar', 'line', 'area', 'pie'] as const;
 const CUSTOM_TIMEFRAME_PRESET: AnalyticsTimeframePreset = 'custom';
@@ -361,6 +360,8 @@ export function AnalyticsChartDialog({
   onOpenChange,
   onSave,
 }: AnalyticsChartDialogProps) {
+  const [dialogContentContainer, setDialogContentContainer] =
+    useState<HTMLDivElement | null>(null);
   const {
     register,
     handleSubmit,
@@ -431,16 +432,7 @@ export function AnalyticsChartDialog({
 
   const timeframeLabel = (preset: AnalyticsTimeframePreset): string => {
     if (preset === 'custom') {
-      const label = getTimeframeLabel(
-        {
-          preset,
-          from: formValues.timeframeFrom || null,
-          to: formValues.timeframeTo || null,
-        },
-        new Date()
-      );
-
-      return label === 'benutzerdefiniert' ? 'Benutzerdefiniert' : label;
+      return 'Benutzerdefiniert';
     }
 
     switch (preset) {
@@ -546,7 +538,7 @@ export function AnalyticsChartDialog({
               aria-invalid={errors.dimensionKey ? 'true' : 'false'}
               showClear
             />
-            <ComboboxContent>
+            <ComboboxContent container={dialogContentContainer}>
               <ComboboxEmpty>Kein Feld gefunden.</ComboboxEmpty>
               <ComboboxList>
                 {(item) => (
@@ -623,10 +615,7 @@ export function AnalyticsChartDialog({
       </Field>
 
       <FieldGroup className="gap-4 md:flex-row md:items-start">
-        <Field
-          className="md:max-w-xs"
-          data-invalid={!!errors.timeframePreset}
-        >
+        <Field className="md:max-w-xs" data-invalid={!!errors.timeframePreset}>
           <FieldLabel htmlFor="analytics-timeframe-preset">Zeitraum</FieldLabel>
           <FieldContent>
             <Select
@@ -688,15 +677,13 @@ export function AnalyticsChartDialog({
                   if (nextValue) {
                     clearErrors(['timeframeFrom', 'timeframeTo']);
                   }
-              }}
-              aria-invalid={!!errors.timeframeFrom || !!errors.timeframeTo}
-              inputClassName="w-full"
-            />
-          </FieldContent>
-            {(errors.timeframeFrom || errors.timeframeTo) && (
-              <FieldError
-                errors={[errors.timeframeFrom, errors.timeframeTo]}
+                }}
+                aria-invalid={!!errors.timeframeFrom || !!errors.timeframeTo}
+                inputClassName="w-full"
               />
+            </FieldContent>
+            {(errors.timeframeFrom || errors.timeframeTo) && (
+              <FieldError errors={[errors.timeframeFrom, errors.timeframeTo]} />
             )}
           </Field>
         ) : null}
@@ -736,7 +723,10 @@ export function AnalyticsChartDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-4xl">
+      <DialogContent
+        ref={setDialogContentContainer}
+        className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-4xl"
+      >
         <MultiStepFormProvider key={providerKey} stepsFields={steps}>
           <form
             onSubmit={handleSubmit(handleSave)}
