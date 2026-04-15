@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
@@ -414,28 +414,26 @@ export function AllActivitiesModal({
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Von</Label>
-                  <Input
-                    type="date"
-                    className="h-9"
+                  <DateInput
+                    inputClassName="h-9"
                     value={filters.startDate}
-                    onChange={(e) =>
+                    onValueChange={(value) =>
                       setFilters((prev) => ({
                         ...prev,
-                        startDate: e.target.value,
+                        startDate: value,
                       }))
                     }
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Bis</Label>
-                  <Input
-                    type="date"
-                    className="h-9"
+                  <DateInput
+                    inputClassName="h-9"
                     value={filters.endDate}
-                    onChange={(e) =>
+                    onValueChange={(value) =>
                       setFilters((prev) => ({
                         ...prev,
-                        endDate: e.target.value,
+                        endDate: value,
                       }))
                     }
                   />
