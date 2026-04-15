@@ -1,20 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { RiCalendarLine } from '@remixicon/react';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
-
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { format, parseISO } from 'date-fns';
 import type { organization as Organization } from '@/generated/prisma';
 import FormGroup from '../form/formGroup';
 import FormField from '../form/formInputField';
@@ -24,6 +12,7 @@ import { TimeTextInput } from '@/components/form/TimeTextInput';
 import type { EinsatzFormData } from '@/components/event-calendar/event-dialog';
 import { calcTotal, calcPricePerPersonFromTotal } from '../form/utils';
 import { Textarea } from '../ui/textarea';
+import { DateInput } from '@/components/ui/date-input';
 
 interface DefaultFormFieldsProps {
   formData: EinsatzFormData;
@@ -55,9 +44,6 @@ export function DefaultFormFields({
   activeOrg,
   onTimeFieldErrorChange,
 }: DefaultFormFieldsProps) {
-  const [startDateOpen, setStartDateOpen] = useState(false);
-  const [endDateOpen, setEndDateOpen] = useState(false);
-
   const handleChange = <TField extends keyof EinsatzFormData>(
     field: TField,
     value: EinsatzFormData[TField]
@@ -95,49 +81,21 @@ export function DefaultFormFields({
             name="Start Datum"
             errors={errors.fieldErrors['startDate'] || []}
           >
-            <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  id="start_datum"
-                  variant={'outline'}
-                  size="lg"
-                  className={cn(
-                    'group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]',
-                    !formData.startDate && 'text-muted-foreground'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'truncate',
-                      !formData.startDate && 'text-muted-foreground'
-                    )}
-                  >
-                    {formData.startDate
-                      ? format(formData.startDate, 'PPP', { locale: de })
-                      : 'Datum auswählen'}
-                  </span>
-                  <RiCalendarLine
-                    size={16}
-                    className="text-muted-foreground/80 shrink-0"
-                    aria-hidden="true"
-                  />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.startDate}
-                  defaultMonth={formData.startDate}
-                  locale={de}
-                  onSelect={(date) => {
-                    if (date) {
-                      handleChange('startDate', date);
-                      setStartDateOpen(false);
-                    }
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
+            <DateInput
+              id="start_datum"
+              allowEmpty={false}
+              inputClassName="h-10"
+              value={
+                formData.startDate
+                  ? format(formData.startDate, 'yyyy-MM-dd')
+                  : ''
+              }
+              onValueChange={(value) => {
+                if (value) {
+                  handleChange('startDate', parseISO(value));
+                }
+              }}
+            />
           </FormInputFieldCustom>
           {!formData.all_day && (
             <div className="*:not-first:mt-1.5 sm:min-w-28">
@@ -165,49 +123,19 @@ export function DefaultFormFields({
             name="Ende Datum"
             errors={errors.fieldErrors['endDate'] || []}
           >
-            <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  id="ende_datum"
-                  variant={'outline'}
-                  size="lg"
-                  className={cn(
-                    'group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]',
-                    !formData.endDate && 'text-muted-foreground'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'truncate',
-                      !formData.endDate && 'text-muted-foreground'
-                    )}
-                  >
-                    {formData.endDate
-                      ? format(formData.endDate, 'PPP', { locale: de })
-                      : 'Datum auswählen'}
-                  </span>
-                  <RiCalendarLine
-                    size={16}
-                    className="text-muted-foreground/80 shrink-0"
-                    aria-hidden="true"
-                  />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.endDate}
-                  defaultMonth={formData.endDate}
-                  locale={de}
-                  onSelect={(date) => {
-                    if (date) {
-                      handleChange('endDate', date);
-                      setEndDateOpen(false);
-                    }
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
+            <DateInput
+              id="ende_datum"
+              allowEmpty={false}
+              inputClassName="h-10"
+              value={
+                formData.endDate ? format(formData.endDate, 'yyyy-MM-dd') : ''
+              }
+              onValueChange={(value) => {
+                if (value) {
+                  handleChange('endDate', parseISO(value));
+                }
+              }}
+            />
           </FormInputFieldCustom>
           {!formData.all_day && (
             <div className="min-w-28">

@@ -86,6 +86,7 @@ export const ROLE_PERMISSION_MAP: Record<string, string[]> = {
 
     // Dashboard
     permission('dashboard', 'read'),
+    permission('analytics', 'read'),
   ],
 
   Einsatzverwaltung: [
@@ -101,6 +102,7 @@ export const ROLE_PERMISSION_MAP: Record<string, string[]> = {
 
     // Dashboard
     permission('dashboard', 'read'),
+    permission('analytics', 'read'),
   ],
 
   Helfer: [

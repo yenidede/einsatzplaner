@@ -2,6 +2,7 @@
 
 - Reuse existing components, hooks, utils, patterns before new ones.
 - Place reusable UI in `@/components/...`.
+- Use React Hook Form with Zod for forms.
 - Do not edit `prisma/schema.prisma`.
   - If data model change needed, explain required change, why needed, how current model blocks impl.
   - Suggest SQL OK.

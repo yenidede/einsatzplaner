@@ -27,6 +27,7 @@ import {
 import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { shouldHideNavbar } from './navbar-visibility';
+import { hasAnalyticsAccessInOrgRoles } from '@/features/analytics/permissions';
 
 export default function Component() {
   const { data: session } = useSession();
@@ -70,7 +71,11 @@ export default function Component() {
         !hasRoleInActiveOrg('Superadmin') &&
         !hasRoleInActiveOrg('Einsatzverwaltung'),
     },
-    { href: '/auswertungen', label: 'Auswertungen', hidden: true },
+    {
+      href: '/auswertungen',
+      label: 'Auswertungen',
+      hidden: !hasAnalyticsAccessInOrgRoles(userOrganization),
+    },
   ];
 
   if (hideNavbar) {

@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { DateInput, type DateInputRangeValue } from '@/components/ui/date-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
@@ -321,6 +321,14 @@ export function AllActivitiesModal({
     setFilters(defaultFilters);
   };
 
+  const activityDateRange: DateInputRangeValue =
+    filters.startDate || filters.endDate
+      ? {
+          from: filters.startDate,
+          to: filters.endDate,
+        }
+      : null;
+
   const handleMarkAllAsRead = () => {
     onMarkAllAsRead?.(filteredActivities.map((a) => a.id));
   };
@@ -412,30 +420,19 @@ export function AllActivitiesModal({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Von</Label>
-                  <Input
-                    type="date"
-                    className="h-9"
-                    value={filters.startDate}
-                    onChange={(e) =>
+                <div className="space-y-1.5 lg:col-span-2">
+                  <Label className="text-xs">Zeitraum</Label>
+                  <DateInput
+                    id="activity-date-range"
+                    aria-label="Zeitraum"
+                    mode="range"
+                    inputClassName="h-9"
+                    value={activityDateRange}
+                    onValueChange={(value) =>
                       setFilters((prev) => ({
                         ...prev,
-                        startDate: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Bis</Label>
-                  <Input
-                    type="date"
-                    className="h-9"
-                    value={filters.endDate}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        endDate: e.target.value,
+                        startDate: value?.from ?? '',
+                        endDate: value?.to ?? '',
                       }))
                     }
                   />
