@@ -41,6 +41,9 @@ describe('date-input utils', () => {
 
   it('parst Bereiche und einzelne Werte im Range-Modus', () => {
     const parsedRange = parseDateRangeInputText('1.4.26 - 5.4.26');
+    const parsedIsoRange = parseDateRangeInputText(
+      '2026-04-01 - 2026-04-05'
+    );
     const parsedSingle = parseDateRangeInputText('01042026');
     const parsedShortRange = parseDateRangeInputText('1202-2002');
     const currentYear = new Date().getFullYear();
@@ -48,6 +51,12 @@ describe('date-input utils', () => {
     expect(parsedRange).toBeDefined();
     expect(parsedRange?.from.getDate()).toBe(1);
     expect(parsedRange?.to.getDate()).toBe(5);
+
+    expect(parsedIsoRange).toBeDefined();
+    expect(parsedIsoRange?.from.getFullYear()).toBe(2026);
+    expect(parsedIsoRange?.from.getMonth()).toBe(3);
+    expect(parsedIsoRange?.from.getDate()).toBe(1);
+    expect(parsedIsoRange?.to.getDate()).toBe(5);
 
     expect(parsedSingle).toBeDefined();
     expect(parsedSingle?.from.getDate()).toBe(1);

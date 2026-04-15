@@ -22,7 +22,13 @@ export default async function AuswertungenPage() {
   const roles = await getUserRolesInOrganization(session.user.id, activeOrgId);
 
   if (!hasAnalyticsAccessInOrgRoles(roles)) {
-    if (session.user.roleIds.includes(ROLE_NAME_MAP.Helfer)) {
+    const isHelferInActiveOrg = roles.some(
+      (entry) =>
+        entry.role.id === ROLE_NAME_MAP.Helfer ||
+        entry.role.name.toLowerCase() === 'helfer'
+    );
+
+    if (isHelferInActiveOrg) {
       redirect('/helferansicht');
     }
 

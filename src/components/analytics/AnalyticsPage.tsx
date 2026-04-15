@@ -217,6 +217,14 @@ export function AnalyticsPage() {
               <CardContent>
                 <div
                   onClick={handleCreate}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      handleCreate();
+                    }
+                  }}
                   className="group bg-muted/30 hover:bg-muted/50 flex h-72 w-full cursor-pointer flex-col overflow-hidden rounded-xl border border-dashed text-left transition-colors"
                 >
                   <div className="flex flex-1 items-end gap-4 px-6 pt-8">

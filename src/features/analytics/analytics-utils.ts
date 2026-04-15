@@ -4,7 +4,6 @@ import {
   endOfYear,
   format,
   getDay,
-  isWithinInterval,
   isSameDay,
   parseISO,
   startOfDay,
@@ -178,16 +177,6 @@ export function getAnalyticsDimensionByKey(
   } satisfies AnalyticsDimensionDescriptor;
 }
 
-function isDateWithinTimeframe(
-  date: Date,
-  timeframe: { from: Date; to: Date }
-) {
-  return isWithinInterval(date, {
-    start: timeframe.from,
-    end: timeframe.to,
-  });
-}
-
 export function getTimeframeRange(
   filters: AnalyticsFilterConfig,
   now: Date = new Date()
@@ -212,10 +201,23 @@ export function getTimeframeRange(
       if (!filters.timeframe.from || !filters.timeframe.to) {
         return null;
       }
-      return {
-        from: startOfDay(parseISO(filters.timeframe.from)),
-        to: endOfDay(parseISO(filters.timeframe.to)),
-      };
+
+      {
+        const fromDate = parseISO(filters.timeframe.from);
+        const toDate = parseISO(filters.timeframe.to);
+
+        if (
+          Number.isNaN(fromDate.getTime()) ||
+          Number.isNaN(toDate.getTime())
+        ) {
+          return null;
+        }
+
+        return {
+          from: startOfDay(fromDate),
+          to: endOfDay(toDate),
+        };
+      }
     case 'all':
     default:
       return null;
@@ -234,6 +236,7 @@ export function getTimeframeLabel(
     case 'thisYear':
       return 'dieses Jahr';
     case 'custom':
+    {
       if (!timeframe.from || !timeframe.to) {
         return 'benutzerdefiniert';
       }
@@ -258,7 +261,7 @@ export function getTimeframeLabel(
           return 'heute';
         }
 
-        return days === 1 ? 'letzte 1 Tag' : `letzte ${days} Tage`;
+        return days === 1 ? 'letzter Tag' : `letzte ${days} Tage`;
       }
 
       return `${format(fromDate, 'd. MMMM', { locale: de })} bis ${format(
@@ -266,6 +269,7 @@ export function getTimeframeLabel(
         'd. MMMM yyyy',
         { locale: de }
       )}`;
+    }
     case 'all':
     default:
       return '';
@@ -282,10 +286,7 @@ export function isEinsatzWithinAnalyticsFilter(
     return true;
   }
 
-  return (
-    isDateWithinTimeframe(row.start, timeframe) ||
-    isDateWithinTimeframe(row.end, timeframe)
-  );
+  return row.start <= timeframe.to && row.end >= timeframe.from;
 }
 
 function getMetricValue(

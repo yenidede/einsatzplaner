@@ -85,9 +85,15 @@ export function DefaultFormFields({
               id="start_datum"
               allowEmpty={false}
               inputClassName="h-10"
-              value={formData.startDate ? format(formData.startDate, 'yyyy-MM-dd') : ''}
+              value={
+                formData.startDate
+                  ? format(formData.startDate, 'yyyy-MM-dd')
+                  : ''
+              }
               onValueChange={(value) => {
-                handleChange('startDate', parseISO(value));
+                if (value) {
+                  handleChange('startDate', parseISO(value));
+                }
               }}
             />
           </FormInputFieldCustom>
@@ -121,9 +127,13 @@ export function DefaultFormFields({
               id="ende_datum"
               allowEmpty={false}
               inputClassName="h-10"
-              value={formData.endDate ? format(formData.endDate, 'yyyy-MM-dd') : ''}
+              value={
+                formData.endDate ? format(formData.endDate, 'yyyy-MM-dd') : ''
+              }
               onValueChange={(value) => {
-                handleChange('endDate', parseISO(value));
+                if (value) {
+                  handleChange('endDate', parseISO(value));
+                }
               }}
             />
           </FormInputFieldCustom>

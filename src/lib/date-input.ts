@@ -97,11 +97,14 @@ export function parseDateRangeInputText(
   }
 
   const normalizedRangeValue = trimmedValue.replace(/[–—]/g, '-');
-  const rangeParts = normalizedRangeValue.split(/\s*-\s*/);
 
-  if (rangeParts.length === 2) {
-    const from = parseDateInputText(rangeParts[0]);
-    const to = parseDateInputText(rangeParts[1]);
+  for (let index = 0; index < normalizedRangeValue.length; index += 1) {
+    if (normalizedRangeValue[index] !== '-') {
+      continue;
+    }
+
+    const from = parseDateInputText(normalizedRangeValue.slice(0, index));
+    const to = parseDateInputText(normalizedRangeValue.slice(index + 1));
 
     if (from && to) {
       return { from, to };

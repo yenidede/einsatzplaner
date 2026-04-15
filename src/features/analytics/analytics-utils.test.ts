@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAnalyticsChartAggregation,
   getDefaultAnalyticsFilters,
+  getTimeframeRange,
   getTimeframeLabel,
   isEinsatzWithinAnalyticsFilter,
 } from './analytics-utils';
@@ -198,6 +199,39 @@ describe('analytics utils', () => {
         new Date('2026-03-06T10:00:00.000Z')
       )
     ).toBe(true);
+  });
+
+  it('filtert auch Einträge, die den Zeitraum vollständig überspannen', () => {
+    const row = createRow({
+      start: new Date('2026-03-01T08:00:00.000Z'),
+      end: new Date('2026-03-20T10:00:00.000Z'),
+    });
+
+    expect(
+      isEinsatzWithinAnalyticsFilter(
+        row,
+        {
+          timeframe: {
+            preset: 'custom',
+            from: '2026-03-05',
+            to: '2026-03-07',
+          },
+        },
+        new Date('2026-03-06T10:00:00.000Z')
+      )
+    ).toBe(true);
+  });
+
+  it('verwirft ungültige benutzerdefinierte Zeiträume', () => {
+    expect(
+      getTimeframeRange({
+        timeframe: {
+          preset: 'custom',
+          from: '2026-03-05',
+          to: 'not-a-date',
+        },
+      })
+    ).toBeNull();
   });
 
   it('formatiert benutzerdefinierte Zeiträume relativ zum heutigen Datum', () => {

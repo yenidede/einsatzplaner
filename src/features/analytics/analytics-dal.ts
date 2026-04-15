@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import { getUserRolesInOrganization } from '@/DataAccessLayer/user';
 import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
+import { parseISO } from 'date-fns';
 import type {
   AnalyticsChartInput,
   AnalyticsChartRecord,
@@ -37,7 +38,9 @@ function toStoredChartType(chartType: AnalyticsChartInput['chartType']) {
 function toStoredDimensionKind(
   input: Pick<AnalyticsChartInput, 'dimensionKind' | 'dimensionKey'>
 ) {
-  if (input.dimensionKey === 'start_day') {
+  const normalizedDimensionKey = input.dimensionKey.trim();
+
+  if (normalizedDimensionKey === 'start_day') {
     return 'time' as const;
   }
 
@@ -47,7 +50,7 @@ function toStoredDimensionKind(
 }
 
 function toChartDimensionKind(
-  storedDimensionKind: AnalyticsDisplayConfig['storedDimensionKind']
+  storedDimensionKind: AnalyticsDisplayConfig['storedDimensionKind'] | string
 ) {
   return storedDimensionKind === 'user_property' ? 'custom' : 'static';
 }
@@ -192,7 +195,9 @@ function mapChartRecord(
         ? (display.visualChartType ?? chart.chart_type)
         : 'bar',
     dataset: chart.dataset,
-    dimensionKind: toChartDimensionKind(display.storedDimensionKind),
+    dimensionKind: toChartDimensionKind(
+      display.storedDimensionKind ?? chart.dimension_kind
+    ),
     dimensionKey: chart.dimension_key,
     metricAggregation:
       chart.metric_aggregation === 'sum'
@@ -209,11 +214,14 @@ function mapChartRecord(
 }
 
 function validateChartInput(input: AnalyticsChartInput) {
-  if (input.title.trim().length === 0) {
+  const normalizedTitle = input.title.trim();
+  const normalizedDimensionKey = input.dimensionKey.trim();
+
+  if (normalizedTitle.length === 0) {
     throw new Error('Bitte geben Sie einen Titel ein.');
   }
 
-  if (input.dimensionKey.trim().length === 0) {
+  if (normalizedDimensionKey.length === 0) {
     throw new Error('Bitte wählen Sie ein Feld für die Auswertung aus.');
   }
 
@@ -224,6 +232,20 @@ function validateChartInput(input: AnalyticsChartInput) {
     throw new Error(
       'Bitte wählen Sie einen gültigen benutzerdefinierten Zeitraum.'
     );
+  }
+
+  if (input.filters.timeframe.preset === 'custom') {
+    const fromDate = parseISO(input.filters.timeframe.from ?? '');
+    const toDate = parseISO(input.filters.timeframe.to ?? '');
+
+    if (
+      Number.isNaN(fromDate.getTime()) ||
+      Number.isNaN(toDate.getTime())
+    ) {
+      throw new Error(
+        'Bitte wählen Sie einen gültigen benutzerdefinierten Zeitraum.'
+      );
+    }
   }
 }
 
@@ -292,7 +314,7 @@ export async function createAnalyticsChart(
       chart_type: toStoredChartType(input.chartType),
       dataset: ANALYTICS_DATASET,
       dimension_kind: toStoredDimensionKind(input),
-      dimension_key: input.dimensionKey,
+      dimension_key: input.dimensionKey.trim(),
       metric_aggregation: toStoredMetricAggregation(input.metricAggregation),
       metric_key: ANALYTICS_METRIC_KEY,
       filters_json: input.filters,
@@ -327,10 +349,11 @@ export async function updateAnalyticsChart(
     select: {
       id: true,
       org_id: true,
+      dataset: true,
     },
   });
 
-  if (!existingChart) {
+  if (!existingChart || existingChart.dataset !== ANALYTICS_DATASET) {
     throw new Error('Diagramm nicht gefunden.');
   }
 
@@ -356,7 +379,7 @@ export async function updateAnalyticsChart(
       description: input.description?.trim() || null,
       chart_type: toStoredChartType(input.chartType),
       dimension_kind: toStoredDimensionKind(input),
-      dimension_key: input.dimensionKey,
+      dimension_key: input.dimensionKey.trim(),
       metric_aggregation: toStoredMetricAggregation(input.metricAggregation),
       filters_json: input.filters,
       display_json: {
@@ -387,10 +410,11 @@ export async function deleteAnalyticsChart(chartId: string) {
       id: true,
       org_id: true,
       created_by: true,
+      dataset: true,
     },
   });
 
-  if (!existingChart) {
+  if (!existingChart || existingChart.dataset !== ANALYTICS_DATASET) {
     throw new Error('Diagramm nicht gefunden.');
   }
 

@@ -554,7 +554,15 @@ export function AnalyticsChartDialog({
                 return;
               }
 
-              const [kind, key] = selectedOption.value.split(':');
+              const colonIndex = selectedOption.value.indexOf(':');
+              const kind =
+                colonIndex >= 0
+                  ? selectedOption.value.slice(0, colonIndex)
+                  : 'static';
+              const key =
+                colonIndex >= 0
+                  ? selectedOption.value.slice(colonIndex + 1)
+                  : selectedOption.value;
               setValue(
                 'dimensionKind',
                 kind === 'custom' ? 'custom' : 'static'

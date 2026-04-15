@@ -111,9 +111,18 @@ function getRangeCalendarSelection(value: DateInputRangeValue):
     return undefined;
   }
 
+  const parsedFrom = parseISO(value.from);
+  const parsedTo = parseISO(value.to);
+  const from = Number.isNaN(parsedFrom.getTime()) ? undefined : parsedFrom;
+  const to = Number.isNaN(parsedTo.getTime()) ? undefined : parsedTo;
+
+  if (!from && !to) {
+    return undefined;
+  }
+
   return {
-    from: parseISO(value.from),
-    to: parseISO(value.to),
+    from,
+    to,
   };
 }
 
