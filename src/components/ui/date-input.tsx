@@ -282,9 +282,14 @@ const RangeDateInput = React.forwardRef<HTMLInputElement, RangeDateInputProps>(
               numberOfMonths={2}
               onSelect={(selected) => {
                 if (!selected || !selected.from) {
+                  if (!allowEmpty) {
+                    return;
+                  }
+
                   pendingRangeSelectionRef.current = false;
                   setDraftValue('');
                   onValueChange(null);
+                  setOpen(false);
                   return;
                 }
 
@@ -462,8 +467,13 @@ const SingleDateInput = React.forwardRef<HTMLInputElement, SingleDateInputProps>
               defaultMonth={getSingleCalendarDate(value) ?? new Date()}
               onSelect={(selected) => {
                 if (!selected) {
+                  if (!allowEmpty) {
+                    return;
+                  }
+
                   setDraftValue('');
                   onValueChange('');
+                  setOpen(false);
                   return;
                 }
 

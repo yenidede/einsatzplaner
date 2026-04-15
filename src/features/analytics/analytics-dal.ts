@@ -41,7 +41,15 @@ function toStoredDimensionKind(
     return 'time' as const;
   }
 
-  return 'standard' as const;
+  return input.dimensionKind === 'custom'
+    ? ('user_property' as const)
+    : ('standard' as const);
+}
+
+function toChartDimensionKind(
+  storedDimensionKind: AnalyticsDisplayConfig['storedDimensionKind']
+) {
+  return storedDimensionKind === 'user_property' ? 'custom' : 'static';
 }
 
 function toStoredMetricAggregation(
@@ -168,6 +176,8 @@ function mapChartRecord(
   currentUserId: string,
   canDeleteAll: boolean
 ): AnalyticsChartRecord {
+  const display = parseDisplay(chart.display_json);
+
   return {
     id: chart.id,
     orgId: chart.org_id,
@@ -179,10 +189,10 @@ function mapChartRecord(
       chart.chart_type === 'bar' ||
       chart.chart_type === 'line' ||
       chart.chart_type === 'pie'
-        ? (parseDisplay(chart.display_json).visualChartType ?? chart.chart_type)
+        ? (display.visualChartType ?? chart.chart_type)
         : 'bar',
     dataset: chart.dataset,
-    dimensionKind: 'static',
+    dimensionKind: toChartDimensionKind(display.storedDimensionKind),
     dimensionKey: chart.dimension_key,
     metricAggregation:
       chart.metric_aggregation === 'sum'
@@ -190,7 +200,7 @@ function mapChartRecord(
         : 'group_count',
     metricKey: chart.metric_key,
     filters: parseFilters(chart.filters_json),
-    display: parseDisplay(chart.display_json),
+    display,
     createdAt: chart.created_at,
     updatedAt: chart.updated_at,
     canEdit: true,

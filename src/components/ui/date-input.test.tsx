@@ -18,6 +18,19 @@ function SingleDateHarness() {
   );
 }
 
+function RequiredSingleDateHarness() {
+  const [value, setValue] = useState('2026-04-01');
+
+  return (
+    <DateInput
+      aria-label="Pflichtdatum"
+      allowEmpty={false}
+      value={value}
+      onValueChange={setValue}
+    />
+  );
+}
+
 function RangeDateHarness() {
   const [value, setValue] = useState<DateInputRangeValue>({
     from: '2026-04-01',
@@ -67,6 +80,26 @@ describe('DateInput', () => {
 
     await waitFor(() => {
       expect(getInputValue(input)).toBe(`12. Februar ${currentYear}`);
+    });
+  });
+
+  it('behält Pflichtdaten bei, wenn der ausgewählte Tag erneut angeklickt wird', async () => {
+    render(<RequiredSingleDateHarness />);
+
+    const input = screen.getByRole('textbox', { name: 'Pflichtdatum' });
+    const openButton = screen.getByRole('button', {
+      name: 'Kalender für Datum öffnen',
+    });
+
+    fireEvent.click(openButton);
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /1\. April 2026, selected/,
+      })
+    );
+
+    await waitFor(() => {
+      expect(getInputValue(input)).toBe('1. April 2026');
     });
   });
 
