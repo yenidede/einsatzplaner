@@ -99,10 +99,15 @@ describe('datetime normalization', () => {
   it('parses timezone wire strings to the same local wall-clock as native Date', () => {
     const input = '2026-04-09T10:15:00.000Z';
     const parsed = parseCalendarDateTimeString(input);
-    const nativeDate = new Date(input);
+    const expectedOffsetMinutes = -new Date(input).getTimezoneOffset();
+    const baseUtcMinutes = 10 * 60 + 15;
+    const totalLocalMinutes = baseUtcMinutes + expectedOffsetMinutes;
+    const expectedHour =
+      ((Math.floor(totalLocalMinutes / 60) % 24) + 24) % 24;
+    const expectedMinute = ((totalLocalMinutes % 60) + 60) % 60;
 
     expect(parsed).toBeDefined();
-    expect(parsed?.getHours()).toBe(nativeDate.getHours());
-    expect(parsed?.getMinutes()).toBe(nativeDate.getMinutes());
+    expect(parsed?.getHours()).toBe(expectedHour);
+    expect(parsed?.getMinutes()).toBe(expectedMinute);
   });
 });

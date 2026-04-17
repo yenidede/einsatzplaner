@@ -5,7 +5,6 @@ const {
   mockRequireAuth,
   mockHasPermission,
   mockCreateChangeLogAuto,
-  mockCreateChangeLog,
   mockCheckEinsatzRequirementsAfterAssignment,
   mockTransaction,
   mockFindUnique,
@@ -14,11 +13,12 @@ const {
   mockPrismaEinsatzFindUnique,
   mockPrismaEinsatzUpdate,
   mockChangeTypeFindUnique,
+  mockChangeLogCreate,
+  mockConsoleWarn,
 } = vi.hoisted(() => ({
   mockRequireAuth: vi.fn(),
   mockHasPermission: vi.fn(),
   mockCreateChangeLogAuto: vi.fn(),
-  mockCreateChangeLog: vi.fn(),
   mockCheckEinsatzRequirementsAfterAssignment: vi.fn(),
   mockTransaction: vi.fn(),
   mockFindUnique: vi.fn(),
@@ -27,6 +27,8 @@ const {
   mockPrismaEinsatzFindUnique: vi.fn(),
   mockPrismaEinsatzUpdate: vi.fn(),
   mockChangeTypeFindUnique: vi.fn(),
+  mockChangeLogCreate: vi.fn(),
+  mockConsoleWarn: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/authGuard', () => ({
@@ -36,7 +38,6 @@ vi.mock('@/lib/auth/authGuard', () => ({
 
 vi.mock('@/features/activity_log/activity_log-dal', () => ({
   createChangeLogAuto: mockCreateChangeLogAuto,
-  createChangeLog: mockCreateChangeLog,
 }));
 
 vi.mock('@/lib/email/email-helpers', () => ({
@@ -54,6 +55,9 @@ vi.mock('@/lib/prisma', () => ({
     change_type: {
       findUnique: mockChangeTypeFindUnique,
     },
+    change_log: {
+      create: mockChangeLogCreate,
+    },
     einsatz_helper: {
       findMany: mockFindManyConflicts,
     },
@@ -68,6 +72,7 @@ describe('toggleUserAssignmentToEinsatz', () => {
   beforeEach(() => {
     let assigned = false;
 
+    vi.spyOn(console, 'warn').mockImplementation(mockConsoleWarn);
     mockRequireAuth.mockResolvedValue({
       session: {
         user: {
@@ -79,12 +84,13 @@ describe('toggleUserAssignmentToEinsatz', () => {
     });
     mockHasPermission.mockResolvedValue(true);
     mockCreateChangeLogAuto.mockResolvedValue(undefined);
-    mockCreateChangeLog.mockResolvedValue(undefined);
     mockCheckEinsatzRequirementsAfterAssignment.mockResolvedValue(undefined);
     mockFindManyConflicts.mockResolvedValue([]);
     mockPrismaEinsatzFindUnique.mockReset();
     mockPrismaEinsatzUpdate.mockReset();
     mockChangeTypeFindUnique.mockReset();
+    mockChangeLogCreate.mockReset();
+    mockConsoleWarn.mockReset();
 
     mockFindUnique.mockImplementation(async (_args?: { select?: object }) => {
       if (assigned) {
@@ -136,6 +142,9 @@ describe('toggleUserAssignmentToEinsatz', () => {
           einsatz_helper: {
             findMany: typeof mockFindManyConflicts;
           };
+          change_log: {
+            create: typeof mockChangeLogCreate;
+          };
         }) => Promise<unknown>
       ) =>
         callback({
@@ -145,6 +154,9 @@ describe('toggleUserAssignmentToEinsatz', () => {
           },
           einsatz_helper: {
             findMany: mockFindManyConflicts,
+          },
+          change_log: {
+            create: mockChangeLogCreate,
           },
         })
     );
@@ -237,6 +249,7 @@ describe('toggleUserAssignmentToEinsatz', () => {
 
 describe('updateEinsatzStatus', () => {
   beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(mockConsoleWarn);
     mockRequireAuth.mockResolvedValue({
       session: {
         user: {
@@ -247,10 +260,31 @@ describe('updateEinsatzStatus', () => {
       },
     });
     mockHasPermission.mockResolvedValue(true);
-    mockCreateChangeLog.mockReset();
+    mockTransaction.mockImplementation(
+      async (
+        callback: (tx: {
+          einsatz: {
+            update: typeof mockPrismaEinsatzUpdate;
+          };
+          change_log: {
+            create: typeof mockChangeLogCreate;
+          };
+        }) => Promise<unknown>
+      ) =>
+        callback({
+          einsatz: {
+            update: mockPrismaEinsatzUpdate,
+          },
+          change_log: {
+            create: mockChangeLogCreate,
+          },
+        })
+    );
     mockPrismaEinsatzFindUnique.mockReset();
     mockPrismaEinsatzUpdate.mockReset();
     mockChangeTypeFindUnique.mockReset();
+    mockChangeLogCreate.mockReset();
+    mockConsoleWarn.mockReset();
   });
 
   it('schreibt bei Statuswechsel auf bestätigt einen Aktivitätseintrag', async () => {
@@ -278,10 +312,13 @@ describe('updateEinsatzStatus', () => {
       StatusValuePairs.vergeben_bestaetigt
     );
 
-    expect(mockCreateChangeLog).toHaveBeenCalledWith({
-      einsatzId: 'einsatz-1',
-      userId: 'user-1',
-      typeId: ChangeTypeIds['E-Bestaetigt'],
+    expect(mockChangeLogCreate).toHaveBeenCalledWith({
+      data: {
+        einsatz_id: 'einsatz-1',
+        user_id: 'user-1',
+        type_id: ChangeTypeIds['E-Bestaetigt'],
+        affected_user: null,
+      },
     });
   });
 
@@ -313,11 +350,15 @@ describe('updateEinsatzStatus', () => {
       StatusValuePairs.vergeben_bestaetigt
     );
 
-    expect(mockCreateChangeLog).toHaveBeenCalledWith({
-      einsatzId: 'einsatz-1',
-      userId: 'user-1',
-      typeId: 'fallback-type-id',
+    expect(mockChangeLogCreate).toHaveBeenCalledWith({
+      data: {
+        einsatz_id: 'einsatz-1',
+        user_id: 'user-1',
+        type_id: 'fallback-type-id',
+        affected_user: null,
+      },
     });
+    expect(mockConsoleWarn).toHaveBeenCalled();
   });
 
   it('schreibt keinen Aktivitätseintrag bei anderen Statuswerten', async () => {
@@ -334,7 +375,45 @@ describe('updateEinsatzStatus', () => {
 
     await updateEinsatzStatus('einsatz-1', StatusValuePairs.vergeben);
 
-    expect(mockCreateChangeLog).not.toHaveBeenCalled();
+    expect(mockChangeLogCreate).not.toHaveBeenCalled();
     expect(mockChangeTypeFindUnique).not.toHaveBeenCalled();
+  });
+
+  it('wirft einen Fehler, wenn Change-Type-Auflösung fehlschlägt', async () => {
+    mockPrismaEinsatzFindUnique.mockResolvedValue({
+      id: 'einsatz-1',
+      org_id: 'org-1',
+    });
+    mockChangeTypeFindUnique.mockResolvedValue(null);
+
+    await expect(
+      updateEinsatzStatus('einsatz-1', StatusValuePairs.vergeben_bestaetigt)
+    ).rejects.toThrow("Change-Type 'E-Bestaetigt' wurde nicht gefunden.");
+  });
+
+  it('wirft einen Fehler, wenn das Schreiben des Aktivitätseintrags fehlschlägt', async () => {
+    mockPrismaEinsatzFindUnique.mockResolvedValue({
+      id: 'einsatz-1',
+      org_id: 'org-1',
+    });
+    mockPrismaEinsatzUpdate.mockResolvedValue({
+      id: 'einsatz-1',
+      org_id: 'org-1',
+      status_id: StatusValuePairs.vergeben_bestaetigt,
+      title: 'Testeinsatz',
+    });
+    mockChangeTypeFindUnique.mockImplementation(
+      async ({ where }: { where: { id?: string; name?: string } }) => {
+        if (where.id === ChangeTypeIds['E-Bestaetigt']) {
+          return { id: ChangeTypeIds['E-Bestaetigt'] };
+        }
+        return null;
+      }
+    );
+    mockChangeLogCreate.mockRejectedValue(new Error('Insert fehlgeschlagen'));
+
+    await expect(
+      updateEinsatzStatus('einsatz-1', StatusValuePairs.vergeben_bestaetigt)
+    ).rejects.toThrow('Insert fehlgeschlagen');
   });
 });

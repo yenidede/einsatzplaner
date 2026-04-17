@@ -13,10 +13,12 @@ const {
   mockUpdateSession,
   mockAcceptInvitationAction,
   mockSessionData,
+  mockToastError,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockUpdateSession: vi.fn(),
   mockAcceptInvitationAction: vi.fn(),
+  mockToastError: vi.fn(),
   mockSessionData: {
     user: {
       id: 'user-1',
@@ -44,6 +46,12 @@ vi.mock('../invitation-action', () => ({
   acceptInvitationAction: mockAcceptInvitationAction,
 }));
 
+vi.mock('sonner', () => ({
+  toast: {
+    error: mockToastError,
+  },
+}));
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -62,6 +70,7 @@ describe('useAcceptInvitation', () => {
     mockPush.mockReset();
     mockUpdateSession.mockReset();
     mockAcceptInvitationAction.mockReset();
+    mockToastError.mockReset();
     mockSessionData.user = {
       id: 'user-1',
       email: 'max@example.com',
@@ -74,6 +83,21 @@ describe('useAcceptInvitation', () => {
     mockAcceptInvitationAction.mockResolvedValue({
       success: true,
       message: 'Einladung erfolgreich angenommen',
+      sessionUpdate: {
+        user: {
+          id: 'user-1',
+          email: 'max@example.com',
+          firstname: 'Max',
+          lastname: 'Mustermann',
+          orgIds: ['org-1', 'org-2'],
+          roleIds: ['role-1'],
+          activeOrganization: {
+            id: 'org-2',
+            name: 'Neue Organisation',
+            logo_url: null,
+          },
+        },
+      },
     });
 
     const { result } = renderHook(() => useAcceptInvitation('token-123'), {
@@ -85,7 +109,19 @@ describe('useAcceptInvitation', () => {
     await waitFor(() => {
       expect(mockAcceptInvitationAction).toHaveBeenCalledWith('token-123');
       expect(mockUpdateSession).toHaveBeenCalledWith({
-        user: mockSessionData.user,
+        user: {
+          id: 'user-1',
+          email: 'max@example.com',
+          firstname: 'Max',
+          lastname: 'Mustermann',
+          orgIds: ['org-1', 'org-2'],
+          roleIds: ['role-1'],
+          activeOrganization: {
+            id: 'org-2',
+            name: 'Neue Organisation',
+            logo_url: null,
+          },
+        },
       });
       expect(mockPush).toHaveBeenCalledWith('/');
     });
@@ -106,6 +142,40 @@ describe('useAcceptInvitation', () => {
 
     await waitFor(() => {
       expect(mockUpdateSession).not.toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith('/');
+    });
+  });
+
+  it('leitet auch bei fehlgeschlagenem Session-Update weiter und zeigt Fehlermeldung', async () => {
+    mockAcceptInvitationAction.mockResolvedValue({
+      success: true,
+      message: 'Einladung erfolgreich angenommen',
+      sessionUpdate: {
+        user: {
+          id: 'user-1',
+          email: 'max@example.com',
+          firstname: 'Max',
+          lastname: 'Mustermann',
+          orgIds: ['org-2'],
+          roleIds: ['role-1'],
+          activeOrganization: {
+            id: 'org-2',
+            name: 'Neue Organisation',
+            logo_url: null,
+          },
+        },
+      },
+    });
+    mockUpdateSession.mockRejectedValue(new Error('Session-Update fehlgeschlagen'));
+
+    const { result } = renderHook(() => useAcceptInvitation('token-123'), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync();
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledTimes(1);
       expect(mockPush).toHaveBeenCalledWith('/');
     });
   });

@@ -17,7 +17,7 @@ type TimeDefaultRange = Pick<
  * Realtime / wire timestamps are parsed by the runtime into local Date instances.
  * For calendar UX we keep those local wall-clock components unchanged.
  */
-export function dbTimestampToCalendarDate(value: Date): Date {
+function toCalendarDate(value: Date): Date {
   return new Date(
     value.getFullYear(),
     value.getMonth(),
@@ -27,6 +27,10 @@ export function dbTimestampToCalendarDate(value: Date): Date {
     value.getSeconds(),
     value.getMilliseconds()
   );
+}
+
+export function dbTimestampToCalendarDate(value: Date): Date {
+  return toCalendarDate(value);
 }
 
 export function parseCalendarDateTimeString(
@@ -70,15 +74,7 @@ export function parseCalendarDateTimeString(
  * Preserve those local components instead of reinterpreting them through UTC getters.
  */
 export function prismaTimestampToCalendarDate(value: Date): Date {
-  return new Date(
-    value.getFullYear(),
-    value.getMonth(),
-    value.getDate(),
-    value.getHours(),
-    value.getMinutes(),
-    value.getSeconds(),
-    value.getMilliseconds()
-  );
+  return toCalendarDate(value);
 }
 
 export function calendarDateToDbTimestamp(value: Date): Date {

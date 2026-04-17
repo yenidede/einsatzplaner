@@ -20,17 +20,24 @@ export function composeRealtimeEventTitle(params: {
     return existingTitle;
   }
 
+  if (nextBaseTitle === '') {
+    return '';
+  }
+
   const normalizedCategoryAbbreviations = (categoryAbbreviations ?? []).filter(
     (abbreviation) => abbreviation.trim().length > 0
   );
 
-  if (normalizedCategoryAbbreviations.length > 0) {
-    return `${nextBaseTitle} (${normalizedCategoryAbbreviations.join(', ')})`;
+  if (categoryAbbreviations === null || categoryAbbreviations === undefined) {
+    const existingSuffix = extractTrailingParenthesisSuffix(existingTitle);
+    if (existingSuffix) {
+      return `${nextBaseTitle} (${existingSuffix})`;
+    }
+    return nextBaseTitle;
   }
 
-  const existingSuffix = extractTrailingParenthesisSuffix(existingTitle);
-  if (existingSuffix) {
-    return `${nextBaseTitle} (${existingSuffix})`;
+  if (categoryAbbreviations.length > 0 && normalizedCategoryAbbreviations.length > 0) {
+    return `${nextBaseTitle} (${normalizedCategoryAbbreviations.join(', ')})`;
   }
 
   return nextBaseTitle;

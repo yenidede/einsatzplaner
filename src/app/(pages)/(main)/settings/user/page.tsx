@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Building2, LogOut, Calendar, Command } from 'lucide-react';
+import { Building2, LogOut, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
@@ -64,7 +64,6 @@ import {
   type NotificationPreferenceFormHandle,
   notificationPreferenceQueryKeys,
 } from '@/features/notification-preferences';
-import { Toggle } from 'radix-ui';
 
 export default function SettingsPage() {
   const [showLogos, setShowLogos] = useState<boolean>(true);

@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { acceptInvitationAction } from '../invitation-action';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 
 export function useAcceptInvitation(
   token: string,
@@ -14,12 +15,19 @@ export function useAcceptInvitation(
     mutationFn: async () => {
       return await acceptInvitationAction(token);
     },
-    onSuccess: async () => {
-      if (session?.user) {
-        await updateSession({ user: session.user });
+    onSuccess: async (response) => {
+      try {
+        if (session?.user && response?.sessionUpdate?.user) {
+          await updateSession({ user: response.sessionUpdate.user });
+        }
+      } catch (error) {
+        console.error('Session konnte nach Einladungsannahme nicht aktualisiert werden:', error);
+        toast.error(
+          'Ihre Sitzung konnte nicht vollständig aktualisiert werden. Sie werden trotzdem weitergeleitet.'
+        );
+      } finally {
+        router.push('/');
       }
-
-      router.push('/');
     },
     onError: async (error: Error) => {
       if (onError) {
