@@ -14,19 +14,18 @@ type TimeDefaultRange = Pick<
 >;
 
 /**
- * Realtime / wire payloads expose these calendar timestamps as UTC-like instants while the
- * column type is "timestamp without time zone". For calendar UX we treat them as floating
- * local wall-clock values and convert explicitly at the application boundary.
+ * Realtime / wire timestamps are parsed by the runtime into local Date instances.
+ * For calendar UX we keep those local wall-clock components unchanged.
  */
 export function dbTimestampToCalendarDate(value: Date): Date {
   return new Date(
-    value.getUTCFullYear(),
-    value.getUTCMonth(),
-    value.getUTCDate(),
-    value.getUTCHours(),
-    value.getUTCMinutes(),
-    value.getUTCSeconds(),
-    value.getUTCMilliseconds()
+    value.getFullYear(),
+    value.getMonth(),
+    value.getDate(),
+    value.getHours(),
+    value.getMinutes(),
+    value.getSeconds(),
+    value.getMilliseconds()
   );
 }
 

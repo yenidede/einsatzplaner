@@ -31,6 +31,7 @@ import type {
   RealtimePostgresChangesPayload,
 } from '@supabase/supabase-js';
 import type { einsatz as Einsatz } from '@/generated/prisma';
+import { composeRealtimeEventTitle } from './useSupabaseRealtime.utils';
 
 type EinsatzRow = {
   id: string;
@@ -299,11 +300,16 @@ function applyPatchToCalendarDetailedEinsatz(
 
 function applyPatchToCalendarEvent(
   event: CalendarEvent,
-  patch: EinsatzBasePatch
+  patch: EinsatzBasePatch,
+  categoryAbbreviations?: string[] | null
 ): CalendarEvent {
   return {
     ...event,
-    title: patch.title ?? event.title,
+    title: composeRealtimeEventTitle({
+      existingTitle: event.title,
+      nextBaseTitle: patch.title,
+      categoryAbbreviations,
+    }),
     start: patch.start ?? event.start,
     end: patch.end ?? event.end,
     allDay: patch.all_day ?? event.allDay,
@@ -383,7 +389,12 @@ function updateCalendarRangeWithPatch(
       : sortCalendarEvents(
           data.events.map((event) =>
             event.id === einsatzId
-              ? applyPatchToCalendarEvent(event, patch)
+              ? applyPatchToCalendarEvent(
+                  event,
+                  patch,
+                  data.detailedEinsaetze[detailedIndex]
+                    ?.category_abbreviations ?? null
+                )
               : event
           )
         );

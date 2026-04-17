@@ -33,7 +33,7 @@ function createFakeTimestampDate(input: {
 }
 
 describe('datetime normalization', () => {
-  it('behält bei Prisma-Daten die lokalen Wandzeit-Komponenten bei', () => {
+  it('keeps local wall-clock components for Prisma values', () => {
     const prismaDate = createFakeTimestampDate({
       localHour: 10,
       utcHour: 8,
@@ -46,7 +46,7 @@ describe('datetime normalization', () => {
     expect(normalized.getMinutes()).toBe(15);
   });
 
-  it('interpretiert Realtime-/Wire-Daten weiterhin über UTC-Komponenten', () => {
+  it('keeps local wall-clock components for realtime/wire values', () => {
     const realtimeDate = createFakeTimestampDate({
       localHour: 12,
       utcHour: 10,
@@ -55,11 +55,11 @@ describe('datetime normalization', () => {
 
     const normalized = dbTimestampToCalendarDate(realtimeDate);
 
-    expect(normalized.getHours()).toBe(10);
+    expect(normalized.getHours()).toBe(12);
     expect(normalized.getMinutes()).toBe(45);
   });
 
-  it('normalisiert gelesene Einsatz-Zeiträume aus Prisma ohne UTC-Abzug', () => {
+  it('normalizes Prisma date ranges without UTC subtraction', () => {
     const normalized = normalizeDateRangeFromDb({
       start: createFakeTimestampDate({
         localHour: 9,
@@ -75,7 +75,7 @@ describe('datetime normalization', () => {
     expect(normalized.end.getHours()).toBe(11);
   });
 
-  it('parst Realtime-Strings ohne Zeitzone als lokale Wandzeit', () => {
+  it('parses realtime strings without timezone as local wall-clock time', () => {
     const parsed = parseCalendarDateTimeString('2026-04-09 10:15:00');
 
     expect(parsed).toBeDefined();
@@ -86,7 +86,7 @@ describe('datetime normalization', () => {
     expect(parsed?.getMinutes()).toBe(15);
   });
 
-  it('parst Realtime-Strings mit Mikrosekunden deterministisch auf Millisekunden', () => {
+  it('parses realtime strings with microseconds to milliseconds deterministically', () => {
     const parsed = parseCalendarDateTimeString('2026-04-09 10:15:00.123456');
 
     expect(parsed).toBeDefined();
@@ -96,11 +96,13 @@ describe('datetime normalization', () => {
     expect(parsed?.getMilliseconds()).toBe(123);
   });
 
-  it('parst Wire-Strings mit Zeitzone weiter über UTC-Komponenten', () => {
-    const parsed = parseCalendarDateTimeString('2026-04-09T10:15:00.000Z');
+  it('parses timezone wire strings to the same local wall-clock as native Date', () => {
+    const input = '2026-04-09T10:15:00.000Z';
+    const parsed = parseCalendarDateTimeString(input);
+    const nativeDate = new Date(input);
 
     expect(parsed).toBeDefined();
-    expect(parsed?.getHours()).toBe(10);
-    expect(parsed?.getMinutes()).toBe(15);
+    expect(parsed?.getHours()).toBe(nativeDate.getHours());
+    expect(parsed?.getMinutes()).toBe(nativeDate.getMinutes());
   });
 });
