@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { composeRealtimeEventTitle } from './useSupabaseRealtime.utils';
+import {
+  composeRealtimeEventTitle,
+  parseSupabaseRealtimeTimestamp,
+} from './useSupabaseRealtime.utils';
 
 describe('composeRealtimeEventTitle', () => {
   it('keeps the existing title when no new base title is provided', () => {
@@ -66,5 +69,47 @@ describe('composeRealtimeEventTitle', () => {
         nextBaseTitle: 'Neu',
       })
     ).toBe('Neu');
+  });
+});
+
+describe('parseSupabaseRealtimeTimestamp', () => {
+  it('interpretiert Zeitstempel ohne Zeitzone als lokale Wandzeit', () => {
+    const parsed = parseSupabaseRealtimeTimestamp('2026-05-08 13:00:00');
+
+    expect(parsed).toBeDefined();
+    expect(parsed?.getFullYear()).toBe(2026);
+    expect(parsed?.getMonth()).toBe(4);
+    expect(parsed?.getDate()).toBe(8);
+    expect(parsed?.getHours()).toBe(13);
+    expect(parsed?.getMinutes()).toBe(0);
+    expect(parsed?.getSeconds()).toBe(0);
+  });
+
+  it('interpretiert Zeitstempel mit Mikrosekunden ohne Zeitzone als lokale Wandzeit', () => {
+    const parsed = parseSupabaseRealtimeTimestamp(
+      '2026-05-08 13:00:00.123456'
+    );
+
+    expect(parsed).toBeDefined();
+    expect(parsed?.getHours()).toBe(13);
+    expect(parsed?.getMinutes()).toBe(0);
+    expect(parsed?.getSeconds()).toBe(0);
+    expect(parsed?.getMilliseconds()).toBe(123);
+  });
+
+  it('ignoriert ein Z-Suffix und behält die Wandzeit', () => {
+    const parsed = parseSupabaseRealtimeTimestamp('2026-05-08T13:00:00.000Z');
+
+    expect(parsed).toBeDefined();
+    expect(parsed?.getHours()).toBe(13);
+    expect(parsed?.getMinutes()).toBe(0);
+  });
+
+  it('ignoriert ein Offset-Suffix und behält die Wandzeit', () => {
+    const parsed = parseSupabaseRealtimeTimestamp('2026-05-08T13:00:00+02:00');
+
+    expect(parsed).toBeDefined();
+    expect(parsed?.getHours()).toBe(13);
+    expect(parsed?.getMinutes()).toBe(0);
   });
 });

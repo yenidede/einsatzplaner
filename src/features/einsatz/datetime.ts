@@ -78,17 +78,9 @@ export function prismaTimestampToCalendarDate(value: Date): Date {
 }
 
 export function calendarDateToDbTimestamp(value: Date): Date {
-  return new Date(
-    Date.UTC(
-      value.getFullYear(),
-      value.getMonth(),
-      value.getDate(),
-      value.getHours(),
-      value.getMinutes(),
-      value.getSeconds(),
-      value.getMilliseconds()
-    )
-  );
+  // Keep the original instant; converting local wall-clock parts via Date.UTC
+  // introduces a timezone shift (e.g. +/-2h) on every save.
+  return new Date(value.getTime());
 }
 
 export function normalizeDateRangeFromDb<T extends DateRange>(value: T): T {

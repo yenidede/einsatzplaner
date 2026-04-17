@@ -25,13 +25,16 @@ import type {
   EinsatzListItem,
 } from '@/features/einsatz/types';
 import type { CalendarEvent } from '@/components/event-calendar/types';
-import { parseCalendarDateTimeString } from '@/features/einsatz/datetime';
+import { dbTimestampToCalendarDate } from '@/features/einsatz/datetime';
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
 } from '@supabase/supabase-js';
 import type { einsatz as Einsatz } from '@/generated/prisma';
-import { composeRealtimeEventTitle } from './useSupabaseRealtime.utils';
+import {
+  composeRealtimeEventTitle,
+  parseSupabaseRealtimeTimestamp,
+} from './useSupabaseRealtime.utils';
 
 type EinsatzRow = {
   id: string;
@@ -107,7 +110,8 @@ function toInstantDate(value: string | null | undefined): Date | undefined {
 }
 
 function toCalendarDate(value: string | null | undefined): Date | undefined {
-  return parseCalendarDateTimeString(value);
+  const parsed = parseSupabaseRealtimeTimestamp(value);
+  return parsed ? dbTimestampToCalendarDate(parsed) : undefined;
 }
 
 function isEinsatzRow(value: unknown): value is EinsatzRow {
@@ -570,6 +574,27 @@ function syncEinsatzRealtimeCaches(
 
   if (payload.eventType === 'DELETE') {
     removeEinsatzFromCaches(queryClient, orgId, einsatzId);
+    return;
+  }
+
+  if (payload.eventType === 'UPDATE') {
+    // Never patch einsatz UPDATE payloads directly into caches.
+    // UPDATE payload timestamp serialization can differ by environment
+    // and has caused transient timezone flicker in deployment.
+    // Always refetch authoritative, API-normalized data instead.
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.detailedEinsatz(einsatzId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.einsaetze(orgId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.allLists(),
+      predicate: (query) => matchesEinsatzListQueryForOrg(query.queryKey, orgId),
+    });
     return;
   }
 

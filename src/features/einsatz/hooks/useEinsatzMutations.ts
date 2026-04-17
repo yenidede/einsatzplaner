@@ -10,6 +10,7 @@ import {
 import { queryKeys } from '../queryKeys';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
 import type { CalendarRangeData } from '@/components/event-calendar/utils';
+import { parseCalendarDateTimeString } from '@/features/einsatz/datetime';
 
 /** If isOverlap is true, returns the 3 monthKeys that overlap the 3-month window centered on the given date. Otherwise, returns the 1 monthKey for the given date. */
 export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
@@ -28,10 +29,23 @@ export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
 /** Object with start and optional end (Date or ISO string). Used for multi-day event invalidation. */
 type WithStartEnd = { start: Date | string; end?: Date | string };
 
+function toMutationDate(value: Date | string): Date {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  const parsedWallClock = parseCalendarDateTimeString(value);
+  if (parsedWallClock) {
+    return parsedWallClock;
+  }
+
+  return new Date(value);
+}
+
 /** Returns one Date per calendar day from start through end (inclusive). If end is missing or before start, returns [startOfDay(start)]. */
 function getDatesSpanningEvent(event: WithStartEnd): Date[] {
-  const start = startOfDay(new Date(event.start));
-  const endRaw = event.end != null ? new Date(event.end) : start;
+  const start = startOfDay(toMutationDate(event.start));
+  const endRaw = event.end != null ? toMutationDate(event.end) : start;
   const end = startOfDay(endRaw);
   if (end < start) return [start];
   return eachDayOfInterval({ start, end });
@@ -228,9 +242,8 @@ export function useCreateEinsatz(
       const optimisticEvent: CalendarEvent = {
         id: `temp-${Date.now()}`,
         title: event.title,
-        start:
-          event.start instanceof Date ? event.start : new Date(event.start),
-        end: event.end instanceof Date ? event.end : new Date(event.end),
+        start: toMutationDate(event.start),
+        end: toMutationDate(event.end),
         allDay: event.all_day ?? false,
         assignedUsers: event.assignedUsers ?? [],
         helpersNeeded: event.helpers_needed,
@@ -348,9 +361,7 @@ export function useUpdateEinsatz(
       if (!eventId) return {};
       const start =
         'start' in event && event.start
-          ? event.start instanceof Date
-            ? event.start
-            : new Date(event.start)
+          ? toMutationDate(event.start)
           : null;
       const previousData: CalendarCacheSnapshot = [];
       const queries = queryClient.getQueriesData<CalendarRangeData>({
@@ -367,7 +378,7 @@ export function useUpdateEinsatz(
           ...(start && { start }),
           ...('end' in event &&
             event.end !== undefined && {
-              end: event.end instanceof Date ? event.end : new Date(event.end),
+              end: toMutationDate(event.end),
             }),
         };
         if ('title' in event && event.title !== undefined)
