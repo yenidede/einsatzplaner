@@ -113,23 +113,24 @@ describe('datetime normalization', () => {
     expect(parsed?.getMinutes()).toBe(expectedMinute);
   });
 
-  it('converts calendar instants to Vienna wall-clock for DB writes', () => {
-    const calendarDate = new Date('2026-07-01T13:15:00.123Z');
+  it('preserves the original instant when converting calendar dates for DB writes', () => {
+    const calendarDate = new Date(2026, 3, 23, 18, 15, 0, 123);
 
     const dbDate = calendarDateToDbTimestamp(calendarDate);
 
-    expect(dbDate.toISOString()).toBe('2026-07-01T15:15:00.123Z');
+    expect(dbDate.getTime()).toBe(calendarDate.getTime());
+    expect(dbDate.toISOString()).toBe(calendarDate.toISOString());
   });
 
-  it('normalizes date ranges for DB as Vienna wall-clock timestamps', () => {
+  it('normalizes date ranges for DB without introducing timezone drift', () => {
     const range = {
-      start: new Date('2026-07-01T13:15:00.000Z'),
-      end: new Date('2026-07-01T15:15:00.000Z'),
+      start: new Date(2026, 3, 23, 18, 15, 0, 0),
+      end: new Date(2026, 3, 23, 20, 15, 0, 0),
     };
 
     const normalized = normalizeDateRangeForDb(range);
 
-    expect(normalized.start.toISOString()).toBe('2026-07-01T15:15:00.000Z');
-    expect(normalized.end.toISOString()).toBe('2026-07-01T17:15:00.000Z');
+    expect(normalized.start.getTime()).toBe(range.start.getTime());
+    expect(normalized.end.getTime()).toBe(range.end.getTime());
   });
 });

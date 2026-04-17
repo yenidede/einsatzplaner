@@ -13,19 +13,6 @@ type TimeDefaultRange = Pick<
   'default_starttime' | 'default_endtime'
 >;
 
-const ORGANIZATION_TIME_ZONE = 'Europe/Vienna';
-const VIENNA_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('en-GB', {
-  timeZone: ORGANIZATION_TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  fractionalSecondDigits: 3,
-  hour12: false,
-});
-
 /**
  * Realtime / wire timestamps are parsed by the runtime into local Date instances.
  * For calendar UX we keep those local wall-clock components unchanged.
@@ -91,27 +78,9 @@ export function prismaTimestampToCalendarDate(value: Date): Date {
 }
 
 export function calendarDateToDbTimestamp(value: Date): Date {
-  // Server Actions serialize Date values as instants.
-  // For "timestamp without time zone" columns we must persist wall-clock values
-  // in the org timezone independent of server timezone.
-  const parts = VIENNA_TIMESTAMP_FORMATTER.formatToParts(value);
-
-  const readPart = (type: Intl.DateTimeFormatPartTypes): number => {
-    const part = parts.find((entry) => entry.type === type);
-    return Number(part?.value ?? '0');
-  };
-
-  return new Date(
-    Date.UTC(
-      readPart('year'),
-      readPart('month') - 1,
-      readPart('day'),
-      readPart('hour'),
-      readPart('minute'),
-      readPart('second'),
-      readPart('fractionalSecond')
-    )
-  );
+  // Keep the original instant; converting local wall-clock parts via Date.UTC
+  // introduces a timezone shift (e.g. +/-2h) on every save.
+  return new Date(value.getTime());
 }
 
 export function normalizeDateRangeFromDb<T extends DateRange>(value: T): T {
