@@ -73,20 +73,28 @@ describe('composeRealtimeEventTitle', () => {
 });
 
 describe('parseSupabaseRealtimeTimestamp', () => {
-  it('interpretiert Zeitstempel ohne Zeitzone als UTC', () => {
+  it('interpretiert Zeitstempel ohne Zeitzone als lokale Wandzeit', () => {
     const parsed = parseSupabaseRealtimeTimestamp('2026-05-08 13:00:00');
 
     expect(parsed).toBeDefined();
-    expect(parsed?.toISOString()).toBe('2026-05-08T13:00:00.000Z');
+    expect(parsed?.getFullYear()).toBe(2026);
+    expect(parsed?.getMonth()).toBe(4);
+    expect(parsed?.getDate()).toBe(8);
+    expect(parsed?.getHours()).toBe(13);
+    expect(parsed?.getMinutes()).toBe(0);
+    expect(parsed?.getSeconds()).toBe(0);
   });
 
-  it('interpretiert Zeitstempel mit Mikrosekunden ohne Zeitzone als UTC', () => {
+  it('interpretiert Zeitstempel mit Mikrosekunden ohne Zeitzone als lokale Wandzeit', () => {
     const parsed = parseSupabaseRealtimeTimestamp(
       '2026-05-08 13:00:00.123456'
     );
 
     expect(parsed).toBeDefined();
-    expect(parsed?.toISOString()).toBe('2026-05-08T13:00:00.123Z');
+    expect(parsed?.getHours()).toBe(13);
+    expect(parsed?.getMinutes()).toBe(0);
+    expect(parsed?.getSeconds()).toBe(0);
+    expect(parsed?.getMilliseconds()).toBe(123);
   });
 
   it('lässt Zeitstempel mit vorhandener Zeitzone unverändert durch den nativen Parser laufen', () => {

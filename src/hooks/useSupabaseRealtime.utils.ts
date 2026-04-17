@@ -50,8 +50,8 @@ export function parseSupabaseRealtimeTimestamp(
     return undefined;
   }
 
-  // Supabase can deliver `timestamp without time zone` values without zone info.
-  // In our pipeline those values represent UTC instants, so we normalize to ISO-Z.
+  // `timestamp without time zone` must be interpreted as local wall-clock time.
+  // Do not coerce to UTC by appending "Z".
   const timestampWithoutTimezoneMatch =
     /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,6}))?)?$/.exec(
       value
@@ -63,9 +63,16 @@ export function parseSupabaseRealtimeTimestamp(
     const normalizedMilliseconds = (milliseconds ?? '0')
       .slice(0, 3)
       .padEnd(3, '0');
-    const isoWithUtcZone = `${year}-${month}-${day}T${hours}:${minutes}:${seconds ?? '00'}.${normalizedMilliseconds}Z`;
-    const parsedUtcDate = new Date(isoWithUtcZone);
-    return Number.isNaN(parsedUtcDate.getTime()) ? undefined : parsedUtcDate;
+
+    return new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hours),
+      Number(minutes),
+      Number(seconds ?? 0),
+      Number(normalizedMilliseconds)
+    );
   }
 
   const parsedDate = new Date(value);
