@@ -577,6 +577,30 @@ function syncEinsatzRealtimeCaches(
     return;
   }
 
+  const hasTemporalUpdate =
+    payload.eventType === 'UPDATE' &&
+    (nextRecord?.start !== undefined || nextRecord?.end !== undefined);
+
+  if (hasTemporalUpdate) {
+    // Realtime payloads for timestamp columns can vary by environment
+    // (timezone suffix/no suffix). To avoid transient ±offset flicker, do not
+    // patch start/end from payload; fetch authoritative API-normalized values.
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.detailedEinsatz(einsatzId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.einsaetze(orgId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.allLists(),
+      predicate: (query) => matchesEinsatzListQueryForOrg(query.queryKey, orgId),
+    });
+    return;
+  }
+
   const patch = buildEinsatzBasePatch(nextRecord ?? previousRecord ?? {});
 
   queryClient.setQueryData<EinsatzDetailed | null>(
