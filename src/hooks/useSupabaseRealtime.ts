@@ -577,14 +577,11 @@ function syncEinsatzRealtimeCaches(
     return;
   }
 
-  const hasTemporalUpdate =
-    payload.eventType === 'UPDATE' &&
-    (nextRecord?.start !== undefined || nextRecord?.end !== undefined);
-
-  if (hasTemporalUpdate) {
-    // Realtime payloads for timestamp columns can vary by environment
-    // (timezone suffix/no suffix). To avoid transient ±offset flicker, do not
-    // patch start/end from payload; fetch authoritative API-normalized values.
+  if (payload.eventType === 'UPDATE') {
+    // Never patch einsatz UPDATE payloads directly into caches.
+    // UPDATE payload timestamp serialization can differ by environment
+    // and has caused transient timezone flicker in deployment.
+    // Always refetch authoritative, API-normalized data instead.
     queryClient.invalidateQueries({
       queryKey: queryKeys.detailedEinsatz(einsatzId),
     });
