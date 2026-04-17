@@ -5,20 +5,28 @@ const {
   mockRequireAuth,
   mockHasPermission,
   mockCreateChangeLogAuto,
+  mockCreateChangeLog,
   mockCheckEinsatzRequirementsAfterAssignment,
   mockTransaction,
   mockFindUnique,
   mockUpdate,
   mockFindManyConflicts,
+  mockPrismaEinsatzFindUnique,
+  mockPrismaEinsatzUpdate,
+  mockChangeTypeFindUnique,
 } = vi.hoisted(() => ({
   mockRequireAuth: vi.fn(),
   mockHasPermission: vi.fn(),
   mockCreateChangeLogAuto: vi.fn(),
+  mockCreateChangeLog: vi.fn(),
   mockCheckEinsatzRequirementsAfterAssignment: vi.fn(),
   mockTransaction: vi.fn(),
   mockFindUnique: vi.fn(),
   mockUpdate: vi.fn(),
   mockFindManyConflicts: vi.fn(),
+  mockPrismaEinsatzFindUnique: vi.fn(),
+  mockPrismaEinsatzUpdate: vi.fn(),
+  mockChangeTypeFindUnique: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/authGuard', () => ({
@@ -28,6 +36,7 @@ vi.mock('@/lib/auth/authGuard', () => ({
 
 vi.mock('@/features/activity_log/activity_log-dal', () => ({
   createChangeLogAuto: mockCreateChangeLogAuto,
+  createChangeLog: mockCreateChangeLog,
 }));
 
 vi.mock('@/lib/email/email-helpers', () => ({
@@ -38,6 +47,13 @@ vi.mock('@/lib/email/email-helpers', () => ({
 vi.mock('@/lib/prisma', () => ({
   default: {
     $transaction: mockTransaction,
+    einsatz: {
+      findUnique: mockPrismaEinsatzFindUnique,
+      update: mockPrismaEinsatzUpdate,
+    },
+    change_type: {
+      findUnique: mockChangeTypeFindUnique,
+    },
     einsatz_helper: {
       findMany: mockFindManyConflicts,
     },
@@ -45,7 +61,8 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import { ChangeTypeIds } from '@/features/activity_log/changeTypeIds';
-import { toggleUserAssignmentToEinsatz } from './dal-einsatz';
+import { StatusValuePairs } from '@/components/event-calendar/constants';
+import { toggleUserAssignmentToEinsatz, updateEinsatzStatus } from './dal-einsatz';
 
 describe('toggleUserAssignmentToEinsatz', () => {
   beforeEach(() => {
@@ -62,8 +79,12 @@ describe('toggleUserAssignmentToEinsatz', () => {
     });
     mockHasPermission.mockResolvedValue(true);
     mockCreateChangeLogAuto.mockResolvedValue(undefined);
+    mockCreateChangeLog.mockResolvedValue(undefined);
     mockCheckEinsatzRequirementsAfterAssignment.mockResolvedValue(undefined);
     mockFindManyConflicts.mockResolvedValue([]);
+    mockPrismaEinsatzFindUnique.mockReset();
+    mockPrismaEinsatzUpdate.mockReset();
+    mockChangeTypeFindUnique.mockReset();
 
     mockFindUnique.mockImplementation(async (_args?: { select?: object }) => {
       if (assigned) {
@@ -211,5 +232,109 @@ describe('toggleUserAssignmentToEinsatz', () => {
     ).rejects.toThrow('Die Selbstzuweisung konnte nicht abgeschlossen werden.');
 
     expect(mockTransaction).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('updateEinsatzStatus', () => {
+  beforeEach(() => {
+    mockRequireAuth.mockResolvedValue({
+      session: {
+        user: {
+          id: 'user-1',
+          orgIds: ['org-1'],
+          activeOrganization: { id: 'org-1' },
+        },
+      },
+    });
+    mockHasPermission.mockResolvedValue(true);
+    mockCreateChangeLog.mockReset();
+    mockPrismaEinsatzFindUnique.mockReset();
+    mockPrismaEinsatzUpdate.mockReset();
+    mockChangeTypeFindUnique.mockReset();
+  });
+
+  it('schreibt bei Statuswechsel auf bestätigt einen Aktivitätseintrag', async () => {
+    mockPrismaEinsatzFindUnique.mockResolvedValue({
+      id: 'einsatz-1',
+      org_id: 'org-1',
+    });
+    mockPrismaEinsatzUpdate.mockResolvedValue({
+      id: 'einsatz-1',
+      org_id: 'org-1',
+      status_id: StatusValuePairs.vergeben_bestaetigt,
+      title: 'Testeinsatz',
+    });
+    mockChangeTypeFindUnique.mockImplementation(
+      async ({ where }: { where: { id?: string; name?: string } }) => {
+        if (where.id === ChangeTypeIds['E-Bestaetigt']) {
+          return { id: ChangeTypeIds['E-Bestaetigt'] };
+        }
+        return null;
+      }
+    );
+
+    await updateEinsatzStatus(
+      'einsatz-1',
+      StatusValuePairs.vergeben_bestaetigt
+    );
+
+    expect(mockCreateChangeLog).toHaveBeenCalledWith({
+      einsatzId: 'einsatz-1',
+      userId: 'user-1',
+      typeId: ChangeTypeIds['E-Bestaetigt'],
+    });
+  });
+
+  it('verwendet den Change-Type-Fallback über Namen, wenn die ID nicht auflösbar ist', async () => {
+    mockPrismaEinsatzFindUnique.mockResolvedValue({
+      id: 'einsatz-1',
+      org_id: 'org-1',
+    });
+    mockPrismaEinsatzUpdate.mockResolvedValue({
+      id: 'einsatz-1',
+      org_id: 'org-1',
+      status_id: StatusValuePairs.vergeben_bestaetigt,
+      title: 'Testeinsatz',
+    });
+    mockChangeTypeFindUnique.mockImplementation(
+      async ({ where }: { where: { id?: string; name?: string } }) => {
+        if (where.id === ChangeTypeIds['E-Bestaetigt']) {
+          return null;
+        }
+        if (where.name === 'E-Bestaetigt') {
+          return { id: 'fallback-type-id' };
+        }
+        return null;
+      }
+    );
+
+    await updateEinsatzStatus(
+      'einsatz-1',
+      StatusValuePairs.vergeben_bestaetigt
+    );
+
+    expect(mockCreateChangeLog).toHaveBeenCalledWith({
+      einsatzId: 'einsatz-1',
+      userId: 'user-1',
+      typeId: 'fallback-type-id',
+    });
+  });
+
+  it('schreibt keinen Aktivitätseintrag bei anderen Statuswerten', async () => {
+    mockPrismaEinsatzFindUnique.mockResolvedValue({
+      id: 'einsatz-1',
+      org_id: 'org-1',
+    });
+    mockPrismaEinsatzUpdate.mockResolvedValue({
+      id: 'einsatz-1',
+      org_id: 'org-1',
+      status_id: StatusValuePairs.vergeben,
+      title: 'Testeinsatz',
+    });
+
+    await updateEinsatzStatus('einsatz-1', StatusValuePairs.vergeben);
+
+    expect(mockCreateChangeLog).not.toHaveBeenCalled();
+    expect(mockChangeTypeFindUnique).not.toHaveBeenCalled();
   });
 });

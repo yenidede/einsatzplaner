@@ -29,7 +29,7 @@ import type { PermissionType } from '@/lib/auth/permissions';
 import { ValidateEinsatzCreate } from './validation-service';
 import z from 'zod';
 import { detectChangeTypes, getAffectedUserIds } from '../activity_log/utils';
-import { createChangeLogAuto } from '../activity_log/activity_log-dal';
+import { createChangeLog, createChangeLogAuto } from '../activity_log/activity_log-dal';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/errors';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { ChangeTypeIds } from '../activity_log/changeTypeIds';
@@ -39,6 +39,31 @@ import {
   normalizeEinsatzDatesFromDb,
   prismaTimestampToCalendarDate,
 } from '@/features/einsatz/datetime';
+
+async function resolveChangeTypeId(
+  predefinedId: string,
+  changeTypeName: string
+): Promise<string> {
+  const existingById = await prisma.change_type.findUnique({
+    where: { id: predefinedId },
+    select: { id: true },
+  });
+
+  if (existingById?.id) {
+    return existingById.id;
+  }
+
+  const existingByName = await prisma.change_type.findUnique({
+    where: { name: changeTypeName },
+    select: { id: true },
+  });
+
+  if (!existingByName?.id) {
+    throw new Error(`Change-Type '${changeTypeName}' wurde nicht gefunden.`);
+  }
+
+  return existingByName.id;
+}
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -1459,10 +1484,15 @@ export async function updateEinsatzStatus(
   });
 
   if (statusId === StatusValuePairs.vergeben_bestaetigt && session?.user?.id) {
-    await createChangeLogAuto({
+    const bestaetigtTypeId = await resolveChangeTypeId(
+      ChangeTypeIds['E-Bestaetigt'],
+      'E-Bestaetigt'
+    );
+
+    await createChangeLog({
       einsatzId,
       userId: session.user.id,
-      typeId: ChangeTypeIds['E-Bestaetigt'],
+      typeId: bestaetigtTypeId,
     });
   }
 
