@@ -97,10 +97,19 @@ describe('parseSupabaseRealtimeTimestamp', () => {
     expect(parsed?.getMilliseconds()).toBe(123);
   });
 
-  it('lässt Zeitstempel mit vorhandener Zeitzone unverändert durch den nativen Parser laufen', () => {
+  it('ignoriert ein Z-Suffix und behält die Wandzeit', () => {
     const parsed = parseSupabaseRealtimeTimestamp('2026-05-08T13:00:00.000Z');
 
     expect(parsed).toBeDefined();
-    expect(parsed?.toISOString()).toBe('2026-05-08T13:00:00.000Z');
+    expect(parsed?.getHours()).toBe(13);
+    expect(parsed?.getMinutes()).toBe(0);
+  });
+
+  it('ignoriert ein Offset-Suffix und behält die Wandzeit', () => {
+    const parsed = parseSupabaseRealtimeTimestamp('2026-05-08T13:00:00+02:00');
+
+    expect(parsed).toBeDefined();
+    expect(parsed?.getHours()).toBe(13);
+    expect(parsed?.getMinutes()).toBe(0);
   });
 });

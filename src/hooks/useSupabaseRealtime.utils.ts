@@ -50,16 +50,17 @@ export function parseSupabaseRealtimeTimestamp(
     return undefined;
   }
 
-  // `timestamp without time zone` must be interpreted as local wall-clock time.
-  // Do not coerce to UTC by appending "Z".
-  const timestampWithoutTimezoneMatch =
-    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,6}))?)?$/.exec(
+  // `timestamp without time zone` should always be interpreted as wall-clock time.
+  // Some realtime payloads may still include a zone suffix (`Z` / `+02:00`);
+  // we intentionally ignore that suffix to avoid ±offset drift in the UI.
+  const timestampMatch =
+    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,6}))?)?(?:Z|[+\-]\d{2}:?\d{2})?$/.exec(
       value
     );
 
-  if (timestampWithoutTimezoneMatch) {
+  if (timestampMatch) {
     const [, year, month, day, hours, minutes, seconds, milliseconds] =
-      timestampWithoutTimezoneMatch;
+      timestampMatch;
     const normalizedMilliseconds = (milliseconds ?? '0')
       .slice(0, 3)
       .padEnd(3, '0');
