@@ -40,6 +40,37 @@ import {
   prismaTimestampToCalendarDate,
 } from '@/features/einsatz/datetime';
 
+async function resolveChangeTypeId(
+  predefinedId: string,
+  changeTypeName: string
+): Promise<string> {
+  const existingById = await prisma.change_type.findUnique({
+    where: { id: predefinedId },
+    select: { id: true },
+  });
+
+  if (existingById?.id) {
+    return existingById.id;
+  }
+
+  const existingByName = await prisma.change_type.findUnique({
+    where: { name: changeTypeName },
+    select: { id: true },
+  });
+
+  if (!existingByName?.id) {
+    throw new Error(`Change-Type '${changeTypeName}' wurde nicht gefunden.`);
+  }
+
+  console.warn('Fallback auf Change-Type-Aufloesung per Name verwendet.', {
+    predefinedId,
+    changeTypeName,
+    resolvedId: existingByName.id,
+  });
+
+  return existingByName.id;
+}
+
 // Helper type for conflict information
 export type EinsatzConflict = {
   userId: string;
@@ -1450,23 +1481,41 @@ export async function updateEinsatzStatus(
     'einsaetze:update'
   );
 
-  const updatedEinsatz = await prisma.einsatz.update({
+  if (statusId === StatusValuePairs.vergeben_bestaetigt && session?.user?.id) {
+    const bestaetigtTypeId = await resolveChangeTypeId(
+      ChangeTypeIds['E-Bestaetigt'],
+      'E-Bestaetigt'
+    );
+
+    return prisma.$transaction(async (tx) => {
+      const updatedEinsatz = await tx.einsatz.update({
+        where: { id: einsatzId },
+        data: {
+          status_id: statusId,
+          updated_at: new Date(),
+        },
+      });
+
+      await tx.change_log.create({
+        data: {
+          einsatz_id: einsatzId,
+          user_id: session.user.id,
+          type_id: bestaetigtTypeId,
+          affected_user: null,
+        },
+      });
+
+      return updatedEinsatz;
+    });
+  }
+
+  return prisma.einsatz.update({
     where: { id: einsatzId },
     data: {
       status_id: statusId,
       updated_at: new Date(),
     },
   });
-
-  if (statusId === StatusValuePairs.vergeben_bestaetigt && session?.user?.id) {
-    await createChangeLogAuto({
-      einsatzId,
-      userId: session.user.id,
-      typeId: ChangeTypeIds['E-Bestaetigt'],
-    });
-  }
-
-  return updatedEinsatz;
 }
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
