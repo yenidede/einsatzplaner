@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { composeRealtimeEventTitle } from './useSupabaseRealtime.utils';
+import {
+  composeRealtimeEventTitle,
+  parseSupabaseRealtimeTimestamp,
+} from './useSupabaseRealtime.utils';
 
 describe('composeRealtimeEventTitle', () => {
   it('keeps the existing title when no new base title is provided', () => {
@@ -66,5 +69,30 @@ describe('composeRealtimeEventTitle', () => {
         nextBaseTitle: 'Neu',
       })
     ).toBe('Neu');
+  });
+});
+
+describe('parseSupabaseRealtimeTimestamp', () => {
+  it('interpretiert Zeitstempel ohne Zeitzone als UTC', () => {
+    const parsed = parseSupabaseRealtimeTimestamp('2026-05-08 13:00:00');
+
+    expect(parsed).toBeDefined();
+    expect(parsed?.toISOString()).toBe('2026-05-08T13:00:00.000Z');
+  });
+
+  it('interpretiert Zeitstempel mit Mikrosekunden ohne Zeitzone als UTC', () => {
+    const parsed = parseSupabaseRealtimeTimestamp(
+      '2026-05-08 13:00:00.123456'
+    );
+
+    expect(parsed).toBeDefined();
+    expect(parsed?.toISOString()).toBe('2026-05-08T13:00:00.123Z');
+  });
+
+  it('lässt Zeitstempel mit vorhandener Zeitzone unverändert durch den nativen Parser laufen', () => {
+    const parsed = parseSupabaseRealtimeTimestamp('2026-05-08T13:00:00.000Z');
+
+    expect(parsed).toBeDefined();
+    expect(parsed?.toISOString()).toBe('2026-05-08T13:00:00.000Z');
   });
 });

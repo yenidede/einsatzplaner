@@ -42,3 +42,32 @@ export function composeRealtimeEventTitle(params: {
 
   return nextBaseTitle;
 }
+
+export function parseSupabaseRealtimeTimestamp(
+  value: string | null | undefined
+): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  // Supabase can deliver `timestamp without time zone` values without zone info.
+  // In our pipeline those values represent UTC instants, so we normalize to ISO-Z.
+  const timestampWithoutTimezoneMatch =
+    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,6}))?)?$/.exec(
+      value
+    );
+
+  if (timestampWithoutTimezoneMatch) {
+    const [, year, month, day, hours, minutes, seconds, milliseconds] =
+      timestampWithoutTimezoneMatch;
+    const normalizedMilliseconds = (milliseconds ?? '0')
+      .slice(0, 3)
+      .padEnd(3, '0');
+    const isoWithUtcZone = `${year}-${month}-${day}T${hours}:${minutes}:${seconds ?? '00'}.${normalizedMilliseconds}Z`;
+    const parsedUtcDate = new Date(isoWithUtcZone);
+    return Number.isNaN(parsedUtcDate.getTime()) ? undefined : parsedUtcDate;
+  }
+
+  const parsedDate = new Date(value);
+  return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+}

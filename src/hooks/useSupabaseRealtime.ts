@@ -25,13 +25,16 @@ import type {
   EinsatzListItem,
 } from '@/features/einsatz/types';
 import type { CalendarEvent } from '@/components/event-calendar/types';
-import { parseCalendarDateTimeString } from '@/features/einsatz/datetime';
+import { dbTimestampToCalendarDate } from '@/features/einsatz/datetime';
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
 } from '@supabase/supabase-js';
 import type { einsatz as Einsatz } from '@/generated/prisma';
-import { composeRealtimeEventTitle } from './useSupabaseRealtime.utils';
+import {
+  composeRealtimeEventTitle,
+  parseSupabaseRealtimeTimestamp,
+} from './useSupabaseRealtime.utils';
 
 type EinsatzRow = {
   id: string;
@@ -107,7 +110,8 @@ function toInstantDate(value: string | null | undefined): Date | undefined {
 }
 
 function toCalendarDate(value: string | null | undefined): Date | undefined {
-  return parseCalendarDateTimeString(value);
+  const parsed = parseSupabaseRealtimeTimestamp(value);
+  return parsed ? dbTimestampToCalendarDate(parsed) : undefined;
 }
 
 function isEinsatzRow(value: unknown): value is EinsatzRow {
