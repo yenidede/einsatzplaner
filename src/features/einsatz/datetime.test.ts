@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  calendarDateToDbTimestamp,
   dbTimestampToCalendarDate,
+  normalizeDateRangeForDb,
   normalizeDateRangeFromDb,
   parseCalendarDateTimeString,
   prismaTimestampToCalendarDate,
@@ -109,5 +111,26 @@ describe('datetime normalization', () => {
     expect(parsed).toBeDefined();
     expect(parsed?.getHours()).toBe(expectedHour);
     expect(parsed?.getMinutes()).toBe(expectedMinute);
+  });
+
+  it('preserves the original instant when converting calendar dates for DB writes', () => {
+    const calendarDate = new Date(2026, 3, 23, 18, 15, 0, 123);
+
+    const dbDate = calendarDateToDbTimestamp(calendarDate);
+
+    expect(dbDate.getTime()).toBe(calendarDate.getTime());
+    expect(dbDate.toISOString()).toBe(calendarDate.toISOString());
+  });
+
+  it('normalizes date ranges for DB without introducing timezone drift', () => {
+    const range = {
+      start: new Date(2026, 3, 23, 18, 15, 0, 0),
+      end: new Date(2026, 3, 23, 20, 15, 0, 0),
+    };
+
+    const normalized = normalizeDateRangeForDb(range);
+
+    expect(normalized.start.getTime()).toBe(range.start.getTime());
+    expect(normalized.end.getTime()).toBe(range.end.getTime());
   });
 });
