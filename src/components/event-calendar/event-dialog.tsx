@@ -75,6 +75,8 @@ import { RequiredUserProperties } from './RequiredUserProperties';
 import { Separator } from '../ui/separator';
 import { formatDateToTimeInput, isNormalizedTime } from '@/lib/time-input';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
+import { useUserProfile } from '@/features/settings/hooks/useUserProfile';
+import { hasActiveOrganizationSettingsAccess } from '@/components/settings/settings-navigation.utils';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -153,7 +155,9 @@ function formatTimeForInput(date: Date) {
  * Event times should be shown in local wall-clock time. Unlike org default times, UTC ISO strings here
  * represent concrete instants and therefore must be interpreted locally after parsing.
  */
-function normalizeEventDateValue(value: Date | string | null | undefined): Date | null {
+function normalizeEventDateValue(
+  value: Date | string | null | undefined
+): Date | null {
   if (!value) {
     return null;
   }
@@ -393,6 +397,7 @@ export function EventDialogVerwaltung({
 }: EventDialogProps) {
   const { showDefault, showDestructive } = useConfirmDialog();
   const { data: session } = useSession();
+  const { data: userProfile } = useUserProfile(session?.user?.id);
 
   const activeOrgId = session?.user?.activeOrganization?.id;
   const currentUserId = session?.user?.id;
@@ -459,6 +464,10 @@ export function EventDialogVerwaltung({
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
   const activeOrg = organizations?.find((org) => org.id === activeOrgId);
+  const canManageOrganizationSettings = hasActiveOrganizationSettingsAccess(
+    userProfile?.organizations ?? [],
+    activeOrgId
+  );
 
   const orgDefaultStartTime = formatOrgTimeForInput(
     activeOrg?.default_starttime,
@@ -766,10 +775,15 @@ export function EventDialogVerwaltung({
           title: einsatzDetailed.title || '',
           all_day: einsatzDetailed.all_day || false,
           startDate: editStart ?? new Date(),
-          startTime:
-            formatEventTimeForInput(einsatzDetailed.start, orgDefaultStartTime),
+          startTime: formatEventTimeForInput(
+            einsatzDetailed.start,
+            orgDefaultStartTime
+          ),
           endDate: editEnd ?? new Date(),
-          endTime: formatEventTimeForInput(einsatzDetailed.end, orgDefaultEndTime),
+          endTime: formatEventTimeForInput(
+            einsatzDetailed.end,
+            orgDefaultEndTime
+          ),
           participantCount: einsatzDetailed.participant_count || 0,
           pricePerPerson: einsatzDetailed.price_per_person || 0,
           totalPrice: einsatzDetailed.total_price || 0,
@@ -1545,6 +1559,8 @@ export function EventDialogVerwaltung({
                 activeOrg={
                   organizations?.find((org) => org.id === activeOrgId) ?? null
                 }
+                areCategoriesLoading={categoriesQuery.isLoading}
+                canManageOrganizationSettings={canManageOrganizationSettings}
               />
               <DynamicFormFields
                 fields={dynamicFormFields}

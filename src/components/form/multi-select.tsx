@@ -115,6 +115,12 @@ export interface MultiSelectProps
    * Optional, can be used to add custom styles.
    */
   className?: string;
+
+  /**
+   * Optional empty-state content shown when no options exist.
+   * Falls back to the generic no-results message if omitted.
+   */
+  emptyState?: React.ReactNode;
 }
 
 export const MultiSelect = React.forwardRef<
@@ -135,6 +141,7 @@ export const MultiSelect = React.forwardRef<
       maxCount = 3,
       modalPopover = false,
       className,
+      emptyState,
       ...props
     },
     ref
@@ -324,38 +331,48 @@ export const MultiSelect = React.forwardRef<
               onKeyDown={handleInputKeyDown}
             />
             <CommandList>
-              <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
-              <CommandGroup>
-                <CommandItem
-                  key="all"
-                  onSelect={toggleAll}
-                  className="cursor-pointer"
-                >
-                  <Checkbox
-                    checked={selectedValues.length === options.length}
-                    onCheckedChange={toggleAll}
-                    className="mr-2 h-4 w-4"
-                  />
-                  <span>Alle auswählen</span>
-                </CommandItem>
-                {options.map((option) => {
-                  const isSelected = selectedValues.includes(option.value);
-                  return (
+              {options.length === 0 ? (
+                <div className="px-3 py-4 text-sm">
+                  {emptyState ?? 'Keine Ergebnisse gefunden.'}
+                </div>
+              ) : (
+                <>
+                  <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
+                  <CommandGroup>
                     <CommandItem
-                      key={option.value}
-                      onSelect={() => toggleOption(option.value)}
+                      key="all"
+                      onSelect={toggleAll}
                       className="cursor-pointer"
                     >
                       <Checkbox
-                        className="cursor-pointer"
-                        checked={isSelected}
+                        checked={selectedValues.length === options.length}
+                        onCheckedChange={toggleAll}
+                        className="mr-2 h-4 w-4"
                       />
-                      {option.icon && <option.icon className="mr-2 h-4 w-4" />}
-                      <span>{option.label}</span>
+                      <span>Alle auswählen</span>
                     </CommandItem>
-                  );
-                })}
-              </CommandGroup>
+                    {options.map((option) => {
+                      const isSelected = selectedValues.includes(option.value);
+                      return (
+                        <CommandItem
+                          key={option.value}
+                          onSelect={() => toggleOption(option.value)}
+                          className="cursor-pointer"
+                        >
+                          <Checkbox
+                            className="cursor-pointer"
+                            checked={isSelected}
+                          />
+                          {option.icon && (
+                            <option.icon className="mr-2 h-4 w-4" />
+                          )}
+                          <span>{option.label}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </>
+              )}
               <CommandSeparator />
               <CommandGroup>
                 <div className="flex items-center justify-between">

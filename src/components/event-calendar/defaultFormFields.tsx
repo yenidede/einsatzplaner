@@ -1,7 +1,9 @@
 'use client';
 
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import type { organization as Organization } from '@/generated/prisma';
 import FormGroup from '../form/formGroup';
@@ -24,6 +26,8 @@ interface DefaultFormFieldsProps {
   categoriesOptions: Array<{ value: string; label: string }>;
   usersOptions: Array<{ value: string; label: string }>;
   activeOrg: Organization | null;
+  canManageOrganizationSettings: boolean;
+  areCategoriesLoading: boolean;
   onTimeFieldErrorChange: (
     field: 'startTime' | 'endTime',
     error: string | null
@@ -42,6 +46,8 @@ export function DefaultFormFields({
   categoriesOptions,
   usersOptions,
   activeOrg,
+  canManageOrganizationSettings,
+  areCategoriesLoading,
   onTimeFieldErrorChange,
 }: DefaultFormFieldsProps) {
   const handleChange = <TField extends keyof EinsatzFormData>(
@@ -67,6 +73,34 @@ export function DefaultFormFields({
           value={formData.einsatzCategoriesIds ?? []}
           placeholder="Kategorien auswählen"
           animation={1}
+          emptyState={
+            areCategoriesLoading ? (
+              <div>Lade ...</div>
+            ) : (
+              <div className="space-y-2 px-1 py-1 text-sm">
+                <div className="text-foreground font-medium">
+                  Keine Kategorien vorhanden.
+                </div>
+                {canManageOrganizationSettings && activeOrg ? (
+                  <div className="text-muted-foreground">
+                    Sie können
+                    <Button asChild variant="link" className="ml-1 p-0">
+                      <Link
+                        href={`/settings/org/${activeOrg.id}#standardfelder`}
+                      >
+                        hier Ihre erste Kategorie anlegen.
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div>
+                    Bitten Sie Ihren Administrator, eine Kategorie in den
+                    Organisationseinstellungen anzulegen.
+                  </div>
+                )}
+              </div>
+            )
+          }
           onValueChange={(selectedValues) => {
             handleChange('einsatzCategoriesIds', selectedValues);
           }}
