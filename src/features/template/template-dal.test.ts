@@ -120,16 +120,16 @@ describe('template dal', () => {
     });
   });
 
-  it('lehnt eine Beschreibung mit mehr als 80 Zeichen ab', async () => {
+  it('lehnt eine Beschreibung mit mehr als 120 Zeichen ab', async () => {
     mockUpdate.mockResolvedValue({
       id: 'template-1',
     });
 
     await expect(
       updateTemplateAction('template-1', {
-        description: 'a'.repeat(81),
+        description: 'a'.repeat(121),
       })
-    ).rejects.toThrow('Die Beschreibung darf höchstens 80 Zeichen lang sein.');
+    ).rejects.toThrow('Die Beschreibung darf höchstens 120 Zeichen lang sein.');
 
     expect(mockUpdate).not.toHaveBeenCalled();
   });
