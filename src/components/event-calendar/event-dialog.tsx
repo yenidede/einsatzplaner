@@ -155,7 +155,9 @@ function formatTimeForInput(date: Date) {
  * Event times should be shown in local wall-clock time. Unlike org default times, UTC ISO strings here
  * represent concrete instants and therefore must be interpreted locally after parsing.
  */
-function normalizeEventDateValue(value: Date | string | null | undefined): Date | null {
+function normalizeEventDateValue(
+  value: Date | string | null | undefined
+): Date | null {
   if (!value) {
     return null;
   }
@@ -465,8 +467,7 @@ export function EventDialogVerwaltung({
   const canManageOrganizationSettings =
     userProfile?.organizations?.some(
       (org) =>
-        org.id === activeOrgId &&
-        org.roles.some(isOrganizationManagementRole)
+        org.id === activeOrgId && org.roles.some(isOrganizationManagementRole)
     ) ?? false;
 
   const orgDefaultStartTime = formatOrgTimeForInput(
@@ -775,10 +776,15 @@ export function EventDialogVerwaltung({
           title: einsatzDetailed.title || '',
           all_day: einsatzDetailed.all_day || false,
           startDate: editStart ?? new Date(),
-          startTime:
-            formatEventTimeForInput(einsatzDetailed.start, orgDefaultStartTime),
+          startTime: formatEventTimeForInput(
+            einsatzDetailed.start,
+            orgDefaultStartTime
+          ),
           endDate: editEnd ?? new Date(),
-          endTime: formatEventTimeForInput(einsatzDetailed.end, orgDefaultEndTime),
+          endTime: formatEventTimeForInput(
+            einsatzDetailed.end,
+            orgDefaultEndTime
+          ),
           participantCount: einsatzDetailed.participant_count || 0,
           pricePerPerson: einsatzDetailed.price_per_person || 0,
           totalPrice: einsatzDetailed.total_price || 0,
@@ -1554,6 +1560,7 @@ export function EventDialogVerwaltung({
                 activeOrg={
                   organizations?.find((org) => org.id === activeOrgId) ?? null
                 }
+                areCategoriesLoading={categoriesQuery.isLoading}
                 canManageOrganizationSettings={canManageOrganizationSettings}
               />
               <DynamicFormFields
