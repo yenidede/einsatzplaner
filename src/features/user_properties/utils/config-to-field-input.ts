@@ -86,7 +86,10 @@ export function propertyConfigToFieldInput(
     description: config.description,
     datatype,
     isRequired: config.isRequired,
-    placeholder: config.placeholder,
+    placeholder:
+      config.fieldType === 'date' || config.fieldType === 'time'
+        ? undefined
+        : config.placeholder,
     defaultValue,
     isMultiline: config.isMultiline,
     min: config.minValue,

@@ -377,16 +377,57 @@ export type CreateTemplateFieldInput = {
   allowedValues?: string[];
 };
 
+const TYPE_NAME_BY_DATATYPE: Readonly<Record<string, string>> = {
+  text: 'Text',
+  number: 'Zahl',
+  boolean: 'Ja/Nein',
+  select: 'Auswahl',
+  currency: 'Währung',
+  group: 'Gruppe',
+  date: 'Datum',
+  time: 'Uhrzeit',
+  phone: 'Telefon',
+  mail: 'E-Mail',
+};
+
 async function ensureTypeExists(datatype: string): Promise<string> {
   const type = await prisma.type.findFirst({
     where: { datatype },
   });
 
-  if (!type) {
-    throw new Error(`Typ ${datatype} nicht gefunden.`);
+  if (type) {
+    return type.id;
   }
 
-  return type.id;
+  try {
+    const createdType = await prisma.type.create({
+      data: {
+        datatype,
+        name: TYPE_NAME_BY_DATATYPE[datatype] ?? datatype,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return createdType.id;
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const concurrentType = await prisma.type.findFirst({
+        where: { datatype },
+        select: { id: true },
+      });
+
+      if (concurrentType) {
+        return concurrentType.id;
+      }
+    }
+
+    throw new Error(`Typ ${datatype} konnte nicht erstellt werden.`);
+  }
 }
 
 export async function createTemplateField(

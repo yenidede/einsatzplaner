@@ -41,6 +41,19 @@ type ValidationOptions = {
   allowedValues?: string[] | null;
 };
 
+function isValidIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return date.toISOString().slice(0, 10) === value;
+}
+
 export const handleDelete = async (
   einsatz_singular: string,
   einsatz: { id: string | undefined; title: string },
@@ -188,6 +201,43 @@ export function generateDynamicSchema(
       case 'mail':
         fieldSchema = z.email('Ungültige E-Mail-Adresse');
         break;
+      case 'date':
+        fieldSchema =
+          options.isRequired === true
+            ? z
+                .string()
+                .min(1, 'Datum darf nicht leer sein')
+                .refine((value) => isValidIsoDate(value), {
+                  message: 'Ungültiges Datum. Erwartet: JJJJ-MM-TT',
+                })
+            : z
+                .union([z.string(), z.null(), z.literal('')])
+                .optional()
+                .transform((s) => (s == null || s === '' ? '' : String(s)))
+                .refine((value) => value === '' || isValidIsoDate(value), {
+                  message: 'Ungültiges Datum. Erwartet: JJJJ-MM-TT',
+                });
+        break;
+      case 'time':
+        fieldSchema =
+          options.isRequired === true
+            ? z
+                .string()
+                .min(1, 'Uhrzeit darf nicht leer sein')
+                .regex(
+                  /^([01]\d|2[0-3]):([0-5]\d)$/,
+                  'Ungültige Uhrzeit. Erwartet: HH:MM'
+                )
+            : z
+                .union([z.string(), z.null(), z.literal('')])
+                .optional()
+                .transform((s) => (s == null || s === '' ? '' : String(s)))
+                .refine(
+                  (value) =>
+                    value === '' || /^([01]\d|2[0-3]):([0-5]\d)$/.test(value),
+                  { message: 'Ungültige Uhrzeit. Erwartet: HH:MM' }
+                );
+        break;
       case 'select':
         if (!options.allowedValues || options.allowedValues.length === 0)
           throw new Error('Auswahlfeld benötigt allowedValues');
@@ -204,6 +254,8 @@ export function generateDynamicSchema(
             });
         }
         break;
+      case 'group':
+        return;
       default:
         throw new Error('Feldtyp ' + type + ' wird nicht unterstützt');
     }
