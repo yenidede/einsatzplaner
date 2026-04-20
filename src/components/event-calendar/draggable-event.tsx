@@ -60,10 +60,13 @@ export function DraggableEvent({
 
   const eventIsMultiDay = isMultiDay ?? isMultiDayEvent(event);
   const isDraggable = !eventIsMultiDay;
+  const draggableId = `${event.id}-${view}-${new Date(
+    event.start
+  ).toISOString()}-${new Date(event.end).toISOString()}`;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
-      id: `${event.id}-${view}`,
+      id: draggableId,
       disabled: !isDraggable,
       data: {
         event,
@@ -89,7 +92,7 @@ export function DraggableEvent({
   };
 
   // Don't render if this event is being dragged
-  if (isDragging || activeId === `${event.id}-${view}`) {
+  if (isDragging || activeId === draggableId) {
     return (
       <div
         ref={setNodeRef}

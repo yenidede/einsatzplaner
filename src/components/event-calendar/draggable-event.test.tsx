@@ -8,32 +8,30 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DraggableEvent } from './draggable-event';
 import type { CalendarEvent } from './types';
 
-const {
-  mockUseDraggable,
-  mockUseCalendarDnd,
-  mockEventItem,
-} = vi.hoisted(() => ({
-  mockUseDraggable: vi.fn(),
-  mockUseCalendarDnd: vi.fn(),
-  mockEventItem: vi.fn(
-    ({
-      children,
-      dndListeners,
-      dndAttributes,
-    }: {
-      children?: ReactNode;
-      dndListeners?: unknown;
-      dndAttributes?: unknown;
-    }) => (
-      <div
-        data-has-listeners={dndListeners ? 'true' : 'false'}
-        data-has-attributes={dndAttributes ? 'true' : 'false'}
-      >
-        {children}
-      </div>
-    )
-  ),
-}));
+const { mockUseDraggable, mockUseCalendarDnd, mockEventItem } = vi.hoisted(
+  () => ({
+    mockUseDraggable: vi.fn(),
+    mockUseCalendarDnd: vi.fn(),
+    mockEventItem: vi.fn(
+      ({
+        children,
+        dndListeners,
+        dndAttributes,
+      }: {
+        children?: ReactNode;
+        dndListeners?: unknown;
+        dndAttributes?: unknown;
+      }) => (
+        <div
+          data-has-listeners={dndListeners ? 'true' : 'false'}
+          data-has-attributes={dndAttributes ? 'true' : 'false'}
+        >
+          {children}
+        </div>
+      )
+    ),
+  })
+);
 
 vi.mock('@dnd-kit/core', () => ({
   useDraggable: mockUseDraggable,
@@ -85,7 +83,9 @@ describe('DraggableEvent', () => {
         disabled: true,
       })
     );
-    expect(container.querySelector('[data-has-listeners="false"]')).toBeTruthy();
+    expect(
+      container.querySelector('[data-has-listeners="false"]')
+    ).toBeTruthy();
     expect(
       container.querySelector('[data-has-attributes="false"]')
     ).toBeTruthy();
@@ -162,5 +162,44 @@ describe('DraggableEvent', () => {
     } else {
       throw new Error('EventItem props were not captured as expected.');
     }
+  });
+
+  it('erzeugt pro normalisierter Instanz eine eindeutige Drag-ID', () => {
+    const sharedEvent = {
+      id: 'shared-id',
+      title: 'Mehrtägiger Einsatz',
+      assignedUsers: [],
+      helpersNeeded: 0,
+    } satisfies Omit<CalendarEvent, 'start' | 'end'>;
+
+    render(
+      <>
+        <DraggableEvent
+          event={{
+            ...sharedEvent,
+            start: new Date('2026-04-20T08:00:00.000Z'),
+            end: new Date('2026-04-21T10:00:00.000Z'),
+          }}
+          view="week"
+          isMultiDay
+          mode="verwaltung"
+          pastIndicatorTooltip="Liegt in der Vergangenheit."
+        />
+        <DraggableEvent
+          event={{
+            ...sharedEvent,
+            start: new Date('2026-04-21T08:00:00.000Z'),
+            end: new Date('2026-04-22T10:00:00.000Z'),
+          }}
+          view="week"
+          isMultiDay
+          mode="verwaltung"
+          pastIndicatorTooltip="Liegt in der Vergangenheit."
+        />
+      </>
+    );
+
+    const draggableIds = mockUseDraggable.mock.calls.map(([args]) => args.id);
+    expect(new Set(draggableIds).size).toBe(draggableIds.length);
   });
 });

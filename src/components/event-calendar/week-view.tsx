@@ -198,7 +198,7 @@ export function WeekView({
 
         if (isOnThisDay) {
           // For multi-day events, create a normalized instance for this day
-          if (isMultiDayEvent(event)) {
+          if (eventIsMultiDay) {
             // Create a new event instance with the same time but on the current day
             const timeOnlyStart = new Date(eventStart);
             const timeOnlyEnd = new Date(eventEnd);
@@ -255,11 +255,11 @@ export function WeekView({
       const dayStart = startOfDay(day);
 
       // Track columns for overlapping events
-    const columns: { event: CalendarEvent; end: Date }[][] = [];
+      const columns: { event: CalendarEvent; end: Date }[][] = [];
 
-    sortedEvents.forEach((event) => {
-      const eventStart = new Date(event.event.start);
-      const eventEnd = new Date(event.event.end);
+      sortedEvents.forEach((event) => {
+        const eventStart = new Date(event.event.start);
+        const eventEnd = new Date(event.event.end);
 
         // Adjust start and end times if they're outside this day
         const adjustedStart = isSameDay(day, eventStart)
@@ -308,18 +308,18 @@ export function WeekView({
         // Ensure column is initialized before pushing
         const currentColumn = columns[columnIndex] || [];
         columns[columnIndex] = currentColumn;
-      currentColumn.push({ event: event.event, end: adjustedEnd });
+        currentColumn.push({ event: event.event, end: adjustedEnd });
 
         // Calculate width and left position based on number of columns
         const width = columnIndex === 0 ? 1 : 1 - columnIndex * 0.1;
         const left = columnIndex === 0 ? 0 : columnIndex * 0.1;
 
-      positionedEvents.push({
-        event: event.event,
-        isMultiDay: event.isMultiDay,
-        top,
-        height,
-        left,
+        positionedEvents.push({
+          event: event.event,
+          isMultiDay: event.isMultiDay,
+          top,
+          height,
+          left,
           width,
           zIndex: 10 + columnIndex, // Higher columns get higher z-index
         });

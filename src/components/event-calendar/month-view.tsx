@@ -189,6 +189,9 @@ export function MonthView({
                   }
                 }
               });
+              const renderedEventsById = new Map(
+                allDayEventsForDay.map((item) => [item.event.id, item])
+              );
 
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isPastDay = day < todayStart;
@@ -227,9 +230,7 @@ export function MonthView({
                         allDayEventsForDay.map((item) => item.event)
                       ).map((event, index) => {
                         const renderedEvent =
-                          allDayEventsForDay.find(
-                            (item) => item.event.id === event.id
-                          ) ?? null;
+                          renderedEventsById.get(event.id) ?? null;
                         const eventStart = new Date(event.start);
                         const eventEnd = new Date(event.end);
                         const isFirstDay = isSameDay(day, eventStart);
@@ -334,7 +335,7 @@ export function MonthView({
                                       view="month"
                                       isFirstDay={isFirstDay}
                                       isLastDay={isLastDay}
-                                isMultiDay={spansMultipleDays(event)}
+                                      isMultiDay={spansMultipleDays(event)}
                                       mode={mode}
                                       isSaving={isEventSaving?.(event.id)}
                                       savingIndicatorTooltip={

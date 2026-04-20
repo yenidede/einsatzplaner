@@ -3,18 +3,14 @@
  */
 
 import { render } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgendaView } from './agenda-view';
 import type { CalendarEvent } from './types';
 
 const { mockEventItem } = vi.hoisted(() => ({
-  mockEventItem: vi.fn(
-    ({
-      isMultiDay,
-    }: {
-      isMultiDay?: boolean;
-    }) => <div data-multi-day={isMultiDay ? 'true' : 'false'} />
-  ),
+  mockEventItem: vi.fn(({ isMultiDay }: { isMultiDay?: boolean }) => (
+    <div data-multi-day={isMultiDay ? 'true' : 'false'} />
+  )),
 }));
 
 vi.mock('@/components/event-calendar', () => ({
@@ -44,6 +40,10 @@ vi.mock('@/features/organization/hooks/use-organization-queries', () => ({
 }));
 
 describe('AgendaView multi-day flag', () => {
+  beforeEach(() => {
+    mockEventItem.mockClear();
+  });
+
   it('reicht multi-day events an EventItem weiter', () => {
     const events: CalendarEvent[] = [
       {
@@ -71,5 +71,35 @@ describe('AgendaView multi-day flag', () => {
     }
 
     expect(eventItemProps).toMatchObject({ isMultiDay: true });
+  });
+
+  it('markiert ganztägige Ein-Tages-Einsätze nicht als mehrtägig', () => {
+    const events: CalendarEvent[] = [
+      {
+        id: 'single-all-day',
+        title: 'Ganztägig',
+        start: new Date(2026, 3, 20, 0, 0, 0),
+        end: new Date(2026, 3, 20, 23, 59, 59),
+        allDay: true,
+        assignedUsers: [],
+        helpersNeeded: 0,
+      },
+    ];
+
+    render(
+      <AgendaView
+        events={events}
+        onEventSelect={vi.fn()}
+        mode="verwaltung"
+        pastIndicatorTooltip="Liegt in der Vergangenheit."
+      />
+    );
+
+    const eventItemProps = mockEventItem.mock.calls[0]?.[0];
+    if (!eventItemProps || typeof eventItemProps !== 'object') {
+      throw new Error('EventItem props were not captured as expected.');
+    }
+
+    expect(eventItemProps).toMatchObject({ isMultiDay: false });
   });
 });
