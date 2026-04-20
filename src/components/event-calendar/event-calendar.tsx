@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseAsStringEnum, useQueryState } from 'nuqs';
 import { RiCalendarCheckLine } from '@remixicon/react';
 import {
@@ -47,6 +47,10 @@ import {
   WeekView,
   ListView,
 } from '@/components/event-calendar';
+import {
+  getSavingToastMessage,
+  getSavingTooltipText,
+} from '@/components/event-calendar/save-state-messages';
 import { CalendarEvent, CalendarMode } from './types';
 import { EinsatzCreate, EinsatzDetailed } from '@/features/einsatz/types';
 import { useSession } from 'next-auth/react';
@@ -77,6 +81,7 @@ export interface EventCalendarProps {
   initialView?: CalendarView;
   mode: CalendarMode;
   activeOrgId?: string | null;
+  savingEventIds?: string[];
 }
 // TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
@@ -96,6 +101,7 @@ export function EventCalendar({
   initialView = 'month',
   mode,
   activeOrgId,
+  savingEventIds = [],
 }: EventCalendarProps) {
   const todayStart = useTodayStart();
   const [internalDate, setInternalDate] = useState(new Date());
@@ -143,6 +149,13 @@ export function EventCalendar({
   const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
     organizations,
     activeOrgId
+  );
+  const savingToastMessage = getSavingToastMessage(einsatz_singular);
+  const savingTooltipText = getSavingTooltipText(einsatz_singular);
+  const isEventSaving = useCallback(
+    (eventId: string) =>
+      eventId.startsWith('temp-') || savingEventIds.includes(eventId),
+    [savingEventIds]
   );
 
   const capitalizeFirst = (value?: string | null) =>
@@ -225,10 +238,8 @@ export function EventCalendar({
 
   const handleEventSelect = (event: CalendarEvent | string) => {
     const eventId = typeof event === 'string' ? event : event.id;
-    if (eventId.includes('temp-')) {
-      toast.info(
-        `${einsatz_singular} wird gespeichert und muss erst aktualisiert werden. Bitte warten Sie ein paar Sekunden und versuchen Sie es erneut.`
-      );
+    if (isEventSaving(eventId)) {
+      toast.info(savingToastMessage);
       return;
     }
     openDialog(eventId);
@@ -515,6 +526,9 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              savingIndicatorTooltip={savingTooltipText}
+              savingToastMessage={savingToastMessage}
+              isEventSaving={isEventSaving}
             />
           )}
           {view === 'week' && (
@@ -526,6 +540,9 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              savingIndicatorTooltip={savingTooltipText}
+              savingToastMessage={savingToastMessage}
+              isEventSaving={isEventSaving}
             />
           )}
           {view === 'day' && (
@@ -537,6 +554,9 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              savingIndicatorTooltip={savingTooltipText}
+              savingToastMessage={savingToastMessage}
+              isEventSaving={isEventSaving}
             />
           )}
           {view === 'agenda' && (
@@ -547,6 +567,9 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              savingIndicatorTooltip={savingTooltipText}
+              savingToastMessage={savingToastMessage}
+              isEventSaving={isEventSaving}
             />
           )}
           {view === 'list' && (

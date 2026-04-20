@@ -20,6 +20,9 @@ interface AgendaViewProps {
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
   pastIndicatorTooltip: string;
+  savingIndicatorTooltip?: string;
+  savingToastMessage?: string;
+  isEventSaving?: (eventId: string) => boolean;
 }
 
 export function AgendaView({
@@ -29,6 +32,9 @@ export function AgendaView({
   mode,
   onEventConfirm,
   pastIndicatorTooltip,
+  savingIndicatorTooltip,
+  savingToastMessage,
+  isEventSaving,
 }: AgendaViewProps) {
   const { data: session } = useSession();
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -130,6 +136,9 @@ export function AgendaView({
                   view="agenda"
                   onClick={(e) => handleEventClick(event, e)}
                   mode={mode}
+                  isSaving={isEventSaving?.(event.id)}
+                  savingIndicatorTooltip={savingIndicatorTooltip}
+                  savingToastMessage={savingToastMessage}
                   onConfirm={onEventConfirm}
                   pastIndicatorTooltip={pastIndicatorTooltip}
                 />

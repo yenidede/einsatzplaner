@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryKey } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
 import {
   addMonths,
   eachDayOfInterval,
@@ -11,6 +12,7 @@ import { queryKeys } from '../queryKeys';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
 import type { CalendarRangeData } from '@/components/event-calendar/utils';
 import { parseCalendarDateTimeString } from '@/features/einsatz/datetime';
+import type { EinsatzCreate } from '@/features/einsatz/types';
 
 /** If isOverlap is true, returns the 3 monthKeys that overlap the 3-month window centered on the given date. Otherwise, returns the 1 monthKey for the given date. */
 export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
@@ -40,6 +42,47 @@ function toMutationDate(value: Date | string): Date {
   }
 
   return new Date(value);
+}
+
+type SavingTrackedEinsatzCreate = EinsatzCreate & {
+  __savingEventId?: string;
+};
+
+function useSavingEventIds() {
+  const [savingEventCounts, setSavingEventCounts] = useState<Record<string, number>>(
+    {}
+  );
+
+  const addSavingEventId = useCallback((eventId: string) => {
+    setSavingEventCounts((current) => ({
+      ...current,
+      [eventId]: (current[eventId] ?? 0) + 1,
+    }));
+  }, []);
+
+  const removeSavingEventId = useCallback((eventId: string) => {
+    setSavingEventCounts((current) => {
+      const nextCount = (current[eventId] ?? 0) - 1;
+      if (nextCount > 0) {
+        return { ...current, [eventId]: nextCount };
+      }
+
+      if (!(eventId in current)) {
+        return current;
+      }
+
+      const { [eventId]: _removed, ...rest } = current;
+      return rest;
+    });
+  }, []);
+
+  const savingEventIds = useMemo(() => Object.keys(savingEventCounts), [savingEventCounts]);
+
+  return {
+    addSavingEventId,
+    removeSavingEventId,
+    savingEventIds,
+  };
 }
 
 /** Returns one Date per calendar day from start through end (inclusive). If end is missing or before start, returns [startOfDay(start)]. */
@@ -176,7 +219,6 @@ import {
   type EinsatzConflict,
 } from '../dal-einsatz';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
-import { EinsatzCreate } from '../types';
 import { CalendarEvent } from '@/components/event-calendar/types';
 import { toast } from 'sonner';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
@@ -218,13 +260,15 @@ export function useCreateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
+  const { addSavingEventId, removeSavingEventId, savingEventIds } =
+    useSavingEventIds();
 
   const mutation = useMutation({
     mutationFn: async ({
       event,
       disableTimeConflicts = false,
     }: {
-      event: EinsatzCreate;
+      event: SavingTrackedEinsatzCreate;
       disableTimeConflicts?: boolean;
     }) => {
       return createEinsatz({ data: event, disableTimeConflicts });
@@ -232,6 +276,10 @@ export function useCreateEinsatz(
     onMutate: async ({ event }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId);
       if (!activeOrgId) return {};
+      const savingEventId =
+        event.__savingEventId ?? event.id ?? `temp-${crypto.randomUUID()}`;
+      event.__savingEventId = savingEventId;
+      addSavingEventId(savingEventId);
       const dates = getDatesSpanningEvent({
         start: event.start,
         end: event.end != null ? event.end : undefined,
@@ -240,7 +288,7 @@ export function useCreateEinsatz(
         new Set(dates.flatMap((d) => getMonthKeysForDate(d, false)))
       );
       const optimisticEvent: CalendarEvent = {
-        id: `temp-${Date.now()}`,
+        id: savingEventId,
         title: event.title,
         start: toMutationDate(event.start),
         end: toMutationDate(event.end),
@@ -260,7 +308,7 @@ export function useCreateEinsatz(
           });
         }
       }
-      return { previousData };
+      return { previousData, savingEventId };
     },
     onError: (error, _vars, context) => {
       if (context?.previousData) {
@@ -300,8 +348,11 @@ export function useCreateEinsatz(
         );
       }
     },
-    onSettled: (data, _error, vars) => {
+    onSettled: (data, _error, vars, context) => {
       const event = data?.einsatz ?? vars?.event;
+      if (context?.savingEventId) {
+        removeSavingEventId(context.savingEventId);
+      }
       invalidateEinsatzQueries(queryClient, data?.einsatz?.id);
       if (data?.einsatz?.id) {
         invalidateActivityLogs(queryClient);
@@ -324,6 +375,7 @@ export function useCreateEinsatz(
     ...mutation,
     mutate: (event: EinsatzCreate) => mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate) => mutation.mutateAsync({ event }),
+    savingEventIds,
   };
 }
 
@@ -334,6 +386,8 @@ export function useUpdateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
+  const { addSavingEventId, removeSavingEventId, savingEventIds } =
+    useSavingEventIds();
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -359,6 +413,7 @@ export function useUpdateEinsatz(
       if (!activeOrgId) return {};
       const eventId = event.id;
       if (!eventId) return {};
+      addSavingEventId(eventId);
       const start =
         'start' in event && event.start
           ? toMutationDate(event.start)
@@ -396,7 +451,7 @@ export function useUpdateEinsatz(
           events: newEvents,
         });
       }
-      return { previousData };
+      return { previousData, savingEventId: eventId };
     },
     onError: (error, _vars, context) => {
       if (context?.previousData) {
@@ -445,6 +500,9 @@ export function useUpdateEinsatz(
       }
     },
     onSettled: (data, _error, vars, context) => {
+      if (context?.savingEventId) {
+        removeSavingEventId(context.savingEventId);
+      }
       const event =
         data && 'einsatz' in data && data.einsatz
           ? data.einsatz
@@ -481,6 +539,7 @@ export function useUpdateEinsatz(
       mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate | CalendarEvent) =>
       mutation.mutateAsync({ event }),
+    savingEventIds,
   };
 }
 

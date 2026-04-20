@@ -44,6 +44,9 @@ interface WeekViewProps {
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
   pastIndicatorTooltip: string;
+  savingIndicatorTooltip?: string;
+  savingToastMessage?: string;
+  isEventSaving?: (eventId: string) => boolean;
 }
 
 interface PositionedEvent {
@@ -63,6 +66,9 @@ export function WeekView({
   mode,
   onEventConfirm,
   pastIndicatorTooltip,
+  savingIndicatorTooltip,
+  savingToastMessage,
+  isEventSaving,
 }: WeekViewProps) {
   const todayStart = useTodayStart();
 
@@ -405,6 +411,9 @@ export function WeekView({
                         isFirstDay={isFirstDay}
                         isLastDay={isLastDay}
                         mode={mode}
+                        isSaving={isEventSaving?.(event.id)}
+                        savingIndicatorTooltip={savingIndicatorTooltip}
+                        savingToastMessage={savingToastMessage}
                         onConfirm={onEventConfirm}
                         pastIndicatorTooltip={pastIndicatorTooltip}
                       >
@@ -472,6 +481,9 @@ export function WeekView({
                     showTime
                     height={positionedEvent.height}
                     mode={mode}
+                    isSaving={isEventSaving?.(positionedEvent.event.id)}
+                    savingIndicatorTooltip={savingIndicatorTooltip}
+                    savingToastMessage={savingToastMessage}
                     onConfirm={onEventConfirm}
                     pastIndicatorTooltip={pastIndicatorTooltip}
                   />

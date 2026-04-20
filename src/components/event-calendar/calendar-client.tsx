@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { addMonths, subMonths } from 'date-fns';
 
 import { EventCalendar } from '@/components/event-calendar';
@@ -233,6 +233,16 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     einsatz_singular,
     einsatz_plural
   );
+  const savingEventIds = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...(createMutation.savingEventIds ?? []),
+          ...(updateMutation.savingEventIds ?? []),
+        ])
+      ),
+    [createMutation.savingEventIds, updateMutation.savingEventIds]
+  );
 
   // Handle invalid einsatz ID
   useEffect(() => {
@@ -383,10 +393,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         onEventTimeUpdate={handleEventTimeUpdate}
         onEventDelete={handleEventDelete}
         onEventConfirm={handleEventConfirm}
-        onMultiEventDelete={handleMultiEventDelete}
-        mode={mode}
-        activeOrgId={activeOrgId}
-      />
+      onMultiEventDelete={handleMultiEventDelete}
+      mode={mode}
+      activeOrgId={activeOrgId}
+      savingEventIds={savingEventIds}
+    />
     </>
   );
 }

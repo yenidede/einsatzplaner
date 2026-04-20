@@ -4,20 +4,22 @@ import { useMemo } from 'react';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { format, isPast } from 'date-fns';
-import { Clock10 } from 'lucide-react';
+import { Clock10, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
-import {
-  getBorderRadiusClasses,
-  getEventColorClasses,
-  type CalendarEvent,
-} from '@/components/event-calendar';
+import { getBorderRadiusClasses, getEventColorClasses } from './utils';
+import type { CalendarEvent } from './types';
 import { CalendarMode } from './types';
 import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
 import { ContextMenuEventRightClick } from '../context-menu';
 import { StatusValuePairs } from './constants';
 import TooltipCustom from '@/components/tooltip-custom';
 import { useSession } from 'next-auth/react';
+import {
+  getSavingToastMessage,
+  getSavingTooltipText,
+} from './save-state-messages';
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -43,12 +45,39 @@ function PastIndicator({
       <span
         className={cn(
           'inline-flex items-center justify-center rounded-full border border-current/15 bg-white/45 text-current/75 dark:bg-black/10',
-          compact ? 'size-5' : 'size-6',
+          compact ? 'size-4' : 'size-6',
           className
         )}
         aria-label={tooltipText}
       >
-        <Clock10 className={compact ? 'size-3' : 'size-3.5'} />
+        <Clock10 className={compact ? 'size-2.5' : 'size-3.5'} />
+      </span>
+    </TooltipCustom>
+  );
+}
+
+function SavingIndicator({
+  compact = false,
+  className,
+  tooltipText,
+}: {
+  compact?: boolean;
+  className?: string;
+  tooltipText: string;
+}) {
+  return (
+    <TooltipCustom text={tooltipText}>
+      <span
+        className={cn(
+          'inline-flex items-center justify-center rounded-full border border-current/15 bg-white/45 text-current/75 dark:bg-black/10',
+          compact ? 'size-4' : 'size-6',
+          className
+        )}
+        aria-label={tooltipText}
+      >
+        <Loader2
+          className={cn(compact ? 'size-2.5' : 'size-3.5', 'animate-spin')}
+        />
       </span>
     </TooltipCustom>
   );
@@ -68,6 +97,7 @@ interface EventWrapperProps {
   onMouseDown?: (e: React.MouseEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
   mode: CalendarMode;
+  isSaving?: boolean;
 }
 
 /**
@@ -87,6 +117,7 @@ function EventWrapper({
   onMouseDown,
   onTouchStart,
   mode,
+  isSaving = false,
 }: EventWrapperProps) {
   // Always use the currentTime (if provided) to determine if the event is in the past
   const displayEnd = currentTime
@@ -110,18 +141,21 @@ function EventWrapper({
   return (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 relative flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:opacity-75 data-past-event:saturate-50 sm:px-2',
+        'focus-visible:border-ring focus-visible:ring-ring/50 relative flex h-full w-full px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:opacity-75 data-past-event:saturate-50 data-saving:opacity-90 sm:px-2',
         getEventColorClasses(statusForColor || 'fallback', mode),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className
       )}
       data-dragging={isDragging || undefined}
       data-past-event={isEventInPast || undefined}
+      data-saving={isSaving || undefined}
+      aria-disabled={isSaving}
+      style={isSaving ? { cursor: 'not-allowed' } : undefined}
       onClick={onClick}
-      onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
-      {...dndListeners}
-      {...dndAttributes}
+      onMouseDown={isSaving ? undefined : onMouseDown}
+      onTouchStart={isSaving ? undefined : onTouchStart}
+      {...(isSaving ? {} : dndListeners)}
+      {...(isSaving ? {} : dndAttributes)}
     >
       {children}
     </button>
@@ -147,6 +181,9 @@ interface EventItemProps {
   onDelete?: (eventId: string, eventTitle: string) => void;
   onConfirm?: (eventId: string) => void;
   pastIndicatorTooltip: string;
+  isSaving?: boolean;
+  savingIndicatorTooltip?: string;
+  savingToastMessage?: string;
 }
 
 /**
@@ -171,6 +208,9 @@ export function EventItem({
   onDelete,
   onConfirm,
   pastIndicatorTooltip,
+  isSaving = false,
+  savingIndicatorTooltip,
+  savingToastMessage,
 }: EventItemProps) {
   const { data: session } = useSession();
   const canConfirm =
@@ -212,6 +252,20 @@ export function EventItem({
     )} - ${formatTimeWithOptionalMinutes(displayEnd)}`;
   };
   const isEventInPast = isPast(displayEnd);
+  const resolvedSavingTooltipText =
+    savingIndicatorTooltip ?? getSavingTooltipText('Einsatz');
+  const resolvedSavingToastMessage =
+    savingToastMessage ?? getSavingToastMessage('Einsatz');
+  const handleBlockedClick = (e: React.MouseEvent) => {
+    if (!isSaving) {
+      onClick?.(e);
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    toast.info(resolvedSavingToastMessage);
+  };
 
   if (view === 'month') {
     const eventWrapper = (
@@ -220,7 +274,7 @@ export function EventItem({
         isFirstDay={isFirstDay}
         isLastDay={isLastDay}
         isDragging={isDragging}
-        onClick={onClick}
+        onClick={handleBlockedClick}
         className={cn(
           'mt-(--event-gap) items-center text-[0.7rem] sm:text-xs',
           event.allDay ? 'h-auto py-1' : 'h-auto min-h-fit py-1',
@@ -232,16 +286,23 @@ export function EventItem({
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
         mode={mode}
+        isSaving={isSaving}
       >
-        {children || (
-          <div className="flex w-full flex-col pr-6">
+        {(isEventInPast || isSaving) && (
+          <div className="absolute top-1 right-1 flex items-center gap-0.5">
             {isEventInPast && (
-              <PastIndicator
+              <PastIndicator compact tooltipText={pastIndicatorTooltip} />
+            )}
+            {isSaving && (
+              <SavingIndicator
                 compact
-                className="absolute top-1 right-1"
-                tooltipText={pastIndicatorTooltip}
+                tooltipText={resolvedSavingTooltipText}
               />
             )}
+          </div>
+        )}
+        {children || (
+          <div className="flex w-full flex-col pr-6">
             <div className="flex items-start gap-1">
               {!event.allDay && (
                 <div className="text-[0.6875rem] leading-tight font-normal opacity-70 sm:text-[0.6875rem]">
@@ -284,7 +345,7 @@ export function EventItem({
         isFirstDay={isFirstDay}
         isLastDay={isLastDay}
         isDragging={isDragging}
-        onClick={onClick}
+        onClick={handleBlockedClick}
         className={cn(
           'flex-col py-1',
           view === 'week' ? 'text-[10px] sm:text-xs' : 'text-xs',
@@ -296,13 +357,20 @@ export function EventItem({
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
         mode={mode}
+        isSaving={isSaving}
       >
-        {isEventInPast && (view === 'week' || view === 'day') && (
-          <PastIndicator
-            compact
-            className="absolute top-1 right-1"
-            tooltipText={pastIndicatorTooltip}
-          />
+        {(isEventInPast || isSaving) && (
+          <div className="absolute top-1 right-1 flex items-center gap-0.5">
+            {isEventInPast && (
+              <PastIndicator compact tooltipText={pastIndicatorTooltip} />
+            )}
+            {isSaving && (
+              <SavingIndicator
+                compact
+                tooltipText={resolvedSavingTooltipText}
+              />
+            )}
+          </div>
         )}
         <div className="pr-6">
           <div className="leading-tight font-medium wrap-break-word">
@@ -334,27 +402,46 @@ export function EventItem({
   const agendaView = (
     <button
       className={cn(
-        'focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:opacity-75 data-past-event:saturate-50',
+        'focus-visible:border-ring focus-visible:ring-ring/50 relative flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:opacity-75 data-past-event:saturate-50 data-saving:opacity-90',
         getEventColorClasses(statusForColor, mode), // Use statusForColor instead of event.status
         className
       )}
       data-past-event={isEventInPast || undefined}
-      onClick={onClick}
-      onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
-      {...dndListeners}
-      {...dndAttributes}
+      data-saving={isSaving || undefined}
+      aria-disabled={isSaving}
+      style={isSaving ? { cursor: 'not-allowed' } : undefined}
+      onClick={handleBlockedClick}
+      onMouseDown={isSaving ? undefined : onMouseDown}
+      onTouchStart={isSaving ? undefined : onTouchStart}
+      {...(isSaving ? {} : dndListeners)}
+      {...(isSaving ? {} : dndAttributes)}
     >
       {/* PastIndicator hier nicht benötigt, weil in Agenda sowieso nur zukünftige Events angezeigt werden */}
       <div className="text-sm font-medium">{event.title}</div>
       <div className="text-xs opacity-70">
         {event.allDay ? (
-          <span>Ganztägig</span>
+          <span className="inline-flex items-center gap-0.5">
+            {isSaving && (
+              <SavingIndicator
+                compact
+                tooltipText={resolvedSavingTooltipText}
+              />
+            )}
+            <span>Ganztägig</span>
+          </span>
         ) : (
-          <span className="uppercase">
-            {formatTimeWithOptionalMinutes(displayStart) +
-              ' - ' +
-              formatTimeWithOptionalMinutes(displayEnd)}
+          <span className="inline-flex items-center gap-0.5 uppercase">
+            {isSaving && (
+              <SavingIndicator
+                compact
+                tooltipText={resolvedSavingTooltipText}
+              />
+            )}
+            <span>
+              {formatTimeWithOptionalMinutes(displayStart) +
+                ' - ' +
+                formatTimeWithOptionalMinutes(displayEnd)}
+            </span>
           </span>
         )}
       </div>

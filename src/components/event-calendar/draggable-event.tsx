@@ -17,6 +17,9 @@ interface DraggableEventProps {
   view: 'month' | 'week' | 'day';
   showTime?: boolean;
   onClick?: (e: React.MouseEvent) => void;
+  isSaving?: boolean;
+  savingIndicatorTooltip?: string;
+  savingToastMessage?: string;
   height?: number;
   isMultiDay?: boolean;
   multiDayWidth?: number;
@@ -34,6 +37,9 @@ export function DraggableEvent({
   view,
   showTime,
   onClick,
+  isSaving,
+  savingIndicatorTooltip,
+  savingToastMessage,
   height,
   isMultiDay,
   multiDayWidth,
@@ -139,6 +145,9 @@ export function DraggableEvent({
         isLastDay={isLastDay}
         isDragging={isDragging}
         onClick={onClick}
+        isSaving={isSaving}
+        savingIndicatorTooltip={savingIndicatorTooltip}
+        savingToastMessage={savingToastMessage}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         dndListeners={listeners}
