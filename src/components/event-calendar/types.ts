@@ -36,7 +36,10 @@ export type SupportedDataTypes =
   | 'select'
   | 'currency'
   | 'mail'
-  | 'phone';
+  | 'phone'
+  | 'date'
+  | 'time'
+  | 'group';
 
 export type CustomFormField = {
   id: string;
