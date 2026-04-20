@@ -11,6 +11,7 @@ import {
 import { queryKeys } from '../queryKeys';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
 import type { CalendarRangeData } from '@/components/event-calendar/utils';
+import type { EinsatzCreate } from '@/features/einsatz/types';
 
 /** If isOverlap is true, returns the 3 monthKeys that overlap the 3-month window centered on the given date. Otherwise, returns the 1 monthKey for the given date. */
 export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
@@ -28,6 +29,47 @@ export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
 
 /** Object with start and optional end (Date or ISO string). Used for multi-day event invalidation. */
 type WithStartEnd = { start: Date | string; end?: Date | string };
+
+type SavingTrackedEinsatzCreate = EinsatzCreate & {
+  __savingEventId?: string;
+};
+
+function useSavingEventIds() {
+  const [savingEventCounts, setSavingEventCounts] = useState<Record<string, number>>(
+    {}
+  );
+
+  const addSavingEventId = useCallback((eventId: string) => {
+    setSavingEventCounts((current) => ({
+      ...current,
+      [eventId]: (current[eventId] ?? 0) + 1,
+    }));
+  }, []);
+
+  const removeSavingEventId = useCallback((eventId: string) => {
+    setSavingEventCounts((current) => {
+      const nextCount = (current[eventId] ?? 0) - 1;
+      if (nextCount > 0) {
+        return { ...current, [eventId]: nextCount };
+      }
+
+      if (!(eventId in current)) {
+        return current;
+      }
+
+      const { [eventId]: _removed, ...rest } = current;
+      return rest;
+    });
+  }, []);
+
+  const savingEventIds = useMemo(() => Object.keys(savingEventCounts), [savingEventCounts]);
+
+  return {
+    addSavingEventId,
+    removeSavingEventId,
+    savingEventIds,
+  };
+}
 
 /** Returns one Date per calendar day from start through end (inclusive). If end is missing or before start, returns [startOfDay(start)]. */
 function getDatesSpanningEvent(event: WithStartEnd): Date[] {
@@ -163,7 +205,6 @@ import {
   type EinsatzConflict,
 } from '../dal-einsatz';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
-import { EinsatzCreate } from '../types';
 import { CalendarEvent } from '@/components/event-calendar/types';
 import { toast } from 'sonner';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
@@ -205,44 +246,15 @@ export function useCreateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
-  const [savingEventCounts, setSavingEventCounts] = useState<Record<string, number>>(
-    {}
-  );
-
-  const addSavingEventId = useCallback((eventId: string) => {
-    setSavingEventCounts((current) => ({
-      ...current,
-      [eventId]: (current[eventId] ?? 0) + 1,
-    }));
-  }, []);
-
-  const removeSavingEventId = useCallback((eventId: string) => {
-    setSavingEventCounts((current) => {
-      const nextCount = (current[eventId] ?? 0) - 1;
-      if (nextCount > 0) {
-        return { ...current, [eventId]: nextCount };
-      }
-
-      if (!(eventId in current)) {
-        return current;
-      }
-
-      const { [eventId]: _removed, ...rest } = current;
-      return rest;
-    });
-  }, []);
-
-  const savingEventIds = useMemo(
-    () => Object.keys(savingEventCounts),
-    [savingEventCounts]
-  );
+  const { addSavingEventId, removeSavingEventId, savingEventIds } =
+    useSavingEventIds();
 
   const mutation = useMutation({
     mutationFn: async ({
       event,
       disableTimeConflicts = false,
     }: {
-      event: EinsatzCreate;
+      event: SavingTrackedEinsatzCreate;
       disableTimeConflicts?: boolean;
     }) => {
       return createEinsatz({ data: event, disableTimeConflicts });
@@ -250,7 +262,9 @@ export function useCreateEinsatz(
     onMutate: async ({ event }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId);
       if (!activeOrgId) return {};
-      const savingEventId = event.id ?? crypto.randomUUID();
+      const savingEventId =
+        event.__savingEventId ?? event.id ?? `temp-${crypto.randomUUID()}`;
+      event.__savingEventId = savingEventId;
       addSavingEventId(savingEventId);
       const dates = getDatesSpanningEvent({
         start: event.start,
@@ -359,37 +373,8 @@ export function useUpdateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
-  const [savingEventCounts, setSavingEventCounts] = useState<Record<string, number>>(
-    {}
-  );
-
-  const addSavingEventId = useCallback((eventId: string) => {
-    setSavingEventCounts((current) => ({
-      ...current,
-      [eventId]: (current[eventId] ?? 0) + 1,
-    }));
-  }, []);
-
-  const removeSavingEventId = useCallback((eventId: string) => {
-    setSavingEventCounts((current) => {
-      const nextCount = (current[eventId] ?? 0) - 1;
-      if (nextCount > 0) {
-        return { ...current, [eventId]: nextCount };
-      }
-
-      if (!(eventId in current)) {
-        return current;
-      }
-
-      const { [eventId]: _removed, ...rest } = current;
-      return rest;
-    });
-  }, []);
-
-  const savingEventIds = useMemo(
-    () => Object.keys(savingEventCounts),
-    [savingEventCounts]
-  );
+  const { addSavingEventId, removeSavingEventId, savingEventIds } =
+    useSavingEventIds();
 
   const mutation = useMutation({
     mutationFn: async ({
