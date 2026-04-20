@@ -11,6 +11,7 @@ import { TextFieldSettings } from './fieldtypes/TextFieldSettings';
 import { NumberFieldSettings } from './fieldtypes/NumberFieldSettings';
 import { BooleanFieldSettings } from './fieldtypes/BooleanFieldSettings';
 import { SelectFieldSettings } from './fieldtypes/SelectFieldSettings';
+import { TypedValueFieldSettings } from './fieldtypes/TypedValueFieldSettings';
 import {
   validatePropertyConfig,
   getRequiredFieldWarning,
@@ -83,6 +84,31 @@ export function PropertyConfiguration({
     return errors.filter((e) => e.field === fieldName).map((e) => e.message);
   };
 
+  const fieldTypeGuidance = (() => {
+    switch (config.fieldType) {
+      case 'text':
+        return 'Freitext mit optionalem Platzhalter, Längenbegrenzung und Standardwert.';
+      case 'number':
+        return 'Ganzzahl oder Dezimalzahl mit optionalem Wertebereich und Standardwert.';
+      case 'currency':
+        return 'Geldbetrag mit Dezimalwerten (z. B. 19,90) und optionalem Wertebereich.';
+      case 'boolean':
+        return 'Ja/Nein-Feld mit optionalem Standardwert.';
+      case 'select':
+        return 'Auswahlfeld mit festen Optionen und optionaler Vorauswahl.';
+      case 'phone':
+        return 'Telefonnummer im internationalen Format ohne Leerzeichen (z. B. +436641234567).';
+      case 'mail':
+        return 'E-Mail-Adresse im Format name@beispiel.at.';
+      case 'date':
+        return 'Datum im Format TT-MM-JJJJ.';
+      case 'time':
+        return 'Uhrzeit im 24-Stunden-Format (HH:MM).';
+      default:
+        return null;
+    }
+  })();
+
   return (
     <div className="flex flex-col items-start justify-start gap-4 self-stretch">
       <div className="flex flex-col items-start justify-start gap-5 self-stretch border-t border-slate-200 py-4">
@@ -137,6 +163,9 @@ export function PropertyConfiguration({
           <h3 className="text-foreground text-base font-semibold">
             Feldeinstellungen
           </h3>
+          {fieldTypeGuidance && (
+            <p className="text-muted-foreground text-sm">{fieldTypeGuidance}</p>
+          )}
 
           {config.fieldType === 'text' && (
             <TextFieldSettings
@@ -153,6 +182,8 @@ export function PropertyConfiguration({
               isDecimal={config.isDecimal || false}
               minValue={config.minValue}
               maxValue={config.maxValue}
+              placeholder={config.placeholder || ''}
+              defaultValue={config.defaultValue}
               onChange={onConfigChange}
             />
           )}
@@ -175,25 +206,62 @@ export function PropertyConfiguration({
             />
           )}
 
-          {(config.fieldType === 'currency' ||
-            config.fieldType === 'phone' ||
-            config.fieldType === 'mail' ||
-            config.fieldType === 'date' ||
-            config.fieldType === 'time') && (
-            <TextFieldSettings
-              placeholder={config.placeholder || ''}
-              maxLength={undefined}
-              isMultiline={false}
-              defaultValue={config.defaultValue}
-              onChange={onConfigChange}
-            />
-          )}
-
           {config.fieldType === 'currency' && (
             <NumberFieldSettings
               isDecimal={true}
               minValue={config.minValue}
               maxValue={config.maxValue}
+              placeholder={config.placeholder || ''}
+              defaultValue={config.defaultValue}
+              showDecimalToggle={false}
+              minLabel="Minimaler Betrag (optional)"
+              maxLabel="Maximaler Betrag (optional)"
+              placeholderLabel="Platzhalter (optional)"
+              defaultValueLabel="Standardbetrag (optional)"
+              onChange={onConfigChange}
+            />
+          )}
+
+          {config.fieldType === 'phone' && (
+            <TypedValueFieldSettings
+              defaultValueInputType="tel"
+              placeholder={config.placeholder || ''}
+              defaultValue={config.defaultValue}
+              placeholderHint="z. B. +436641234567"
+              defaultValueHint="z. B. +436609876543"
+              onChange={onConfigChange}
+            />
+          )}
+
+          {config.fieldType === 'mail' && (
+            <TypedValueFieldSettings
+              defaultValueInputType="email"
+              placeholder={config.placeholder || ''}
+              defaultValue={config.defaultValue}
+              placeholderHint="z. B. name@beispiel.at"
+              defaultValueHint="z. B. kontakt@beispiel.at"
+              onChange={onConfigChange}
+            />
+          )}
+
+          {config.fieldType === 'date' && (
+            <TypedValueFieldSettings
+              defaultValueInputType="date"
+              placeholder={config.placeholder || ''}
+              defaultValue={config.defaultValue}
+              placeholderHint="TT-MM-JJJJ"
+              defaultValueHint="TT-MM-JJJJ"
+              onChange={onConfigChange}
+            />
+          )}
+
+          {config.fieldType === 'time' && (
+            <TypedValueFieldSettings
+              defaultValueInputType="time"
+              placeholder={config.placeholder || ''}
+              defaultValue={config.defaultValue}
+              placeholderHint="HH:MM"
+              defaultValueHint="HH:MM"
               onChange={onConfigChange}
             />
           )}
@@ -221,6 +289,11 @@ export function PropertyConfiguration({
                 {getFieldError('minValue')[0]}
               </p>
             )}
+          {getFieldError('defaultValue').map((error) => (
+            <p key={error} className="text-sm text-red-600">
+              {error}
+            </p>
+          ))}
         </section>
 
         {context === 'person' && (
