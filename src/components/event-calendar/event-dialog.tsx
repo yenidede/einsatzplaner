@@ -75,6 +75,8 @@ import { RequiredUserProperties } from './RequiredUserProperties';
 import { Separator } from '../ui/separator';
 import { formatDateToTimeInput, isNormalizedTime } from '@/lib/time-input';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
+import { useUserProfile } from '@/features/settings/hooks/useUserProfile';
+import { isOrganizationManagementRole } from '@/components/settings/settings-navigation.utils';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -393,6 +395,7 @@ export function EventDialogVerwaltung({
 }: EventDialogProps) {
   const { showDefault, showDestructive } = useConfirmDialog();
   const { data: session } = useSession();
+  const { data: userProfile } = useUserProfile(session?.user?.id);
 
   const activeOrgId = session?.user?.activeOrganization?.id;
   const currentUserId = session?.user?.id;
@@ -459,6 +462,12 @@ export function EventDialogVerwaltung({
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
   const activeOrg = organizations?.find((org) => org.id === activeOrgId);
+  const canManageOrganizationSettings =
+    userProfile?.organizations?.some(
+      (org) =>
+        org.id === activeOrgId &&
+        org.roles.some(isOrganizationManagementRole)
+    ) ?? false;
 
   const orgDefaultStartTime = formatOrgTimeForInput(
     activeOrg?.default_starttime,
@@ -1545,6 +1554,7 @@ export function EventDialogVerwaltung({
                 activeOrg={
                   organizations?.find((org) => org.id === activeOrgId) ?? null
                 }
+                canManageOrganizationSettings={canManageOrganizationSettings}
               />
               <DynamicFormFields
                 fields={dynamicFormFields}
