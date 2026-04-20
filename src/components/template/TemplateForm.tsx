@@ -51,6 +51,7 @@ import { ExistingTemplateFieldSelector } from './ExistingTemplateFieldSelector';
 import { TemplateFieldReuseSuggestions } from './TemplateFieldReuseSuggestions';
 import { normalizeTemplateFieldSearchValue } from './template-field-reuse-utils';
 import {
+  TEMPLATE_DESCRIPTION_MAX_LENGTH,
   templateFormSchema,
   type TemplateFormValues,
   type TemplateFormInputValues,
@@ -1060,6 +1061,7 @@ export function TemplateForm({
                 <Input
                   id="template-description"
                   placeholder="Kurze Beschreibung der Vorlage"
+                  maxLength={TEMPLATE_DESCRIPTION_MAX_LENGTH}
                   {...register('description')}
                 />
               </div>
