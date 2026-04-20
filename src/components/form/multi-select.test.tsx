@@ -13,9 +13,7 @@ class ResizeObserverMock {
   disconnect() {}
 }
 
-Object.defineProperty(globalThis, 'ResizeObserver', {
-  value: ResizeObserverMock,
-});
+globalThis.ResizeObserver = ResizeObserverMock as typeof ResizeObserver;
 
 Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
   value: () => undefined,
@@ -46,9 +44,9 @@ describe('MultiSelect', () => {
 
     expect(screen.getByText('Keine Kategorien vorhanden.')).toBeTruthy();
     expect(
-      screen.getByRole('link', { name: 'Standardfelder öffnen' }).getAttribute(
-        'href'
-      )
+      screen
+        .getByRole('link', { name: 'Standardfelder öffnen' })
+        .getAttribute('href')
     ).toBe('/settings/org/test-org#standardfelder');
     expect(screen.queryByText('Alle auswählen')).toBeNull();
   });
