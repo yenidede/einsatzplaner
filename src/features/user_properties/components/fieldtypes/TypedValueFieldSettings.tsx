@@ -11,6 +11,7 @@ interface TypedValueFieldSettingsProps {
   defaultValue?: string;
   placeholderHint: string;
   defaultValueHint: string;
+  showPlaceholderField?: boolean;
   onChange: (updates: { placeholder?: string; defaultValue?: string }) => void;
 }
 
@@ -20,18 +21,21 @@ export function TypedValueFieldSettings({
   defaultValue,
   placeholderHint,
   defaultValueHint,
+  showPlaceholderField = true,
   onChange,
 }: TypedValueFieldSettingsProps) {
   return (
     <>
-      <FormInputFieldCustom name="Platzhalter (optional)" errors={[]}>
-        <Input
-          type="text"
-          value={placeholder}
-          onChange={(e) => onChange({ placeholder: e.target.value })}
-          placeholder={placeholderHint}
-        />
-      </FormInputFieldCustom>
+      {showPlaceholderField && (
+        <FormInputFieldCustom name="Platzhalter (optional)" errors={[]}>
+          <Input
+            type="text"
+            value={placeholder}
+            onChange={(e) => onChange({ placeholder: e.target.value })}
+            placeholder={placeholderHint}
+          />
+        </FormInputFieldCustom>
+      )}
 
       <FormInputFieldCustom name="Standardwert (optional)" errors={[]}>
         <Input

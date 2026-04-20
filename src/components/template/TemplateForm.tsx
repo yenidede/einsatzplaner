@@ -473,13 +473,19 @@ export function TemplateForm({
 
   const handleCustomFieldTypeSelect = (type: PropertyConfig['fieldType']) => {
     if (!type) return;
-    setCustomFieldConfig((prev) => ({ ...prev, fieldType: type }));
+    setCustomFieldConfig({ ...INITIAL_CONFIG, fieldType: type });
     setCustomFieldStep('configuration');
   };
 
   const handleCustomFieldConfigChange = (updates: Partial<PropertyConfig>) => {
     setCustomFieldConfig((prev) => ({ ...prev, ...updates }));
   };
+
+  const handleBackToCustomFieldTypeSelection = useCallback(() => {
+    setCustomFieldConfig(INITIAL_CONFIG);
+    setMatchingReuseCandidates([]);
+    setCustomFieldStep('typeSelection');
+  }, []);
 
   const handleOpenCreateField = useCallback(() => {
     setEditingFieldId(null);
@@ -1441,7 +1447,7 @@ export function TemplateForm({
                   isLoading={isReuseCandidatesLoading}
                   isError={isReuseCandidatesError}
                   isConnecting={connectExistingTemplateFieldMutation.isPending}
-                  onBack={() => setCustomFieldStep('typeSelection')}
+                  onBack={handleBackToCustomFieldTypeSelection}
                   onConnect={handleConnectExistingField}
                   onRetry={() => {
                     void refetchReuseCandidates();
@@ -1465,7 +1471,7 @@ export function TemplateForm({
                   onCancel={() =>
                     editingFieldId
                       ? handleCustomFieldDialogClose(false)
-                      : setCustomFieldStep('typeSelection')
+                      : handleBackToCustomFieldTypeSelection()
                   }
                   existingPropertyNames={existingTemplateFieldNamesForDialog}
                   existingUserCount={0}

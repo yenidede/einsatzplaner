@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { Prisma } from '@/generated/prisma';
 import type { type as FieldType } from '@/generated/prisma';
 import { requireAuth } from '@/lib/auth/authGuard';
 
@@ -124,16 +125,56 @@ export async function getTypeByDatatype(
   });
 }
 
+const TYPE_NAME_BY_DATATYPE: Readonly<Record<string, string>> = {
+  text: 'Text',
+  number: 'Zahl',
+  boolean: 'Ja/Nein',
+  select: 'Auswahl',
+  currency: 'Währung',
+  group: 'Gruppe',
+  date: 'Datum',
+  time: 'Uhrzeit',
+  phone: 'Telefon',
+  mail: 'E-Mail',
+};
+
 async function ensureTypeExists(datatype: string): Promise<string> {
   const type = await prisma.type.findFirst({
     where: { datatype },
   });
 
-  if (!type) {
-    throw new Error(`Type with datatype ${datatype} not found`);
+  if (type) {
+    return type.id;
   }
 
-  return type.id;
+  try {
+    const createdType = await prisma.type.create({
+      data: {
+        datatype,
+        name: TYPE_NAME_BY_DATATYPE[datatype] ?? datatype,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return createdType.id;
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const concurrentType = await prisma.type.findFirst({
+        where: { datatype },
+        select: { id: true },
+      });
+      if (concurrentType) {
+        return concurrentType.id;
+      }
+    }
+
+    throw new Error(`Type with datatype ${datatype} could not be created`);
+  }
 }
 
 export interface CreateUserPropertyInput {
