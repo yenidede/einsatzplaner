@@ -453,20 +453,23 @@ export function EventDialogVerwaltung({
     isLoading,
     isFetching,
   } = useDetailedEinsatz(typeof einsatz === 'string' ? einsatz : null, isOpen);
+  const currentEinsatz =
+    typeof einsatz === 'string' ? detailedEinsatz : einsatz;
+  const dialogOrgId = currentEinsatz?.org_id ?? activeOrgId;
 
-  const { data: availableProps } = useUserProperties(activeOrgId);
+  const { data: availableProps } = useUserProperties(dialogOrgId);
 
-  const categoriesQuery = useCategories(activeOrgId);
+  const categoriesQuery = useCategories(dialogOrgId);
 
-  const templatesQuery = useTemplates(activeOrgId);
+  const templatesQuery = useTemplates(dialogOrgId);
 
-  const usersQuery = useUsers(activeOrgId);
+  const usersQuery = useUsers(dialogOrgId);
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
-  const activeOrg = organizations?.find((org) => org.id === activeOrgId);
+  const activeOrg = organizations?.find((org) => org.id === dialogOrgId);
   const canManageOrganizationSettings = hasActiveOrganizationSettingsAccess(
     userProfile?.organizations ?? [],
-    activeOrgId
+    dialogOrgId
   );
 
   const orgDefaultStartTime = formatOrgTimeForInput(
@@ -479,11 +482,7 @@ export function EventDialogVerwaltung({
   );
 
   const { einsatz_singular, helper_singular, helper_plural } =
-    useOrganizationTerminology(organizations, activeOrgId);
-
-  // type string means edit einsatz (uuid)
-  const currentEinsatz =
-    typeof einsatz === 'string' ? detailedEinsatz : einsatz;
+    useOrganizationTerminology(organizations, dialogOrgId);
 
   const handleFormDataChange = useCallback(
     (updates: Partial<EinsatzFormData>) => {
@@ -1188,12 +1187,12 @@ export function EventDialogVerwaltung({
         parsedDataStatic.data.participantCount /
         parsedDataStatic.data.helpersNeeded;
       const maxParticipants = organizations?.find(
-        (o) => o.id === activeOrgId
+        (o) => o.id === dialogOrgId
       )?.max_participants_per_helper;
       if (maxParticipants && ratio > maxParticipants) {
         warnings.push(
           `Allgemein: Anzahl Teilnehmer:innen pro ${helper_singular} maximal ${
-            organizations?.find((o) => o.id === activeOrgId)
+            organizations?.find((o) => o.id === dialogOrgId)
               ?.max_participants_per_helper
           } (aktuell: ${Math.round(ratio)})`
         );
@@ -1321,7 +1320,7 @@ export function EventDialogVerwaltung({
       }
     );
 
-    const org_id = currentEinsatz?.org_id ?? activeOrgId;
+    const org_id = dialogOrgId;
     if (!org_id) {
       toast.error('Organisation konnte nicht zugeordnet werden.');
       return;
@@ -1557,7 +1556,7 @@ export function EventDialogVerwaltung({
                     : []
                 }
                 activeOrg={
-                  organizations?.find((org) => org.id === activeOrgId) ?? null
+                  organizations?.find((org) => org.id === dialogOrgId) ?? null
                 }
                 areCategoriesLoading={categoriesQuery.isLoading}
                 canManageOrganizationSettings={canManageOrganizationSettings}

@@ -247,11 +247,25 @@ export default function NotificationMenu() {
                       )}
                     </div>
 
-                    <button
+                    <div
                       className="flex min-w-0 flex-1 flex-col items-start space-y-1 text-left"
                       onClick={() => handleNotificationClick(activity.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          handleNotificationClick(activity.id);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
                     >
-                      <div>{getFormattedMessage(activity, openDialog)}</div>
+                      <div>
+                        {getFormattedMessage(
+                          activity,
+                          openDialog,
+                          handleNotificationClick
+                        )}
+                      </div>
 
                       <div className="text-muted-foreground flex w-full min-w-0 justify-between text-xs">
                         <span className="shrink-0">
@@ -271,7 +285,7 @@ export default function NotificationMenu() {
                           </span>
                         )}
                       </div>
-                    </button>
+                    </div>
                     {isUnread && (
                       <div className="absolute end-0 self-center">
                         <span className="sr-only">Ungelesen</span>

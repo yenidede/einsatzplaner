@@ -14,7 +14,7 @@ type smallActivity = Pick<
   'change_type' | 'user' | 'affected_user_data'
 > & {
   einsatz:
-    | (Pick<Einsatz, 'title' | 'id' | 'start' | 'end'> & {
+    | (Pick<Einsatz, 'title' | 'id' | 'start' | 'end' | 'org_id'> & {
         all_day?: boolean;
       })
     | null;
@@ -66,7 +66,8 @@ function formatEinsatzTooltipDateRange(
 
 export function getFormattedMessage(
   activity: smallActivity,
-  openDialog?: (id: string) => void
+  openDialog?: (id: string) => void,
+  onEinsatzClick?: (einsatzId: string) => void
 ): JSX.Element {
   const actorName = activity.user
     ? getFullName(activity.user)
@@ -118,7 +119,10 @@ export function getFormattedMessage(
           return (
             <TooltipCustom text={tooltipText} key={einsatz.id}>
               <Link
-                href={`/?einsatz=${einsatz.id}`}
+                href={`/einsatzverwaltung?einsatz=${einsatz.id}${
+                  einsatz.org_id ? `&org=${einsatz.org_id}` : ''
+                }`}
+                onClick={() => onEinsatzClick?.(einsatz.id)}
                 className="cursor-pointer"
                 style={UNDERLINE_STYLE}
               >
