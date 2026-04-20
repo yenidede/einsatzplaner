@@ -251,6 +251,7 @@ export function PropertyConfiguration({
               defaultValue={config.defaultValue}
               placeholderHint="TT-MM-JJJJ"
               defaultValueHint="TT-MM-JJJJ"
+              showPlaceholderField={false}
               onChange={onConfigChange}
             />
           )}
@@ -262,6 +263,7 @@ export function PropertyConfiguration({
               defaultValue={config.defaultValue}
               placeholderHint="HH:MM"
               defaultValueHint="HH:MM"
+              showPlaceholderField={false}
               onChange={onConfigChange}
             />
           )}
