@@ -101,7 +101,7 @@ export function PropertyConfiguration({
       case 'mail':
         return 'E-Mail-Adresse im Format name@beispiel.at.';
       case 'date':
-        return 'Datum im ISO-Format (TT-MM-JJJJ).';
+        return 'Datum im Format TT-MM-JJJJ.';
       case 'time':
         return 'Uhrzeit im 24-Stunden-Format (HH:MM).';
       default:
@@ -250,7 +250,7 @@ export function PropertyConfiguration({
               placeholder={config.placeholder || ''}
               defaultValue={config.defaultValue}
               placeholderHint="TT-MM-JJJJ"
-              defaultValueHint="JJJJ-MM-TT"
+              defaultValueHint="TT-MM-JJJJ"
               onChange={onConfigChange}
             />
           )}
