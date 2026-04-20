@@ -254,8 +254,8 @@ export const mapEinsatzToCalendarEvent = (
     id: normalizedEinsatz.id,
     title: hasCategories
       ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(', ')})`
+        .map((c) => c.einsatz_category.abbreviation)
+        .join(', ')})`
       : einsatz.title,
     start: normalizedEinsatz.start,
     end: normalizedEinsatz.end,
@@ -449,8 +449,8 @@ export function mapDbDataTypeToFormFieldType(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 
@@ -472,8 +472,8 @@ export function mapDbDataTypeToInputProps(
   }
   throw new Error(
     'Datentyp kann nicht zugeordnet werden: ' +
-      datatype +
-      ' zu seinem FormField.'
+    datatype +
+    ' zu seinem FormField.'
   );
 }
 
@@ -691,6 +691,23 @@ export function isMultiDayEvent(event: CalendarEvent): boolean {
   const eventStart = new Date(event.start);
   const eventEnd = new Date(event.end);
   return event.allDay || eventStart.getDate() !== eventEnd.getDate();
+}
+
+/**
+ * Check if an event actually spans multiple calendar days.
+ *
+ * All-day events are not automatically considered multi-day here because
+ * single-day all-day entries should not show the multi-day indicator.
+ */
+export function spansMultipleDays(event: CalendarEvent): boolean {
+  const eventStart = new Date(event.start);
+  const eventEnd = new Date(event.end);
+
+  return (
+    eventStart.getFullYear() !== eventEnd.getFullYear() ||
+    eventStart.getMonth() !== eventEnd.getMonth() ||
+    eventStart.getDate() !== eventEnd.getDate()
+  );
 }
 
 /**

@@ -11,6 +11,7 @@ import { useOrganizationTerminology } from '@/hooks/use-organization-terminology
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useSession } from 'next-auth/react';
 import { Loader } from 'lucide-react';
+import { isMultiDayEvent } from './utils';
 
 interface AgendaViewProps {
   events: CalendarEvent[];
@@ -135,6 +136,7 @@ export function AgendaView({
                   event={event}
                   view="agenda"
                   onClick={(e) => handleEventClick(event, e)}
+                  isMultiDay={isMultiDayEvent(event)}
                   mode={mode}
                   isSaving={isEventSaving?.(event.id)}
                   savingIndicatorTooltip={savingIndicatorTooltip}

@@ -4,11 +4,15 @@ import { useMemo } from 'react';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { format, isPast } from 'date-fns';
-import { Clock10, Loader2 } from 'lucide-react';
+import { CalendarRange, Clock10, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
-import { getBorderRadiusClasses, getEventColorClasses } from './utils';
+import {
+  getBorderRadiusClasses,
+  getEventColorClasses,
+  spansMultipleDays,
+} from './utils';
 import type { CalendarEvent } from './types';
 import { CalendarMode } from './types';
 import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
@@ -78,6 +82,24 @@ function SavingIndicator({
         <Loader2
           className={cn(compact ? 'size-2.5' : 'size-3.5', 'animate-spin')}
         />
+      </span>
+    </TooltipCustom>
+  );
+}
+
+function MultiDayIndicator({ compact = false }: { compact?: boolean }) {
+  const tooltipText = 'Mehrtägiger Eintrag: Änderungen betreffen alle Tage.';
+
+  return (
+    <TooltipCustom text={tooltipText}>
+      <span
+        className={cn(
+          'inline-flex items-center justify-center rounded-full border border-current/15 bg-white/45 text-current/75 dark:bg-black/10',
+          compact ? 'size-4' : 'size-6'
+        )}
+        aria-label={tooltipText}
+      >
+        <CalendarRange className={compact ? 'size-2.5' : 'size-3.5'} />
       </span>
     </TooltipCustom>
   );
@@ -171,6 +193,7 @@ interface EventItemProps {
   currentTime?: Date; // For updating time during drag
   isFirstDay?: boolean;
   isLastDay?: boolean;
+  isMultiDay?: boolean;
   children?: React.ReactNode;
   className?: string;
   dndListeners?: SyntheticListenerMap;
@@ -198,6 +221,7 @@ export function EventItem({
   currentTime,
   isFirstDay = true,
   isLastDay = true,
+  isMultiDay,
   children,
   className,
   dndListeners,
@@ -242,6 +266,7 @@ export function EventItem({
         )
       : new Date(event.end);
   }, [currentTime, event.start, event.end]);
+  const showMultiDayIndicator = isMultiDay ?? spansMultipleDays(event);
 
   const getEventTime = () => {
     if (event.allDay) return 'Ganztägig';
@@ -288,8 +313,9 @@ export function EventItem({
         mode={mode}
         isSaving={isSaving}
       >
-        {(isEventInPast || isSaving) && (
+        {(showMultiDayIndicator || isEventInPast || isSaving) && (
           <div className="absolute top-1 right-1 flex items-center gap-0.5">
+            {showMultiDayIndicator && <MultiDayIndicator compact />}
             {isEventInPast && (
               <PastIndicator compact tooltipText={pastIndicatorTooltip} />
             )}
@@ -359,8 +385,9 @@ export function EventItem({
         mode={mode}
         isSaving={isSaving}
       >
-        {(isEventInPast || isSaving) && (
+        {(showMultiDayIndicator || isEventInPast || isSaving) && (
           <div className="absolute top-1 right-1 flex items-center gap-0.5">
+            {showMultiDayIndicator && <MultiDayIndicator compact />}
             {isEventInPast && (
               <PastIndicator compact tooltipText={pastIndicatorTooltip} />
             )}
@@ -373,8 +400,10 @@ export function EventItem({
           </div>
         )}
         <div className="pr-6">
-          <div className="leading-tight font-medium wrap-break-word">
-            {event.title}
+          <div className="flex items-start justify-between gap-2">
+            <div className="leading-tight font-medium wrap-break-word">
+              {event.title}
+            </div>
           </div>
           {showTime && (
             <div className="text-[10px] leading-tight font-normal wrap-break-word opacity-70 sm:text-[11px]">
