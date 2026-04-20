@@ -38,6 +38,8 @@ interface DayViewProps {
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
   pastIndicatorTooltip: string;
+  savingIndicatorTooltip?: string;
+  savingToastMessage?: string;
   isEventSaving?: (eventId: string) => boolean;
 }
 
@@ -58,6 +60,8 @@ export function DayView({
   mode,
   onEventConfirm,
   pastIndicatorTooltip,
+  savingIndicatorTooltip,
+  savingToastMessage,
   isEventSaving,
 }: DayViewProps) {
   const dayEvents = useMemo(() => {
@@ -302,6 +306,8 @@ export function DayView({
                     isLastDay={isLastDay}
                     mode={mode}
                     isSaving={isEventSaving?.(event.id)}
+                    savingIndicatorTooltip={savingIndicatorTooltip}
+                    savingToastMessage={savingToastMessage}
                     onConfirm={onEventConfirm}
                     pastIndicatorTooltip={pastIndicatorTooltip}
                   >
@@ -354,6 +360,8 @@ export function DayView({
                   height={positionedEvent.height}
                   mode={mode}
                   isSaving={isEventSaving?.(positionedEvent.event.id)}
+                  savingIndicatorTooltip={savingIndicatorTooltip}
+                  savingToastMessage={savingToastMessage}
                   onConfirm={onEventConfirm}
                   pastIndicatorTooltip={pastIndicatorTooltip}
                 />

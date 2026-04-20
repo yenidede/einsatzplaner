@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryKey } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   addMonths,
   eachDayOfInterval,
@@ -205,17 +205,37 @@ export function useCreateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
-  const [savingEventIds, setSavingEventIds] = useState<string[]>([]);
+  const [savingEventCounts, setSavingEventCounts] = useState<Record<string, number>>(
+    {}
+  );
 
   const addSavingEventId = useCallback((eventId: string) => {
-    setSavingEventIds((current) =>
-      current.includes(eventId) ? current : [...current, eventId]
-    );
+    setSavingEventCounts((current) => ({
+      ...current,
+      [eventId]: (current[eventId] ?? 0) + 1,
+    }));
   }, []);
 
   const removeSavingEventId = useCallback((eventId: string) => {
-    setSavingEventIds((current) => current.filter((id) => id !== eventId));
+    setSavingEventCounts((current) => {
+      const nextCount = (current[eventId] ?? 0) - 1;
+      if (nextCount > 0) {
+        return { ...current, [eventId]: nextCount };
+      }
+
+      if (!(eventId in current)) {
+        return current;
+      }
+
+      const { [eventId]: _removed, ...rest } = current;
+      return rest;
+    });
   }, []);
+
+  const savingEventIds = useMemo(
+    () => Object.keys(savingEventCounts),
+    [savingEventCounts]
+  );
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -230,7 +250,7 @@ export function useCreateEinsatz(
     onMutate: async ({ event }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId);
       if (!activeOrgId) return {};
-      const savingEventId = event.id ?? `temp-${Date.now()}`;
+      const savingEventId = event.id ?? crypto.randomUUID();
       addSavingEventId(savingEventId);
       const dates = getDatesSpanningEvent({
         start: event.start,
@@ -240,7 +260,7 @@ export function useCreateEinsatz(
         new Set(dates.flatMap((d) => getMonthKeysForDate(d, false)))
       );
       const optimisticEvent: CalendarEvent = {
-        id: `temp-${Date.now()}`,
+        id: savingEventId,
         title: event.title,
         start:
           event.start instanceof Date ? event.start : new Date(event.start),
@@ -257,13 +277,7 @@ export function useCreateEinsatz(
           previousData.push([key, data]);
           queryClient.setQueryData<CalendarRangeData>(key, {
             ...data,
-            events: [
-              ...data.events,
-              {
-                ...optimisticEvent,
-                id: savingEventId,
-              },
-            ],
+            events: [...data.events, optimisticEvent],
           });
         }
       }
@@ -272,9 +286,6 @@ export function useCreateEinsatz(
     onError: (error, _vars, context) => {
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
-      }
-      if (context?.savingEventId) {
-        removeSavingEventId(context.savingEventId);
       }
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -348,17 +359,37 @@ export function useUpdateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
-  const [savingEventIds, setSavingEventIds] = useState<string[]>([]);
+  const [savingEventCounts, setSavingEventCounts] = useState<Record<string, number>>(
+    {}
+  );
 
   const addSavingEventId = useCallback((eventId: string) => {
-    setSavingEventIds((current) =>
-      current.includes(eventId) ? current : [...current, eventId]
-    );
+    setSavingEventCounts((current) => ({
+      ...current,
+      [eventId]: (current[eventId] ?? 0) + 1,
+    }));
   }, []);
 
   const removeSavingEventId = useCallback((eventId: string) => {
-    setSavingEventIds((current) => current.filter((id) => id !== eventId));
+    setSavingEventCounts((current) => {
+      const nextCount = (current[eventId] ?? 0) - 1;
+      if (nextCount > 0) {
+        return { ...current, [eventId]: nextCount };
+      }
+
+      if (!(eventId in current)) {
+        return current;
+      }
+
+      const { [eventId]: _removed, ...rest } = current;
+      return rest;
+    });
   }, []);
+
+  const savingEventIds = useMemo(
+    () => Object.keys(savingEventCounts),
+    [savingEventCounts]
+  );
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -429,9 +460,6 @@ export function useUpdateEinsatz(
     onError: (error, _vars, context) => {
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
-      }
-      if (context?.savingEventId) {
-        removeSavingEventId(context.savingEventId);
       }
       const errorMessage =
         error instanceof Error ? error.message : String(error);

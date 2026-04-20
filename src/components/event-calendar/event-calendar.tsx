@@ -47,6 +47,10 @@ import {
   WeekView,
   ListView,
 } from '@/components/event-calendar';
+import {
+  getSavingToastMessage,
+  getSavingTooltipText,
+} from '@/components/event-calendar/save-state-messages';
 import { CalendarEvent, CalendarMode } from './types';
 import { EinsatzCreate, EinsatzDetailed } from '@/features/einsatz/types';
 import { useSession } from 'next-auth/react';
@@ -146,8 +150,11 @@ export function EventCalendar({
     organizations,
     activeOrgId
   );
+  const savingToastMessage = getSavingToastMessage(einsatz_singular);
+  const savingTooltipText = getSavingTooltipText(einsatz_singular);
   const isEventSaving = useCallback(
-    (eventId: string) => savingEventIds.includes(eventId),
+    (eventId: string) =>
+      eventId.startsWith('temp-') || savingEventIds.includes(eventId),
     [savingEventIds]
   );
 
@@ -231,16 +238,8 @@ export function EventCalendar({
 
   const handleEventSelect = (event: CalendarEvent | string) => {
     const eventId = typeof event === 'string' ? event : event.id;
-    if (eventId.includes('temp-')) {
-      toast.info(
-        'Dieser Einsatz wird gerade gespeichert. Bitte warten Sie einen Moment, bevor Sie ihn öffnen.'
-      );
-      return;
-    }
     if (isEventSaving(eventId)) {
-      toast.info(
-        'Dieser Einsatz wird gerade gespeichert. Bitte warten Sie einen Moment, bevor Sie ihn öffnen.'
-      );
+      toast.info(savingToastMessage);
       return;
     }
     openDialog(eventId);
@@ -527,6 +526,8 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              savingIndicatorTooltip={savingTooltipText}
+              savingToastMessage={savingToastMessage}
               isEventSaving={isEventSaving}
             />
           )}
@@ -539,6 +540,8 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              savingIndicatorTooltip={savingTooltipText}
+              savingToastMessage={savingToastMessage}
               isEventSaving={isEventSaving}
             />
           )}
@@ -551,6 +554,8 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              savingIndicatorTooltip={savingTooltipText}
+              savingToastMessage={savingToastMessage}
               isEventSaving={isEventSaving}
             />
           )}
@@ -562,6 +567,8 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              savingIndicatorTooltip={savingTooltipText}
+              savingToastMessage={savingToastMessage}
               isEventSaving={isEventSaving}
             />
           )}

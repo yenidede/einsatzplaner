@@ -7,6 +7,10 @@ import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { EventItem } from './event-item';
 import type { CalendarEvent } from './types';
+import {
+  getSavingToastMessage,
+  getSavingTooltipText,
+} from './save-state-messages';
 
 const { mockToastInfo } = vi.hoisted(() => ({
   mockToastInfo: vi.fn(),
@@ -57,19 +61,27 @@ describe('EventItem save state', () => {
         mode="verwaltung"
         onClick={onClick}
         pastIndicatorTooltip="Liegt in der Vergangenheit."
+        savingIndicatorTooltip={getSavingTooltipText('Einsatz')}
+        savingToastMessage={getSavingToastMessage('Einsatz')}
         isSaving
       />
     );
 
     expect(
-      screen.getByLabelText('Dieser Einsatz wird gespeichert. Bitte warten Sie.')
+      screen.getByLabelText('Einsatz wird gespeichert. Bitte warten Sie.')
     ).toBeTruthy();
+
+    expect(
+      screen.getByRole('button', { name: /Testeinsatz/ }).getAttribute(
+        'aria-disabled'
+      )
+    ).toBe('true');
 
     fireEvent.click(screen.getByRole('button', { name: /Testeinsatz/ }));
 
     expect(onClick).not.toHaveBeenCalled();
     expect(mockToastInfo).toHaveBeenCalledWith(
-      'Dieser Einsatz wird gerade gespeichert. Bitte warten Sie einen Moment, bevor Sie ihn öffnen.'
+      'Einsatz wird gerade gespeichert. Bitte warten Sie einen Moment, bevor Sie ihn öffnen.'
     );
   });
 });

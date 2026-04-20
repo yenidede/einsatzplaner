@@ -14,6 +14,16 @@ interface DroppableCellProps {
   onClick?: () => void;
 }
 
+function isBlockedClickTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return Boolean(
+    target.closest('[data-saving="true"], [aria-disabled="true"]')
+  );
+}
+
 export function DroppableCell({
   id,
   date,
@@ -40,10 +50,20 @@ export function DroppableCell({
           .padStart(2, '0')}`
       : null;
 
+  const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (isBlockedClickTarget(event.target)) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    onClick?.();
+  };
+
   return (
     <div
       ref={setNodeRef}
-      onClick={onClick}
+      onClick={handleClick}
       className={cn(
         'data-dragging:bg-accent flex h-full flex-col overflow-hidden px-0.5 py-1 sm:px-1',
         className

@@ -45,6 +45,8 @@ interface MonthViewProps {
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
   pastIndicatorTooltip: string;
+  savingIndicatorTooltip?: string;
+  savingToastMessage?: string;
   isEventSaving?: (eventId: string) => boolean;
 }
 
@@ -56,6 +58,8 @@ export function MonthView({
   mode,
   onEventConfirm,
   pastIndicatorTooltip,
+  savingIndicatorTooltip,
+  savingToastMessage,
   isEventSaving,
 }: MonthViewProps) {
   const todayStart = useTodayStart();
@@ -233,6 +237,8 @@ export function MonthView({
                                 isLastDay={isLastDay}
                                 mode={mode}
                                 isSaving={isEventSaving?.(event.id)}
+                                savingIndicatorTooltip={savingIndicatorTooltip}
+                                savingToastMessage={savingToastMessage}
                                 onConfirm={onEventConfirm}
                                 pastIndicatorTooltip={pastIndicatorTooltip}
                               />
@@ -254,6 +260,8 @@ export function MonthView({
                               isLastDay={isLastDay}
                               mode={mode}
                               isSaving={isEventSaving?.(event.id)}
+                              savingIndicatorTooltip={savingIndicatorTooltip}
+                              savingToastMessage={savingToastMessage}
                               onConfirm={onEventConfirm}
                               pastIndicatorTooltip={pastIndicatorTooltip}
                             />
@@ -306,6 +314,10 @@ export function MonthView({
                                       isLastDay={isLastDay}
                                       mode={mode}
                                       isSaving={isEventSaving?.(event.id)}
+                                      savingIndicatorTooltip={
+                                        savingIndicatorTooltip
+                                      }
+                                      savingToastMessage={savingToastMessage}
                                       onConfirm={onEventConfirm}
                                       pastIndicatorTooltip={
                                         pastIndicatorTooltip

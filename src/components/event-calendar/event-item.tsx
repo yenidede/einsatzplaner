@@ -8,17 +8,18 @@ import { Clock10, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
-import {
-  getBorderRadiusClasses,
-  getEventColorClasses,
-  type CalendarEvent,
-} from '@/components/event-calendar';
+import { getBorderRadiusClasses, getEventColorClasses } from './utils';
+import type { CalendarEvent } from './types';
 import { CalendarMode } from './types';
 import { einsatz_status as EinsatzStatus } from '@/generated/prisma';
 import { ContextMenuEventRightClick } from '../context-menu';
 import { StatusValuePairs } from './constants';
 import TooltipCustom from '@/components/tooltip-custom';
 import { useSession } from 'next-auth/react';
+import {
+  getSavingToastMessage,
+  getSavingTooltipText,
+} from './save-state-messages';
 
 // Using date-fns format with 24-hour formatting:
 // 'HH' - hours (00-23) with leading zero
@@ -148,12 +149,13 @@ function EventWrapper({
       data-dragging={isDragging || undefined}
       data-past-event={isEventInPast || undefined}
       data-saving={isSaving || undefined}
+      aria-disabled={isSaving}
       style={isSaving ? { cursor: 'not-allowed' } : undefined}
       onClick={onClick}
-      onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
-      {...dndListeners}
-      {...dndAttributes}
+      onMouseDown={isSaving ? undefined : onMouseDown}
+      onTouchStart={isSaving ? undefined : onTouchStart}
+      {...(isSaving ? {} : dndListeners)}
+      {...(isSaving ? {} : dndAttributes)}
     >
       {children}
     </button>
@@ -180,6 +182,8 @@ interface EventItemProps {
   onConfirm?: (eventId: string) => void;
   pastIndicatorTooltip: string;
   isSaving?: boolean;
+  savingIndicatorTooltip?: string;
+  savingToastMessage?: string;
 }
 
 /**
@@ -205,6 +209,8 @@ export function EventItem({
   onConfirm,
   pastIndicatorTooltip,
   isSaving = false,
+  savingIndicatorTooltip,
+  savingToastMessage,
 }: EventItemProps) {
   const { data: session } = useSession();
   const canConfirm =
@@ -246,6 +252,10 @@ export function EventItem({
     )} - ${formatTimeWithOptionalMinutes(displayEnd)}`;
   };
   const isEventInPast = isPast(displayEnd);
+  const resolvedSavingTooltipText =
+    savingIndicatorTooltip ?? getSavingTooltipText('Einsatz');
+  const resolvedSavingToastMessage =
+    savingToastMessage ?? getSavingToastMessage('Einsatz');
   const handleBlockedClick = (e: React.MouseEvent) => {
     if (!isSaving) {
       onClick?.(e);
@@ -254,9 +264,7 @@ export function EventItem({
 
     e.preventDefault();
     e.stopPropagation();
-    toast.info(
-      'Dieser Einsatz wird gerade gespeichert. Bitte warten Sie einen Moment, bevor Sie ihn öffnen.'
-    );
+    toast.info(resolvedSavingToastMessage);
   };
 
   if (view === 'month') {
@@ -282,14 +290,13 @@ export function EventItem({
       >
         {(isEventInPast || isSaving) && (
           <div className="absolute top-1 right-1 flex items-center gap-0.5">
-            {/* Additional indicators */}
             {isEventInPast && (
               <PastIndicator compact tooltipText={pastIndicatorTooltip} />
             )}
             {isSaving && (
               <SavingIndicator
                 compact
-                tooltipText="Dieser Einsatz wird gespeichert. Bitte warten Sie."
+                tooltipText={resolvedSavingTooltipText}
               />
             )}
           </div>
@@ -360,7 +367,7 @@ export function EventItem({
             {isSaving && (
               <SavingIndicator
                 compact
-                tooltipText="Dieser Einsatz wird gespeichert. Bitte warten Sie."
+                tooltipText={resolvedSavingTooltipText}
               />
             )}
           </div>
@@ -401,12 +408,13 @@ export function EventItem({
       )}
       data-past-event={isEventInPast || undefined}
       data-saving={isSaving || undefined}
+      aria-disabled={isSaving}
       style={isSaving ? { cursor: 'not-allowed' } : undefined}
       onClick={handleBlockedClick}
-      onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
-      {...dndListeners}
-      {...dndAttributes}
+      onMouseDown={isSaving ? undefined : onMouseDown}
+      onTouchStart={isSaving ? undefined : onTouchStart}
+      {...(isSaving ? {} : dndListeners)}
+      {...(isSaving ? {} : dndAttributes)}
     >
       {/* PastIndicator hier nicht benötigt, weil in Agenda sowieso nur zukünftige Events angezeigt werden */}
       <div className="text-sm font-medium">{event.title}</div>
@@ -416,7 +424,7 @@ export function EventItem({
             {isSaving && (
               <SavingIndicator
                 compact
-                tooltipText="Dieser Einsatz wird gespeichert. Bitte warten Sie."
+                tooltipText={resolvedSavingTooltipText}
               />
             )}
             <span>Ganztägig</span>
@@ -426,7 +434,7 @@ export function EventItem({
             {isSaving && (
               <SavingIndicator
                 compact
-                tooltipText="Dieser Einsatz wird gespeichert. Bitte warten Sie."
+                tooltipText={resolvedSavingTooltipText}
               />
             )}
             <span>
