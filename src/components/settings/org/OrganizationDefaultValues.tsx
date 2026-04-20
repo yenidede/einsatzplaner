@@ -265,24 +265,31 @@ export function OrganizationDefaultValues({
             {categories.map((cat) => (
               <div
                 key={cat.id}
-                className="flex flex-wrap items-center gap-2 rounded-md border p-2"
+                className="flex flex-wrap items-end gap-2 rounded-md"
               >
                 {editingId === cat.id ? (
                   <>
-                    <Input
-                      className="max-w-[200px]"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      placeholder="Name"
-                      aria-label="Kategorie Name"
-                    />
-                    <Input
-                      className="max-w-[120px]"
-                      value={editAbbreviation}
-                      onChange={(e) => setEditAbbreviation(e.target.value)}
-                      placeholder="Kürzel"
-                      aria-label="Kategorie Kürzel"
-                    />
+                    <Label>
+                      Name (ausgeschrieben)
+                      <Input
+                        className="max-w-[340px]"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        placeholder="Name"
+                        aria-label="Kategorie Name"
+                      />
+                    </Label>
+
+                    <Label>
+                      Kürzel
+                      <Input
+                        className="max-w-[120px]"
+                        value={editAbbreviation}
+                        onChange={(e) => setEditAbbreviation(e.target.value)}
+                        placeholder="Kürzel"
+                        aria-label="Kategorie Kürzel"
+                      />
+                    </Label>
                     <Button
                       size="sm"
                       onClick={handleSaveEdit}
@@ -332,21 +339,27 @@ export function OrganizationDefaultValues({
             ))}
           </div>
           {isAdding ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
-              <Input
-                className="max-w-[200px]"
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-                placeholder="Dauerausstellung"
-                aria-label="Neue Kategorie Name"
-              />
-              <Input
-                className="max-w-[120px]"
-                value={newAbbreviation}
-                onChange={(e) => setNewAbbreviation(e.target.value)}
-                placeholder="DA"
-                aria-label="Neue Kategorie Kürzel"
-              />
+            <div className="flex flex-wrap items-end gap-2 rounded-md border border-dashed p-2">
+              <Label>
+                Name (ausgeschrieben)
+                <Input
+                  className="max-w-[340px]"
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value)}
+                  placeholder="Dauerausstellung"
+                  aria-label="Neue Kategorie Name"
+                />
+              </Label>
+              <Label>
+                Kürzel
+                <Input
+                  className="max-w-[120px]"
+                  value={newAbbreviation}
+                  onChange={(e) => setNewAbbreviation(e.target.value)}
+                  placeholder="DA"
+                  aria-label="Neue Kategorie Kürzel"
+                />
+              </Label>
               <Button
                 size="sm"
                 onClick={handleAddCategory}
@@ -374,7 +387,7 @@ export function OrganizationDefaultValues({
               size="sm"
               onClick={() => setIsAdding(true)}
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus />
               Kategorie hinzufügen
             </Button>
           )}
