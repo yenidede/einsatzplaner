@@ -6,6 +6,7 @@ import { XIcon } from 'lucide-react';
 
 import { EventItem, type CalendarEvent } from '@/components/event-calendar';
 import { CalendarMode } from './types';
+import { spansMultipleDays } from './utils';
 
 interface EventsPopupProps {
   date: Date;
@@ -129,6 +130,7 @@ export function EventsPopup({
                   view="agenda"
                   isFirstDay={isFirstDay}
                   isLastDay={isLastDay}
+                  isMultiDay={spansMultipleDays(event)}
                   mode={mode}
                   pastIndicatorTooltip={pastIndicatorTooltip}
                 />

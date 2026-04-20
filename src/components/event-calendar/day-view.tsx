@@ -20,6 +20,7 @@ import {
   DroppableCell,
   EventItem,
   isMultiDayEvent,
+  spansMultipleDays,
   useCurrentTimeIndicator,
   WeekCellsHeight,
   type CalendarEvent,
@@ -44,7 +45,8 @@ interface DayViewProps {
 }
 
 interface PositionedEvent {
-  event: CalendarEvent;
+  calEvent: CalendarEvent;
+  isMultiDay: boolean;
   top: number;
   height: number;
   left: number;
@@ -65,11 +67,17 @@ export function DayView({
   isEventSaving,
 }: DayViewProps) {
   const dayEvents = useMemo(() => {
-    const eventsForDay: CalendarEvent[] = [];
+    const eventsForDay: Array<{
+      calEvent: CalendarEvent;
+      isMultiDay: boolean;
+    }> = [];
 
     events.forEach((event) => {
       const eventStart = new Date(event.start);
       const eventEnd = new Date(event.end);
+      const eventIsMultiDay = event.allDay
+        ? spansMultipleDays(event)
+        : isMultiDayEvent(event);
 
       // Check if this event occurs on the current date
       if (
@@ -96,26 +104,36 @@ export function DayView({
 
           // Create normalized event for this day
           eventsForDay.push({
-            ...event,
-            start: normalizedStart,
-            end: normalizedEnd,
+            calEvent: {
+              ...event,
+              start: normalizedStart,
+              end: normalizedEnd,
+            },
+            isMultiDay: eventIsMultiDay,
           });
         } else {
           // For single-day events or all-day events, use as-is
-          eventsForDay.push(event);
+          eventsForDay.push({
+            calEvent: event,
+            isMultiDay: eventIsMultiDay,
+          });
         }
       }
     });
 
     return eventsForDay.sort(
-      (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+      (a, b) =>
+        new Date(a.calEvent.start).getTime() -
+        new Date(b.calEvent.start).getTime()
     );
   }, [currentDate, events]);
 
   // Calculate dynamic start and end hours based on events
   const { dynamicStartHour, dynamicEndHour } = useMemo(() => {
     // Filter out only explicitly marked all-day events for hour calculation
-    const timeBasedEvents = dayEvents.filter((event) => !event.allDay);
+    const timeBasedEvents = dayEvents.filter(
+      ({ calEvent }) => !calEvent.allDay
+    );
 
     if (timeBasedEvents.length === 0) {
       return {
@@ -128,8 +146,8 @@ export function DayView({
     let latestHour = 0;
 
     timeBasedEvents.forEach((event) => {
-      const eventStart = new Date(event.start);
-      const eventEnd = new Date(event.end);
+      const eventStart = new Date(event.calEvent.start);
+      const eventEnd = new Date(event.calEvent.end);
 
       // Since we've already normalized multi-day events to have the correct times
       // for this day, we can use the start/end times directly
@@ -161,18 +179,18 @@ export function DayView({
 
   // Filter all-day events
   const allDayEvents = useMemo(() => {
-    return dayEvents.filter((event) => {
+    return dayEvents.filter(({ calEvent }) => {
       // Include only explicitly marked all-day events
       // Multi-day events with specific times should be shown in the time grid
-      return event.allDay === true;
+      return calEvent.allDay === true;
     });
   }, [dayEvents]);
 
   // Get only time-based events (including multi-day events with specific times)
   const timeEvents = useMemo(() => {
-    return dayEvents.filter((event) => {
+    return dayEvents.filter(({ calEvent }) => {
       // Include all events that are not explicitly marked as all-day
-      return !event.allDay;
+      return !calEvent.allDay;
     });
   }, [dayEvents]);
 
@@ -183,10 +201,10 @@ export function DayView({
 
     // Sort events by start time and duration
     const sortedEvents = [...timeEvents].sort((a, b) => {
-      const aStart = new Date(a.start);
-      const bStart = new Date(b.start);
-      const aEnd = new Date(a.end);
-      const bEnd = new Date(b.end);
+      const aStart = new Date(a.calEvent.start);
+      const bStart = new Date(b.calEvent.start);
+      const aEnd = new Date(a.calEvent.end);
+      const bEnd = new Date(b.calEvent.end);
 
       // First sort by start time
       if (aStart < bStart) return -1;
@@ -199,11 +217,11 @@ export function DayView({
     });
 
     // Track columns for overlapping events
-    const columns: { event: CalendarEvent; end: Date }[][] = [];
+    const columns: { calEvent: CalendarEvent; end: Date }[][] = [];
 
     sortedEvents.forEach((event) => {
-      const eventStart = new Date(event.start);
-      const eventEnd = new Date(event.end);
+      const eventStart = new Date(event.calEvent.start);
+      const eventEnd = new Date(event.calEvent.end);
 
       // Adjust start and end times if they're outside this day
       const adjustedStart = isSameDay(currentDate, eventStart)
@@ -233,7 +251,10 @@ export function DayView({
           const overlaps = col.some((c) =>
             areIntervalsOverlapping(
               { start: adjustedStart, end: adjustedEnd },
-              { start: new Date(c.event.start), end: new Date(c.event.end) }
+              {
+                start: new Date(c.calEvent.start),
+                end: new Date(c.calEvent.end),
+              }
             )
           );
           if (!overlaps) {
@@ -247,14 +268,15 @@ export function DayView({
       // Ensure column is initialized before pushing
       const currentColumn = columns[columnIndex] || [];
       columns[columnIndex] = currentColumn;
-      currentColumn.push({ event, end: adjustedEnd });
+      currentColumn.push({ calEvent: event.calEvent, end: adjustedEnd });
 
       // First column takes full width, others are indented by 10% and take 90% width
       const width = columnIndex === 0 ? 1 : 1 - columnIndex * 0.1;
       const left = columnIndex === 0 ? 0 : columnIndex * 0.1;
 
       result.push({
-        event,
+        calEvent: event.calEvent,
+        isMultiDay: event.isMultiDay,
         top,
         height,
         left,
@@ -290,29 +312,30 @@ export function DayView({
               </span>
             </div>
             <div className="border-border/70 relative border-r p-1 last:border-r-0">
-              {allDayEvents.map((event) => {
-                const eventStart = new Date(event.start);
-                const eventEnd = new Date(event.end);
+              {allDayEvents.map((renderedEvent) => {
+                const eventStart = new Date(renderedEvent.calEvent.start);
+                const eventEnd = new Date(renderedEvent.calEvent.end);
                 const isFirstDay = isSameDay(currentDate, eventStart);
                 const isLastDay = isSameDay(currentDate, eventEnd);
 
                 return (
                   <EventItem
-                    key={`spanning-${event.id}`}
-                    onClick={(e) => handleEventClick(event, e)}
-                    event={event}
+                    key={`spanning-${renderedEvent.calEvent.id}`}
+                    onClick={(e) => handleEventClick(renderedEvent.calEvent, e)}
+                    event={renderedEvent.calEvent}
                     view="month"
                     isFirstDay={isFirstDay}
                     isLastDay={isLastDay}
+                    isMultiDay={renderedEvent.isMultiDay}
                     mode={mode}
-                    isSaving={isEventSaving?.(event.id)}
+                    isSaving={isEventSaving?.(renderedEvent.calEvent.id)}
                     savingIndicatorTooltip={savingIndicatorTooltip}
                     savingToastMessage={savingToastMessage}
                     onConfirm={onEventConfirm}
                     pastIndicatorTooltip={pastIndicatorTooltip}
                   >
                     {/* Always show the title in day view for better usability */}
-                    <div>{event.title}</div>
+                    <div>{renderedEvent.calEvent.title}</div>
                   </EventItem>
                 );
               })}
@@ -341,7 +364,7 @@ export function DayView({
           {/* Positioned events */}
           {positionedEvents.map((positionedEvent) => (
             <div
-              key={positionedEvent.event.id}
+              key={positionedEvent.calEvent.id}
               className="absolute z-10 px-0.5"
               style={{
                 top: `${positionedEvent.top}px`,
@@ -353,13 +376,14 @@ export function DayView({
             >
               <div className="h-full w-full">
                 <DraggableEvent
-                  event={positionedEvent.event}
+                  event={positionedEvent.calEvent}
                   view="day"
-                  onClick={(e) => handleEventClick(positionedEvent.event, e)}
+                  onClick={(e) => handleEventClick(positionedEvent.calEvent, e)}
                   showTime
+                  isMultiDay={positionedEvent.isMultiDay}
                   height={positionedEvent.height}
                   mode={mode}
-                  isSaving={isEventSaving?.(positionedEvent.event.id)}
+                  isSaving={isEventSaving?.(positionedEvent.calEvent.id)}
                   savingIndicatorTooltip={savingIndicatorTooltip}
                   savingToastMessage={savingToastMessage}
                   onConfirm={onEventConfirm}

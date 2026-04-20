@@ -740,9 +740,24 @@ export function getBorderRadiusClasses(
  * Check if an event is a multi-day event
  */
 export function isMultiDayEvent(event: CalendarEvent): boolean {
+  return event.allDay || spansMultipleDays(event);
+}
+
+/**
+ * Check if an event actually spans multiple calendar days.
+ *
+ * All-day events are not automatically considered multi-day here because
+ * single-day all-day entries should not show the multi-day indicator.
+ */
+export function spansMultipleDays(event: CalendarEvent): boolean {
   const eventStart = new Date(event.start);
   const eventEnd = new Date(event.end);
-  return event.allDay || eventStart.getDate() !== eventEnd.getDate();
+
+  return (
+    eventStart.getFullYear() !== eventEnd.getFullYear() ||
+    eventStart.getMonth() !== eventEnd.getMonth() ||
+    eventStart.getDate() !== eventEnd.getDate()
+  );
 }
 
 /**

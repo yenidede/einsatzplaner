@@ -28,6 +28,7 @@ import {
   getAllEventsForDay,
   isMultiDayEvent,
   sortEvents,
+  spansMultipleDays,
   type CalendarEvent,
 } from '@/components/event-calendar';
 import {
@@ -63,6 +64,10 @@ export function MonthView({
   isEventSaving,
 }: MonthViewProps) {
   const todayStart = useTodayStart();
+  type RenderedEvent = {
+    event: CalendarEvent;
+    isMultiDay: boolean;
+  };
 
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
@@ -133,12 +138,15 @@ export function MonthView({
               if (!day) return null; // Skip if day is undefined
 
               // Get events for this day, normalizing multi-day events to separate instances
-              const allDayEventsForDay: CalendarEvent[] = [];
+              const allDayEventsForDay: RenderedEvent[] = [];
 
               // Process all events to create normalized instances for multi-day events
               events.forEach((event) => {
                 const eventStart = new Date(event.start);
                 const eventEnd = new Date(event.end);
+                const eventIsMultiDay = event.allDay
+                  ? spansMultipleDays(event)
+                  : isMultiDayEvent(event);
 
                 // Check if this event occurs on this day
                 const isOnThisDay =
@@ -165,16 +173,25 @@ export function MonthView({
 
                     // Create normalized event for this day
                     allDayEventsForDay.push({
-                      ...event,
-                      start: normalizedStart,
-                      end: normalizedEnd,
+                      event: {
+                        ...event,
+                        start: normalizedStart,
+                        end: normalizedEnd,
+                      },
+                      isMultiDay: eventIsMultiDay,
                     });
                   } else if (isSameDay(day, eventStart) || event.allDay) {
                     // For single-day events or all-day events, include only if it starts on this day
-                    allDayEventsForDay.push(event);
+                    allDayEventsForDay.push({
+                      event,
+                      isMultiDay: eventIsMultiDay,
+                    });
                   }
                 }
               });
+              const renderedEventsById = new Map(
+                allDayEventsForDay.map((item) => [item.event.id, item])
+              );
 
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isPastDay = day < todayStart;
@@ -209,7 +226,11 @@ export function MonthView({
                       </span>
                     </div>
                     <div>
-                      {sortEvents(allDayEventsForDay).map((event, index) => {
+                      {sortEvents(
+                        allDayEventsForDay.map((item) => item.event)
+                      ).map((event, index) => {
+                        const renderedEvent =
+                          renderedEventsById.get(event.id) ?? null;
                         const eventStart = new Date(event.start);
                         const eventEnd = new Date(event.end);
                         const isFirstDay = isSameDay(day, eventStart);
@@ -235,6 +256,7 @@ export function MonthView({
                                 view="month"
                                 isFirstDay={isFirstDay}
                                 isLastDay={isLastDay}
+                                isMultiDay={renderedEvent?.isMultiDay}
                                 mode={mode}
                                 isSaving={isEventSaving?.(event.id)}
                                 savingIndicatorTooltip={savingIndicatorTooltip}
@@ -258,6 +280,7 @@ export function MonthView({
                               onClick={(e) => handleEventClick(event, e)}
                               isFirstDay={isFirstDay}
                               isLastDay={isLastDay}
+                              isMultiDay={renderedEvent?.isMultiDay}
                               mode={mode}
                               isSaving={isEventSaving?.(event.id)}
                               savingIndicatorTooltip={savingIndicatorTooltip}
@@ -312,6 +335,7 @@ export function MonthView({
                                       view="month"
                                       isFirstDay={isFirstDay}
                                       isLastDay={isLastDay}
+                                      isMultiDay={spansMultipleDays(event)}
                                       mode={mode}
                                       isSaving={isEventSaving?.(event.id)}
                                       savingIndicatorTooltip={

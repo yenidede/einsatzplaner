@@ -26,6 +26,7 @@ import {
   DroppableCell,
   EventItem,
   isMultiDayEvent,
+  spansMultipleDays,
   useCurrentTimeIndicator,
   WeekCellsHeight,
   type CalendarEvent,
@@ -51,6 +52,7 @@ interface WeekViewProps {
 
 interface PositionedEvent {
   event: CalendarEvent;
+  isMultiDay: boolean;
   top: number;
   height: number;
   left: number;
@@ -82,6 +84,11 @@ export function WeekView({
     () => startOfWeek(currentDate, { weekStartsOn: 1 }),
     [currentDate]
   );
+
+  type RenderedEvent = {
+    event: CalendarEvent;
+    isMultiDay: boolean;
+  };
 
   // Calculate dynamic start and end hours based on events for the week
   const { dynamicStartHour, dynamicEndHour } = useMemo(() => {
@@ -173,7 +180,7 @@ export function WeekView({
   const processedDayEvents = useMemo(() => {
     const result = days.map((day) => {
       // Get events for this day that are not explicitly marked as all-day
-      const dayEvents: CalendarEvent[] = [];
+      const dayEvents: RenderedEvent[] = [];
 
       events.forEach((event) => {
         // Skip only explicitly marked all-day events
@@ -181,6 +188,7 @@ export function WeekView({
 
         const eventStart = new Date(event.start);
         const eventEnd = new Date(event.end);
+        const eventIsMultiDay = isMultiDayEvent(event);
 
         // Check if event is on this day
         const isOnThisDay =
@@ -190,7 +198,7 @@ export function WeekView({
 
         if (isOnThisDay) {
           // For multi-day events, create a normalized instance for this day
-          if (isMultiDayEvent(event)) {
+          if (eventIsMultiDay) {
             // Create a new event instance with the same time but on the current day
             const timeOnlyStart = new Date(eventStart);
             const timeOnlyEnd = new Date(eventEnd);
@@ -208,23 +216,29 @@ export function WeekView({
 
             // Create normalized event for this day
             dayEvents.push({
-              ...event,
-              start: normalizedStart,
-              end: normalizedEnd,
+              event: {
+                ...event,
+                start: normalizedStart,
+                end: normalizedEnd,
+              },
+              isMultiDay: eventIsMultiDay,
             });
           } else {
             // For single-day events, use as-is
-            dayEvents.push(event);
+            dayEvents.push({
+              event,
+              isMultiDay: eventIsMultiDay,
+            });
           }
         }
       });
 
       // Sort events by start time and duration
       const sortedEvents = [...dayEvents].sort((a, b) => {
-        const aStart = new Date(a.start);
-        const bStart = new Date(b.start);
-        const aEnd = new Date(a.end);
-        const bEnd = new Date(b.end);
+        const aStart = new Date(a.event.start);
+        const bStart = new Date(b.event.start);
+        const aEnd = new Date(a.event.end);
+        const bEnd = new Date(b.event.end);
 
         // First sort by start time
         if (aStart < bStart) return -1;
@@ -244,8 +258,8 @@ export function WeekView({
       const columns: { event: CalendarEvent; end: Date }[][] = [];
 
       sortedEvents.forEach((event) => {
-        const eventStart = new Date(event.start);
-        const eventEnd = new Date(event.end);
+        const eventStart = new Date(event.event.start);
+        const eventEnd = new Date(event.event.end);
 
         // Adjust start and end times if they're outside this day
         const adjustedStart = isSameDay(day, eventStart)
@@ -294,14 +308,15 @@ export function WeekView({
         // Ensure column is initialized before pushing
         const currentColumn = columns[columnIndex] || [];
         columns[columnIndex] = currentColumn;
-        currentColumn.push({ event, end: adjustedEnd });
+        currentColumn.push({ event: event.event, end: adjustedEnd });
 
         // Calculate width and left position based on number of columns
         const width = columnIndex === 0 ? 1 : 1 - columnIndex * 0.1;
         const left = columnIndex === 0 ? 0 : columnIndex * 0.1;
 
         positionedEvents.push({
-          event,
+          event: event.event,
+          isMultiDay: event.isMultiDay,
           top,
           height,
           left,
@@ -410,6 +425,7 @@ export function WeekView({
                         view="month"
                         isFirstDay={isFirstDay}
                         isLastDay={isLastDay}
+                        isMultiDay={spansMultipleDays(event)}
                         mode={mode}
                         isSaving={isEventSaving?.(event.id)}
                         savingIndicatorTooltip={savingIndicatorTooltip}
@@ -479,6 +495,7 @@ export function WeekView({
                     view="week"
                     onClick={(e) => handleEventClick(positionedEvent.event, e)}
                     showTime
+                    isMultiDay={positionedEvent.isMultiDay}
                     height={positionedEvent.height}
                     mode={mode}
                     isSaving={isEventSaving?.(positionedEvent.event.id)}
