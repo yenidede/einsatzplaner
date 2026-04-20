@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  calendarDateToDbTimestamp,
   dbTimestampToCalendarDate,
+  normalizeDateRangeForDb,
   normalizeDateRangeFromDb,
   parseCalendarDateTimeString,
   prismaTimestampToCalendarDate,
@@ -33,7 +35,7 @@ function createFakeTimestampDate(input: {
 }
 
 describe('datetime normalization', () => {
-  it('behält bei Prisma-Daten die lokalen Wandzeit-Komponenten bei', () => {
+  it('keeps local wall-clock components for Prisma values', () => {
     const prismaDate = createFakeTimestampDate({
       localHour: 10,
       utcHour: 8,
@@ -46,7 +48,7 @@ describe('datetime normalization', () => {
     expect(normalized.getMinutes()).toBe(15);
   });
 
-  it('interpretiert Realtime-/Wire-Daten weiterhin über UTC-Komponenten', () => {
+  it('keeps local wall-clock components for realtime/wire values', () => {
     const realtimeDate = createFakeTimestampDate({
       localHour: 12,
       utcHour: 10,
@@ -55,11 +57,11 @@ describe('datetime normalization', () => {
 
     const normalized = dbTimestampToCalendarDate(realtimeDate);
 
-    expect(normalized.getHours()).toBe(10);
+    expect(normalized.getHours()).toBe(12);
     expect(normalized.getMinutes()).toBe(45);
   });
 
-  it('normalisiert gelesene Einsatz-Zeiträume aus Prisma ohne UTC-Abzug', () => {
+  it('normalizes Prisma date ranges without UTC subtraction', () => {
     const normalized = normalizeDateRangeFromDb({
       start: createFakeTimestampDate({
         localHour: 9,
@@ -75,7 +77,7 @@ describe('datetime normalization', () => {
     expect(normalized.end.getHours()).toBe(11);
   });
 
-  it('parst Realtime-Strings ohne Zeitzone als lokale Wandzeit', () => {
+  it('parses realtime strings without timezone as local wall-clock time', () => {
     const parsed = parseCalendarDateTimeString('2026-04-09 10:15:00');
 
     expect(parsed).toBeDefined();
@@ -86,7 +88,7 @@ describe('datetime normalization', () => {
     expect(parsed?.getMinutes()).toBe(15);
   });
 
-  it('parst Realtime-Strings mit Mikrosekunden deterministisch auf Millisekunden', () => {
+  it('parses realtime strings with microseconds to milliseconds deterministically', () => {
     const parsed = parseCalendarDateTimeString('2026-04-09 10:15:00.123456');
 
     expect(parsed).toBeDefined();
@@ -96,11 +98,39 @@ describe('datetime normalization', () => {
     expect(parsed?.getMilliseconds()).toBe(123);
   });
 
-  it('parst Wire-Strings mit Zeitzone weiter über UTC-Komponenten', () => {
-    const parsed = parseCalendarDateTimeString('2026-04-09T10:15:00.000Z');
+  it('parses timezone wire strings to the same local wall-clock as native Date', () => {
+    const input = '2026-04-09T10:15:00.000Z';
+    const parsed = parseCalendarDateTimeString(input);
+    const expectedOffsetMinutes = -new Date(input).getTimezoneOffset();
+    const baseUtcMinutes = 10 * 60 + 15;
+    const totalLocalMinutes = baseUtcMinutes + expectedOffsetMinutes;
+    const expectedHour =
+      ((Math.floor(totalLocalMinutes / 60) % 24) + 24) % 24;
+    const expectedMinute = ((totalLocalMinutes % 60) + 60) % 60;
 
     expect(parsed).toBeDefined();
-    expect(parsed?.getHours()).toBe(10);
-    expect(parsed?.getMinutes()).toBe(15);
+    expect(parsed?.getHours()).toBe(expectedHour);
+    expect(parsed?.getMinutes()).toBe(expectedMinute);
+  });
+
+  it('preserves the original instant when converting calendar dates for DB writes', () => {
+    const calendarDate = new Date(2026, 3, 23, 18, 15, 0, 123);
+
+    const dbDate = calendarDateToDbTimestamp(calendarDate);
+
+    expect(dbDate.getTime()).toBe(calendarDate.getTime());
+    expect(dbDate.toISOString()).toBe(calendarDate.toISOString());
+  });
+
+  it('normalizes date ranges for DB without introducing timezone drift', () => {
+    const range = {
+      start: new Date(2026, 3, 23, 18, 15, 0, 0),
+      end: new Date(2026, 3, 23, 20, 15, 0, 0),
+    };
+
+    const normalized = normalizeDateRangeForDb(range);
+
+    expect(normalized.start.getTime()).toBe(range.start.getTime());
+    expect(normalized.end.getTime()).toBe(range.end.getTime());
   });
 });

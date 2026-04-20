@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Building2, LogOut, Trash2, Calendar } from 'lucide-react';
+import { Building2, LogOut, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
@@ -735,7 +735,7 @@ export default function SettingsPage() {
                           onClick={() => handleOrganizationLeave(org.id)}
                           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
+                          <LogOut className="mr-2 h-4 w-4" />
                           Verlassen
                         </Button>
                       </div>
