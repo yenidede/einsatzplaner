@@ -76,7 +76,7 @@ import { Separator } from '../ui/separator';
 import { formatDateToTimeInput, isNormalizedTime } from '@/lib/time-input';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useUserProfile } from '@/features/settings/hooks/useUserProfile';
-import { isOrganizationManagementRole } from '@/components/settings/settings-navigation.utils';
+import { hasActiveOrganizationSettingsAccess } from '@/components/settings/settings-navigation.utils';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -464,11 +464,10 @@ export function EventDialogVerwaltung({
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
   const activeOrg = organizations?.find((org) => org.id === activeOrgId);
-  const canManageOrganizationSettings =
-    userProfile?.organizations?.some(
-      (org) =>
-        org.id === activeOrgId && org.roles.some(isOrganizationManagementRole)
-    ) ?? false;
+  const canManageOrganizationSettings = hasActiveOrganizationSettingsAccess(
+    userProfile?.organizations ?? [],
+    activeOrgId
+  );
 
   const orgDefaultStartTime = formatOrgTimeForInput(
     activeOrg?.default_starttime,
