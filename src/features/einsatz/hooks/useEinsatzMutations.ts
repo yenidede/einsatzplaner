@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryKey } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
 import {
   addMonths,
   eachDayOfInterval,
@@ -204,6 +205,17 @@ export function useCreateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
+  const [savingEventIds, setSavingEventIds] = useState<string[]>([]);
+
+  const addSavingEventId = useCallback((eventId: string) => {
+    setSavingEventIds((current) =>
+      current.includes(eventId) ? current : [...current, eventId]
+    );
+  }, []);
+
+  const removeSavingEventId = useCallback((eventId: string) => {
+    setSavingEventIds((current) => current.filter((id) => id !== eventId));
+  }, []);
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -218,6 +230,8 @@ export function useCreateEinsatz(
     onMutate: async ({ event }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId);
       if (!activeOrgId) return {};
+      const savingEventId = event.id ?? `temp-${Date.now()}`;
+      addSavingEventId(savingEventId);
       const dates = getDatesSpanningEvent({
         start: event.start,
         end: event.end != null ? event.end : undefined,
@@ -243,15 +257,24 @@ export function useCreateEinsatz(
           previousData.push([key, data]);
           queryClient.setQueryData<CalendarRangeData>(key, {
             ...data,
-            events: [...data.events, optimisticEvent],
+            events: [
+              ...data.events,
+              {
+                ...optimisticEvent,
+                id: savingEventId,
+              },
+            ],
           });
         }
       }
-      return { previousData };
+      return { previousData, savingEventId };
     },
     onError: (error, _vars, context) => {
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
+      }
+      if (context?.savingEventId) {
+        removeSavingEventId(context.savingEventId);
       }
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -287,8 +310,11 @@ export function useCreateEinsatz(
         );
       }
     },
-    onSettled: (data, _error, vars) => {
+    onSettled: (data, _error, vars, context) => {
       const event = data?.einsatz ?? vars?.event;
+      if (context?.savingEventId) {
+        removeSavingEventId(context.savingEventId);
+      }
       invalidateEinsatzQueries(queryClient, data?.einsatz?.id);
       if (data?.einsatz?.id) {
         invalidateActivityLogs(queryClient);
@@ -311,6 +337,7 @@ export function useCreateEinsatz(
     ...mutation,
     mutate: (event: EinsatzCreate) => mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate) => mutation.mutateAsync({ event }),
+    savingEventIds,
   };
 }
 
@@ -321,6 +348,17 @@ export function useUpdateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
+  const [savingEventIds, setSavingEventIds] = useState<string[]>([]);
+
+  const addSavingEventId = useCallback((eventId: string) => {
+    setSavingEventIds((current) =>
+      current.includes(eventId) ? current : [...current, eventId]
+    );
+  }, []);
+
+  const removeSavingEventId = useCallback((eventId: string) => {
+    setSavingEventIds((current) => current.filter((id) => id !== eventId));
+  }, []);
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -346,6 +384,7 @@ export function useUpdateEinsatz(
       if (!activeOrgId) return {};
       const eventId = event.id;
       if (!eventId) return {};
+      addSavingEventId(eventId);
       const start =
         'start' in event && event.start
           ? event.start instanceof Date
@@ -385,11 +424,14 @@ export function useUpdateEinsatz(
           events: newEvents,
         });
       }
-      return { previousData };
+      return { previousData, savingEventId: eventId };
     },
     onError: (error, _vars, context) => {
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
+      }
+      if (context?.savingEventId) {
+        removeSavingEventId(context.savingEventId);
       }
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -434,6 +476,9 @@ export function useUpdateEinsatz(
       }
     },
     onSettled: (data, _error, vars, context) => {
+      if (context?.savingEventId) {
+        removeSavingEventId(context.savingEventId);
+      }
       const event =
         data && 'einsatz' in data && data.einsatz
           ? data.einsatz
@@ -470,6 +515,7 @@ export function useUpdateEinsatz(
       mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate | CalendarEvent) =>
       mutation.mutateAsync({ event }),
+    savingEventIds,
   };
 }
 

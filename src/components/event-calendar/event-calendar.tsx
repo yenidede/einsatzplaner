@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseAsStringEnum, useQueryState } from 'nuqs';
 import { RiCalendarCheckLine } from '@remixicon/react';
 import {
@@ -77,6 +77,7 @@ export interface EventCalendarProps {
   initialView?: CalendarView;
   mode: CalendarMode;
   activeOrgId?: string | null;
+  savingEventIds?: string[];
 }
 // TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
@@ -96,6 +97,7 @@ export function EventCalendar({
   initialView = 'month',
   mode,
   activeOrgId,
+  savingEventIds = [],
 }: EventCalendarProps) {
   const todayStart = useTodayStart();
   const [internalDate, setInternalDate] = useState(new Date());
@@ -143,6 +145,10 @@ export function EventCalendar({
   const { einsatz_singular, einsatz_plural } = useOrganizationTerminology(
     organizations,
     activeOrgId
+  );
+  const isEventSaving = useCallback(
+    (eventId: string) => savingEventIds.includes(eventId),
+    [savingEventIds]
   );
 
   const capitalizeFirst = (value?: string | null) =>
@@ -227,7 +233,13 @@ export function EventCalendar({
     const eventId = typeof event === 'string' ? event : event.id;
     if (eventId.includes('temp-')) {
       toast.info(
-        `${einsatz_singular} wird gespeichert und muss erst aktualisiert werden. Bitte warten Sie ein paar Sekunden und versuchen Sie es erneut.`
+        'Dieser Einsatz wird gerade gespeichert. Bitte warten Sie einen Moment, bevor Sie ihn öffnen.'
+      );
+      return;
+    }
+    if (isEventSaving(eventId)) {
+      toast.info(
+        'Dieser Einsatz wird gerade gespeichert. Bitte warten Sie einen Moment, bevor Sie ihn öffnen.'
       );
       return;
     }
@@ -515,6 +527,7 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              isEventSaving={isEventSaving}
             />
           )}
           {view === 'week' && (
@@ -526,6 +539,7 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              isEventSaving={isEventSaving}
             />
           )}
           {view === 'day' && (
@@ -537,6 +551,7 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              isEventSaving={isEventSaving}
             />
           )}
           {view === 'agenda' && (
@@ -547,6 +562,7 @@ export function EventCalendar({
               mode={mode}
               onEventConfirm={handleEventConfirm}
               pastIndicatorTooltip={pastIndicatorTooltip}
+              isEventSaving={isEventSaving}
             />
           )}
           {view === 'list' && (

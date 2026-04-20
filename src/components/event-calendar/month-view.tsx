@@ -45,6 +45,7 @@ interface MonthViewProps {
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
   pastIndicatorTooltip: string;
+  isEventSaving?: (eventId: string) => boolean;
 }
 
 export function MonthView({
@@ -55,6 +56,7 @@ export function MonthView({
   mode,
   onEventConfirm,
   pastIndicatorTooltip,
+  isEventSaving,
 }: MonthViewProps) {
   const todayStart = useTodayStart();
 
@@ -230,6 +232,7 @@ export function MonthView({
                                 isFirstDay={isFirstDay}
                                 isLastDay={isLastDay}
                                 mode={mode}
+                                isSaving={isEventSaving?.(event.id)}
                                 onConfirm={onEventConfirm}
                                 pastIndicatorTooltip={pastIndicatorTooltip}
                               />
@@ -250,6 +253,7 @@ export function MonthView({
                               isFirstDay={isFirstDay}
                               isLastDay={isLastDay}
                               mode={mode}
+                              isSaving={isEventSaving?.(event.id)}
                               onConfirm={onEventConfirm}
                               pastIndicatorTooltip={pastIndicatorTooltip}
                             />
@@ -301,6 +305,7 @@ export function MonthView({
                                       isFirstDay={isFirstDay}
                                       isLastDay={isLastDay}
                                       mode={mode}
+                                      isSaving={isEventSaving?.(event.id)}
                                       onConfirm={onEventConfirm}
                                       pastIndicatorTooltip={
                                         pastIndicatorTooltip

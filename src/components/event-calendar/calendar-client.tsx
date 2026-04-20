@@ -233,6 +233,12 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     einsatz_singular,
     einsatz_plural
   );
+  const savingEventIds = Array.from(
+    new Set([
+      ...(createMutation.savingEventIds ?? []),
+      ...(updateMutation.savingEventIds ?? []),
+    ])
+  );
 
   // Handle invalid einsatz ID
   useEffect(() => {
@@ -383,10 +389,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         onEventTimeUpdate={handleEventTimeUpdate}
         onEventDelete={handleEventDelete}
         onEventConfirm={handleEventConfirm}
-        onMultiEventDelete={handleMultiEventDelete}
-        mode={mode}
-        activeOrgId={activeOrgId}
-      />
+      onMultiEventDelete={handleMultiEventDelete}
+      mode={mode}
+      activeOrgId={activeOrgId}
+      savingEventIds={savingEventIds}
+    />
     </>
   );
 }
