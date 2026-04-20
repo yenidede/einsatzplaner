@@ -116,7 +116,8 @@ function validateUserAssignment({
       .filter((user) => assignedAfterAdd.includes(user.id))
       .filter((user) => {
         const propertyValue = user.user_property_value?.find(
-          (v: any) => v.user_property_id === propId
+          (v: { user_property_id: string; value: string | null }) =>
+            v.user_property_id === propId
         );
 
         if (!propertyValue?.value) return false;
@@ -160,7 +161,7 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const { data: session } = useSession();
   const activeOrgId = session?.user?.activeOrganization?.id;
   const userId = session?.user?.id;
-  const { showDefault, showDestructive } = useConfirmDialog();
+  const { showDestructive } = useConfirmDialog();
 
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const { selectedEinsatz, setEinsatz } = useEventDialogFromContext();
@@ -175,7 +176,14 @@ export default function Component({ mode }: { mode: CalendarMode }) {
   const prefetchEinsaetzeForCalendar =
     usePrefetchEinsaetzeForCalendar(activeOrgId);
   const events = calendarData?.events;
-  const detailedEinsaetze = calendarData?.detailedEinsaetze ?? [];
+  const detailedEinsaetze = useMemo(
+    () => calendarData?.detailedEinsaetze ?? [],
+    [calendarData?.detailedEinsaetze]
+  );
+  const lockedEventIds = useMemo(
+    () => detailedEinsaetze.filter((e) => e.isLocked).map((e) => e.id),
+    [detailedEinsaetze]
+  );
   const cachedDetailedEinsatz =
     typeof selectedEinsatz === 'string'
       ? detailedEinsaetze.find((e) => e.id === selectedEinsatz)
@@ -232,16 +240,6 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     activeOrgId,
     einsatz_singular,
     einsatz_plural
-  );
-  const savingEventIds = useMemo(
-    () =>
-      Array.from(
-        new Set([
-          ...(createMutation.savingEventIds ?? []),
-          ...(updateMutation.savingEventIds ?? []),
-        ])
-      ),
-    [createMutation.savingEventIds, updateMutation.savingEventIds]
   );
 
   // Handle invalid einsatz ID
@@ -396,8 +394,8 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       onMultiEventDelete={handleMultiEventDelete}
       mode={mode}
       activeOrgId={activeOrgId}
-      savingEventIds={savingEventIds}
+      lockedEventIds={lockedEventIds}
     />
-    </>
+  </>
   );
 }

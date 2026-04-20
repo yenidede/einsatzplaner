@@ -52,7 +52,10 @@ import {
   getSavingTooltipText,
 } from '@/components/event-calendar/save-state-messages';
 import { CalendarEvent, CalendarMode } from './types';
-import { EinsatzCreate, EinsatzDetailed } from '@/features/einsatz/types';
+import {
+  EinsatzCreate,
+  EinsatzDetailedWithUiState,
+} from '@/features/einsatz/types';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { useEventDialog } from '@/hooks/use-event-dialog';
@@ -69,7 +72,7 @@ export interface EventCalendarProps {
   currentDate?: Date;
   setCurrentDate?: (date: Date) => void;
   /** Cached detailed einsatz for the selected id; dialogs use this to avoid refetch. */
-  cachedDetailedEinsatz?: EinsatzDetailed | null;
+  cachedDetailedEinsatz?: EinsatzDetailedWithUiState | null;
   onEventAdd: (event: EinsatzCreate) => void;
   onEventUpdate: (event: EinsatzCreate) => void;
   onAssignToggleEvent: (eventId: string) => void;
@@ -81,7 +84,7 @@ export interface EventCalendarProps {
   initialView?: CalendarView;
   mode: CalendarMode;
   activeOrgId?: string | null;
-  savingEventIds?: string[];
+  lockedEventIds?: string[];
 }
 // TODO: onEventSelect, update should also properly handle dnd (only time changes)
 export function EventCalendar({
@@ -101,7 +104,7 @@ export function EventCalendar({
   initialView = 'month',
   mode,
   activeOrgId,
-  savingEventIds = [],
+  lockedEventIds = [],
 }: EventCalendarProps) {
   const todayStart = useTodayStart();
   const [internalDate, setInternalDate] = useState(new Date());
@@ -132,6 +135,15 @@ export function EventCalendar({
     view === 'agenda' ? (agendaData?.events ?? []) : events;
   const effectiveIsEventsLoading =
     view === 'agenda' ? isAgendaLoading : isEventsLoading;
+  const agendaLockedEventIds = useMemo(
+    () =>
+      agendaData?.detailedEinsaetze
+        .filter((e) => e.isLocked)
+        .map((e) => e.id) ?? [],
+    [agendaData?.detailedEinsaetze]
+  );
+  const effectiveLockedEventIds =
+    view === 'agenda' ? agendaLockedEventIds : lockedEventIds;
 
   // German view names mapping
   const viewLabels = {
@@ -154,8 +166,8 @@ export function EventCalendar({
   const savingTooltipText = getSavingTooltipText(einsatz_singular);
   const isEventSaving = useCallback(
     (eventId: string) =>
-      eventId.startsWith('temp-') || savingEventIds.includes(eventId),
-    [savingEventIds]
+      eventId.startsWith('temp-') || effectiveLockedEventIds.includes(eventId),
+    [effectiveLockedEventIds]
   );
 
   const capitalizeFirst = (value?: string | null) =>
