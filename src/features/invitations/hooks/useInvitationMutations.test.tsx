@@ -26,7 +26,7 @@ const {
       firstname: 'Max',
       lastname: 'Mustermann',
     },
-  } as { user?: Record<string, unknown> },
+  } as { user?: Record<string, unknown> } | null,
 }));
 
 vi.mock('next/navigation', () => ({

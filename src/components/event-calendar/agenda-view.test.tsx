@@ -78,8 +78,8 @@ describe('AgendaView multi-day flag', () => {
       {
         id: 'single-all-day',
         title: 'Ganztägig',
-        start: new Date(),
-        end: new Date(),
+        start: new Date(2026, 3, 20, 0, 0, 0),
+        end: new Date(2026, 3, 20, 23, 59, 59),
         allDay: true,
         assignedUsers: [],
         helpersNeeded: 0,

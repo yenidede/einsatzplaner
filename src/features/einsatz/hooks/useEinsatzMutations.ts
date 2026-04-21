@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryKey } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
 import {
   addMonths,
   eachDayOfInterval,
@@ -10,14 +11,8 @@ import {
 import { queryKeys } from '../queryKeys';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
 import type { CalendarRangeData } from '@/components/event-calendar/utils';
-import { getEinsatzWithDetailsById } from '../dal-einsatz';
 import { parseCalendarDateTimeString } from '@/features/einsatz/datetime';
-import type { CalendarEvent } from '@/components/event-calendar/types';
-import type {
-  EinsatzCreate,
-  EinsatzDetailed,
-  EinsatzDetailedWithUiState,
-} from '@/features/einsatz/types';
+import type { EinsatzCreate } from '@/features/einsatz/types';
 
 /** If isOverlap is true, returns the 3 monthKeys that overlap the 3-month window centered on the given date. Otherwise, returns the 1 monthKey for the given date. */
 export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
@@ -47,6 +42,47 @@ function toMutationDate(value: Date | string): Date {
   }
 
   return new Date(value);
+}
+
+type SavingTrackedEinsatzCreate = EinsatzCreate & {
+  __savingEventId?: string;
+};
+
+function useSavingEventIds() {
+  const [savingEventCounts, setSavingEventCounts] = useState<Record<string, number>>(
+    {}
+  );
+
+  const addSavingEventId = useCallback((eventId: string) => {
+    setSavingEventCounts((current) => ({
+      ...current,
+      [eventId]: (current[eventId] ?? 0) + 1,
+    }));
+  }, []);
+
+  const removeSavingEventId = useCallback((eventId: string) => {
+    setSavingEventCounts((current) => {
+      const nextCount = (current[eventId] ?? 0) - 1;
+      if (nextCount > 0) {
+        return { ...current, [eventId]: nextCount };
+      }
+
+      if (!(eventId in current)) {
+        return current;
+      }
+
+      const { [eventId]: _removed, ...rest } = current;
+      return rest;
+    });
+  }, []);
+
+  const savingEventIds = useMemo(() => Object.keys(savingEventCounts), [savingEventCounts]);
+
+  return {
+    addSavingEventId,
+    removeSavingEventId,
+    savingEventIds,
+  };
 }
 
 /** Returns one Date per calendar day from start through end (inclusive). If end is missing or before start, returns [startOfDay(start)]. */
@@ -171,188 +207,6 @@ function invalidateEinsatzQueries(
   }
 }
 
-function lockDetailedEinsatzCache(
-  queryClient: ReturnType<typeof useQueryClient>,
-  orgId: string | undefined,
-  einsatzId: string
-) {
-  queryClient.setQueryData<EinsatzDetailedWithUiState | null>(
-    queryKeys.detailedEinsatz(einsatzId),
-    (currentData) =>
-      currentData ? { ...currentData, isLocked: true } : currentData
-  );
-
-  if (!orgId) {
-    return;
-  }
-
-  const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
-    queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
-  });
-
-  calendarQueries.forEach(([queryKey, currentData]) => {
-    if (!currentData) {
-      return;
-    }
-
-    let hasChanges = false;
-    const detailedEinsaetze = currentData.detailedEinsaetze.map((entry) => {
-      if (entry.id !== einsatzId) {
-        return entry;
-      }
-
-      hasChanges = true;
-      return {
-        ...entry,
-        isLocked: true,
-      };
-    });
-
-    if (!hasChanges) {
-      return;
-    }
-
-    queryClient.setQueryData<CalendarRangeData>(queryKey, {
-      ...currentData,
-      detailedEinsaetze,
-    });
-  });
-}
-
-function updateDetailedCalendarCaches(
-  queryClient: ReturnType<typeof useQueryClient>,
-  orgId: string | undefined,
-  freshEinsatz: EinsatzDetailed
-) {
-  queryClient.setQueryData(queryKeys.detailedEinsatz(freshEinsatz.id), freshEinsatz);
-
-  if (!orgId) {
-    return;
-  }
-
-  const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
-    queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
-  });
-
-  calendarQueries.forEach(([queryKey, currentData]) => {
-    if (!currentData) {
-      return;
-    }
-
-    let hasChanges = false;
-    const detailedEinsaetze = currentData.detailedEinsaetze.map((entry) => {
-      if (entry.id !== freshEinsatz.id) {
-        return entry;
-      }
-
-      hasChanges = true;
-      const updatedEntry: CalendarRangeData['detailedEinsaetze'][number] = {
-        ...freshEinsatz,
-        category_abbreviations: entry.category_abbreviations,
-      };
-      return updatedEntry;
-    });
-
-    if (!hasChanges) {
-      return;
-    }
-
-    queryClient.setQueryData<CalendarRangeData>(queryKey, {
-      ...currentData,
-      detailedEinsaetze,
-    });
-  });
-}
-
-function restoreDetailedEinsatzCache(
-  queryClient: ReturnType<typeof useQueryClient>,
-  orgId: string | undefined,
-  einsatzId: string,
-  previousData: EinsatzDetailedWithUiState | null | undefined
-) {
-  if (previousData) {
-    queryClient.setQueryData<EinsatzDetailedWithUiState | null>(
-      queryKeys.detailedEinsatz(einsatzId),
-      previousData
-    );
-  } else {
-    queryClient.removeQueries({
-      queryKey: queryKeys.detailedEinsatz(einsatzId),
-    });
-  }
-
-  if (!orgId) {
-    return;
-  }
-
-  const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
-    queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
-  });
-
-  calendarQueries.forEach(([queryKey, currentData]) => {
-    if (!currentData) {
-      return;
-    }
-
-    let hasChanges = false;
-    const detailedEinsaetze = currentData.detailedEinsaetze.map((entry) => {
-      if (entry.id !== einsatzId) {
-        return entry;
-      }
-
-      hasChanges = true;
-
-      if (previousData) {
-        return {
-          ...previousData,
-          category_abbreviations: entry.category_abbreviations,
-        };
-      }
-
-      const next = { ...entry };
-      delete next.isLocked;
-      return next;
-    });
-
-    if (!hasChanges) {
-      return;
-    }
-
-    queryClient.setQueryData<CalendarRangeData>(queryKey, {
-      ...currentData,
-      detailedEinsaetze,
-    });
-  });
-}
-
-async function refreshDetailedEinsatzCache(
-  queryClient: ReturnType<typeof useQueryClient>,
-  orgId: string | undefined,
-  einsatzId: string
-) {
-  const freshEinsatz = await queryClient.fetchQuery({
-    queryKey: queryKeys.detailedEinsatz(einsatzId),
-    staleTime: 0,
-    queryFn: async () => {
-      const result = await getEinsatzWithDetailsById(einsatzId);
-      if (result instanceof Response) {
-        throw new Error(
-          `Einsatz konnte nicht geladen werden: ${result.statusText}`
-        );
-      }
-
-      if (!result) {
-        throw new Error(`Einsatz mit ID ${einsatzId} konnte nicht geladen werden.`);
-      }
-
-      return result;
-    },
-    retry: false,
-  });
-
-  updateDetailedCalendarCaches(queryClient, orgId, freshEinsatz);
-}
-
 import {
   createEinsatz,
   updateEinsatz,
@@ -365,17 +219,12 @@ import {
   type EinsatzConflict,
 } from '../dal-einsatz';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
+import { CalendarEvent } from '@/components/event-calendar/types';
 import { toast } from 'sonner';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 /** Snapshot of calendar cache entries for optimistic rollback. */
 type CalendarCacheSnapshot = Array<[QueryKey, CalendarRangeData | undefined]>;
-
-type DetailedCacheMutationContext = {
-  didLock: boolean;
-  eventId?: string;
-  previousDetailedData?: EinsatzDetailedWithUiState | null;
-};
 
 function rollbackCalendarCache(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -411,13 +260,15 @@ export function useCreateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
+  const { addSavingEventId, removeSavingEventId, savingEventIds } =
+    useSavingEventIds();
 
   const mutation = useMutation({
     mutationFn: async ({
       event,
       disableTimeConflicts = false,
     }: {
-      event: EinsatzCreate;
+      event: SavingTrackedEinsatzCreate;
       disableTimeConflicts?: boolean;
     }) => {
       return createEinsatz({ data: event, disableTimeConflicts });
@@ -425,7 +276,10 @@ export function useCreateEinsatz(
     onMutate: async ({ event }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId);
       if (!activeOrgId) return {};
-      const tempEventId = `temp-${crypto.randomUUID()}`;
+      const savingEventId =
+        event.__savingEventId ?? event.id ?? `temp-${crypto.randomUUID()}`;
+      event.__savingEventId = savingEventId;
+      addSavingEventId(savingEventId);
       const dates = getDatesSpanningEvent({
         start: event.start,
         end: event.end != null ? event.end : undefined,
@@ -434,7 +288,7 @@ export function useCreateEinsatz(
         new Set(dates.flatMap((d) => getMonthKeysForDate(d, false)))
       );
       const optimisticEvent: CalendarEvent = {
-        id: tempEventId,
+        id: savingEventId,
         title: event.title,
         start: toMutationDate(event.start),
         end: toMutationDate(event.end),
@@ -454,7 +308,7 @@ export function useCreateEinsatz(
           });
         }
       }
-      return { previousData };
+      return { previousData, savingEventId };
     },
     onError: (error, _vars, context) => {
       if (context?.previousData) {
@@ -489,23 +343,17 @@ export function useCreateEinsatz(
           }
         }
       } else if (data.einsatz) {
-        try {
-          await refreshDetailedEinsatzCache(
-            queryClient,
-            activeOrgId,
-            data.einsatz.id
-          );
-        } catch {
-          invalidateEinsatzQueries(queryClient, data.einsatz.id);
-        }
         toast.success(
           `${einsatzSingular} '${vars.event.title}' wurde erstellt.`
         );
       }
     },
-    onSettled: (data, _error, vars) => {
+    onSettled: (data, _error, vars, context) => {
       const event = data?.einsatz ?? vars?.event;
-      invalidateEinsatzQueries(queryClient);
+      if (context?.savingEventId) {
+        removeSavingEventId(context.savingEventId);
+      }
+      invalidateEinsatzQueries(queryClient, data?.einsatz?.id);
       if (data?.einsatz?.id) {
         invalidateActivityLogs(queryClient);
       }
@@ -527,6 +375,7 @@ export function useCreateEinsatz(
     ...mutation,
     mutate: (event: EinsatzCreate) => mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate) => mutation.mutateAsync({ event }),
+    savingEventIds,
   };
 }
 
@@ -537,6 +386,8 @@ export function useUpdateEinsatz(
 ) {
   const queryClient = useQueryClient();
   const { showDestructive } = useConfirmDialog();
+  const { addSavingEventId, removeSavingEventId, savingEventIds } =
+    useSavingEventIds();
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -559,23 +410,52 @@ export function useUpdateEinsatz(
     },
     onMutate: async ({ event }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, event.id);
-      if (!activeOrgId) return { didLock: false };
+      if (!activeOrgId) return {};
       const eventId = event.id;
-      if (!eventId) return { didLock: false };
-      const previousDetailedData = queryClient.getQueryData<EinsatzDetailedWithUiState | null>(
-        queryKeys.detailedEinsatz(eventId)
-      );
-      lockDetailedEinsatzCache(queryClient, activeOrgId, eventId);
-      return { didLock: true, eventId, previousDetailedData };
+      if (!eventId) return {};
+      addSavingEventId(eventId);
+      const start =
+        'start' in event && event.start
+          ? toMutationDate(event.start)
+          : null;
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data) continue;
+        const idx = data.events.findIndex((e) => e.id === eventId);
+        if (idx === -1) continue;
+        previousData.push([key, data]);
+        const prev = data.events[idx];
+        const updated: CalendarEvent = {
+          ...prev,
+          ...(start && { start }),
+          ...('end' in event &&
+            event.end !== undefined && {
+              end: toMutationDate(event.end),
+            }),
+        };
+        if ('title' in event && event.title !== undefined)
+          updated.title = event.title;
+        if ('all_day' in event && event.all_day !== undefined)
+          updated.allDay = event.all_day;
+        if ('assignedUsers' in event && event.assignedUsers !== undefined)
+          updated.assignedUsers = event.assignedUsers;
+        if ('helpersNeeded' in event && event.helpersNeeded !== undefined)
+          updated.helpersNeeded = event.helpersNeeded;
+        const newEvents = [...data.events];
+        newEvents[idx] = updated;
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: newEvents,
+        });
+      }
+      return { previousData, savingEventId: eventId };
     },
     onError: (error, _vars, context) => {
-      if (context?.didLock && context.eventId) {
-        restoreDetailedEinsatzCache(
-          queryClient,
-          activeOrgId,
-          context.eventId,
-          context.previousDetailedData
-        );
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
       }
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -609,26 +489,20 @@ export function useUpdateEinsatz(
           }
         }
       } else if (einsatz) {
-        if (einsatzId) {
-          try {
-            await refreshDetailedEinsatzCache(
-              queryClient,
-              activeOrgId,
-              einsatzId
-            );
-          } catch {
-            invalidateEinsatzQueries(queryClient, einsatzId);
-          }
-        }
         const title =
           'title' in vars.event ? vars.event.title : einsatzSingular;
         toast.success(`${einsatzSingular} '${title}' wurde aktualisiert.`);
-        if (einsatzId) {
-          invalidateActivityLogs(queryClient);
-        }
+      }
+
+      if (einsatzId) {
+        invalidateEinsatzQueries(queryClient, einsatzId);
+        invalidateActivityLogs(queryClient);
       }
     },
-    onSettled: (data, _error, vars) => {
+    onSettled: (data, _error, vars, context) => {
+      if (context?.savingEventId) {
+        removeSavingEventId(context.savingEventId);
+      }
       const event =
         data && 'einsatz' in data && data.einsatz
           ? data.einsatz
@@ -644,7 +518,9 @@ export function useUpdateEinsatz(
       if (activeOrgId) {
         invalidateAgendaForOrg(queryClient, activeOrgId);
       }
-      if (activeOrgId) {
+      if (activeOrgId && context?.previousData?.length) {
+        invalidateCalendarSnapshot(queryClient, context.previousData);
+      } else if (activeOrgId) {
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
       }
       if (activeOrgId && event && hasDefinedStart(event)) {
@@ -663,8 +539,18 @@ export function useUpdateEinsatz(
       mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate | CalendarEvent) =>
       mutation.mutateAsync({ event }),
+    savingEventIds,
   };
 }
+
+/** Minimal status shape for optimistic "bestätigt" display (verwalter_text/helper_text for colors). */
+const OPTIMISTIC_BESTAETIGT_STATUS = {
+  id: StatusValuePairs.vergeben,
+  verwalter_text: 'bestätigt',
+  helper_text: 'vergeben',
+  verwalter_color: 'green',
+  helper_color: 'red',
+} as const;
 
 export function useConfirmEinsatz(
   activeOrgId: string | undefined,
@@ -678,21 +564,31 @@ export function useConfirmEinsatz(
     },
     onMutate: async (eventId) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
-      if (!activeOrgId) return { didLock: false };
-      const previousDetailedData = queryClient.getQueryData<EinsatzDetailedWithUiState | null>(
-        queryKeys.detailedEinsatz(eventId)
-      );
-      lockDetailedEinsatzCache(queryClient, activeOrgId, eventId);
-      return { didLock: true, eventId, previousDetailedData };
+      if (!activeOrgId) return {};
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data) continue;
+        const idx = data.events.findIndex((e) => e.id === eventId);
+        if (idx === -1) continue;
+        previousData.push([key, data]);
+        const newEvents = [...data.events];
+        newEvents[idx] = {
+          ...newEvents[idx],
+          status: OPTIMISTIC_BESTAETIGT_STATUS,
+        };
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: newEvents,
+        });
+      }
+      return { previousData };
     },
     onError: (error, _eventId, context) => {
-      if (context?.didLock && context.eventId) {
-        restoreDetailedEinsatzCache(
-          queryClient,
-          activeOrgId,
-          context.eventId,
-          context.previousDetailedData
-        );
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
       }
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -700,17 +596,12 @@ export function useConfirmEinsatz(
         `${einsatzSingular} konnte nicht bestätigt werden: ${errorMessage}`
       );
     },
-    onSuccess: async (data) => {
-      try {
-        await refreshDetailedEinsatzCache(queryClient, activeOrgId, data.id);
-      } catch {
-        invalidateEinsatzQueries(queryClient, data.id);
-      }
+    onSuccess: (data) => {
       toast.success(`${einsatzSingular} '${data.title}' wurde bestätigt.`);
     },
-    onSettled: (data, _error, _eventId) => {
-      invalidateEinsatzQueries(queryClient);
-      if (_eventId) {
+    onSettled: (data, _error, eventId) => {
+      invalidateEinsatzQueries(queryClient, eventId);
+      if (eventId) {
         invalidateActivityLogs(queryClient);
       }
       if (activeOrgId && data && hasDefinedStart(data)) {
@@ -745,23 +636,43 @@ export function useToggleUserAssignment(
     }) => {
       return await toggleUserAssignmentToEinsatz(eventId, intent);
     },
-    onMutate: async ({ eventId }) => {
+    onMutate: async ({ eventId, intent }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
-      if (!activeOrgId || !userId) return { didLock: false };
-      const previousDetailedData = queryClient.getQueryData<EinsatzDetailedWithUiState | null>(
-        queryKeys.detailedEinsatz(eventId)
-      );
-      lockDetailedEinsatzCache(queryClient, activeOrgId, eventId);
-      return { didLock: true, eventId, previousDetailedData };
+      if (!activeOrgId || !userId) return {};
+      const previousData: CalendarCacheSnapshot = [];
+      const queries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+      for (const [key, data] of queries) {
+        if (!data) continue;
+        const idx = data.events.findIndex((e) => e.id === eventId);
+        if (idx === -1) continue;
+        previousData.push([key, data]);
+        const prev = data.events[idx];
+        const assignedUsers = prev.assignedUsers ?? [];
+        const isAssigned = prev.assignedUsers?.includes(userId) ?? false;
+        const newAssigned =
+          intent === 'assign'
+            ? isAssigned
+              ? assignedUsers
+              : [...assignedUsers, userId]
+            : intent === 'unassign'
+              ? assignedUsers.filter((id) => id !== userId)
+              : isAssigned
+                ? assignedUsers.filter((id) => id !== userId)
+                : [...assignedUsers, userId];
+        const newEvents = [...data.events];
+        newEvents[idx] = { ...prev, assignedUsers: newAssigned };
+        queryClient.setQueryData<CalendarRangeData>(key, {
+          ...data,
+          events: newEvents,
+        });
+      }
+      return { previousData };
     },
-    onError: (error, _vars, context) => {
-      if (context?.didLock && context.eventId) {
-        restoreDetailedEinsatzCache(
-          queryClient,
-          activeOrgId,
-          context.eventId,
-          context.previousDetailedData
-        );
+    onError: (error, _eventId, context) => {
+      if (context?.previousData) {
+        rollbackCalendarCache(queryClient, context.previousData);
       }
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -769,12 +680,7 @@ export function useToggleUserAssignment(
         `${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`
       );
     },
-    onSuccess: async (data, vars) => {
-      try {
-        await refreshDetailedEinsatzCache(queryClient, activeOrgId, data.id);
-      } catch {
-        invalidateEinsatzQueries(queryClient, data.id);
-      }
+    onSuccess: (data, vars) => {
       if (vars.intent === 'unassign') {
         toast.success(
           `Sie haben sich erfolgreich von ${data.title} ausgetragen`
@@ -786,8 +692,8 @@ export function useToggleUserAssignment(
         `Sie haben sich erfolgreich bei '${data.title}' eingetragen`
       );
     },
-    onSettled: (data, _error, vars) => {
-      invalidateEinsatzQueries(queryClient);
+    onSettled: (data) => {
+      invalidateEinsatzQueries(queryClient, data?.id);
       if (data?.id) {
         invalidateActivityLogs(queryClient);
       }

@@ -16,11 +16,14 @@ const {
   mockEventItem,
 } = vi.hoisted(() => ({
   mockDraggableEvent: vi.fn(
-    ({ event, isMultiDay }: { event: CalendarEvent; isMultiDay?: boolean }) => (
-      <div
-        data-event-id={event.id}
-        data-multi-day={isMultiDay ? 'true' : 'false'}
-      />
+    ({
+      event,
+      isMultiDay,
+    }: {
+      event: CalendarEvent;
+      isMultiDay?: boolean;
+    }) => (
+      <div data-event-id={event.id} data-multi-day={isMultiDay ? 'true' : 'false'} />
     )
   ),
   mockDroppableCell: vi.fn(({ children }: { children?: ReactNode }) => (
@@ -31,9 +34,7 @@ const {
     currentTimeVisible: false,
   })),
   mockUseTodayStart: vi.fn(() => new Date('2026-04-20T00:00:00.000Z')),
-  mockEventItem: vi.fn(({ children }: { children?: ReactNode }) => (
-    <>{children}</>
-  )),
+  mockEventItem: vi.fn(({ children }: { children?: ReactNode }) => <>{children}</>),
 }));
 
 vi.mock('./draggable-event', () => ({
@@ -97,7 +98,9 @@ describe('WeekView multi-day rendering', () => {
       .map(([props]) => props)
       .filter(
         (props): props is DraggableProps =>
-          typeof props === 'object' && props !== null && 'event' in props
+          typeof props === 'object' &&
+          props !== null &&
+          'event' in props
       );
 
     const multiDayCalls = renderedDraggableProps.filter(

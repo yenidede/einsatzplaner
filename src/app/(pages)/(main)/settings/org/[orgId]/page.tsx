@@ -877,8 +877,7 @@ export default function OrganizationManagePage() {
                     maxFiles={1}
                     accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
                     placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert). Sollte das Logo nicht richtig laden, bitte die Seite neu laden."
-                    previewAspectRatio={PreviewAspectRatio.WIDE}
-                    previewImageFit="contain"
+                    previewAspectRatio={PreviewAspectRatio.LANDSCAPE}
                     setValue={() => undefined}
                     onUpload={handleLogoUpload}
                     onFileRemove={
@@ -911,8 +910,7 @@ export default function OrganizationManagePage() {
                     maxFiles={1}
                     accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
                     placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert). Sollte das Logo nicht richtig laden, bitte die Seite neu laden."
-                    previewAspectRatio={PreviewAspectRatio.LANDSCAPE}
-                    previewImageFit="contain"
+                    previewAspectRatio={PreviewAspectRatio.SQUARE}
                     setValue={() => undefined}
                     onUpload={handleSmallLogoUpload}
                     onFileRemove={
