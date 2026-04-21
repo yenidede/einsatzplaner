@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { DataTable } from '@/components/data-table/components/data-table';
 import { DataTableAdvancedToolbar } from '@/components/data-table/components/data-table-advanced-toolbar';
@@ -14,6 +14,7 @@ import {
 import { getDefaultFilterOperator } from '@/components/data-table/lib/data-table';
 import { getFiltersStateParser } from '@/components/data-table/lib/parsers';
 import { formatDate } from '@/components/data-table/lib/format';
+import type { ExtendedColumnFilter } from '@/components/data-table/types/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -41,7 +42,6 @@ import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
 import { createColumnHelper } from '@tanstack/react-table';
 import { MoreHorizontal, Trash2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import type { ExtendedColumnFilter } from '@/components/data-table/types/data-table';
 import { useQueryState } from 'nuqs';
 
 import { ListViewCsvExport } from './ListViewCsvExport';
@@ -75,6 +75,21 @@ function formatCategoryLabel(value: string, abbreviation: string): string {
   return trimmedAbbreviation
     ? `${trimmedValue} (${trimmedAbbreviation})`
     : trimmedValue;
+}
+
+function isSeededDefaultOrgFilter(
+  filter: ExtendedColumnFilter<EinsatzListItem>
+): filter is ExtendedColumnFilter<EinsatzListItem> & {
+  value: [string];
+} {
+  return (
+    filter.id === 'org_id' &&
+    filter.variant === 'multiSelect' &&
+    filter.operator === getDefaultFilterOperator('multiSelect') &&
+    Array.isArray(filter.value) &&
+    filter.value.length === 1 &&
+    filter.filterId === `active-org-${filter.value[0]}`
+  );
 }
 
 function getUserDisplayName(user: {
@@ -183,24 +198,26 @@ export function ListView({
     },
     [activeOrgId]
   );
-  const hasSeededDefaultOrgFilterRef = useRef(false);
   const [rawFilters, setRawFilters] = useQueryState(
     FILTERS_KEY,
     getFiltersStateParser<EinsatzListItem>().withDefault([])
   );
 
   useEffect(() => {
-    if (hasSeededDefaultOrgFilterRef.current) {
+    if (!defaultColumnFilters.length) {
       return;
     }
 
-    if (!defaultColumnFilters.length || rawFilters.length > 0) {
+    if (rawFilters.length === 1 && isSeededDefaultOrgFilter(rawFilters[0])) {
+      if (rawFilters[0].value[0] === activeOrgId) {
+        return;
+      }
+    } else if (rawFilters.length > 0) {
       return;
     }
 
-    hasSeededDefaultOrgFilterRef.current = true;
     void setRawFilters(defaultColumnFilters);
-  }, [defaultColumnFilters, rawFilters.length, setRawFilters]);
+  }, [activeOrgId, defaultColumnFilters, rawFilters, setRawFilters]);
 
   const registeredHelpersLabel = `Eingetragene ${helper_plural}`;
   const registeredHelpersCountLabel = `Anzahl eingetragene ${helper_plural}`;
@@ -479,13 +496,12 @@ export function ListView({
         meta: {
           label: 'Organisation',
           variant: 'multiSelect',
-          options:
-            organizations
-              ?.map((organization) => ({
-                label: organization.name,
-                value: organization.id,
-              }))
-              .sort((a, b) => a.label.localeCompare(b.label, 'de')) ?? [],
+          options: (organizations ?? [])
+            .map((organization) => ({
+              label: organization.name,
+              value: organization.id,
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'de')),
         },
       }),
       columnHelper.accessor((row) => row.helper_count, {
