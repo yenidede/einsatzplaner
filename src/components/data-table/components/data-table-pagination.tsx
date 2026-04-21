@@ -29,7 +29,7 @@ export const FirstPageAlias = 0.1;
 export function DataTablePagination<TData>({
   table,
   actionBar,
-  pageSizeOptions = [10, 20, 30, 40, 50],
+  pageSizeOptions = [20, 50, 100],
   hideRowCountOnMobile,
   className,
   ...props
