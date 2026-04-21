@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { DataTable } from '@/components/data-table/components/data-table';
 import { DataTableAdvancedToolbar } from '@/components/data-table/components/data-table-advanced-toolbar';
@@ -11,7 +11,10 @@ import {
   byOperator,
   byOperatorUseMetaField,
 } from '@/components/data-table/lib/filter-fns';
+import { getDefaultFilterOperator } from '@/components/data-table/lib/data-table';
+import { getFiltersStateParser } from '@/components/data-table/lib/parsers';
 import { formatDate } from '@/components/data-table/lib/format';
+import type { ExtendedColumnFilter } from '@/components/data-table/types/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -39,11 +42,13 @@ import { useUsersByOrgIds } from '@/features/user/hooks/use-user-queries';
 import { createColumnHelper } from '@tanstack/react-table';
 import { MoreHorizontal, Trash2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { useQueryState } from 'nuqs';
 
 import { ListViewCsvExport } from './ListViewCsvExport';
 import { CalendarMode } from './types';
 import { getBadgeColorClassByStatus, getStatusByMode } from './utils';
 import TooltipCustom from '../tooltip-custom';
+import { FILTERS_KEY } from '@/components/data-table/components/data-table-filter-menu';
 
 /**
  * Selects the displayed status text for a list row based on the calendar mode.
@@ -70,6 +75,21 @@ function formatCategoryLabel(value: string, abbreviation: string): string {
   return trimmedAbbreviation
     ? `${trimmedValue} (${trimmedAbbreviation})`
     : trimmedValue;
+}
+
+function isSeededDefaultOrgFilter(
+  filter: ExtendedColumnFilter<EinsatzListItem>
+): filter is ExtendedColumnFilter<EinsatzListItem> & {
+  value: [string];
+} {
+  return (
+    filter.id === 'org_id' &&
+    filter.variant === 'multiSelect' &&
+    filter.operator === getDefaultFilterOperator('multiSelect') &&
+    Array.isArray(filter.value) &&
+    filter.value.length === 1 &&
+    filter.filterId === `active-org-${filter.value[0]}`
+  );
 }
 
 function getUserDisplayName(user: {
@@ -159,6 +179,45 @@ export function ListView({
 
   const { einsatz_singular, einsatz_plural, helper_plural } =
     useOrganizationTerminology(organizations, activeOrgId);
+
+  const defaultColumnFilters = useMemo<ExtendedColumnFilter<EinsatzListItem>[]>(
+    () => {
+      if (!activeOrgId) {
+        return [];
+      }
+
+      return [
+        {
+          id: 'org_id',
+          value: [activeOrgId],
+          variant: 'multiSelect',
+          operator: getDefaultFilterOperator('multiSelect'),
+          filterId: `active-org-${activeOrgId}`,
+        },
+      ];
+    },
+    [activeOrgId]
+  );
+  const [rawFilters, setRawFilters] = useQueryState(
+    FILTERS_KEY,
+    getFiltersStateParser<EinsatzListItem>().withDefault([])
+  );
+
+  useEffect(() => {
+    if (!defaultColumnFilters.length) {
+      return;
+    }
+
+    if (rawFilters.length === 1 && isSeededDefaultOrgFilter(rawFilters[0])) {
+      if (rawFilters[0].value[0] === activeOrgId) {
+        return;
+      }
+    } else if (rawFilters.length > 0) {
+      return;
+    }
+
+    void setRawFilters(defaultColumnFilters);
+  }, [activeOrgId, defaultColumnFilters, rawFilters, setRawFilters]);
 
   const registeredHelpersLabel = `Eingetragene ${helper_plural}`;
   const registeredHelpersCountLabel = `Anzahl eingetragene ${helper_plural}`;
@@ -428,6 +487,23 @@ export function ListView({
           options: userOptions,
         },
       }),
+      columnHelper.accessor((row) => row.org_id, {
+        id: 'org_id',
+        header: 'Organisation',
+        cell: (props) => props.getValue(),
+        enableColumnFilter: true,
+        filterFn: byOperatorUseMetaField,
+        meta: {
+          label: 'Organisation',
+          variant: 'multiSelect',
+          options: (organizations ?? [])
+            .map((organization) => ({
+              label: organization.name,
+              value: organization.id,
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'de')),
+        },
+      }),
       columnHelper.accessor((row) => row.helper_count, {
         id: 'helper_count',
         header: registeredHelpersCountLabel,
@@ -554,6 +630,7 @@ export function ListView({
     statusData,
     templatesData,
     usersData,
+    organizations,
   ]);
 
   const { table } = useDataTable({
@@ -568,6 +645,9 @@ export function ListView({
           desc: false,
         },
       ],
+      columnVisibility: {
+        org_id: false,
+      },
       columnPinning: {
         left: ['select', 'title'],
         right: ['actions'],
