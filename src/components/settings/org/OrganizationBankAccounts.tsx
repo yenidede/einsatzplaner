@@ -145,7 +145,11 @@ export function OrganizationBankAccounts({
   const handleDelete = async (id: string) => {
     const result = await showDestructive(
       'Bankkonto löschen',
-      'Möchten Sie dieses Bankkonto wirklich löschen?'
+      'Möchten Sie dieses Bankkonto wirklich löschen?',
+      {
+        confirmText: 'Löschen',
+        cancelText: 'Abbrechen',
+      }
     );
 
     if (result === 'success') {

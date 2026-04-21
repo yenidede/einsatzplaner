@@ -14,9 +14,9 @@ import {
 
 export type AlertDialogOptions = {
   title: string;
-  description: string;
+  description: ReactNode;
   variant?: 'default' | 'destructive';
-  confirmText?: string;
+  confirmText: string;
   cancelText?: string;
 };
 
@@ -86,7 +86,7 @@ export function AlertDialogContextProvider({
             <AlertDialogHeader>
               <AlertDialogTitle
                 className={
-                  options.variant === 'destructive' ? 'text-red-600' : ''
+                  options.variant === 'destructive' ? 'text-foreground' : ''
                 }
               >
                 {options.title}
@@ -103,7 +103,7 @@ export function AlertDialogContextProvider({
                 onClick={handleConfirm}
                 variant={options.variant ?? 'default'}
               >
-                {options.confirmText ?? 'Bestätigen'}
+                {options.confirmText}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

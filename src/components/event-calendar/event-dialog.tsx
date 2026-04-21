@@ -999,7 +999,11 @@ export function EventDialogVerwaltung({
     if (checkIfFormIsModified(DEFAULTFORMDATA, staticFormData)) {
       const result = await showDefault(
         `${selectedTemplate?.name || 'Vorlage'} laden?`,
-        'Ausgefüllte Felder werden möglicherweise Überschrieben.'
+        'Ausgefüllte Felder werden möglicherweise überschrieben.',
+        {
+          confirmText: 'Felder überschreiben',
+          cancelText: 'Abbrechen',
+        }
       );
 
       if (result !== 'success') {
@@ -1259,9 +1263,18 @@ export function EventDialogVerwaltung({
     if (warnings.length > 0) {
       const confirmed = await showDestructive(
         'Warnung: Kriterien nicht erfüllt',
-        'Folgende Kriterien sind nicht erfüllt:\n\n' +
-          warnings.map((w) => `• ${w}`).join('\n') +
-          '\n\nTrotzdem speichern?'
+        <div className="flex flex-col gap-3">
+          <p>Folgende Kriterien sind nicht erfüllt:</p>
+          <ul className="text-foreground bold list-inside list-disc">
+            {warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </div>,
+        {
+          confirmText: 'Trotzdem speichern',
+          cancelText: 'Abbrechen',
+        }
       );
 
       if (confirmed !== 'success') {

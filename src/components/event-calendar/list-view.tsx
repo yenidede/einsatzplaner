@@ -678,7 +678,10 @@ export function ListView({
         ? 'Möchten Sie den ausgewählten Datensatz wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.'
         : `Möchten Sie die ${selectedEventIds.length} ausgewählten Datensätze wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`;
 
-    const result = await showDestructive(title, description);
+    const result = await showDestructive(title, description, {
+      confirmText: 'Löschen',
+      cancelText: 'Abbrechen',
+    });
 
     if (result !== 'success') {
       return;

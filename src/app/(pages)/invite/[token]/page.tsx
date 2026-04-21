@@ -26,7 +26,7 @@ export default function InviteAcceptPage() {
   const { data: invitation, isLoading, error } = useInvitationVerify(token);
 
   const acceptMutation = useAcceptInvitation(token, async (error: Error) => {
-    await showDestructive('Fehler', error.message);
+    toast.error(error.message);
   });
 
   const handleAcceptClick = async () => {
@@ -36,10 +36,19 @@ export default function InviteAcceptPage() {
 
     // Prüfen ob E-Mail übereinstimmt
     if (session.user.email !== invitation?.email) {
-      await showDestructive(
+      const result = await showDestructive(
         'E-Mail stimmt nicht überein',
-        `Diese Einladung ist für ${invitation?.email}, aber Sie sind als ${session.user.email} angemeldet. Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.`
+        `Diese Einladung ist für ${invitation?.email}, aber Sie sind als ${session.user.email} angemeldet. Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.`,
+        {
+          confirmText: 'Jetzt abmelden',
+          cancelText: 'Schließen',
+        }
       );
+
+      if (result === 'success') {
+        signOut({ callbackUrl: `/invite/${token}` });
+      }
+
       return;
     }
 

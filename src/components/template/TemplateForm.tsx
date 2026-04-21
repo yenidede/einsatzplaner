@@ -356,7 +356,11 @@ export function TemplateForm({
       isPaused ? 'Vorlage reaktivieren?' : 'Vorlage pausieren?',
       isPaused
         ? 'Die Vorlage wird wieder für neue Einsätze verfügbar gemacht.'
-        : 'Pausierte Vorlagen können nicht für neue Einsätze verwendet werden. Bestehende Einsätze bleiben unverändert.'
+        : 'Pausierte Vorlagen können nicht für neue Einsätze verwendet werden. Bestehende Einsätze bleiben unverändert.',
+      {
+        confirmText: isPaused ? 'Reaktivieren' : 'Pausieren',
+        cancelText: 'Abbrechen',
+      }
     );
     if (result === 'success' && templateId) {
       updateMutation.mutate({ templateId, is_paused: !isPaused });
@@ -844,7 +848,11 @@ export function TemplateForm({
       const name = tf?.field?.name ?? 'Feld';
       const result = await showDestructive(
         'Feld von Vorlage entfernen?',
-        `Möchten Sie das Feld "${name}" von dieser Vorlage entfernen? Das Feld wird nur von der Vorlage getrennt. Bestehende Einsätze behalten ihre gespeicherten Werte für dieses Feld.`
+        `Möchten Sie das Feld "${name}" von dieser Vorlage entfernen? Das Feld wird nur von der Vorlage getrennt. Bestehende Einsätze behalten ihre gespeicherten Werte für dieses Feld.`,
+        {
+          confirmText: 'Entfernen',
+          cancelText: 'Abbrechen',
+        }
       );
       if (result === 'success' && templateId) {
         deleteTemplateFieldMutation.mutate({ templateId, fieldId });

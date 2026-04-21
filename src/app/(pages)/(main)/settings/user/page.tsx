@@ -316,7 +316,11 @@ export default function SettingsPage() {
 
     const result = await showDestructive(
       'Organisation verlassen',
-      `Möchten Sie wirklich ${orgName} verlassen? Sie verlieren den Zugriff auf alle Daten dieser Organisation.`
+      `Möchten Sie wirklich ${orgName} verlassen? Sie verlieren den Zugriff auf alle Daten dieser Organisation.`,
+      {
+        confirmText: 'Organisation verlassen',
+        cancelText: 'Abbrechen',
+      }
     );
 
     if (result !== 'success') return;

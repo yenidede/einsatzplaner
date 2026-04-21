@@ -175,9 +175,18 @@ export function EventDialogHelfer({
 
     const dialogResult = await showDestructive(
       'Warnung: Kriterien nicht erfüllt',
-      'Folgende Kriterien wären nach dieser Aktion nicht erfüllt:\n\n' +
-        warnings.map((w) => `• ${w}`).join('\n') +
-        '\n\nMöchten Sie trotzdem fortfahren?'
+      <div className="flex flex-col gap-3">
+        <p>Folgende Kriterien wären nach dieser Aktion nicht erfüllt:</p>
+        <ul className="text-foreground bold list-inside list-disc">
+          {warnings.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+      </div>,
+      {
+        confirmText: 'Trotzdem fortfahren',
+        cancelText: 'Abbrechen',
+      }
     );
     if (dialogResult === 'success') return true;
     return false;

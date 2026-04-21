@@ -12,7 +12,6 @@ import {
   demoteFromSuperadminAction,
 } from '@/features/settings/users-action';
 import { settingsQueryKeys } from '../../features/settings/queryKeys/queryKey';
-import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { UserProfileHeader } from './userProfile/UserProfileHeader';
 import { UserContactInfo } from './userProfile/UserContactInfo';
 import { UserPersonalProperties } from './userProfile/UserPersonalProperties';
@@ -32,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { createRoleNameOverrides } from '@/components/Roles';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { queryKeys as userQueryKeys } from '@/features/user/queryKeys';
 
 interface UserProfileDialogProps {
@@ -306,18 +306,13 @@ export function UserProfileDialog({
         id: context.toastId,
       });
     },
-    onError: async (error, variables, context) => {
+    onError: async (error, _variables, context) => {
       console.error('Error saving role changes:', error);
       setUserRoles([...originalRoles]);
 
       toast.error('Fehler beim Speichern der Rollenänderungen', {
         id: context?.toastId,
       });
-
-      await showDestructive(
-        'Fehler',
-        'Fehler beim Speichern der Rollenänderungen'
-      );
     },
   });
 
@@ -373,15 +368,10 @@ export function UserProfileDialog({
       });
       onClose();
     },
-    onError: async (error: Error, variables, context) => {
+    onError: async (error: Error, _variables, context) => {
       toast.error(error.message || 'Fehler beim Ernennen zum Superadmin', {
         id: context?.toastId,
       });
-
-      await showDestructive(
-        'Fehler',
-        error.message || 'Fehler beim Ernennen zum Superadmin'
-      );
     },
   });
 
@@ -418,11 +408,6 @@ export function UserProfileDialog({
         {
           id: context?.toastId,
         }
-      );
-
-      await showDestructive(
-        'Fehler',
-        error.message || 'Fehler beim Entfernen der Superadmin-Rolle'
       );
     },
   });
@@ -492,7 +477,11 @@ export function UserProfileDialog({
     if (hasChanges) {
       const result = await showDefault(
         'Ungespeicherte Änderungen',
-        'Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?'
+        'Es gibt ungespeicherte Änderungen. Möchten Sie wirklich schließen?',
+        {
+          confirmText: 'Trotzdem schließen',
+          cancelText: 'Abbrechen',
+        }
       );
       if (result === 'success') {
         setUserRoles([...originalRoles]);
@@ -508,7 +497,11 @@ export function UserProfileDialog({
   const handleRemoveUser = async () => {
     const result = await showDestructive(
       'Benutzer entfernen',
-      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich aus der Organisation entfernen?`
+      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich aus der Organisation entfernen?`,
+      {
+        confirmText: 'Entfernen',
+        cancelText: 'Abbrechen',
+      }
     );
     if (result === 'success') {
       removeUserMutation.mutate();
@@ -518,7 +511,11 @@ export function UserProfileDialog({
   const handlePromoteToSuperadmin = async () => {
     const result = await showDestructive(
       'Zum Superadmin ernennen',
-      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen? Diese Person erhält dann alle Berechtigungen.`
+      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich zum Superadmin ernennen? Diese Person erhält dann alle Berechtigungen.`,
+      {
+        confirmText: 'Ernennen',
+        cancelText: 'Abbrechen',
+      }
     );
     if (result === 'success') {
       promoteToSuperadminMutation.mutate();
@@ -528,7 +525,11 @@ export function UserProfileDialog({
   const handleDemoteFromSuperadmin = async () => {
     const result = await showDestructive(
       'Superadmin-Rolle entfernen',
-      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich die Superadmin-Rolle entziehen? Die Person behält alle anderen Rollen.`
+      `Möchten Sie ${userProfile?.firstname} ${userProfile?.lastname} wirklich die Superadmin-Rolle entziehen? Die Person behält alle anderen Rollen.`,
+      {
+        confirmText: 'Rolle entfernen',
+        cancelText: 'Abbrechen',
+      }
     );
     if (result === 'success') {
       demoteFromSuperadminMutation.mutate();

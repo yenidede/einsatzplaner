@@ -157,7 +157,11 @@ export function AnalyticsPage() {
         dimensionLabel: descriptor.label,
         metricAggregation: chart.metricAggregation,
         einsatzPlural: einsatz_plural,
-      })}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
+      })}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
+      {
+        confirmText: 'Löschen',
+        cancelText: 'Abbrechen',
+      }
     );
 
     if (result === 'success') {

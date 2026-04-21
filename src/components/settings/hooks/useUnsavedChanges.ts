@@ -56,7 +56,11 @@ export function useUnsavedChanges<T extends string = string>({
       // Different route - show dialog
       const result = await showDefault(
         'Ungespeicherte Änderungen',
-        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?'
+        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
+        {
+          confirmText: 'Verlassen',
+          cancelText: 'Bleiben',
+        }
       );
 
       if (result === 'success') {
@@ -109,7 +113,11 @@ export function useUnsavedChanges<T extends string = string>({
 
       const result = await showDefault(
         'Ungespeicherte Änderungen',
-        'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich zu einem anderen Bereich wechseln?'
+        'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich zu einem anderen Bereich wechseln?',
+        {
+          confirmText: 'Wechseln',
+          cancelText: 'Bleiben',
+        }
       );
 
       if (result === 'success') {
@@ -176,7 +184,11 @@ export function useUnsavedChanges<T extends string = string>({
 
       const result = await showDefault(
         'Ungespeicherte Änderungen',
-        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?'
+        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
+        {
+          confirmText: 'Verlassen',
+          cancelText: 'Bleiben',
+        }
       );
 
       if (result === 'success') {
@@ -219,7 +231,11 @@ export function useUnsavedChanges<T extends string = string>({
 
       const result = await showDefault(
         'Ungespeicherte Änderungen',
-        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?'
+        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
+        {
+          confirmText: 'Verlassen',
+          cancelText: 'Bleiben',
+        }
       );
 
       if (result === 'success') {
