@@ -59,14 +59,22 @@ export const handleDelete = async (
   einsatz: { id: string | undefined; title: string },
   showDestructive: (
     title: string,
-    description: string
+    description: React.ReactNode,
+    options: {
+      confirmText: string;
+      cancelText: string;
+    }
   ) => Promise<'success' | 'cancel'>,
   onDelete: (id: string, title: string) => void
 ) => {
   if (einsatz?.id) {
     const result = await showDestructive(
       einsatz_singular + ' löschen',
-      `Sind Sie sicher, dass Sie "${einsatz.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`
+      `Sind Sie sicher, dass Sie "${einsatz.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`,
+      {
+        confirmText: 'Löschen',
+        cancelText: 'Abbrechen',
+      }
     );
 
     if (result === 'success') {

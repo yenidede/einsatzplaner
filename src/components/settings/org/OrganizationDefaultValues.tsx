@@ -178,7 +178,11 @@ export function OrganizationDefaultValues({
   const handleDeleteCategory = async (cat: CategoryItem) => {
     const result = await showDestructive(
       'Kategorie löschen',
-      `Möchten Sie die Kategorie „${cat.value}“ wirklich löschen?`
+      `Möchten Sie die Kategorie „${cat.value}“ wirklich löschen?`,
+      {
+        confirmText: 'Löschen',
+        cancelText: 'Abbrechen',
+      }
     );
     if (result === 'success') {
       deleteMutation.mutate(cat.id);

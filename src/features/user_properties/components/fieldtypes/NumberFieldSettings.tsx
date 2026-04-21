@@ -91,6 +91,10 @@ export function NumberFieldSettings({
           onChange={(e) => onChange({ placeholder: e.target.value })}
           placeholder={isDecimal ? 'z.B. 0,00' : 'z.B. 10'}
         />
+        <p className="text-muted-foreground mt-1 text-sm">
+          Wird nur als Hinweis in einem leeren Feld angezeigt und nicht
+          gespeichert.
+        </p>
       </FormInputFieldCustom>
 
       <FormInputFieldCustom name={defaultValueLabel} errors={[]}>
@@ -101,6 +105,10 @@ export function NumberFieldSettings({
           onChange={(e) => onChange({ defaultValue: e.target.value })}
           placeholder={isDecimal ? 'z.B. 99,90' : 'z.B. 42'}
         />
+        <p className="text-muted-foreground mt-1 text-sm">
+          Wird automatisch eingetragen und gespeichert, sofern Sie ihn nicht
+          ändern.
+        </p>
       </FormInputFieldCustom>
     </>
   );

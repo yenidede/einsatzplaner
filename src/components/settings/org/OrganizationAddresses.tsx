@@ -156,7 +156,11 @@ export function OrganizationAddresses({
 
     const result = await showDestructive(
       'Adresse löschen',
-      'Möchten Sie diese Adresse wirklich löschen?'
+      'Möchten Sie diese Adresse wirklich löschen?',
+      {
+        confirmText: 'Löschen',
+        cancelText: 'Abbrechen',
+      }
     );
 
     if (result === 'success') {

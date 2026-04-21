@@ -1,7 +1,13 @@
 'use client';
 
 import { useContext, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { AlertDialogContext } from '@/contexts/AlertDialogContext';
+
+type DialogButtonTexts = {
+  confirmText: string;
+  cancelText: string;
+};
 
 // interne Verwendung des shadcn Alert-Dialogs
 const useAlertDialog = () => {
@@ -20,40 +26,26 @@ export const useConfirmDialog = () => {
   const { showDialog } = useAlertDialog();
 
   const showDefault = useCallback(
-    (
-      title: string,
-      description: string,
-      options?: {
-        confirmText?: string;
-        cancelText?: string;
-      }
-    ) => {
+    (title: string, description: ReactNode, options: DialogButtonTexts) => {
       return showDialog({
         title,
         description,
         variant: 'default',
-        confirmText: options?.confirmText,
-        cancelText: options?.cancelText,
+        confirmText: options.confirmText,
+        cancelText: options.cancelText,
       });
     },
     [showDialog]
   );
 
   const showDestructive = useCallback(
-    (
-      title: string,
-      description: string,
-      options?: {
-        confirmText?: string;
-        cancelText?: string;
-      }
-    ) => {
+    (title: string, description: ReactNode, options: DialogButtonTexts) => {
       return showDialog({
         title,
         description,
         variant: 'destructive',
-        confirmText: options?.confirmText,
-        cancelText: options?.cancelText,
+        confirmText: options.confirmText,
+        cancelText: options.cancelText,
       });
     },
     [showDialog]

@@ -332,7 +332,8 @@ export default function Component({ mode }: { mode: CalendarMode }) {
             'Die Eintragung würde die Anforderungen nicht erfüllen:\n\n' +
             validationResult.blocking.join('\n\n') +
             '\n\nBitte wenden Sie sich an die Einsatzleitung.',
-          confirmText: 'OK',
+          confirmText: 'Verstanden',
+          cancelText: 'Schließen',
           variant: 'destructive',
         });
         return;
@@ -342,7 +343,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
       if (validationResult.warnings.length > 0) {
         const confirmed = await showDestructive(
           'Warnung: Fehlende Eigenschaften',
-          validationResult.warnings.join('\n\n') + '\n\nTrotzdem eintragen?'
+          validationResult.warnings.join('\n\n') + '\n\n',
+          {
+            confirmText: 'Trotzdem eintragen',
+            cancelText: 'Abbrechen',
+          }
         );
 
         if (confirmed !== 'success') return;
@@ -392,11 +397,11 @@ export default function Component({ mode }: { mode: CalendarMode }) {
         onEventTimeUpdate={handleEventTimeUpdate}
         onEventDelete={handleEventDelete}
         onEventConfirm={handleEventConfirm}
-      onMultiEventDelete={handleMultiEventDelete}
-      mode={mode}
-      activeOrgId={activeOrgId}
-      lockedEventIds={lockedEventIds}
-    />
-  </>
+        onMultiEventDelete={handleMultiEventDelete}
+        mode={mode}
+        activeOrgId={activeOrgId}
+        lockedEventIds={lockedEventIds}
+      />
+    </>
   );
 }

@@ -60,7 +60,7 @@ export function SelectFieldSettings({
     setDraggedIndex(index);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
@@ -130,7 +130,7 @@ export function SelectFieldSettings({
                 key={index}
                 draggable
                 onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
+                onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
                 className={`flex items-center gap-2 p-2 transition-colors hover:bg-slate-50 ${
@@ -180,6 +180,10 @@ export function SelectFieldSettings({
           <Label className="text-sm font-medium">
             Standardoption (optional)
           </Label>
+          <p className="text-muted-foreground text-sm">
+            Wird automatisch ausgewählt und gespeichert, sofern Sie sie nicht
+            ändern.
+          </p>
           <select
             value={defaultOption || ''}
             onChange={(e) =>

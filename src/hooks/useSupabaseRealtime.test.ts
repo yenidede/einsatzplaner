@@ -24,6 +24,16 @@ describe('composeRealtimeEventTitle', () => {
     ).toBe('Neu (ABC, DEF)');
   });
 
+  it('verwendet bei vorhandener Suffix-Basis nicht doppelt die Kategorien', () => {
+    expect(
+      composeRealtimeEventTitle({
+        existingTitle: 'Alt (ABC)',
+        nextBaseTitle: 'Alt (ABC)',
+        categoryAbbreviations: ['ABC'],
+      })
+    ).toBe('Alt (ABC)');
+  });
+
   it('preserves trailing suffix from existing title when categories are not loaded', () => {
     expect(
       composeRealtimeEventTitle({

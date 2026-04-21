@@ -356,7 +356,11 @@ export function TemplateForm({
       isPaused ? 'Vorlage reaktivieren?' : 'Vorlage pausieren?',
       isPaused
         ? 'Die Vorlage wird wieder für neue Einsätze verfügbar gemacht.'
-        : 'Pausierte Vorlagen können nicht für neue Einsätze verwendet werden. Bestehende Einsätze bleiben unverändert.'
+        : 'Pausierte Vorlagen können nicht für neue Einsätze verwendet werden. Bestehende Einsätze bleiben unverändert.',
+      {
+        confirmText: isPaused ? 'Reaktivieren' : 'Pausieren',
+        cancelText: 'Abbrechen',
+      }
     );
     if (result === 'success' && templateId) {
       updateMutation.mutate({ templateId, is_paused: !isPaused });
@@ -844,7 +848,11 @@ export function TemplateForm({
       const name = tf?.field?.name ?? 'Feld';
       const result = await showDestructive(
         'Feld von Vorlage entfernen?',
-        `Möchten Sie das Feld "${name}" von dieser Vorlage entfernen? Das Feld wird nur von der Vorlage getrennt. Bestehende Einsätze behalten ihre gespeicherten Werte für dieses Feld.`
+        `Möchten Sie das Feld "${name}" von dieser Vorlage entfernen? Das Feld wird nur von der Vorlage getrennt. Bestehende Einsätze behalten ihre gespeicherten Werte für dieses Feld.`,
+        {
+          confirmText: 'Entfernen',
+          cancelText: 'Abbrechen',
+        }
       );
       if (result === 'success' && templateId) {
         deleteTemplateFieldMutation.mutate({ templateId, fieldId });
@@ -1082,7 +1090,7 @@ export function TemplateForm({
               <CardTitle>Standardfelder</CardTitle>
               <CardDescription>
                 Standardfelder sind in jedem Einsatz dieser Vorlage vorhanden.
-                Du kannst hier nur ihre Standardwerte anpassen, aber keine
+                Sie können hier nur ihre Standardwerte anpassen, aber keine
                 weiteren Standardfelder hinzufügen oder entfernen.
               </CardDescription>
             </CardHeader>
@@ -1154,6 +1162,10 @@ export function TemplateForm({
                     <Label htmlFor="standard-field-default">
                       Standardwert (optional)
                     </Label>
+                    <p className="text-muted-foreground text-sm">
+                      Wird bei neuen Einsätzen automatisch eingetragen und
+                      gespeichert, sofern Sie ihn nicht ändern.
+                    </p>
                     <Input
                       id="standard-field-default"
                       type="text"
@@ -1171,6 +1183,10 @@ export function TemplateForm({
                       <Label htmlFor="standard-field-default">
                         Standardwert (optional)
                       </Label>
+                      <p className="text-muted-foreground text-sm">
+                        Wird bei neuen Einsätzen automatisch eingetragen und
+                        gespeichert, sofern Sie ihn nicht ändern.
+                      </p>
                       <Textarea
                         id="standard-field-default"
                         value={standardFieldDefaultValue}
@@ -1185,6 +1201,10 @@ export function TemplateForm({
                       <Label htmlFor="standard-field-placeholder">
                         Platzhalter (optional)
                       </Label>
+                      <p className="text-muted-foreground text-sm">
+                        Wird nur als Hinweis in einem leeren Feld angezeigt und
+                        nicht gespeichert.
+                      </p>
                       <Textarea
                         id="standard-field-placeholder"
                         value={standardFieldPlaceholderValue}
@@ -1269,6 +1289,10 @@ export function TemplateForm({
                         <Label htmlFor="standard-field-default">
                           Standardwert (optional)
                         </Label>
+                        <p className="text-muted-foreground text-sm">
+                          Wird bei neuen Einsätzen automatisch eingetragen und
+                          gespeichert, sofern Sie ihn nicht ändern.
+                        </p>
                         <Input
                           id="standard-field-default"
                           type={
@@ -1300,6 +1324,10 @@ export function TemplateForm({
                         <Label htmlFor="standard-field-placeholder">
                           Platzhalter (optional)
                         </Label>
+                        <p className="text-muted-foreground text-sm">
+                          Wird nur als Hinweis in einem leeren Feld angezeigt
+                          und nicht gespeichert.
+                        </p>
                         <Input
                           id="standard-field-placeholder"
                           type={

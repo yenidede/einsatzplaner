@@ -178,7 +178,11 @@ export function UserProperties({ organizationId }: UserPropertiesProps) {
 
     const result = await showDestructive(
       'Eigenschaft löschen',
-      `Möchten Sie die Eigenschaft "${property.field.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
+      `Möchten Sie die Eigenschaft "${property.field.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
+      {
+        confirmText: 'Löschen',
+        cancelText: 'Abbrechen',
+      }
     );
 
     if (result === 'success') {

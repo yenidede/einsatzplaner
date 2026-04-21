@@ -77,6 +77,12 @@ import { formatDateToTimeInput, isNormalizedTime } from '@/lib/time-input';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useUserProfile } from '@/features/settings/hooks/useUserProfile';
 import { hasActiveOrganizationSettingsAccess } from '@/components/settings/settings-navigation.utils';
+import {
+  getConfirmableCriteriaWarnings,
+  getInformationalCreateUserPropertyWarnings,
+  shouldValidateRequiredUserProperties,
+  type EinsatzCriteriaWarning,
+} from './einsatz-warning-handling';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -999,7 +1005,11 @@ export function EventDialogVerwaltung({
     if (checkIfFormIsModified(DEFAULTFORMDATA, staticFormData)) {
       const result = await showDefault(
         `${selectedTemplate?.name || 'Vorlage'} laden?`,
-        'Ausgefüllte Felder werden möglicherweise Überschrieben.'
+        'Ausgefüllte Felder werden möglicherweise überschrieben.',
+        {
+          confirmText: 'Felder überschreiben',
+          cancelText: 'Abbrechen',
+        }
       );
 
       if (result !== 'success') {
@@ -1182,7 +1192,7 @@ export function EventDialogVerwaltung({
       formErrors: [],
     });
 
-    const warnings: string[] = [];
+    const warnings: EinsatzCriteriaWarning[] = [];
 
     // Warning 1: Max X participants per helper
     if (
@@ -1196,25 +1206,31 @@ export function EventDialogVerwaltung({
         (o) => o.id === dialogOrgId
       )?.max_participants_per_helper;
       if (maxParticipants && ratio > maxParticipants) {
-        warnings.push(
-          `Allgemein: Anzahl Teilnehmer:innen pro ${helper_singular} maximal ${
+        warnings.push({
+          kind: 'helperParticipantRatio',
+          message: `Allgemein: Anzahl Teilnehmer:innen pro ${helper_singular} maximal ${
             organizations?.find((o) => o.id === dialogOrgId)
               ?.max_participants_per_helper
-          } (aktuell: ${Math.round(ratio)})`
-        );
+          } (aktuell: ${Math.round(ratio)})`,
+        });
       }
     }
 
     // Warning 2: Required user properties check
+    const requiredUserProperties =
+      parsedDataStatic.data.requiredUserProperties ?? [];
+
     if (
-      parsedDataStatic.data.requiredUserProperties &&
-      parsedDataStatic.data.requiredUserProperties.length > 0
+      shouldValidateRequiredUserProperties(
+        requiredUserProperties.length,
+        assignedUsers.length
+      )
     ) {
       const assignedUserDetails = usersQuery.data?.filter((user) =>
         assignedUsers.includes(user.id)
       );
 
-      for (const propConfig of parsedDataStatic.data.requiredUserProperties) {
+      for (const propConfig of requiredUserProperties) {
         if (!propConfig.is_required) continue;
 
         const property = availableProps?.find(
@@ -1252,16 +1268,44 @@ export function EventDialogVerwaltung({
             minRequired === -1
               ? `Personeneigenschaften: Alle zugewiesenen ${helper_plural} benötigen '${propName}' (${matchingCount}/${requiredCount} erfüllt)`
               : `Personeneigenschaften: mind. ${minRequired} ${helper_plural} mit '${propName}' benötigt (aktuell: ${matchingCount})`;
-          warnings.push(message);
+          warnings.push({
+            kind: 'userProperties',
+            message,
+          });
         }
       }
     }
-    if (warnings.length > 0) {
+    const isNewEinsatz = !currentEinsatz?.id;
+    const confirmableWarnings = getConfirmableCriteriaWarnings(
+      warnings,
+      isNewEinsatz
+    );
+    const informationalPropertyWarnings =
+      getInformationalCreateUserPropertyWarnings(warnings, isNewEinsatz);
+
+    if (informationalPropertyWarnings.length > 0) {
+      toast.info('Personeneigenschaften nicht vollständig erfüllt', {
+        description: informationalPropertyWarnings
+          .map((warning) => warning.message)
+          .join('\n'),
+      });
+    }
+
+    if (confirmableWarnings.length > 0) {
       const confirmed = await showDestructive(
         'Warnung: Kriterien nicht erfüllt',
-        'Folgende Kriterien sind nicht erfüllt:\n\n' +
-          warnings.map((w) => `• ${w}`).join('\n') +
-          '\n\nTrotzdem speichern?'
+        <div className="flex flex-col gap-3">
+          <p>Folgende Kriterien sind nicht erfüllt:</p>
+          <ul className="text-foreground list-inside list-disc">
+            {confirmableWarnings.map((warning) => (
+              <li key={warning.message}>{warning.message}</li>
+            ))}
+          </ul>
+        </div>,
+        {
+          confirmText: 'Trotzdem speichern',
+          cancelText: 'Abbrechen',
+        }
       );
 
       if (confirmed !== 'success') {
@@ -1338,8 +1382,6 @@ export function EventDialogVerwaltung({
     }
 
     //region Activity Change Log
-    const isNewEinsatz = !currentEinsatz?.id;
-
     const previousAssignedUsers =
       currentEinsatz && 'assigned_users' in currentEinsatz
         ? currentEinsatz.assigned_users || []

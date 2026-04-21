@@ -260,7 +260,11 @@ export const useFileUpload = (
   > => {
     return showDestructive(
       'Alle Dateien entfernen',
-      'Möchten Sie wirklich alle Dateien entfernen?'
+      'Möchten Sie wirklich alle Dateien entfernen?',
+      {
+        confirmText: 'Alle entfernen',
+        cancelText: 'Abbrechen',
+      }
     );
   }, [showDestructive]);
 
@@ -409,7 +413,11 @@ export const useFileUpload = (
 
       return showDestructive(
         'Datei entfernen',
-        `Möchten Sie "${filename ?? 'diese Datei'}" wirklich entfernen?`
+        `Möchten Sie "${filename ?? 'diese Datei'}" wirklich entfernen?`,
+        {
+          confirmText: 'Entfernen',
+          cancelText: 'Abbrechen',
+        }
       );
     },
     [showDestructive, state.files]
