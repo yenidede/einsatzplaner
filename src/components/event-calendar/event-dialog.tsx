@@ -1070,7 +1070,7 @@ export function EventDialogVerwaltung({
         selectedTemplate.anmerkung_default != null &&
         selectedTemplate.anmerkung_default.trim() !== ''
       ) {
-        templateUpdates.anmerkung = selectedTemplate.anmerkung_default;
+        templateUpdates.anmerkung = selectedTemplate.anmerkung_default.trim();
       }
 
       const finalParticipantCount =

@@ -1,5 +1,7 @@
 'use client';
 
+import * as React from 'react';
+
 import {
   InputGroup,
   InputGroupAddon,
@@ -14,18 +16,30 @@ export interface InputWithCounterProps
   errorMessage?: string;
 }
 
-export function InputWithCounter({
-  currentLength,
-  maxLength,
-  errorMessage,
-  ...props
-}: InputWithCounterProps) {
+export const InputWithCounter = React.forwardRef<
+  React.ElementRef<typeof InputGroupInput>,
+  InputWithCounterProps
+>(function InputWithCounter(
+  { currentLength, maxLength, errorMessage, ...props },
+  ref
+) {
+  const errorId = React.useId();
+  const describedBy = [
+    props['aria-describedby'],
+    errorMessage ? errorId : undefined,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div className="flex flex-col gap-1.5">
       <InputGroup>
         <InputGroupInput
-          aria-invalid={!!errorMessage}
           {...props}
+          ref={ref}
+          maxLength={maxLength}
+          aria-invalid={errorMessage ? true : props['aria-invalid']}
+          aria-describedby={describedBy || undefined}
         />
         <InputGroupAddon align="inline-end">
           <InputGroupText aria-live="polite">
@@ -34,8 +48,10 @@ export function InputWithCounter({
         </InputGroupAddon>
       </InputGroup>
       {errorMessage ? (
-        <p className="text-destructive text-sm">{errorMessage}</p>
+        <p id={errorId} className="text-destructive text-sm">
+          {errorMessage}
+        </p>
       ) : null}
     </div>
   );
-}
+});

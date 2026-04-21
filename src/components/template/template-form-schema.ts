@@ -1,5 +1,6 @@
 export {
   TEMPLATE_DESCRIPTION_MAX_LENGTH,
+  getTemplateDescriptionLength,
   normalizeTemplateDescription,
   templateDescriptionSchema,
 } from '@/features/template/template-validation';

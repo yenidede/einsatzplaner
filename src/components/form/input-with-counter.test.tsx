@@ -18,6 +18,7 @@ describe('InputWithCounter', () => {
     );
 
     expect(screen.getByText('12/20')).toBeTruthy();
+    expect(screen.getByRole('textbox').getAttribute('maxlength')).toBe('20');
   });
 
   it('zeigt den Fehlerzustand und die Fehlermeldung an', () => {
@@ -29,6 +30,12 @@ describe('InputWithCounter', () => {
       />
     );
 
-    expect(screen.getByText('Die Beschreibung darf höchstens 20 Zeichen lang sein.')).toBeTruthy();
+    const input = screen.getByRole('textbox');
+    const errorMessage = screen.getByText(
+      'Die Beschreibung darf höchstens 20 Zeichen lang sein.'
+    );
+
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe(errorMessage.id);
   });
 });

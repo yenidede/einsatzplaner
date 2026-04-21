@@ -332,6 +332,7 @@ async function refreshDetailedEinsatzCache(
 ) {
   const freshEinsatz = await queryClient.fetchQuery({
     queryKey: queryKeys.detailedEinsatz(einsatzId),
+    staleTime: 0,
     queryFn: async () => {
       const result = await getEinsatzWithDetailsById(einsatzId);
       if (result instanceof Response) {
@@ -369,6 +370,12 @@ import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 /** Snapshot of calendar cache entries for optimistic rollback. */
 type CalendarCacheSnapshot = Array<[QueryKey, CalendarRangeData | undefined]>;
+
+type DetailedCacheMutationContext = {
+  didLock: boolean;
+  eventId?: string;
+  previousDetailedData?: EinsatzDetailedWithUiState | null;
+};
 
 function rollbackCalendarCache(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -552,26 +559,23 @@ export function useUpdateEinsatz(
     },
     onMutate: async ({ event }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, event.id);
-      if (!activeOrgId) return {};
+      if (!activeOrgId) return { didLock: false };
       const eventId = event.id;
-      if (!eventId) return {};
+      if (!eventId) return { didLock: false };
       const previousDetailedData = queryClient.getQueryData<EinsatzDetailedWithUiState | null>(
         queryKeys.detailedEinsatz(eventId)
       );
       lockDetailedEinsatzCache(queryClient, activeOrgId, eventId);
-      return { previousDetailedData };
+      return { didLock: true, eventId, previousDetailedData };
     },
-    onError: (error, vars, context) => {
-      if (context?.previousDetailedData !== undefined) {
-        const eventId = context.previousDetailedData?.id ?? vars.event.id;
-        if (eventId) {
-          restoreDetailedEinsatzCache(
-            queryClient,
-            activeOrgId,
-            eventId,
-            context.previousDetailedData
-          );
-        }
+    onError: (error, _vars, context) => {
+      if (context?.didLock && context.eventId) {
+        restoreDetailedEinsatzCache(
+          queryClient,
+          activeOrgId,
+          context.eventId,
+          context.previousDetailedData
+        );
       }
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -674,22 +678,22 @@ export function useConfirmEinsatz(
     },
     onMutate: async (eventId) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
-      if (!activeOrgId) return {};
+      if (!activeOrgId) return { didLock: false };
       const previousDetailedData = queryClient.getQueryData<EinsatzDetailedWithUiState | null>(
         queryKeys.detailedEinsatz(eventId)
       );
       lockDetailedEinsatzCache(queryClient, activeOrgId, eventId);
-      return { previousDetailedData };
+      return { didLock: true, eventId, previousDetailedData };
     },
     onError: (error, _eventId, context) => {
-    if (context?.previousDetailedData !== undefined) {
-      restoreDetailedEinsatzCache(
-        queryClient,
-        activeOrgId,
-        _eventId,
-        context.previousDetailedData
-      );
-    }
+      if (context?.didLock && context.eventId) {
+        restoreDetailedEinsatzCache(
+          queryClient,
+          activeOrgId,
+          context.eventId,
+          context.previousDetailedData
+        );
+      }
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       toast.error(
@@ -743,19 +747,19 @@ export function useToggleUserAssignment(
     },
     onMutate: async ({ eventId }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
-      if (!activeOrgId || !userId) return {};
+      if (!activeOrgId || !userId) return { didLock: false };
       const previousDetailedData = queryClient.getQueryData<EinsatzDetailedWithUiState | null>(
         queryKeys.detailedEinsatz(eventId)
       );
       lockDetailedEinsatzCache(queryClient, activeOrgId, eventId);
-      return { previousDetailedData };
+      return { didLock: true, eventId, previousDetailedData };
     },
-    onError: (error, vars, context) => {
-      if (context?.previousDetailedData !== undefined) {
+    onError: (error, _vars, context) => {
+      if (context?.didLock && context.eventId) {
         restoreDetailedEinsatzCache(
           queryClient,
           activeOrgId,
-          vars.eventId,
+          context.eventId,
           context.previousDetailedData
         );
       }

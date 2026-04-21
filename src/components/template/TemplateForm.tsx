@@ -52,6 +52,7 @@ import { TemplateFieldReuseSuggestions } from './TemplateFieldReuseSuggestions';
 import { normalizeTemplateFieldSearchValue } from './template-field-reuse-utils';
 import {
   TEMPLATE_DESCRIPTION_MAX_LENGTH,
+  getTemplateDescriptionLength,
   templateFormSchema,
   type TemplateFormValues,
   type TemplateFormInputValues,
@@ -230,8 +231,9 @@ export function TemplateForm({
   const { register, control, formState, watch, setValue, reset } = form;
   const { errors } = formState;
   const descriptionValue = watch('description');
-  const descriptionLength =
-    typeof descriptionValue === 'string' ? descriptionValue.length : 0;
+  const descriptionLength = getTemplateDescriptionLength(
+    typeof descriptionValue === 'string' ? descriptionValue : undefined
+  );
 
   const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
   const [customFieldStep, setCustomFieldStep] = useState<

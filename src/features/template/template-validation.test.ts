@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   TEMPLATE_DESCRIPTION_MAX_LENGTH,
+  getTemplateDescriptionLength,
   normalizeTemplateDescription,
   templateDescriptionSchema,
 } from './template-validation';
@@ -27,5 +28,11 @@ describe('template validation', () => {
     );
     expect(normalizeTemplateDescription('   ')).toBeNull();
     expect(normalizeTemplateDescription(undefined)).toBeUndefined();
+  });
+
+  it('misst die normalisierte Länge der Beschreibung', () => {
+    expect(getTemplateDescriptionLength('  Beschreibung  ')).toBe(12);
+    expect(getTemplateDescriptionLength('   ')).toBe(0);
+    expect(getTemplateDescriptionLength(undefined)).toBe(0);
   });
 });

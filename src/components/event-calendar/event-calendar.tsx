@@ -63,6 +63,7 @@ import { useOrganizationTerminology } from '@/hooks/use-organization-terminology
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useEinsaetzeForAgenda } from '@/features/einsatz/hooks/useEinsatzQueries';
 import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
+import { collectLockedEventIds } from './locked-event-ids';
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -136,11 +137,8 @@ export function EventCalendar({
   const effectiveIsEventsLoading =
     view === 'agenda' ? isAgendaLoading : isEventsLoading;
   const agendaLockedEventIds = useMemo(
-    () =>
-      agendaData?.detailedEinsaetze
-        .filter((e) => e.isLocked)
-        .map((e) => e.id) ?? [],
-    [agendaData?.detailedEinsaetze]
+    () => collectLockedEventIds(agendaData),
+    [agendaData]
   );
   const effectiveLockedEventIds =
     view === 'agenda' ? agendaLockedEventIds : lockedEventIds;

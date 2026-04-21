@@ -31,6 +31,7 @@ import type {
 } from '@/features/einsatz/types';
 import { useEventDialogFromContext } from '@/contexts/EventDialogContext';
 import type { UserPropertyWithField } from '@/features/user_properties/user_property-dal';
+import { collectLockedEventIds } from './locked-event-ids';
 
 interface UserWithProperties {
   id: string;
@@ -181,8 +182,8 @@ export default function Component({ mode }: { mode: CalendarMode }) {
     [calendarData?.detailedEinsaetze]
   );
   const lockedEventIds = useMemo(
-    () => detailedEinsaetze.filter((e) => e.isLocked).map((e) => e.id),
-    [detailedEinsaetze]
+    () => collectLockedEventIds(calendarData),
+    [calendarData]
   );
   const cachedDetailedEinsatz =
     typeof selectedEinsatz === 'string'

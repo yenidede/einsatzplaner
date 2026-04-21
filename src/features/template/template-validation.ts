@@ -39,3 +39,13 @@ export function normalizeTemplateDescription(
 
   return trimmed;
 }
+
+export function getTemplateDescriptionLength(
+  value: string | null | undefined
+): number {
+  if (typeof value !== 'string') {
+    return 0;
+  }
+
+  return value.trim().length;
+}

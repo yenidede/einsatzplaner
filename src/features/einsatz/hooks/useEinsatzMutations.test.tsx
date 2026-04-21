@@ -225,6 +225,10 @@ describe('useToggleUserAssignment', () => {
     });
 
     await waitFor(() => {
+      expect(mockGetEinsatzWithDetailsById).toHaveBeenCalledWith('einsatz-1');
+    });
+
+    await waitFor(() => {
       expect(
         queryClient.getQueryData<{
           isLocked?: boolean;
@@ -272,6 +276,73 @@ describe('useToggleUserAssignment', () => {
 
       expect(data?.title).toBe('Neuer Titel');
       expect(data?.isLocked).toBeUndefined();
+    });
+  });
+
+  it('hebt Kalender-Locks auch ohne gespeicherten Detailcache nach einem Fehler wieder auf', async () => {
+    let rejectUpdate: (reason?: unknown) => void = () => {};
+    mockUpdateEinsatz.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectUpdate = reject;
+        })
+    );
+
+    const queryClient = createQueryClient();
+    queryClient.setQueryData(queryKeys.einsaetzeForCalendar('org-1', '2026-04'), {
+      events: [],
+      detailedEinsaetze: [
+        {
+          id: 'einsatz-1',
+          title: 'Alter Titel',
+          start: new Date('2026-04-04T08:00:00.000Z'),
+          end: new Date('2026-04-04T10:00:00.000Z'),
+          isLocked: false,
+        },
+      ],
+    });
+
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(
+      () => useUpdateEinsatz('org-1', 'Einsatz'),
+      { wrapper }
+    );
+
+    act(() => {
+      result.current.mutate({
+        id: 'einsatz-1',
+        title: 'Neuer Titel',
+        start: new Date('2026-04-04T09:00:00.000Z'),
+        end: new Date('2026-04-04T11:00:00.000Z'),
+        org_id: 'org-1',
+        created_by: 'user-1',
+        helpers_needed: 2,
+        categories: [],
+        einsatz_fields: [],
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData<{
+          detailedEinsaetze: Array<{ isLocked?: boolean }>;
+        }>(queryKeys.einsaetzeForCalendar('org-1', '2026-04'))?.detailedEinsaetze[0]
+          ?.isLocked
+      ).toBe(true);
+    });
+
+    rejectUpdate(new Error('Speicherfehler'));
+
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData<{
+          detailedEinsaetze: Array<{ isLocked?: boolean }>;
+        }>(queryKeys.einsaetzeForCalendar('org-1', '2026-04'))?.detailedEinsaetze[0]
+          ?.isLocked
+      ).toBeUndefined();
     });
   });
 });
