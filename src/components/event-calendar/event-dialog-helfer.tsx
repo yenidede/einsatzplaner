@@ -177,7 +177,7 @@ export function EventDialogHelfer({
       'Warnung: Kriterien nicht erfüllt',
       <div className="flex flex-col gap-3">
         <p>Folgende Kriterien wären nach dieser Aktion nicht erfüllt:</p>
-        <ul className="text-foreground bold list-inside list-disc">
+        <ul className="text-foreground list-inside list-disc">
           {warnings.map((w) => (
             <li key={w}>{w}</li>
           ))}

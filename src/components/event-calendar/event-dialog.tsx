@@ -1296,7 +1296,7 @@ export function EventDialogVerwaltung({
         'Warnung: Kriterien nicht erfüllt',
         <div className="flex flex-col gap-3">
           <p>Folgende Kriterien sind nicht erfüllt:</p>
-          <ul className="text-foreground bold list-inside list-disc">
+          <ul className="text-foreground list-inside list-disc">
             {confirmableWarnings.map((warning) => (
               <li key={warning.message}>{warning.message}</li>
             ))}

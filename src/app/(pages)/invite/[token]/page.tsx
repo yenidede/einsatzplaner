@@ -182,7 +182,7 @@ export default function InviteAcceptPage() {
                     <Button
                       variant={'default'}
                       onClick={handleAcceptClick}
-                      disabled={acceptMutation.isPending || isWrongMail}
+                      disabled={acceptMutation.isPending}
                       className="w-full"
                     >
                       {acceptMutation.isPending ? (
