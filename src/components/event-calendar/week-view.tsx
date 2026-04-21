@@ -21,17 +21,14 @@ import { de } from 'date-fns/locale';
 
 import { cn } from '@/lib/utils';
 import { useTodayStart } from '@/components/event-calendar/hooks/use-today-start';
+import { DraggableEvent } from '@/components/event-calendar/draggable-event';
+import { DroppableCell } from '@/components/event-calendar/droppable-cell';
+import { EventItem } from '@/components/event-calendar/event-item';
+import { useCurrentTimeIndicator } from '@/components/event-calendar/hooks/use-current-time-indicator';
+import { isMultiDayEvent, spansMultipleDays } from '@/components/event-calendar/utils';
+import type { CalendarEvent } from '@/components/event-calendar/types';
 import {
-  DraggableEvent,
-  DroppableCell,
-  EventItem,
-  isMultiDayEvent,
-  spansMultipleDays,
-  useCurrentTimeIndicator,
   WeekCellsHeight,
-  type CalendarEvent,
-} from '@/components/event-calendar';
-import {
   ViewStartHour,
   ViewEndHour,
 } from '@/components/event-calendar/constants';
