@@ -9,6 +9,10 @@ function extractTrailingParenthesisSuffix(
   return match?.[1] ?? null;
 }
 
+function stripTrailingParenthesisSuffix(value: string): string {
+  return value.replace(/\s\(([^()]+)\)$/, '');
+}
+
 export function composeRealtimeEventTitle(params: {
   existingTitle: string;
   nextBaseTitle?: string;
@@ -27,20 +31,25 @@ export function composeRealtimeEventTitle(params: {
   const normalizedCategoryAbbreviations = (categoryAbbreviations ?? []).filter(
     (abbreviation) => abbreviation.trim().length > 0
   );
+  const existingSuffix = extractTrailingParenthesisSuffix(existingTitle);
+  const nextBaseTitleSuffix = extractTrailingParenthesisSuffix(nextBaseTitle);
+  const normalizedBaseTitle =
+    existingSuffix && nextBaseTitleSuffix === existingSuffix
+      ? stripTrailingParenthesisSuffix(nextBaseTitle)
+      : nextBaseTitle;
 
   if (categoryAbbreviations === null || categoryAbbreviations === undefined) {
-    const existingSuffix = extractTrailingParenthesisSuffix(existingTitle);
     if (existingSuffix) {
-      return `${nextBaseTitle} (${existingSuffix})`;
+      return `${normalizedBaseTitle} (${existingSuffix})`;
     }
-    return nextBaseTitle;
+    return normalizedBaseTitle;
   }
 
   if (categoryAbbreviations.length > 0 && normalizedCategoryAbbreviations.length > 0) {
-    return `${nextBaseTitle} (${normalizedCategoryAbbreviations.join(', ')})`;
+    return `${normalizedBaseTitle} (${normalizedCategoryAbbreviations.join(', ')})`;
   }
 
-  return nextBaseTitle;
+  return normalizedBaseTitle;
 }
 
 export function parseSupabaseRealtimeTimestamp(
