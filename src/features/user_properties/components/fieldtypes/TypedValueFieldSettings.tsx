@@ -34,6 +34,10 @@ export function TypedValueFieldSettings({
             onChange={(e) => onChange({ placeholder: e.target.value })}
             placeholder={placeholderHint}
           />
+          <p className="text-muted-foreground mt-1 text-sm">
+            Wird nur als Hinweis in einem leeren Feld angezeigt und nicht
+            gespeichert.
+          </p>
         </FormInputFieldCustom>
       )}
 
@@ -44,6 +48,10 @@ export function TypedValueFieldSettings({
           onChange={(e) => onChange({ defaultValue: e.target.value })}
           placeholder={defaultValueHint}
         />
+        <p className="text-muted-foreground mt-1 text-sm">
+          Wird automatisch eingetragen und gespeichert, sofern Sie ihn nicht
+          ändern.
+        </p>
       </FormInputFieldCustom>
     </>
   );
