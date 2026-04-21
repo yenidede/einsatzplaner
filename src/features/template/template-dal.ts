@@ -6,6 +6,7 @@ import type { einsatz_template as Template } from '@/generated/prisma';
 import type { PropertyConfig } from '@/features/user_properties/types';
 import { propertyConfigToFieldInput } from '@/features/user_properties/utils/config-to-field-input';
 import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
+import { normalizeTemplateDescription } from './template-validation';
 
 export type CreateTemplateInput = {
   org_id: string;
@@ -26,6 +27,10 @@ export type UpdateTemplateInput = {
   helpers_needed_default?: number | null;
   helpers_needed_placeholder?: number | null;
   all_day_default?: boolean | null;
+  total_price_default?: number | null;
+  total_price_placeholder?: number | null;
+  anmerkung_default?: string | null;
+  anmerkung_placeholder?: string | null;
   einsatzname_default?: string | null;
   time_start_default?: Date | null;
   time_end_default?: Date | null;
@@ -561,7 +566,7 @@ export async function createTemplateAction(input: CreateTemplateInput) {
       org_id: input.org_id,
       name: input.name,
       icon_id: input.icon_id,
-      description: input.description ?? null,
+      description: normalizeTemplateDescription(input.description) ?? null,
     },
   });
 }
@@ -573,7 +578,7 @@ export async function updateTemplateAction(
   const data: Partial<Omit<Template, 'id' | 'created_at'>> = {
     name: input.name ?? undefined,
     icon_id: input.icon_id,
-    description: input.description ?? undefined,
+    description: normalizeTemplateDescription(input.description),
     is_paused: input.is_paused,
     participant_count_default: input.participant_count_default,
     participant_count_placeholder: input.participant_count_placeholder,
@@ -582,6 +587,10 @@ export async function updateTemplateAction(
     helpers_needed_default: input.helpers_needed_default,
     helpers_needed_placeholder: input.helpers_needed_placeholder,
     all_day_default: input.all_day_default,
+    total_price_default: input.total_price_default,
+    total_price_placeholder: input.total_price_placeholder,
+    anmerkung_default: input.anmerkung_default,
+    anmerkung_placeholder: input.anmerkung_placeholder,
     time_start_default: input.time_start_default,
     time_end_default: input.time_end_default,
   };

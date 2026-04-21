@@ -51,10 +51,13 @@ import { ExistingTemplateFieldSelector } from './ExistingTemplateFieldSelector';
 import { TemplateFieldReuseSuggestions } from './TemplateFieldReuseSuggestions';
 import { normalizeTemplateFieldSearchValue } from './template-field-reuse-utils';
 import {
+  TEMPLATE_DESCRIPTION_MAX_LENGTH,
+  getTemplateDescriptionLength,
   templateFormSchema,
   type TemplateFormValues,
   type TemplateFormInputValues,
 } from './template-form-schema';
+import { InputWithCounter } from '@/components/form/input-with-counter';
 import { FieldTypeSelector } from '@/features/user_properties/components/FieldTypeSelector';
 import { VORLAGE_SELECTABLE_FIELD_TYPES } from '@/features/user_properties/field-type-definitions';
 import { PropertyConfiguration } from '@/features/user_properties/components/PropertyConfiguration';
@@ -227,6 +230,10 @@ export function TemplateForm({
 
   const { register, control, formState, watch, setValue, reset } = form;
   const { errors } = formState;
+  const descriptionValue = watch('description');
+  const descriptionLength = getTemplateDescriptionLength(
+    typeof descriptionValue === 'string' ? descriptionValue : undefined
+  );
 
   const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
   const [customFieldStep, setCustomFieldStep] = useState<
@@ -1057,9 +1064,12 @@ export function TemplateForm({
                 <Label htmlFor="template-description">
                   Beschreibung (optional)
                 </Label>
-                <Input
+                <InputWithCounter
                   id="template-description"
                   placeholder="Kurze Beschreibung der Vorlage"
+                  maxLength={TEMPLATE_DESCRIPTION_MAX_LENGTH}
+                  currentLength={descriptionLength}
+                  errorMessage={errors.description?.message}
                   {...register('description')}
                 />
               </div>

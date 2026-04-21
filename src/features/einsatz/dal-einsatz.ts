@@ -1590,6 +1590,10 @@ async function createEinsatzInDb({
     org_id,
     created_by,
     helpers_needed,
+    participant_count,
+    price_per_person,
+    total_price,
+    anmerkung,
     categories,
     einsatz_fields,
     assignedUsers = [],
@@ -1612,6 +1616,10 @@ async function createEinsatzInDb({
       org_id,
       created_by,
       helpers_needed,
+      participant_count,
+      price_per_person,
+      total_price,
+      anmerkung,
       all_day,
       einsatz_to_category: {
         create:

@@ -8,6 +8,7 @@ const {
   mockCheckEinsatzRequirementsAfterAssignment,
   mockTransaction,
   mockFindUnique,
+  mockCreate,
   mockUpdate,
   mockFindManyConflicts,
   mockPrismaEinsatzFindUnique,
@@ -22,6 +23,7 @@ const {
   mockCheckEinsatzRequirementsAfterAssignment: vi.fn(),
   mockTransaction: vi.fn(),
   mockFindUnique: vi.fn(),
+  mockCreate: vi.fn(),
   mockUpdate: vi.fn(),
   mockFindManyConflicts: vi.fn(),
   mockPrismaEinsatzFindUnique: vi.fn(),
@@ -50,6 +52,7 @@ vi.mock('@/lib/prisma', () => ({
     $transaction: mockTransaction,
     einsatz: {
       findUnique: mockPrismaEinsatzFindUnique,
+      create: mockCreate,
       update: mockPrismaEinsatzUpdate,
     },
     change_type: {
@@ -64,9 +67,13 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { ChangeTypeIds } from '@/features/activity_log/changeTypeIds';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
-import { toggleUserAssignmentToEinsatz, updateEinsatzStatus } from './dal-einsatz';
+import { ChangeTypeIds } from '@/features/activity_log/changeTypeIds';
+import {
+  createEinsatz,
+  toggleUserAssignmentToEinsatz,
+  updateEinsatzStatus,
+} from './dal-einsatz';
 
 describe('toggleUserAssignmentToEinsatz', () => {
   beforeEach(() => {
@@ -87,12 +94,13 @@ describe('toggleUserAssignmentToEinsatz', () => {
     mockCheckEinsatzRequirementsAfterAssignment.mockResolvedValue(undefined);
     mockFindManyConflicts.mockResolvedValue([]);
     mockPrismaEinsatzFindUnique.mockReset();
+    mockCreate.mockReset();
     mockPrismaEinsatzUpdate.mockReset();
     mockChangeTypeFindUnique.mockReset();
     mockChangeLogCreate.mockReset();
     mockConsoleWarn.mockReset();
 
-    mockFindUnique.mockImplementation(async (_args?: { select?: object }) => {
+    mockFindUnique.mockImplementation(async () => {
       if (assigned) {
         return {
           id: 'einsatz-1',
@@ -415,5 +423,78 @@ describe('updateEinsatzStatus', () => {
     await expect(
       updateEinsatzStatus('einsatz-1', StatusValuePairs.vergeben_bestaetigt)
     ).rejects.toThrow('Insert fehlgeschlagen');
+  });
+});
+
+describe('createEinsatz', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(mockConsoleWarn);
+    mockRequireAuth.mockResolvedValue({
+      session: {
+        user: {
+          id: 'user-1',
+          orgIds: ['org-1'],
+          activeOrganization: { id: 'org-1' },
+        },
+      },
+      userIds: {
+        userId: 'user-1',
+        orgId: 'org-1',
+        orgIds: ['org-1'],
+      },
+    });
+    mockHasPermission.mockResolvedValue(true);
+    mockCreate.mockResolvedValue({
+      id: 'einsatz-1',
+      title: 'Neuer Einsatz',
+      org_id: 'org-1',
+      created_by: 'user-1',
+      start: new Date('2026-04-20T08:00:00.000Z'),
+      end: new Date('2026-04-20T10:00:00.000Z'),
+      helpers_needed: 1,
+      participant_count: 20,
+      price_per_person: 12.5,
+      total_price: 250,
+      anmerkung: 'Notiz',
+      all_day: false,
+    });
+    mockPrismaEinsatzFindUnique.mockReset();
+    mockPrismaEinsatzUpdate.mockReset();
+    mockChangeTypeFindUnique.mockReset();
+    mockChangeLogCreate.mockReset();
+    mockConsoleWarn.mockReset();
+  });
+
+  it('speichert Anmerkung beim Erstellen eines Einsatzes', async () => {
+    await createEinsatz({
+      data: {
+        title: 'Neuer Einsatz',
+        start: new Date('2026-04-20T08:00:00.000Z'),
+        end: new Date('2026-04-20T10:00:00.000Z'),
+        org_id: 'org-1',
+        created_by: 'user-1',
+        helpers_needed: 1,
+        participant_count: 20,
+        price_per_person: 12.5,
+        total_price: 250,
+        categories: [],
+        einsatz_fields: [],
+        anmerkung: 'Notiz',
+      },
+    });
+
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        title: 'Neuer Einsatz',
+        org_id: 'org-1',
+        created_by: 'user-1',
+        helpers_needed: 1,
+        participant_count: 20,
+        price_per_person: 12.5,
+        total_price: 250,
+        anmerkung: 'Notiz',
+        all_day: false,
+      }),
+    });
   });
 });

@@ -1065,6 +1065,12 @@ export function EventDialogVerwaltung({
       if (selectedTemplate.all_day_default != null) {
         templateUpdates.all_day = selectedTemplate.all_day_default;
       }
+      if (
+        selectedTemplate.anmerkung_default != null &&
+        selectedTemplate.anmerkung_default.trim() !== ''
+      ) {
+        templateUpdates.anmerkung = selectedTemplate.anmerkung_default.trim();
+      }
 
       const finalParticipantCount =
         templateUpdates.participantCount ??
