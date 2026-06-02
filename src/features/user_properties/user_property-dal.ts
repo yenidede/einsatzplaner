@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma';
 import type { type as FieldType } from '@/generated/prisma';
 import { requireAuth } from '@/lib/auth/authGuard';
+import { assertCanChangeMultiselectToSelect } from './field-dal';
 
 export interface UserPropertyWithField {
   id: string;
@@ -37,7 +38,7 @@ export async function getUserPropertiesByOrgId(
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error('Unauthorized to access this organization');
+    throw new Error('Keine Berechtigung für diese Organisation.');
   }
 
   const properties = await prisma.user_property.findMany({
@@ -78,7 +79,7 @@ export async function getExistingPropertyNames(
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error('Unauthorized to access this organization');
+    throw new Error('Keine Berechtigung für diese Organisation.');
   }
 
   const properties = await prisma.user_property.findMany({
@@ -103,7 +104,7 @@ export async function getUserCountByOrgId(orgId: string): Promise<number> {
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error('Unauthorized to access this organization');
+    throw new Error('Keine Berechtigung für diese Organisation.');
   }
 
   const uniqueUsers = await prisma.user_organization_role.findMany({
@@ -130,6 +131,7 @@ const TYPE_NAME_BY_DATATYPE: Readonly<Record<string, string>> = {
   number: 'Zahl',
   boolean: 'Ja/Nein',
   select: 'Auswahl',
+  multiselect: 'Mehrfachauswahl',
   currency: 'Währung',
   group: 'Gruppe',
   date: 'Datum',
@@ -173,7 +175,7 @@ async function ensureTypeExists(datatype: string): Promise<string> {
       }
     }
 
-    throw new Error(`Type with datatype ${datatype} could not be created`);
+    throw new Error(`Der Feldtyp "${datatype}" konnte nicht erstellt werden.`);
   }
 }
 
@@ -185,6 +187,7 @@ export interface CreateUserPropertyInput {
     | 'number'
     | 'boolean'
     | 'select'
+    | 'multiselect'
     | 'currency'
     | 'group'
     | 'date'
@@ -207,7 +210,7 @@ export async function createUserProperty(
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(input.orgId)) {
-    throw new Error('Unauthorized to access this organization');
+    throw new Error('Keine Berechtigung für diese Organisation.');
   }
 
   const typeId = await ensureTypeExists(input.datatype);
@@ -258,6 +261,7 @@ export async function createUserProperty(
 
 export interface UpdateUserPropertyInput {
   id: string;
+  datatype: CreateUserPropertyInput['datatype'];
   name?: string;
   description?: string;
   isRequired?: boolean;
@@ -280,18 +284,27 @@ export async function updateUserProperty(
   });
 
   if (!userProperty) {
-    throw new Error('User Property not found');
+    throw new Error('Die Personeneigenschaft wurde nicht gefunden.');
   }
 
   if (!session.user.orgIds.includes(userProperty.org_id)) {
-    throw new Error('Unauthorized to update this property');
+    throw new Error(
+      'Keine Berechtigung zum Bearbeiten dieser Personeneigenschaft.'
+    );
   }
+
+  await assertCanChangeMultiselectToSelect(
+    userProperty.field_id,
+    input.datatype
+  );
+  const typeId = await ensureTypeExists(input.datatype);
 
   await prisma.field.update({
     where: { id: userProperty.field_id },
     data: {
       name: input.name,
       description: input.description ?? null,
+      type_id: typeId,
       is_required: input.isRequired,
       placeholder: input.placeholder,
       default_value: input.defaultValue,
@@ -325,7 +338,9 @@ export async function updateUserProperty(
   });
 
   if (!updated) {
-    throw new Error('Failed to fetch updated property');
+    throw new Error(
+      'Die aktualisierte Personeneigenschaft konnte nicht geladen werden.'
+    );
   }
 
   return {
@@ -345,11 +360,13 @@ export async function deleteUserProperty(id: string): Promise<void> {
   });
 
   if (!userProperty) {
-    throw new Error('User Property not found');
+    throw new Error('Die Personeneigenschaft wurde nicht gefunden.');
   }
 
   if (!session.user.orgIds.includes(userProperty.org_id)) {
-    throw new Error('Unauthorized to delete this property');
+    throw new Error(
+      'Keine Berechtigung zum Löschen dieser Personeneigenschaft.'
+    );
   }
 
   const fieldId = userProperty.field_id;
@@ -378,7 +395,7 @@ export async function getUserPropertyValues(
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error('Unauthorized to access this organization');
+    throw new Error('Keine Berechtigung für diese Organisation.');
   }
 
   const values = await prisma.user_property_value.findMany({
@@ -442,11 +459,11 @@ export async function upsertUserPropertyValue(
   });
 
   if (!userProperty) {
-    throw new Error('User property not found');
+    throw new Error('Die Personeneigenschaft wurde nicht gefunden.');
   }
 
   if (!session.user.orgIds.includes(userProperty.org_id)) {
-    throw new Error('Unauthorized');
+    throw new Error('Keine Berechtigung.');
   }
 
   if (userProperty.field.is_required && (!value || value.trim() === '')) {
@@ -491,11 +508,11 @@ export async function deleteUserPropertyValue(
   });
 
   if (!userProperty) {
-    throw new Error('User property not found');
+    throw new Error('Die Personeneigenschaft wurde nicht gefunden.');
   }
 
   if (!session.user.orgIds.includes(userProperty.org_id)) {
-    throw new Error('Unauthorized');
+    throw new Error('Keine Berechtigung.');
   }
 
   await prisma.user_property_value.deleteMany({

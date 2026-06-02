@@ -34,6 +34,8 @@ export interface PropertyConfig {
   // Select-spezifisch
   options?: string[];
   defaultOption?: string;
+  defaultOptions?: string[];
+  isMultiSelect?: boolean;
 
   // Allgemeine Einstellungen
   isRequired: boolean;
@@ -55,6 +57,8 @@ export const INITIAL_CONFIG: PropertyConfig = {
   booleanDefaultValue: null,
   options: [],
   defaultOption: undefined,
+  defaultOptions: [],
+  isMultiSelect: false,
   isRequired: false,
   defaultValue: '',
 };

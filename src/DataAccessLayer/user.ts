@@ -384,7 +384,7 @@ export async function updateUserSettings(
     });
 
     if (!currentUser) {
-      throw new Error('User not found');
+      throw new Error('Benutzer nicht gefunden.');
     }
 
     const updateData = {

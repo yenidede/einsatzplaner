@@ -13,10 +13,10 @@ import * as z from "zod"
 "orga-kuerzel": z.string().optional(),
 "user-vorname": z.string({ error: 'Dieses Feld ist erforderlich' }),
 "user-nachname": z.string({ error: 'Dieses Feld ist erforderlich' }),
-"user-email": z.email('Bitte geben Sie eine gueltige E-Mail-Adresse ein'),
+"user-email": z.email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
 "user-password": z.string({ error: 'Dieses Feld ist erforderlich' }),
 "user-passwort-confirm": z.string({ error: 'Dieses Feld ist erforderlich' }),
-"otp-e72": z.string().min(6, 'Bitte geben Sie einen gueltigen Code ein').optional(),
+"otp-e72": z.string().min(6, 'Bitte geben Sie einen gültigen Code ein').optional(),
 "orga-logo-gross": z.union([
           z.file()
            .mime(["image/png","image/jpeg","image/gif","svg/xml"])
@@ -25,8 +25,8 @@ import * as z from "zod"
             z.file()
              .mime(["image/png","image/jpeg","image/gif","svg/xml"])
              .max(5242880)
-          ).nonempty({ message: "Bitte waehlen Sie eine Datei aus" }),
-          z.string().min(1, "Bitte waehlen Sie eine Datei aus"),
+          ).nonempty({ message: "Bitte wählen Sie eine Datei aus" }),
+          z.string().min(1, "Bitte wählen Sie eine Datei aus"),
           z.instanceof(FileList),
         ]).optional(),
 "orga-logo-klein": z.union([
@@ -37,8 +37,8 @@ import * as z from "zod"
             z.file()
              .mime(["image/png","image/jpeg","image/gif"])
              .max(5242880)
-          ).nonempty({ message: "Bitte waehlen Sie eine Datei aus" }),
-          z.string().min(1, "Bitte waehlen Sie eine Datei aus"),
+          ).nonempty({ message: "Bitte wählen Sie eine Datei aus" }),
+          z.string().min(1, "Bitte wählen Sie eine Datei aus"),
           z.instanceof(FileList),
         ]).optional(),
 "orga-helfer-singular": z.string().optional(),
@@ -53,8 +53,8 @@ import * as z from "zod"
             z.file()
              .mime(["image/png","image/jpeg","image/gif"])
              .max(5242880)
-          ).nonempty({ message: "Bitte waehlen Sie eine Datei aus" }),
-          z.string().min(1, "Bitte waehlen Sie eine Datei aus"),
+          ).nonempty({ message: "Bitte wählen Sie eine Datei aus" }),
+          z.string().min(1, "Bitte wählen Sie eine Datei aus"),
           z.instanceof(FileList),
         ]).optional()
 });

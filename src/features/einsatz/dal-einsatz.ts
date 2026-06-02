@@ -216,7 +216,7 @@ export async function getEinsatzWithDetailsById(
 ): Promise<EinsatzDetailed | null | Response> {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
-    throw new BadRequestError('Invalid ID');
+    throw new BadRequestError('Ungültige ID.');
   }
 
   const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
@@ -226,7 +226,7 @@ export async function getEinsatzWithDetailsById(
   if (
     !(await hasOrgPermission(session, einsaetzeFromDb.org_id, 'einsaetze:read'))
   ) {
-    return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
+    return new Response(`Keine Berechtigung für den Einsatz mit ID ${id}`, {
       status: 403,
     });
   }
@@ -294,7 +294,7 @@ export async function getEinsatzRealtimeMetadataById(id: string): Promise<
   const { session } = await requireAuth();
 
   if (!isValidUuid(id)) {
-    throw new BadRequestError('Invalid ID');
+    throw new BadRequestError('Ungültige ID.');
   }
 
   const einsatz = await prisma.einsatz.findFirst({
@@ -317,7 +317,7 @@ export async function getEinsatzRealtimeMetadataById(id: string): Promise<
   }
 
   if (!(await hasOrgPermission(session, einsatz.org_id, 'einsaetze:read'))) {
-    return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
+    return new Response(`Keine Berechtigung für den Einsatz mit ID ${id}`, {
       status: 403,
     });
   }
@@ -338,7 +338,7 @@ export async function getAllEinsaetze(org_ids: string[]) {
       session.user.activeOrganization?.id
     ))
   ) {
-    return Response.json({ error: 'Unauthorized' }, { status: 403 });
+    return Response.json({ error: 'Keine Berechtigung.' }, { status: 403 });
   }
 
   return getAllEinsaetzeFromDb(org_ids, session.user.id);
@@ -353,7 +353,7 @@ export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
       session.user.activeOrganization?.id
     ))
   ) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
 
   // Nutze User's orgIds als Default wenn keine org_ids übergeben
@@ -366,7 +366,7 @@ export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
 export async function getEinsatzForCalendar(id: string) {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
-    return new Response('Invalid ID', { status: 400 });
+    return new Response('Ungültige ID.', { status: 400 });
   }
 
   const einsatz = await prisma.einsatz.findUnique({
@@ -379,7 +379,7 @@ export async function getEinsatzForCalendar(id: string) {
   }
 
   if (!(await hasOrgPermission(session, einsatz.org_id, 'einsaetze:read'))) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
 
   return getEinsatzForCalendarFromDb(id);
@@ -397,7 +397,7 @@ export async function getDetailedEinsaetzeForCalendarRange(
       session.user.activeOrganization?.id
     ))
   ) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
   const userOrgIds = userIds?.orgIds ?? (userIds?.orgId ? [userIds.orgId] : []);
   const filterOrgIds = org_ids.length > 0 ? org_ids : userOrgIds;
@@ -423,7 +423,7 @@ export async function getDetailedEinsaetzeForAgenda(
       session.user.activeOrganization?.id
     ))
   ) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
   const userOrgIds = userIds?.orgIds ?? (userIds?.orgId ? [userIds.orgId] : []);
   const filterOrgIds = org_ids.length > 0 ? org_ids : userOrgIds;
@@ -683,6 +683,7 @@ function normalizeCustomFieldValue(
     case 'mail':
     case 'group':
     case 'select':
+    case 'multiselect':
     case 'time':
       return normalizeStringLikeFieldValue(fieldType, normalizedValue);
     case 'number':
@@ -717,7 +718,7 @@ function normalizeTextValue(value: string | null): string | null {
 function normalizeStringLikeFieldValue(
   datatype: Extract<
     FieldTypeKey,
-    'text' | 'phone' | 'mail' | 'group' | 'select' | 'time'
+    'text' | 'phone' | 'mail' | 'group' | 'select' | 'multiselect' | 'time'
   >,
   value: string
 ): string {
@@ -822,7 +823,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
       session.user.activeOrganization?.id
     ))
   ) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
 
   // Verwende org_id oder erste Organisation des Users
@@ -837,7 +838,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!userOrgIds.includes(useOrgId)) {
     return new Response(
-      `Unauthorized to access templates for org ${useOrgId}`,
+      `Keine Berechtigung für Vorlagen der Organisation ${useOrgId}`,
       {
         status: 403,
       }
@@ -1114,7 +1115,7 @@ export async function toggleUserAssignmentToEinsatz(
   const { session } = await requireAuth();
 
   if (!session?.user.id) {
-    throw new Response('User ID is required', { status: 400 });
+    throw new Response('Benutzer-ID fehlt.', { status: 400 });
   }
 
   let attempt = 0;
@@ -1686,7 +1687,7 @@ async function getEinsatzForCalendarFromDb(
   id: string
 ): Promise<EinsatzForCalendar | Response | null> {
   if (!isValidUuid(id)) {
-    return new Response('Invalid ID', { status: 400 });
+    return new Response('Ungültige ID.', { status: 400 });
   }
 
   return prisma.einsatz.findUnique({

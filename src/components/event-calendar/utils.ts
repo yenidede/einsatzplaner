@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { PdfGenerationRequest } from '@/features/pdf/types/types';
 import { UsePdfGeneratorReturn } from '@/features/pdf/hooks/usePdfGenerator';
 import { normalizeEinsatzDatesFromDb } from '@/features/einsatz/datetime';
+import { composeCalendarEventTitle } from './event-title';
 
 /**
  * Generates a Zod schema dynamically based on user-added fields.
@@ -135,9 +136,19 @@ export function generateDynamicSchema(
     switch (type) {
       case 'text':
         if (options.isRequired === true) {
-          fieldSchema = z.string().min(1, 'Text darf nicht leer sein');
-          if (options.min) fieldSchema = fieldSchema.min(options.min);
-          if (options.max) fieldSchema = fieldSchema.max(options.max);
+          fieldSchema = z
+            .string({ error: 'Bitte geben Sie einen Text ein' })
+            .min(1, 'Bitte geben Sie einen Text ein');
+          if (options.min)
+            fieldSchema = fieldSchema.min(
+              options.min,
+              `Der Text muss mindestens ${options.min} Zeichen lang sein`
+            );
+          if (options.max)
+            fieldSchema = fieldSchema.max(
+              options.max,
+              `Der Text darf höchstens ${options.max} Zeichen lang sein`
+            );
         } else {
           fieldSchema = z
             .union([z.string(), z.null(), z.literal('')])
@@ -151,16 +162,29 @@ export function generateDynamicSchema(
             );
           }
           if (options.max != null) {
-            postTransform = postTransform.max(options.max);
+            postTransform = postTransform.max(
+              options.max,
+              `Der Text darf höchstens ${options.max} Zeichen lang sein`
+            );
           }
           fieldSchema = fieldSchema.pipe(postTransform);
         }
         break;
       case 'number':
         if (options.isRequired === true) {
-          fieldSchema = z.int();
-          if (options.min) fieldSchema = fieldSchema.gte(options.min);
-          if (options.max) fieldSchema = fieldSchema.lte(options.max);
+          fieldSchema = z.int({
+            error: 'Bitte geben Sie eine gültige ganze Zahl ein',
+          });
+          if (options.min != null)
+            fieldSchema = fieldSchema.gte(
+              options.min,
+              `Die Zahl muss mindestens ${options.min} betragen`
+            );
+          if (options.max != null)
+            fieldSchema = fieldSchema.lte(
+              options.max,
+              `Die Zahl darf höchstens ${options.max} betragen`
+            );
         } else {
           fieldSchema = z
             .union([z.number(), z.nan(), z.null(), z.undefined()])
@@ -168,17 +192,37 @@ export function generateDynamicSchema(
             .transform((n) =>
               n == null || Number.isNaN(n) ? undefined : Number(n)
             );
-          let numSchema = z.number();
-          if (options.min != null) numSchema = numSchema.gte(options.min);
-          if (options.max != null) numSchema = numSchema.lte(options.max);
+          let numSchema = z.number({
+            error: 'Bitte geben Sie eine gültige Zahl ein',
+          });
+          if (options.min != null)
+            numSchema = numSchema.gte(
+              options.min,
+              `Die Zahl muss mindestens ${options.min} betragen`
+            );
+          if (options.max != null)
+            numSchema = numSchema.lte(
+              options.max,
+              `Die Zahl darf höchstens ${options.max} betragen`
+            );
           fieldSchema = fieldSchema.pipe(numSchema.optional());
         }
         break;
       case 'currency':
         if (options.isRequired === true) {
-          fieldSchema = z.float64();
-          if (options.min != null) fieldSchema = fieldSchema.gte(options.min);
-          if (options.max != null) fieldSchema = fieldSchema.lte(options.max);
+          fieldSchema = z.float64({
+            error: 'Bitte geben Sie einen gültigen Betrag ein',
+          });
+          if (options.min != null)
+            fieldSchema = fieldSchema.gte(
+              options.min,
+              `Der Betrag muss mindestens ${options.min} betragen`
+            );
+          if (options.max != null)
+            fieldSchema = fieldSchema.lte(
+              options.max,
+              `Der Betrag darf höchstens ${options.max} betragen`
+            );
         } else {
           fieldSchema = z
             .union([z.number(), z.nan(), z.null(), z.undefined()])
@@ -186,9 +230,19 @@ export function generateDynamicSchema(
             .transform((n) =>
               n == null || Number.isNaN(n) ? undefined : Number(n)
             );
-          let numSchema = z.float64();
-          if (options.min != null) numSchema = numSchema.gte(options.min);
-          if (options.max != null) numSchema = numSchema.lte(options.max);
+          let numSchema = z.float64({
+            error: 'Bitte geben Sie einen gültigen Betrag ein',
+          });
+          if (options.min != null)
+            numSchema = numSchema.gte(
+              options.min,
+              `Der Betrag muss mindestens ${options.min} betragen`
+            );
+          if (options.max != null)
+            numSchema = numSchema.lte(
+              options.max,
+              `Der Betrag darf höchstens ${options.max} betragen`
+            );
           fieldSchema = fieldSchema.pipe(numSchema.optional());
         }
         break;
@@ -199,42 +253,75 @@ export function generateDynamicSchema(
           .transform((v) => v ?? false);
         break;
       case 'phone':
-        fieldSchema = z
-          .string()
-          .regex(
-            /^\+[1-9]\d{1,14}$/,
-            'Ungültige Telefonnummer. Beispiel: +1234567890'
-          );
+        fieldSchema =
+          options.isRequired === true
+            ? z
+                .string({ error: 'Bitte geben Sie eine Telefonnummer ein' })
+                .min(1, 'Bitte geben Sie eine Telefonnummer ein')
+                .regex(
+                  /^\+[1-9]\d{1,14}$/,
+                  'Bitte geben Sie eine gültige Telefonnummer ein, zum Beispiel +436641234567'
+                )
+            : z
+                .union([z.string(), z.null(), z.undefined()])
+                .transform((value) => value ?? '')
+                .refine(
+                  (value) => value === '' || /^\+[1-9]\d{1,14}$/.test(value),
+                  {
+                    message:
+                      'Bitte geben Sie eine gültige Telefonnummer ein, zum Beispiel +436641234567',
+                  }
+                );
         break;
       case 'mail':
-        fieldSchema = z.email('Ungültige E-Mail-Adresse');
+        fieldSchema =
+          options.isRequired === true
+            ? z
+                .string({ error: 'Bitte geben Sie eine E-Mail-Adresse ein' })
+                .min(1, 'Bitte geben Sie eine E-Mail-Adresse ein')
+                .regex(
+                  /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  'Bitte geben Sie eine gültige E-Mail-Adresse ein'
+                )
+            : z
+                .union([z.string(), z.null(), z.undefined()])
+                .transform((value) => value ?? '')
+                .refine(
+                  (value) =>
+                    value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+                  {
+                    message: 'Bitte geben Sie eine gültige E-Mail-Adresse ein',
+                  }
+                );
         break;
       case 'date':
         fieldSchema =
           options.isRequired === true
             ? z
-                .string()
+                .string({ error: 'Bitte geben Sie ein Datum ein' })
                 .min(1, 'Datum darf nicht leer sein')
                 .refine((value) => isValidIsoDate(value), {
-                  message: 'Ungültiges Datum. Erwartet: JJJJ-MM-TT',
+                  message:
+                    'Bitte geben Sie ein gültiges Datum im Format JJJJ-MM-TT ein',
                 })
             : z
                 .union([z.string(), z.null(), z.literal('')])
                 .optional()
                 .transform((s) => (s == null || s === '' ? '' : String(s)))
                 .refine((value) => value === '' || isValidIsoDate(value), {
-                  message: 'Ungültiges Datum. Erwartet: JJJJ-MM-TT',
+                  message:
+                    'Bitte geben Sie ein gültiges Datum im Format JJJJ-MM-TT ein',
                 });
         break;
       case 'time':
         fieldSchema =
           options.isRequired === true
             ? z
-                .string()
+                .string({ error: 'Bitte geben Sie eine Uhrzeit ein' })
                 .min(1, 'Uhrzeit darf nicht leer sein')
                 .regex(
                   /^([01]\d|2[0-3]):([0-5]\d)$/,
-                  'Ungültige Uhrzeit. Erwartet: HH:MM'
+                  'Bitte geben Sie eine gültige Uhrzeit im Format HH:MM ein'
                 )
             : z
                 .union([z.string(), z.null(), z.literal('')])
@@ -243,14 +330,22 @@ export function generateDynamicSchema(
                 .refine(
                   (value) =>
                     value === '' || /^([01]\d|2[0-3]):([0-5]\d)$/.test(value),
-                  { message: 'Ungültige Uhrzeit. Erwartet: HH:MM' }
+                  {
+                    message:
+                      'Bitte geben Sie eine gültige Uhrzeit im Format HH:MM ein',
+                  }
                 );
         break;
       case 'select':
         if (!options.allowedValues || options.allowedValues.length === 0)
           throw new Error('Auswahlfeld benötigt allowedValues');
-        // als duple (mindestens 1 Wert)
-        fieldSchema = z.enum(options.allowedValues as [string, ...string[]]);
+        // Historical values remain valid after an option is removed.
+        fieldSchema = z.string({
+          error: 'Bitte wählen Sie eine Option aus',
+        });
+        if (options.isRequired === true) {
+          fieldSchema = fieldSchema.min(1, 'Auswahl darf nicht leer sein');
+        }
         // Also allow the value to remain null if not required
         if (options.isRequired !== true) {
           fieldSchema = z
@@ -262,12 +357,31 @@ export function generateDynamicSchema(
             });
         }
         break;
+      case 'multiselect':
+        if (!options.allowedValues || options.allowedValues.length === 0)
+          throw new Error('Mehrfachauswahlfeld benötigt allowedValues');
+        // Historical values remain valid after an option is removed.
+        fieldSchema = z.array(z.string(), {
+          error: 'Bitte wählen Sie mindestens eine Option aus',
+        });
+        if (options.isRequired === true) {
+          fieldSchema = fieldSchema.min(
+            1,
+            'Mindestens eine Auswahl muss getroffen werden'
+          );
+        }
+        break;
       case 'group':
         return;
       default:
         throw new Error('Feldtyp ' + type + ' wird nicht unterstützt');
     }
-    if (options.isRequired !== true && type !== 'select' && type !== 'boolean')
+    if (
+      options.isRequired !== true &&
+      type !== 'select' &&
+      type !== 'boolean' &&
+      type !== 'multiselect'
+    )
       fieldSchema = fieldSchema?.optional();
 
     if (fieldSchema) schemaShape[fieldId] = fieldSchema;
@@ -312,11 +426,15 @@ export const mapEinsatzToCalendarEvent = (
 
   return {
     id: normalizedEinsatz.id,
-    title: hasCategories
-      ? `${einsatz.title} (${categories
-          .map((c) => c.einsatz_category.abbreviation)
-          .join(', ')})`
-      : einsatz.title,
+    title: composeCalendarEventTitle(
+      einsatz.title,
+      hasCategories
+        ? categories.map((c) => c.einsatz_category.abbreviation)
+        : [],
+      normalizedEinsatz.helpers_needed > 0
+        ? `${normalizedEinsatz.einsatz_helper.length}/${normalizedEinsatz.helpers_needed}`
+        : []
+    ),
     start: normalizedEinsatz.start,
     end: normalizedEinsatz.end,
     allDay: normalizedEinsatz.all_day,
@@ -340,9 +458,13 @@ export const mapDetailedEinsatzToCalendarEvent = (
 
   return {
     id: normalizedEinsatz.id,
-    title: hasCategories
-      ? `${normalizedEinsatz.title} (${abbr.join(', ')})`
-      : normalizedEinsatz.title,
+    title: composeCalendarEventTitle(
+      normalizedEinsatz.title,
+      hasCategories ? abbr : [],
+      normalizedEinsatz.helpers_needed > 0
+        ? `${normalizedEinsatz.assigned_users?.length ?? 0}/${normalizedEinsatz.helpers_needed}`
+        : []
+    ),
     start: normalizedEinsatz.start,
     end: normalizedEinsatz.end,
     allDay: normalizedEinsatz.all_day,
@@ -427,7 +549,10 @@ export function mapStringValueToType(
       break;
     case 'multiselect':
       // Note: multiselect values are stored as comma-separated strings
-      result = value.split(',');
+      result = value
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
       break;
     default:
       throw new Error('Nicht unterstützter Typ für Mapping: ' + fieldType);
@@ -449,6 +574,7 @@ export function mapTypeToStringValue(value: any): string | null {
     return value.toISOString();
   }
   if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+  if (Array.isArray(value)) return value.join(',');
   if (Number.isNaN(value) || value === Infinity || value === -Infinity) {
     return null;
   }
@@ -505,6 +631,7 @@ export function mapDbDataTypeToFormFieldType(
     if (defaultTypes.includes(datatype)) return 'default';
     if (datatype === 'boolean') return 'checkbox';
     if (datatype === 'select') return 'select';
+    if (datatype === 'multiselect') return 'multi-select';
     if (datatype === 'group') return 'group';
   }
   throw new Error(

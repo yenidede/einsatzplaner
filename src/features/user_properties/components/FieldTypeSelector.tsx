@@ -6,7 +6,7 @@ import type { FieldType } from '../types';
 import {
   FIELD_TYPE_DEFINITIONS,
   DEFAULT_SELECTABLE_FIELD_TYPES,
-  type FieldTypeKey,
+  type ConfigurableFieldTypeKey,
 } from '../field-type-definitions';
 
 interface FieldTypeSelectorProps {
@@ -14,7 +14,7 @@ interface FieldTypeSelectorProps {
   onBack: () => void;
   onSelectExistingField?: () => void;
   /** Which field types to show. Defaults to text, number, boolean, select (same as legacy). */
-  enabledFieldTypes?: readonly FieldTypeKey[];
+  enabledFieldTypes?: readonly ConfigurableFieldTypeKey[];
 }
 
 export function FieldTypeSelector({

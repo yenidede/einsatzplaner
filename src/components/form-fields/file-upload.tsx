@@ -122,7 +122,7 @@ export function FileUpload<TFieldName extends string>({
             Upload
           </p> */}
 					<p className="text-foreground font-medium text-sm mb-2">
-						Datei hier ablegen oder zum Auswaehlen klicken
+						Datei hier ablegen oder zum Auswählen klicken
 					</p>
 					<div className="text-muted-foreground/70 flex flex-wrap justify-center gap-1 text-xs">
 						{placeholder}

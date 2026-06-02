@@ -153,6 +153,10 @@ export function OrganizationDefaultValues({
 
   const handleSaveEdit = () => {
     if (!editingId || !editValue.trim()) return;
+    if (!editAbbreviation.trim()) {
+      toast.error('Bitte ein Kürzel für die Kategorie angeben.');
+      return;
+    }
     updateMutation.mutate({
       categoryId: editingId,
       value: editValue.trim(),
@@ -167,6 +171,10 @@ export function OrganizationDefaultValues({
   const handleAddCategory = () => {
     if (!newValue.trim()) {
       toast.error('Bitte einen Namen für die Kategorie angeben.');
+      return;
+    }
+    if (!newAbbreviation.trim()) {
+      toast.error('Bitte ein Kürzel für die Kategorie angeben.');
       return;
     }
     createMutation.mutate({
@@ -300,7 +308,11 @@ export function OrganizationDefaultValues({
                     <Button
                       size="sm"
                       onClick={handleSaveEdit}
-                      disabled={updateMutation.isPending || !editValue.trim()}
+                      disabled={
+                        updateMutation.isPending ||
+                        !editValue.trim() ||
+                        !editAbbreviation.trim()
+                      }
                     >
                       Speichern
                     </Button>
@@ -370,7 +382,11 @@ export function OrganizationDefaultValues({
               <Button
                 size="sm"
                 onClick={handleAddCategory}
-                disabled={createMutation.isPending || !newValue.trim()}
+                disabled={
+                  createMutation.isPending ||
+                  !newValue.trim() ||
+                  !newAbbreviation.trim()
+                }
               >
                 Hinzufügen
               </Button>

@@ -96,4 +96,37 @@ describe('OrganizationDefaultValues', () => {
     ).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Kürzel' })).toBeTruthy();
   });
+
+  it('verhindert das Anlegen einer Kategorie ohne Kürzel', () => {
+    renderOrganizationDefaults();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Kategorie hinzufügen' })
+    );
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Name (ausgeschrieben)' }),
+      { target: { value: 'Veranstaltung' } }
+    );
+
+    expect(
+      screen
+        .getByRole('button', { name: 'Hinzufügen' })
+        .hasAttribute('disabled')
+    ).toBe(true);
+  });
+
+  it('verhindert das Speichern einer Kategorie ohne Kürzel', () => {
+    renderOrganizationDefaults();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Dauerausstellung bearbeiten' })
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Kürzel' }), {
+      target: { value: '   ' },
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Speichern' }).hasAttribute('disabled')
+    ).toBe(true);
+  });
 });

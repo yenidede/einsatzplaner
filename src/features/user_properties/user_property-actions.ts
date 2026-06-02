@@ -69,29 +69,14 @@ export async function createUserPropertyAction(
 
 export async function updateUserPropertyAction(
   id: string,
-  config: Partial<PropertyConfig>
+  config: PropertyConfig
 ): Promise<UserPropertyWithField> {
   try {
-    let maxValue: number | undefined;
-    if (config.fieldType === 'text') {
-      maxValue = config.maxLength;
-    } else if (
-      config.fieldType === 'number' ||
-      config.fieldType === 'currency'
-    ) {
-      maxValue = config.maxValue;
-    }
+    const fieldInput = propertyConfigToFieldInput(config);
 
     const input: UpdateUserPropertyInput = {
       id,
-      name: config.name,
-      isRequired: config.isRequired,
-      placeholder: config.placeholder,
-      defaultValue: config.defaultValue,
-      isMultiline: config.isMultiline,
-      min: config.minValue,
-      max: maxValue,
-      allowedValues: config.options,
+      ...fieldInput,
     };
 
     return await updateUserProperty(input);

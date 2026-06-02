@@ -5,6 +5,7 @@ import { Prisma } from '@/generated/prisma';
 import type { einsatz_template as Template } from '@/generated/prisma';
 import type { PropertyConfig } from '@/features/user_properties/types';
 import { propertyConfigToFieldInput } from '@/features/user_properties/utils/config-to-field-input';
+import { assertCanChangeMultiselectToSelect } from '@/features/user_properties/field-dal';
 import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
 import { normalizeTemplateDescription } from './template-validation';
 
@@ -367,6 +368,7 @@ export type CreateTemplateFieldInput = {
     | 'number'
     | 'boolean'
     | 'select'
+    | 'multiselect'
     | 'currency'
     | 'group'
     | 'date'
@@ -387,6 +389,7 @@ const TYPE_NAME_BY_DATATYPE: Readonly<Record<string, string>> = {
   number: 'Zahl',
   boolean: 'Ja/Nein',
   select: 'Auswahl',
+  multiselect: 'Mehrfachauswahl',
   currency: 'Währung',
   group: 'Gruppe',
   date: 'Datum',
@@ -752,6 +755,7 @@ export async function updateTemplateField(
 ) {
   await checkTemplateFieldAccess(templateId, fieldId);
 
+  await assertCanChangeMultiselectToSelect(fieldId, input.datatype);
   const typeId = await ensureTypeExists(input.datatype);
 
   return prisma.field.update({

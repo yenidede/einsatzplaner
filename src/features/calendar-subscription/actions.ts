@@ -13,7 +13,7 @@ import {
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error('Unauthorized');
+  if (!session?.user?.id) throw new Error('Sie sind nicht angemeldet.');
   return session;
 }
 
@@ -25,7 +25,7 @@ export async function getSubscriptionAction(orgId: string) {
     session.user.id
   );
   if (!response)
-    throw new Error('Failed to get or create calendar subscription');
+    throw new Error('Die Kalenderintegration konnte nicht geladen werden.');
 
   return {
     id: response.id,
@@ -41,7 +41,8 @@ export async function getSubscriptionAction(orgId: string) {
 export async function rotateSubscriptionAction(id: string) {
   const session = await checkUserSession();
   const response = await rotateCalendarSubscription(id, session.user.id);
-  if (!response) throw new Error('Failed to rotate calendar subscription');
+  if (!response)
+    throw new Error('Der neue Kalender-Link konnte nicht erstellt werden.');
 
   return {
     id: response.id,
@@ -55,7 +56,8 @@ export async function deactivateSubscriptionAction(id: string) {
   const session = await checkUserSession();
 
   const response = await deactivateCalendarSubscription(id, session.user.id);
-  if (!response) throw new Error('Failed to deactivate calendar subscription');
+  if (!response)
+    throw new Error('Die Kalenderintegration konnte nicht deaktiviert werden.');
 
   return {
     id: response.id,
@@ -67,7 +69,8 @@ export async function activateSubscriptionAction(id: string) {
   const session = await checkUserSession();
 
   const response = await activateCalendarSubscription(id, session.user.id);
-  if (!response) throw new Error('Failed to activate calendar subscription');
+  if (!response)
+    throw new Error('Die Kalenderintegration konnte nicht aktiviert werden.');
 
   return {
     id: response.id,

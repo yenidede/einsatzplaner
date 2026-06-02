@@ -17,6 +17,7 @@ export type FieldTypeKey =
   | 'number'
   | 'boolean'
   | 'select'
+  | 'multiselect'
   | 'currency'
   | 'group'
   | 'date'
@@ -24,8 +25,10 @@ export type FieldTypeKey =
   | 'phone'
   | 'mail';
 
+export type ConfigurableFieldTypeKey = Exclude<FieldTypeKey, 'multiselect'>;
+
 export type FieldTypeDefinition = {
-  key: FieldTypeKey;
+  key: ConfigurableFieldTypeKey;
   label: string;
   subLabel?: string;
   Icon: LucideIcon;
@@ -45,13 +48,13 @@ export const FIELD_TYPE_DEFINITIONS: FieldTypeDefinition[] = [
   // { key: 'group', label: 'Feldgruppe', Icon: LayoutDashboard },
 ];
 
-const DEFINITIONS_BY_KEY = new Map(
-  FIELD_TYPE_DEFINITIONS.map((d) => [d.key, d])
-);
+const DEFINITIONS_BY_KEY: ReadonlyMap<FieldTypeKey, FieldTypeDefinition> =
+  new Map(FIELD_TYPE_DEFINITIONS.map((d) => [d.key, d]));
 
-const FIELD_TYPE_KEYS: ReadonlySet<string> = new Set(
-  FIELD_TYPE_DEFINITIONS.map((d) => d.key)
-);
+const FIELD_TYPE_KEYS: ReadonlySet<string> = new Set([
+  ...FIELD_TYPE_DEFINITIONS.map((d) => d.key),
+  'multiselect',
+]);
 
 /** Type guard: narrows string to FieldTypeKey so callers can avoid "as" casts. */
 export function isFieldTypeKey(
@@ -66,13 +69,33 @@ export function getFieldTypeDefinition(
   return DEFINITIONS_BY_KEY.get(key);
 }
 
+const FIELD_TYPE_LABELS: Readonly<Record<FieldTypeKey, string>> = {
+  text: 'Text',
+  number: 'Zahl',
+  boolean: 'Ja/Nein',
+  select: 'Auswahl',
+  multiselect: 'Mehrfachauswahl',
+  currency: 'Währung',
+  group: 'Gruppe',
+  date: 'Datum',
+  time: 'Uhrzeit',
+  phone: 'Telefon',
+  mail: 'E-Mail',
+};
+
+export function getFieldTypeLabel(
+  key: string | null | undefined
+): string | null {
+  return isFieldTypeKey(key) ? FIELD_TYPE_LABELS[key] : null;
+}
+
 /** Default set of field types that are selectable (configurable via PropertyConfiguration). */
 export const DEFAULT_SELECTABLE_FIELD_TYPES: Array<
   'text' | 'number' | 'boolean' | 'select'
 > = ['text', 'number', 'boolean', 'select'];
 
 /** Field types available when creating a custom field in template (Vorlage) context. Matches FIELD_TYPE_DEFINITIONS. */
-export const VORLAGE_SELECTABLE_FIELD_TYPES: FieldTypeKey[] = [
+export const VORLAGE_SELECTABLE_FIELD_TYPES: ConfigurableFieldTypeKey[] = [
   'text',
   'number',
   'boolean',

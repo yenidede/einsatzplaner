@@ -3,8 +3,17 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { generateDynamicSchema, isMultiDayEvent, spansMultipleDays } from './utils';
+import {
+  generateDynamicSchema,
+  isMultiDayEvent,
+  mapDbDataTypeToFormFieldType,
+  mapEinsatzToCalendarEvent,
+  mapStringValueToType,
+  mapTypeToStringValue,
+  spansMultipleDays,
+} from './utils';
 import type { CalendarEvent } from './types';
+import type { EinsatzForCalendar } from '@/features/einsatz/types';
 
 describe('event calendar multi-day helpers', () => {
   it('erkennt Spannen über Monatsgrenzen als mehrtägig', () => {
@@ -34,6 +43,40 @@ describe('event calendar multi-day helpers', () => {
 
     expect(spansMultipleDays(event)).toBe(false);
     expect(isMultiDayEvent(event)).toBe(true);
+  });
+});
+
+describe('mapEinsatzToCalendarEvent', () => {
+  it('zeigt Kategorien und belegte Personen im Titel', () => {
+    const einsatz = {
+      id: 'einsatz-1',
+      title: 'Führung',
+      start: new Date(2026, 5, 10, 10),
+      end: new Date(2026, 5, 10, 11),
+      all_day: false,
+      helpers_needed: 2,
+      einsatz_helper: [{ user_id: 'user-1' }],
+      _count: { einsatz_helper: 1 },
+      einsatz_status: {
+        id: 'status-1',
+        verwalter_color: 'blue',
+        verwalter_text: 'Offen',
+        helper_color: 'blue',
+        helper_text: 'Offen',
+      },
+      einsatz_to_category: [
+        {
+          einsatz_category: {
+            value: 'Dauerausstellung',
+            abbreviation: 'DA',
+          },
+        },
+      ],
+    } satisfies EinsatzForCalendar;
+
+    expect(mapEinsatzToCalendarEvent(einsatz)?.title).toBe(
+      'Führung (DA) (1/2)'
+    );
   });
 });
 
@@ -106,5 +149,82 @@ describe('generateDynamicSchema', () => {
     expect(parsed).toEqual({
       txt1: 'Wert',
     });
+  });
+
+  it('fordert bei Pflicht-Mehrfachauswahl mindestens einen Wert', () => {
+    const schema = generateDynamicSchema([
+      {
+        fieldId: 'multi1',
+        type: 'multiselect',
+        options: { isRequired: true, allowedValues: ['A', 'B'] },
+      },
+    ]);
+
+    expect(schema.safeParse({ multi1: [] }).success).toBe(false);
+    expect(schema.parse({ multi1: ['A'] })).toEqual({ multi1: ['A'] });
+  });
+
+  it('behält historische Mehrfachwerte beim Validieren bei', () => {
+    const schema = generateDynamicSchema([
+      {
+        fieldId: 'multi1',
+        type: 'multiselect',
+        options: { allowedValues: ['Aktuell'] },
+      },
+    ]);
+
+    expect(schema.parse({ multi1: ['Historisch'] })).toEqual({
+      multi1: ['Historisch'],
+    });
+  });
+
+  it('serialisiert Mehrfachwerte kommasepariert', () => {
+    expect(mapStringValueToType(' A, B ', 'multiselect')).toEqual(['A', 'B']);
+    expect(mapTypeToStringValue(['A', 'B'])).toBe('A,B');
+    expect(mapDbDataTypeToFormFieldType('multiselect')).toBe('multi-select');
+  });
+
+  it('erlaubt leere optionale Telefon- und E-Mail-Felder', () => {
+    const schema = generateDynamicSchema([
+      {
+        fieldId: 'phone1',
+        type: 'phone',
+        options: { isRequired: false },
+      },
+      {
+        fieldId: 'mail1',
+        type: 'mail',
+        options: { isRequired: false },
+      },
+    ]);
+
+    expect(schema.parse({ phone1: null, mail1: null })).toEqual({
+      phone1: '',
+      mail1: '',
+    });
+  });
+
+  it('zeigt für fehlende Pflichtwerte verständliche deutsche Meldungen', () => {
+    const schema = generateDynamicSchema([
+      {
+        fieldId: 'phone1',
+        type: 'phone',
+        options: { isRequired: true },
+      },
+      {
+        fieldId: 'select1',
+        type: 'select',
+        options: { isRequired: true, allowedValues: ['A'] },
+      },
+    ]);
+
+    const result = schema.safeParse({ phone1: null, select1: null });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues.map((issue) => issue.message)).toEqual([
+      'Bitte geben Sie eine Telefonnummer ein',
+      'Bitte wählen Sie eine Option aus',
+    ]);
   });
 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import ical, { ICalEventStatus, ICalCalendarMethod } from 'ical-generator';
+import { composeCalendarEventTitle } from '@/components/event-calendar/event-title';
 
 type RouteContext = {
   params: Promise<{ token: string }>;
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
   try {
     host = new URL(baseUrl).hostname;
-  } catch (error) {
+  } catch {
     return new NextResponse('Server Configuration Error', { status: 500 });
   }
 
@@ -140,6 +141,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
             category.einsatz_category.abbreviation
         )
         .filter(Boolean) ?? [];
+    const categoryAbbreviations = einsatz.einsatz_to_category.map(
+      (category) => category.einsatz_category.abbreviation
+    );
 
     const urlToHelferansichtPage = new URL(
       `/helferansicht?einsatz=${encodeURIComponent(einsatz.id)}`,
@@ -282,7 +286,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       start,
       end,
       allDay: isAllDay,
-      summary: einsatz.title,
+      summary: composeCalendarEventTitle(
+        einsatz.title,
+        categoryAbbreviations,
+        einsatz.helpers_needed > 0
+          ? `${einsatz.einsatz_helper.length}/${einsatz.helpers_needed}`
+          : []
+      ),
       description,
       categories: categories.map((name) => ({ name })),
       location: ortField?.value ?? undefined,

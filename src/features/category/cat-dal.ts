@@ -19,12 +19,12 @@ export async function getCategoriesByOrgIds(
 export type CreateCategoryInput = {
   org_id: string;
   value: string;
-  abbreviation?: string;
+  abbreviation: string;
 };
 
 export type UpdateCategoryInput = {
   value?: string;
-  abbreviation?: string;
+  abbreviation: string;
 };
 
 export async function createCategory(
@@ -33,12 +33,15 @@ export async function createCategory(
   if (input?.value?.trim() === '') {
     throw new Error('Kategoriename darf nicht leer sein');
   }
+  if (input.abbreviation.trim() === '') {
+    throw new Error('Kürzel darf nicht leer sein');
+  }
 
   return prisma.einsatz_category.create({
     data: {
       org_id: input.org_id,
       value: input.value.trim(),
-      abbreviation: (input.abbreviation ?? '').trim(),
+      abbreviation: input.abbreviation.trim(),
     },
   });
 }
@@ -50,14 +53,15 @@ export async function updateCategory(
   if (input.value?.trim() === '') {
     throw new Error('Kategoriename darf nicht leer sein');
   }
+  if (input.abbreviation.trim() === '') {
+    throw new Error('Kürzel darf nicht leer sein');
+  }
 
   return prisma.einsatz_category.update({
     where: { id },
     data: {
       ...(input.value !== undefined && { value: input.value.trim() }),
-      ...(input.abbreviation !== undefined && {
-        abbreviation: input.abbreviation.trim(),
-      }),
+      abbreviation: input.abbreviation.trim(),
     },
   });
 }

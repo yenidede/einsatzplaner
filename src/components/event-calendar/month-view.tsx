@@ -301,7 +301,7 @@ export function MonthView({
                             >
                               <span>
                                 + {remainingCount}{' '}
-                                <span className="max-sm:sr-only">more</span>
+                                <span className="max-sm:sr-only">weitere</span>
                               </span>
                             </button>
                           </PopoverTrigger>

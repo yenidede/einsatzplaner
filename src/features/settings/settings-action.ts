@@ -24,7 +24,7 @@ if (!supabaseServiceRoleKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error('Unauthorized');
+  if (!session?.user?.id) throw new Error('Sie sind nicht angemeldet.');
   return session;
 }
 
@@ -196,7 +196,7 @@ export async function getUserProfileAction() {
   const user = await getUserProfileRecord(session.user.id);
 
   if (!user) {
-    throw new Error('User not found');
+    throw new Error('Benutzer nicht gefunden.');
   }
 
   return mapUserProfile(user);
@@ -213,20 +213,20 @@ export async function getUserProfileByIdAction(
   });
 
   if (!targetUserInOrg) {
-    throw new Error('User is not part of the organization');
+    throw new Error('Der Benutzer gehört nicht zu dieser Organisation.');
   }
 
   if (
     !session.user.orgIds.includes(organizationId) ||
     !(await hasPermission(session, 'organization:read', organizationId))
   ) {
-    throw new Error('Insufficient permissions');
+    throw new Error('Keine ausreichende Berechtigung.');
   }
 
   const user = await getUserProfileRecord(userId);
 
   if (!user) {
-    throw new Error('User not found');
+    throw new Error('Benutzer nicht gefunden.');
   }
 
   return mapUserProfile(user);
@@ -241,12 +241,12 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     });
 
     if (!user?.password) {
-      throw new Error('Current password is required');
+      throw new Error('Bitte geben Sie Ihr aktuelles Passwort ein.');
     }
 
     const isValid = await compare(data.currentPassword, user.password);
     if (!isValid) {
-      throw new Error('Current password is incorrect');
+      throw new Error('Das aktuelle Passwort ist nicht korrekt.');
     }
   }
 
@@ -323,14 +323,14 @@ export async function uploadProfilePictureAction(formData: FormData) {
   const session = await checkUserSession();
 
   const file = formData.get('file') as File | null;
-  if (!file) throw new Error('No file provided');
+  if (!file) throw new Error('Bitte wählen Sie eine Datei aus.');
 
   if (!file.type.startsWith('image/')) {
-    throw new Error('File must be an image');
+    throw new Error('Bitte wählen Sie eine Bilddatei aus.');
   }
   // Allow up to 1MB (compression should handle larger files on client side)
   if (file.size > 1 * 1024 * 1024) {
-    throw new Error('File size must be less than 1MB');
+    throw new Error('Die Datei darf höchstens 1 MB groß sein.');
   }
 
   const oldUser = await prisma.user.findUnique({
@@ -354,7 +354,8 @@ export async function uploadProfilePictureAction(formData: FormData) {
     });
 
   if (error) {
-    throw new Error('Failed to upload image: ' + error.message);
+    console.error('Fehler beim Hochladen des Bildes:', error);
+    throw new Error('Das Bild konnte nicht hochgeladen werden.');
   }
 
   const { data: urlData } = supabase.storage

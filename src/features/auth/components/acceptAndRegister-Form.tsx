@@ -219,7 +219,9 @@ export function SignUpForm({
 
     toast.dismiss(loadingToastId);
     if (!res.ok) {
-      toast.error('Failed to upload profile picture.', { id: 'upload-failed' });
+      toast.error('Das Profilbild konnte nicht hochgeladen werden.', {
+        id: 'upload-failed',
+      });
     } else {
       toast.success('Profilbild erfolgreich hochgeladen!', { id: toastId });
     }
@@ -258,10 +260,9 @@ export function SignUpForm({
       });
     },
     onError: (error) => {
-      // TODO: show error message
+      console.error('Fehler beim Erstellen des Accounts:', error);
       toast.error(
-        'Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator. \nError:' +
-          error.error
+        'Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator.'
       );
       setTab('register1');
     },

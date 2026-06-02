@@ -291,13 +291,13 @@ export const ZodEinsatzFormData = z
       .string()
       .regex(
         /^([01]\d|2[0-3]):([0-5]\d)$/,
-        'Invalid time format. Must be in HH:MM (24-hour) format.'
+        'Bitte geben Sie eine gültige Uhrzeit im Format HH:MM ein.'
       ),
     endTime: z
       .string()
       .regex(
         /^([01]\d|2[0-3]):([0-5]\d)$/,
-        'Invalid time format. Must be in HH:MM (24-hour) format.'
+        'Bitte geben Sie eine gültige Uhrzeit im Format HH:MM ein.'
       ),
     all_day: z.boolean(),
     participantCount: z
@@ -1183,7 +1183,7 @@ export function EventDialogVerwaltung({
     // Validiere dynamische Felder mit React Hook Form
     const isDynamicFormValid = await dynamicForm.trigger();
     if (!isDynamicFormValid) {
-      toast.error('Bitte korrigieren Sie die Fehler in den Template-Feldern.');
+      toast.error('Bitte korrigieren Sie die Fehler in den Vorlagenfeldern.');
       return;
     }
 
@@ -1423,7 +1423,7 @@ export function EventDialogVerwaltung({
           typeId: ChangeTypeIds[changeTypeName],
           affectedUserId: effectiveAffectedUserId,
         }).catch((error) => {
-          toast.error('Failed to create activity log: ' + error);
+          console.error('Aktivitätsprotokoll konnte nicht erstellt werden:', error);
         });
       }
     }

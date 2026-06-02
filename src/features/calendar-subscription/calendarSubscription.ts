@@ -6,7 +6,7 @@ export async function getOrCreateCalendarSubscription(
   userId: string
 ) {
   if (!orgId || !userId) {
-    throw new Error('Invalid orgId or userId');
+    throw new Error('Organisation oder Benutzer konnte nicht zugeordnet werden.');
   }
 
   const existingCalendarSubscription =
@@ -34,7 +34,7 @@ export async function getOrCreateCalendarSubscription(
 
 export async function rotateCalendarSubscription(id: string, userId: string) {
   if (!id || !userId) {
-    throw new Error('Invalid orgId or userId');
+    throw new Error('Organisation oder Benutzer konnte nicht zugeordnet werden.');
   }
 
   return prisma.calendar_subscription.update({
@@ -48,7 +48,7 @@ export async function deactivateCalendarSubscription(
   userId: string
 ) {
   if (!id || !userId) {
-    throw new Error('Invalid orgId or userId');
+    throw new Error('Organisation oder Benutzer konnte nicht zugeordnet werden.');
   }
 
   return prisma.calendar_subscription.update({
@@ -59,7 +59,7 @@ export async function deactivateCalendarSubscription(
 
 export async function activateCalendarSubscription(id: string, userId: string) {
   if (!id || !userId) {
-    throw new Error('Invalid orgId or userId');
+    throw new Error('Organisation oder Benutzer konnte nicht zugeordnet werden.');
   }
 
   return prisma.calendar_subscription.update({

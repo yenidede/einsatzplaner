@@ -71,6 +71,8 @@ export interface MultiSelectProps
     value: string;
     /** Optional icon component to display alongside the option. */
     icon?: React.ComponentType<{ className?: string }>;
+    /** Whether this option is only displayed for a historical selected value. */
+    disabled?: boolean;
   }[];
 
   /**
@@ -224,6 +226,7 @@ export const MultiSelect = React.forwardRef<
         handleClear();
       } else {
         const allValues = options
+          .filter((option) => !option.disabled)
           .slice(0, allowedActiveItems ?? options.length)
           .map((option) => option.value);
         if (!isControlled) setUncontrolledSelectedValues(allValues);
@@ -284,7 +287,7 @@ export const MultiSelect = React.forwardRef<
                       )}
                       style={{ animationDuration: `${animation}s` }}
                     >
-                      {`+ ${selectedValues.length - maxCount} more`}
+                      {`+ ${selectedValues.length - maxCount} weitere`}
                       <XCircle
                         className="ml-1 h-4 w-4 shrink-0 cursor-pointer"
                         onClick={(event) => {
@@ -327,7 +330,7 @@ export const MultiSelect = React.forwardRef<
         >
           <Command>
             <CommandInput
-              placeholder="Search..."
+              placeholder="Suchen..."
               onKeyDown={handleInputKeyDown}
             />
             <CommandList>
@@ -357,6 +360,7 @@ export const MultiSelect = React.forwardRef<
                         <CommandItem
                           key={option.value}
                           onSelect={() => toggleOption(option.value)}
+                          disabled={option.disabled}
                           className="cursor-pointer"
                         >
                           <Checkbox
@@ -382,7 +386,7 @@ export const MultiSelect = React.forwardRef<
                         onSelect={handleClear}
                         className="flex-1 cursor-pointer justify-center"
                       >
-                        Auswahl löschen
+                        Zurücksetzen
                       </CommandItem>
                       <Separator
                         orientation="vertical"

@@ -132,6 +132,14 @@ function formatCustomFieldValue(
     if (value === 'false') return 'Nein';
   }
 
+  if (datatype === 'multiselect' && typeof value === 'string') {
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .join(', ');
+  }
+
   return String(value);
 }
 
@@ -180,24 +188,23 @@ export function ListView({
   const { einsatz_singular, einsatz_plural, helper_plural } =
     useOrganizationTerminology(organizations, activeOrgId);
 
-  const defaultColumnFilters = useMemo<ExtendedColumnFilter<EinsatzListItem>[]>(
-    () => {
-      if (!activeOrgId) {
-        return [];
-      }
+  const defaultColumnFilters = useMemo<
+    ExtendedColumnFilter<EinsatzListItem>[]
+  >(() => {
+    if (!activeOrgId) {
+      return [];
+    }
 
-      return [
-        {
-          id: 'org_id',
-          value: [activeOrgId],
-          variant: 'multiSelect',
-          operator: getDefaultFilterOperator('multiSelect'),
-          filterId: `active-org-${activeOrgId}`,
-        },
-      ];
-    },
-    [activeOrgId]
-  );
+    return [
+      {
+        id: 'org_id',
+        value: [activeOrgId],
+        variant: 'multiSelect',
+        operator: getDefaultFilterOperator('multiSelect'),
+        filterId: `active-org-${activeOrgId}`,
+      },
+    ];
+  }, [activeOrgId]);
   const [rawFilters, setRawFilters] = useQueryState(
     FILTERS_KEY,
     getFiltersStateParser<EinsatzListItem>().withDefault([])

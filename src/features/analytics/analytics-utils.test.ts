@@ -118,6 +118,33 @@ describe('analytics utils', () => {
     ]);
   });
 
+  it('zählt jede Option eines eigenen Mehrfachauswahlfeldes einzeln', () => {
+    const chart = createChart({
+      dimensionKind: 'custom',
+      dimensionKey: 'cf-bereich',
+    });
+    const result = buildAnalyticsChartAggregation(chart, [
+      createRow({
+        id: 'e1',
+        custom_fields: { 'cf-bereich': 'Sanität,Technik' },
+        custom_field_meta: [
+          {
+            key: 'cf-bereich',
+            label: 'Bereich',
+            datatype: 'multiselect',
+            group_name: null,
+            allowed_values: ['Sanität', 'Technik'],
+          },
+        ],
+      }),
+    ]);
+
+    expect(result.rows).toEqual([
+      expect.objectContaining({ label: 'Sanität', value: 1 }),
+      expect.objectContaining({ label: 'Technik', value: 1 }),
+    ]);
+  });
+
   it('bucketiert numerische Felder auf maximal zehn Bereiche', () => {
     const chart = createChart({
       dimensionKey: 'helpers_needed',
@@ -190,11 +217,7 @@ describe('analytics utils', () => {
       },
     };
 
-    const descriptor = getAnalyticsDimensionByKey(
-      [],
-      chart,
-      {}
-    );
+    const descriptor = getAnalyticsDimensionByKey([], chart, {});
 
     expect(descriptor.label).toBe('Raum');
   });

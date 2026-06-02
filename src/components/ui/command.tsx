@@ -31,7 +31,7 @@ function Command({
 
 function CommandDialog({
   title = 'Command Palette',
-  description = 'Search for a command to run...',
+  description = 'Nach einem Befehl suchen...',
   children,
   className,
   showCloseButton = true,
