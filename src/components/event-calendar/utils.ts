@@ -430,9 +430,6 @@ export const mapEinsatzToCalendarEvent = (
       einsatz.title,
       hasCategories
         ? categories.map((c) => c.einsatz_category.abbreviation)
-        : [],
-      normalizedEinsatz.helpers_needed > 0
-        ? `${normalizedEinsatz.einsatz_helper.length}/${normalizedEinsatz.helpers_needed}`
         : []
     ),
     start: normalizedEinsatz.start,
@@ -460,10 +457,7 @@ export const mapDetailedEinsatzToCalendarEvent = (
     id: normalizedEinsatz.id,
     title: composeCalendarEventTitle(
       normalizedEinsatz.title,
-      hasCategories ? abbr : [],
-      normalizedEinsatz.helpers_needed > 0
-        ? `${normalizedEinsatz.assigned_users?.length ?? 0}/${normalizedEinsatz.helpers_needed}`
-        : []
+      hasCategories ? abbr : []
     ),
     start: normalizedEinsatz.start,
     end: normalizedEinsatz.end,

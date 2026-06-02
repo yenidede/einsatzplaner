@@ -10,7 +10,7 @@ export function composeCalendarEventTitle(
       Array.isArray(information) ? information.join(', ') : information
     )
     .map((information) => `(${information})`)
-    .join(' ');
+    .join('');
 
   return suffix ? `${title} ${suffix}` : title;
 }

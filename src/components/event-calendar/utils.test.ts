@@ -47,7 +47,7 @@ describe('event calendar multi-day helpers', () => {
 });
 
 describe('mapEinsatzToCalendarEvent', () => {
-  it('zeigt Kategorien und belegte Personen im Titel', () => {
+  it('zeigt in der App nur Kategorien im Titel', () => {
     const einsatz = {
       id: 'einsatz-1',
       title: 'Führung',
@@ -74,9 +74,7 @@ describe('mapEinsatzToCalendarEvent', () => {
       ],
     } satisfies EinsatzForCalendar;
 
-    expect(mapEinsatzToCalendarEvent(einsatz)?.title).toBe(
-      'Führung (DA) (1/2)'
-    );
+    expect(mapEinsatzToCalendarEvent(einsatz)?.title).toBe('Führung (DA)');
   });
 });
 

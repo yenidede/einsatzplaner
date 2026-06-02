@@ -123,7 +123,7 @@ describe('GET /api/calendar/[token]', () => {
 
     expect(mockCreateEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        summary: 'Führung (DA, VA) (1/2)',
+        summary: 'Führung (DA, VA)(1/2)',
       })
     );
   });

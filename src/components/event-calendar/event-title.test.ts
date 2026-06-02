@@ -14,7 +14,7 @@ describe('composeCalendarEventTitle', () => {
 
   it('hängt weitere Informationen als eigene Segmente an', () => {
     expect(composeCalendarEventTitle('Führung', ['DA', 'VA'], '1/2')).toBe(
-      'Führung (DA, VA) (1/2)'
+      'Führung (DA, VA)(1/2)'
     );
   });
 
