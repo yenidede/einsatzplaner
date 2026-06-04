@@ -96,7 +96,11 @@ export function FileUpload<TFieldName extends string>({
 			<div
 				role="button"
 				tabIndex={disabled ? -1 : 0}
-				onClick={openFileDialog}
+				aria-disabled={disabled}
+				onClick={() => {
+					if (disabled) return
+					openFileDialog()
+				}}
 				onKeyDown={(event) => {
 					if (disabled) return
 					if (event.key === 'Enter' || event.key === ' ') {

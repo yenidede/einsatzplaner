@@ -1417,12 +1417,20 @@ export function EventDialogVerwaltung({
       const effectiveAffectedUserId =
         changeTypeName === 'E-Erstellt' ? null : affectedUserId;
       if (currentEinsatz?.id && currentUserId) {
-        const changeLog = await createChangeLogAuto({
-          einsatzId: currentEinsatz.id,
-          userId: currentUserId,
-          typeId: ChangeTypeIds[changeTypeName],
-          affectedUserId: effectiveAffectedUserId,
-        });
+        let changeLog = null;
+        try {
+          changeLog = await createChangeLogAuto({
+            einsatzId: currentEinsatz.id,
+            userId: currentUserId,
+            typeId: ChangeTypeIds[changeTypeName],
+            affectedUserId: effectiveAffectedUserId,
+          });
+        } catch (error) {
+          console.error(
+            'Aktivitätsprotokoll konnte nicht erstellt werden:',
+            error
+          );
+        }
         if (!changeLog) {
           toast.error('Aktivitätsprotokoll konnte nicht erstellt werden.');
         }

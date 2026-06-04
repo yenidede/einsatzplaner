@@ -59,6 +59,8 @@ export const FIELD_TYPE_DEFINITIONS: FieldTypeDefinition[] = [
 const DEFINITIONS_BY_KEY: ReadonlyMap<FieldTypeKey, FieldTypeDefinition> =
   new Map(FIELD_TYPE_DEFINITIONS.map((d) => [d.key, d]));
 
+// `group` remains a legacy/display-only union member and is intentionally not
+// accepted by this runtime guard because group fields are not configurable.
 const FIELD_TYPE_KEYS: ReadonlySet<string> = new Set(
   FIELD_TYPE_DEFINITIONS.map((d) => d.key)
 );

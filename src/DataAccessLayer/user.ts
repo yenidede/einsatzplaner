@@ -402,9 +402,16 @@ export async function updateUserSettings(
       data: updateData,
     });
   } catch (error: unknown) {
-    if (error instanceof Error) {
+    if (
+      error instanceof Error &&
+      error.message === 'Benutzer nicht gefunden.'
+    ) {
       throw error;
     }
+    console.error(
+      'Benutzereinstellungen konnten nicht aktualisiert werden:',
+      error
+    );
     throw new Error('Benutzereinstellungen konnten nicht aktualisiert werden.');
   }
 }
