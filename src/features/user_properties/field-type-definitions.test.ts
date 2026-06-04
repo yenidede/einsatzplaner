@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { getFieldTypeLabel } from './field-type-definitions';
+import {
+  getFieldTypeDefinition,
+  getFieldTypeLabel,
+} from './field-type-definitions';
 
 describe('getFieldTypeLabel', () => {
   it('übersetzt gespeicherte Datentypen ins Deutsche', () => {
@@ -9,5 +12,11 @@ describe('getFieldTypeLabel', () => {
 
   it('liefert für unbekannte Datentypen keinen irreführenden Text', () => {
     expect(getFieldTypeLabel('unbekannt')).toBeNull();
+  });
+
+  it('liefert auch für Mehrfachauswahl eine Definition', () => {
+    expect(getFieldTypeDefinition('multiselect')?.label).toBe(
+      'Mehrfachauswahl'
+    );
   });
 });

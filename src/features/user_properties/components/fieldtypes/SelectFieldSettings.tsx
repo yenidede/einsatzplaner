@@ -212,14 +212,22 @@ export function SelectFieldSettings({
         <Checkbox
           id="isMultiSelect"
           checked={isMultiSelect}
-          onCheckedChange={(checked) =>
+          onCheckedChange={(checked) => {
+            const nextIsMultiSelect = checked === true;
+            const preservedDefaultOptions =
+              defaultOptions.length > 0
+                ? defaultOptions
+                : defaultOption
+                  ? [defaultOption]
+                  : [];
             onChange({
-              isMultiSelect: checked === true,
-              defaultOption: checked === true ? undefined : defaultOptions[0],
-              defaultOptions:
-                checked === true && defaultOption ? [defaultOption] : [],
-            })
-          }
+              isMultiSelect: nextIsMultiSelect,
+              defaultOption: nextIsMultiSelect
+                ? undefined
+                : preservedDefaultOptions[0],
+              defaultOptions: preservedDefaultOptions,
+            });
+          }}
         />
         <Label htmlFor="isMultiSelect" className="text-sm font-medium">
           Mehrfachauswahl erlauben

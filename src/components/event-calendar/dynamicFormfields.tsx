@@ -76,7 +76,8 @@ export default function DynamicFormFields({
         return (
           <FormMultiSelectField
             {...commonProps}
-            options={field.allowedValues ?? ['Optionen konnten nicht geladen werden']}
+            options={field.allowedValues ?? []}
+            emptyState="Optionen konnten nicht geladen werden"
             onValueChange={controllerField.onChange}
             value={controllerField.value ?? []}
             aria-required={field.required}

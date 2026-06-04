@@ -23,9 +23,9 @@ export async function getSubscriptionAction(orgId: string) {
   const response = await getOrCreateCalendarSubscription(
     orgId,
     session.user.id
-  );
-  if (!response)
+  ).catch(() => {
     throw new Error('Die Kalenderintegration konnte nicht geladen werden.');
+  });
 
   return {
     id: response.id,
@@ -40,9 +40,11 @@ export async function getSubscriptionAction(orgId: string) {
 
 export async function rotateSubscriptionAction(id: string) {
   const session = await checkUserSession();
-  const response = await rotateCalendarSubscription(id, session.user.id);
-  if (!response)
-    throw new Error('Der neue Kalender-Link konnte nicht erstellt werden.');
+  const response = await rotateCalendarSubscription(id, session.user.id).catch(
+    () => {
+      throw new Error('Der API-Schlüssel konnte nicht rotiert werden.');
+    }
+  );
 
   return {
     id: response.id,
@@ -55,9 +57,12 @@ export async function rotateSubscriptionAction(id: string) {
 export async function deactivateSubscriptionAction(id: string) {
   const session = await checkUserSession();
 
-  const response = await deactivateCalendarSubscription(id, session.user.id);
-  if (!response)
+  const response = await deactivateCalendarSubscription(
+    id,
+    session.user.id
+  ).catch(() => {
     throw new Error('Die Kalenderintegration konnte nicht deaktiviert werden.');
+  });
 
   return {
     id: response.id,
@@ -68,9 +73,12 @@ export async function deactivateSubscriptionAction(id: string) {
 export async function activateSubscriptionAction(id: string) {
   const session = await checkUserSession();
 
-  const response = await activateCalendarSubscription(id, session.user.id);
-  if (!response)
+  const response = await activateCalendarSubscription(
+    id,
+    session.user.id
+  ).catch(() => {
     throw new Error('Die Kalenderintegration konnte nicht aktiviert werden.');
+  });
 
   return {
     id: response.id,

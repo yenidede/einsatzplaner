@@ -193,7 +193,7 @@ export function SignUpForm({
 
   const profilePictureUploadFromClient = async (
     optimizedFile: File
-  ): Promise<string> => {
+  ): Promise<string | undefined> => {
     // Use a unique toast ID to prevent duplicate toasts
     const toastId = 'profile-picture-upload';
 
@@ -222,6 +222,7 @@ export function SignUpForm({
       toast.error('Das Profilbild konnte nicht hochgeladen werden.', {
         id: 'upload-failed',
       });
+      return undefined;
     } else {
       toast.success('Profilbild erfolgreich hochgeladen!', { id: toastId });
     }
@@ -790,6 +791,7 @@ export function SignUpForm({
                     }}
                     onUpload={async (file) => {
                       const path = await profilePictureUploadFromClient(file);
+                      if (!path) return undefined;
                       // store the string, not the file
                       field.onChange(path);
                       return path;

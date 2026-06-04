@@ -3,7 +3,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import Link from 'next/link';
 import { MultiSelect } from './multi-select';
 
@@ -49,5 +49,27 @@ describe('MultiSelect', () => {
         .getAttribute('href')
     ).toBe('/settings/org/test-org#standardfelder');
     expect(screen.queryByText('Alle auswählen')).toBeNull();
+  });
+
+  it('wählt mit Alle auswählen nur aktivierbare Optionen aus', () => {
+    const onValueChange = vi.fn();
+
+    render(
+      <MultiSelect
+        options={[
+          { value: 'A', label: 'A' },
+          { value: 'B', label: 'B', disabled: true },
+          { value: 'C', label: 'C' },
+        ]}
+        value={[]}
+        onValueChange={onValueChange}
+        placeholder="Optionen auswählen"
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Optionen auswählen' }));
+    fireEvent.click(screen.getByText('Alle auswählen'));
+
+    expect(onValueChange).toHaveBeenCalledWith(['A', 'C']);
   });
 });

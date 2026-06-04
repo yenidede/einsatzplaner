@@ -1,5 +1,3 @@
-'use server';
-
 import prisma from '@/lib/prisma';
 import { parseMultiSelectValue } from './utils/select-values';
 

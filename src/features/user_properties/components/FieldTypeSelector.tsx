@@ -6,6 +6,8 @@ import type { FieldType } from '../types';
 import {
   FIELD_TYPE_DEFINITIONS,
   DEFAULT_SELECTABLE_FIELD_TYPES,
+  isConfigurableFieldTypeKey,
+  type FieldTypeDefinition,
   type ConfigurableFieldTypeKey,
 } from '../field-type-definitions';
 
@@ -23,8 +25,9 @@ export function FieldTypeSelector({
   onSelectExistingField,
   enabledFieldTypes = DEFAULT_SELECTABLE_FIELD_TYPES,
 }: FieldTypeSelectorProps) {
-  const typesToShow = FIELD_TYPE_DEFINITIONS.filter((def) =>
-    enabledFieldTypes.includes(def.key)
+  const typesToShow = FIELD_TYPE_DEFINITIONS.filter(
+    (def): def is FieldTypeDefinition & { key: ConfigurableFieldTypeKey } =>
+      isConfigurableFieldTypeKey(def.key) && enabledFieldTypes.includes(def.key)
   );
 
   return (

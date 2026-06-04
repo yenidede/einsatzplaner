@@ -30,7 +30,7 @@ function Command({
 }
 
 function CommandDialog({
-  title = 'Command Palette',
+  title = 'Befehlspalette',
   description = 'Nach einem Befehl suchen...',
   children,
   className,

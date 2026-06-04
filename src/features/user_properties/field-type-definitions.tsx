@@ -3,6 +3,7 @@ import {
   Hash,
   Euro,
   Layers,
+  ListChecks,
   Calendar,
   Clock,
   Phone,
@@ -27,8 +28,14 @@ export type FieldTypeKey =
 
 export type ConfigurableFieldTypeKey = Exclude<FieldTypeKey, 'multiselect'>;
 
+export function isConfigurableFieldTypeKey(
+  key: FieldTypeKey
+): key is ConfigurableFieldTypeKey {
+  return key !== 'multiselect';
+}
+
 export type FieldTypeDefinition = {
-  key: ConfigurableFieldTypeKey;
+  key: FieldTypeKey;
   label: string;
   subLabel?: string;
   Icon: LucideIcon;
@@ -45,16 +52,16 @@ export const FIELD_TYPE_DEFINITIONS: FieldTypeDefinition[] = [
   { key: 'date', label: 'Datum', Icon: Calendar },
   { key: 'time', label: 'Uhrzeit', Icon: Clock },
   { key: 'select', label: 'Auswahl', Icon: Layers },
+  { key: 'multiselect', label: 'Mehrfachauswahl', Icon: ListChecks },
   // { key: 'group', label: 'Feldgruppe', Icon: LayoutDashboard },
 ];
 
 const DEFINITIONS_BY_KEY: ReadonlyMap<FieldTypeKey, FieldTypeDefinition> =
   new Map(FIELD_TYPE_DEFINITIONS.map((d) => [d.key, d]));
 
-const FIELD_TYPE_KEYS: ReadonlySet<string> = new Set([
-  ...FIELD_TYPE_DEFINITIONS.map((d) => d.key),
-  'multiselect',
-]);
+const FIELD_TYPE_KEYS: ReadonlySet<string> = new Set(
+  FIELD_TYPE_DEFINITIONS.map((d) => d.key)
+);
 
 /** Type guard: narrows string to FieldTypeKey so callers can avoid "as" casts. */
 export function isFieldTypeKey(
@@ -94,7 +101,7 @@ export const DEFAULT_SELECTABLE_FIELD_TYPES: Array<
   'text' | 'number' | 'boolean' | 'select'
 > = ['text', 'number', 'boolean', 'select'];
 
-/** Field types available when creating a custom field in template (Vorlage) context. Matches FIELD_TYPE_DEFINITIONS. */
+/** Field types available when creating a custom field in template (Vorlage) context. */
 export const VORLAGE_SELECTABLE_FIELD_TYPES: ConfigurableFieldTypeKey[] = [
   'text',
   'number',

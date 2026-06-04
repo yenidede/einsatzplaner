@@ -176,6 +176,24 @@ describe('generateDynamicSchema', () => {
     });
   });
 
+  it('erlaubt leere optionale Mehrfachauswahlwerte', () => {
+    const schema = generateDynamicSchema([
+      {
+        fieldId: 'multi1',
+        type: 'multiselect',
+        options: { isRequired: false, allowedValues: ['A', 'B'] },
+      },
+    ]);
+
+    expect(schema.parse({})).toEqual({});
+    expect(schema.parse({ multi1: [] })).toEqual({ multi1: [] });
+    expect(schema.parse({ multi1: '_null_' })).toEqual({
+      multi1: undefined,
+    });
+    expect(schema.parse({ multi1: '' })).toEqual({ multi1: undefined });
+    expect(schema.parse({ multi1: null })).toEqual({ multi1: undefined });
+  });
+
   it('serialisiert Mehrfachwerte kommasepariert', () => {
     expect(mapStringValueToType(' A, B ', 'multiselect')).toEqual(['A', 'B']);
     expect(mapTypeToStringValue(['A', 'B'])).toBe('A,B');

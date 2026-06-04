@@ -2,6 +2,7 @@ export function composeCalendarEventTitle(
   title: string,
   ...furtherInformation: Array<string | readonly string[]>
 ): string {
+  // Filtert leere Arrays heraus, erhält Stringwerte inklusive leerer Strings.
   const suffix = furtherInformation
     .filter(
       (information) => typeof information === 'string' || information.length > 0

@@ -141,9 +141,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
             category.einsatz_category.abbreviation
         )
         .filter(Boolean) ?? [];
-    const categoryAbbreviations = einsatz.einsatz_to_category.map(
-      (category) => category.einsatz_category.abbreviation
-    );
+    const categoryAbbreviations = einsatz.einsatz_to_category
+      .map((category) => category.einsatz_category.abbreviation)
+      .filter((abbreviation) => abbreviation !== '');
 
     const urlToHelferansichtPage = new URL(
       `/helferansicht?einsatz=${encodeURIComponent(einsatz.id)}`,

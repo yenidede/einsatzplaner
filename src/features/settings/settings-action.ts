@@ -241,7 +241,7 @@ export async function updateUserProfileAction(data: UserUpdateData) {
     });
 
     if (!user?.password) {
-      throw new Error('Bitte geben Sie Ihr aktuelles Passwort ein.');
+      throw new Error('Dieses Konto hat kein gesetztes Passwort.');
     }
 
     const isValid = await compare(data.currentPassword, user.password);

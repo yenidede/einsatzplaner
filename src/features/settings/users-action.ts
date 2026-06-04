@@ -135,7 +135,7 @@ export async function updateUserRoleAction(
     },
   });
 
-  if (!role) throw new Error(`Role ${roleAbbreviation} not found`);
+  if (!role) throw new Error(`Rolle ${roleAbbreviation} wurde nicht gefunden.`);
 
   if (action === 'add') {
     const existing = await prisma.user_organization_role.findFirst({
@@ -147,7 +147,7 @@ export async function updateUserRoleAction(
     });
 
     if (existing) {
-      return { message: 'Role already assigned' };
+      return { message: 'Diese Rolle ist bereits zugewiesen.' };
     }
 
     await prisma.user_organization_role.create({
@@ -169,7 +169,7 @@ export async function updateUserRoleAction(
 
   revalidatePath(`/organization/${organizationId}`);
 
-  return { message: 'Role updated successfully' };
+  return { message: 'Rolle wurde erfolgreich aktualisiert.' };
 }
 
 export async function removeUserFromOrganizationAction(
@@ -213,7 +213,7 @@ export async function removeUserFromOrganizationAction(
 
   if (targetIsSuperadmin && !isSuperadmin) {
     throw new Error(
-      'Only Superadmins can remove other Superadmins from the organization'
+      'Nur Superadmins können andere Superadmins aus der Organisation entfernen.'
     );
   }
 
@@ -230,7 +230,7 @@ export async function removeUserFromOrganizationAction(
 
   revalidatePath(`/organization/${organizationId}`);
 
-  return { message: 'User removed from organization' };
+  return { message: 'Benutzer wurde aus der Organisation entfernt.' };
 }
 
 export async function promoteToSuperadminAction(

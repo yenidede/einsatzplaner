@@ -147,7 +147,7 @@ export function FileUpload({
   onlyAllowImages?: boolean;
   name: string;
   id: string;
-  onUpload: (optimizedFile: File) => Promise<string>;
+  onUpload: (optimizedFile: File) => Promise<string | undefined>;
   onFileRemove?: (id: string) => void | Promise<void>;
   initialFiles?: FileMetadata[];
   previewAspectRatio?: PreviewAspectRatio;
@@ -516,20 +516,21 @@ export function FileUpload({
   async function optimizeFilesAndUpload(
     files: FileWithPreview[]
   ): Promise<string[]> {
-    return Promise.all(
+    const paths = await Promise.all(
       files.map((file) =>
         optimizeAndUploadIfImage(file.file, file.id, maxSize).then((path) => {
           return path;
         })
       )
     );
+    return paths.filter((path): path is string => typeof path === 'string');
   }
 
   async function optimizeAndUploadIfImage(
     file: File | FileMetadata,
     fileId: string,
     maxSizeBytes?: number
-  ): Promise<string> {
+  ): Promise<string | undefined> {
     const fileKey = getFileUniqueKey(file);
     if (isFileMetadataType(file)) {
       const metadata = file;
@@ -564,6 +565,7 @@ export function FileUpload({
           return newMap;
         });
         const uploadedPath = await onUpload(file);
+        if (!uploadedPath) return undefined;
         lastUploadKeyRef.current = fileKey;
         lastUploadValueRef.current = uploadedPath;
         return uploadedPath;
@@ -590,6 +592,7 @@ export function FileUpload({
       });
 
       const uploadedPath = await onUpload(fileToUpload);
+      if (!uploadedPath) return undefined;
       lastUploadKeyRef.current = fileKey;
       lastUploadValueRef.current = uploadedPath;
       return uploadedPath;

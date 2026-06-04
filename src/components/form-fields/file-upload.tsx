@@ -95,7 +95,15 @@ export function FileUpload<TFieldName extends string>({
 			{/* Drop area */}
 			<div
 				role="button"
+				tabIndex={disabled ? -1 : 0}
 				onClick={openFileDialog}
+				onKeyDown={(event) => {
+					if (disabled) return
+					if (event.key === 'Enter' || event.key === ' ') {
+						event.preventDefault()
+						openFileDialog()
+					}
+				}}
 				onDragEnter={handleDragEnter}
 				onDragLeave={handleDragLeave}
 				onDragOver={handleDragOver}

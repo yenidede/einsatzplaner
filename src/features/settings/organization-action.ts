@@ -302,7 +302,7 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
 
   if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-  if (!(await hasPermission(session, 'organization:update')))
+  if (!(await hasPermission(session, 'organization:update', data.id)))
     throw new Error('Keine ausreichende Berechtigung.');
 
   const dataToUpdate: Partial<OrganizationUpdateData> = {};
@@ -435,7 +435,7 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
 
     if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-    if (!(await hasPermission(session, 'organization:update')))
+    if (!(await hasPermission(session, 'organization:update', orgId)))
       throw new Error('Keine ausreichende Berechtigung.');
 
     if (!file.type.startsWith('image/')) {
@@ -527,7 +527,7 @@ export async function removeOrganizationLogoAction(orgId: string) {
   });
   if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-  if (!(await hasPermission(session, 'organization:update')))
+  if (!(await hasPermission(session, 'organization:update', orgId)))
     throw new Error('Keine ausreichende Berechtigung.');
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -581,7 +581,7 @@ export async function uploadOrganizationSmallLogoAction(formData: FormData) {
 
     if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-    if (!(await hasPermission(session, 'organization:update')))
+    if (!(await hasPermission(session, 'organization:update', orgId)))
       throw new Error('Keine ausreichende Berechtigung.');
 
     if (!file.type.startsWith('image/')) {
@@ -674,7 +674,7 @@ export async function removeOrganizationSmallLogoAction(orgId: string) {
   });
   if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-  if (!(await hasPermission(session, 'organization:update')))
+  if (!(await hasPermission(session, 'organization:update', orgId)))
     throw new Error('Keine ausreichende Berechtigung.');
   const org = await prisma.organization.findUnique({
     where: { id: orgId },

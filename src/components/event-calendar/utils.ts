@@ -370,6 +370,17 @@ export function generateDynamicSchema(
             'Mindestens eine Auswahl muss getroffen werden'
           );
         }
+        if (options.isRequired !== true) {
+          fieldSchema = z
+            .union([fieldSchema, z.literal('_null_'), z.literal(''), z.null()])
+            .optional()
+            .transform((data) => {
+              if (data === '_null_' || data === '' || data === null) {
+                return undefined;
+              }
+              return data;
+            });
+        }
         break;
       case 'group':
         return;
