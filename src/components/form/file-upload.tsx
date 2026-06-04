@@ -147,7 +147,7 @@ export function FileUpload({
   onlyAllowImages?: boolean;
   name: string;
   id: string;
-  onUpload: (optimizedFile: File) => Promise<string>;
+  onUpload: (optimizedFile: File) => Promise<string | undefined>;
   onFileRemove?: (id: string) => void | Promise<void>;
   initialFiles?: FileMetadata[];
   previewAspectRatio?: PreviewAspectRatio;
@@ -519,6 +519,11 @@ export function FileUpload({
     return Promise.all(
       files.map((file) =>
         optimizeAndUploadIfImage(file.file, file.id, maxSize).then((path) => {
+          if (!path) {
+            throw new Error(
+              `Datei "${file.file.name}" konnte nicht hochgeladen werden.`
+            );
+          }
           return path;
         })
       )
@@ -529,7 +534,7 @@ export function FileUpload({
     file: File | FileMetadata,
     fileId: string,
     maxSizeBytes?: number
-  ): Promise<string> {
+  ): Promise<string | undefined> {
     const fileKey = getFileUniqueKey(file);
     if (isFileMetadataType(file)) {
       const metadata = file;
@@ -564,6 +569,11 @@ export function FileUpload({
           return newMap;
         });
         const uploadedPath = await onUpload(file);
+        if (!uploadedPath) {
+          throw new Error(
+            `Datei "${file.name}" konnte nicht hochgeladen werden.`
+          );
+        }
         lastUploadKeyRef.current = fileKey;
         lastUploadValueRef.current = uploadedPath;
         return uploadedPath;
@@ -590,6 +600,11 @@ export function FileUpload({
       });
 
       const uploadedPath = await onUpload(fileToUpload);
+      if (!uploadedPath) {
+        throw new Error(
+          `Datei "${file.name}" konnte nicht hochgeladen werden.`
+        );
+      }
       lastUploadKeyRef.current = fileKey;
       lastUploadValueRef.current = uploadedPath;
       return uploadedPath;

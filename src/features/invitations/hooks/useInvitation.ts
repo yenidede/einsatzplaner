@@ -32,11 +32,11 @@ function mapToCreateInvitationData(
   const roleId = data.roleId ?? data.role_id ?? '';
 
   if (!organizationId) {
-    throw new Error('organizationId is required');
+    throw new Error('Bitte wählen Sie eine Organisation aus.');
   }
 
   if (!roleId) {
-    throw new Error('roleId is required');
+    throw new Error('Bitte wählen Sie eine Rolle aus.');
   }
 
   return {

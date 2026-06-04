@@ -7,7 +7,7 @@ export async function getActiveInvitationsByOrgId(orgId: string) {
   const { session } = await requireAuth();
 
   if (!session.user.orgIds.includes(orgId)) {
-    throw new Error('Unauthorized');
+    throw new Error('Keine Berechtigung.');
   }
 
   const invitations = await prisma.invitation.findMany({

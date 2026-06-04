@@ -7,6 +7,7 @@ import FormMultiSelectField from '../form/multiSelectFormField';
 import { CustomFormField } from './types';
 import FormTextareaField from '../form/formTextareaField';
 import { mapStringValueToType } from './utils';
+import { parseMultiSelectValue } from '@/features/user_properties/utils/select-values';
 
 type DynamicFormFieldsProps = {
   fields: CustomFormField[];
@@ -27,7 +28,7 @@ export default function DynamicFormFields({
         return field.defaultValue ?? null;
       case 'multi-select':
         return typeof field.defaultValue === 'string'
-          ? field.defaultValue.split(',').map((item) => item.trim())
+          ? parseMultiSelectValue(field.defaultValue)
           : (field.defaultValue ?? []);
       case 'textarea':
         return field.defaultValue ?? '';
@@ -66,16 +67,27 @@ export default function DynamicFormFields({
             required={field.required}
             onValueChange={controllerField.onChange}
             allowClear={!field.required}
+            onResetUnavailableValue={() =>
+              controllerField.onChange(field.defaultValue ?? null)
+            }
           />
         );
       case 'multi-select':
         return (
           <FormMultiSelectField
             {...commonProps}
-            options={field.allowedValues ?? ['(problem loading options)']}
+            options={field.allowedValues ?? []}
+            emptyState="Optionen konnten nicht geladen werden"
             onValueChange={controllerField.onChange}
-            defaultValue={controllerField.value}
+            value={controllerField.value ?? []}
             aria-required={field.required}
+            onResetUnavailableValues={() =>
+              controllerField.onChange(
+                typeof field.defaultValue === 'string'
+                  ? parseMultiSelectValue(field.defaultValue)
+                  : []
+              )
+            }
           />
         );
       case 'textarea':

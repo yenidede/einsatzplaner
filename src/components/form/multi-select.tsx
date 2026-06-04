@@ -71,6 +71,8 @@ export interface MultiSelectProps
     value: string;
     /** Optional icon component to display alongside the option. */
     icon?: React.ComponentType<{ className?: string }>;
+    /** Whether this option is only displayed for a historical selected value. */
+    disabled?: boolean;
   }[];
 
   /**
@@ -152,6 +154,15 @@ export const MultiSelect = React.forwardRef<
     const selectedValues = isControlled
       ? (value as string[])
       : uncontrolledSelectedValues;
+    const selectableOptions = options
+      .filter((option) => !option.disabled)
+      .slice(0, allowedActiveItems ?? options.length);
+    const selectableOptionValues = new Set(
+      selectableOptions.map((option) => option.value)
+    );
+    const selectedSelectableCount = selectedValues.filter((value) =>
+      selectableOptionValues.has(value)
+    ).length;
 
     // Keep internal state in sync when defaultValue changes (uncontrolled mode)
     React.useEffect(() => {
@@ -220,12 +231,10 @@ export const MultiSelect = React.forwardRef<
     };
 
     const toggleAll = () => {
-      if (selectedValues.length === options.length) {
+      if (selectedSelectableCount === selectableOptions.length) {
         handleClear();
       } else {
-        const allValues = options
-          .slice(0, allowedActiveItems ?? options.length)
-          .map((option) => option.value);
+        const allValues = selectableOptions.map((option) => option.value);
         if (!isControlled) setUncontrolledSelectedValues(allValues);
         onValueChange(allValues);
       }
@@ -284,7 +293,7 @@ export const MultiSelect = React.forwardRef<
                       )}
                       style={{ animationDuration: `${animation}s` }}
                     >
-                      {`+ ${selectedValues.length - maxCount} more`}
+                      {`+ ${selectedValues.length - maxCount} weitere`}
                       <XCircle
                         className="ml-1 h-4 w-4 shrink-0 cursor-pointer"
                         onClick={(event) => {
@@ -327,7 +336,7 @@ export const MultiSelect = React.forwardRef<
         >
           <Command>
             <CommandInput
-              placeholder="Search..."
+              placeholder="Suchen..."
               onKeyDown={handleInputKeyDown}
             />
             <CommandList>
@@ -345,7 +354,10 @@ export const MultiSelect = React.forwardRef<
                       className="cursor-pointer"
                     >
                       <Checkbox
-                        checked={selectedValues.length === options.length}
+                        checked={
+                          selectableOptions.length > 0 &&
+                          selectedSelectableCount === selectableOptions.length
+                        }
                         onCheckedChange={toggleAll}
                         className="mr-2 h-4 w-4"
                       />
@@ -357,6 +369,7 @@ export const MultiSelect = React.forwardRef<
                         <CommandItem
                           key={option.value}
                           onSelect={() => toggleOption(option.value)}
+                          disabled={option.disabled}
                           className="cursor-pointer"
                         >
                           <Checkbox
@@ -382,7 +395,7 @@ export const MultiSelect = React.forwardRef<
                         onSelect={handleClear}
                         className="flex-1 cursor-pointer justify-center"
                       >
-                        Auswahl löschen
+                        Zurücksetzen
                       </CommandItem>
                       <Separator
                         orientation="vertical"

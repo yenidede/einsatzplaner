@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
   getFieldTypeDefinition,
+  getFieldTypeLabel,
   isFieldTypeKey,
 } from '@/features/user_properties/field-type-definitions';
 import { PageHeader } from '@/components/settings/PageHeader';
@@ -139,6 +140,10 @@ function findMatchingReuseCandidates(
   if (!normalizedFieldName || !config.fieldType) {
     return [];
   }
+  const configDatatype =
+    config.fieldType === 'select' && config.isMultiSelect
+      ? 'multiselect'
+      : config.fieldType;
 
   return candidates
     .map((candidate) => {
@@ -147,14 +152,14 @@ function findMatchingReuseCandidates(
         normalizedFieldName,
         candidateName
       );
-      const typeBonus = candidate.datatype === config.fieldType ? 0.15 : 0;
+      const typeBonus = candidate.datatype === configDatatype ? 0.15 : 0;
       return {
         candidate,
         score: nameScore + typeBonus,
       };
     })
     .filter(({ candidate, score }) => {
-      const hasSameType = candidate.datatype === config.fieldType;
+      const hasSameType = candidate.datatype === configDatatype;
       return score >= (hasSameType ? 0.75 : 0.92);
     })
     .sort((left, right) => right.score - left.score)
@@ -1436,14 +1441,19 @@ export function TemplateForm({
                 <ul className="space-y-2">
                   {template.template_field.map((tf) => {
                     const datatype = tf.field?.type?.datatype ?? 'text';
-                    const key = isFieldTypeKey(datatype) ? datatype : 'text';
+                    const key =
+                      datatype === 'multiselect'
+                        ? 'select'
+                        : isFieldTypeKey(datatype)
+                          ? datatype
+                          : 'text';
                     const fieldDef = getFieldTypeDefinition(key);
                     const fieldId = tf.field?.id ?? '';
                     return (
                       <TemplateFieldListItem
                         key={fieldId}
                         name={tf.field?.name ?? 'Feld'}
-                        typeLabel={tf.field?.type?.datatype ?? '—'}
+                        typeLabel={getFieldTypeLabel(datatype) ?? '—'}
                         icon={fieldDef?.Icon ?? Type}
                         isPflichtfeld={tf.field?.is_required}
                         onOpen={() => handleOpenEditField(tf)}

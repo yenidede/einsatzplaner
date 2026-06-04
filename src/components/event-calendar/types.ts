@@ -34,6 +34,7 @@ export type SupportedDataTypes =
   | 'number'
   | 'boolean'
   | 'select'
+  | 'multiselect'
   | 'currency'
   | 'mail'
   | 'phone'

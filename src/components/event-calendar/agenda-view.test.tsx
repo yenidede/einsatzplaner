@@ -49,8 +49,8 @@ describe('AgendaView multi-day flag', () => {
       {
         id: 'multi',
         title: 'Mehrtägig',
-        start: new Date('2026-04-20T08:00:00.000Z'),
-        end: new Date('2026-04-21T09:00:00.000Z'),
+        start: new Date('2040-04-20T08:00:00.000Z'),
+        end: new Date('2040-04-21T09:00:00.000Z'),
         assignedUsers: [],
         helpersNeeded: 0,
       },

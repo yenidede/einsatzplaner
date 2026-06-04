@@ -27,7 +27,7 @@ const supabaseServer = createClient(supabaseUrl, supabaseServiceKey, {
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error('Unauthorized');
+  if (!session?.user?.id) throw new Error('Sie sind nicht angemeldet.');
   return session;
 }
 export async function getAllRolesExceptSuperAdmin() {
@@ -52,7 +52,7 @@ export async function getOrganizationById(orgId: string) {
     },
   });
 
-  if (!org) throw new Error('Organization not found');
+  if (!org) throw new Error('Organisation nicht gefunden.');
 
   return {
     id: org.id,
@@ -76,7 +76,7 @@ export async function getEinsatzNamesByOrgId(orgId: string) {
       einsatz_name_plural: true,
     },
   });
-  if (!org) throw new Error('Organization not found');
+  if (!org) throw new Error('Organisation nicht gefunden.');
 
   return {
     einsatz_name_singular: org.einsatz_name_singular ?? 'Einsatz',
@@ -166,7 +166,7 @@ export async function getUserManagedOrganizationsAction() {
   return Array.from(orgMap.values());
 }
 export async function getUserOrganizationByIdAction(orgId: string | undefined) {
-  if (!orgId) throw new Error('Organization ID is required');
+  if (!orgId) throw new Error('Bitte wählen Sie eine Organisation aus.');
 
   const session = await checkUserSession();
 
@@ -223,7 +223,7 @@ export async function getUserOrganizationByIdAction(orgId: string | undefined) {
     },
   });
 
-  if (!org) throw new Error('Organization not found');
+  if (!org) throw new Error('Organisation nicht gefunden.');
 
   return {
     id: org.id,
@@ -300,10 +300,10 @@ export async function updateOrganizationAction(data: OrganizationUpdateData) {
     },
   });
 
-  if (!userOrgRole) throw new Error('Forbidden');
+  if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-  if (!(await hasPermission(session, 'organization:update')))
-    throw new Error('Insufficient permissions');
+  if (!(await hasPermission(session, 'organization:update', data.id)))
+    throw new Error('Keine ausreichende Berechtigung.');
 
   const dataToUpdate: Partial<OrganizationUpdateData> = {};
   if (data.name !== undefined) dataToUpdate.name = data.name;
@@ -390,14 +390,14 @@ export async function deleteOrganizationAction(orgId: string) {
     },
   });
 
-  if (!userOrgRole) throw new Error('Forbidden');
+  if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
   const isOV =
     userOrgRole.role?.name === 'Organisationsverwaltung' ||
     userOrgRole.role?.abbreviation === 'OV' ||
     userOrgRole.role?.name === 'Superadmin';
 
-  if (!isOV) throw new Error('Insufficient permissions');
+  if (!isOV) throw new Error('Keine ausreichende Berechtigung.');
 
   await prisma.user_organization_role.deleteMany({
     where: { org_id: orgId },
@@ -422,7 +422,8 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
     const orgId = formData.get('orgId') as string;
     const file = formData.get('logo') as File;
 
-    if (!file || !orgId) throw new Error('Missing file or orgId');
+    if (!file || !orgId)
+      throw new Error('Bitte wählen Sie eine Datei und eine Organisation aus.');
 
     const userOrgRole = await prisma.user_organization_role.findFirst({
       where: {
@@ -432,17 +433,17 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
       include: { role: true },
     });
 
-    if (!userOrgRole) throw new Error('Forbidden');
+    if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-    if (!(await hasPermission(session, 'organization:update')))
-      throw new Error('Insufficient permissions');
+    if (!(await hasPermission(session, 'organization:update', orgId)))
+      throw new Error('Keine ausreichende Berechtigung.');
 
     if (!file.type.startsWith('image/')) {
-      throw new Error('File must be an image');
+      throw new Error('Bitte wählen Sie eine Bilddatei aus.');
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      throw new Error('File size must be less than 5MB');
+      throw new Error('Die Datei darf höchstens 5 MB groß sein.');
     }
 
     const oldOrg = await prisma.organization.findUnique({
@@ -467,7 +468,7 @@ export async function uploadOrganizationLogoAction(formData: FormData) {
 
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
-      throw new Error(`Failed to upload image: ${uploadError.message}`);
+      throw new Error('Das Bild konnte nicht hochgeladen werden.');
     }
 
     const { data: urlData } = supabaseServer.storage
@@ -524,15 +525,15 @@ export async function removeOrganizationLogoAction(orgId: string) {
     },
     include: { role: true },
   });
-  if (!userOrgRole) throw new Error('Forbidden');
+  if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-  if (!(await hasPermission(session, 'organization:update')))
-    throw new Error('Insufficient permissions');
+  if (!(await hasPermission(session, 'organization:update', orgId)))
+    throw new Error('Keine ausreichende Berechtigung.');
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
     select: { logo_url: true },
   });
-  if (!org) throw new Error('Organization not found');
+  if (!org) throw new Error('Organisation nicht gefunden.');
 
   if (org.logo_url && org.logo_url.includes('supabase')) {
     try {
@@ -567,7 +568,8 @@ export async function uploadOrganizationSmallLogoAction(formData: FormData) {
     const orgId = formData.get('orgId') as string;
     const file = formData.get('smallLogo') as File;
 
-    if (!file || !orgId) throw new Error('Missing file or orgId');
+    if (!file || !orgId)
+      throw new Error('Bitte wählen Sie eine Datei und eine Organisation aus.');
 
     const userOrgRole = await prisma.user_organization_role.findFirst({
       where: {
@@ -577,17 +579,17 @@ export async function uploadOrganizationSmallLogoAction(formData: FormData) {
       include: { role: true },
     });
 
-    if (!userOrgRole) throw new Error('Forbidden');
+    if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-    if (!(await hasPermission(session, 'organization:update')))
-      throw new Error('Insufficient permissions');
+    if (!(await hasPermission(session, 'organization:update', orgId)))
+      throw new Error('Keine ausreichende Berechtigung.');
 
     if (!file.type.startsWith('image/')) {
-      throw new Error('File must be an image');
+      throw new Error('Bitte wählen Sie eine Bilddatei aus.');
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      throw new Error('File size must be less than 5MB');
+      throw new Error('Die Datei darf höchstens 5 MB groß sein.');
     }
 
     const oldOrg = await prisma.organization.findUnique({
@@ -612,7 +614,7 @@ export async function uploadOrganizationSmallLogoAction(formData: FormData) {
 
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
-      throw new Error(`Failed to upload image: ${uploadError.message}`);
+      throw new Error('Das Bild konnte nicht hochgeladen werden.');
     }
 
     const { data: urlData } = supabaseServer.storage
@@ -670,15 +672,15 @@ export async function removeOrganizationSmallLogoAction(orgId: string) {
     },
     include: { role: true },
   });
-  if (!userOrgRole) throw new Error('Forbidden');
+  if (!userOrgRole) throw new Error('Keine Berechtigung.');
 
-  if (!(await hasPermission(session, 'organization:update')))
-    throw new Error('Insufficient permissions');
+  if (!(await hasPermission(session, 'organization:update', orgId)))
+    throw new Error('Keine ausreichende Berechtigung.');
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
     select: { small_logo_url: true },
   });
-  if (!org) throw new Error('Organization not found');
+  if (!org) throw new Error('Organisation nicht gefunden.');
 
   if (org.small_logo_url && org.small_logo_url.includes('supabase')) {
     try {
@@ -725,7 +727,7 @@ export async function getOrganizationWithRelations(orgId: string) {
     },
   });
 
-  if (!org) throw new Error('Organization not found');
+  if (!org) throw new Error('Organisation nicht gefunden.');
 
   return org;
 }

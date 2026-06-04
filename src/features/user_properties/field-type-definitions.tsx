@@ -3,6 +3,7 @@ import {
   Hash,
   Euro,
   Layers,
+  ListChecks,
   Calendar,
   Clock,
   Phone,
@@ -17,12 +18,21 @@ export type FieldTypeKey =
   | 'number'
   | 'boolean'
   | 'select'
+  | 'multiselect'
   | 'currency'
   | 'group'
   | 'date'
   | 'time'
   | 'phone'
   | 'mail';
+
+export type ConfigurableFieldTypeKey = Exclude<FieldTypeKey, 'multiselect'>;
+
+export function isConfigurableFieldTypeKey(
+  key: FieldTypeKey
+): key is ConfigurableFieldTypeKey {
+  return key !== 'multiselect';
+}
 
 export type FieldTypeDefinition = {
   key: FieldTypeKey;
@@ -42,13 +52,15 @@ export const FIELD_TYPE_DEFINITIONS: FieldTypeDefinition[] = [
   { key: 'date', label: 'Datum', Icon: Calendar },
   { key: 'time', label: 'Uhrzeit', Icon: Clock },
   { key: 'select', label: 'Auswahl', Icon: Layers },
+  { key: 'multiselect', label: 'Mehrfachauswahl', Icon: ListChecks },
   // { key: 'group', label: 'Feldgruppe', Icon: LayoutDashboard },
 ];
 
-const DEFINITIONS_BY_KEY = new Map(
-  FIELD_TYPE_DEFINITIONS.map((d) => [d.key, d])
-);
+const DEFINITIONS_BY_KEY: ReadonlyMap<FieldTypeKey, FieldTypeDefinition> =
+  new Map(FIELD_TYPE_DEFINITIONS.map((d) => [d.key, d]));
 
+// `group` remains a legacy/display-only union member and is intentionally not
+// accepted by this runtime guard because group fields are not configurable.
 const FIELD_TYPE_KEYS: ReadonlySet<string> = new Set(
   FIELD_TYPE_DEFINITIONS.map((d) => d.key)
 );
@@ -66,13 +78,33 @@ export function getFieldTypeDefinition(
   return DEFINITIONS_BY_KEY.get(key);
 }
 
+const FIELD_TYPE_LABELS: Readonly<Record<FieldTypeKey, string>> = {
+  text: 'Text',
+  number: 'Zahl',
+  boolean: 'Ja/Nein',
+  select: 'Auswahl',
+  multiselect: 'Mehrfachauswahl',
+  currency: 'Währung',
+  group: 'Gruppe',
+  date: 'Datum',
+  time: 'Uhrzeit',
+  phone: 'Telefon',
+  mail: 'E-Mail',
+};
+
+export function getFieldTypeLabel(
+  key: string | null | undefined
+): string | null {
+  return isFieldTypeKey(key) ? FIELD_TYPE_LABELS[key] : null;
+}
+
 /** Default set of field types that are selectable (configurable via PropertyConfiguration). */
 export const DEFAULT_SELECTABLE_FIELD_TYPES: Array<
   'text' | 'number' | 'boolean' | 'select'
 > = ['text', 'number', 'boolean', 'select'];
 
-/** Field types available when creating a custom field in template (Vorlage) context. Matches FIELD_TYPE_DEFINITIONS. */
-export const VORLAGE_SELECTABLE_FIELD_TYPES: FieldTypeKey[] = [
+/** Field types available when creating a custom field in template (Vorlage) context. */
+export const VORLAGE_SELECTABLE_FIELD_TYPES: ConfigurableFieldTypeKey[] = [
   'text',
   'number',
   'boolean',

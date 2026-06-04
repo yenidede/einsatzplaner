@@ -105,11 +105,12 @@ function normalizeCustomDatatype(
 ): AnalyticsDimensionDatatype | null {
   if (
     datatype === 'select' ||
+    datatype === 'multiselect' ||
     datatype === 'boolean' ||
     datatype === 'date' ||
     datatype === 'number'
   ) {
-    return datatype;
+    return datatype === 'multiselect' ? 'multi-select' : datatype;
   }
 
   return null;
@@ -272,8 +273,7 @@ export function getTimeframeLabel(
       return 'letzte 90 Tage';
     case 'thisYear':
       return 'dieses Jahr';
-    case 'custom':
-    {
+    case 'custom': {
       if (!timeframe.from || !timeframe.to) {
         return 'benutzerdefiniert';
       }
@@ -281,10 +281,7 @@ export function getTimeframeLabel(
       const fromDate = parseISO(timeframe.from);
       const toDate = parseISO(timeframe.to);
 
-      if (
-        Number.isNaN(fromDate.getTime()) ||
-        Number.isNaN(toDate.getTime())
-      ) {
+      if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
         return 'benutzerdefiniert';
       }
 
@@ -435,6 +432,16 @@ function getRawBucketsForDimension(
   if (descriptor.datatype === 'boolean' && typeof customValue === 'string') {
     const bucket = createTextBucket(mapBooleanLabel(customValue));
     return bucket ? [bucket] : [];
+  }
+
+  if (
+    descriptor.datatype === 'multi-select' &&
+    typeof customValue === 'string'
+  ) {
+    return customValue
+      .split(',')
+      .map((value) => createTextBucket(value.trim()))
+      .filter((value): value is RawBucketValue => value !== null);
   }
 
   const bucket = createTextBucket(String(customValue));

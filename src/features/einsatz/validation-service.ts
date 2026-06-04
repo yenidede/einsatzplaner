@@ -10,7 +10,7 @@ import { EinsatzCreate } from './types';
 async function ValidateDynamicFormFields(templateId: string) {
   const template = await getTemplateById(templateId);
   if (!template) {
-    throw new Error('Template not found');
+    throw new Error('Vorlage nicht gefunden.');
   }
   const fields = template.template_field;
 

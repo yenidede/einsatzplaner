@@ -201,6 +201,8 @@ export function PropertyConfiguration({
             <SelectFieldSettings
               options={config.options || []}
               defaultOption={config.defaultOption}
+              defaultOptions={config.defaultOptions}
+              isMultiSelect={config.isMultiSelect}
               onChange={onConfigChange}
               errors={getFieldError('options')}
             />

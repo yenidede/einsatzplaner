@@ -47,13 +47,53 @@ export function validatePropertyConfig(
       });
     }
 
+    const normalizedOptions = (config.options ?? []).map((option) =>
+      option.trim().toLocaleLowerCase('de-AT')
+    );
+
+    if (normalizedOptions.some((option) => option.length === 0)) {
+      errors.push({
+        field: 'options',
+        message: 'Auswahloptionen dürfen nicht leer sein',
+      });
+    }
+
+    if ((config.options ?? []).some((option) => option.includes(','))) {
+      errors.push({
+        field: 'options',
+        message: 'Auswahloptionen dürfen kein Komma enthalten',
+      });
+    }
+
+    if (new Set(normalizedOptions).size !== normalizedOptions.length) {
+      errors.push({
+        field: 'options',
+        message:
+          'Auswahloptionen dürfen auch bei unterschiedlicher Groß- und Kleinschreibung nicht doppelt vorkommen',
+      });
+    }
+
     if (
       config.defaultOption &&
       (!config.options || !config.options.includes(config.defaultOption))
     ) {
       errors.push({
         field: 'defaultValue',
-        message: 'Die Standardoption muss in den Auswahloptionen enthalten sein',
+        message:
+          'Die Standardoption muss in den Auswahloptionen enthalten sein',
+      });
+    }
+
+    if (
+      config.isMultiSelect &&
+      (config.defaultOptions ?? []).some(
+        (option) => !config.options?.includes(option)
+      )
+    ) {
+      errors.push({
+        field: 'defaultValue',
+        message:
+          'Alle Standardoptionen müssen in den Auswahloptionen enthalten sein',
       });
     }
   }
@@ -155,7 +195,8 @@ export function validatePropertyConfig(
   ) {
     errors.push({
       field: 'defaultValue',
-      message: 'Der Standardwert muss eine gültige Uhrzeit im Format HH:MM sein',
+      message:
+        'Der Standardwert muss eine gültige Uhrzeit im Format HH:MM sein',
     });
   }
 

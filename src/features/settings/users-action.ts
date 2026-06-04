@@ -8,7 +8,7 @@ import { hasPermission } from '@/lib/auth/authGuard';
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error('Unauthorized');
+  if (!session?.user?.id) throw new Error('Sie sind nicht angemeldet.');
   return session;
 }
 
@@ -42,7 +42,7 @@ export async function getUserOrgRolesAction(orgId: string, userId: string) {
 }
 
 export async function getAllUserOrgRolesAction(orgId: string | undefined) {
-  if (!orgId) throw new Error('Organization ID is required');
+  if (!orgId) throw new Error('Bitte wählen Sie eine Organisation aus.');
 
   const session = await checkUserSession();
 
@@ -50,7 +50,7 @@ export async function getAllUserOrgRolesAction(orgId: string | undefined) {
     !session.user.orgIds.includes(orgId) ||
     !(await hasPermission(session, 'users:manage', orgId))
   ) {
-    throw new Error('Insufficient permissions');
+    throw new Error('Keine ausreichende Berechtigung.');
   }
   const userRoles = await prisma.user_organization_role.findMany({
     where: {
@@ -108,7 +108,7 @@ export async function updateUserRoleAction(
     organizationId
   );
   if (!hasManagePermission) {
-    throw new Error('Insufficient permissions');
+    throw new Error('Keine ausreichende Berechtigung.');
   }
 
   const requestingUserRole = await prisma.user_organization_role.findMany({
@@ -119,7 +119,7 @@ export async function updateUserRoleAction(
     include: { role: true },
   });
 
-  if (!requestingUserRole) throw new Error('Forbidden');
+  if (!requestingUserRole) throw new Error('Keine Berechtigung.');
   const isPermitted =
     requestingUserRole.some(
       (role) => role.role?.name === 'Organisationsverwaltung'
@@ -127,7 +127,7 @@ export async function updateUserRoleAction(
     requestingUserRole.some((role) => role.role?.abbreviation === 'OV') ||
     requestingUserRole.some((role) => role.role?.name === 'Superadmin');
 
-  if (!isPermitted) throw new Error('Insufficient permissions');
+  if (!isPermitted) throw new Error('Keine ausreichende Berechtigung.');
 
   const role = await prisma.role.findFirst({
     where: {
@@ -135,7 +135,7 @@ export async function updateUserRoleAction(
     },
   });
 
-  if (!role) throw new Error(`Role ${roleAbbreviation} not found`);
+  if (!role) throw new Error(`Rolle ${roleAbbreviation} wurde nicht gefunden.`);
 
   if (action === 'add') {
     const existing = await prisma.user_organization_role.findFirst({
@@ -147,7 +147,7 @@ export async function updateUserRoleAction(
     });
 
     if (existing) {
-      return { message: 'Role already assigned' };
+      return { message: 'Diese Rolle ist bereits zugewiesen.' };
     }
 
     await prisma.user_organization_role.create({
@@ -169,7 +169,7 @@ export async function updateUserRoleAction(
 
   revalidatePath(`/organization/${organizationId}`);
 
-  return { message: 'Role updated successfully' };
+  return { message: 'Rolle wurde erfolgreich aktualisiert.' };
 }
 
 export async function removeUserFromOrganizationAction(
@@ -187,7 +187,7 @@ export async function removeUserFromOrganizationAction(
   });
 
   if (!requestingUserRoles || requestingUserRoles.length === 0) {
-    throw new Error('Forbidden');
+    throw new Error('Keine Berechtigung.');
   }
 
   const isSuperadmin = requestingUserRoles.some(
@@ -213,12 +213,12 @@ export async function removeUserFromOrganizationAction(
 
   if (targetIsSuperadmin && !isSuperadmin) {
     throw new Error(
-      'Only Superadmins can remove other Superadmins from the organization'
+      'Nur Superadmins können andere Superadmins aus der Organisation entfernen.'
     );
   }
 
   if (!isOV && !isSuperadmin) {
-    throw new Error('Insufficient permissions to remove users');
+    throw new Error('Keine Berechtigung zum Entfernen von Benutzern.');
   }
 
   await prisma.user_organization_role.deleteMany({
@@ -230,7 +230,7 @@ export async function removeUserFromOrganizationAction(
 
   revalidatePath(`/organization/${organizationId}`);
 
-  return { message: 'User removed from organization' };
+  return { message: 'Benutzer wurde aus der Organisation entfernt.' };
 }
 
 export async function promoteToSuperadminAction(

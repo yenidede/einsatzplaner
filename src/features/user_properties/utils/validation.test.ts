@@ -20,6 +20,8 @@ function createBaseConfig(
     booleanDefaultValue: null,
     options: [],
     defaultOption: undefined,
+    defaultOptions: [],
+    isMultiSelect: false,
     isRequired: false,
     defaultValue: '',
     ...overrides,
@@ -81,7 +83,8 @@ describe('validatePropertyConfig', () => {
 
     expect(errors).toContainEqual({
       field: 'defaultValue',
-      message: 'Der Standardwert muss eine gültige Uhrzeit im Format HH:MM sein',
+      message:
+        'Der Standardwert muss eine gültige Uhrzeit im Format HH:MM sein',
     });
   });
 
@@ -113,6 +116,52 @@ describe('validatePropertyConfig', () => {
     expect(errors).toContainEqual({
       field: 'defaultValue',
       message: 'Die Standardoption muss in den Auswahloptionen enthalten sein',
+    });
+  });
+
+  it('lehnt kommaseparierte Auswahloptionen ab', () => {
+    const errors = validatePropertyConfig(
+      createBaseConfig({
+        fieldType: 'select',
+        options: ['Aufbau, Abbau'],
+      })
+    );
+
+    expect(errors).toContainEqual({
+      field: 'options',
+      message: 'Auswahloptionen dürfen kein Komma enthalten',
+    });
+  });
+
+  it('lehnt doppelte Auswahloptionen unabhängig von Schreibweise und Leerzeichen ab', () => {
+    const errors = validatePropertyConfig(
+      createBaseConfig({
+        fieldType: 'select',
+        options: ['Technik', ' technik '],
+      })
+    );
+
+    expect(errors).toContainEqual({
+      field: 'options',
+      message:
+        'Auswahloptionen dürfen auch bei unterschiedlicher Groß- und Kleinschreibung nicht doppelt vorkommen',
+    });
+  });
+
+  it('validiert alle Standardoptionen einer Mehrfachauswahl', () => {
+    const errors = validatePropertyConfig(
+      createBaseConfig({
+        fieldType: 'select',
+        isMultiSelect: true,
+        options: ['Technik'],
+        defaultOptions: ['Sanität'],
+      })
+    );
+
+    expect(errors).toContainEqual({
+      field: 'defaultValue',
+      message:
+        'Alle Standardoptionen müssen in den Auswahloptionen enthalten sein',
     });
   });
 });

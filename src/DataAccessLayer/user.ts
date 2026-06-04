@@ -384,7 +384,7 @@ export async function updateUserSettings(
     });
 
     if (!currentUser) {
-      throw new Error('User not found');
+      throw new Error('Benutzer nicht gefunden.');
     }
 
     const updateData = {
@@ -402,9 +402,17 @@ export async function updateUserSettings(
       data: updateData,
     });
   } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to update user settings: ${errorMessage}`);
+    if (
+      error instanceof Error &&
+      error.message === 'Benutzer nicht gefunden.'
+    ) {
+      throw error;
+    }
+    console.error(
+      'Benutzereinstellungen konnten nicht aktualisiert werden:',
+      error
+    );
+    throw new Error('Benutzereinstellungen konnten nicht aktualisiert werden.');
   }
 }
 

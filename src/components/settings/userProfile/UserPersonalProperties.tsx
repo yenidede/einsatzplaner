@@ -4,6 +4,12 @@ import SwitchIcon from '@/components/icon/SwitchIcon';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { UserPropertyWithField } from '@/features/user_properties/user_property-dal';
+import FormSelectField from '@/components/form/formSelectField';
+import FormMultiSelectField from '@/components/form/multiSelectFormField';
+import {
+  parseMultiSelectValue,
+  serializeMultiSelectValue,
+} from '@/features/user_properties/utils/select-values';
 
 interface UserPersonalPropertiesProps {
   organizationName: string;
@@ -20,7 +26,9 @@ export function UserPersonalProperties({
 }: UserPersonalPropertiesProps) {
   const renderField = (property: UserPropertyWithField) => {
     const value =
-      propertyValues[property.id] || property.field.default_value || '';
+      property.id in propertyValues
+        ? propertyValues[property.id]
+        : property.field.default_value || '';
     const fieldType = property.field.type?.datatype;
 
     switch (fieldType) {
@@ -77,18 +85,49 @@ export function UserPersonalProperties({
 
       case 'select':
         return (
-          <select
+          <FormSelectField
+            name={property.field.name ?? 'Auswahlfeld'}
             value={value}
-            onChange={(e) => onPropertyValueChange(property.id, e.target.value)}
-            className="w-full rounded-md bg-white px-3 py-2 outline outline-offset-1 outline-slate-300"
-          >
-            <option value="">Bitte wählen...</option>
-            {property.field.allowed_values.map((option, index) => (
-              <option key={index} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            options={property.field.allowed_values}
+            errors={[]}
+            hideLabel
+            allowClear={!property.field.is_required}
+            onValueChange={(nextValue) =>
+              onPropertyValueChange(
+                property.id,
+                nextValue === '_null_' ? '' : nextValue
+              )
+            }
+            onResetUnavailableValue={() =>
+              onPropertyValueChange(
+                property.id,
+                property.field.default_value ?? ''
+              )
+            }
+          />
+        );
+
+      case 'multiselect':
+        return (
+          <FormMultiSelectField
+            name={property.field.name ?? 'Mehrfachauswahlfeld'}
+            value={parseMultiSelectValue(value)}
+            options={property.field.allowed_values}
+            errors={[]}
+            hideLabel
+            onValueChange={(nextValues) =>
+              onPropertyValueChange(
+                property.id,
+                serializeMultiSelectValue(nextValues)
+              )
+            }
+            onResetUnavailableValues={() =>
+              onPropertyValueChange(
+                property.id,
+                property.field.default_value ?? ''
+              )
+            }
+          />
         );
 
       default:

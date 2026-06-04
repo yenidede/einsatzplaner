@@ -95,7 +95,19 @@ export function FileUpload<TFieldName extends string>({
 			{/* Drop area */}
 			<div
 				role="button"
-				onClick={openFileDialog}
+				tabIndex={disabled ? -1 : 0}
+				aria-disabled={disabled}
+				onClick={() => {
+					if (disabled) return
+					openFileDialog()
+				}}
+				onKeyDown={(event) => {
+					if (disabled) return
+					if (event.key === 'Enter' || event.key === ' ') {
+						event.preventDefault()
+						openFileDialog()
+					}
+				}}
 				onDragEnter={handleDragEnter}
 				onDragLeave={handleDragLeave}
 				onDragOver={handleDragOver}
@@ -122,7 +134,7 @@ export function FileUpload<TFieldName extends string>({
             Upload
           </p> */}
 					<p className="text-foreground font-medium text-sm mb-2">
-						Datei hier ablegen oder zum Auswaehlen klicken
+						Datei hier ablegen oder zum Auswählen klicken
 					</p>
 					<div className="text-muted-foreground/70 flex flex-wrap justify-center gap-1 text-xs">
 						{placeholder}
