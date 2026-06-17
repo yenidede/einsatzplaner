@@ -31,6 +31,7 @@ import { UsersManagementSection } from '@/components/settings/org/UserManagement
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
 import { TemplatesOverviewSection } from '@/components/template/TemplatesOverviewSection';
 import { OrganizationPdfExportForm } from '@/components/settings/org/OrganizationPdfExportForm';
+import { DocumentTemplateManager } from '@/components/document-template/DocumentTemplateManager';
 import { PageHeader } from '@/components/settings/PageHeader';
 import {
   ORG_MANAGE_NAV_ITEMS,
@@ -88,8 +89,12 @@ export default function OrganizationManagePage() {
   const [maxParticipantsPerHelper, setMaxParticipantsPerHelper] = useState('');
   const [defaultStarttime, setDefaultStarttime] = useState('09:00');
   const [defaultEndtime, setDefaultEndtime] = useState('10:00');
-  const [defaultStarttimeError, setDefaultStarttimeError] = useState<string | null>(null);
-  const [defaultEndtimeError, setDefaultEndtimeError] = useState<string | null>(null);
+  const [defaultStarttimeError, setDefaultStarttimeError] = useState<
+    string | null
+  >(null);
+  const [defaultEndtimeError, setDefaultEndtimeError] = useState<string | null>(
+    null
+  );
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [smallLogoUrl, setSmallLogoUrl] = useState<string>('');
@@ -251,10 +256,9 @@ export default function OrganizationManagePage() {
     currentUserWithRoles?.filter(
       (userRole) => userRole.user.id === session?.user?.id
     ) ?? [];
-  const isSuperadmin =
-    currentUserRoles.some(
-      (role) => role.role.name.toLowerCase() === 'superadmin'
-    );
+  const isSuperadmin = currentUserRoles.some(
+    (role) => role.role.name.toLowerCase() === 'superadmin'
+  );
 
   const updateMutation = useUpdateOrganization(orgId);
 
@@ -494,7 +498,7 @@ export default function OrganizationManagePage() {
     return <div>Keine Berechtigung. Weiterleitung...</div>;
   }
   if (isLoadingUser || orgLoading) {
-    return <SettingsLoadingSkeleton sidebarItems={7} />;
+    return <SettingsLoadingSkeleton sidebarItems={8} />;
   }
 
   if (orgError || !orgData) {
@@ -778,6 +782,20 @@ export default function OrganizationManagePage() {
               />
             </CardContent>
           </Card>
+        </section>
+
+        {/* Document Templates Section */}
+        <section
+          id="document-templates"
+          ref={(el) => {
+            sectionRefs.current['document-templates'] = el;
+          }}
+          aria-labelledby="document-templates-heading"
+        >
+          <h2 id="document-templates-heading" className="sr-only">
+            Dokumentvorlagen
+          </h2>
+          <DocumentTemplateManager organizationId={orgId} />
         </section>
 
         {/* PDF-Export Section */}

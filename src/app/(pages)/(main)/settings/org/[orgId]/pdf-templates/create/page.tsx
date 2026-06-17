@@ -29,7 +29,7 @@ export default async function NewTemplatePage({
     <div className="-mb-8 flex h-[calc(100dvh-6rem)] min-h-0 w-full max-w-none overflow-hidden overscroll-none px-2 sm:px-3 lg:px-4">
       <EditorLayout
         organizationId={orgId}
-        initialName="Neue BuchungsbestÃ¤tigung"
+        initialName="Neue Buchungsbestätigung"
         initialTemplate={createDefaultPdfmeTemplate()}
         initialFooterConfig={null}
         initialSampleEinsatzId={null}

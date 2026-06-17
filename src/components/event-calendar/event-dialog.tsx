@@ -57,6 +57,7 @@ import {
 } from '../form/utils';
 import TooltipCustom from '@/components/tooltip-custom';
 import { GenerateBookingConfirmationButton } from '@/features/pdf-template/components/dialogs/GenerateBookingConfirmationDialog';
+import { GenerateDocumentTemplateButtons } from '@/components/document-template/GenerateDocumentTemplateButtons';
 import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
@@ -1635,6 +1636,10 @@ export function EventDialogVerwaltung({
                 templates={pdfTemplates}
                 onTemplateChange={setSelectedPdfTemplateId}
                 isLoading={isPdfTemplatesLoading}
+              />
+              <GenerateDocumentTemplateButtons
+                assignmentId={currentEinsatz?.id}
+                organizationId={activeOrgId}
               />
             </div>
             <div className="flex flex-1 flex-wrap items-center justify-end gap-4">

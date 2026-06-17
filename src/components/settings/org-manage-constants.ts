@@ -16,6 +16,7 @@ export const ORG_MANAGE_NAV_ITEMS = [
   { id: 'vorlagen', label: 'Vorlagen & eigene Felder', icon: LayoutTemplate },
   { id: 'user-properties', label: 'Personeneigenschaften', icon: FileText },
   { id: 'users', label: 'Benutzer', icon: Users },
+  { id: 'document-templates', label: 'Dokumentvorlagen', icon: FileText },
   { id: 'pdf-export', label: 'PDF-Export', icon: FileDown },
 ] as const;
 
