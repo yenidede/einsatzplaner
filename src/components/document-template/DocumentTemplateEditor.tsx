@@ -7,9 +7,16 @@ import {
   useRef,
   useState,
   type DragEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
+import {
+  EditorContent,
+  useEditor,
+  type Editor,
+  type JSONContent,
+} from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
@@ -19,7 +26,7 @@ import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
-import { Extension, mergeAttributes, Node } from '@tiptap/core';
+import { Extension, isNodeSelection, mergeAttributes, Node } from '@tiptap/core';
 import {
   AlignCenter,
   AlignLeft,
@@ -71,6 +78,7 @@ import {
   exportDocumentTemplatePreview,
   uploadDocumentTemplateImage,
   updateDocumentTemplate,
+  getOrganizationDocumentTemplateLogoUrl,
 } from '@/features/document-template/server/document-template.actions';
 import { createDefaultDocumentTemplateContent } from '@/features/document-template/lib/document-template-defaults';
 import { DocumentTemplatePreview } from './DocumentTemplatePreview';
@@ -132,6 +140,21 @@ import {
 
 type EditableArea = 'header' | 'body' | 'footer';
 type SaveStatus = 'dirty' | 'saving' | 'saved';
+type SidebarResizeSide = 'left' | 'right';
+type SelectedDynamicField = {
+  area: EditableArea;
+  fieldKey: string;
+  label: string;
+};
+type SidebarResizeState = {
+  side: SidebarResizeSide;
+  startX: number;
+  startWidth: number;
+};
+type PendingImageInsert = {
+  targetArea: EditableArea;
+  position: number | null;
+};
 const ALIGNMENT_OPTIONS: Array<'left' | 'center' | 'right'> = [
   'left',
   'center',
@@ -149,6 +172,38 @@ const A4_EDITOR_WIDTH_PX = 794;
 const A4_EDITOR_HEIGHT_PX = 1123;
 const MM_TO_EDITOR_PX = A4_EDITOR_WIDTH_PX / 210;
 const DOCUMENT_FIELD_DRAG_MIME = 'application/document-template-field';
+const DOCUMENT_BLOCK_DRAG_MIME = 'application/document-template-block';
+const COLLAPSED_SIDEBAR_WIDTH_PX = 48;
+const SIDEBAR_WIDTH = {
+  left: { min: 240, default: 300, max: 420 },
+  right: { min: 280, default: 340, max: 520 },
+};
+const SIDEBAR_STORAGE_KEYS = {
+  leftWidth: 'documentTemplateEditor.leftSidebarWidth',
+  rightWidth: 'documentTemplateEditor.rightSidebarWidth',
+  leftCollapsed: 'documentTemplateEditor.leftSidebarCollapsed',
+  rightCollapsed: 'documentTemplateEditor.rightSidebarCollapsed',
+};
+
+function clampSidebarWidth(side: SidebarResizeSide, value: number): number {
+  const limits = SIDEBAR_WIDTH[side];
+  return Math.min(limits.max, Math.max(limits.min, value));
+}
+
+function readStoredNumber(key: string, fallback: number): number {
+  const storedValue = window.localStorage.getItem(key);
+  if (!storedValue) return fallback;
+
+  const parsedValue = Number(storedValue);
+  return Number.isFinite(parsedValue) ? parsedValue : fallback;
+}
+
+function readStoredBoolean(key: string, fallback: boolean): boolean {
+  const storedValue = window.localStorage.getItem(key);
+  if (storedValue === 'true') return true;
+  if (storedValue === 'false') return false;
+  return fallback;
+}
 
 function mmToPx(value: number): number {
   return Math.round(value * MM_TO_EDITOR_PX);
@@ -289,6 +344,8 @@ const DynamicFieldNode = Node.create({
   group: 'inline',
   inline: true,
   atom: true,
+  selectable: true,
+  draggable: false,
 
   addAttributes() {
     return {
@@ -302,27 +359,98 @@ const DynamicFieldNode = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
+    const fieldKey =
+      typeof HTMLAttributes.fieldKey === 'string'
+        ? HTMLAttributes.fieldKey
+        : '';
+    const label =
+      typeof HTMLAttributes.label === 'string'
+        ? HTMLAttributes.label
+        : 'Dynamisches Feld';
+
     return [
       'span',
       mergeAttributes(HTMLAttributes, {
-        'data-dynamic-field': HTMLAttributes.fieldKey,
+        'data-dynamic-field': fieldKey,
+        contenteditable: 'false',
         class: 'document-field-chip',
+        role: 'button',
+        'aria-label': `Dynamisches Feld ${label}`,
       }),
-      HTMLAttributes.label,
+      label,
     ];
   },
 
   addNodeView() {
-    return ({ node }) => {
+    return ({ node, editor, getPos }) => {
       const dom = document.createElement('span');
-      dom.className = 'document-field-chip';
-      dom.dataset.dynamicField =
-        typeof node.attrs.fieldKey === 'string' ? node.attrs.fieldKey : '';
-      dom.textContent =
-        typeof node.attrs.label === 'string'
-          ? node.attrs.label
-          : 'Dynamisches Feld';
-      return { dom };
+      const updateDom = () => {
+        const fieldKey =
+          typeof node.attrs.fieldKey === 'string' ? node.attrs.fieldKey : '';
+        const label =
+          typeof node.attrs.label === 'string'
+            ? node.attrs.label
+            : 'Dynamisches Feld';
+
+        dom.className = 'document-field-chip';
+        dom.dataset.dynamicField = fieldKey;
+        dom.contentEditable = 'false';
+        dom.draggable = false;
+        dom.textContent = label;
+        dom.setAttribute('role', 'button');
+        dom.setAttribute('aria-label', `Dynamisches Feld ${label}`);
+      };
+      const selectNode = () => {
+        const position = typeof getPos === 'function' ? getPos() : undefined;
+        if (typeof position !== 'number') return;
+
+        editor.commands.setNodeSelection(position);
+        editor.view.focus();
+      };
+      const handleMouseDown = (event: MouseEvent) => {
+        event.preventDefault();
+        selectNode();
+      };
+      const handleContextMenu = () => {
+        selectNode();
+      };
+
+      updateDom();
+      dom.addEventListener('mousedown', handleMouseDown);
+      dom.addEventListener('contextmenu', handleContextMenu);
+
+      return {
+        dom,
+        update: (updatedNode) => {
+          if (updatedNode.type.name !== node.type.name) return false;
+          node = updatedNode;
+          updateDom();
+          return true;
+        },
+        destroy: () => {
+          dom.removeEventListener('mousedown', handleMouseDown);
+          dom.removeEventListener('contextmenu', handleContextMenu);
+        },
+      };
+    };
+  },
+
+  addKeyboardShortcuts() {
+    const deleteSelectedDynamicField = () => {
+      const { selection } = this.editor.state;
+      if (
+        isNodeSelection(selection) &&
+        selection.node.type.name === this.name
+      ) {
+        return this.editor.commands.deleteSelection();
+      }
+
+      return false;
+    };
+
+    return {
+      Backspace: deleteSelectedDynamicField,
+      Delete: deleteSelectedDynamicField,
     };
   },
 });
@@ -418,7 +546,11 @@ const TemplateImageNode = Node.create({
         const placeholder = document.createElement('span');
         placeholder.className = 'document-template-image-placeholder';
         placeholder.textContent =
-          typeof node.attrs.alt === 'string' ? node.attrs.alt : 'Bild';
+          src === '{{organizationLogoUrl}}'
+            ? 'Kein Organisationslogo hinterlegt.'
+            : typeof node.attrs.alt === 'string'
+              ? node.attrs.alt
+              : 'Bild';
         wrapper.append(placeholder);
         return { dom: wrapper };
       }
@@ -647,6 +779,32 @@ function createSampleResolvedFields(
   );
 }
 
+function getSelectedDynamicField(
+  editor: Editor | null,
+  area: EditableArea
+): SelectedDynamicField | null {
+  if (!editor) return null;
+
+  const { selection } = editor.state;
+  if (
+    !isNodeSelection(selection) ||
+    selection.node.type.name !== 'dynamicField'
+  ) {
+    return null;
+  }
+
+  const fieldKey =
+    typeof selection.node.attrs.fieldKey === 'string'
+      ? selection.node.attrs.fieldKey
+      : '';
+  const label =
+    typeof selection.node.attrs.label === 'string'
+      ? selection.node.attrs.label
+      : 'Dynamisches Feld';
+
+  return { area, fieldKey, label };
+}
+
 function toRichTextNode(value: JSONContent): DocumentTemplateRichTextNode {
   return {
     type: value.type ?? 'doc',
@@ -808,6 +966,7 @@ export function DocumentTemplateEditor({
     useState<DocumentTemplateContent>(initialContent);
   const [fieldSearch, setFieldSearch] = useState('');
   const [fontSize, setFontSize] = useState('16');
+  const [textColor, setTextColor] = useState(TEXT_COLOR_OPTIONS[0].value);
   const [spacingTop, setSpacingTop] = useState('0');
   const [spacingBottom, setSpacingBottom] = useState('16');
   const [zoom, setZoom] = useState(100);
@@ -819,15 +978,47 @@ export function DocumentTemplateEditor({
   const [activeArea, setActiveArea] = useState<EditableArea>('body');
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(
+    SIDEBAR_WIDTH.left.default
+  );
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(
+    SIDEBAR_WIDTH.right.default
+  );
+  const [sidebarStorageReady, setSidebarStorageReady] = useState(false);
+  const [resizingSidebar, setResizingSidebar] =
+    useState<SidebarResizeSide | null>(null);
+  const [selectedDynamicField, setSelectedDynamicField] =
+    useState<SelectedDynamicField | null>(null);
+  const [organizationLogoUrl, setOrganizationLogoUrl] = useState<string | null>(
+    null
+  );
+  const [pendingImageInsert, setPendingImageInsert] =
+    useState<PendingImageInsert | null>(null);
   const [measuredBodyHeight, setMeasuredBodyHeight] = useState(0);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const bodyMeasureRef = useRef<HTMLDivElement | null>(null);
-  const isAutoPaginatingRef = useRef(false);
+  const sidebarResizeRef = useRef<SidebarResizeState | null>(null);
+  const overflowWarningShownRef = useRef(false);
   const bodyUserInteractionRef = useRef(false);
 
   const previewFields = useMemo(
-    () => createSampleResolvedFields(fields),
-    [fields]
+    () => {
+      const resolvedFields = createSampleResolvedFields(fields);
+      const logoField = resolvedFields.organizationLogoUrl;
+      if (logoField && organizationLogoUrl) {
+        return {
+          ...resolvedFields,
+          organizationLogoUrl: {
+            ...logoField,
+            rawValue: organizationLogoUrl,
+            formattedValue: organizationLogoUrl,
+          },
+        };
+      }
+
+      return resolvedFields;
+    },
+    [fields, organizationLogoUrl]
   );
   const fieldByKey = useMemo(
     () => new Map(fields.map((field) => [field.key, field])),
@@ -851,6 +1042,12 @@ export function DocumentTemplateEditor({
   const markDirty = useCallback(() => {
     setSaveStatus((current) => (current === 'saving' ? current : 'dirty'));
   }, []);
+  const updateSelectedDynamicField = useCallback(
+    (targetEditor: Editor | null, area: EditableArea) => {
+      setSelectedDynamicField(getSelectedDynamicField(targetEditor, area));
+    },
+    []
+  );
   const editor = useEditor({
     immediatelyRender: false,
     extensions: createEditorExtensions(),
@@ -859,7 +1056,7 @@ export function DocumentTemplateEditor({
     editorProps: {
       attributes: {
         class:
-          'document-template-prose document-template-body-editor min-h-[720px] outline-none focus:outline-none',
+          'document-template-prose document-template-body-editor outline-none focus:outline-none',
       },
       handleDOMEvents: {
         focus: () => {
@@ -882,6 +1079,10 @@ export function DocumentTemplateEditor({
         ...current,
         document: toRichTextNode(editor.getJSON()),
       }));
+    },
+    onSelectionUpdate: ({ editor }) => {
+      setActiveArea('body');
+      updateSelectedDynamicField(editor, 'body');
     },
   });
   const headerEditor = useEditor({
@@ -920,6 +1121,10 @@ export function DocumentTemplateEditor({
         },
       }));
     },
+    onSelectionUpdate: ({ editor }) => {
+      setActiveArea('header');
+      updateSelectedDynamicField(editor, 'header');
+    },
   });
   const footerEditor = useEditor({
     immediatelyRender: false,
@@ -957,6 +1162,10 @@ export function DocumentTemplateEditor({
         },
       }));
     },
+    onSelectionUpdate: ({ editor }) => {
+      setActiveArea('footer');
+      updateSelectedDynamicField(editor, 'footer');
+    },
   });
 
   const activeEditor =
@@ -965,6 +1174,145 @@ export function DocumentTemplateEditor({
       : activeArea === 'footer'
         ? footerEditor
         : editor;
+
+  useEffect(() => {
+    setLeftSidebarWidth(
+      clampSidebarWidth(
+        'left',
+        readStoredNumber(
+          SIDEBAR_STORAGE_KEYS.leftWidth,
+          SIDEBAR_WIDTH.left.default
+        )
+      )
+    );
+    setRightSidebarWidth(
+      clampSidebarWidth(
+        'right',
+        readStoredNumber(
+          SIDEBAR_STORAGE_KEYS.rightWidth,
+          SIDEBAR_WIDTH.right.default
+        )
+      )
+    );
+    setLeftSidebarCollapsed(
+      readStoredBoolean(SIDEBAR_STORAGE_KEYS.leftCollapsed, false)
+    );
+    setRightSidebarCollapsed(
+      readStoredBoolean(SIDEBAR_STORAGE_KEYS.rightCollapsed, false)
+    );
+    setSidebarStorageReady(true);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getOrganizationDocumentTemplateLogoUrl(organizationId)
+      .then((logoUrl) => {
+        if (isMounted) {
+          setOrganizationLogoUrl(logoUrl);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setOrganizationLogoUrl(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [organizationId]);
+
+  useEffect(() => {
+    if (!sidebarStorageReady) return;
+    window.localStorage.setItem(
+      SIDEBAR_STORAGE_KEYS.leftWidth,
+      String(leftSidebarWidth)
+    );
+  }, [leftSidebarWidth, sidebarStorageReady]);
+
+  useEffect(() => {
+    if (!sidebarStorageReady) return;
+    window.localStorage.setItem(
+      SIDEBAR_STORAGE_KEYS.rightWidth,
+      String(rightSidebarWidth)
+    );
+  }, [rightSidebarWidth, sidebarStorageReady]);
+
+  useEffect(() => {
+    if (!sidebarStorageReady) return;
+    window.localStorage.setItem(
+      SIDEBAR_STORAGE_KEYS.leftCollapsed,
+      String(leftSidebarCollapsed)
+    );
+  }, [leftSidebarCollapsed, sidebarStorageReady]);
+
+  useEffect(() => {
+    if (!sidebarStorageReady) return;
+    window.localStorage.setItem(
+      SIDEBAR_STORAGE_KEYS.rightCollapsed,
+      String(rightSidebarCollapsed)
+    );
+  }, [rightSidebarCollapsed, sidebarStorageReady]);
+
+  useEffect(() => {
+    if (!resizingSidebar) return;
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const resizeState = sidebarResizeRef.current;
+      if (!resizeState) return;
+
+      const delta = event.clientX - resizeState.startX;
+      const nextWidth =
+        resizeState.side === 'left'
+          ? resizeState.startWidth + delta
+          : resizeState.startWidth - delta;
+
+      if (resizeState.side === 'left') {
+        setLeftSidebarWidth(clampSidebarWidth('left', nextWidth));
+        return;
+      }
+
+      setRightSidebarWidth(clampSidebarWidth('right', nextWidth));
+    };
+
+    const stopResize = () => {
+      sidebarResizeRef.current = null;
+      setResizingSidebar(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResize);
+    window.addEventListener('pointercancel', stopResize);
+
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResize);
+      window.removeEventListener('pointercancel', stopResize);
+    };
+  }, [resizingSidebar]);
+
+  function startSidebarResize(
+    side: SidebarResizeSide,
+    event: ReactPointerEvent<HTMLDivElement>
+  ) {
+    event.preventDefault();
+    const startWidth =
+      side === 'left' ? leftSidebarWidth : rightSidebarWidth;
+    sidebarResizeRef.current = {
+      side,
+      startX: event.clientX,
+      startWidth,
+    };
+    setResizingSidebar(side);
+  }
 
   function currentContent(): DocumentTemplateContent {
     return {
@@ -1007,6 +1355,42 @@ export function DocumentTemplateEditor({
       .updateAttributes('heading', { [attribute]: nextValue })
       .updateAttributes('infoBox', { [attribute]: nextValue })
       .run();
+  }
+
+  function deleteSelectedDynamicField() {
+    if (
+      !activeEditor ||
+      !isNodeSelection(activeEditor.state.selection) ||
+      activeEditor.state.selection.node.type.name !== 'dynamicField'
+    ) {
+      return;
+    }
+
+    activeEditor.commands.deleteSelection();
+    activeEditor.view.focus();
+    setSelectedDynamicField(null);
+  }
+
+  function showSelectedDynamicFieldInformation() {
+    if (!selectedDynamicField) return;
+
+    const knownField = fieldByKey.get(selectedDynamicField.fieldKey);
+    toast.info(
+      knownField
+        ? `${knownField.label}: ${knownField.description}`
+        : `${selectedDynamicField.label}: ${selectedDynamicField.fieldKey}`
+    );
+  }
+
+  function handleEditorContextMenu(event: ReactMouseEvent<HTMLElement>) {
+    if (!(event.target instanceof Element)) {
+      setSelectedDynamicField(null);
+      return;
+    }
+
+    if (!event.target.closest('[data-dynamic-field]')) {
+      setSelectedDynamicField(null);
+    }
   }
 
   function pageZoomStyle() {
@@ -1084,6 +1468,7 @@ export function DocumentTemplateEditor({
   }
 
   function applyTextColor(value: string) {
+    setTextColor(value);
     activeEditor?.chain().focus().setMark('textStyle', { color: value }).run();
   }
 
@@ -1257,7 +1642,6 @@ export function DocumentTemplateEditor({
         return;
       case 'logo':
         insertOrganizationLogo();
-        toast.success('Logo wurde im Kopfbereich eingefügt.');
         return;
       case 'image':
         imageInputRef.current?.click();
@@ -1337,6 +1721,148 @@ export function DocumentTemplateEditor({
       .run();
   }
 
+  function targetEditorForArea(targetArea: EditableArea) {
+    return targetArea === 'header'
+      ? headerEditor
+      : targetArea === 'footer'
+        ? footerEditor
+        : editor;
+  }
+
+  function contentForDroppedBlock(kind: string): JSONContent | null {
+    switch (kind) {
+      case 'heading':
+        return {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'AbschnittsÃ¼berschrift' }],
+        };
+      case 'paragraph':
+        return {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'ErgÃ¤nzen Sie hier Ihren Dokumenttext.',
+            },
+          ],
+        };
+      case 'infoBox':
+        return {
+          type: 'infoBox',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Hinweis oder wichtige Information fÃ¼r die Buchung.',
+                },
+              ],
+            },
+          ],
+        };
+      case 'columns':
+        return {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Spalte links: ' },
+            { type: 'text', text: 'Inhalt links' },
+            { type: 'hardBreak' },
+            { type: 'text', text: 'Spalte rechts: Inhalt rechts' },
+          ],
+        };
+      case 'signature':
+        return {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Mit herzlichem GruÃŸ' },
+            { type: 'hardBreak' },
+            {
+              type: 'dynamicField',
+              attrs: {
+                fieldKey: 'administrationName',
+                label: 'Verwaltung Name',
+              },
+            },
+            { type: 'hardBreak' },
+            {
+              type: 'dynamicField',
+              attrs: {
+                fieldKey: 'administrationFunction',
+                label: 'Verwaltung Funktion',
+              },
+            },
+          ],
+        };
+      case 'pageBreak':
+        return { type: 'pageBreak' };
+      default:
+        return null;
+    }
+  }
+
+  function insertDroppedBlock(
+    kind: string,
+    targetArea: EditableArea,
+    position: number | null
+  ) {
+    if (kind === 'header' || kind === 'footer') {
+      insertBlock(kind);
+      return;
+    }
+
+    if (kind === 'pageBreak' && targetArea !== 'body') {
+      toast.info('SeitenumbrÃ¼che sind nur im Dokumentinhalt mÃ¶glich.');
+      return;
+    }
+
+    if ((kind === 'infoBox' || kind === 'table') && targetArea !== 'body') {
+      toast.info('Dieser Baustein wird im Dokumentinhalt eingefÃ¼gt.');
+      targetArea = 'body';
+    }
+
+    if (kind === 'image') {
+      setActiveArea(targetArea);
+      setPendingImageInsert({ targetArea, position });
+      imageInputRef.current?.click();
+      return;
+    }
+
+    if (kind === 'logo') {
+      insertOrganizationLogo(targetArea, position ?? undefined);
+      return;
+    }
+
+    const targetEditor = targetEditorForArea(targetArea);
+    if (!targetEditor) return;
+
+    if (kind === 'divider') {
+      targetEditor.chain().focus().setHorizontalRule().run();
+      return;
+    }
+
+    if (kind === 'table') {
+      targetEditor
+        .chain()
+        .focus()
+        .insertTable({ rows: 3, cols: 2, withHeaderRow: true })
+        .run();
+      return;
+    }
+
+    const contentToInsert = contentForDroppedBlock(kind);
+    if (!contentToInsert) return;
+
+    const chain = targetEditor.chain().focus();
+    if (typeof position === 'number') {
+      chain.insertContentAt(position, contentToInsert).run();
+      return;
+    }
+
+    chain.insertContent(contentToInsert).run();
+  }
+
   function insertImageInEditor(args: {
     targetArea: EditableArea;
     src: string;
@@ -1344,6 +1870,7 @@ export function DocumentTemplateEditor({
     width?: number;
     height?: number;
     align?: 'left' | 'center' | 'right';
+    position?: number;
   }) {
     const targetEditor =
       args.targetArea === 'header'
@@ -1373,10 +1900,7 @@ export function DocumentTemplateEditor({
       }));
     }
 
-    targetEditor
-      .chain()
-      .focus()
-      .insertContent({
+    const imageContent: JSONContent = {
         type: 'templateImage',
         attrs: {
           src: args.src,
@@ -1386,20 +1910,34 @@ export function DocumentTemplateEditor({
           align: args.align ?? 'left',
           keepAspectRatio: true,
         },
-      })
-      .run();
+      };
+
+    const chain = targetEditor.chain().focus();
+    if (typeof args.position === 'number') {
+      chain.insertContentAt(args.position, imageContent).run();
+      return;
+    }
+
+    chain.insertContent(imageContent).run();
   }
 
-  function insertOrganizationLogo() {
-    setActiveArea('header');
+  function insertOrganizationLogo(targetArea: EditableArea = activeArea, position?: number) {
+    if (!organizationLogoUrl) {
+      toast.info('Kein Organisationslogo hinterlegt.');
+      return;
+    }
+
+    setActiveArea(targetArea);
     insertImageInEditor({
-      targetArea: 'header',
-      src: '{{organizationLogoUrl}}',
+      targetArea,
+      src: organizationLogoUrl,
       alt: 'Organisationslogo',
-      width: 130,
-      height: 48,
+      width: targetArea === 'body' ? 180 : 120,
+      height: targetArea === 'body' ? 80 : 42,
       align: 'left',
+      position,
     });
+    toast.success('Organisationslogo wurde eingefügt.');
   }
 
   async function handleImageUpload(file: File | undefined) {
@@ -1412,12 +1950,14 @@ export function DocumentTemplateEditor({
       formData.append('organizationId', organizationId);
       formData.append('image', file);
       const result = await uploadDocumentTemplateImage(formData);
+      const targetArea = pendingImageInsert?.targetArea ?? activeArea;
 
       insertImageInEditor({
-        targetArea: activeArea,
+        targetArea,
         src: result.url,
         alt: file.name,
-        align: activeArea === 'footer' ? 'center' : 'left',
+        align: targetArea === 'footer' ? 'center' : 'left',
+        position: pendingImageInsert?.position ?? undefined,
       });
       toast.success('Bild wurde eingefügt.');
     } catch (error) {
@@ -1430,6 +1970,7 @@ export function DocumentTemplateEditor({
       if (imageInputRef.current) {
         imageInputRef.current.value = '';
       }
+      setPendingImageInsert(null);
     }
   }
 
@@ -1454,6 +1995,20 @@ export function DocumentTemplateEditor({
     event: DragEvent<HTMLDivElement>,
     targetArea: EditableArea
   ) {
+    const blockKind = event.dataTransfer.getData(DOCUMENT_BLOCK_DRAG_MIME);
+    if (blockKind) {
+      event.preventDefault();
+      const targetEditor = targetEditorForArea(targetArea);
+      const position =
+        targetEditor?.view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        }) ?? null;
+
+      insertDroppedBlock(blockKind, targetArea, position?.pos ?? null);
+      return;
+    }
+
     const fieldKey = event.dataTransfer.getData(DOCUMENT_FIELD_DRAG_MIME);
     if (!fieldKey) return;
 
@@ -1654,33 +2209,29 @@ export function DocumentTemplateEditor({
       footerHeightPx
   );
   const logicalPageCount = countNodesByType(content.document, 'pageBreak') + 1;
+  const measuredBodyOverflowPx = Math.max(
+    0,
+    measuredBodyHeight - bodyAreaHeightPx * logicalPageCount
+  );
   const pageCount = Math.max(
     logicalPageCount,
     Math.ceil(Math.max(measuredBodyHeight, bodyAreaHeightPx) / bodyAreaHeightPx)
   );
   useEffect(() => {
-    if (!editor || activeArea !== 'body') return;
-    if (!bodyUserInteractionRef.current) return;
+    if (measuredBodyOverflowPx <= 12) {
+      overflowWarningShownRef.current = false;
+      return;
+    }
 
-    const availableHeight = bodyAreaHeightPx * logicalPageCount;
-    if (measuredBodyHeight <= availableHeight + 12) return;
-    if (isAutoPaginatingRef.current) return;
+    if (!bodyUserInteractionRef.current || overflowWarningShownRef.current) {
+      return;
+    }
 
-    isAutoPaginatingRef.current = true;
-    editor.chain().focus().insertContent({ type: 'pageBreak' }).run();
-    bodyUserInteractionRef.current = false;
-    toast.info('Neue Seite wurde erstellt.');
-
-    window.requestAnimationFrame(() => {
-      isAutoPaginatingRef.current = false;
-    });
-  }, [
-    activeArea,
-    bodyAreaHeightPx,
-    editor,
-    logicalPageCount,
-    measuredBodyHeight,
-  ]);
+    overflowWarningShownRef.current = true;
+    toast.info(
+      'Der Inhalt überschreitet die Seite. Bitte fügen Sie eine neue Seite hinzu.'
+    );
+  }, [measuredBodyOverflowPx]);
   const pageIndexes = Array.from({ length: pageCount }, (_, index) => index);
   const saveStatusLabel =
     saveStatus === 'saving'
@@ -1688,8 +2239,14 @@ export function DocumentTemplateEditor({
       : saveStatus === 'saved'
         ? 'Gespeichert'
         : 'Nicht gespeichert';
-  const editorGridColumns = `${leftSidebarCollapsed ? '48px' : '270px'} minmax(620px,1fr) ${
-    rightSidebarCollapsed ? '48px' : '340px'
+  const editorGridColumns = `${
+    leftSidebarCollapsed
+      ? `${COLLAPSED_SIDEBAR_WIDTH_PX}px`
+      : `${leftSidebarWidth}px`
+  } minmax(620px,1fr) ${
+    rightSidebarCollapsed
+      ? `${COLLAPSED_SIDEBAR_WIDTH_PX}px`
+      : `${rightSidebarWidth}px`
   }`;
 
   return (
@@ -1789,7 +2346,7 @@ export function DocumentTemplateEditor({
                 size="sm"
                 variant={activeEditor?.isActive('bold') ? 'secondary' : 'ghost'}
                 onClick={() => activeEditor?.chain().focus().toggleBold().run()}
-                title="Fett"
+                aria-label="Fett"
               >
                 <Bold />
               </Button>
@@ -1801,7 +2358,7 @@ export function DocumentTemplateEditor({
                 onClick={() =>
                   activeEditor?.chain().focus().toggleItalic().run()
                 }
-                title="Kursiv"
+                aria-label="Kursiv"
               >
                 <Italic />
               </Button>
@@ -1813,7 +2370,7 @@ export function DocumentTemplateEditor({
                 onClick={() =>
                   activeEditor?.chain().focus().toggleUnderline().run()
                 }
-                title="Unterstrichen"
+                aria-label="Unterstrichen"
               >
                 <UnderlineIcon />
               </Button>
@@ -1864,13 +2421,12 @@ export function DocumentTemplateEditor({
                 value={fontSize}
                 onChange={(event) => applyFontSize(event.target.value)}
                 className="h-8 w-20"
-                aria-label="Schriftgröße"
-                title="Schriftgröße ändern"
+                aria-label="Schriftgröße ändern"
               />
               <Separator orientation="vertical" className="h-6" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" title="Ausrichtung ändern">
+                  <Button size="sm" variant="ghost" aria-label="Ausrichtung ändern">
                     <AlignLeft />
                   </Button>
                 </DropdownMenuTrigger>
@@ -1903,7 +2459,7 @@ export function DocumentTemplateEditor({
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" title="Liste einfügen">
+                  <Button size="sm" variant="ghost" aria-label="Liste einfügen">
                     <List />
                   </Button>
                 </DropdownMenuTrigger>
@@ -1928,7 +2484,11 @@ export function DocumentTemplateEditor({
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" title="Textfarbe ändern">
+                  <Button size="sm" variant="ghost" aria-label="Textfarbe ändern">
+                    <span
+                      className="size-3 rounded-full border"
+                      style={{ backgroundColor: textColor }}
+                    />
                     Farbe
                   </Button>
                 </DropdownMenuTrigger>
@@ -1958,7 +2518,6 @@ export function DocumentTemplateEditor({
                 }
                 className="h-8 w-20"
                 aria-label="Abstand oben"
-                title="Abstand oben"
               />
               <Input
                 type="number"
@@ -1970,12 +2529,11 @@ export function DocumentTemplateEditor({
                 }
                 className="h-8 w-20"
                 aria-label="Abstand unten"
-                title="Abstand unten"
               />
               <Separator orientation="vertical" className="h-6" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" title="Weitere Aktionen">
+                  <Button size="sm" variant="ghost" aria-label="Weitere Aktionen">
                     <MoreHorizontal />
                   </Button>
                 </DropdownMenuTrigger>
@@ -2400,7 +2958,7 @@ export function DocumentTemplateEditor({
                 size="sm"
                 variant="ghost"
                 onClick={() => setZoom((current) => Math.max(50, current - 10))}
-                title="Verkleinern"
+                aria-label="Verkleinern"
               >
                 <Minus />
               </Button>
@@ -2413,7 +2971,7 @@ export function DocumentTemplateEditor({
                 onClick={() =>
                   setZoom((current) => Math.min(150, current + 10))
                 }
-                title="Vergrößern"
+                aria-label="Vergrößern"
               >
                 <Plus />
               </Button>
@@ -2434,14 +2992,14 @@ export function DocumentTemplateEditor({
                 type="button"
                 size="icon"
                 variant="ghost"
-                title="Bausteine einblenden"
+                aria-label="Bausteine einblenden"
                 onClick={() => setLeftSidebarCollapsed(false)}
               >
                 <PanelLeftOpen />
               </Button>
             </div>
           ) : (
-            <Card className="min-h-0 border-0 shadow-sm">
+            <Card className="relative min-h-0 border-0 shadow-sm">
               <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div>
                   <CardTitle>Bausteine</CardTitle>
@@ -2453,13 +3011,13 @@ export function DocumentTemplateEditor({
                   type="button"
                   size="icon"
                   variant="ghost"
-                  title="Bausteine ausblenden"
+                  aria-label="Bausteine ausblenden"
                   onClick={() => setLeftSidebarCollapsed(true)}
                 >
                   <PanelLeftClose />
                 </Button>
               </CardHeader>
-              <CardContent className="flex min-h-0 flex-col gap-4 overflow-auto">
+              <CardContent className="flex min-h-0 flex-col gap-4 overflow-auto pr-6">
                 {blockGroups.map((group) => (
                   <div key={group.label} className="flex flex-col gap-2">
                     <p className="text-muted-foreground text-xs font-medium">
@@ -2472,6 +3030,14 @@ export function DocumentTemplateEditor({
                             <Button
                               variant="outline"
                               className="h-auto justify-start gap-3 px-3 py-3 text-left"
+                              draggable
+                              onDragStart={(event) => {
+                                event.dataTransfer.effectAllowed = 'copy';
+                                event.dataTransfer.setData(
+                                  DOCUMENT_BLOCK_DRAG_MIME,
+                                  id
+                                );
+                              }}
                               onClick={() => insertBlock(id)}
                             >
                               <Icon data-icon="inline-start" />
@@ -2494,12 +3060,33 @@ export function DocumentTemplateEditor({
                   </div>
                 ))}
               </CardContent>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Breite der linken Seitenleiste ändern"
+                    className="group absolute top-0 right-[-8px] z-20 flex h-full w-2 cursor-col-resize items-center justify-center"
+                    onPointerDown={(event) =>
+                      startSidebarResize('left', event)
+                    }
+                  >
+                    <span className="bg-border group-hover:bg-ring h-12 w-1 rounded-full transition-colors" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  Breite der linken Seitenleiste ändern
+                </TooltipContent>
+              </Tooltip>
             </Card>
           )}
 
           <ContextMenu>
             <ContextMenuTrigger asChild>
-              <main className="min-h-0 overflow-auto rounded-md bg-[#e3e6ea]">
+              <main
+                className="min-h-0 overflow-auto rounded-md bg-[#e3e6ea]"
+                onContextMenu={handleEditorContextMenu}
+              >
                 <div className="flex min-h-full justify-center px-6 py-8">
                   {mode === 'preview' ? (
                     <div style={pageZoomStyle()}>
@@ -2513,10 +3100,8 @@ export function DocumentTemplateEditor({
                       {pageIndexes.map((pageIndex) => (
                         <div
                           key={pageIndex}
-                          className={`document-template-page bg-background relative grid shrink-0 shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-black/5 ${
-                            pageIndex === 0
-                              ? 'z-10 overflow-visible'
-                              : 'z-0 overflow-hidden'
+                          className={`document-template-page bg-background relative grid shrink-0 overflow-hidden shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-black/5 ${
+                            pageIndex === 0 ? 'z-10' : 'z-0'
                           }`}
                           style={{
                             width: A4_EDITOR_WIDTH_PX,
@@ -2534,7 +3119,7 @@ export function DocumentTemplateEditor({
                           </span>
                           {content.page.header.enabled ? (
                             <div
-                              className="bg-muted/20 outline-border relative flex flex-col justify-center outline outline-1 outline-dashed"
+                              className="bg-muted/20 outline-border relative box-border flex min-w-0 flex-col justify-center overflow-hidden outline outline-1 outline-dashed"
                               onClick={() => setActiveArea('header')}
                               onDragOver={(event) => event.preventDefault()}
                               onDrop={(event) =>
@@ -2544,7 +3129,7 @@ export function DocumentTemplateEditor({
                               <span className="text-muted-foreground absolute top-1 left-1 text-[10px] font-medium uppercase">
                                 Kopfbereich
                               </span>
-                              <div className="px-2 pt-4">
+                              <div className="min-w-0 px-2 pt-4">
                                 {pageIndex === 0 ? (
                                   <EditorContent editor={headerEditor} />
                                 ) : (
@@ -2564,7 +3149,7 @@ export function DocumentTemplateEditor({
                           )}
 
                           <div
-                            className="outline-border relative outline outline-1 outline-dashed"
+                            className="outline-border relative box-border min-w-0 overflow-hidden outline outline-1 outline-dashed"
                             onClick={() => setActiveArea('body')}
                             onDragOver={(event) => event.preventDefault()}
                             onDrop={(event) => handleFieldDrop(event, 'body')}
@@ -2573,15 +3158,25 @@ export function DocumentTemplateEditor({
                               Dokumentinhalt
                             </span>
                             {pageIndex === 0 ? (
-                              <div ref={bodyMeasureRef} className="pt-5">
+                              <div
+                                ref={bodyMeasureRef}
+                                className="document-template-body-measure min-w-0 pt-5"
+                              >
                                 <EditorContent editor={editor} />
+                                {measuredBodyOverflowPx > 12 ? (
+                                  <div className="document-template-overflow-warning">
+                                    Der Inhalt überschreitet den verfügbaren
+                                    Seitenbereich. Fügen Sie eine neue Seite
+                                    hinzu.
+                                  </div>
+                                ) : null}
                               </div>
                             ) : null}
                           </div>
 
                           {content.page.footer.enabled ? (
                             <div
-                              className="bg-muted/20 outline-border relative flex flex-col justify-center outline outline-1 outline-dashed"
+                              className="bg-muted/20 outline-border relative box-border flex min-w-0 flex-col justify-center overflow-hidden outline outline-1 outline-dashed"
                               onClick={() => setActiveArea('footer')}
                               onDragOver={(event) => event.preventDefault()}
                               onDrop={(event) =>
@@ -2591,7 +3186,7 @@ export function DocumentTemplateEditor({
                               <span className="text-muted-foreground absolute top-1 left-1 text-[10px] font-medium uppercase">
                                 Fußbereich
                               </span>
-                              <div className="px-2 pt-4">
+                              <div className="min-w-0 px-2 pt-4">
                                 {pageIndex === 0 ? (
                                   <EditorContent editor={footerEditor} />
                                 ) : (
@@ -2611,7 +3206,7 @@ export function DocumentTemplateEditor({
                         variant="outline"
                         className="bg-background self-center shadow-sm"
                         onClick={addManualPage}
-                        title="Fügt eine neue Seite hinzu"
+                        aria-label="Neue Seite hinzufügen"
                       >
                         <Plus data-icon="inline-start" />
                         Seite hinzufügen
@@ -2622,9 +3217,24 @@ export function DocumentTemplateEditor({
               </main>
             </ContextMenuTrigger>
             <ContextMenuContent>
-              <ContextMenuItem onClick={duplicateCurrentBlock}>
-                Duplizieren
-              </ContextMenuItem>
+              {selectedDynamicField ? (
+                <>
+                  <ContextMenuItem onClick={showSelectedDynamicFieldInformation}>
+                    Feldinformationen anzeigen
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    variant="destructive"
+                    onClick={deleteSelectedDynamicField}
+                  >
+                    Feld entfernen
+                  </ContextMenuItem>
+                </>
+              ) : (
+                <>
+                  <ContextMenuItem onClick={duplicateCurrentBlock}>
+                    Duplizieren
+                  </ContextMenuItem>
               <ContextMenuItem onClick={() => moveCurrentBlock('up')}>
                 Nach oben
               </ContextMenuItem>
@@ -2688,6 +3298,8 @@ export function DocumentTemplateEditor({
               >
                 Löschen
               </ContextMenuItem>
+                </>
+              )}
             </ContextMenuContent>
           </ContextMenu>
 
@@ -2697,14 +3309,32 @@ export function DocumentTemplateEditor({
                 type="button"
                 size="icon"
                 variant="ghost"
-                title="Dynamische Felder einblenden"
+                aria-label="Dynamische Felder einblenden"
                 onClick={() => setRightSidebarCollapsed(false)}
               >
                 <PanelRightOpen />
               </Button>
             </div>
           ) : (
-            <Card className="min-h-0 border-0 shadow-sm">
+            <Card className="relative min-h-0 border-0 shadow-sm">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Breite der rechten Seitenleiste ändern"
+                    className="group absolute top-0 left-[-10px] z-20 flex h-full w-4 cursor-col-resize items-center justify-center"
+                    onPointerDown={(event) =>
+                      startSidebarResize('right', event)
+                    }
+                  >
+                    <span className="bg-border group-hover:bg-ring h-12 w-1 rounded-full transition-colors" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  Breite der rechten Seitenleiste ändern
+                </TooltipContent>
+              </Tooltip>
               <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div>
                   <CardTitle>Dynamische Felder</CardTitle>
@@ -2716,7 +3346,7 @@ export function DocumentTemplateEditor({
                   type="button"
                   size="icon"
                   variant="ghost"
-                  title="Dynamische Felder ausblenden"
+                  aria-label="Dynamische Felder ausblenden"
                   onClick={() => setRightSidebarCollapsed(true)}
                 >
                   <PanelRightClose />
@@ -2737,19 +3367,23 @@ export function DocumentTemplateEditor({
 
         <style jsx global>{`
           .document-template-page .ProseMirror {
+            box-sizing: border-box;
             min-height: 0;
             outline: none;
             color: hsl(var(--foreground));
             font-size: 16px;
             line-height: 1.7;
+            overflow-wrap: anywhere;
           }
 
           .document-template-page .document-template-body-editor {
-            min-height: 720px;
+            min-height: 100%;
           }
 
           .document-template-page .document-template-area-editor {
+            max-height: 100%;
             min-height: 1.5rem;
+            overflow: hidden;
             font-size: 12px;
             line-height: 1.35;
           }
@@ -2760,6 +3394,7 @@ export function DocumentTemplateEditor({
 
           .document-template-page .document-template-area-editor p {
             margin: 0;
+            overflow-wrap: anywhere;
           }
 
           .document-template-page .ProseMirror h1 {
@@ -2821,21 +3456,40 @@ export function DocumentTemplateEditor({
             padding: 1rem;
           }
 
+          .document-template-body-measure {
+            box-sizing: border-box;
+          }
+
+          .document-template-overflow-warning {
+            background: hsl(var(--destructive) / 0.08);
+            border: 1px solid hsl(var(--destructive) / 0.35);
+            border-radius: 0.375rem;
+            color: hsl(var(--destructive));
+            font-size: 0.75rem;
+            margin-top: 1rem;
+            padding: 0.5rem 0.75rem;
+          }
+
           .document-field-chip {
             display: inline-flex;
             align-items: center;
             border-radius: 0.375rem;
             background: hsl(var(--secondary));
             color: hsl(var(--secondary-foreground));
+            cursor: pointer;
             font-size: 0.875em;
             line-height: 1;
             padding: 0.18rem 0.42rem;
+            user-select: none;
             white-space: nowrap;
           }
 
           .document-template-page
             .ProseMirror-selectednode.document-field-chip {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
             outline: 2px solid hsl(var(--ring));
+            outline-offset: 2px;
           }
 
           .document-page-break {

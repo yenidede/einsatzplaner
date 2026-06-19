@@ -138,6 +138,22 @@ export async function getDocumentTemplateFields(organizationId: string) {
   return getDocumentTemplateFieldDefinitions(organizationId);
 }
 
+export async function getOrganizationDocumentTemplateLogoUrl(
+  organizationId: string
+): Promise<string | null> {
+  await assertTemplatePermission(organizationId, 'templates:read');
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: {
+      logo_url: true,
+      small_logo_url: true,
+    },
+  });
+
+  return organization?.logo_url ?? organization?.small_logo_url ?? null;
+}
+
 export async function createDocumentTemplate(data: {
   organizationId: string;
   name: string;

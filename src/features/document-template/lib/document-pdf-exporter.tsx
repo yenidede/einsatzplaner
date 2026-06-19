@@ -31,6 +31,7 @@ const styles = StyleSheet.create({
   fixedAreaText: {
     fontSize: 9,
     color: '#475569',
+    lineHeight: 1.25,
   },
   fixedDivider: {
     borderBottom: '1 solid #d4d4d8',
@@ -450,6 +451,7 @@ export async function renderDocumentTemplatePdf(args: {
               right: page.margins.right,
               height: page.header.height,
               justifyContent: 'center',
+              overflow: 'hidden',
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -483,6 +485,7 @@ export async function renderDocumentTemplatePdf(args: {
               left: page.margins.left,
               height: page.footer.height,
               justifyContent: 'center',
+              overflow: 'hidden',
             }}
           >
             {page.footer.blocks.some((block) => block.showDivider) ? (

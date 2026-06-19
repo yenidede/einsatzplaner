@@ -191,7 +191,9 @@ function PreviewBlock({
                   height: mm(block.height ?? 18),
                 }}
               >
-                Logo
+                {block.imageUrl === '{{organizationLogoUrl}}'
+                  ? 'Kein Organisationslogo hinterlegt.'
+                  : 'Bild nicht verfügbar'}
               </div>
             )}
           </div>
@@ -289,7 +291,15 @@ function RichTextPreviewNode({
       typeof node.attrs?.height === 'number' ? node.attrs.height : 80;
 
     if (!src || src === '—') {
-      return null;
+      return (
+        <div
+          className="text-muted-foreground my-2 inline-flex rounded-md border border-dashed px-3 py-2 text-xs"
+        >
+          {node.attrs?.src === '{{organizationLogoUrl}}'
+            ? 'Kein Organisationslogo hinterlegt.'
+            : 'Bild nicht verfügbar'}
+        </div>
+      );
     }
 
     return (
@@ -405,32 +415,38 @@ export function DocumentTemplatePreview({
   showAreaLabels?: boolean;
 }) {
   const page = content.page;
+  const headerHeightPx = page.header.enabled ? mm(page.header.height) : 0;
+  const footerHeightPx = page.footer.enabled ? mm(page.footer.height) : 0;
+  const pagePaddingTopPx = mm(page.margins.top);
+  const pagePaddingRightPx = mm(page.margins.right);
+  const pagePaddingBottomPx = mm(page.margins.bottom);
+  const pagePaddingLeftPx = mm(page.margins.left);
+  const bodyHeightPx = Math.max(
+    360,
+    A4_HEIGHT_PX -
+      pagePaddingTopPx -
+      pagePaddingBottomPx -
+      headerHeightPx -
+      footerHeightPx
+  );
+
   return (
     <div
-      className="bg-background mx-auto grid max-w-full shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-black/5"
+      className="bg-background mx-auto grid max-w-full overflow-hidden shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-black/5"
       style={{
         width: A4_WIDTH_PX,
-        minHeight: A4_HEIGHT_PX,
-        paddingTop: mm(page.margins.top),
-        paddingRight: mm(page.margins.right),
-        paddingBottom: mm(page.margins.bottom),
-        paddingLeft: mm(page.margins.left),
-        gridTemplateRows: `${page.header.enabled ? mm(page.header.height) : 0}px minmax(${Math.max(
-          520,
-          A4_HEIGHT_PX -
-            mm(
-              page.margins.top +
-                page.margins.bottom +
-                (page.header.enabled ? page.header.height : 0) +
-                (page.footer.enabled ? page.footer.height : 0)
-            )
-        )}px, auto) ${page.footer.enabled ? mm(page.footer.height) : 0}px`,
+        height: A4_HEIGHT_PX,
+        paddingTop: pagePaddingTopPx,
+        paddingRight: pagePaddingRightPx,
+        paddingBottom: pagePaddingBottomPx,
+        paddingLeft: pagePaddingLeftPx,
+        gridTemplateRows: `${headerHeightPx}px ${bodyHeightPx}px ${footerHeightPx}px`,
       }}
     >
       {page.header.enabled ? (
         <div
           className={cn(
-            'relative flex flex-col justify-center gap-1',
+            'relative box-border flex min-w-0 flex-col justify-center gap-1 overflow-hidden',
             showAreaLabels && 'bg-muted/20 outline outline-1 outline-dashed outline-border'
           )}
         >
@@ -439,7 +455,7 @@ export function DocumentTemplatePreview({
               Kopfbereich
             </span>
           ) : null}
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center justify-between gap-4">
             {page.header.blocks.map((block) => (
               <div
                 key={block.id}
@@ -457,7 +473,7 @@ export function DocumentTemplatePreview({
 
       <div
         className={cn(
-          'relative',
+          'relative box-border min-w-0 overflow-hidden',
           showAreaLabels && 'bg-background outline outline-1 outline-dashed outline-border'
         )}
       >
@@ -466,7 +482,7 @@ export function DocumentTemplatePreview({
             Dokumentinhalt
           </span>
         ) : null}
-        <div className={cn('flex flex-col gap-5', showAreaLabels && 'pt-5')}>
+        <div className={cn('flex min-w-0 flex-col gap-5', showAreaLabels && 'pt-5')}>
           {content.document
             ? content.document.content?.map((node, index) => (
                 <RichTextPreviewNode key={index} node={node} fields={fields} />
@@ -480,7 +496,7 @@ export function DocumentTemplatePreview({
       {page.footer.enabled ? (
         <div
           className={cn(
-            'relative flex flex-col justify-center',
+            'relative box-border flex min-w-0 flex-col justify-center overflow-hidden',
             showAreaLabels && 'bg-muted/20 outline outline-1 outline-dashed outline-border'
           )}
         >
@@ -493,7 +509,7 @@ export function DocumentTemplatePreview({
             </span>
           ) : null}
           {page.footer.blocks.map((block) => (
-            <div key={block.id} className={alignmentClass(block.align)}>
+            <div key={block.id} className={cn('min-w-0', alignmentClass(block.align))}>
               <PreviewBlock block={block} fields={fields} />
               {block.showPageNumber ? (
                 <p className="text-muted-foreground mt-1 text-xs">Seite 1</p>
