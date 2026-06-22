@@ -510,12 +510,20 @@ export async function removeUserFromOrganizationAction(
       };
     }
 
-    await prisma.user_organization_role.deleteMany({
-      where: {
-        user_id: userId,
-        org_id: organizationId,
-      },
-    });
+    await prisma.$transaction([
+      prisma.calendar_subscription.deleteMany({
+        where: {
+          user_id: userId,
+          org_id: organizationId,
+        },
+      }),
+      prisma.user_organization_role.deleteMany({
+        where: {
+          user_id: userId,
+          org_id: organizationId,
+        },
+      }),
+    ]);
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { active_org: true },

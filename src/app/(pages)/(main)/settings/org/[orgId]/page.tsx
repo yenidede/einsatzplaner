@@ -31,6 +31,7 @@ import { UsersManagementSection } from '@/components/settings/org/UserManagement
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
 import { TemplatesOverviewSection } from '@/components/template/TemplatesOverviewSection';
 import { OrganizationPdfExportForm } from '@/components/settings/org/OrganizationPdfExportForm';
+import { OrganizationCalendarExportTemplates } from '@/components/settings/org/OrganizationCalendarExportTemplates';
 import { PageHeader } from '@/components/settings/PageHeader';
 import {
   ORG_MANAGE_NAV_ITEMS,
@@ -127,14 +128,18 @@ export default function OrganizationManagePage() {
     notificationMinimumPriorityDefault,
     setNotificationMinimumPriorityDefault,
   ] = useState<'info' | 'review' | 'critical'>('review');
-  const [notificationUrgentDeliveryDefault, setNotificationUrgentDeliveryDefault] =
-    useState<'immediate' | 'digest'>('immediate');
+  const [
+    notificationUrgentDeliveryDefault,
+    setNotificationUrgentDeliveryDefault,
+  ] = useState<'immediate' | 'digest'>('immediate');
   const [
     notificationImportantDeliveryDefault,
     setNotificationImportantDeliveryDefault,
   ] = useState<'immediate' | 'digest'>('digest');
-  const [notificationGeneralDeliveryDefault, setNotificationGeneralDeliveryDefault] =
-    useState<'digest' | 'off'>('off');
+  const [
+    notificationGeneralDeliveryDefault,
+    setNotificationGeneralDeliveryDefault,
+  ] = useState<'digest' | 'off'>('off');
   const [
     notificationDigestIntervalDefault,
     setNotificationDigestIntervalDefault,
@@ -372,11 +377,15 @@ export default function OrganizationManagePage() {
     setNotificationMinimumPriorityDefault(
       notificationDefaults.minimumPriorityDefault
     );
-    setNotificationUrgentDeliveryDefault(notificationDefaults.urgentDeliveryDefault);
+    setNotificationUrgentDeliveryDefault(
+      notificationDefaults.urgentDeliveryDefault
+    );
     setNotificationImportantDeliveryDefault(
       notificationDefaults.importantDeliveryDefault
     );
-    setNotificationGeneralDeliveryDefault(notificationDefaults.generalDeliveryDefault);
+    setNotificationGeneralDeliveryDefault(
+      notificationDefaults.generalDeliveryDefault
+    );
     setNotificationDigestIntervalDefault(
       notificationDefaults.digestIntervalDefault
     );
@@ -1013,9 +1022,7 @@ export default function OrganizationManagePage() {
                 deliveryModeDefault={notificationDeliveryModeDefault}
                 minimumPriorityDefault={notificationMinimumPriorityDefault}
                 urgentDeliveryDefault={notificationUrgentDeliveryDefault}
-                importantDeliveryDefault={
-                  notificationImportantDeliveryDefault
-                }
+                importantDeliveryDefault={notificationImportantDeliveryDefault}
                 generalDeliveryDefault={notificationGeneralDeliveryDefault}
                 digestIntervalDefault={notificationDigestIntervalDefault}
                 digestTimeDefault={notificationDigestTimeDefault}
@@ -1103,6 +1110,41 @@ export default function OrganizationManagePage() {
             Vorlagen
           </h2>
           <TemplatesOverviewSection orgId={orgId} />
+        </section>
+
+        {/* Calendar Export Templates Section */}
+        <section
+          id="calendar-export-templates"
+          ref={(el) => {
+            sectionRefs.current['calendar-export-templates'] = el;
+          }}
+          aria-labelledby="calendar-export-templates-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="calendar-export-templates-heading">
+                Kalenderexport-Vorlagen
+              </CardTitle>
+              <CardDescription>
+                Vorgeschlagene Kalenderexporte für persönliche
+                Kalenderabonnements verwalten.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {orgData ? (
+                <OrganizationCalendarExportTemplates
+                  org={{
+                    id: orgData.id,
+                    name: orgData.name,
+                    helper_name_singular: orgData.helper_name_singular,
+                    helper_name_plural: orgData.helper_name_plural,
+                    einsatz_name_singular: orgData.einsatz_name_singular,
+                    einsatz_name_plural: orgData.einsatz_name_plural,
+                  }}
+                />
+              ) : null}
+            </CardContent>
+          </Card>
         </section>
 
         {/* User Properties Section */}

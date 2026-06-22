@@ -21,6 +21,7 @@ import { authOptions } from '@/lib/auth.config';
 import { actionClient } from '@/lib/safe-action';
 import { formSchema as registerFormSchema } from './register-schema';
 import prisma from '@/lib/prisma';
+import { seedDefaultCalendarExportTemplatesForOrg } from '@/features/calendar-subscription/calendarSubscription';
 import {
   createAndSendOneTimePasswordChallenge,
   consumeVerifiedOneTimePasswordChallenge,
@@ -38,11 +39,17 @@ const forgotPasswordSchema = z.object({
 });
 
 const sendOneTimePasswordSchema = z.object({
-  email: z.string().trim().email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
+  email: z
+    .string()
+    .trim()
+    .email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
 });
 
 const verifyOneTimePasswordSchema = z.object({
-  email: z.string().trim().email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
+  email: z
+    .string()
+    .trim()
+    .email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
   code: z
     .string()
     .trim()
@@ -50,7 +57,10 @@ const verifyOneTimePasswordSchema = z.object({
 });
 
 const getSelfSignupAccountStatusSchema = z.object({
-  email: z.string().trim().email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
+  email: z
+    .string()
+    .trim()
+    .email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
 });
 
 const optionalOrganizationPhoneSchema = z
@@ -93,14 +103,24 @@ const createSelfSignupSchema = z.discriminatedUnion('accountMode', [
     accountMode: z.literal('new'),
     firstName: z.string().trim().min(1, 'Der Vorname ist erforderlich'),
     lastName: z.string().trim().min(1, 'Der Nachname ist erforderlich'),
-    email: z.string().trim().email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
-    password: z.string().min(8, 'Das Passwort muss mindestens 8 Zeichen lang sein.'),
+    email: z
+      .string()
+      .trim()
+      .email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
+    password: z
+      .string()
+      .min(8, 'Das Passwort muss mindestens 8 Zeichen lang sein.'),
     challengeId: z.string().uuid('Die Bestätigung ist ungültig.'),
   }),
   selfSignupOrganizationSchema.extend({
     accountMode: z.literal('existing'),
-    email: z.string().trim().email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
-    password: z.string().min(8, 'Das Passwort muss mindestens 8 Zeichen lang sein.'),
+    email: z
+      .string()
+      .trim()
+      .email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
+    password: z
+      .string()
+      .min(8, 'Das Passwort muss mindestens 8 Zeichen lang sein.'),
   }),
   selfSignupOrganizationSchema.extend({
     accountMode: z.literal('logged_in'),
@@ -139,6 +159,8 @@ async function createSelfSignupOrganization(
     });
   }
 
+  await seedDefaultCalendarExportTemplatesForOrg(organization.id, tx);
+
   return organization;
 }
 
@@ -148,7 +170,9 @@ async function getAssignableRoleIds(tx: Prisma.TransactionClient) {
   });
 
   if (assignableRoles.length === 0) {
-    throw new Error('Es konnten keine Rollen für die neue Organisation gefunden werden.');
+    throw new Error(
+      'Es konnten keine Rollen für die neue Organisation gefunden werden.'
+    );
   }
 
   return assignableRoles.map((role) => role.id);
@@ -446,7 +470,10 @@ export const createSelfSignupAction = actionClient
           tx
         );
 
-        const organization = await createSelfSignupOrganization(tx, parsedInput);
+        const organization = await createSelfSignupOrganization(
+          tx,
+          parsedInput
+        );
         const roleIds = await getAssignableRoleIds(tx);
 
         await tx.user.create({
@@ -468,7 +495,8 @@ export const createSelfSignupAction = actionClient
         return {
           organization,
           notificationContext: {
-            creatorName: `${parsedInput.firstName} ${parsedInput.lastName}`.trim(),
+            creatorName:
+              `${parsedInput.firstName} ${parsedInput.lastName}`.trim(),
             creatorEmail: normalizedEmail,
           },
         };
@@ -502,8 +530,15 @@ export const createSelfSignupAction = actionClient
           throw new Error('Das eingegebene Passwort ist nicht korrekt.');
         }
 
-        const organization = await createSelfSignupOrganization(tx, parsedInput);
-        await addUserToOrganizationWithAllRoles(tx, existingUser.id, organization.id);
+        const organization = await createSelfSignupOrganization(
+          tx,
+          parsedInput
+        );
+        await addUserToOrganizationWithAllRoles(
+          tx,
+          existingUser.id,
+          organization.id
+        );
         return {
           organization,
           notificationContext: {
@@ -533,7 +568,10 @@ export const createSelfSignupAction = actionClient
           },
         });
 
-        const organization = await createSelfSignupOrganization(tx, parsedInput);
+        const organization = await createSelfSignupOrganization(
+          tx,
+          parsedInput
+        );
         await addUserToOrganizationWithAllRoles(
           tx,
           session.user.id,

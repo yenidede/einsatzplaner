@@ -4,195 +4,463 @@ import {
   Calendar,
   Copy,
   ExternalLink,
+  MoreHorizontal,
+  Pause,
+  Pencil,
+  Play,
+  Plus,
   RefreshCw,
-  Link2Off,
+  Trash2,
 } from 'lucide-react';
+import Image from 'next/image';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useCalendarSubscription } from '@/features/calendar-subscription/hooks/useCalendarSubscription';
 import TooltipCustom from '@/components/tooltip-custom';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
+import { useStatuses } from '@/features/einsatz_status/hooks/useStatuses';
+import {
+  useCalendarExportEligibility,
+  useCalendarExports,
+  type CalendarExport,
+} from '@/features/calendar-subscription/hooks/useCalendarSubscription';
+import { CalendarExportDialog } from './CalendarExportDialog';
 
 export interface CalendarIntegrationCardProps {
-  org: { id: string; name: string };
+  org: {
+    id: string;
+    name: string;
+    logo_url?: string | null;
+    small_logo_url?: string | null;
+  };
 }
 
-/**
- * Shows the calendar subscription status and actions for one organization.
- */
-export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
-  const { query, rotate, deactivate, activate } = useCalendarSubscription(
-    org.id
-  );
-  const subscription = query.data;
+function modeLabel(mode: string) {
+  return mode === 'verwaltung' ? 'Verwaltung' : 'Helfer';
+}
 
-  const copyUrl = async () => {
-    if (subscription?.webcalUrl) {
-      try {
-        await navigator.clipboard.writeText(subscription.webcalUrl);
-        toast.success('URL in Zwischenablage kopiert');
-      } catch (error) {
-        toast.error(
-          'Fehler beim Kopieren der URL: ' +
-            (error instanceof Error ? error.message : String(error))
+type FilterCategory = {
+  id: string;
+  value: string;
+  abbreviation: string;
+};
+
+type FilterStatus = {
+  id: string;
+  helper_text: string;
+  verwalter_text: string;
+};
+
+type FilterTag = {
+  label: string;
+  tooltip: string;
+};
+
+function buildFilterTags(
+  calendarExport: CalendarExport,
+  categories: FilterCategory[],
+  statuses: FilterStatus[]
+) {
+  const parts: FilterTag[] = [];
+
+  if (calendarExport.config.categoryIds.length > 0) {
+    const categoryLabels = calendarExport.config.categoryIds.map(
+      (categoryId) => {
+        const category = categories.find((item) => item.id === categoryId);
+        return (
+          category?.abbreviation || category?.value || 'Unbekannte Kategorie'
         );
       }
+    );
+    parts.push({
+      label: categoryLabels.join(', '),
+      tooltip: `Kategorien: ${categoryLabels.join(', ')}`,
+    });
+  }
+
+  if (
+    calendarExport.config.statusIds.length > 0 ||
+    calendarExport.config.statusPseudo.length > 0
+  ) {
+    const statusLabels = calendarExport.config.statusIds.map((statusId) => {
+      const status = statuses.find((item) => item.id === statusId);
+      if (!status) {
+        return 'Unbekannter Status';
+      }
+
+      return calendarExport.config.mode === 'helper'
+        ? status.helper_text
+        : status.verwalter_text;
+    });
+
+    if (
+      calendarExport.config.mode === 'helper' &&
+      calendarExport.config.statusPseudo.includes('own')
+    ) {
+      statusLabels.unshift('Eigene');
+    }
+
+    const uniqueStatusLabels = Array.from(
+      new Set(statusLabels.filter(Boolean))
+    );
+    parts.push({
+      label: uniqueStatusLabels.join(', '),
+      tooltip: `Status: ${uniqueStatusLabels.join(', ')}`,
+    });
+  }
+
+  if (calendarExport.config.timeWindow) {
+    const timeWindowLabel = `${calendarExport.config.timeWindow.from}-${calendarExport.config.timeWindow.to}`;
+    parts.push({
+      label: timeWindowLabel,
+      tooltip: `Uhrzeit: Ereignisse zwischen ${calendarExport.config.timeWindow.from} und ${calendarExport.config.timeWindow.to}`,
+    });
+
+    if (!calendarExport.config.includeAllDay) {
+      parts.push({
+        label: 'Ohne ganztägige Ereignisse',
+        tooltip: 'Ganztägige Ereignisse werden nicht exportiert.',
+      });
+    }
+  }
+
+  if (calendarExport.config.futureOnly) {
+    parts.push({
+      label: 'Nur zukünftig',
+      tooltip: 'Es werden nur Ereignisse ab heute exportiert.',
+    });
+  }
+
+  return parts;
+}
+
+type CalendarExportTagVariant =
+  | 'active'
+  | 'default'
+  | 'destructive'
+  | 'helper'
+  | 'inactive'
+  | 'verwaltung';
+
+const calendarExportTagClassNames: Record<CalendarExportTagVariant, string> = {
+  active:
+    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300',
+  default: 'text-muted-foreground',
+  destructive: 'border-destructive/30 bg-destructive/10 text-destructive',
+  helper:
+    'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/40 dark:text-cyan-300',
+  inactive:
+    'border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300',
+  verwaltung:
+    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300',
+};
+
+function CalendarExportTag({
+  children,
+  tooltip,
+  variant = 'default',
+}: {
+  children: React.ReactNode;
+  tooltip?: string;
+  variant?: CalendarExportTagVariant;
+}) {
+  const tag = (
+    <span
+      className={`rounded-full border px-2 py-0.5 text-xs ${calendarExportTagClassNames[variant]}`}
+    >
+      {children}
+    </span>
+  );
+
+  return tooltip ? <TooltipCustom text={tooltip}>{tag}</TooltipCustom> : tag;
+}
+
+export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editExport, setEditExport] = useState<CalendarExport | null>(null);
+  const { showDestructive } = useConfirmDialog();
+  const calendarExports = useCalendarExports();
+  const eligibilityQuery = useCalendarExportEligibility();
+  const categoriesQuery = useCategories(org.id);
+  const statusesQuery = useStatuses();
+  const logoUrl = org.small_logo_url || org.logo_url;
+
+  const eligibility = eligibilityQuery.data ?? [];
+  const orgEligibility = eligibility.find(
+    (item) => item.organization.id === org.id
+  );
+  const exportsForOrg = useMemo(
+    () =>
+      (calendarExports.query.data ?? [])
+        .filter((calendarExport) => calendarExport.orgId === org.id)
+        .sort((left, right) => {
+          if (left.is_active !== right.is_active) {
+            return left.is_active ? -1 : 1;
+          }
+          return left.name.localeCompare(right.name, 'de-AT');
+        }),
+    [calendarExports.query.data, org.id]
+  );
+
+  const copyUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('URL in Zwischenablage kopiert');
+    } catch {
+      toast.error('Kopieren fehlgeschlagen');
     }
   };
 
-  if (query.isLoading) {
+  const openCreateDialog = () => {
+    setEditExport(null);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (calendarExport: CalendarExport) => {
+    setEditExport(calendarExport);
+    setDialogOpen(true);
+  };
+
+  const deleteExport = async (calendarExport: CalendarExport) => {
+    const result = await showDestructive(
+      'Kalenderexport löschen?',
+      `Möchten Sie den Kalenderexport „${calendarExport.name}“ wirklich löschen? Der bestehende Kalender-Link funktioniert danach nicht mehr.`,
+      { confirmText: 'Löschen', cancelText: 'Abbrechen' }
+    );
+
+    if (result !== 'success') {
+      return;
+    }
+
+    calendarExports.remove.mutate(calendarExport.id);
+  };
+
+  if (calendarExports.query.isLoading || eligibilityQuery.isLoading) {
     return (
       <div className="rounded-lg border p-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-lg" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-48" />
-          </div>
-        </div>
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="mt-3 h-16 w-full" />
       </div>
     );
   }
 
-  if (query.isError) {
-    return (
-      <div className="border-destructive/50 bg-destructive/5 rounded-lg border p-4">
-        <div className="text-destructive flex items-center gap-3">
-          <Calendar className="h-5 w-5" />
-          <div>
-            <p className="font-medium">{org.name}</p>
-            <p className="text-sm">
-              Fehler beim Laden der Kalender-Integration
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!subscription) {
-    return (
-      <div className="rounded-lg border border-dashed p-4">
-        <div className="text-muted-foreground flex items-center gap-3">
-          <Calendar className="h-5 w-5" />
-          <div>
-            <p className="font-medium">{org.name}</p>
-            <p className="text-sm">Keine Kalender-Integration verfügbar</p>
-          </div>
-        </div>
-      </div>
-    );
+  if (!orgEligibility && exportsForOrg.length === 0) {
+    return null;
   }
 
   return (
-    <div className="space-y-4 rounded-lg border p-4">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-3 rounded-lg border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-lg">
-            <Calendar className="text-primary h-5 w-5" />
+          <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg">
+            {logoUrl ? (
+              <Image
+                src={logoUrl}
+                alt={org.name}
+                width={40}
+                height={40}
+                className="h-full w-full object-contain p-1.5"
+              />
+            ) : (
+              <Calendar className="text-muted-foreground h-5 w-5" />
+            )}
           </div>
           <div>
             <h4 className="font-medium">{org.name}</h4>
             <p className="text-muted-foreground text-sm">
-              {subscription.is_active ? 'Aktiv' : 'Deaktiviert'}
+              {exportsForOrg.length === 0
+                ? 'Noch keine Kalenderexporte'
+                : `${exportsForOrg.length} Kalenderexport(e)`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {subscription.is_active ? (
-            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-              Aktiv
-            </span>
-          ) : (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                activate.mutate(subscription.id);
-              }}
-              disabled={activate.isPending}
-            >
-              {activate.isPending ? 'Aktiviere...' : 'Aktivieren'}
-            </Button>
-          )}
-        </div>
+        {orgEligibility ? (
+          <Button onClick={openCreateDialog}>
+            <Plus className="mr-2 h-4 w-4" />
+            Export erstellen
+          </Button>
+        ) : null}
       </div>
 
-      <button
-        type="button"
-        className={cn(
-          'group w-full rounded-md p-3 text-left transition-colors',
-          subscription.is_active
-            ? 'bg-muted/50 hover:bg-muted cursor-pointer'
-            : 'bg-muted/30 cursor-default opacity-60'
-        )}
-        onClick={subscription.is_active ? copyUrl : undefined}
-        title={subscription.is_active ? 'Klicken zum Kopieren' : undefined}
-        disabled={!subscription.is_active}
-      >
-        <span className="text-muted-foreground font-mono text-xs break-all">
-          {subscription.webcalUrl}
-        </span>
-      </button>
-
-      {subscription.is_active ? (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={copyUrl}>
-            <Copy className="mr-2 h-3.5 w-3.5" />
-            URL kopieren
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={subscription.webcalUrl}>
-              <ExternalLink className="mr-2 h-3.5 w-3.5" />
-              In Kalender öffnen
-            </a>
-          </Button>
-          <TooltipCustom
-            text="Der alte Link wird widerrufen und ein neuer generiert."
-            contentClassName="max-w-xs"
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                rotate.mutate(subscription.id);
-              }}
-              disabled={rotate.isPending}
-            >
-              <RefreshCw
-                className={cn(
-                  'mr-2 h-3.5 w-3.5',
-                  rotate.isPending && 'animate-spin'
-                )}
-              />
-              {rotate.isPending ? 'Generiere...' : 'Neu generieren'}
-            </Button>
-          </TooltipCustom>
-          <TooltipCustom
-            text="Synchronisation temporär deaktivieren, kann wieder aktiviert werden."
-            contentClassName="max-w-xs"
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                deactivate.mutate(subscription.id);
-              }}
-              disabled={deactivate.isPending}
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Link2Off className="mr-2 h-3.5 w-3.5" />
-              {deactivate.isPending ? 'Deaktiviere...' : 'Deaktivieren'}
-            </Button>
-          </TooltipCustom>
+      {exportsForOrg.length === 0 ? (
+        <div className="bg-muted/40 rounded-md border border-dashed p-5 text-center">
+          <p className="font-medium">Noch keine Kalenderexporte</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Erstellen Sie einen Export, um ihn in Ihrer Kalender-App zu
+            abonnieren.
+          </p>
         </div>
       ) : (
-        <p className="text-muted-foreground text-sm">
-          Die Kalender-Integration ist deaktiviert. Aktivieren Sie sie, um die
-          Synchronisation wieder zu starten.
-        </p>
+        <div className="space-y-2">
+          {exportsForOrg.map((calendarExport) => {
+            const filterTags = buildFilterTags(
+              calendarExport,
+              categoriesQuery.data ?? [],
+              statusesQuery.data ?? []
+            ).filter(Boolean);
+
+            return (
+              <div
+                key={calendarExport.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{calendarExport.name}</p>
+                    <CalendarExportTag
+                      variant={calendarExport.is_active ? 'active' : 'inactive'}
+                    >
+                      {calendarExport.is_active ? 'Aktiv' : 'Deaktiviert'}
+                    </CalendarExportTag>
+                    <CalendarExportTag
+                      variant={
+                        calendarExport.config.mode === 'verwaltung'
+                          ? 'verwaltung'
+                          : 'helper'
+                      }
+                    >
+                      {modeLabel(calendarExport.config.mode)}
+                    </CalendarExportTag>
+                    {filterTags.map((filterTag) => (
+                      <CalendarExportTag
+                        key={`${filterTag.tooltip}-${filterTag.label}`}
+                        tooltip={filterTag.tooltip}
+                      >
+                        {filterTag.label}
+                      </CalendarExportTag>
+                    ))}
+                    {!calendarExport.modeAvailable ? (
+                      <CalendarExportTag variant="destructive">
+                        Zugriff fehlt
+                      </CalendarExportTag>
+                    ) : null}
+                  </div>
+                  {calendarExport.last_accessed ? (
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Zuletzt abgerufen:{' '}
+                      {new Date(
+                        calendarExport.last_accessed
+                      ).toLocaleDateString('de-AT')}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditDialog(calendarExport)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Bearbeiten
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className={
+                      !calendarExport.is_active
+                        ? 'pointer-events-none opacity-50'
+                        : ''
+                    }
+                  >
+                    <a href={calendarExport.webcalUrl}>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Kalender verbinden
+                    </a>
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => copyUrl(calendarExport.webcalUrl)}
+                        disabled={!calendarExport.is_active}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        Link kopieren
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          calendarExports.rotate.mutate(calendarExport.id)
+                        }
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Link neu generieren
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          calendarExports.setActive.mutate({
+                            id: calendarExport.id,
+                            isActive: !calendarExport.is_active,
+                          })
+                        }
+                      >
+                        {calendarExport.is_active ? (
+                          <Pause className="mr-2 h-4 w-4" />
+                        ) : (
+                          <Play className="mr-2 h-4 w-4" />
+                        )}
+                        {calendarExport.is_active
+                          ? 'Deaktivieren'
+                          : 'Aktivieren'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => deleteExport(calendarExport)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Löschen
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
+
+      <CalendarExportDialog
+        open={dialogOpen}
+        mode="personal"
+        eligibility={eligibility}
+        initialOrgId={org.id}
+        exportToEdit={editExport}
+        onOpenChange={setDialogOpen}
+        onSavePersonal={async (input) => {
+          if (input.id && input.orgId === editExport?.orgId) {
+            const result = await calendarExports.updateExport.mutateAsync({
+              id: input.id,
+              orgId: input.orgId,
+              name: input.name,
+              config: input.config,
+            });
+            return {
+              name: result.name,
+              webcalUrl: result.webcalUrl,
+              httpUrl: result.httpUrl,
+            };
+          }
+
+          const result = await calendarExports.createExport.mutateAsync(input);
+          return {
+            name: result.name,
+            webcalUrl: result.webcalUrl,
+            httpUrl: result.httpUrl,
+          };
+        }}
+      />
     </div>
   );
 }

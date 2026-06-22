@@ -1,11 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import ical, { ICalEventStatus, ICalCalendarMethod } from 'ical-generator';
-import { composeCalendarEventTitle } from '@/components/event-calendar/event-title';
+import { ROLE_PERMISSION_MAP } from '@/lib/auth/authGuard';
+import { parseCalendarExportConfig } from '@/features/calendar-subscription/config';
+import { filterCalendarExportEvents } from '@/features/calendar-subscription/filter';
+import {
+  composeCalendarExportEventTitle,
+  slugifyCalendarExportFilenamePart,
+} from '@/features/calendar-subscription/title';
 
 type RouteContext = {
   params: Promise<{ token: string }>;
 };
+
+function roleHasPermission(roleName: string, permission: string) {
+  return (ROLE_PERMISSION_MAP[roleName] ?? []).includes(permission);
+}
+
+async function subscriptionOwnerHasAccess(input: {
+  userId: string;
+  orgId: string;
+  requiresManagementMode: boolean;
+}) {
+  const roles = await prisma.user_organization_role.findMany({
+    where: {
+      user_id: input.userId,
+      org_id: input.orgId,
+    },
+    include: {
+      role: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  const roleNames = roles
+    .map((role) => role.role?.name)
+    .filter((roleName): roleName is string => Boolean(roleName));
+
+  const hasReadAccess = roleNames.some((roleName) =>
+    roleHasPermission(roleName, 'einsaetze:read')
+  );
+
+  if (!hasReadAccess) {
+    return false;
+  }
+
+  if (!input.requiresManagementMode) {
+    return true;
+  }
+
+  return roleNames.some(
+    (roleName) =>
+      roleHasPermission(roleName, 'einsaetze:create') ||
+      roleHasPermission(roleName, 'einsaetze:update') ||
+      roleHasPermission(roleName, 'einsaetze:delete')
+  );
+}
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const prms = await context.params;
@@ -32,13 +85,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (!subscription || !subscription.is_active)
     return new NextResponse('Not found', { status: 404 });
 
+  const exportConfig = parseCalendarExportConfig(subscription.config);
+  const ownerHasAccess = await subscriptionOwnerHasAccess({
+    userId: subscription.user_id,
+    orgId: subscription.org_id,
+    requiresManagementMode: exportConfig.mode === 'verwaltung',
+  });
+
+  if (!ownerHasAccess) {
+    return new NextResponse('Not found', { status: 404 });
+  }
+
   // Organisationsspezifische Bezeichnungen
   const helperNamePlural =
     subscription.organization.helper_name_plural ?? 'Vermittler:innen';
   const einsatzNameSingular =
     subscription.organization.einsatz_name_singular ?? 'Einsatz';
 
-  const einsaetze = await prisma.einsatz.findMany({
+  const allEinsaetze = await prisma.einsatz.findMany({
     where: { org_id: subscription.org_id },
     orderBy: { start: 'asc' },
     include: {
@@ -54,6 +118,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         include: {
           einsatz_category: {
             select: {
+              id: true,
               value: true,
               abbreviation: true,
             },
@@ -93,6 +158,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         include: {
           user: {
             select: {
+              id: true,
               firstname: true,
               lastname: true,
             },
@@ -102,11 +168,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
       einsatz_status: {
         select: {
           verwalter_text: true,
+          helper_text: true,
           id: true,
         },
       },
     },
   });
+
+  const { events: einsaetze, trimmedBefore } = filterCalendarExportEvents(
+    allEinsaetze,
+    exportConfig,
+    subscription.user_id
+  );
 
   const baseUrl = process.env.NEXTAUTH_URL;
   let host: string;
@@ -120,7 +193,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const calendar = ical({
-    name: subscription.organization.name ?? 'Einsatzplaner - Kalender',
+    name: `${subscription.name ?? 'Kalenderexport'} - ${
+      subscription.organization.name ?? 'Einsatzplaner'
+    }`,
     method: ICalCalendarMethod.PUBLISH,
     ttl: 60 * 60 * 2,
     prodId: {
@@ -170,8 +245,22 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     // Status
-    if (einsatz.einsatz_status?.verwalter_text) {
-      descriptionParts.push(`Status: ${einsatz.einsatz_status.verwalter_text}`);
+    const statusText =
+      exportConfig.mode === 'helper'
+        ? einsatz.einsatz_status?.helper_text
+        : einsatz.einsatz_status?.verwalter_text;
+
+    if (statusText) {
+      descriptionParts.push(`Status: ${statusText}`);
+      descriptionParts.push('');
+    }
+
+    if (trimmedBefore) {
+      descriptionParts.push(
+        `Hinweis: Ereignisse vor dem ${trimmedBefore.toLocaleDateString(
+          'de-AT'
+        )} werden zur besseren Synchronisation nicht exportiert.`
+      );
       descriptionParts.push('');
     }
 
@@ -286,13 +375,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       start,
       end,
       allDay: isAllDay,
-      summary: composeCalendarEventTitle(
-        einsatz.title,
+      summary: composeCalendarExportEventTitle({
+        title: einsatz.title,
         categoryAbbreviations,
-        einsatz.helpers_needed > 0
-          ? `${einsatz.einsatz_helper.length}/${einsatz.helpers_needed}`
-          : []
-      ),
+        assignedHelpers: einsatz.einsatz_helper.length,
+        helpersNeeded: einsatz.helpers_needed,
+        config: exportConfig,
+      }),
       description,
       categories: categories.map((name) => ({ name })),
       location: ortField?.value ?? undefined,
@@ -317,11 +406,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
     status: 200,
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Content-Disposition': `inline; filename="${(
+      'Content-Disposition': `inline; filename="${slugifyCalendarExportFilenamePart(
         subscription.organization.name ?? 'einsatzplaner'
-      )
-        .replace(/\s+/g, '-')
-        .toLowerCase()}.ics"`,
+      )}-${slugifyCalendarExportFilenamePart(
+        subscription.name ?? 'kalenderexport'
+      )}.ics"`,
       'Cache-Control': 'public, max-age=300',
     },
   });

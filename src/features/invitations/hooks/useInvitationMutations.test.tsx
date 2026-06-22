@@ -60,9 +60,13 @@ function createWrapper() {
     },
   });
 
-  return ({ children }: PropsWithChildren) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  function Wrapper({ children }: PropsWithChildren) {
+    return (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  }
+
+  return Wrapper;
 }
 
 describe('useAcceptInvitation', () => {
