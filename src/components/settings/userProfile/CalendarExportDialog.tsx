@@ -230,7 +230,9 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
     setStepIndex(getInitialStepIndex({ exportToEdit, templateToEdit }));
     setSavedExport(null);
     setSelectedTemplateId('custom');
-  }, [form, eligibility, exportToEdit, initialOrgId, open, templateToEdit]);
+  // Intentionally not depending on `eligibility` to avoid resetting the form while the dialog is open.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, exportToEdit, initialOrgId, open, templateToEdit]);
 
   useEffect(() => {
     if (!selectedEligibility) {
