@@ -2,14 +2,11 @@ import type { Prisma } from '@/generated/prisma';
 import prisma from '@/lib/prisma';
 import { generatedToken } from '@/lib/token';
 import {
-  createOpenFutureTemplateConfig,
   createOwnFutureTemplateConfig,
   getBlankCalendarExportConfig,
   parseCalendarExportConfig,
   type CalendarExportConfig,
 } from './config';
-
-const OPEN_STATUS_ID = 'bb169357-920b-4b49-9e3d-1cf489409370';
 
 type CalendarSubscriptionExecutor = Pick<
   typeof prisma,
@@ -266,9 +263,12 @@ export async function seedDefaultCalendarExportTemplatesForOrg(
     data: [
       {
         org_id: orgId,
-        name: 'Nur offene in der Zukunft',
+        name: 'Alle zukünftigen Ereignisse',
         description: null,
-        config: toJsonInput(createOpenFutureTemplateConfig(OPEN_STATUS_ID)),
+        config: toJsonInput({
+          ...getBlankCalendarExportConfig('helper'),
+          futureOnly: true,
+        }),
       },
       {
         org_id: orgId,
@@ -278,13 +278,13 @@ export async function seedDefaultCalendarExportTemplatesForOrg(
       },
       {
         org_id: orgId,
-        name: 'Alle Ereignisse',
+        name: 'Alle Ereignisse (Helfer)',
         description: null,
         config: toJsonInput(getBlankCalendarExportConfig('helper')),
       },
       {
         org_id: orgId,
-        name: 'Alle Ereignisse',
+        name: 'Alle Ereignisse (Verwaltung)',
         description: null,
         config: toJsonInput(getBlankCalendarExportConfig('verwaltung')),
       },

@@ -59,12 +59,17 @@ function eventOverlapsTimeWindow(
   event: CalendarExportFilterEvent,
   config: CalendarExportConfig
 ) {
+  if (event.all_day) {
+    return config.includeAllDay;
+  }
+
   if (!config.timeWindow) {
     return true;
   }
 
-  if (event.all_day) {
-    return config.includeAllDay;
+  const durationMs = event.end.getTime() - event.start.getTime();
+  if (durationMs >= 24 * 60 * 60 * 1000) {
+    return true;
   }
 
   const eventStart = event.start.getHours() * 60 + event.start.getMinutes();

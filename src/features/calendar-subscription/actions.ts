@@ -434,6 +434,7 @@ export async function getCalendarExportPreviewAction(
   const events = await prisma.einsatz.findMany({
     where: { org_id: orgId },
     orderBy: { start: 'asc' },
+    take: 1000,
     select: {
       id: true,
       title: true,

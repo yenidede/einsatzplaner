@@ -204,6 +204,9 @@ export function useCalendarExportTemplates(orgId: string | null | undefined) {
       await invalidateTemplates();
       toast.success('Kalenderexport-Vorlage wurde erstellt');
     },
+    onError: () => {
+      toast.error('Kalenderexport-Vorlage konnte nicht erstellt werden');
+    },
   });
 
   const updateTemplate = useMutation({
@@ -227,6 +230,9 @@ export function useCalendarExportTemplates(orgId: string | null | undefined) {
       await invalidateTemplates();
       toast.success('Kalenderexport-Vorlage wurde gespeichert');
     },
+    onError: () => {
+      toast.error('Kalenderexport-Vorlage konnte nicht gespeichert werden');
+    },
   });
 
   const removeTemplate = useMutation({
@@ -235,6 +241,9 @@ export function useCalendarExportTemplates(orgId: string | null | undefined) {
     onSuccess: async () => {
       await invalidateTemplates();
       toast.success('Kalenderexport-Vorlage wurde gelöscht');
+    },
+    onError: () => {
+      toast.error('Kalenderexport-Vorlage konnte nicht gelöscht werden');
     },
   });
 

@@ -156,6 +156,23 @@ describe('calendar export filter', () => {
     ).toBe(false);
   });
 
+  it('matches timed events spanning at least 24 hours for any time window overlap', () => {
+    const exportConfig = config({
+      timeWindow: { from: '16:00', to: '20:00' },
+    });
+
+    expect(
+      eventMatchesCalendarExportConfig(
+        event({
+          start: new Date(2026, 5, 4, 9, 0),
+          end: new Date(2026, 5, 5, 9, 0),
+        }),
+        exportConfig,
+        'user-1'
+      )
+    ).toBe(true);
+  });
+
   it('includes all-day events only when configured', () => {
     const allDayEvent = event({ all_day: true });
 
@@ -176,6 +193,16 @@ describe('calendar export filter', () => {
           timeWindow: { from: '16:00', to: '20:00' },
           includeAllDay: false,
         }),
+        'user-1'
+      )
+    ).toBe(false);
+  });
+
+  it('excludes all-day events without a time window when configured', () => {
+    expect(
+      eventMatchesCalendarExportConfig(
+        event({ all_day: true }),
+        config({ includeAllDay: false, timeWindow: null }),
         'user-1'
       )
     ).toBe(false);

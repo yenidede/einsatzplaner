@@ -245,14 +245,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     // Status
-    if (einsatz.einsatz_status?.verwalter_text) {
-      descriptionParts.push(
-        `Status: ${
-          exportConfig.mode === 'helper'
-            ? einsatz.einsatz_status.helper_text
-            : einsatz.einsatz_status.verwalter_text
-        }`
-      );
+    const statusText =
+      exportConfig.mode === 'helper'
+        ? einsatz.einsatz_status?.helper_text
+        : einsatz.einsatz_status?.verwalter_text;
+
+    if (statusText) {
+      descriptionParts.push(`Status: ${statusText}`);
       descriptionParts.push('');
     }
 

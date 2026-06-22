@@ -335,12 +335,17 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
 
   const save = async (values: FormValues) => {
     if (props.mode === 'personal' && props.onSavePersonal) {
-      const result = await props.onSavePersonal({
-        id: props.exportToEdit?.id,
-        orgId: values.orgId,
-        name: values.name,
-        config: values.config,
-      });
+      let result: SavedExport | void;
+      try {
+        result = await props.onSavePersonal({
+          id: props.exportToEdit?.id,
+          orgId: values.orgId,
+          name: values.name,
+          config: values.config,
+        });
+      } catch {
+        return;
+      }
       if (result) {
         setSavedExport(result);
       }
@@ -349,21 +354,29 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
     }
 
     if (props.mode === 'template' && props.onSaveTemplate) {
-      await props.onSaveTemplate({
-        id: props.templateToEdit?.id,
-        orgId: values.orgId,
-        name: values.name,
-        description: values.description,
-        config: values.config,
-      });
+      try {
+        await props.onSaveTemplate({
+          id: props.templateToEdit?.id,
+          orgId: values.orgId,
+          name: values.name,
+          description: values.description,
+          config: values.config,
+        });
+      } catch {
+        return;
+      }
       form.reset(values);
       props.onOpenChange(false);
     }
   };
 
   const copyUrl = async (value: string) => {
-    await navigator.clipboard.writeText(value);
-    toast.success('URL in Zwischenablage kopiert');
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success('URL in Zwischenablage kopiert');
+    } catch {
+      toast.error('Kopieren fehlgeschlagen');
+    }
   };
 
   const setStatusChecked = (

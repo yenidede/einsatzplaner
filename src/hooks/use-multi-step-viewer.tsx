@@ -22,7 +22,7 @@ export interface UseMultiFormStepsReturn {
 }
 
 // Context type
-interface MultiStepFormContextType extends UseMultiFormStepsReturn {}
+type MultiStepFormContextType = UseMultiFormStepsReturn
 
 // Create context
 const MultiStepFormContext = createContext<MultiStepFormContextType | null>(

@@ -1112,7 +1112,7 @@ export default function OrganizationManagePage() {
           <TemplatesOverviewSection orgId={orgId} />
         </section>
 
-        {/* User Properties Section */}
+        {/* Calendar Export Templates Section */}
         <section
           id="calendar-export-templates"
           ref={(el) => {
