@@ -1,7 +1,9 @@
 'use server';
 
+import { startOfDay } from 'date-fns';
 import { getServerSession } from 'next-auth';
 import { z } from 'zod';
+import type { Prisma } from '@/generated/prisma';
 import { authOptions } from '@/lib/auth.config';
 import { hasPermission } from '@/lib/auth/authGuard';
 import prisma from '@/lib/prisma';
@@ -36,6 +38,47 @@ const exportInputSchema = z.object({
 const templateInputSchema = exportInputSchema.extend({
   description: z.string().trim().optional().nullable(),
 });
+
+function buildCalendarExportPreviewWhere(
+  orgId: string,
+  config: CalendarExportConfig,
+  ownerUserId: string
+): Prisma.einsatzWhereInput {
+  const where: Prisma.einsatzWhereInput = { org_id: orgId };
+
+  if (config.futureOnly) {
+    where.end = { gte: startOfDay(new Date()) };
+  }
+
+  if (!config.includeAllDay) {
+    where.all_day = false;
+  }
+
+  if (config.categoryIds.length > 0) {
+    where.einsatz_to_category = {
+      some: {
+        category_id: { in: config.categoryIds },
+      },
+    };
+  }
+
+  const statusBranches: Prisma.einsatzWhereInput[] = [];
+  if (config.statusIds.length > 0) {
+    statusBranches.push({ status_id: { in: config.statusIds } });
+  }
+  if (config.mode === 'helper' && config.statusPseudo.includes('own')) {
+    statusBranches.push({
+      einsatz_helper: {
+        some: { user_id: ownerUserId },
+      },
+    });
+  }
+  if (statusBranches.length > 0) {
+    where.OR = statusBranches;
+  }
+
+  return where;
+}
 
 async function checkUserSession() {
   const session = await getServerSession(authOptions);
@@ -432,9 +475,12 @@ export async function getCalendarExportPreviewAction(
   await validateConfigReferences(orgId, parsedConfig);
 
   const events = await prisma.einsatz.findMany({
-    where: { org_id: orgId },
+    where: buildCalendarExportPreviewWhere(
+      orgId,
+      parsedConfig,
+      session.user.id
+    ),
     orderBy: { start: 'asc' },
-    take: 1000,
     select: {
       id: true,
       title: true,
