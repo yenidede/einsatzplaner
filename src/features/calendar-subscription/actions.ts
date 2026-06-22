@@ -133,18 +133,18 @@ async function validateConfigReferences(
     config.categoryIds.length === 0
       ? Promise.resolve(0)
       : prisma.einsatz_category.count({
-          where: {
-            id: { in: config.categoryIds },
-            org_id: orgId,
-          },
-        }),
+        where: {
+          id: { in: config.categoryIds },
+          org_id: orgId,
+        },
+      }),
     config.statusIds.length === 0
       ? Promise.resolve(0)
       : prisma.einsatz_status.count({
-          where: {
-            id: { in: config.statusIds },
-          },
-        }),
+        where: {
+          id: { in: config.statusIds },
+        },
+      }),
   ]);
 
   if (categoryCount !== new Set(config.categoryIds).size) {
