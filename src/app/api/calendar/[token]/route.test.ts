@@ -6,11 +6,13 @@ const {
   mockFindSubscription,
   mockFindEinsaetze,
   mockUpdateSubscription,
+  mockFindUserOrgRoles,
 } = vi.hoisted(() => ({
   mockCreateEvent: vi.fn(),
   mockFindSubscription: vi.fn(),
   mockFindEinsaetze: vi.fn(),
   mockUpdateSubscription: vi.fn(),
+  mockFindUserOrgRoles: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -21,6 +23,9 @@ vi.mock('@/lib/prisma', () => ({
     },
     einsatz: {
       findMany: mockFindEinsaetze,
+    },
+    user_organization_role: {
+      findMany: mockFindUserOrgRoles,
     },
   },
 }));
@@ -49,10 +54,27 @@ describe('GET /api/calendar/[token]', () => {
     mockFindSubscription.mockReset();
     mockFindEinsaetze.mockReset();
     mockUpdateSubscription.mockReset();
+    mockFindUserOrgRoles.mockReset();
 
     mockFindSubscription.mockResolvedValue({
+      user_id: 'user-1',
       org_id: 'orga-1',
+      name: 'Mein Export',
       is_active: true,
+      config: {
+        version: 1,
+        mode: 'helper',
+        categoryIds: [],
+        statusIds: [],
+        statusPseudo: [],
+        timeWindow: null,
+        includeAllDay: true,
+        futureOnly: false,
+        titleAdditions: {
+          categories: true,
+          helperCount: true,
+        },
+      },
       organization: {
         name: 'Organisation',
         email: null,
@@ -75,13 +97,17 @@ describe('GET /api/calendar/[token]', () => {
         total_price: null,
         einsatz_to_category: [
           {
+            category_id: 'cat-1',
             einsatz_category: {
+              id: 'cat-1',
               value: 'Dauerausstellung',
               abbreviation: 'DA',
             },
           },
           {
+            category_id: 'cat-2',
             einsatz_category: {
+              id: 'cat-2',
               value: 'Veranstaltung',
               abbreviation: 'VA',
             },
@@ -91,15 +117,29 @@ describe('GET /api/calendar/[token]', () => {
         einsatz_user_property: [],
         einsatz_helper: [
           {
+            user_id: 'user-1',
             user: {
+              id: 'user-1',
               firstname: 'Erika',
               lastname: 'Musterfrau',
             },
           },
         ],
-        einsatz_status: null,
+        status_id: 'status-1',
+        einsatz_status: {
+          id: 'status-1',
+          helper_text: 'vergeben',
+          verwalter_text: 'vergeben',
+        },
         organization: {
           name: 'Organisation',
+        },
+      },
+    ]);
+    mockFindUserOrgRoles.mockResolvedValue([
+      {
+        role: {
+          name: 'Helfer',
         },
       },
     ]);
@@ -113,7 +153,7 @@ describe('GET /api/calendar/[token]', () => {
     process.env.NEXTAUTH_URL = previousNextAuthUrl;
   });
 
-  it('verwendet den In-App-Kalendertitel als Summary', async () => {
+  it('verwendet den Kalenderexport-Titel als Summary', async () => {
     await GET(
       new NextRequest('https://einsatzplaner.example/api/calendar/token'),
       {
@@ -123,7 +163,7 @@ describe('GET /api/calendar/[token]', () => {
 
     expect(mockCreateEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        summary: 'Führung (DA, VA)(1/2)',
+        summary: 'Führung (DA, VA · 1/2)',
       })
     );
   });

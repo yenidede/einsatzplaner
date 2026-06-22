@@ -140,6 +140,9 @@ describe('createSelfSignupAction', () => {
           role: {
             findMany: ReturnType<typeof vi.fn>;
           };
+          calendar_export_template: {
+            createMany: ReturnType<typeof vi.fn>;
+          };
         }) => Promise<unknown>
       ) =>
         callback({
@@ -156,6 +159,9 @@ describe('createSelfSignupAction', () => {
           },
           role: {
             findMany: mockRoleFindMany,
+          },
+          calendar_export_template: {
+            createMany: vi.fn(),
           },
         })
     );

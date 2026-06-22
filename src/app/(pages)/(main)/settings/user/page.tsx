@@ -45,6 +45,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
+  CalendarExportGlobalCreate,
   CalendarIntegrationCard,
   NAV_ITEMS,
   type SectionId,
@@ -618,46 +619,50 @@ export default function SettingsPage() {
         >
           <Card>
             <CardHeader>
-              <CardTitle id="calendar-heading">
-                Kalender-Integrationen
-              </CardTitle>
-              <CardDescription>
-                Abonnieren Sie Kalender Ihrer Organisationen in externen Apps
-                wie Google Calendar, Apple Calendar oder Outlook
-              </CardDescription>
+              <div className="flex flex-col flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle id="calendar-heading">Kalenderexporte</CardTitle>
+                  <CardDescription>
+                    Abonnieren Sie Kalender Ihrer Organisationen in externen
+                    Apps wie Google Calendar, Apple Calendar oder Outlook
+                  </CardDescription>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h4 className="mb-2 text-sm font-medium">
+                    So funktioniert&apos;s
+                  </h4>
+                  <ol className="text-muted-foreground space-y-2 text-sm">
+                    <li className="flex gap-2">
+                      <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                        1
+                      </span>
+                      Kopieren Sie die URL oder klicken Sie auf &quot;In
+                      Kalender öffnen&quot;
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                        2
+                      </span>
+                      Fügen Sie die URL in Ihrer Kalender-App als Abonnement
+                      hinzu
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                        3
+                      </span>
+                      Ihr Kalender synchronisiert automatisch alle Ereignisse
+                    </li>
+                  </ol>
+                </div>
+                {/* <CalendarExportGlobalCreate
+                  activeOrgId={session?.user?.activeOrganization?.id}
+                /> */}
+              </div>
             </CardHeader>
             <CardContent>
               {organizations.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <h4 className="mb-2 text-sm font-medium">
-                      So funktioniert&apos;s
-                    </h4>
-                    <ol className="text-muted-foreground space-y-2 text-sm">
-                      <li className="flex gap-2">
-                        <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                          1
-                        </span>
-                        Kopieren Sie die URL oder klicken Sie auf &quot;In
-                        Kalender öffnen&quot;
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                          2
-                        </span>
-                        Fügen Sie die URL in Ihrer Kalender-App als Abonnement
-                        hinzu
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                          3
-                        </span>
-                        Ihr Kalender synchronisiert automatisch alle Ereignisse
-                      </li>
-                    </ol>
-                  </div>
-
-                  <Separator className="my-6" />
+                  <Separator className="mb-6" />
 
                   {organizations.map((org) => (
                     <CalendarIntegrationCard key={org.id} org={org} />
@@ -704,25 +709,24 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={org.id}
-                        className="flex flex-col gap-4 rounded-lg border p-4 pl-2 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <div className="flex items-center">
-                          <div className="flex w-20 justify-center">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg">
                             {logoUrl ? (
                               <Image
                                 src={logoUrl}
                                 alt={org.name}
-                                width={80}
-                                height={60}
+                                width={40}
+                                height={40}
+                                className="h-full w-full object-contain p-1.5"
                               />
                             ) : (
-                              <div className="bg-muted flex size-10 items-center justify-center rounded-full p-2">
-                                <Building2 className="size-4" />
-                              </div>
+                              <Building2 className="text-muted-foreground h-5 w-5" />
                             )}
                           </div>
                           <div className="space-y-2">
-                            <h3 className="text-lg font-semibold">
+                            <h3 className="leading-none font-medium">
                               {org.name}
                             </h3>
                             <RolesList

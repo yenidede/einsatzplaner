@@ -221,12 +221,20 @@ export async function removeUserFromOrganizationAction(
     throw new Error('Keine Berechtigung zum Entfernen von Benutzern.');
   }
 
-  await prisma.user_organization_role.deleteMany({
-    where: {
-      user_id: userId,
-      org_id: organizationId,
-    },
-  });
+  await prisma.$transaction([
+    prisma.calendar_subscription.deleteMany({
+      where: {
+        user_id: userId,
+        org_id: organizationId,
+      },
+    }),
+    prisma.user_organization_role.deleteMany({
+      where: {
+        user_id: userId,
+        org_id: organizationId,
+      },
+    }),
+  ]);
 
   revalidatePath(`/organization/${organizationId}`);
 
