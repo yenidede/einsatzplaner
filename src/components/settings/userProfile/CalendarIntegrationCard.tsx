@@ -211,8 +211,12 @@ export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
   );
 
   const copyUrl = async (url: string) => {
-    await navigator.clipboard.writeText(url);
-    toast.success('URL in Zwischenablage kopiert');
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('URL in Zwischenablage kopiert');
+    } catch {
+      toast.error('Kopieren fehlgeschlagen');
+    }
   };
 
   const openCreateDialog = () => {
