@@ -49,6 +49,7 @@ function richNodeStyle(node: DocumentTemplateRichTextNode): CSSProperties {
   return {
     marginTop: numericAttr(node, 'spacingTop'),
     marginBottom: numericAttr(node, 'spacingBottom'),
+    marginLeft: numericAttr(node, 'indent'),
     textAlign:
       node.attrs?.textAlign === 'center' || node.attrs?.textAlign === 'right'
         ? node.attrs.textAlign
@@ -239,6 +240,8 @@ function InlineRichText({
                   ? 'underline'
                   : undefined,
                 fontSize: typeof fontSize === 'string' ? fontSize : undefined,
+                tabSize: 4,
+                whiteSpace: 'pre-wrap',
               }}
             >
               {node.text}
@@ -289,11 +292,28 @@ function RichTextPreviewNode({
       typeof node.attrs?.width === 'number' ? node.attrs.width : 160;
     const height =
       typeof node.attrs?.height === 'number' ? node.attrs.height : 80;
+    const mode = node.attrs?.mode === 'free' ? 'free' : 'inline';
+    const x = typeof node.attrs?.x === 'number' ? node.attrs.x : 0;
+    const y = typeof node.attrs?.y === 'number' ? node.attrs.y : 0;
 
     if (!src || src === '—') {
       return (
         <div
-          className="text-muted-foreground my-2 inline-flex rounded-md border border-dashed px-3 py-2 text-xs"
+          className={cn(
+            'text-muted-foreground inline-flex rounded-md border border-dashed px-3 py-2 text-xs',
+            mode === 'inline' && 'my-2'
+          )}
+          style={
+            mode === 'free'
+              ? {
+                  position: 'absolute',
+                  left: x,
+                  top: y,
+                  width,
+                  minHeight: Math.min(height, 80),
+                }
+              : undefined
+          }
         >
           {node.attrs?.src === '{{organizationLogoUrl}}'
             ? 'Kein Organisationslogo hinterlegt.'
@@ -305,10 +325,21 @@ function RichTextPreviewNode({
     return (
       <div
         className={cn(
-          'my-2 flex',
+          mode === 'inline' && 'my-2 flex',
+          mode === 'free' && 'absolute',
           align === 'center' && 'justify-center',
           align === 'right' && 'justify-end'
         )}
+        style={
+          mode === 'free'
+            ? {
+                left: x,
+                top: y,
+                width,
+                height,
+              }
+            : undefined
+        }
       >
         <Image
           src={src}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Copy, Pencil, Star, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,6 +22,17 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export function DocumentTemplateList({
   organizationId,
@@ -30,6 +42,8 @@ export function DocumentTemplateList({
   templates: DocumentTemplateListItem[];
 }) {
   const queryClient = useQueryClient();
+  const [templateToDelete, setTemplateToDelete] =
+    useState<DocumentTemplateListItem | null>(null);
 
   async function refresh() {
     await queryClient.invalidateQueries({
@@ -44,12 +58,9 @@ export function DocumentTemplateList({
   }
 
   async function handleDelete(template: DocumentTemplateListItem) {
-    if (!window.confirm(`Dokumentvorlage „${template.name}“ löschen?`)) {
-      return;
-    }
-
     await deleteDocumentTemplate(template.id);
     toast.success('Dokumentvorlage wurde gelöscht.');
+    setTemplateToDelete(null);
     await refresh();
   }
 
@@ -128,14 +139,39 @@ export function DocumentTemplateList({
                     <Star data-icon="inline-start" />
                     Standard
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void handleDelete(template)}
+                  <AlertDialog
+                    open={templateToDelete?.id === template.id}
+                    onOpenChange={(open) =>
+                      setTemplateToDelete(open ? template : null)
+                    }
                   >
-                    <Trash2 data-icon="inline-start" />
-                    Löschen
-                  </Button>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Trash2 data-icon="inline-start" />
+                        Löschen
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Dokumentvorlage löschen?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Die Vorlage „{template.name}“ wird dauerhaft
+                          gelöscht. Diese Aktion kann nicht rückgängig gemacht
+                          werden.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => void handleDelete(template)}
+                        >
+                          Löschen
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </CardContent>
               </Card>
             ))}

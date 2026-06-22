@@ -5,6 +5,7 @@ import {
   Footer,
   HeadingLevel,
   Header,
+  HorizontalPositionRelativeFrom,
   ImageRun,
   Packer,
   PageNumber,
@@ -14,7 +15,10 @@ import {
   Table,
   TableCell,
   TableRow,
+  Tab,
   TextRun,
+  TextWrappingType,
+  VerticalPositionRelativeFrom,
   WidthType,
   convertMillimetersToTwip,
 } from 'docx';
@@ -45,6 +49,10 @@ function docxAlignment(align: DocumentTemplateHorizontalAlignment | undefined) {
   if (align === 'center') return AlignmentType.CENTER;
   if (align === 'right') return AlignmentType.RIGHT;
   return AlignmentType.LEFT;
+}
+
+function pxToEmu(value: number): number {
+  return Math.round(value * 9525);
 }
 
 function dataUrlToImage(value: string): {
@@ -161,6 +169,25 @@ async function imageNodeToParagraph(
           height:
             typeof node.attrs?.height === 'number' ? node.attrs.height : 80,
         },
+        floating:
+          node.attrs?.mode === 'free'
+            ? {
+                horizontalPosition: {
+                  relative: HorizontalPositionRelativeFrom.MARGIN,
+                  offset: pxToEmu(
+                    typeof node.attrs.x === 'number' ? node.attrs.x : 0
+                  ),
+                },
+                verticalPosition: {
+                  relative: VerticalPositionRelativeFrom.PARAGRAPH,
+                  offset: pxToEmu(
+                    typeof node.attrs.y === 'number' ? node.attrs.y : 0
+                  ),
+                },
+                allowOverlap: true,
+                wrap: { type: TextWrappingType.NONE },
+              }
+            : undefined,
       }),
     ],
   });
@@ -437,17 +464,23 @@ function inlineNodesToRuns(
             : undefined;
         const parsedColor =
           typeof color === 'string' ? color.replace('#', '') : undefined;
+        const textParts = (node.text ?? '').split('\t');
 
-        return [
-          new TextRun({
-            text: node.text ?? '',
-            bold: hasMark(node.marks, 'bold'),
-            italics: hasMark(node.marks, 'italic'),
-            underline: hasMark(node.marks, 'underline') ? {} : undefined,
-            size: parsedFontSize ? parsedFontSize * 2 : undefined,
-            color: parsedColor,
-          }),
-        ];
+        return textParts.flatMap((part, partIndex) => [
+          ...(partIndex > 0 ? [new TextRun({ children: [new Tab()] })] : []),
+          ...(part
+            ? [
+                new TextRun({
+                  text: part,
+                  bold: hasMark(node.marks, 'bold'),
+                  italics: hasMark(node.marks, 'italic'),
+                  underline: hasMark(node.marks, 'underline') ? {} : undefined,
+                  size: parsedFontSize ? parsedFontSize * 2 : undefined,
+                  color: parsedColor,
+                }),
+              ]
+            : []),
+        ]);
       }
 
       if (node.type === 'hardBreak') {
@@ -495,6 +528,12 @@ function spacingFromNode(node: DocumentTemplateRichTextNode) {
   return before || after ? { before, after } : undefined;
 }
 
+function indentFromNode(node: DocumentTemplateRichTextNode) {
+  return typeof node.attrs?.indent === 'number'
+    ? { left: Math.round(node.attrs.indent * 15) }
+    : undefined;
+}
+
 async function richTextDocToDocxChildren(
   document: DocumentTemplateRichTextNode,
   fields: ResolvedDocumentTemplateFields
@@ -518,6 +557,7 @@ async function richTextDocToDocxChildren(
           heading: level,
           alignment: alignmentFromNode(node),
           spacing: spacingFromNode(node),
+          indent: indentFromNode(node),
         })
       );
       continue;
@@ -570,6 +610,7 @@ async function richTextDocToDocxChildren(
           children: inlineNodesToRuns(node.content?.[0]?.content, fields),
           shading: { fill: 'F4F4F5' },
           spacing: spacingFromNode(node) ?? { before: 160, after: 160 },
+          indent: indentFromNode(node),
         })
       );
       continue;
@@ -581,6 +622,7 @@ async function richTextDocToDocxChildren(
           children: inlineNodesToRuns(node.content, fields),
           alignment: alignmentFromNode(node),
           spacing: spacingFromNode(node),
+          indent: indentFromNode(node),
         })
       );
       continue;

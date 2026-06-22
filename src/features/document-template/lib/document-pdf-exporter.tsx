@@ -98,6 +98,7 @@ const styles = StyleSheet.create({
 type PdfSpacingStyle = {
   marginTop?: number;
   marginBottom?: number;
+  marginLeft?: number;
   textAlign?: 'center' | 'right';
 };
 
@@ -248,7 +249,7 @@ function inlineNodeToPdfText(
           color: typeof color === 'string' ? color : undefined,
         }}
       >
-        {node.text ?? ''}
+        {(node.text ?? '').replaceAll('\t', '    ')}
       </Text>
     );
   }
@@ -301,13 +302,25 @@ function imageNodeToPdfBlock(
     <View
       key={index}
       style={{
+        position: node.attrs?.mode === 'free' ? 'absolute' : undefined,
+        left:
+          node.attrs?.mode === 'free' && typeof node.attrs.x === 'number'
+            ? node.attrs.x
+            : undefined,
+        top:
+          node.attrs?.mode === 'free' && typeof node.attrs.y === 'number'
+            ? node.attrs.y
+            : undefined,
         alignItems:
           align === 'center'
             ? 'center'
             : align === 'right'
               ? 'flex-end'
               : 'flex-start',
-        marginBottom: 8,
+        marginBottom: node.attrs?.mode === 'free' ? 0 : 8,
+        width: typeof node.attrs?.width === 'number' ? node.attrs.width : 160,
+        height:
+          typeof node.attrs?.height === 'number' ? node.attrs.height : 80,
       }}
     >
       {/* @react-pdf/renderer Image has no alt prop; this is not a DOM image. */}
@@ -342,6 +355,8 @@ function spacingStyleFromNode(
       typeof node.attrs?.spacingBottom === 'number'
         ? node.attrs.spacingBottom
         : undefined,
+    marginLeft:
+      typeof node.attrs?.indent === 'number' ? node.attrs.indent : undefined,
     textAlign,
   };
 }
