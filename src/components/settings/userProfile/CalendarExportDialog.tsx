@@ -101,6 +101,12 @@ const steps = [
   { id: 'preview', label: 'Vorschau' },
 ] as const;
 
+const calendarExportInstructions = [
+  'Kopieren Sie die URL oder klicken Sie auf "In Kalender öffnen".',
+  'Fügen Sie die URL in Ihrer Kalender-App als Abonnement hinzu.',
+  'Ihr Kalender synchronisiert automatisch alle Ereignisse.',
+];
+
 function getInitialStepIndex(input: {
   exportToEdit?: CalendarExport | null;
   templateToEdit?: CalendarExportTemplateChoice | null;
@@ -455,12 +461,13 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
   };
 
   const step = steps[stepIndex];
+  const dialogTitle = savedExport ? 'Kalender-Link ist bereit' : step.label;
 
   return (
     <Dialog open={props.open} onOpenChange={requestClose}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{step.label}</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -470,7 +477,7 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
                 key={item.id}
                 className={cn(
                   'h-1 flex-1 rounded-full',
-                  index <= stepIndex ? 'bg-primary' : 'bg-muted'
+                  savedExport || index <= stepIndex ? 'bg-primary' : 'bg-muted'
                 )}
                 aria-label={item.label}
               />
@@ -761,7 +768,48 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
             </div>
           )}
 
-          {step.id === 'preview' && (
+          {savedExport ? (
+            <div className="space-y-5">
+              <div className="space-y-3 rounded-md bg-muted/50 p-4">
+                <p className="font-medium">So funktioniert&apos;s</p>
+                <div className="space-y-3">
+                  {calendarExportInstructions.map((instruction, index) => (
+                    <div key={instruction} className="flex items-center gap-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium">
+                        {index + 1}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {instruction}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-md border p-3">
+                <p className="font-medium">Neuer Kalenderexport-Link</p>
+                <p className="text-muted-foreground font-mono text-xs break-all">
+                  {savedExport.webcalUrl}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => copyUrl(savedExport.webcalUrl)}
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    Kopieren
+                  </Button>
+                  <Button type="button" variant="outline" asChild>
+                    <a href={savedExport.webcalUrl}>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      In Kalender öffnen
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : step.id === 'preview' && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="calendar-export-name">
@@ -898,53 +946,31 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
               <p className="text-muted-foreground text-sm">
                 {selectedOrg?.name} · {modeLabel(config.mode)}
               </p>
-              {savedExport ? (
-                <div className="space-y-3 rounded-md border p-3">
-                  <p className="font-medium">Kalender-Link ist bereit</p>
-                  <p className="text-muted-foreground font-mono text-xs break-all">
-                    {savedExport.webcalUrl}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => copyUrl(savedExport.webcalUrl)}
-                    >
-                      <Copy className="mr-2 h-4 w-4" />
-                      Kopieren
-                    </Button>
-                    <Button type="button" variant="outline" asChild>
-                      <a href={savedExport.webcalUrl}>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        In Kalender öffnen
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
             </div>
           )}
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                stepIndex === 0
-                  ? requestClose(false)
-                  : setStepIndex((current) => current - 1)
-              }
-            >
-              {stepIndex === 0 ? 'Abbrechen' : 'Zurück'}
-            </Button>
             {savedExport ? (
               <Button type="button" onClick={() => props.onOpenChange(false)}>
                 Schließen
               </Button>
             ) : (
-              <Button type="submit">
-                {stepIndex === steps.length - 1 ? 'Speichern' : 'Weiter'}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    stepIndex === 0
+                      ? requestClose(false)
+                      : setStepIndex((current) => current - 1)
+                  }
+                >
+                  {stepIndex === 0 ? 'Abbrechen' : 'Zurück'}
+                </Button>
+                <Button type="submit">
+                  {stepIndex === steps.length - 1 ? 'Speichern' : 'Weiter'}
+                </Button>
+              </>
             )}
           </DialogFooter>
         </form>
