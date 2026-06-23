@@ -3,11 +3,31 @@ import type { CalendarExportConfig } from './config';
 export function composeCalendarExportEventTitle(input: {
   title: string;
   categoryAbbreviations: string[];
+  assignedHelperFirstNames: string[];
   assignedHelpers: number;
   helpersNeeded: number;
   config: CalendarExportConfig;
 }) {
+  const titleParts: string[] = [];
   const additions: string[] = [];
+
+  if (input.config.titleAdditions.assignedHelperNames) {
+    const helperNames = input.assignedHelperFirstNames
+      .map((name) => name.trim())
+      .filter(Boolean);
+    const openPositions = Math.max(input.helpersNeeded - helperNames.length, 0);
+    if (helperNames.length > 0) {
+      const helperNameText =
+        openPositions > 0
+          ? `${helperNames.join(', ')} + ${openPositions}`
+          : helperNames.join(', ');
+      titleParts.push(helperNameText);
+    }
+  }
+
+  if (input.config.titleAdditions.eventTitle) {
+    titleParts.push(input.title);
+  }
 
   if (input.config.titleAdditions.categories) {
     const categoryText = input.categoryAbbreviations
@@ -24,9 +44,20 @@ export function composeCalendarExportEventTitle(input: {
     additions.push(`${input.assignedHelpers}/${input.helpersNeeded}`);
   }
 
-  return additions.length > 0
-    ? `${input.title} (${additions.join(' · ')})`
-    : input.title;
+  const baseTitle = titleParts.join(' | ');
+  if (baseTitle && additions.length > 0) {
+    return `${baseTitle} (${additions.join(' · ')})`;
+  }
+
+  if (baseTitle) {
+    return baseTitle;
+  }
+
+  if (additions.length > 0) {
+    return additions.join(' · ');
+  }
+
+  return input.title;
 }
 
 export function slugifyCalendarExportFilenamePart(value: string) {

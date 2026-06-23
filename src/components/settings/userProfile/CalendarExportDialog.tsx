@@ -52,6 +52,7 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+type FormInputValues = z.input<typeof formSchema>;
 type SavedExport = {
   name: string;
   webcalUrl: string;
@@ -173,6 +174,15 @@ function formatPreviewDate(input: {
   })}`;
 }
 
+function selectedTitlePartCount(config: CalendarExportConfig) {
+  return [
+    config.titleAdditions.assignedHelperNames,
+    config.titleAdditions.eventTitle,
+    config.titleAdditions.categories,
+    config.titleAdditions.helperCount,
+  ].filter(Boolean).length;
+}
+
 export function CalendarExportDialog(props: CalendarExportDialogProps) {
   const { eligibility, exportToEdit, initialOrgId, open, templateToEdit } =
     props;
@@ -186,7 +196,7 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
   }>({ from: null, to: null });
   const { showDestructive } = useConfirmDialog();
 
-  const form = useForm<FormValues>({
+  const form = useForm<FormInputValues, unknown, FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: buildInitialValues({
       eligibility,
@@ -197,7 +207,8 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
   });
 
   const orgId = useWatch({ control: form.control, name: 'orgId' });
-  const config = useWatch({ control: form.control, name: 'config' });
+  const watchedConfig = useWatch({ control: form.control, name: 'config' });
+  const config = calendarExportConfigSchema.parse(watchedConfig);
   const selectedEligibility = props.eligibility.find(
     (item) => item.organization.id === orgId
   );
@@ -208,6 +219,7 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
     props.mode === 'personal' ? orgId : null
   );
   const previewQuery = useCalendarExportPreview(orgId, config);
+  const titlePartCount = selectedTitlePartCount(config);
 
   const availableModes = selectedEligibility?.modes ?? (['helper'] as const);
 
@@ -759,10 +771,46 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
               )}
 
               <div className="space-y-3">
-                <Label>Titel-Zusätze</Label>
+                <Label>Titel zusammensetzen aus</Label>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={config.titleAdditions.assignedHelperNames}
+                    disabled={
+                      config.titleAdditions.assignedHelperNames &&
+                      titlePartCount === 1
+                    }
+                    onCheckedChange={(checked) =>
+                      form.setValue(
+                        'config.titleAdditions.assignedHelperNames',
+                        checked === true,
+                        { shouldDirty: true }
+                      )
+                    }
+                  />
+                  <span>Eingeteilte Personen</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={config.titleAdditions.eventTitle}
+                    disabled={
+                      config.titleAdditions.eventTitle && titlePartCount === 1
+                    }
+                    onCheckedChange={(checked) =>
+                      form.setValue(
+                        'config.titleAdditions.eventTitle',
+                        checked === true,
+                        { shouldDirty: true }
+                      )
+                    }
+                  />
+                  <span>Einsatztitel</span>
+                </label>
                 <label className="flex items-center gap-2">
                   <Checkbox
                     checked={config.titleAdditions.categories}
+                    disabled={
+                      config.titleAdditions.categories && titlePartCount === 1
+                    }
                     onCheckedChange={(checked) =>
                       form.setValue(
                         'config.titleAdditions.categories',
@@ -776,6 +824,9 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
                 <label className="flex items-center gap-2">
                   <Checkbox
                     checked={config.titleAdditions.helperCount}
+                    disabled={
+                      config.titleAdditions.helperCount && titlePartCount === 1
+                    }
                     onCheckedChange={(checked) =>
                       form.setValue(
                         'config.titleAdditions.helperCount',

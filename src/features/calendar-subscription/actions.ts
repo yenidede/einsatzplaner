@@ -507,8 +507,16 @@ export async function getCalendarExportPreviewAction(
         },
       },
       einsatz_helper: {
+        orderBy: {
+          joined_at: 'asc',
+        },
         select: {
           user_id: true,
+          user: {
+            select: {
+              firstname: true,
+            },
+          },
         },
       },
     },
@@ -530,6 +538,9 @@ export async function getCalendarExportPreviewAction(
         categoryAbbreviations: event.einsatz_to_category
           .map((category) => category.einsatz_category.abbreviation)
           .filter((abbreviation) => abbreviation !== ''),
+        assignedHelperFirstNames: event.einsatz_helper.map(
+          (helper) => helper.user.firstname
+        ),
         assignedHelpers: event.einsatz_helper.length,
         helpersNeeded: event.helpers_needed,
         config: parsedConfig,

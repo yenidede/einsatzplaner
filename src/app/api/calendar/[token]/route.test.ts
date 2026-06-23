@@ -167,4 +167,94 @@ describe('GET /api/calendar/[token]', () => {
       })
     );
   });
+
+  it('exportiert eingeteilte Personen und offene Plätze im Summary', async () => {
+    mockFindSubscription.mockResolvedValue({
+      user_id: 'user-1',
+      org_id: 'orga-1',
+      name: 'Café Export',
+      is_active: true,
+      config: {
+        version: 1,
+        mode: 'helper',
+        categoryIds: [],
+        statusIds: [],
+        statusPseudo: [],
+        timeWindow: null,
+        includeAllDay: true,
+        futureOnly: false,
+        titleAdditions: {
+          eventTitle: true,
+          assignedHelperNames: true,
+          categories: false,
+          helperCount: true,
+        },
+      },
+      organization: {
+        name: 'Organisation',
+        email: null,
+        phone: null,
+        helper_name_plural: 'Helfer:innen',
+        einsatz_name_singular: 'Einsatz',
+      },
+    });
+    mockFindEinsaetze.mockResolvedValue([
+      {
+        id: 'einsatz-1',
+        title: 'Kassa/Café',
+        start: new Date('2026-06-18T10:00:00.000Z'),
+        end: new Date('2026-06-18T11:00:00.000Z'),
+        all_day: false,
+        anmerkung: null,
+        helpers_needed: 2,
+        participant_count: null,
+        price_per_person: null,
+        total_price: null,
+        einsatz_to_category: [],
+        einsatz_field: [],
+        einsatz_user_property: [],
+        einsatz_helper: [
+          {
+            user_id: 'user-1',
+            user: {
+              id: 'user-1',
+              firstname: 'Raphael',
+              lastname: 'Muster',
+            },
+          },
+        ],
+        status_id: 'status-1',
+        einsatz_status: {
+          id: 'status-1',
+          helper_text: 'teilweise vergeben',
+          verwalter_text: 'teilweise vergeben',
+        },
+        organization: {
+          name: 'Organisation',
+        },
+      },
+    ]);
+
+    await GET(
+      new NextRequest('https://einsatzplaner.example/api/calendar/token'),
+      {
+        params: Promise.resolve({ token: 'token' }),
+      }
+    );
+
+    expect(mockFindEinsaetze).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          einsatz_helper: expect.objectContaining({
+            orderBy: { joined_at: 'asc' },
+          }),
+        }),
+      })
+    );
+    expect(mockCreateEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summary: 'Raphael + 1 | Kassa/Café (1/2)',
+      })
+    );
+  });
 });

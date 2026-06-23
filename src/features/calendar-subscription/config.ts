@@ -8,6 +8,8 @@ export type CalendarExportStatusPseudo =
   (typeof calendarExportStatusPseudoValues)[number];
 
 export const calendarExportTitleAdditionKeys = [
+  'eventTitle',
+  'assignedHelperNames',
   'categories',
   'helperCount',
 ] as const;
@@ -15,6 +17,18 @@ export type CalendarExportTitleAdditionKey =
   (typeof calendarExportTitleAdditionKeys)[number];
 
 const normalizedTimeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/);
+const defaultCalendarExportTitleAdditions = {
+  eventTitle: true,
+  assignedHelperNames: false,
+  categories: true,
+  helperCount: true,
+};
+const calendarExportTitleAdditionsSchema = z.object({
+  eventTitle: z.boolean(),
+  assignedHelperNames: z.boolean(),
+  categories: z.boolean(),
+  helperCount: z.boolean(),
+});
 
 export const calendarExportConfigSchema = z
   .object({
@@ -31,10 +45,19 @@ export const calendarExportConfigSchema = z
       .nullable(),
     includeAllDay: z.boolean(),
     futureOnly: z.boolean(),
-    titleAdditions: z.object({
-      categories: z.boolean(),
-      helperCount: z.boolean(),
-    }),
+    titleAdditions: z
+      .object({
+        eventTitle: z.boolean().optional(),
+        assignedHelperNames: z.boolean().optional(),
+        categories: z.boolean().optional(),
+        helperCount: z.boolean().optional(),
+      })
+      .transform((titleAdditions) =>
+        calendarExportTitleAdditionsSchema.parse({
+          ...defaultCalendarExportTitleAdditions,
+          ...titleAdditions,
+        })
+      ),
   })
   .transform((config) =>
     config.mode === 'verwaltung'
@@ -57,8 +80,7 @@ export const defaultCalendarExportConfig: CalendarExportConfig = {
   includeAllDay: true,
   futureOnly: false,
   titleAdditions: {
-    categories: true,
-    helperCount: true,
+    ...defaultCalendarExportTitleAdditions,
   },
 };
 
