@@ -84,10 +84,11 @@ export function useCalendarExports() {
   const updateExport = useMutation({
     mutationFn: ({
       id,
+      orgId,
       name,
       config,
     }: CalendarExportMutationInput & { id: string }) =>
-      updateCalendarExportAction(id, { name, config }),
+      updateCalendarExportAction(id, { orgId, name, config }),
     onSuccess: async () => {
       await invalidateExports();
       toast.success('Kalenderexport wurde gespeichert');

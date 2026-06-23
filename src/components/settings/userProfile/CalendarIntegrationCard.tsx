@@ -439,7 +439,7 @@ export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
         exportToEdit={editExport}
         onOpenChange={setDialogOpen}
         onSavePersonal={async (input) => {
-          if (input.id && input.orgId === editExport?.orgId) {
+          if (input.id) {
             const result = await calendarExports.updateExport.mutateAsync({
               id: input.id,
               orgId: input.orgId,
