@@ -140,6 +140,7 @@ export async function createCalendarExport(input: {
 export async function updateCalendarExport(input: {
   id: string;
   userId: string;
+  orgId: string;
   name: string;
   config: CalendarExportConfig;
 }) {
@@ -156,7 +157,7 @@ export async function updateCalendarExport(input: {
   if (
     await calendarExportNameExists({
       userId: input.userId,
-      orgId: existing.org_id,
+      orgId: input.orgId,
       name: trimmedName,
       excludeId: input.id,
     })
@@ -167,6 +168,7 @@ export async function updateCalendarExport(input: {
   return prisma.calendar_subscription.update({
     where: { id: input.id, user_id: input.userId },
     data: {
+      org_id: input.orgId,
       name: trimmedName,
       config: toJsonInput(input.config),
     },

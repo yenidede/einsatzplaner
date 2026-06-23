@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { MultiSelect } from '@/components/form/multi-select';
 import { TimeTextInput } from '@/components/form/TimeTextInput';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -43,6 +44,10 @@ import {
   type CalendarExportEligibility,
 } from '@/features/calendar-subscription/hooks/useCalendarSubscription';
 import { cn } from '@/lib/utils';
+import {
+  getCalendarExportNameAfterOrgChange,
+  getPreviewDurationTag,
+} from './CalendarExportDialog.utils';
 
 const formSchema = z.object({
   orgId: z.string().uuid(),
@@ -52,6 +57,7 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+type FormInputValues = z.input<typeof formSchema>;
 type SavedExport = {
   name: string;
   webcalUrl: string;
@@ -94,6 +100,12 @@ const steps = [
   { id: 'filters', label: 'Filter' },
   { id: 'preview', label: 'Vorschau' },
 ] as const;
+
+const calendarExportInstructions = [
+  'Kopieren Sie die URL oder klicken Sie auf "In Kalender öffnen".',
+  'Fügen Sie die URL in Ihrer Kalender-App als Abonnement hinzu.',
+  'Ihr Kalender synchronisiert automatisch alle Ereignisse.',
+];
 
 function getInitialStepIndex(input: {
   exportToEdit?: CalendarExport | null;
@@ -173,6 +185,15 @@ function formatPreviewDate(input: {
   })}`;
 }
 
+function selectedTitlePartCount(config: CalendarExportConfig) {
+  return [
+    config.titleAdditions.assignedHelperNames,
+    config.titleAdditions.eventTitle,
+    config.titleAdditions.categories,
+    config.titleAdditions.helperCount,
+  ].filter(Boolean).length;
+}
+
 export function CalendarExportDialog(props: CalendarExportDialogProps) {
   const { eligibility, exportToEdit, initialOrgId, open, templateToEdit } =
     props;
@@ -186,7 +207,7 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
   }>({ from: null, to: null });
   const { showDestructive } = useConfirmDialog();
 
-  const form = useForm<FormValues>({
+  const form = useForm<FormInputValues, unknown, FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: buildInitialValues({
       eligibility,
@@ -197,7 +218,8 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
   });
 
   const orgId = useWatch({ control: form.control, name: 'orgId' });
-  const config = useWatch({ control: form.control, name: 'config' });
+  const watchedConfig = useWatch({ control: form.control, name: 'config' });
+  const config = calendarExportConfigSchema.parse(watchedConfig);
   const selectedEligibility = props.eligibility.find(
     (item) => item.organization.id === orgId
   );
@@ -208,6 +230,7 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
     props.mode === 'personal' ? orgId : null
   );
   const previewQuery = useCalendarExportPreview(orgId, config);
+  const titlePartCount = selectedTitlePartCount(config);
 
   const availableModes = selectedEligibility?.modes ?? (['helper'] as const);
 
@@ -346,10 +369,12 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
       } catch {
         return;
       }
-      if (result) {
-        setSavedExport(result);
-      }
       form.reset(values);
+      if (result && !props.exportToEdit) {
+        setSavedExport(result);
+        return;
+      }
+      props.onOpenChange(false);
       return;
     }
 
@@ -414,7 +439,14 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
       { shouldDirty: true }
     );
     setTimeWindowDraft({ from: '', to: '' });
-    form.setValue('name', '', { shouldDirty: true });
+    form.setValue(
+      'name',
+      getCalendarExportNameAfterOrgChange({
+        currentName: form.getValues('name'),
+        isEditingExistingExport: Boolean(props.exportToEdit),
+      }),
+      { shouldDirty: true }
+    );
     setSelectedTemplateId('custom');
   };
 
@@ -429,12 +461,13 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
   };
 
   const step = steps[stepIndex];
+  const dialogTitle = savedExport ? 'Kalender-Link ist bereit' : step.label;
 
   return (
     <Dialog open={props.open} onOpenChange={requestClose}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{step.label}</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -444,7 +477,7 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
                 key={item.id}
                 className={cn(
                   'h-1 flex-1 rounded-full',
-                  index <= stepIndex ? 'bg-primary' : 'bg-muted'
+                  savedExport || index <= stepIndex ? 'bg-primary' : 'bg-muted'
                 )}
                 aria-label={item.label}
               />
@@ -735,7 +768,48 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
             </div>
           )}
 
-          {step.id === 'preview' && (
+          {savedExport ? (
+            <div className="space-y-5">
+              <div className="space-y-3 rounded-md bg-muted/50 p-4">
+                <p className="font-medium">So funktioniert&apos;s</p>
+                <div className="space-y-3">
+                  {calendarExportInstructions.map((instruction, index) => (
+                    <div key={instruction} className="flex items-center gap-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium">
+                        {index + 1}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {instruction}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-md border p-3">
+                <p className="font-medium">Neuer Kalenderexport-Link</p>
+                <p className="text-muted-foreground font-mono text-xs break-all">
+                  {savedExport.webcalUrl}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => copyUrl(savedExport.webcalUrl)}
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    Kopieren
+                  </Button>
+                  <Button type="button" variant="outline" asChild>
+                    <a href={savedExport.webcalUrl}>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      In Kalender öffnen
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : step.id === 'preview' && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="calendar-export-name">
@@ -762,10 +836,46 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
               )}
 
               <div className="space-y-3">
-                <Label>Titel-Zusätze</Label>
+                <Label>Titel zusammensetzen aus</Label>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={config.titleAdditions.assignedHelperNames}
+                    disabled={
+                      config.titleAdditions.assignedHelperNames &&
+                      titlePartCount === 1
+                    }
+                    onCheckedChange={(checked) =>
+                      form.setValue(
+                        'config.titleAdditions.assignedHelperNames',
+                        checked === true,
+                        { shouldDirty: true }
+                      )
+                    }
+                  />
+                  <span>Eingeteilte Personen</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={config.titleAdditions.eventTitle}
+                    disabled={
+                      config.titleAdditions.eventTitle && titlePartCount === 1
+                    }
+                    onCheckedChange={(checked) =>
+                      form.setValue(
+                        'config.titleAdditions.eventTitle',
+                        checked === true,
+                        { shouldDirty: true }
+                      )
+                    }
+                  />
+                  <span>Einsatztitel</span>
+                </label>
                 <label className="flex items-center gap-2">
                   <Checkbox
                     checked={config.titleAdditions.categories}
+                    disabled={
+                      config.titleAdditions.categories && titlePartCount === 1
+                    }
                     onCheckedChange={(checked) =>
                       form.setValue(
                         'config.titleAdditions.categories',
@@ -779,6 +889,9 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
                 <label className="flex items-center gap-2">
                   <Checkbox
                     checked={config.titleAdditions.helperCount}
+                    disabled={
+                      config.titleAdditions.helperCount && titlePartCount === 1
+                    }
                     onCheckedChange={(checked) =>
                       form.setValue(
                         'config.titleAdditions.helperCount',
@@ -798,14 +911,29 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
                   </p>
                 ) : previewQuery.data?.previewEvents.length ? (
                   <div className="divide-y">
-                    {previewQuery.data.previewEvents.map((event) => (
-                      <div key={event.id} className="py-2 first:pt-0 last:pb-0">
-                        <p className="font-medium">{event.title}</p>
-                        <p className="text-muted-foreground text-sm">
-                          {formatPreviewDate(event)}
-                        </p>
-                      </div>
-                    ))}
+                    {previewQuery.data.previewEvents.map((event) => {
+                      const durationTag = getPreviewDurationTag(event);
+
+                      return (
+                        <div
+                          key={event.id}
+                          className="relative py-2 pr-24 first:pt-0 last:pb-0"
+                        >
+                          <p className="font-medium">{event.title}</p>
+                          <p className="text-muted-foreground text-sm">
+                            {formatPreviewDate(event)}
+                          </p>
+                          {durationTag ? (
+                            <Badge
+                              variant="secondary"
+                              className="absolute top-2 right-0"
+                            >
+                              {durationTag}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-muted-foreground text-sm">
@@ -818,53 +946,31 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
               <p className="text-muted-foreground text-sm">
                 {selectedOrg?.name} · {modeLabel(config.mode)}
               </p>
-              {savedExport ? (
-                <div className="space-y-3 rounded-md border p-3">
-                  <p className="font-medium">Kalender-Link ist bereit</p>
-                  <p className="text-muted-foreground font-mono text-xs break-all">
-                    {savedExport.webcalUrl}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => copyUrl(savedExport.webcalUrl)}
-                    >
-                      <Copy className="mr-2 h-4 w-4" />
-                      Kopieren
-                    </Button>
-                    <Button type="button" variant="outline" asChild>
-                      <a href={savedExport.webcalUrl}>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        In Kalender öffnen
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
             </div>
           )}
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                stepIndex === 0
-                  ? requestClose(false)
-                  : setStepIndex((current) => current - 1)
-              }
-            >
-              {stepIndex === 0 ? 'Abbrechen' : 'Zurück'}
-            </Button>
             {savedExport ? (
               <Button type="button" onClick={() => props.onOpenChange(false)}>
                 Schließen
               </Button>
             ) : (
-              <Button type="submit">
-                {stepIndex === steps.length - 1 ? 'Speichern' : 'Weiter'}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    stepIndex === 0
+                      ? requestClose(false)
+                      : setStepIndex((current) => current - 1)
+                  }
+                >
+                  {stepIndex === 0 ? 'Abbrechen' : 'Zurück'}
+                </Button>
+                <Button type="submit">
+                  {stepIndex === steps.length - 1 ? 'Speichern' : 'Weiter'}
+                </Button>
+              </>
             )}
           </DialogFooter>
         </form>

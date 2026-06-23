@@ -35,6 +35,10 @@ const exportInputSchema = z.object({
   config: calendarExportConfigSchema,
 });
 
+const exportUpdateInputSchema = exportInputSchema.extend({
+  orgId: z.string().uuid('Die Organisation ist ungültig.'),
+});
+
 const templateInputSchema = exportInputSchema.extend({
   description: z.string().trim().optional().nullable(),
 });
@@ -293,7 +297,7 @@ export async function createCalendarExportAction(
 
 export async function updateCalendarExportAction(
   id: string,
-  input: z.input<typeof exportInputSchema>
+  input: z.input<typeof exportUpdateInputSchema>
 ) {
   const session = await checkUserSession();
   const existing = await prisma.calendar_subscription.findFirst({
@@ -306,13 +310,15 @@ export async function updateCalendarExportAction(
   }
 
   await assertReadAccess(existing.org_id);
-  const parsedInput = exportInputSchema.parse(input);
-  await assertModeAccess(existing.org_id, parsedInput.config.mode);
-  await validateConfigReferences(existing.org_id, parsedInput.config);
+  const parsedInput = exportUpdateInputSchema.parse(input);
+  await assertReadAccess(parsedInput.orgId);
+  await assertModeAccess(parsedInput.orgId, parsedInput.config.mode);
+  await validateConfigReferences(parsedInput.orgId, parsedInput.config);
 
   const calendarExport = await updateCalendarExport({
     id,
     userId: session.user.id,
+    orgId: parsedInput.orgId,
     name: parsedInput.name,
     config: parsedInput.config,
   });
@@ -501,8 +507,17 @@ export async function getCalendarExportPreviewAction(
         },
       },
       einsatz_helper: {
+        orderBy: {
+          joined_at: 'asc',
+        },
         select: {
           user_id: true,
+          user: {
+            select: {
+              firstname: true,
+              lastname: true,
+            },
+          },
         },
       },
     },
@@ -524,6 +539,10 @@ export async function getCalendarExportPreviewAction(
         categoryAbbreviations: event.einsatz_to_category
           .map((category) => category.einsatz_category.abbreviation)
           .filter((abbreviation) => abbreviation !== ''),
+        assignedHelperNames: event.einsatz_helper.map((helper) => ({
+          firstname: helper.user.firstname,
+          lastname: helper.user.lastname,
+        })),
         assignedHelpers: event.einsatz_helper.length,
         helpersNeeded: event.helpers_needed,
         config: parsedConfig,

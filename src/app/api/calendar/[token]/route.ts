@@ -155,6 +155,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
         },
       },
       einsatz_helper: {
+        orderBy: {
+          joined_at: 'asc',
+        },
         include: {
           user: {
             select: {
@@ -378,6 +381,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
       summary: composeCalendarExportEventTitle({
         title: einsatz.title,
         categoryAbbreviations,
+        assignedHelperNames: einsatz.einsatz_helper.map((helper) => ({
+          firstname: helper.user.firstname,
+          lastname: helper.user.lastname,
+        })),
         assignedHelpers: einsatz.einsatz_helper.length,
         helpersNeeded: einsatz.helpers_needed,
         config: exportConfig,

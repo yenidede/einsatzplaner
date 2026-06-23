@@ -11,12 +11,15 @@ export type CalendarExportFilterEvent = {
     category_id?: string;
     einsatz_category?: {
       id?: string;
+      abbreviation?: string;
     };
   }>;
   einsatz_helper: Array<{
     user_id?: string;
     user?: {
       id?: string;
+      firstname?: string;
+      lastname?: string;
     };
   }>;
 };
