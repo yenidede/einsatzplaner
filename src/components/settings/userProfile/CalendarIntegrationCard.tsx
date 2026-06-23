@@ -9,7 +9,6 @@ import {
   Pencil,
   Play,
   Plus,
-  RefreshCw,
   Trash2,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -390,6 +389,7 @@ export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
                         <Copy className="mr-2 h-4 w-4" />
                         Link kopieren
                       </DropdownMenuItem>
+                      {/*
                       <DropdownMenuItem
                         onClick={() =>
                           calendarExports.rotate.mutate(calendarExport.id)
@@ -398,6 +398,7 @@ export function CalendarIntegrationCard({ org }: CalendarIntegrationCardProps) {
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Link neu generieren
                       </DropdownMenuItem>
+                      */}
                       <DropdownMenuItem
                         onClick={() =>
                           calendarExports.setActive.mutate({
