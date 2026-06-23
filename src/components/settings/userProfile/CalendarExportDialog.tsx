@@ -44,7 +44,10 @@ import {
   type CalendarExportEligibility,
 } from '@/features/calendar-subscription/hooks/useCalendarSubscription';
 import { cn } from '@/lib/utils';
-import { getPreviewDurationTag } from './CalendarExportDialog.utils';
+import {
+  getCalendarExportNameAfterOrgChange,
+  getPreviewDurationTag,
+} from './CalendarExportDialog.utils';
 
 const formSchema = z.object({
   orgId: z.string().uuid(),
@@ -425,7 +428,14 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
       { shouldDirty: true }
     );
     setTimeWindowDraft({ from: '', to: '' });
-    form.setValue('name', '', { shouldDirty: true });
+    form.setValue(
+      'name',
+      getCalendarExportNameAfterOrgChange({
+        currentName: form.getValues('name'),
+        isEditingExistingExport: Boolean(props.exportToEdit),
+      }),
+      { shouldDirty: true }
+    );
     setSelectedTemplateId('custom');
   };
 

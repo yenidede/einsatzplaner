@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { getPreviewDurationTag } from './CalendarExportDialog.utils';
+import {
+  getCalendarExportNameAfterOrgChange,
+  getPreviewDurationTag,
+} from './CalendarExportDialog.utils';
 
 describe('getPreviewDurationTag', () => {
   it('returns no tag for same-day events', () => {
@@ -27,5 +30,25 @@ describe('getPreviewDurationTag', () => {
         end: '2025-09-25T06:44:00.000Z',
       })
     ).toBe('22 Tage');
+  });
+});
+
+describe('getCalendarExportNameAfterOrgChange', () => {
+  it('keeps the current name when editing an existing export', () => {
+    expect(
+      getCalendarExportNameAfterOrgChange({
+        currentName: 'Nur eigene in der Zukunft',
+        isEditingExistingExport: true,
+      })
+    ).toBe('Nur eigene in der Zukunft');
+  });
+
+  it('clears the name when creating a new export', () => {
+    expect(
+      getCalendarExportNameAfterOrgChange({
+        currentName: 'Nur eigene in der Zukunft',
+        isEditingExistingExport: false,
+      })
+    ).toBe('');
   });
 });

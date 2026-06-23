@@ -17,3 +17,10 @@ export function getPreviewDurationTag(input: { start: string; end: string }) {
 
   return days === 1 ? '1 Tag' : `${days} Tage`;
 }
+
+export function getCalendarExportNameAfterOrgChange(input: {
+  currentName: string;
+  isEditingExistingExport: boolean;
+}) {
+  return input.isEditingExistingExport ? input.currentName : '';
+}
