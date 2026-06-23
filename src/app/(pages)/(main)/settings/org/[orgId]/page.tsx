@@ -32,6 +32,7 @@ import { UserProperties } from '@/features/user_properties/components/UserProper
 import { TemplatesOverviewSection } from '@/components/template/TemplatesOverviewSection';
 import { OrganizationPdfExportForm } from '@/components/settings/org/OrganizationPdfExportForm';
 import { DocumentTemplateManager } from '@/components/document-template/DocumentTemplateManager';
+import { OrganizationCalendarExportTemplates } from '@/components/settings/org/OrganizationCalendarExportTemplates';
 import { PageHeader } from '@/components/settings/PageHeader';
 import {
   ORG_MANAGE_NAV_ITEMS,
@@ -45,6 +46,8 @@ import { useSectionNavigation } from '@/components/settings/hooks/useSectionNavi
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import { useUnsavedChanges } from '@/components/settings/hooks/useUnsavedChanges';
+import { usePermissionGuard } from '@/hooks/use-permission-guard';
+import { useActiveOrganizationSwitch } from '@/hooks/use-active-organization-switch';
 import { useOrganizationDetails } from '@/features/organization/hooks/use-organization-queries';
 import { useCategories } from '@/features/einsatz/hooks/useEinsatzQueries';
 import {
@@ -57,8 +60,14 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { usePermissionGuard } from '@/hooks/use-permission-guard';
 import { isNormalizedTime } from '@/lib/time-input';
+import {
+  OrganizationNotificationDefaultsForm,
+  useOrganizationNotificationDefaults,
+  useUpdateOrganizationNotificationDefaults,
+} from '@/features/notification-preferences';
+import type { DigestInterval } from '@/features/notification-preferences/types';
+import { findOrganizationById } from '@/components/settings/settings-navigation.utils';
 
 /**
  * Page component for managing an organization's settings, templates, users, and PDF-export configuration.
@@ -72,8 +81,11 @@ export default function OrganizationManagePage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const orgId = params?.orgId as string;
   const { data: session } = useSession();
+  const requestedOrgId =
+    typeof params?.orgId === 'string' ? params.orgId : undefined;
+  const activeOrgId = session?.user?.activeOrganization?.id;
+  const orgId = requestedOrgId ?? activeOrgId;
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
@@ -107,6 +119,38 @@ export default function OrganizationManagePage() {
   const [vat, setVat] = useState('');
   const [zvr, setZvr] = useState('');
   const [authority, setAuthority] = useState('');
+  const [notificationEmailEnabledDefault, setNotificationEmailEnabledDefault] =
+    useState(true);
+  const [notificationDeliveryModeDefault, setNotificationDeliveryModeDefault] =
+    useState<'critical_only' | 'digest_only' | 'critical_and_digest'>(
+      'critical_and_digest'
+    );
+  const [
+    notificationMinimumPriorityDefault,
+    setNotificationMinimumPriorityDefault,
+  ] = useState<'info' | 'review' | 'critical'>('review');
+  const [
+    notificationUrgentDeliveryDefault,
+    setNotificationUrgentDeliveryDefault,
+  ] = useState<'immediate' | 'digest'>('immediate');
+  const [
+    notificationImportantDeliveryDefault,
+    setNotificationImportantDeliveryDefault,
+  ] = useState<'immediate' | 'digest'>('digest');
+  const [
+    notificationGeneralDeliveryDefault,
+    setNotificationGeneralDeliveryDefault,
+  ] = useState<'digest' | 'off'>('off');
+  const [
+    notificationDigestIntervalDefault,
+    setNotificationDigestIntervalDefault,
+  ] = useState<DigestInterval>('daily');
+  const [notificationDigestTimeDefault, setNotificationDigestTimeDefault] =
+    useState('08:00');
+  const [
+    notificationDigestSecondTimeDefault,
+    setNotificationDigestSecondTimeDefault,
+  ] = useState('16:00');
 
   // Initial values for change detection
   const initialValuesRef = useRef<{
@@ -126,15 +170,44 @@ export default function OrganizationManagePage() {
     vat: string;
     zvr: string;
     authority: string;
+    notificationEmailEnabledDefault: boolean;
+    notificationDeliveryModeDefault:
+      | 'critical_only'
+      | 'digest_only'
+      | 'critical_and_digest';
+    notificationMinimumPriorityDefault: 'info' | 'review' | 'critical';
+    notificationUrgentDeliveryDefault: 'immediate' | 'digest';
+    notificationImportantDeliveryDefault: 'immediate' | 'digest';
+    notificationGeneralDeliveryDefault: 'digest' | 'off';
+    notificationDigestIntervalDefault: DigestInterval;
+    notificationDigestTimeDefault: string;
+    notificationDigestSecondTimeDefault: string;
   } | null>(null);
 
   useSettingsSessionValidation();
 
-  const { isLoading: isLoadingUser } = useUserProfile(session?.user?.id);
+  const {
+    data: userProfile,
+    isLoading: isLoadingUser,
+    error: userProfileError,
+    refetch: refetchUserProfile,
+  } = useUserProfile(session?.user?.id);
   const { isAuthorized, isLoading: isLoadingPermission } = usePermissionGuard({
     requiredPermissions: ['organization:update'],
     requireAll: false,
   });
+  const activeOrganization = findOrganizationById(
+    userProfile?.organizations ?? [],
+    activeOrgId
+  );
+  const requestedOrganization = findOrganizationById(
+    userProfile?.organizations ?? [],
+    requestedOrgId
+  );
+  const isViewingInactiveOrganization =
+    !!requestedOrganization && requestedOrgId !== activeOrgId;
+  const { isSwitching: isSwitchingOrganization, switchOrganization } =
+    useActiveOrganizationSwitch();
   const {
     data: orgData,
     isLoading: orgLoading,
@@ -149,6 +222,11 @@ export default function OrganizationManagePage() {
 
   usePrefetchUserProfiles(orgId, userIds);
   const { data: orgDetails } = useOrganizationDetails(orgId);
+  const {
+    data: notificationDefaults,
+    isLoading: notificationDefaultsLoading,
+    error: notificationDefaultsError,
+  } = useOrganizationNotificationDefaults(orgId);
 
   const { data: categories = [] } = useCategories(orgId);
 
@@ -159,7 +237,7 @@ export default function OrganizationManagePage() {
   } = useSectionNavigation<OrgManageSectionId>({
     navItems: ORG_MANAGE_NAV_ITEMS,
     defaultSection: 'details',
-    basePath: `/settings/org/${orgId}`,
+    basePath: orgId ? `/settings/org/${orgId}` : '/settings/org',
     shouldSetDefault: !!orgData,
   });
 
@@ -201,12 +279,30 @@ export default function OrganizationManagePage() {
         vat: '', // Loaded separately via useOrganizationDetails
         zvr: '', // Loaded separately via useOrganizationDetails
         authority: '', // Loaded separately via useOrganizationDetails
+        notificationEmailEnabledDefault:
+          notificationDefaults?.emailEnabledDefault ?? true,
+        notificationDeliveryModeDefault:
+          notificationDefaults?.deliveryModeDefault ?? 'critical_and_digest',
+        notificationMinimumPriorityDefault:
+          notificationDefaults?.minimumPriorityDefault ?? 'review',
+        notificationUrgentDeliveryDefault:
+          notificationDefaults?.urgentDeliveryDefault ?? 'immediate',
+        notificationImportantDeliveryDefault:
+          notificationDefaults?.importantDeliveryDefault ?? 'digest',
+        notificationGeneralDeliveryDefault:
+          notificationDefaults?.generalDeliveryDefault ?? 'off',
+        notificationDigestIntervalDefault:
+          notificationDefaults?.digestIntervalDefault ?? 'daily',
+        notificationDigestTimeDefault:
+          notificationDefaults?.digestTimeDefault ?? '08:00',
+        notificationDigestSecondTimeDefault:
+          notificationDefaults?.digestSecondTimeDefault ?? '16:00',
       };
       // Clear logo files when data is refreshed
       setLogoFile(null);
       setSmallLogoFile(null);
     }
-  }, [orgData]);
+  }, [notificationDefaults, orgData]);
 
   // Update initial values when organization details load
   useEffect(() => {
@@ -232,6 +328,24 @@ export default function OrganizationManagePage() {
         vat: '',
         zvr: '',
         authority: '',
+        notificationEmailEnabledDefault:
+          notificationDefaults?.emailEnabledDefault ?? true,
+        notificationDeliveryModeDefault:
+          notificationDefaults?.deliveryModeDefault ?? 'critical_and_digest',
+        notificationMinimumPriorityDefault:
+          notificationDefaults?.minimumPriorityDefault ?? 'review',
+        notificationUrgentDeliveryDefault:
+          notificationDefaults?.urgentDeliveryDefault ?? 'immediate',
+        notificationImportantDeliveryDefault:
+          notificationDefaults?.importantDeliveryDefault ?? 'digest',
+        notificationGeneralDeliveryDefault:
+          notificationDefaults?.generalDeliveryDefault ?? 'off',
+        notificationDigestIntervalDefault:
+          notificationDefaults?.digestIntervalDefault ?? 'daily',
+        notificationDigestTimeDefault:
+          notificationDefaults?.digestTimeDefault ?? '08:00',
+        notificationDigestSecondTimeDefault:
+          notificationDefaults?.digestSecondTimeDefault ?? '16:00',
       };
     }
 
@@ -248,7 +362,62 @@ export default function OrganizationManagePage() {
     setVat(orgDetails.vat ?? '');
     setZvr(orgDetails.zvr ?? '');
     setAuthority(orgDetails.authority ?? '');
-  }, [orgDetails, orgData]);
+  }, [notificationDefaults, orgDetails, orgData]);
+
+  useEffect(() => {
+    if (!notificationDefaults) {
+      return;
+    }
+
+    setNotificationEmailEnabledDefault(
+      notificationDefaults.emailEnabledDefault
+    );
+    setNotificationDeliveryModeDefault(
+      notificationDefaults.deliveryModeDefault
+    );
+    setNotificationMinimumPriorityDefault(
+      notificationDefaults.minimumPriorityDefault
+    );
+    setNotificationUrgentDeliveryDefault(
+      notificationDefaults.urgentDeliveryDefault
+    );
+    setNotificationImportantDeliveryDefault(
+      notificationDefaults.importantDeliveryDefault
+    );
+    setNotificationGeneralDeliveryDefault(
+      notificationDefaults.generalDeliveryDefault
+    );
+    setNotificationDigestIntervalDefault(
+      notificationDefaults.digestIntervalDefault
+    );
+    setNotificationDigestTimeDefault(notificationDefaults.digestTimeDefault);
+    setNotificationDigestSecondTimeDefault(
+      notificationDefaults.digestSecondTimeDefault
+    );
+
+    if (initialValuesRef.current) {
+      initialValuesRef.current = {
+        ...initialValuesRef.current,
+        notificationEmailEnabledDefault:
+          notificationDefaults.emailEnabledDefault,
+        notificationDeliveryModeDefault:
+          notificationDefaults.deliveryModeDefault,
+        notificationMinimumPriorityDefault:
+          notificationDefaults.minimumPriorityDefault,
+        notificationUrgentDeliveryDefault:
+          notificationDefaults.urgentDeliveryDefault,
+        notificationImportantDeliveryDefault:
+          notificationDefaults.importantDeliveryDefault,
+        notificationGeneralDeliveryDefault:
+          notificationDefaults.generalDeliveryDefault,
+        notificationDigestIntervalDefault:
+          notificationDefaults.digestIntervalDefault,
+        notificationDigestTimeDefault: notificationDefaults.digestTimeDefault,
+        notificationDigestSecondTimeDefault:
+          notificationDefaults.digestSecondTimeDefault,
+      };
+    }
+  }, [notificationDefaults]);
 
   const { data: currentUserWithRoles } = useOrganizationUserRoles(orgId);
 
@@ -261,6 +430,8 @@ export default function OrganizationManagePage() {
   );
 
   const updateMutation = useUpdateOrganization(orgId);
+  const notificationDefaultsMutation =
+    useUpdateOrganizationNotificationDefaults(orgId);
 
   const hasUnsavedChanges = (() => {
     if (!initialValuesRef.current) return false;
@@ -283,6 +454,23 @@ export default function OrganizationManagePage() {
       vat !== initial.vat ||
       zvr !== initial.zvr ||
       authority !== initial.authority ||
+      notificationEmailEnabledDefault !==
+        initial.notificationEmailEnabledDefault ||
+      notificationDeliveryModeDefault !==
+        initial.notificationDeliveryModeDefault ||
+      notificationMinimumPriorityDefault !==
+        initial.notificationMinimumPriorityDefault ||
+      notificationUrgentDeliveryDefault !==
+        initial.notificationUrgentDeliveryDefault ||
+      notificationImportantDeliveryDefault !==
+        initial.notificationImportantDeliveryDefault ||
+      notificationGeneralDeliveryDefault !==
+        initial.notificationGeneralDeliveryDefault ||
+      notificationDigestIntervalDefault !==
+        initial.notificationDigestIntervalDefault ||
+      notificationDigestTimeDefault !== initial.notificationDigestTimeDefault ||
+      notificationDigestSecondTimeDefault !==
+        initial.notificationDigestSecondTimeDefault ||
       logoFile !== null ||
       smallLogoFile !== null
     );
@@ -299,6 +487,27 @@ export default function OrganizationManagePage() {
     }
 
     try {
+      const hasNotificationDefaultsChanges =
+        initialValuesRef.current === null ||
+        notificationEmailEnabledDefault !==
+          initialValuesRef.current.notificationEmailEnabledDefault ||
+        notificationDeliveryModeDefault !==
+          initialValuesRef.current.notificationDeliveryModeDefault ||
+        notificationMinimumPriorityDefault !==
+          initialValuesRef.current.notificationMinimumPriorityDefault ||
+        notificationUrgentDeliveryDefault !==
+          initialValuesRef.current.notificationUrgentDeliveryDefault ||
+        notificationImportantDeliveryDefault !==
+          initialValuesRef.current.notificationImportantDeliveryDefault ||
+        notificationGeneralDeliveryDefault !==
+          initialValuesRef.current.notificationGeneralDeliveryDefault ||
+        notificationDigestIntervalDefault !==
+          initialValuesRef.current.notificationDigestIntervalDefault ||
+        notificationDigestTimeDefault !==
+          initialValuesRef.current.notificationDigestTimeDefault ||
+        notificationDigestSecondTimeDefault !==
+          initialValuesRef.current.notificationDigestSecondTimeDefault;
+
       await updateMutation.mutateAsync({
         name,
         description,
@@ -319,6 +528,20 @@ export default function OrganizationManagePage() {
         zvr,
         authority,
       });
+
+      if (hasNotificationDefaultsChanges) {
+        await notificationDefaultsMutation.mutateAsync({
+          emailEnabledDefault: notificationEmailEnabledDefault,
+          deliveryModeDefault: notificationDeliveryModeDefault,
+          minimumPriorityDefault: notificationMinimumPriorityDefault,
+          urgentDeliveryDefault: notificationUrgentDeliveryDefault,
+          importantDeliveryDefault: notificationImportantDeliveryDefault,
+          generalDeliveryDefault: notificationGeneralDeliveryDefault,
+          digestIntervalDefault: notificationDigestIntervalDefault,
+          digestTimeDefault: notificationDigestTimeDefault,
+          digestSecondTimeDefault: notificationDigestSecondTimeDefault,
+        });
+      }
 
       // Note: Initial values will be updated automatically when orgData refetches
       // But we also update them here immediately to prevent false positives
@@ -341,6 +564,15 @@ export default function OrganizationManagePage() {
           vat,
           zvr,
           authority,
+          notificationEmailEnabledDefault,
+          notificationDeliveryModeDefault,
+          notificationMinimumPriorityDefault,
+          notificationUrgentDeliveryDefault,
+          notificationImportantDeliveryDefault,
+          notificationGeneralDeliveryDefault,
+          notificationDigestIntervalDefault,
+          notificationDigestTimeDefault,
+          notificationDigestSecondTimeDefault,
         };
       }
       setLogoFile(null);
@@ -366,7 +598,17 @@ export default function OrganizationManagePage() {
     vat,
     zvr,
     authority,
+    notificationEmailEnabledDefault,
+    notificationDeliveryModeDefault,
+    notificationMinimumPriorityDefault,
+    notificationUrgentDeliveryDefault,
+    notificationImportantDeliveryDefault,
+    notificationGeneralDeliveryDefault,
+    notificationDigestIntervalDefault,
+    notificationDigestTimeDefault,
+    notificationDigestSecondTimeDefault,
     allowSelfSignOut,
+    notificationDefaultsMutation,
     updateMutation,
   ]);
 
@@ -395,7 +637,7 @@ export default function OrganizationManagePage() {
     try {
       const formData = new FormData();
       formData.append('logo', file);
-      formData.append('orgId', orgId);
+      formData.append('orgId', orgId ?? '');
       const uploadRes = await uploadOrganizationLogoAction(formData);
 
       if (!uploadRes) throw new Error('Upload fehlgeschlagen');
@@ -419,7 +661,7 @@ export default function OrganizationManagePage() {
   const handleLogoRemove = async () => {
     const toastId = toast.loading('Logo wird entfernt...');
     try {
-      await removeOrganizationLogoAction(orgId);
+      await removeOrganizationLogoAction(orgId ?? '');
 
       setLogoUrl('');
       setLogoFile(null);
@@ -440,7 +682,7 @@ export default function OrganizationManagePage() {
     try {
       const formData = new FormData();
       formData.append('smallLogo', file);
-      formData.append('orgId', orgId);
+      formData.append('orgId', orgId ?? '');
       const uploadRes = await uploadOrganizationSmallLogoAction(formData);
 
       if (!uploadRes) throw new Error('Upload fehlgeschlagen');
@@ -464,7 +706,7 @@ export default function OrganizationManagePage() {
   const handleSmallLogoRemove = async () => {
     const toastId = toast.loading('Kleines Logo wird entfernt...');
     try {
-      await removeOrganizationSmallLogoAction(orgId);
+      await removeOrganizationSmallLogoAction(orgId ?? '');
 
       setSmallLogoUrl('');
       setSmallLogoFile(null);
@@ -490,15 +732,82 @@ export default function OrganizationManagePage() {
     setSelectedUserId(null);
   };
 
-  if (isLoadingPermission) {
-    return <div>Lade Nutzerdaten...</div>;
+  const handleSwitchToRequestedOrganization = async () => {
+    if (!requestedOrgId) {
+      return;
+    }
+
+    try {
+      await switchOrganization(requestedOrgId, {
+        showSuccessToast: false,
+        syncSettingsRoute: false,
+      });
+    } catch {
+      return;
+    }
+  };
+
+  if (isLoadingUser || isLoadingPermission || isSwitchingOrganization) {
+    return <SettingsLoadingSkeleton sidebarItems={7} />;
+  }
+
+  if (userProfileError) {
+    return (
+      <SettingsErrorCard
+        title="Fehler beim Laden des Profils"
+        description="Die verfügbaren Organisationen konnten nicht geladen werden."
+        error={userProfileError}
+        onRetry={() => void refetchUserProfile()}
+      />
+    );
+  }
+
+  if (requestedOrgId && !requestedOrganization) {
+    return (
+      <SettingsErrorCard
+        title="Organisation nicht verfügbar"
+        description="Die angeforderte Organisation steht Ihnen nicht zur Verfügung."
+        primaryActionLabel="Zu den persönlichen Einstellungen"
+        onPrimaryAction={() => router.push('/settings/user')}
+      />
+    );
+  }
+
+  if (requestedOrgId && isViewingInactiveOrganization) {
+    return (
+      <SettingsErrorCard
+        title="Andere Organisation ausgewählt"
+        description={`Für diese Seite muss zuerst die Organisation „${requestedOrganization.name}“ als aktive Organisation gesetzt werden.`}
+        primaryActionLabel="Aktive Organisation wechseln"
+        onPrimaryAction={handleSwitchToRequestedOrganization}
+      />
+    );
+  }
+
+  if (!activeOrgId || !activeOrganization) {
+    return (
+      <SettingsErrorCard
+        title="Keine aktive Organisation"
+        description="Für Organisationseinstellungen muss zuerst eine aktive Organisation ausgewählt sein."
+        primaryActionLabel="Zu den persönlichen Einstellungen"
+        onPrimaryAction={() => router.push('/settings/user')}
+      />
+    );
   }
 
   if (!isAuthorized) {
-    return <div>Keine Berechtigung. Weiterleitung...</div>;
+    return (
+      <SettingsErrorCard
+        title="Keine Berechtigung für Organisationseinstellungen"
+        description="Sie haben für die aktuell aktive Organisation keine Berechtigung, Organisationseinstellungen zu verwalten."
+        primaryActionLabel="Zu den persönlichen Einstellungen"
+        onPrimaryAction={() => router.push('/settings/user')}
+      />
+    );
   }
-  if (isLoadingUser || orgLoading) {
-    return <SettingsLoadingSkeleton sidebarItems={8} />;
+
+  if (orgLoading) {
+    return <SettingsLoadingSkeleton sidebarItems={7} />;
   }
 
   if (orgError || !orgData) {
@@ -517,9 +826,12 @@ export default function OrganizationManagePage() {
 
   const header = (
     <PageHeader
-      title={`${name} verwalten`}
+      title="Organisationseinstellungen"
+      description={activeOrganization.name}
       onSave={handleSave}
-      isSaving={updateMutation.isPending}
+      isSaving={
+        updateMutation.isPending || notificationDefaultsMutation.isPending
+      }
       onCancel={() => router.push('/')}
     />
   );
@@ -530,6 +842,10 @@ export default function OrganizationManagePage() {
       onSectionChange={handleSectionChange}
     />
   );
+
+  if (!orgId) {
+    return <div>Organisation kann nicht geladen werden.</div>;
+  }
 
   return (
     <>
@@ -571,7 +887,8 @@ export default function OrganizationManagePage() {
                     maxFiles={1}
                     accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
                     placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert). Sollte das Logo nicht richtig laden, bitte die Seite neu laden."
-                    previewAspectRatio={PreviewAspectRatio.LANDSCAPE}
+                    previewAspectRatio={PreviewAspectRatio.WIDE}
+                    previewImageFit="contain"
                     setValue={() => undefined}
                     onUpload={handleLogoUpload}
                     onFileRemove={
@@ -604,7 +921,8 @@ export default function OrganizationManagePage() {
                     maxFiles={1}
                     accept="image/png, image/jpeg, image/gif, image/jpg, image/svg+xml, .svg"
                     placeholder="PNG, JPEG, GIF oder SVG (wird automatisch komprimiert). Sollte das Logo nicht richtig laden, bitte die Seite neu laden."
-                    previewAspectRatio={PreviewAspectRatio.SQUARE}
+                    previewAspectRatio={PreviewAspectRatio.LANDSCAPE}
+                    previewImageFit="contain"
                     setValue={() => undefined}
                     onUpload={handleSmallLogoUpload}
                     onFileRemove={
@@ -674,6 +992,73 @@ export default function OrganizationManagePage() {
           </Card>
         </section>
 
+        {/* Notifications Section */}
+        <section
+          id="notifications"
+          ref={(el) => {
+            sectionRefs.current.notifications = el;
+          }}
+          aria-labelledby="notifications-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="notifications-heading">
+                Benachrichtigungen
+              </CardTitle>
+              <CardDescription>
+                Definieren Sie, welche E-Mails Mitglieder standardmäßig
+                erhalten. Mitglieder können diese Werte bei Bedarf mit einer
+                eigenen Einstellung überschreiben.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {notificationDefaultsError && (
+                <p className="text-destructive mb-4 text-sm">
+                  Benachrichtigungseinstellungen konnten nicht geladen werden.
+                </p>
+              )}
+              <OrganizationNotificationDefaultsForm
+                organizationName={name}
+                emailEnabledDefault={notificationEmailEnabledDefault}
+                deliveryModeDefault={notificationDeliveryModeDefault}
+                minimumPriorityDefault={notificationMinimumPriorityDefault}
+                urgentDeliveryDefault={notificationUrgentDeliveryDefault}
+                importantDeliveryDefault={notificationImportantDeliveryDefault}
+                generalDeliveryDefault={notificationGeneralDeliveryDefault}
+                digestIntervalDefault={notificationDigestIntervalDefault}
+                digestTimeDefault={notificationDigestTimeDefault}
+                digestSecondTimeDefault={notificationDigestSecondTimeDefault}
+                onEmailEnabledDefaultChange={setNotificationEmailEnabledDefault}
+                onDeliveryModeDefaultChange={setNotificationDeliveryModeDefault}
+                onMinimumPriorityDefaultChange={
+                  setNotificationMinimumPriorityDefault
+                }
+                onUrgentDeliveryDefaultChange={
+                  setNotificationUrgentDeliveryDefault
+                }
+                onImportantDeliveryDefaultChange={
+                  setNotificationImportantDeliveryDefault
+                }
+                onGeneralDeliveryDefaultChange={
+                  setNotificationGeneralDeliveryDefault
+                }
+                onDigestIntervalDefaultChange={
+                  setNotificationDigestIntervalDefault
+                }
+                onDigestTimeDefaultChange={setNotificationDigestTimeDefault}
+                onDigestSecondTimeDefaultChange={
+                  setNotificationDigestSecondTimeDefault
+                }
+                disabled={
+                  notificationDefaultsMutation.isPending ||
+                  notificationDefaultsLoading ||
+                  !!notificationDefaultsError
+                }
+              />
+            </CardContent>
+          </Card>
+        </section>
+
         {/* Standardfelder Section */}
         <section
           id="standardfelder"
@@ -726,6 +1111,41 @@ export default function OrganizationManagePage() {
             Vorlagen
           </h2>
           <TemplatesOverviewSection orgId={orgId} />
+        </section>
+
+        {/* Calendar Export Templates Section */}
+        <section
+          id="calendar-export-templates"
+          ref={(el) => {
+            sectionRefs.current['calendar-export-templates'] = el;
+          }}
+          aria-labelledby="calendar-export-templates-heading"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle id="calendar-export-templates-heading">
+                Kalenderexport-Vorlagen
+              </CardTitle>
+              <CardDescription>
+                Vorgeschlagene Kalenderexporte für persönliche
+                Kalenderabonnements verwalten.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {orgData ? (
+                <OrganizationCalendarExportTemplates
+                  org={{
+                    id: orgData.id,
+                    name: orgData.name,
+                    helper_name_singular: orgData.helper_name_singular,
+                    helper_name_plural: orgData.helper_name_plural,
+                    einsatz_name_singular: orgData.einsatz_name_singular,
+                    einsatz_name_plural: orgData.einsatz_name_plural,
+                  }}
+                />
+              ) : null}
+            </CardContent>
+          </Card>
         </section>
 
         {/* User Properties Section */}

@@ -1,4 +1,51 @@
 import nodemailer from 'nodemailer';
+import type { DigestInterval } from '@/features/notification-preferences/types';
+
+function buildDigestIntervalLabel(digestInterval: DigestInterval): string {
+  if (digestInterval === 'daily') {
+    return 'täglich';
+  }
+
+  if (digestInterval === 'every_2_days') {
+    return 'alle 2 Tage';
+  }
+
+  if (digestInterval === 'every_3_days') {
+    return 'alle 3 Tage';
+  }
+
+  if (digestInterval === 'every_5_days') {
+    return 'alle 5 Tage';
+  }
+
+  if (digestInterval === 'every_7_days') {
+    return 'alle 7 Tage';
+  }
+
+  return 'täglich';
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function toSafeEmailUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return '#';
+    }
+
+    return encodeURI(url.toString());
+  } catch {
+    return '#';
+  }
+}
 
 export class EmailService {
   private transporter: nodemailer.Transporter | null;
@@ -63,6 +110,49 @@ export class EmailService {
             <p>Falls Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.</p>
           </div>
           
+          <p style="color: #666; font-size: 12px; text-align: center;">
+            Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+          </p>
+        </div>
+      `,
+    };
+
+    await this.transporter.sendMail(mailOptions);
+  }
+
+  async sendOneTimePasswordEmail(email: string, code: string, expiresAt: Date) {
+    if (!this.transporter) {
+      return;
+    }
+
+    const expiresAtText = expiresAt.toLocaleTimeString('de-DE', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const mailOptions = {
+      from: `"Einsatzplaner" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Ihr Bestätigungscode für Einsatzplaner',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; text-align: center;">E-Mail-Adresse bestätigen</h2>
+
+          <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p>Hallo,</p>
+
+            <p>bitte geben Sie den folgenden 6-stelligen Bestätigungscode im Einsatzplaner ein:</p>
+
+            <div style="margin: 24px 0; text-align: center;">
+              <div style="display: inline-block; letter-spacing: 0.35em; font-size: 32px; font-weight: 700; color: #111827; background: white; padding: 16px 20px; border-radius: 10px; border: 1px solid #d1d5db;">
+                ${escapeHtml(code)}
+              </div>
+            </div>
+
+            <p>Der Code ist bis <strong>${escapeHtml(expiresAtText)} Uhr</strong> gültig.</p>
+            <p>Falls Sie diese Anfrage nicht ausgelöst haben, können Sie diese E-Mail ignorieren.</p>
+          </div>
+
           <p style="color: #666; font-size: 12px; text-align: center;">
             Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
           </p>
@@ -416,6 +506,48 @@ export class EmailService {
     }
   }
 
+  async sendSelfSignupOrganizationCreatedNotificationEmail(input: {
+    recipientEmail: string;
+    organizationName: string;
+    creatorName?: string | null;
+    creatorEmail?: string | null;
+  }) {
+    if (!this.transporter) {
+      return;
+    }
+
+    const safeOrganizationName = escapeHtml(input.organizationName);
+    const safeCreatorName = input.creatorName
+      ? escapeHtml(input.creatorName)
+      : 'Unbekannt';
+    const safeCreatorEmail = input.creatorEmail
+      ? escapeHtml(input.creatorEmail)
+      : 'Unbekannt';
+
+    await this.transporter.sendMail({
+      from: `"Einsatzplaner" <${process.env.SMTP_USER}>`,
+      to: input.recipientEmail,
+      subject: `Neue Organisation erstellt: ${safeOrganizationName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; text-align: center;">Neue Organisation erstellt</h2>
+
+          <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p>Hallo,</p>
+            <p>soeben wurde eine neue Organisation im Einsatzplaner erstellt.</p>
+            <p><strong>Organisation:</strong> ${safeOrganizationName}</p>
+            <p><strong>Erstellt von:</strong> ${safeCreatorName}</p>
+            <p><strong>E-Mail-Adresse:</strong> ${safeCreatorEmail}</p>
+          </div>
+
+          <p style="color: #666; font-size: 12px; text-align: center;">
+            Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+          </p>
+        </div>
+      `,
+    });
+  }
+
   async sendEinsatzWarningEmail(
     recipients: { email: string; name: string }[],
     einsatz: {
@@ -564,6 +696,139 @@ export class EmailService {
       throw new Error(
         `E-Mail-Versand fehlgeschlagen: ${
           error instanceof Error ? error.message : 'Unbekannter Fehler'
+        }`
+      );
+    }
+  }
+
+  async sendOtpCodeEmail(recipientEmail: string, code: string) {
+    if (!this.transporter) {
+      return;
+    }
+
+    const mailOptions = {
+      from: `"Einsatzplaner" <${process.env.SMTP_USER}>`,
+      to: recipientEmail,
+      subject: 'Ihr Bestätigungscode für den Einsatzplaner',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; text-align: center;">E-Mail-Adresse bestätigen</h2>
+          <div style="background: #f5f7fb; padding: 24px; border-radius: 12px; margin: 24px 0;">
+            <p>Hallo,</p>
+            <p>bitte geben Sie den folgenden 6-stelligen Bestätigungscode im Einsatzplaner ein:</p>
+            <div style="text-align: center; margin: 32px 0;">
+              <div style="display: inline-block; letter-spacing: 0.35em; font-size: 32px; font-weight: 700; color: #1f2937; background: white; padding: 16px 24px; border-radius: 10px; border: 1px solid #dbe3f0;">
+                ${code}
+              </div>
+            </div>
+            <p>Der Code ist 10 Minuten gültig. Falls Sie diese Anfrage nicht erwartet haben, können Sie diese E-Mail ignorieren.</p>
+          </div>
+          <p style="color: #666; font-size: 12px; text-align: center;">
+            Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+          </p>
+        </div>
+      `,
+    };
+
+    await this.transporter.sendMail(mailOptions);
+  }
+
+  async sendNotificationDigestEmail(input: {
+    recipientEmail: string;
+    recipientName: string;
+    organizationName: string;
+    digestInterval: DigestInterval;
+    entries: Array<{
+      einsatzTitle: string;
+      einsatzStart: Date;
+      warningLines: string[];
+      einsatzUrl: string;
+    }>;
+  }) {
+    if (!this.transporter || input.entries.length === 0) {
+      return;
+    }
+
+    try {
+      const intervalLabel = buildDigestIntervalLabel(input.digestInterval);
+
+      const entryItems = input.entries
+        .map((entry) => {
+          const safeEinsatzTitle = escapeHtml(entry.einsatzTitle);
+          const safeEinsatzUrl = toSafeEmailUrl(entry.einsatzUrl);
+          const warningItems = entry.warningLines
+            .map((warning) => `<li>${escapeHtml(warning)}</li>`)
+            .join('');
+
+          return `
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 14px;">
+              <p style="margin: 0 0 8px 0;"><strong>Einsatz:</strong> ${safeEinsatzTitle}</p>
+              <p style="margin: 0 0 8px 0;"><strong>Start:</strong> ${entry.einsatzStart.toLocaleString(
+                'de-DE',
+                {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }
+              )}</p>
+              <ul style="margin: 0 0 12px 20px; padding: 0;">
+                ${warningItems}
+              </ul>
+              <a href="${safeEinsatzUrl}" style="display: inline-block; background: #1d4ed8; color: #fff; text-decoration: none; border-radius: 6px; padding: 10px 14px;">
+                Einsatz öffnen
+              </a>
+            </div>
+          `;
+        })
+        .join('');
+
+      const safeRecipientName = escapeHtml(input.recipientName);
+      const safeOrganizationName = escapeHtml(input.organizationName);
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+          </head>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+            <div style="max-width: 680px; margin: 0 auto; padding: 20px;">
+              <h2 style="margin: 0 0 10px 0;">Sammelmail Benachrichtigungen</h2>
+              <p style="margin: 0 0 16px 0;">
+                Sehr geehrte/r ${safeRecipientName},
+              </p>
+              <p style="margin: 0 0 16px 0;">
+                Sie erhalten diese Sammelmail für <strong>${safeOrganizationName}</strong> (${intervalLabel}).
+              </p>
+              ${entryItems}
+              <p style="margin-top: 18px; font-size: 12px; color: #475569;">
+                Diese E-Mail wurde automatisch erstellt.
+              </p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const mailOptions = {
+        from: `"${input.organizationName} - Einsatzplaner" <${process.env.SMTP_USER}>`,
+        to: input.recipientEmail,
+        subject: `Sammelmail Benachrichtigungen - ${input.organizationName}`,
+        html,
+      };
+
+      const info = await this.transporter.sendMail(mailOptions);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(
+        'Fehler beim Senden der Benachrichtigungs-Sammelmail:',
+        error
+      );
+      throw new Error(
+        `Failed to send notification digest email: ${
+          error instanceof Error ? error.message : 'Unknown error'
         }`
       );
     }

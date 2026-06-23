@@ -24,6 +24,10 @@ export function BooleanFieldSettings({
     <>
       <div className="flex flex-col gap-2">
         <Label className="text-sm font-medium">Standardwert (optional)</Label>
+        <p className="text-muted-foreground text-sm">
+          Wird automatisch ausgewählt und gespeichert, sofern Sie ihn nicht
+          ändern.
+        </p>
         <div className="flex gap-4">
           <RadioGroup
             value={

@@ -5,7 +5,9 @@ import { Prisma } from '@/generated/prisma';
 import type { einsatz_template as Template } from '@/generated/prisma';
 import type { PropertyConfig } from '@/features/user_properties/types';
 import { propertyConfigToFieldInput } from '@/features/user_properties/utils/config-to-field-input';
+import { assertCanChangeMultiselectToSelect } from '@/features/user_properties/field-dal';
 import { hasPermission, requireAuth } from '@/lib/auth/authGuard';
+import { normalizeTemplateDescription } from './template-validation';
 
 export type CreateTemplateInput = {
   org_id: string;
@@ -26,6 +28,10 @@ export type UpdateTemplateInput = {
   helpers_needed_default?: number | null;
   helpers_needed_placeholder?: number | null;
   all_day_default?: boolean | null;
+  total_price_default?: number | null;
+  total_price_placeholder?: number | null;
+  anmerkung_default?: string | null;
+  anmerkung_placeholder?: string | null;
   einsatzname_default?: string | null;
   time_start_default?: Date | null;
   time_end_default?: Date | null;
@@ -235,28 +241,28 @@ export async function getTemplateFieldReuseCandidatesByOrgId(
 
   const excludedFieldIds = excludeTemplateId
     ? (
-      await prisma.template_field.findMany({
-        where: {
-          template_id: excludeTemplateId,
-          einsatz_template: {
-            org_id: orgId,
+        await prisma.template_field.findMany({
+          where: {
+            template_id: excludeTemplateId,
+            einsatz_template: {
+              org_id: orgId,
+            },
           },
-        },
-        select: {
-          field_id: true,
-        },
-      })
-    ).map((templateField) => templateField.field_id)
+          select: {
+            field_id: true,
+          },
+        })
+      ).map((templateField) => templateField.field_id)
     : [];
 
   const templateFields = await prisma.template_field.findMany({
     where: {
       ...(excludedFieldIds.length > 0
         ? {
-          field_id: {
-            notIn: excludedFieldIds,
-          },
-        }
+            field_id: {
+              notIn: excludedFieldIds,
+            },
+          }
         : {}),
       einsatz_template: {
         org_id: orgId,
@@ -358,16 +364,17 @@ export type CreateTemplateFieldInput = {
   name: string;
   description?: string;
   datatype:
-  | 'text'
-  | 'number'
-  | 'boolean'
-  | 'select'
-  | 'currency'
-  | 'group'
-  | 'date'
-  | 'time'
-  | 'phone'
-  | 'mail';
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'multiselect'
+    | 'currency'
+    | 'group'
+    | 'date'
+    | 'time'
+    | 'phone'
+    | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -377,16 +384,58 @@ export type CreateTemplateFieldInput = {
   allowedValues?: string[];
 };
 
+const TYPE_NAME_BY_DATATYPE: Readonly<Record<string, string>> = {
+  text: 'Text',
+  number: 'Zahl',
+  boolean: 'Ja/Nein',
+  select: 'Auswahl',
+  multiselect: 'Mehrfachauswahl',
+  currency: 'Währung',
+  group: 'Gruppe',
+  date: 'Datum',
+  time: 'Uhrzeit',
+  phone: 'Telefon',
+  mail: 'E-Mail',
+};
+
 async function ensureTypeExists(datatype: string): Promise<string> {
   const type = await prisma.type.findFirst({
     where: { datatype },
   });
 
-  if (!type) {
-    throw new Error(`Typ ${datatype} nicht gefunden.`);
+  if (type) {
+    return type.id;
   }
 
-  return type.id;
+  try {
+    const createdType = await prisma.type.create({
+      data: {
+        datatype,
+        name: TYPE_NAME_BY_DATATYPE[datatype] ?? datatype,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return createdType.id;
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const concurrentType = await prisma.type.findFirst({
+        where: { datatype },
+        select: { id: true },
+      });
+
+      if (concurrentType) {
+        return concurrentType.id;
+      }
+    }
+
+    throw new Error(`Typ ${datatype} konnte nicht erstellt werden.`);
+  }
 }
 
 export async function createTemplateField(
@@ -406,7 +455,9 @@ export async function createTemplateField(
 
   const orgId = template.org_id;
   if (!orgId || !(await hasPermission(session, 'templates:create', orgId))) {
-    throw new Error('Keine Berechtigung, Felder zu dieser Vorlage hinzuzufügen.');
+    throw new Error(
+      'Keine Berechtigung, Felder zu dieser Vorlage hinzuzufügen.'
+    );
   }
 
   const typeId = await ensureTypeExists(input.datatype);
@@ -518,7 +569,7 @@ export async function createTemplateAction(input: CreateTemplateInput) {
       org_id: input.org_id,
       name: input.name,
       icon_id: input.icon_id,
-      description: input.description ?? null,
+      description: normalizeTemplateDescription(input.description) ?? null,
     },
   });
 }
@@ -530,7 +581,7 @@ export async function updateTemplateAction(
   const data: Partial<Omit<Template, 'id' | 'created_at'>> = {
     name: input.name ?? undefined,
     icon_id: input.icon_id,
-    description: input.description ?? undefined,
+    description: normalizeTemplateDescription(input.description),
     is_paused: input.is_paused,
     participant_count_default: input.participant_count_default,
     participant_count_placeholder: input.participant_count_placeholder,
@@ -539,6 +590,10 @@ export async function updateTemplateAction(
     helpers_needed_default: input.helpers_needed_default,
     helpers_needed_placeholder: input.helpers_needed_placeholder,
     all_day_default: input.all_day_default,
+    total_price_default: input.total_price_default,
+    total_price_placeholder: input.total_price_placeholder,
+    anmerkung_default: input.anmerkung_default,
+    anmerkung_placeholder: input.anmerkung_placeholder,
     time_start_default: input.time_start_default,
     time_end_default: input.time_end_default,
   };
@@ -700,6 +755,7 @@ export async function updateTemplateField(
 ) {
   await checkTemplateFieldAccess(templateId, fieldId);
 
+  await assertCanChangeMultiselectToSelect(fieldId, input.datatype);
   const typeId = await ensureTypeExists(input.datatype);
 
   return prisma.field.update({

@@ -57,9 +57,12 @@ function isFileMetadataType(value: unknown): value is FileMetadata {
 
 const getFileIcon = (
   file: FileWithPreview,
-  aspectRatio?: PreviewAspectRatio
+  aspectRatio?: PreviewAspectRatio,
+  imageFit: 'cover' | 'contain' = 'cover'
 ) => {
   const aspectClass = getAspectRatioClass(aspectRatio);
+  const imageFitClass =
+    imageFit === 'contain' ? 'object-contain' : 'object-cover';
   // Use preview if available (works for both File and FileMetadata)
   if (file.preview) {
     const fileType =
@@ -69,7 +72,7 @@ const getFileIcon = (
         <div className={cn('h-10 overflow-hidden rounded-md', aspectClass)}>
           <img
             src={file.preview}
-            className="h-full w-full object-cover"
+            className={cn('h-full w-full', imageFitClass)}
             alt={file.file instanceof File ? file.file.name : file.file.name}
           />
         </div>
@@ -90,7 +93,7 @@ const getFileIcon = (
         <div className={cn('h-10 overflow-hidden rounded-md', aspectClass)}>
           <img
             src={metadata.url}
-            className="h-full w-full object-cover"
+            className={cn('h-full w-full', imageFitClass)}
             alt={metadata.name}
           />
         </div>
@@ -120,6 +123,7 @@ export function FileUpload({
   onFileRemove,
   initialFiles,
   previewAspectRatio,
+  previewImageFit = 'cover',
   variant = 'default',
   uploadLabel,
   removeLabel,
@@ -143,10 +147,11 @@ export function FileUpload({
   onlyAllowImages?: boolean;
   name: string;
   id: string;
-  onUpload: (optimizedFile: File) => Promise<string>;
+  onUpload: (optimizedFile: File) => Promise<string | undefined>;
   onFileRemove?: (id: string) => void | Promise<void>;
   initialFiles?: FileMetadata[];
   previewAspectRatio?: PreviewAspectRatio;
+  previewImageFit?: 'cover' | 'contain';
   /** Visual/layout variant. */
   variant?: 'default' | 'buttons';
   /** Optional button label for upload in `buttons` variant. */
@@ -438,7 +443,7 @@ export function FileUpload({
               className="flex items-center justify-between gap-2 rounded-lg border p-2 pe-3"
             >
               <div className="flex items-center gap-1.5 overflow-hidden">
-                {getFileIcon(file, previewAspectRatio)}
+                {getFileIcon(file, previewAspectRatio, previewImageFit)}
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="max-w-[200px] truncate text-[11px] font-medium">
                     {file.file.name}
@@ -514,6 +519,11 @@ export function FileUpload({
     return Promise.all(
       files.map((file) =>
         optimizeAndUploadIfImage(file.file, file.id, maxSize).then((path) => {
+          if (!path) {
+            throw new Error(
+              `Datei "${file.file.name}" konnte nicht hochgeladen werden.`
+            );
+          }
           return path;
         })
       )
@@ -524,7 +534,7 @@ export function FileUpload({
     file: File | FileMetadata,
     fileId: string,
     maxSizeBytes?: number
-  ): Promise<string> {
+  ): Promise<string | undefined> {
     const fileKey = getFileUniqueKey(file);
     if (isFileMetadataType(file)) {
       const metadata = file;
@@ -559,6 +569,11 @@ export function FileUpload({
           return newMap;
         });
         const uploadedPath = await onUpload(file);
+        if (!uploadedPath) {
+          throw new Error(
+            `Datei "${file.name}" konnte nicht hochgeladen werden.`
+          );
+        }
         lastUploadKeyRef.current = fileKey;
         lastUploadValueRef.current = uploadedPath;
         return uploadedPath;
@@ -585,6 +600,11 @@ export function FileUpload({
       });
 
       const uploadedPath = await onUpload(fileToUpload);
+      if (!uploadedPath) {
+        throw new Error(
+          `Datei "${file.name}" konnte nicht hochgeladen werden.`
+        );
+      }
       lastUploadKeyRef.current = fileKey;
       lastUploadValueRef.current = uploadedPath;
       return uploadedPath;

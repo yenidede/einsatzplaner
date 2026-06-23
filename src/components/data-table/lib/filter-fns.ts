@@ -188,28 +188,28 @@ function evalClause(cellValue: unknown, clause: Clause): boolean {
     // Equality / inequality (works for text/number/boolean/select)
     case 'eq': {
       if (isNumericLike(cellValue) && isNumericLike(value)) {
-        return asNumber(
-          typeof cellValue === 'string'
-            ? cellValue.replace(',', '.')
-            : cellValue
-        ) ===
+        return (
           asNumber(
-            typeof value === 'string' ? value.replace(',', '.') : value
-          );
+            typeof cellValue === 'string'
+              ? cellValue.replace(',', '.')
+              : cellValue
+          ) ===
+          asNumber(typeof value === 'string' ? value.replace(',', '.') : value)
+        );
       }
 
       return cellValue === value;
     }
     case 'ne': {
       if (isNumericLike(cellValue) && isNumericLike(value)) {
-        return asNumber(
-          typeof cellValue === 'string'
-            ? cellValue.replace(',', '.')
-            : cellValue
-        ) !==
+        return (
           asNumber(
-            typeof value === 'string' ? value.replace(',', '.') : value
-          );
+            typeof cellValue === 'string'
+              ? cellValue.replace(',', '.')
+              : cellValue
+          ) !==
+          asNumber(typeof value === 'string' ? value.replace(',', '.') : value)
+        );
       }
 
       return cellValue !== value;

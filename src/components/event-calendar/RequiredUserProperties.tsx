@@ -125,10 +125,7 @@ export function RequiredUserProperties({
 
   return (
     <div className="space-y-3">
-      <FormInputFieldCustom
-        name="Benötigte Personeneigenschaften"
-        errors={[]}
-      >
+      <FormInputFieldCustom name="Benötigte Personeneigenschaften" errors={[]}>
         <div className="min-w-0 overflow-x-hidden">
           <MultiSelect
             options={
@@ -211,22 +208,18 @@ export function RequiredUserProperties({
                         if (!config.is_required) return;
                         const value = parseInt(e.target.value);
                         if (!isNaN(value) && value >= 0) {
-                          handlePropertyConfigChange(
-                            config.user_property_id,
-                            {
-                              min_matching_users: value === 0 ? -1 : value,
-                            }
-                          );
+                          handlePropertyConfigChange(config.user_property_id, {
+                            min_matching_users: value === 0 ? -1 : value,
+                          });
                         }
                       }}
                       placeholder={config.is_required ? '1' : '-'}
                     />
-                    {config.is_required &&
-                      config.min_matching_users === -1 && (
-                        <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-sm">
-                          Alle
-                        </span>
-                      )}
+                    {config.is_required && config.min_matching_users === -1 && (
+                      <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-sm">
+                        Alle
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

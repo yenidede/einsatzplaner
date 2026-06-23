@@ -26,7 +26,6 @@ export const metadata: Metadata = {
     'Maturaprojekt der HAK DigBiz 5ADB 2025/26. (c) David Kathrein, Ömer Yenidede, Luca Raffeiner',
 };
 
-
 export default async function RootLayout({
   children,
 }: Readonly<{

@@ -1,56 +1,111 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import {
-  getSubscriptionAction,
+  createCalendarExportAction,
+  createCalendarExportTemplateAction,
+  deleteCalendarExportAction,
+  deleteCalendarExportTemplateAction,
+  getCalendarExportPreviewAction,
+  listCalendarExportEligibilityAction,
+  listCalendarExportsAction,
+  listCalendarExportTemplatesAction,
+  listCompatibleCalendarExportTemplatesAction,
   rotateSubscriptionAction,
-  deactivateSubscriptionAction,
-  activateSubscriptionAction,
+  setCalendarExportActiveAction,
+  updateCalendarExportAction,
+  updateCalendarExportTemplateAction,
 } from '../actions';
-import { useSession } from 'next-auth/react';
-import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
+import type { CalendarExportConfig } from '../config';
+import { calendarSubscriptionQueryKeys } from '../queryKeys';
 
-export type CalendarSubscription = {
-  id: string;
+export type CalendarExport = Awaited<
+  ReturnType<typeof listCalendarExportsAction>
+>[number];
+
+export type CalendarExportTemplate = Awaited<
+  ReturnType<typeof listCalendarExportTemplatesAction>
+>[number];
+
+export type CalendarExportEligibility = Awaited<
+  ReturnType<typeof listCalendarExportEligibilityAction>
+>[number];
+
+export type CalendarExportMutationInput = {
+  orgId: string;
   name: string;
-  is_active: boolean;
-  token: string;
-  webcalUrl: string;
-  httpUrl: string;
-  last_accessed: string | null;
+  config: CalendarExportConfig;
 };
 
-const key = (userId?: string, orgId?: string) =>
-  settingsQueryKeys.calendarSubscription(userId, orgId);
+export type CalendarExportTemplateMutationInput = {
+  orgId: string;
+  id?: string;
+  name: string;
+  description?: string | null;
+  config: CalendarExportConfig;
+};
 
-export function useCalendarSubscription(orgId: string) {
+export function useCalendarExports() {
   const queryClient = useQueryClient();
   const session = useSession();
   const userId = session.data?.user?.id;
-  const queryKey = key(userId, orgId);
+  const queryKey = calendarSubscriptionQueryKeys.exports(userId);
 
   const query = useQuery({
     queryKey,
-    queryFn: () => getSubscriptionAction(orgId),
-    enabled: !!orgId && !!userId,
+    queryFn: () => listCalendarExportsAction(),
+    enabled: !!userId,
     staleTime: 60000,
-    retry: 3,
+  });
+
+  const invalidateExports = () =>
+    queryClient.invalidateQueries({
+      queryKey: calendarSubscriptionQueryKeys.exports(userId),
+    });
+
+  const createExport = useMutation({
+    mutationFn: ({ orgId, name, config }: CalendarExportMutationInput) =>
+      createCalendarExportAction(orgId, { name, config }),
+    onSuccess: async () => {
+      await invalidateExports();
+      toast.success('Kalenderexport wurde erstellt');
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Kalenderexport konnte nicht erstellt werden'
+      );
+    },
+  });
+
+  const updateExport = useMutation({
+    mutationFn: ({
+      id,
+      orgId,
+      name,
+      config,
+    }: CalendarExportMutationInput & { id: string }) =>
+      updateCalendarExportAction(id, { orgId, name, config }),
+    onSuccess: async () => {
+      await invalidateExports();
+      toast.success('Kalenderexport wurde gespeichert');
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Kalenderexport konnte nicht gespeichert werden'
+      );
+    },
   });
 
   const rotate = useMutation({
     mutationFn: (id: string) => rotateSubscriptionAction(id),
-    onSuccess: (data) => {
-      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
-        prev
-          ? {
-            ...prev,
-            token: data.token,
-            webcalUrl: data.webcalUrl,
-            httpUrl: data.httpUrl,
-          }
-          : prev
-      );
+    onSuccess: async () => {
+      await invalidateExports();
       toast.success('Neuer Kalender-Link wurde generiert');
     },
     onError: (error) => {
@@ -61,39 +116,176 @@ export function useCalendarSubscription(orgId: string) {
       );
     },
   });
-  const deactivate = useMutation({
-    mutationFn: (id: string) => deactivateSubscriptionAction(id),
-    onSuccess: () => {
-      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
-        prev ? { ...prev, is_active: false } : prev
+
+  const setActive = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      setCalendarExportActiveAction(id, isActive),
+    onSuccess: async (_, variables) => {
+      await invalidateExports();
+      toast.success(
+        variables.isActive
+          ? 'Kalenderexport wurde aktiviert'
+          : 'Kalenderexport wurde deaktiviert'
       );
-      toast.success('Kalender-Integration wurde deaktiviert');
     },
     onError: (error) => {
       toast.error(
         error instanceof Error
           ? error.message
-          : 'Fehler beim Deaktivieren der Kalender-Integration'
+          : 'Kalenderexport konnte nicht geändert werden'
       );
     },
   });
 
-  const activate = useMutation({
-    mutationFn: (id: string) => activateSubscriptionAction(id),
-    onSuccess: () => {
-      queryClient.setQueryData<CalendarSubscription>(queryKey, (prev) =>
-        prev ? { ...prev, is_active: true } : prev
-      );
-      toast.success('Kalender-Integration wurde aktiviert');
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteCalendarExportAction(id),
+    onSuccess: async () => {
+      await invalidateExports();
+      toast.success('Kalenderexport wurde gelöscht');
     },
     onError: (error) => {
       toast.error(
         error instanceof Error
           ? error.message
-          : 'Fehler beim Aktivieren der Kalender-Integration'
+          : 'Kalenderexport konnte nicht gelöscht werden'
       );
     },
   });
 
-  return { query, rotate, deactivate, activate };
+  return {
+    query,
+    createExport,
+    updateExport,
+    rotate,
+    setActive,
+    remove,
+  };
+}
+
+export function useCalendarExportEligibility() {
+  const session = useSession();
+  return useQuery({
+    queryKey: [
+      ...calendarSubscriptionQueryKeys.all,
+      'eligibility',
+      session.data?.user?.id ?? '',
+    ] as const,
+    queryFn: () => listCalendarExportEligibilityAction(),
+    enabled: !!session.data?.user?.id,
+  });
+}
+
+export function useCalendarExportTemplates(orgId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  const normalizedOrgId = orgId ?? undefined;
+  const query = useQuery({
+    queryKey: calendarSubscriptionQueryKeys.templates(normalizedOrgId),
+    queryFn: () => listCalendarExportTemplatesAction(orgId ?? ''),
+    enabled: !!orgId,
+  });
+
+  const invalidateTemplates = () =>
+    queryClient.invalidateQueries({
+      queryKey: calendarSubscriptionQueryKeys.templates(normalizedOrgId),
+    });
+
+  const createTemplate = useMutation({
+    mutationFn: ({
+      orgId: mutationOrgId,
+      name,
+      description,
+      config,
+    }: CalendarExportTemplateMutationInput) =>
+      createCalendarExportTemplateAction(mutationOrgId, {
+        name,
+        description,
+        config,
+      }),
+    onSuccess: async () => {
+      await invalidateTemplates();
+      toast.success('Kalenderexport-Vorlage wurde erstellt');
+    },
+    onError: () => {
+      toast.error('Kalenderexport-Vorlage konnte nicht erstellt werden');
+    },
+  });
+
+  const updateTemplate = useMutation({
+    mutationFn: ({
+      orgId: mutationOrgId,
+      id,
+      name,
+      description,
+      config,
+    }: CalendarExportTemplateMutationInput) => {
+      if (!id) {
+        throw new Error('Vorlage wurde nicht gefunden.');
+      }
+      return updateCalendarExportTemplateAction(mutationOrgId, id, {
+        name,
+        description,
+        config,
+      });
+    },
+    onSuccess: async () => {
+      await invalidateTemplates();
+      toast.success('Kalenderexport-Vorlage wurde gespeichert');
+    },
+    onError: () => {
+      toast.error('Kalenderexport-Vorlage konnte nicht gespeichert werden');
+    },
+  });
+
+  const removeTemplate = useMutation({
+    mutationFn: ({ orgId: mutationOrgId, id }: { orgId: string; id: string }) =>
+      deleteCalendarExportTemplateAction(mutationOrgId, id),
+    onSuccess: async () => {
+      await invalidateTemplates();
+      toast.success('Kalenderexport-Vorlage wurde gelöscht');
+    },
+    onError: () => {
+      toast.error('Kalenderexport-Vorlage konnte nicht gelöscht werden');
+    },
+  });
+
+  return {
+    query,
+    createTemplate,
+    updateTemplate,
+    removeTemplate,
+  };
+}
+
+export function useCompatibleCalendarExportTemplates(
+  orgId: string | null | undefined
+) {
+  const normalizedOrgId = orgId ?? undefined;
+  return useQuery({
+    queryKey: [
+      ...calendarSubscriptionQueryKeys.templates(normalizedOrgId),
+      'compatible',
+    ] as const,
+    queryFn: () => listCompatibleCalendarExportTemplatesAction(orgId ?? ''),
+    enabled: !!orgId,
+  });
+}
+
+export function useCalendarExportPreview(
+  orgId: string | null | undefined,
+  config: CalendarExportConfig | null | undefined
+) {
+  const session = useSession();
+  const normalizedOrgId = orgId ?? undefined;
+  return useQuery({
+    queryKey: [
+      ...calendarSubscriptionQueryKeys.preview(
+        session.data?.user?.id,
+        normalizedOrgId
+      ),
+      config,
+    ] as const,
+    queryFn: () => getCalendarExportPreviewAction(orgId ?? '', config),
+    enabled: !!orgId && !!config && !!session.data?.user?.id,
+    staleTime: 15000,
+  });
 }

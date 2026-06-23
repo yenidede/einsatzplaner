@@ -341,22 +341,44 @@ export const authOptions: NextAuthOptions = {
       }
 
       if (trigger === 'update' && session?.user) {
-        const userData = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { active_org: true },
-        });
+        const [userData, userOrganizationRoles] = await Promise.all([
+          prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { active_org: true },
+          }),
+          prisma.user_organization_role.findMany({
+            where: { user_id: token.id as string },
+            select: {
+              org_id: true,
+              role_id: true,
+              organization: {
+                select: {
+                  id: true,
+                  name: true,
+                  logo_url: true,
+                },
+              },
+            },
+          }),
+        ]);
+
+        const orgIds = [
+          ...new Set(userOrganizationRoles.map((membership) => membership.org_id)),
+        ];
+        const roleIds = [
+          ...new Set(
+            userOrganizationRoles.map((membership) => membership.role_id)
+          ),
+        ];
         const activeOrgData = userData?.active_org
-          ? await prisma.organization.findUnique({
-            where: { id: userData.active_org },
-            select: { id: true, name: true, logo_url: true },
-          })
+          ? userOrganizationRoles.find(
+              (membership) => membership.org_id === userData.active_org
+            )?.organization ?? null
           : null;
-        if (!activeOrgData) {
-          throw new Response(
-            "Selected Organization not found or user isn't assigned to it",
-            { status: 404 }
-          );
-        }
+        const resolvedActiveOrganization = userData?.active_org
+          ? activeOrgData
+          : null;
+
         const newToken: JWT = {
           ...token,
           firstname: session.user.firstname ?? token.firstname,
@@ -368,8 +390,9 @@ export const authOptions: NextAuthOptions = {
           description: session.user.description ?? token.description,
           hasLogoinCalendar:
             session.user.hasLogoinCalendar ?? token.hasLogoinCalendar,
-          activeOrganization:
-            session.user.activeOrganization ?? token.activeOrganization ?? null,
+          orgIds,
+          roleIds,
+          activeOrganization: resolvedActiveOrganization,
         };
         return newToken;
       }

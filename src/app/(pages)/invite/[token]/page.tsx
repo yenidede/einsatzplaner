@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useState } from 'react';
-import SignUpForm, {
+import {
+  SignUpForm,
   AvailableTab,
 } from '@/features/auth/components/acceptAndRegister-Form';
 import { useInvitationVerify } from '@/features/invitations/hooks/useInvitationVerify';
@@ -25,7 +26,7 @@ export default function InviteAcceptPage() {
   const { data: invitation, isLoading, error } = useInvitationVerify(token);
 
   const acceptMutation = useAcceptInvitation(token, async (error: Error) => {
-    await showDestructive('Fehler', error.message);
+    toast.error(error.message);
   });
 
   const handleAcceptClick = async () => {
@@ -35,10 +36,19 @@ export default function InviteAcceptPage() {
 
     // Prüfen ob E-Mail übereinstimmt
     if (session.user.email !== invitation?.email) {
-      await showDestructive(
+      const result = await showDestructive(
         'E-Mail stimmt nicht überein',
-        `Diese Einladung ist für ${invitation?.email}, aber Sie sind als ${session.user.email} angemeldet. Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.`
+        `Diese Einladung ist für ${invitation?.email}, aber Sie sind als ${session.user.email} angemeldet. Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.`,
+        {
+          confirmText: 'Jetzt abmelden',
+          cancelText: 'Schließen',
+        }
       );
+
+      if (result === 'success') {
+        signOut({ callbackUrl: `/invite/${token}` });
+      }
+
       return;
     }
 
@@ -147,7 +157,8 @@ export default function InviteAcceptPage() {
                           ))
                         ) : (
                           <span className="text-sm">
-                            {invitation.roleName || invitation.helperNameSingular}
+                            {invitation.roleName ||
+                              invitation.helperNameSingular}
                           </span>
                         )}
                       </div>
@@ -171,7 +182,7 @@ export default function InviteAcceptPage() {
                     <Button
                       variant={'default'}
                       onClick={handleAcceptClick}
-                      disabled={acceptMutation.isPending || isWrongMail}
+                      disabled={acceptMutation.isPending}
                       className="w-full"
                     >
                       {acceptMutation.isPending ? (

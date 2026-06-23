@@ -34,9 +34,13 @@ export type SupportedDataTypes =
   | 'number'
   | 'boolean'
   | 'select'
+  | 'multiselect'
   | 'currency'
   | 'mail'
-  | 'phone';
+  | 'phone'
+  | 'date'
+  | 'time'
+  | 'group';
 
 export type CustomFormField = {
   id: string;

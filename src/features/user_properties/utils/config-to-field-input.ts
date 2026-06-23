@@ -1,20 +1,23 @@
 import type { PropertyConfig } from '../types';
+import { serializeMultiSelectValue } from './select-values';
+import { validatePropertyConfig } from './validation';
 
 /** Field creation input (no orgId). Used by user properties and template fields. */
 export type PropertyConfigFieldInput = {
   name: string;
   description?: string;
   datatype:
-  | 'text'
-  | 'number'
-  | 'boolean'
-  | 'select'
-  | 'currency'
-  | 'group'
-  | 'date'
-  | 'time'
-  | 'phone'
-  | 'mail';
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'multiselect'
+    | 'currency'
+    | 'group'
+    | 'date'
+    | 'time'
+    | 'phone'
+    | 'mail';
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -27,6 +30,11 @@ export type PropertyConfigFieldInput = {
 export function propertyConfigToFieldInput(
   config: PropertyConfig
 ): PropertyConfigFieldInput {
+  const validationErrors = validatePropertyConfig(config);
+  if (validationErrors.length > 0) {
+    throw new Error(validationErrors.map((error) => error.message).join(' '));
+  }
+
   let datatype: PropertyConfigFieldInput['datatype'];
 
   switch (config.fieldType) {
@@ -40,7 +48,7 @@ export function propertyConfigToFieldInput(
       datatype = 'boolean';
       break;
     case 'select':
-      datatype = 'select';
+      datatype = config.isMultiSelect ? 'multiselect' : 'select';
       break;
     case 'currency':
       datatype = 'currency';
@@ -61,13 +69,18 @@ export function propertyConfigToFieldInput(
       datatype = 'mail';
       break;
     default:
-      throw new Error(`Unknown field type: ${config.fieldType}`);
+      throw new Error(`Unbekannter Feldtyp: ${config.fieldType}`);
   }
 
   let defaultValue: string | undefined;
 
   if (config.fieldType === 'boolean' && config.booleanDefaultValue !== null) {
     defaultValue = config.booleanDefaultValue ? 'true' : 'false';
+  } else if (config.fieldType === 'select' && config.isMultiSelect) {
+    const serializedDefaultOptions = serializeMultiSelectValue(
+      config.defaultOptions ?? []
+    );
+    defaultValue = serializedDefaultOptions || undefined;
   } else if (config.fieldType === 'select' && config.defaultOption) {
     defaultValue = config.defaultOption;
   } else if (config.defaultValue) {
@@ -86,7 +99,10 @@ export function propertyConfigToFieldInput(
     description: config.description,
     datatype,
     isRequired: config.isRequired,
-    placeholder: config.placeholder,
+    placeholder:
+      config.fieldType === 'date' || config.fieldType === 'time'
+        ? undefined
+        : config.placeholder,
     defaultValue,
     isMultiline: config.isMultiline,
     min: config.minValue,

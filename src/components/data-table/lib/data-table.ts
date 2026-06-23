@@ -75,7 +75,7 @@ export function getValidFilters<TData>(
       (Array.isArray(filter.value)
         ? filter.value.length > 0
         : filter.value !== '' &&
-        filter.value !== null &&
-        filter.value !== undefined)
+          filter.value !== null &&
+          filter.value !== undefined)
   );
 }

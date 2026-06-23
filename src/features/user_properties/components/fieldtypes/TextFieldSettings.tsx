@@ -34,6 +34,10 @@ export function TextFieldSettings({
           onChange={(e) => onChange({ placeholder: e.target.value })}
           placeholder="z.B. Bitte eingeben..."
         />
+        <p className="text-muted-foreground mt-1 text-sm">
+          Wird nur als Hinweis in einem leeren Feld angezeigt und nicht
+          gespeichert.
+        </p>
       </FormInputFieldCustom>
 
       <div className="flex items-center gap-2">
@@ -79,6 +83,10 @@ export function TextFieldSettings({
             placeholder="Wird vorausgefüllt, falls leer"
           />
         )}
+        <p className="text-muted-foreground mt-1 text-sm">
+          Wird automatisch eingetragen und gespeichert, sofern Sie ihn nicht
+          ändern.
+        </p>
       </FormInputFieldCustom>
     </>
   );

@@ -15,6 +15,9 @@ interface SettingsErrorCardProps {
   description?: string;
   error?: Error | null;
   onRetry?: () => void;
+  primaryActionLabel?: string;
+  onPrimaryAction?: () => void;
+  hideHomeAction?: boolean;
 }
 
 export function SettingsErrorCard({
@@ -22,6 +25,9 @@ export function SettingsErrorCard({
   description,
   error,
   onRetry,
+  primaryActionLabel,
+  onPrimaryAction,
+  hideHomeAction = false,
 }: SettingsErrorCardProps) {
   const router = useRouter();
 
@@ -36,14 +42,21 @@ export function SettingsErrorCard({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex gap-2">
+          {primaryActionLabel && onPrimaryAction ? (
+            <Button onClick={onPrimaryAction} variant="default">
+              {primaryActionLabel}
+            </Button>
+          ) : null}
           {onRetry && (
             <Button onClick={onRetry} variant="default">
               Erneut versuchen
             </Button>
           )}
-          <Button onClick={() => router.push('/')} variant="outline">
-            Zur Startseite
-          </Button>
+          {!hideHomeAction ? (
+            <Button onClick={() => router.push('/')} variant="outline">
+              Zur Startseite
+            </Button>
+          ) : null}
         </CardContent>
       </Card>
     </div>

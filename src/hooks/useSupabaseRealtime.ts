@@ -25,11 +25,16 @@ import type {
   EinsatzListItem,
 } from '@/features/einsatz/types';
 import type { CalendarEvent } from '@/components/event-calendar/types';
+import { dbTimestampToCalendarDate } from '@/features/einsatz/datetime';
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
 } from '@supabase/supabase-js';
 import type { einsatz as Einsatz } from '@/generated/prisma';
+import {
+  composeRealtimeEventTitle,
+  parseSupabaseRealtimeTimestamp,
+} from './useSupabaseRealtime.utils';
 
 type EinsatzRow = {
   id: string;
@@ -67,14 +72,14 @@ type EinsatzHelperRecord = {
 
 type CalendarQueryDescriptor =
   | {
-    type: 'agenda';
-    queryKey: QueryKey;
-  }
+      type: 'agenda';
+      queryKey: QueryKey;
+    }
   | {
-    type: 'month';
-    monthKey: string;
-    queryKey: QueryKey;
-  };
+      type: 'month';
+      monthKey: string;
+      queryKey: QueryKey;
+    };
 
 type EinsatzBasePatch = Partial<
   Pick<
@@ -95,13 +100,18 @@ type EinsatzBasePatch = Partial<
   updated_at?: Date | null;
 };
 
-function toDate(value: string | null | undefined): Date | undefined {
+function toInstantDate(value: string | null | undefined): Date | undefined {
   if (!value) {
     return undefined;
   }
 
   const parsedDate = new Date(value);
   return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+}
+
+function toCalendarDate(value: string | null | undefined): Date | undefined {
+  const parsed = parseSupabaseRealtimeTimestamp(value);
+  return parsed ? dbTimestampToCalendarDate(parsed) : undefined;
 }
 
 function isEinsatzRow(value: unknown): value is EinsatzRow {
@@ -132,11 +142,12 @@ function buildEinsatzBasePatch(record: Partial<EinsatzRow>): EinsatzBasePatch {
   const patch: EinsatzBasePatch = {};
 
   if (record.title !== undefined) patch.title = record.title;
-  if (record.start !== undefined) patch.start = toDate(record.start);
-  if (record.end !== undefined) patch.end = toDate(record.end);
+  if (record.start !== undefined) patch.start = toCalendarDate(record.start);
+  if (record.end !== undefined) patch.end = toCalendarDate(record.end);
   if (record.all_day !== undefined) patch.all_day = record.all_day;
   if (typeof record.status_id === 'string') patch.status_id = record.status_id;
-  if (record.helpers_needed !== undefined) patch.helpers_needed = record.helpers_needed;
+  if (record.helpers_needed !== undefined)
+    patch.helpers_needed = record.helpers_needed;
   if (record.participant_count !== undefined) {
     patch.participant_count = record.participant_count;
   }
@@ -146,14 +157,18 @@ function buildEinsatzBasePatch(record: Partial<EinsatzRow>): EinsatzBasePatch {
   if (record.total_price !== undefined) patch.total_price = record.total_price;
   if (record.anmerkung !== undefined) patch.anmerkung = record.anmerkung;
   if (record.template_id !== undefined) patch.template_id = record.template_id;
-  if (record.updated_at !== undefined) patch.updated_at = toDate(record.updated_at) ?? null;
+  if (record.updated_at !== undefined) {
+    patch.updated_at = toInstantDate(record.updated_at) ?? null;
+  }
 
   return patch;
 }
 
 function addUserId(userIds: string[] | undefined, userId: string): string[] {
   const currentUserIds = userIds ?? [];
-  return currentUserIds.includes(userId) ? currentUserIds : [...currentUserIds, userId];
+  return currentUserIds.includes(userId)
+    ? currentUserIds
+    : [...currentUserIds, userId];
 }
 
 function removeUserId(userIds: string[] | undefined, userId: string): string[] {
@@ -230,8 +245,8 @@ function isRecordInCalendarQuery(
   record: Partial<EinsatzRow>,
   descriptor: CalendarQueryDescriptor
 ): boolean {
-  const start = toDate(record.start);
-  const end = toDate(record.end) ?? start;
+  const start = toCalendarDate(record.start);
+  const end = toCalendarDate(record.end) ?? start;
 
   if (!start || !end) {
     return false;
@@ -263,7 +278,9 @@ function applyPatchToDetailedEinsatz(
     start: patch.start ?? detailedEinsatz.start,
     end: patch.end ?? detailedEinsatz.end,
     updated_at:
-      patch.updated_at === undefined ? detailedEinsatz.updated_at : patch.updated_at,
+      patch.updated_at === undefined
+        ? detailedEinsatz.updated_at
+        : patch.updated_at,
     status_id: patch.status_id ?? detailedEinsatz.status_id,
   };
 }
@@ -278,18 +295,25 @@ function applyPatchToCalendarDetailedEinsatz(
     start: patch.start ?? detailedEinsatz.start,
     end: patch.end ?? detailedEinsatz.end,
     updated_at:
-      patch.updated_at === undefined ? detailedEinsatz.updated_at : patch.updated_at,
+      patch.updated_at === undefined
+        ? detailedEinsatz.updated_at
+        : patch.updated_at,
     status_id: patch.status_id ?? detailedEinsatz.status_id,
   };
 }
 
 function applyPatchToCalendarEvent(
   event: CalendarEvent,
-  patch: EinsatzBasePatch
+  patch: EinsatzBasePatch,
+  categoryAbbreviations?: string[] | null
 ): CalendarEvent {
   return {
     ...event,
-    title: patch.title ?? event.title,
+    title: composeRealtimeEventTitle({
+      existingTitle: event.title,
+      nextBaseTitle: patch.title,
+      categoryAbbreviations,
+    }),
     start: patch.start ?? event.start,
     end: patch.end ?? event.end,
     allDay: patch.all_day ?? event.allDay,
@@ -311,13 +335,16 @@ function applyPatchToListItem(
     ...patch,
     start: patch.start ?? listItem.start,
     end: patch.end ?? listItem.end,
-    updated_at: patch.updated_at === undefined ? listItem.updated_at : patch.updated_at,
+    updated_at:
+      patch.updated_at === undefined ? listItem.updated_at : patch.updated_at,
     status_id: patch.status_id ?? listItem.status_id,
-    status_verwalter_text: nextStatus?.verwalter_text ?? listItem.status_verwalter_text,
+    status_verwalter_text:
+      nextStatus?.verwalter_text ?? listItem.status_verwalter_text,
     status_helper_text: nextStatus?.helper_text ?? listItem.status_helper_text,
     status_verwalter_color:
       nextStatus?.verwalter_color ?? listItem.status_verwalter_color,
-    status_helper_color: nextStatus?.helper_color ?? listItem.status_helper_color,
+    status_helper_color:
+      nextStatus?.helper_color ?? listItem.status_helper_color,
   };
 }
 
@@ -364,21 +391,28 @@ function updateCalendarRangeWithPatch(
     eventIndex === -1
       ? data.events
       : sortCalendarEvents(
-        data.events.map((event) =>
-          event.id === einsatzId ? applyPatchToCalendarEvent(event, patch) : event
-        )
-      );
+          data.events.map((event) =>
+            event.id === einsatzId
+              ? applyPatchToCalendarEvent(
+                  event,
+                  patch,
+                  data.detailedEinsaetze[detailedIndex]
+                    ?.category_abbreviations ?? null
+                )
+              : event
+          )
+        );
 
   const nextDetailedEinsaetze =
     detailedIndex === -1
       ? data.detailedEinsaetze
       : sortDetailedEinsaetze(
-        data.detailedEinsaetze.map((detailedEinsatz) =>
-          detailedEinsatz.id === einsatzId
-            ? applyPatchToCalendarDetailedEinsatz(detailedEinsatz, patch)
-            : detailedEinsatz
-        )
-      );
+          data.detailedEinsaetze.map((detailedEinsatz) =>
+            detailedEinsatz.id === einsatzId
+              ? applyPatchToCalendarDetailedEinsatz(detailedEinsatz, patch)
+              : detailedEinsatz
+          )
+        );
 
   return {
     nextData: {
@@ -446,13 +480,18 @@ function syncSimpleCalendarListCache(
   queryClient.setQueryData<CalendarEvent[]>(
     queryKeys.einsaetze(orgId),
     (currentData) => {
-      if (!currentData || !currentData.some((event) => event.id === einsatzId)) {
+      if (
+        !currentData ||
+        !currentData.some((event) => event.id === einsatzId)
+      ) {
         return currentData;
       }
 
       return sortCalendarEvents(
         currentData.map((event) =>
-          event.id === einsatzId ? applyPatchToCalendarEvent(event, patch) : event
+          event.id === einsatzId
+            ? applyPatchToCalendarEvent(event, patch)
+            : event
         )
       );
     }
@@ -470,7 +509,8 @@ function removeEinsatzFromCaches(
 
   queryClient.setQueryData<CalendarEvent[]>(
     queryKeys.einsaetze(orgId),
-    (currentData) => currentData?.filter((event) => event.id !== einsatzId) ?? currentData
+    (currentData) =>
+      currentData?.filter((event) => event.id !== einsatzId) ?? currentData
   );
 
   const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
@@ -482,7 +522,9 @@ function removeEinsatzFromCaches(
       return;
     }
 
-    const nextEvents = currentData.events.filter((event) => event.id !== einsatzId);
+    const nextEvents = currentData.events.filter(
+      (event) => event.id !== einsatzId
+    );
     const nextDetailedEinsaetze = currentData.detailedEinsaetze.filter(
       (detailedEinsatz) => detailedEinsatz.id !== einsatzId
     );
@@ -532,6 +574,27 @@ function syncEinsatzRealtimeCaches(
 
   if (payload.eventType === 'DELETE') {
     removeEinsatzFromCaches(queryClient, orgId, einsatzId);
+    return;
+  }
+
+  if (payload.eventType === 'UPDATE') {
+    // Never patch einsatz UPDATE payloads directly into caches.
+    // UPDATE payload timestamp serialization can differ by environment
+    // and has caused transient timezone flicker in deployment.
+    // Always refetch authoritative, API-normalized data instead.
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.detailedEinsatz(einsatzId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.einsaetze(orgId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.allLists(),
+      predicate: (query) => matchesEinsatzListQueryForOrg(query.queryKey, orgId),
+    });
     return;
   }
 
@@ -741,9 +804,7 @@ export function useSupabaseRealtime(orgId?: string) {
     }
 
     const updateConnectionState = () => {
-      setIsConnected(
-        einsatzConnectedRef.current && helperConnectedRef.current
-      );
+      setIsConnected(einsatzConnectedRef.current && helperConnectedRef.current);
     };
 
     const einsatzChannelName = `einsatz-changes:${orgId}:${Date.now()}`;
@@ -796,7 +857,8 @@ export function useSupabaseRealtime(orgId?: string) {
 
           queryClient.invalidateQueries({
             queryKey: queryKeys.allLists(),
-            predicate: (query) => matchesEinsatzListQueryForOrg(query.queryKey, orgId),
+            predicate: (query) =>
+              matchesEinsatzListQueryForOrg(query.queryKey, orgId),
           });
         }
       )

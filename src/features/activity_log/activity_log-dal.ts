@@ -37,7 +37,6 @@ export async function createChangeLogAuto({
 export async function createChangeLog(
   input: CreateChangeLogInput
 ): Promise<ChangeLogEntry> {
-
   const missingFields: string[] = [];
   if (!input.einsatzId) missingFields.push('einsatzId');
   if (!input.userId) missingFields.push('userId');
@@ -107,23 +106,27 @@ export async function createChangeLog(
     change_type: changeLog.change_type,
     user: changeLog.user,
     affected_user_data: changeLog.user_change_log_affected_userTouser,
-    einsatz: changeLog.einsatz ? {
-      id: changeLog.einsatz.id,
-      title: changeLog.einsatz.title,
-      start: changeLog.einsatz.start,
-      end: changeLog.einsatz.end,
-      all_day: changeLog.einsatz.all_day,
-      org_id: changeLog.einsatz.org_id,
-      einsatz_to_category: changeLog.einsatz.einsatz_to_category.map((etc) => ({
-        id: etc.id,
-        category_id: etc.category_id,
-        einsatz_category: {
-          id: etc.einsatz_category.id,
-          value: etc.einsatz_category.value,
-          abbreviation: etc.einsatz_category.abbreviation,
-        },
-      })),
-    } : null,
+    einsatz: changeLog.einsatz
+      ? {
+          id: changeLog.einsatz.id,
+          title: changeLog.einsatz.title,
+          start: changeLog.einsatz.start,
+          end: changeLog.einsatz.end,
+          all_day: changeLog.einsatz.all_day,
+          org_id: changeLog.einsatz.org_id,
+          einsatz_to_category: changeLog.einsatz.einsatz_to_category.map(
+            (etc) => ({
+              id: etc.id,
+              category_id: etc.category_id,
+              einsatz_category: {
+                id: etc.einsatz_category.id,
+                value: etc.einsatz_category.value,
+                abbreviation: etc.einsatz_category.abbreviation,
+              },
+            })
+          ),
+        }
+      : null,
   };
 }
 
@@ -188,22 +191,22 @@ export async function getActivities(
   return logs.map((log) => {
     const einsatz = log.einsatz
       ? {
-        id: log.einsatz.id,
-        title: log.einsatz.title,
-        start: log.einsatz.start,
-        end: log.einsatz.end,
-        all_day: log.einsatz.all_day,
-        org_id: log.einsatz.org_id,
-        einsatz_to_category: log.einsatz.einsatz_to_category.map((etc) => ({
-          id: etc.id,
-          category_id: etc.category_id,
-          einsatz_category: {
-            id: etc.einsatz_category.id,
-            value: etc.einsatz_category.value,
-            abbreviation: etc.einsatz_category.abbreviation,
-          },
-        })),
-      }
+          id: log.einsatz.id,
+          title: log.einsatz.title,
+          start: log.einsatz.start,
+          end: log.einsatz.end,
+          all_day: log.einsatz.all_day,
+          org_id: log.einsatz.org_id,
+          einsatz_to_category: log.einsatz.einsatz_to_category.map((etc) => ({
+            id: etc.id,
+            category_id: etc.category_id,
+            einsatz_category: {
+              id: etc.einsatz_category.id,
+              value: etc.einsatz_category.value,
+              abbreviation: etc.einsatz_category.abbreviation,
+            },
+          })),
+        }
       : null;
 
     return {
@@ -322,24 +325,24 @@ export async function getActivityLogs(
     activities: activities.map((activity) => {
       const einsatz = activity.einsatz
         ? {
-          id: activity.einsatz.id,
-          title: activity.einsatz.title,
-          start: activity.einsatz.start,
-          end: activity.einsatz.end,
-          all_day: activity.einsatz.all_day,
-          org_id: activity.einsatz.org_id,
-          einsatz_to_category: activity.einsatz.einsatz_to_category.map(
-            (etc) => ({
-              id: etc.id,
-              category_id: etc.category_id,
-              einsatz_category: {
-                id: etc.einsatz_category.id,
-                value: etc.einsatz_category.value,
-                abbreviation: etc.einsatz_category.abbreviation,
-              },
-            })
-          ),
-        }
+            id: activity.einsatz.id,
+            title: activity.einsatz.title,
+            start: activity.einsatz.start,
+            end: activity.einsatz.end,
+            all_day: activity.einsatz.all_day,
+            org_id: activity.einsatz.org_id,
+            einsatz_to_category: activity.einsatz.einsatz_to_category.map(
+              (etc) => ({
+                id: etc.id,
+                category_id: etc.category_id,
+                einsatz_category: {
+                  id: etc.einsatz_category.id,
+                  value: etc.einsatz_category.value,
+                  abbreviation: etc.einsatz_category.abbreviation,
+                },
+              })
+            ),
+          }
         : null;
 
       return {

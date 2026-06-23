@@ -115,7 +115,7 @@ export function OrganizationDetailsForm({
             </Label>
           </div>
           <p className="text-muted-foreground ml-6 text-sm">
-            Wenn aktiviert, können sich {helper_plural} selbstständig aus{' '}
+            Wenn aktiviert, können sich {helper_plural} selbstständig von{' '}
             {einsatz_plural} austragen, für die sie sich eingetragen haben.
           </p>
         </div>

@@ -5,26 +5,47 @@ import { GripVertical, X, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { MultiSelect } from '@/components/form/multi-select';
 
 interface SelectFieldSettingsProps {
   options: string[];
   defaultOption?: string;
-  onChange: (updates: { options?: string[]; defaultOption?: string }) => void;
+  defaultOptions?: string[];
+  isMultiSelect?: boolean;
+  onChange: (updates: {
+    options?: string[];
+    defaultOption?: string;
+    defaultOptions?: string[];
+    isMultiSelect?: boolean;
+  }) => void;
   errors: string[];
 }
 
 export function SelectFieldSettings({
   options,
   defaultOption,
+  defaultOptions = [],
+  isMultiSelect = false,
   onChange,
   errors,
 }: SelectFieldSettingsProps) {
   const [newOption, setNewOption] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const normalizedNewOption = newOption.trim();
+  const newOptionError = normalizedNewOption.includes(',')
+    ? 'Auswahloptionen dürfen kein Komma enthalten'
+    : options.some(
+          (option) =>
+            option.trim().toLocaleLowerCase('de-AT') ===
+            normalizedNewOption.toLocaleLowerCase('de-AT')
+        )
+      ? 'Diese Auswahloption ist bereits vorhanden'
+      : null;
 
   const handleAddOption = () => {
-    if (newOption.trim()) {
-      onChange({ options: [...options, newOption.trim()] });
+    if (normalizedNewOption && !newOptionError) {
+      onChange({ options: [...options, normalizedNewOption] });
       setNewOption('');
     }
   };
@@ -33,11 +54,20 @@ export function SelectFieldSettings({
     const removedOption = options[index];
     const newOptions = options.filter((_, i) => i !== index);
 
-    const updates: { options: string[]; defaultOption?: string } = {
+    const updates: {
+      options: string[];
+      defaultOption?: string;
+      defaultOptions?: string[];
+    } = {
       options: newOptions,
     };
     if (defaultOption === removedOption) {
       updates.defaultOption = undefined;
+    }
+    if (defaultOptions.includes(removedOption)) {
+      updates.defaultOptions = defaultOptions.filter(
+        (option) => option !== removedOption
+      );
     }
 
     onChange(updates);
@@ -60,7 +90,7 @@ export function SelectFieldSettings({
     setDraggedIndex(index);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
@@ -104,8 +134,13 @@ export function SelectFieldSettings({
             placeholder="Option eingeben..."
             className="flex-1"
           />
-          <Button type="button" onClick={handleAddOption}>Hinzufügen</Button>
+          <Button type="button" onClick={handleAddOption}>
+            Hinzufügen
+          </Button>
         </div>
+        {newOptionError && (
+          <p className="text-sm text-red-600">{newOptionError}</p>
+        )}
 
         {errors.length > 0 && (
           <div className="flex flex-col gap-1">
@@ -128,7 +163,7 @@ export function SelectFieldSettings({
                 key={index}
                 draggable
                 onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
+                onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
                 className={`flex items-center gap-2 p-2 transition-colors hover:bg-slate-50 ${
@@ -173,25 +208,69 @@ export function SelectFieldSettings({
         )}
       </div>
 
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="isMultiSelect"
+          checked={isMultiSelect}
+          onCheckedChange={(checked) => {
+            const nextIsMultiSelect = checked === true;
+            const preservedDefaultOptions =
+              defaultOptions.length > 0
+                ? defaultOptions
+                : defaultOption
+                  ? [defaultOption]
+                  : [];
+            onChange({
+              isMultiSelect: nextIsMultiSelect,
+              defaultOption: nextIsMultiSelect
+                ? undefined
+                : preservedDefaultOptions[0],
+              defaultOptions: preservedDefaultOptions,
+            });
+          }}
+        />
+        <Label htmlFor="isMultiSelect" className="text-sm font-medium">
+          Mehrfachauswahl erlauben
+        </Label>
+      </div>
+
       {options.length > 0 && (
         <div className="flex flex-col gap-2">
           <Label className="text-sm font-medium">
-            Standardoption (optional)
+            {isMultiSelect
+              ? 'Standardoptionen (optional)'
+              : 'Standardoption (optional)'}
           </Label>
-          <select
-            value={defaultOption || ''}
-            onChange={(e) =>
-              onChange({ defaultOption: e.target.value || undefined })
-            }
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
-          >
-            <option value="">Keine Vorauswahl</option>
-            {options.map((opt, i) => (
-              <option key={i} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+          <p className="text-muted-foreground text-sm">
+            Wird automatisch ausgewählt und gespeichert, sofern Sie sie nicht
+            ändern.
+          </p>
+          {isMultiSelect ? (
+            <MultiSelect
+              options={options.map((option) => ({
+                label: option,
+                value: option,
+              }))}
+              value={defaultOptions}
+              onValueChange={(values) => onChange({ defaultOptions: values })}
+              placeholder="Keine Vorauswahl"
+            />
+          ) : (
+            <select
+              value={defaultOption || ''}
+              onChange={(e) =>
+                onChange({ defaultOption: e.target.value || undefined })
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2"
+            >
+              <option value="">Keine Vorauswahl</option>
+              {options.map((opt, i) => (
+                <option key={i} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
     </div>

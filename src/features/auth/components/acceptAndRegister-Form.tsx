@@ -193,7 +193,7 @@ export function SignUpForm({
 
   const profilePictureUploadFromClient = async (
     optimizedFile: File
-  ): Promise<string> => {
+  ): Promise<string | undefined> => {
     // Use a unique toast ID to prevent duplicate toasts
     const toastId = 'profile-picture-upload';
 
@@ -219,7 +219,10 @@ export function SignUpForm({
 
     toast.dismiss(loadingToastId);
     if (!res.ok) {
-      toast.error('Failed to upload profile picture.', { id: 'upload-failed' });
+      toast.error('Das Profilbild konnte nicht hochgeladen werden.', {
+        id: 'upload-failed',
+      });
+      return undefined;
     } else {
       toast.success('Profilbild erfolgreich hochgeladen!', { id: toastId });
     }
@@ -258,10 +261,9 @@ export function SignUpForm({
       });
     },
     onError: (error) => {
-      // TODO: show error message
+      console.error('Fehler beim Erstellen des Accounts:', error);
       toast.error(
-        'Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator. \nError:' +
-          error.error
+        'Fehler beim Erstellen des Accounts. Bitte versuchen Sie es erneut oder wenden Sie sich an den Administrator.'
       );
       setTab('register1');
     },
@@ -789,6 +791,7 @@ export function SignUpForm({
                     }}
                     onUpload={async (file) => {
                       const path = await profilePictureUploadFromClient(file);
+                      if (!path) return undefined;
                       // store the string, not the file
                       field.onChange(path);
                       return path;
@@ -837,5 +840,3 @@ export function SignUpForm({
     </form>
   );
 }
-
-export default SignUpForm;

@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { differenceInDays } from 'date-fns';
 import { CalendarMode } from './types';
 
 import {
@@ -11,12 +10,16 @@ import {
   EventItem,
   useCalendarDnd,
 } from '@/components/event-calendar';
+import { isMultiDayEvent } from './utils';
 
 interface DraggableEventProps {
   event: CalendarEvent;
   view: 'month' | 'week' | 'day';
   showTime?: boolean;
   onClick?: (e: React.MouseEvent) => void;
+  isSaving?: boolean;
+  savingIndicatorTooltip?: string;
+  savingToastMessage?: string;
   height?: number;
   isMultiDay?: boolean;
   multiDayWidth?: number;
@@ -34,6 +37,9 @@ export function DraggableEvent({
   view,
   showTime,
   onClick,
+  isSaving,
+  savingIndicatorTooltip,
+  savingToastMessage,
   height,
   isMultiDay,
   multiDayWidth,
@@ -52,20 +58,21 @@ export function DraggableEvent({
     y: number;
   } | null>(null);
 
-  // Check if this is a multi-day event
-  const eventStart = new Date(event.start);
-  const eventEnd = new Date(event.end);
-  const isMultiDayEvent =
-    isMultiDay || event.allDay || differenceInDays(eventEnd, eventStart) >= 1;
+  const eventIsMultiDay = isMultiDay ?? isMultiDayEvent(event);
+  const isDraggable = !eventIsMultiDay;
+  const draggableId = `${event.id}-${view}-${new Date(
+    event.start
+  ).toISOString()}-${new Date(event.end).toISOString()}`;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
-      id: `${event.id}-${view}`,
+      id: draggableId,
+      disabled: !isDraggable,
       data: {
         event,
         view,
         height: height || elementRef.current?.offsetHeight || null,
-        isMultiDay: isMultiDayEvent,
+        isMultiDay: eventIsMultiDay,
         multiDayWidth: multiDayWidth,
         dragHandlePosition,
         isFirstDay,
@@ -85,7 +92,7 @@ export function DraggableEvent({
   };
 
   // Don't render if this event is being dragged
-  if (isDragging || activeId === `${event.id}-${view}`) {
+  if (isDragging || activeId === draggableId) {
     return (
       <div
         ref={setNodeRef}
@@ -100,12 +107,12 @@ export function DraggableEvent({
         transform: CSS.Translate.toString(transform),
         height: height || 'auto',
         width:
-          isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
+          eventIsMultiDay && multiDayWidth ? `${multiDayWidth}%` : undefined,
       }
     : {
         height: height || 'auto',
         width:
-          isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
+          eventIsMultiDay && multiDayWidth ? `${multiDayWidth}%` : undefined,
       };
 
   // Handle touch start to track where on the event the user touched
@@ -137,12 +144,16 @@ export function DraggableEvent({
         showTime={showTime}
         isFirstDay={isFirstDay}
         isLastDay={isLastDay}
+        isMultiDay={eventIsMultiDay}
         isDragging={isDragging}
         onClick={onClick}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-        dndListeners={listeners}
-        dndAttributes={attributes}
+        isSaving={isSaving}
+        savingIndicatorTooltip={savingIndicatorTooltip}
+        savingToastMessage={savingToastMessage}
+        onMouseDown={isDraggable ? handleMouseDown : undefined}
+        onTouchStart={isDraggable ? handleTouchStart : undefined}
+        dndListeners={isDraggable ? listeners : undefined}
+        dndAttributes={isDraggable ? attributes : undefined}
         aria-hidden={ariaHidden}
         mode={mode}
         onDelete={onDelete}

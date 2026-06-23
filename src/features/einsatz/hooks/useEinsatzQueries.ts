@@ -13,7 +13,10 @@ import {
   getEinsaetzeForTableView,
 } from '@/features/einsatz/dal-einsatz';
 import { getCategoriesByOrgIds } from '@/features/category/cat-dal';
-import type { EinsatzListItem } from '@/features/einsatz/types';
+import type {
+  EinsatzDetailedWithUiState,
+  EinsatzListItem,
+} from '@/features/einsatz/types';
 
 /**
  * Loads Einsätze for the specified active organization.
@@ -100,7 +103,7 @@ export function useDetailedEinsatz(
   einsatzId: string | null | undefined,
   isOpen: boolean = true
 ) {
-  return useQuery({
+  return useQuery<EinsatzDetailedWithUiState | null>({
     queryKey: queryKeys.detailedEinsatz(einsatzId as string),
     queryFn: async () => {
       const res = await getEinsatzWithDetailsById(einsatzId as string);
@@ -123,7 +126,7 @@ export function usePrefetchDetailedEinsatz() {
     (einsatzId: string) => {
       queryClient.prefetchQuery({
         queryKey: queryKeys.detailedEinsatz(einsatzId),
-        queryFn: async () => {
+        queryFn: async (): Promise<EinsatzDetailedWithUiState | null> => {
           const res = await getEinsatzWithDetailsById(einsatzId);
           if (res instanceof Response) {
             throw new Error(

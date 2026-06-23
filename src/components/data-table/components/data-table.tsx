@@ -84,7 +84,9 @@ export function DataTable<TData>({
                               ...getCommonPinningStyles({
                                 column: cell.column,
                               }),
-                              zIndex: cell.column.getIsPinned() ? 10 : undefined,
+                              zIndex: cell.column.getIsPinned()
+                                ? 10
+                                : undefined,
                             }}
                           >
                             {flexRender(

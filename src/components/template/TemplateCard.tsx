@@ -19,8 +19,9 @@ const templateCardVariants = cva(
   }
 );
 
-export interface TemplateCardProps
-  extends VariantProps<typeof templateCardVariants> {
+export interface TemplateCardProps extends VariantProps<
+  typeof templateCardVariants
+> {
   /** Icon, image, or any element to show above the title. */
   icon: ReactNode;
   /** Main label/title. */

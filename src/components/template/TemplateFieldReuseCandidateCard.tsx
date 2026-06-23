@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import type { TemplateFieldReuseCandidate } from '@/features/template/template-dal';
+import { getFieldTypeLabel } from '@/features/user_properties/field-type-definitions';
 
 interface TemplateFieldReuseCandidateCardProps {
   candidate: TemplateFieldReuseCandidate;
@@ -40,13 +41,15 @@ export function TemplateFieldReuseCandidateCard({
                 )}
               </CardTitle>
               <Badge variant="outline">
-                {candidate.typeName?.trim() ||
+                {getFieldTypeLabel(candidate.datatype) ||
+                  candidate.typeName?.trim() ||
                   candidate.datatype ||
                   'Unbekannt'}
               </Badge>
             </div>
             <CardDescription>
-              {candidate.description?.trim() || 'Keine Beschreibung hinterlegt.'}
+              {candidate.description?.trim() ||
+                'Keine Beschreibung hinterlegt.'}
             </CardDescription>
           </div>
           {candidate.linkedTemplateNames.length > 0 && (

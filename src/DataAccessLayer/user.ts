@@ -1,5 +1,6 @@
 import { unstable_cache as cache } from 'next/cache';
 import prisma from '@/lib/prisma';
+import type { Prisma } from '@/generated/prisma';
 
 type UserSettingsUpdate = {
   email?: string;
@@ -254,24 +255,6 @@ export async function createUserWithOrgAndRoles(data: {
 //#endregion
 
 //#region Organization Management
-export async function getOrCreateOrganizationByName(name: string) {
-  try {
-    let organization = await prisma.organization.findFirst({
-      where: { name },
-    });
-
-    if (!organization) {
-      organization = await prisma.organization.create({
-        data: { name },
-      });
-    }
-
-    return organization;
-  } catch (error: any) {
-    throw new Error(`Failed to get or create organization: ${error.message}`);
-  }
-}
-
 export async function getUsersWithRolesByOrgId(orgId: string) {
   try {
     return prisma.user.findMany({
@@ -401,7 +384,7 @@ export async function updateUserSettings(
     });
 
     if (!currentUser) {
-      throw new Error('User not found');
+      throw new Error('Benutzer nicht gefunden.');
     }
 
     const updateData = {
@@ -419,9 +402,17 @@ export async function updateUserSettings(
       data: updateData,
     });
   } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to update user settings: ${errorMessage}`);
+    if (
+      error instanceof Error &&
+      error.message === 'Benutzer nicht gefunden.'
+    ) {
+      throw error;
+    }
+    console.error(
+      'Benutzereinstellungen konnten nicht aktualisiert werden:',
+      error
+    );
+    throw new Error('Benutzereinstellungen konnten nicht aktualisiert werden.');
   }
 }
 
@@ -506,10 +497,13 @@ export async function removeUserRolesFromOrganization(
  */
 export async function getUserRolesInOrganization(
   userId: string,
-  orgId: string
+  orgId: string,
+  executor:
+    | Pick<Prisma.TransactionClient, 'user_organization_role'>
+    | Pick<typeof prisma, 'user_organization_role'> = prisma
 ) {
   try {
-    return await prisma.user_organization_role.findMany({
+    return await executor.user_organization_role.findMany({
       where: {
         user_id: userId,
         org_id: orgId,

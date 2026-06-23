@@ -153,6 +153,10 @@ export function OrganizationDefaultValues({
 
   const handleSaveEdit = () => {
     if (!editingId || !editValue.trim()) return;
+    if (!editAbbreviation.trim()) {
+      toast.error('Bitte ein Kürzel für die Kategorie angeben.');
+      return;
+    }
     updateMutation.mutate({
       categoryId: editingId,
       value: editValue.trim(),
@@ -169,6 +173,10 @@ export function OrganizationDefaultValues({
       toast.error('Bitte einen Namen für die Kategorie angeben.');
       return;
     }
+    if (!newAbbreviation.trim()) {
+      toast.error('Bitte ein Kürzel für die Kategorie angeben.');
+      return;
+    }
     createMutation.mutate({
       value: newValue.trim(),
       abbreviation: newAbbreviation.trim(),
@@ -178,7 +186,11 @@ export function OrganizationDefaultValues({
   const handleDeleteCategory = async (cat: CategoryItem) => {
     const result = await showDestructive(
       'Kategorie löschen',
-      `Möchten Sie die Kategorie „${cat.value}“ wirklich löschen?`
+      `Möchten Sie die Kategorie „${cat.value}“ wirklich löschen?`,
+      {
+        confirmText: 'Löschen',
+        cancelText: 'Abbrechen',
+      }
     );
     if (result === 'success') {
       deleteMutation.mutate(cat.id);
@@ -265,28 +277,42 @@ export function OrganizationDefaultValues({
             {categories.map((cat) => (
               <div
                 key={cat.id}
-                className="flex flex-wrap items-center gap-2 rounded-md border p-2"
+                className="flex flex-wrap items-end gap-3 rounded-md"
               >
                 {editingId === cat.id ? (
                   <>
-                    <Input
-                      className="max-w-[200px]"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      placeholder="Name"
-                      aria-label="Kategorie Name"
-                    />
-                    <Input
-                      className="max-w-[120px]"
-                      value={editAbbreviation}
-                      onChange={(e) => setEditAbbreviation(e.target.value)}
-                      placeholder="Kürzel"
-                      aria-label="Kategorie Kürzel"
-                    />
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor={`category-edit-name-${cat.id}`}>
+                        Name (ausgeschrieben)
+                      </Label>
+                      <Input
+                        id={`category-edit-name-${cat.id}`}
+                        className="max-w-[340px]"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        placeholder="Name"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor={`category-edit-abbreviation-${cat.id}`}>
+                        Kürzel
+                      </Label>
+                      <Input
+                        id={`category-edit-abbreviation-${cat.id}`}
+                        className="max-w-[120px]"
+                        value={editAbbreviation}
+                        onChange={(e) => setEditAbbreviation(e.target.value)}
+                        placeholder="Kürzel"
+                      />
+                    </div>
                     <Button
                       size="sm"
                       onClick={handleSaveEdit}
-                      disabled={updateMutation.isPending || !editValue.trim()}
+                      disabled={
+                        updateMutation.isPending ||
+                        !editValue.trim() ||
+                        !editAbbreviation.trim()
+                      }
                     >
                       Speichern
                     </Button>
@@ -332,25 +358,35 @@ export function OrganizationDefaultValues({
             ))}
           </div>
           {isAdding ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
-              <Input
-                className="max-w-[200px]"
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-                placeholder="Dauerausstellung"
-                aria-label="Neue Kategorie Name"
-              />
-              <Input
-                className="max-w-[120px]"
-                value={newAbbreviation}
-                onChange={(e) => setNewAbbreviation(e.target.value)}
-                placeholder="DA"
-                aria-label="Neue Kategorie Kürzel"
-              />
+            <div className="flex flex-wrap items-end gap-3 rounded-md border border-dashed p-2">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="category-new-name">Name (ausgeschrieben)</Label>
+                <Input
+                  id="category-new-name"
+                  className="max-w-[340px]"
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value)}
+                  placeholder="Dauerausstellung"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="category-new-abbreviation">Kürzel</Label>
+                <Input
+                  id="category-new-abbreviation"
+                  className="max-w-[120px]"
+                  value={newAbbreviation}
+                  onChange={(e) => setNewAbbreviation(e.target.value)}
+                  placeholder="DA"
+                />
+              </div>
               <Button
                 size="sm"
                 onClick={handleAddCategory}
-                disabled={createMutation.isPending || !newValue.trim()}
+                disabled={
+                  createMutation.isPending ||
+                  !newValue.trim() ||
+                  !newAbbreviation.trim()
+                }
               >
                 Hinzufügen
               </Button>
@@ -374,7 +410,7 @@ export function OrganizationDefaultValues({
               size="sm"
               onClick={() => setIsAdding(true)}
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus />
               Kategorie hinzufügen
             </Button>
           )}

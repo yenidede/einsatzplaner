@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/popover';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import NavSwitchOrgSelect from './switch-org';
+import { NavSwitchOrgSelect } from './switch-org';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import {
@@ -26,10 +26,13 @@ import {
 } from '@/features/organization/hooks/use-organization-queries';
 import { useUserOrgRoles } from '@/features/settings/hooks/useUserOrgRoles';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
+import { shouldHideNavbar } from './navbar-visibility';
+import { hasAnalyticsAccessInOrgRoles } from '@/features/analytics/permissions';
 
 export default function Component() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const hideNavbar = shouldHideNavbar(pathname);
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -68,8 +71,16 @@ export default function Component() {
         !hasRoleInActiveOrg('Superadmin') &&
         !hasRoleInActiveOrg('Einsatzverwaltung'),
     },
-    { href: '/auswertungen', label: 'Auswertungen', hidden: true },
+    {
+      href: '/auswertungen',
+      label: 'Auswertungen',
+      hidden: !hasAnalyticsAccessInOrgRoles(userOrganization),
+    },
   ];
+
+  if (hideNavbar) {
+    return null;
+  }
 
   return (
     <header

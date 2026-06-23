@@ -71,6 +71,8 @@ export interface MultiSelectProps
     value: string;
     /** Optional icon component to display alongside the option. */
     icon?: React.ComponentType<{ className?: string }>;
+    /** Whether this option is only displayed for a historical selected value. */
+    disabled?: boolean;
   }[];
 
   /**
@@ -115,6 +117,12 @@ export interface MultiSelectProps
    * Optional, can be used to add custom styles.
    */
   className?: string;
+
+  /**
+   * Optional empty-state content shown when no options exist.
+   * Falls back to the generic no-results message if omitted.
+   */
+  emptyState?: React.ReactNode;
 }
 
 export const MultiSelect = React.forwardRef<
@@ -128,13 +136,14 @@ export const MultiSelect = React.forwardRef<
       variant,
       value,
       defaultValue = [],
-      placeholder = 'Select options',
+      placeholder = 'Optionen auswählen',
       animation = 0,
       allowedActiveItems,
       allowedActiveItemsReachedMessage = 'Maximale Anzahl an Elementen erreicht.',
       maxCount = 3,
       modalPopover = false,
       className,
+      emptyState,
       ...props
     },
     ref
@@ -145,6 +154,15 @@ export const MultiSelect = React.forwardRef<
     const selectedValues = isControlled
       ? (value as string[])
       : uncontrolledSelectedValues;
+    const selectableOptions = options
+      .filter((option) => !option.disabled)
+      .slice(0, allowedActiveItems ?? options.length);
+    const selectableOptionValues = new Set(
+      selectableOptions.map((option) => option.value)
+    );
+    const selectedSelectableCount = selectedValues.filter((value) =>
+      selectableOptionValues.has(value)
+    ).length;
 
     // Keep internal state in sync when defaultValue changes (uncontrolled mode)
     React.useEffect(() => {
@@ -213,12 +231,10 @@ export const MultiSelect = React.forwardRef<
     };
 
     const toggleAll = () => {
-      if (selectedValues.length === options.length) {
+      if (selectedSelectableCount === selectableOptions.length) {
         handleClear();
       } else {
-        const allValues = options
-          .slice(0, allowedActiveItems ?? options.length)
-          .map((option) => option.value);
+        const allValues = selectableOptions.map((option) => option.value);
         if (!isControlled) setUncontrolledSelectedValues(allValues);
         onValueChange(allValues);
       }
@@ -241,7 +257,7 @@ export const MultiSelect = React.forwardRef<
             )}
           >
             {selectedValues.length > 0 ? (
-              <div className="flex min-w-0 w-full items-center justify-between gap-1">
+              <div className="flex w-full min-w-0 items-center justify-between gap-1">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
                   {selectedValues.slice(0, maxCount).map((value) => {
                     const option = options.find((o) => o.value === value);
@@ -271,13 +287,13 @@ export const MultiSelect = React.forwardRef<
                   {selectedValues.length > maxCount && (
                     <Badge
                       className={cn(
-                        'text-foreground border-foreground/1 bg-transparent hover:bg-transparent shrink-0',
+                        'text-foreground border-foreground/1 shrink-0 bg-transparent hover:bg-transparent',
                         isAnimating ? 'animate-bounce' : '',
                         multiSelectVariants({ variant })
                       )}
                       style={{ animationDuration: `${animation}s` }}
                     >
-                      {`+ ${selectedValues.length - maxCount} more`}
+                      {`+ ${selectedValues.length - maxCount} weitere`}
                       <XCircle
                         className="ml-1 h-4 w-4 shrink-0 cursor-pointer"
                         onClick={(event) => {
@@ -320,42 +336,56 @@ export const MultiSelect = React.forwardRef<
         >
           <Command>
             <CommandInput
-              placeholder="Search..."
+              placeholder="Suchen..."
               onKeyDown={handleInputKeyDown}
             />
             <CommandList>
-              <CommandEmpty>No results found.</CommandEmpty>
-              <CommandGroup>
-                <CommandItem
-                  key="all"
-                  onSelect={toggleAll}
-                  className="cursor-pointer"
-                >
-                  <Checkbox
-                    checked={selectedValues.length === options.length}
-                    onCheckedChange={toggleAll}
-                    className="mr-2 h-4 w-4"
-                  />
-                  <span>(Select All)</span>
-                </CommandItem>
-                {options.map((option) => {
-                  const isSelected = selectedValues.includes(option.value);
-                  return (
+              {options.length === 0 ? (
+                <div className="px-3 py-4 text-sm">
+                  {emptyState ?? 'Keine Ergebnisse gefunden.'}
+                </div>
+              ) : (
+                <>
+                  <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
+                  <CommandGroup>
                     <CommandItem
-                      key={option.value}
-                      onSelect={() => toggleOption(option.value)}
+                      key="all"
+                      onSelect={toggleAll}
                       className="cursor-pointer"
                     >
                       <Checkbox
-                        className="cursor-pointer"
-                        checked={isSelected}
+                        checked={
+                          selectableOptions.length > 0 &&
+                          selectedSelectableCount === selectableOptions.length
+                        }
+                        onCheckedChange={toggleAll}
+                        className="mr-2 h-4 w-4"
                       />
-                      {option.icon && <option.icon className="mr-2 h-4 w-4" />}
-                      <span>{option.label}</span>
+                      <span>Alle auswählen</span>
                     </CommandItem>
-                  );
-                })}
-              </CommandGroup>
+                    {options.map((option) => {
+                      const isSelected = selectedValues.includes(option.value);
+                      return (
+                        <CommandItem
+                          key={option.value}
+                          onSelect={() => toggleOption(option.value)}
+                          disabled={option.disabled}
+                          className="cursor-pointer"
+                        >
+                          <Checkbox
+                            className="cursor-pointer"
+                            checked={isSelected}
+                          />
+                          {option.icon && (
+                            <option.icon className="mr-2 h-4 w-4" />
+                          )}
+                          <span>{option.label}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </>
+              )}
               <CommandSeparator />
               <CommandGroup>
                 <div className="flex items-center justify-between">
@@ -365,7 +395,7 @@ export const MultiSelect = React.forwardRef<
                         onSelect={handleClear}
                         className="flex-1 cursor-pointer justify-center"
                       >
-                        Clear
+                        Zurücksetzen
                       </CommandItem>
                       <Separator
                         orientation="vertical"
@@ -377,7 +407,7 @@ export const MultiSelect = React.forwardRef<
                     onSelect={() => setIsPopoverOpen(false)}
                     className="max-w-full flex-1 cursor-pointer justify-center"
                   >
-                    Close
+                    Schließen
                   </CommandItem>
                 </div>
               </CommandGroup>

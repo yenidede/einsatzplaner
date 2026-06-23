@@ -1,7 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import type { einsatz as Einsatz } from '@/generated/prisma';
+import { Prisma, type einsatz as Einsatz } from '@/generated/prisma';
 import {
   isFieldTypeKey,
   type FieldTypeKey,
@@ -34,6 +34,42 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/errors';
 import { StatusValuePairs } from '@/components/event-calendar/constants';
 import { ChangeTypeIds } from '../activity_log/changeTypeIds';
 import { checkEinsatzRequirementsAfterAssignment } from '@/lib/email/email-helpers';
+import {
+  normalizeDateRangeForDb,
+  normalizeEinsatzDatesFromDb,
+  prismaTimestampToCalendarDate,
+} from '@/features/einsatz/datetime';
+
+async function resolveChangeTypeId(
+  predefinedId: string,
+  changeTypeName: string
+): Promise<string> {
+  const existingById = await prisma.change_type.findUnique({
+    where: { id: predefinedId },
+    select: { id: true },
+  });
+
+  if (existingById?.id) {
+    return existingById.id;
+  }
+
+  const existingByName = await prisma.change_type.findUnique({
+    where: { name: changeTypeName },
+    select: { id: true },
+  });
+
+  if (!existingByName?.id) {
+    throw new Error(`Change-Type '${changeTypeName}' wurde nicht gefunden.`);
+  }
+
+  console.warn('Fallback auf Change-Type-Aufloesung per Name verwendet.', {
+    predefinedId,
+    changeTypeName,
+    resolvedId: existingByName.id,
+  });
+
+  return existingByName.id;
+}
 
 // Helper type for conflict information
 export type EinsatzConflict = {
@@ -89,13 +125,18 @@ async function assertOrgPermission(
  * @param start Start time of the Einsatz
  * @param end End time of the Einsatz
  * @param exclude Optional ID of an Einsatz to exclude or true to exclude all Einsätze
+ * @param dbClient Optional Prisma client or transaction client used to keep
+ * conflict checks inside an existing transaction when needed
  * @returns Array of conflicts found
  */
 async function checkEinsatzConflicts(
   userIds: string[],
   start: Date,
   end: Date,
-  exclude: string | boolean = false
+  exclude: string | boolean = false,
+  dbClient:
+    | Pick<Prisma.TransactionClient, 'einsatz_helper'>
+    | Pick<typeof prisma, 'einsatz_helper'> = prisma
 ): Promise<EinsatzConflict[]> {
   if (userIds.length === 0) {
     return [];
@@ -106,7 +147,7 @@ async function checkEinsatzConflicts(
   }
 
   // Find all Einsätze assignments for these users that overlap with the given time range
-  const conflictingAssignments = await prisma.einsatz_helper.findMany({
+  const conflictingAssignments = await dbClient.einsatz_helper.findMany({
     where: {
       user_id: { in: userIds },
       einsatz: {
@@ -160,13 +201,14 @@ async function checkEinsatzConflicts(
   return conflictingAssignments.map((assignment) => ({
     userId: assignment.user_id,
     userName: `${assignment.user.firstname} ${assignment.user.lastname}`,
-    conflictingEinsatz: {
-      id: assignment.einsatz.id,
-      title: assignment.einsatz.title,
-      start: assignment.einsatz.start,
-      end: assignment.einsatz.end,
-    },
+    conflictingEinsatz: normalizeDateRangeFromConflict(assignment.einsatz),
   }));
+}
+
+function normalizeDateRangeFromConflict<T extends { start: Date; end: Date }>(
+  value: T
+): T {
+  return normalizeEinsatzDatesFromDb(value);
 }
 
 export async function getEinsatzWithDetailsById(
@@ -174,15 +216,17 @@ export async function getEinsatzWithDetailsById(
 ): Promise<EinsatzDetailed | null | Response> {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
-    throw new BadRequestError('Invalid ID');
+    throw new BadRequestError('Ungültige ID.');
   }
 
   const einsaetzeFromDb = await getEinsatzWithDetailsByIdFromDb(id);
 
   if (!einsaetzeFromDb) return null;
 
-  if (!(await hasOrgPermission(session, einsaetzeFromDb.org_id, 'einsaetze:read'))) {
-    return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
+  if (
+    !(await hasOrgPermission(session, einsaetzeFromDb.org_id, 'einsaetze:read'))
+  ) {
+    return new Response(`Keine Berechtigung für den Einsatz mit ID ${id}`, {
       status: 403,
     });
   }
@@ -199,7 +243,7 @@ export async function getEinsatzWithDetailsById(
   } = einsaetzeFromDb;
 
   return {
-    ...rest,
+    ...normalizeEinsatzDatesFromDb(rest),
     einsatz_status,
     assigned_users: Array.from(
       new Set(einsatz_helper.map((helper) => helper.user_id))
@@ -228,25 +272,29 @@ export async function getEinsatzWithDetailsById(
       affected_user: log.affected_user,
       user: log.user
         ? {
-          id: log.user.id,
-          firstname: log.user.firstname,
-          lastname: log.user.lastname,
-        }
+            id: log.user.id,
+            firstname: log.user.firstname,
+            lastname: log.user.lastname,
+          }
         : null,
     })),
   };
 }
 
-export async function getEinsatzRealtimeMetadataById(id: string): Promise<{
-  id: string;
-  org_id: string;
-  start: Date;
-  end: Date;
-} | null | Response> {
+export async function getEinsatzRealtimeMetadataById(id: string): Promise<
+  | {
+      id: string;
+      org_id: string;
+      start: Date;
+      end: Date;
+    }
+  | null
+  | Response
+> {
   const { session } = await requireAuth();
 
   if (!isValidUuid(id)) {
-    throw new BadRequestError('Invalid ID');
+    throw new BadRequestError('Ungültige ID.');
   }
 
   const einsatz = await prisma.einsatz.findFirst({
@@ -269,7 +317,7 @@ export async function getEinsatzRealtimeMetadataById(id: string): Promise<{
   }
 
   if (!(await hasOrgPermission(session, einsatz.org_id, 'einsaetze:read'))) {
-    return new Response(`Unauthorized to access Einsatz with ID ${id}`, {
+    return new Response(`Keine Berechtigung für den Einsatz mit ID ${id}`, {
       status: 403,
     });
   }
@@ -290,7 +338,7 @@ export async function getAllEinsaetze(org_ids: string[]) {
       session.user.activeOrganization?.id
     ))
   ) {
-    return Response.json({ error: 'Unauthorized' }, { status: 403 });
+    return Response.json({ error: 'Keine Berechtigung.' }, { status: 403 });
   }
 
   return getAllEinsaetzeFromDb(org_ids, session.user.id);
@@ -305,7 +353,7 @@ export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
       session.user.activeOrganization?.id
     ))
   ) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
 
   // Nutze User's orgIds als Default wenn keine org_ids übergeben
@@ -318,7 +366,7 @@ export async function getAllEinsaetzeForCalendar(org_ids?: string[]) {
 export async function getEinsatzForCalendar(id: string) {
   const { session } = await requireAuth();
   if (!isValidUuid(id)) {
-    return new Response('Invalid ID', { status: 400 });
+    return new Response('Ungültige ID.', { status: 400 });
   }
 
   const einsatz = await prisma.einsatz.findUnique({
@@ -331,7 +379,7 @@ export async function getEinsatzForCalendar(id: string) {
   }
 
   if (!(await hasOrgPermission(session, einsatz.org_id, 'einsaetze:read'))) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
 
   return getEinsatzForCalendarFromDb(id);
@@ -349,7 +397,7 @@ export async function getDetailedEinsaetzeForCalendarRange(
       session.user.activeOrganization?.id
     ))
   ) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
   const userOrgIds = userIds?.orgIds ?? (userIds?.orgId ? [userIds.orgId] : []);
   const filterOrgIds = org_ids.length > 0 ? org_ids : userOrgIds;
@@ -375,7 +423,7 @@ export async function getDetailedEinsaetzeForAgenda(
       session.user.activeOrganization?.id
     ))
   ) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
   const userOrgIds = userIds?.orgIds ?? (userIds?.orgId ? [userIds.orgId] : []);
   const filterOrgIds = org_ids.length > 0 ? org_ids : userOrgIds;
@@ -539,9 +587,9 @@ export async function getEinsaetzeForTableView(
       organization_name: einsatz.organization.name,
       created_by_name: einsatz.user
         ? [einsatz.user.firstname, einsatz.user.lastname]
-          .filter((value): value is string => Boolean(value))
-          .join(' ')
-          .trim() || null
+            .filter((value): value is string => Boolean(value))
+            .join(' ')
+            .trim() || null
         : null,
       template_name: einsatz.einsatz_template?.name ?? null,
       status_verwalter_text: einsatz.einsatz_status.verwalter_text,
@@ -552,7 +600,8 @@ export async function getEinsaetzeForTableView(
       category_display: categoryLabels.join(', '),
       helper_names: helperNames,
       helper_display: helperNames.join(', '),
-      helper_count: einsatz._count?.einsatz_helper ?? einsatz.einsatz_helper.length,
+      helper_count:
+        einsatz._count?.einsatz_helper ?? einsatz.einsatz_helper.length,
       custom_fields: customFields,
       custom_field_meta: customFieldMeta,
     };
@@ -634,6 +683,7 @@ function normalizeCustomFieldValue(
     case 'mail':
     case 'group':
     case 'select':
+    case 'multiselect':
     case 'time':
       return normalizeStringLikeFieldValue(fieldType, normalizedValue);
     case 'number':
@@ -666,7 +716,10 @@ function normalizeTextValue(value: string | null): string | null {
 }
 
 function normalizeStringLikeFieldValue(
-  datatype: Extract<FieldTypeKey, 'text' | 'phone' | 'mail' | 'group' | 'select' | 'time'>,
+  datatype: Extract<
+    FieldTypeKey,
+    'text' | 'phone' | 'mail' | 'group' | 'select' | 'multiselect' | 'time'
+  >,
   value: string
 ): string {
   switch (datatype) {
@@ -706,11 +759,7 @@ function normalizeDateFieldValue(value: string): Date | string {
     const numericYear = Number(year);
     const numericMonth = Number(month);
     const numericDay = Number(day);
-    const dateValue = new Date(
-      numericYear,
-      numericMonth - 1,
-      numericDay
-    );
+    const dateValue = new Date(numericYear, numericMonth - 1, numericDay);
 
     if (
       Number.isNaN(dateValue.getTime()) ||
@@ -774,7 +823,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
       session.user.activeOrganization?.id
     ))
   ) {
-    return new Response('Unauthorized', { status: 403 });
+    return new Response('Keine Berechtigung.', { status: 403 });
   }
 
   // Verwende org_id oder erste Organisation des Users
@@ -789,7 +838,7 @@ export async function getAllTemplatesWithFields(org_id?: string) {
   // Prüfe ob User Zugriff auf diese Organisation hat
   if (!userOrgIds.includes(useOrgId)) {
     return new Response(
-      `Unauthorized to access templates for org ${useOrgId}`,
+      `Keine Berechtigung für Vorlagen der Organisation ${useOrgId}`,
       {
         status: 403,
       }
@@ -846,6 +895,7 @@ export async function createEinsatz({
     created_by: userIds.userId,
     org_id: useOrgId,
   };
+  const normalizedEinsatzWithAuth = normalizeDateRangeForDb(einsatzWithAuth);
 
   await assertOrgPermission(session, useOrgId, 'einsaetze:create');
 
@@ -858,8 +908,8 @@ export async function createEinsatz({
   ) {
     conflicts = await checkEinsatzConflicts(
       data.assignedUsers,
-      data.start,
-      data.end
+      normalizedEinsatzWithAuth.start,
+      normalizedEinsatzWithAuth.end
     );
 
     // Return early if conflicts exist - do not create the einsatz
@@ -870,7 +920,9 @@ export async function createEinsatz({
     }
   }
 
-  const createdEinsatz = await createEinsatzInDb({ data: einsatzWithAuth });
+  const createdEinsatz = await createEinsatzInDb({
+    data: normalizedEinsatzWithAuth,
+  });
 
   if (createdEinsatz.id && userIds.userId) {
     try {
@@ -926,7 +978,7 @@ export async function createEinsatz({
   }
 
   return {
-    einsatz: createdEinsatz,
+    einsatz: normalizeEinsatzDatesFromDb(createdEinsatz),
     conflicts: [],
   };
 }
@@ -952,6 +1004,7 @@ export async function updateEinsatzTime(data: {
     end,
     disableTimeConflicts = false,
   } = dataSchema.parse(data);
+  const normalizedDateRange = normalizeDateRangeForDb({ start, end });
 
   // Get assigned users for this Einsatz
   const existingEinsatz = await prisma.einsatz.findUnique({
@@ -968,7 +1021,11 @@ export async function updateEinsatzTime(data: {
     throw new NotFoundError(`Einsatz with ID ${id} not found`);
   }
 
-  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
+  await assertOrgPermission(
+    session,
+    existingEinsatz.org_id,
+    'einsaetze:update'
+  );
 
   let conflicts: EinsatzConflict[] = [];
 
@@ -982,7 +1039,12 @@ export async function updateEinsatzTime(data: {
     );
 
     // Check if the new time causes conflicts with already assigned users
-    conflicts = await checkEinsatzConflicts(assignedUserIds, start, end, id);
+    conflicts = await checkEinsatzConflicts(
+      assignedUserIds,
+      normalizedDateRange.start,
+      normalizedDateRange.end,
+      id
+    );
 
     // Return early if conflicts exist - do not update the time
     if (conflicts.length > 0) {
@@ -995,8 +1057,8 @@ export async function updateEinsatzTime(data: {
   const einsatz = await prisma.einsatz.update({
     where: { id },
     data: {
-      start,
-      end,
+      start: normalizedDateRange.start,
+      end: normalizedDateRange.end,
       updated_at: new Date(),
     },
   });
@@ -1028,154 +1090,222 @@ export async function updateEinsatzTime(data: {
   }
 
   return {
-    einsatz,
+    einsatz: normalizeEinsatzDatesFromDb(einsatz),
     conflicts: [],
   };
 }
 
+export type UserAssignmentIntent = 'toggle' | 'assign' | 'unassign';
+type UserAssignmentMutationResult = {
+  result: Einsatz;
+  actionTaken: 'assigned' | 'unassigned' | 'noop';
+};
+
+function isRetryableTransactionError(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2034'
+  );
+}
+
 export async function toggleUserAssignmentToEinsatz(
-  einsatzId: string
+  einsatzId: string,
+  intent: UserAssignmentIntent = 'toggle'
 ): Promise<Einsatz | { id: string; title: string; deleted: true }> {
-  // Adds the user if he isnt already assigned, removes him otherwise
   const { session } = await requireAuth();
 
   if (!session?.user.id) {
-    throw new Response('User ID is required', { status: 400 });
+    throw new Response('Benutzer-ID fehlt.', { status: 400 });
   }
 
-  const existingEinsatz = await prisma.einsatz.findUnique({
-    where: { id: einsatzId },
-    select: {
-      id: true,
-      title: true,
-      org_id: true,
-      start: true,
-      end: true,
-      einsatz_helper: { select: { user_id: true } },
-      helpers_needed: true,
-    },
-  });
+  let attempt = 0;
 
-  if (!existingEinsatz) {
-    throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
-  }
+  while (attempt < 2) {
+    try {
+      const mutationResult = await prisma.$transaction(
+        async (tx) => {
+          const existingEinsatz = await tx.einsatz.findUnique({
+            where: { id: einsatzId },
+            select: {
+              id: true,
+              title: true,
+              org_id: true,
+              start: true,
+              end: true,
+              einsatz_helper: { select: { user_id: true } },
+              helpers_needed: true,
+            },
+          });
 
-  const isSignedInUserAssigned = existingEinsatz.einsatz_helper.some(
-    (helper) => helper.user_id === session.user.id
-  );
+          if (!existingEinsatz) {
+            throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
+          }
 
-  await assertOrgPermission(
-    session,
-    existingEinsatz.org_id,
-    isSignedInUserAssigned ? 'einsaetze:leave' : 'einsaetze:join'
-  );
+          const isSignedInUserAssigned = existingEinsatz.einsatz_helper.some(
+            (helper) => helper.user_id === session.user.id
+          );
+          const shouldAssign =
+            intent === 'assign'
+              ? true
+              : intent === 'unassign'
+                ? false
+                : !isSignedInUserAssigned;
 
-  // Check for conflicts only when assigning (not when removing)
-  if (!isSignedInUserAssigned) {
-    const conflicts = await checkEinsatzConflicts(
-      [session.user.id],
-      existingEinsatz.start,
-      existingEinsatz.end,
-      einsatzId
-    );
+          await assertOrgPermission(
+            session,
+            existingEinsatz.org_id,
+            shouldAssign ? 'einsaetze:join' : 'einsaetze:leave'
+          );
 
-    if (conflicts.length > 0) {
-      const conflict = conflicts[0];
-      throw new BadRequestError(
-        `Sie sind bereits für einen anderen Einsatz in diesem Zeitraum eingeteilt: "${conflict.conflictingEinsatz.title}" (${conflict.conflictingEinsatz.start.toLocaleString('de-AT')} - ${conflict.conflictingEinsatz.end.toLocaleString('de-AT')})`
+          if (shouldAssign === isSignedInUserAssigned) {
+            const unchangedEinsatz = await tx.einsatz.findUnique({
+              where: { id: einsatzId },
+            });
+
+            if (!unchangedEinsatz) {
+              throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
+            }
+
+            return {
+              result: unchangedEinsatz,
+              actionTaken: 'noop',
+            } satisfies UserAssignmentMutationResult;
+          }
+
+          if (shouldAssign) {
+            const conflicts = await checkEinsatzConflicts(
+              [session.user.id],
+              existingEinsatz.start,
+              existingEinsatz.end,
+              einsatzId,
+              tx
+            );
+
+            if (conflicts.length > 0) {
+              const conflict = conflicts[0];
+              throw new BadRequestError(
+                `Sie sind bereits für einen anderen Einsatz in diesem Zeitraum eingeteilt: "${conflict.conflictingEinsatz.title}" (${conflict.conflictingEinsatz.start.toLocaleString('de-AT')} - ${conflict.conflictingEinsatz.end.toLocaleString('de-AT')})`
+              );
+            }
+          }
+
+          const addOrRemoveOne = shouldAssign ? 1 : -1;
+          const newStatusId =
+            existingEinsatz.helpers_needed >
+            existingEinsatz.einsatz_helper.length + addOrRemoveOne
+              ? 'bb169357-920b-4b49-9e3d-1cf489409370'
+              : '15512bc7-fc64-4966-961f-c506a084a274';
+
+          if (!shouldAssign) {
+            const result = await tx.einsatz.update({
+              where: {
+                id: einsatzId,
+                organization: {
+                  user_organization_role: {
+                    some: {
+                      user_id: session.user.id,
+                    },
+                  },
+                },
+              },
+              data: {
+                einsatz_helper: {
+                  deleteMany: {
+                    user_id: session.user.id,
+                  },
+                },
+                status_id: newStatusId,
+              },
+            });
+            return {
+              result,
+              actionTaken: 'unassigned',
+            } satisfies UserAssignmentMutationResult;
+          }
+
+          const result = await tx.einsatz.update({
+            where: {
+              id: einsatzId,
+              organization: {
+                user_organization_role: {
+                  some: {
+                    user_id: session.user.id,
+                  },
+                },
+              },
+            },
+            data: {
+              einsatz_helper: {
+                create: {
+                  user: { connect: { id: session.user.id } },
+                  org_id: existingEinsatz.org_id,
+                },
+              },
+              status_id: newStatusId,
+            },
+          });
+          return {
+            result,
+            actionTaken: 'assigned',
+          } satisfies UserAssignmentMutationResult;
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        }
       );
+
+      if (mutationResult.actionTaken === 'unassigned') {
+        try {
+          await createChangeLogAuto({
+            einsatzId,
+            userId: session.user.id,
+            typeId: ChangeTypeIds['N-Abgesagt'],
+            affectedUserId: session.user.id,
+          });
+        } catch (error) {
+          console.error(
+            'Failed to create activity log for unassignment:',
+            error
+          );
+        }
+      }
+
+      if (mutationResult.actionTaken === 'assigned') {
+        try {
+          await createChangeLogAuto({
+            einsatzId,
+            userId: session.user.id,
+            typeId: ChangeTypeIds['N-Eingetragen'],
+            affectedUserId: session.user.id,
+          });
+        } catch (error) {
+          console.error('Failed to create activity log for assignment:', error);
+        }
+
+        try {
+          await checkEinsatzRequirementsAfterAssignment(einsatzId);
+        } catch (error) {
+          console.error(
+            'Failed to check einsatz requirements and notify:',
+            error
+          );
+        }
+      }
+
+      return mutationResult.result;
+    } catch (error) {
+      attempt += 1;
+      if (!isRetryableTransactionError(error)) {
+        throw error;
+      }
+
+      if (attempt >= 2) {
+        break;
+      }
     }
   }
 
-  const addOrRemoveOne = isSignedInUserAssigned ? -1 : 1;
-
-  const newStatusId =
-    existingEinsatz.helpers_needed >
-      existingEinsatz.einsatz_helper.length + addOrRemoveOne
-      ? 'bb169357-920b-4b49-9e3d-1cf489409370' // offen
-      : '15512bc7-fc64-4966-961f-c506a084a274'; // vergeben
-
-  let result: Einsatz;
-
-  if (isSignedInUserAssigned) {
-    // USER IS ALREADY ASSIGNED → REMOVE THEM
-    result = await prisma.einsatz.update({
-      where: {
-        id: einsatzId,
-        organization: {
-          user_organization_role: {
-            some: {
-              user_id: session.user.id,
-            },
-          },
-        },
-      },
-      data: {
-        einsatz_helper: {
-          deleteMany: {
-            user_id: session.user.id,
-          },
-        },
-        status_id: newStatusId,
-      },
-    });
-
-    try {
-      await createChangeLogAuto({
-        einsatzId: einsatzId,
-        userId: session.user.id,
-        typeId: ChangeTypeIds['N-Abgesagt'],
-        affectedUserId: session.user.id,
-      });
-    } catch (error) {
-      console.error('Failed to create activity log for unassignment:', error);
-    }
-  } else {
-    // USER IS NOT ASSIGNED → ADD THEM
-    const helperCreateData = {
-      user: { connect: { id: session.user.id } },
-      org_id: existingEinsatz.org_id,
-    };
-
-    result = await prisma.einsatz.update({
-      where: {
-        id: einsatzId,
-        organization: {
-          user_organization_role: {
-            some: {
-              user_id: session.user.id,
-            },
-          },
-        },
-      },
-      data: {
-        einsatz_helper: {
-          create: helperCreateData,
-        },
-        status_id: newStatusId,
-      },
-    });
-
-    // **NEU: Activity Log für Eintragen erstellen**
-    try {
-      await createChangeLogAuto({
-        einsatzId: einsatzId,
-        userId: session.user.id,
-        typeId: ChangeTypeIds['N-Eingetragen'],
-        affectedUserId: session.user.id, // as the user is assigning themselves they are also the affected user
-      });
-    } catch (error) {
-      console.error('Failed to create activity log for assignment:', error);
-    }
-
-    try {
-      await checkEinsatzRequirementsAfterAssignment(einsatzId);
-    } catch (error) {
-      console.error('Failed to check einsatz requirements and notify:', error);
-    }
-  }
-
-  return result;
+  throw new Error('Die Selbstzuweisung konnte nicht abgeschlossen werden.');
 }
 
 export async function updateEinsatz({
@@ -1219,14 +1349,42 @@ export async function updateEinsatz({
     throw new NotFoundError(`Einsatz with ID ${id} not found`);
   }
 
-  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
+  await assertOrgPermission(
+    session,
+    existingEinsatz.org_id,
+    'einsaetze:update'
+  );
+
+  const existingStartAsCalendarDate = prismaTimestampToCalendarDate(
+    existingEinsatz.start
+  );
+  const existingEndAsCalendarDate = prismaTimestampToCalendarDate(
+    existingEinsatz.end
+  );
+  const existingRangeForDb = normalizeDateRangeForDb({
+    start: existingStartAsCalendarDate,
+    end: existingEndAsCalendarDate,
+  });
+
+  const hasUpdatedStart = updateData.start !== undefined;
+  const hasUpdatedEnd = updateData.end !== undefined;
+  const normalizedUpdateData =
+    hasUpdatedStart || hasUpdatedEnd
+      ? {
+          ...updateData,
+          ...normalizeDateRangeForDb({
+            start: updateData.start ?? existingStartAsCalendarDate,
+            end: updateData.end ?? existingEndAsCalendarDate,
+          }),
+        }
+      : updateData;
 
   // Check for conflicts when assigning users (unless disabled)
   let conflicts: EinsatzConflict[] = [];
   if (!disableTimeConflicts && assignedUsers && assignedUsers.length > 0) {
     // Use the new start/end times if provided, otherwise use existing ones
-    const checkStart = updateData.start || existingEinsatz.start;
-    const checkEnd = updateData.end || existingEinsatz.end;
+    const checkStart = normalizedUpdateData.start ?? existingRangeForDb.start;
+    const checkEnd = normalizedUpdateData.end ?? existingRangeForDb.end;
 
     conflicts = await checkEinsatzConflicts(
       assignedUsers,
@@ -1252,7 +1410,7 @@ export async function updateEinsatz({
     const einsatz = await prisma.einsatz.update({
       where: { id },
       data: {
-        ...updateData,
+        ...normalizedUpdateData,
         updated_at: new Date(),
         einsatz_to_category: {
           // delete all existing categories and add the new ones
@@ -1293,7 +1451,7 @@ export async function updateEinsatz({
     });
 
     return {
-      einsatz,
+      einsatz: normalizeEinsatzDatesFromDb(einsatz),
       conflicts: [],
     };
   } catch (error) {
@@ -1318,25 +1476,47 @@ export async function updateEinsatzStatus(
     throw new NotFoundError(`Einsatz with ID ${einsatzId} not found`);
   }
 
-  await assertOrgPermission(session, existingEinsatz.org_id, 'einsaetze:update');
+  await assertOrgPermission(
+    session,
+    existingEinsatz.org_id,
+    'einsaetze:update'
+  );
 
-  const updatedEinsatz = await prisma.einsatz.update({
+  if (statusId === StatusValuePairs.vergeben_bestaetigt && session?.user?.id) {
+    const bestaetigtTypeId = await resolveChangeTypeId(
+      ChangeTypeIds['E-Bestaetigt'],
+      'E-Bestaetigt'
+    );
+
+    return prisma.$transaction(async (tx) => {
+      const updatedEinsatz = await tx.einsatz.update({
+        where: { id: einsatzId },
+        data: {
+          status_id: statusId,
+          updated_at: new Date(),
+        },
+      });
+
+      await tx.change_log.create({
+        data: {
+          einsatz_id: einsatzId,
+          user_id: session.user.id,
+          type_id: bestaetigtTypeId,
+          affected_user: null,
+        },
+      });
+
+      return updatedEinsatz;
+    });
+  }
+
+  return prisma.einsatz.update({
     where: { id: einsatzId },
     data: {
       status_id: statusId,
       updated_at: new Date(),
     },
   });
-
-  if (statusId === StatusValuePairs.vergeben_bestaetigt && session?.user?.id) {
-    await createChangeLogAuto({
-      einsatzId,
-      userId: session.user.id,
-      typeId: ChangeTypeIds['E-Bestaetigt'],
-    });
-  }
-
-  return updatedEinsatz;
 }
 
 export async function deleteEinsatzById(einsatzId: string): Promise<void> {
@@ -1411,6 +1591,10 @@ async function createEinsatzInDb({
     org_id,
     created_by,
     helpers_needed,
+    participant_count,
+    price_per_person,
+    total_price,
+    anmerkung,
     categories,
     einsatz_fields,
     assignedUsers = [],
@@ -1433,6 +1617,10 @@ async function createEinsatzInDb({
       org_id,
       created_by,
       helpers_needed,
+      participant_count,
+      price_per_person,
+      total_price,
+      anmerkung,
       all_day,
       einsatz_to_category: {
         create:
@@ -1499,7 +1687,7 @@ async function getEinsatzForCalendarFromDb(
   id: string
 ): Promise<EinsatzForCalendar | Response | null> {
   if (!isValidUuid(id)) {
-    return new Response('Invalid ID', { status: 400 });
+    return new Response('Ungültige ID.', { status: 400 });
   }
 
   return prisma.einsatz.findUnique({
@@ -1648,10 +1836,10 @@ function mapRawEinsatzToDetailedForCalendar(
       affected_user: log.affected_user,
       user: log.user
         ? {
-          id: log.user.id,
-          firstname: log.user.firstname,
-          lastname: log.user.lastname,
-        }
+            id: log.user.id,
+            firstname: log.user.firstname,
+            lastname: log.user.lastname,
+          }
         : null,
     })),
     category_abbreviations,

@@ -35,14 +35,14 @@ export const TimeTextInput = React.forwardRef<
   const [draftValue, setDraftValue] = React.useState(value);
   const [localError, setLocalError] = React.useState<string | null>(null);
   const lastCommittedPropValueRef = React.useRef(value);
-  const emitValidationChange = React.useEffectEvent(
-    (error: string | null) => {
-      onValidationChange?.(error);
-    }
-  );
+  const emitValidationChange = React.useEffectEvent((error: string | null) => {
+    onValidationChange?.(error);
+  });
 
   const validateValue = React.useCallback(
-    (nextValue: string): { normalizedValue: string | null; error: string | null } => {
+    (
+      nextValue: string
+    ): { normalizedValue: string | null; error: string | null } => {
       const normalizedValue = normalizeTimeInput(nextValue);
       const isEmptyValue = normalizedValue === '';
 

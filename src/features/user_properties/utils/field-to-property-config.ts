@@ -1,5 +1,6 @@
 import { isFieldTypeKey } from '@/features/user_properties/field-type-definitions';
 import type { PropertyConfig } from '@/features/user_properties/types';
+import { parseMultiSelectValue } from './select-values';
 
 type FieldConfigSource = {
   name: string | null;
@@ -36,7 +37,7 @@ export function fieldToPropertyConfig(
   return {
     name: field.name ?? '',
     description: field.description ?? '',
-    fieldType: datatype,
+    fieldType: datatype === 'multiselect' ? 'select' : datatype,
     placeholder: field.placeholder ?? '',
     maxLength: datatype === 'text' && field.max != null ? field.max : undefined,
     isMultiline: datatype === 'text' ? (field.is_multiline ?? false) : false,
@@ -52,12 +53,22 @@ export function fieldToPropertyConfig(
     trueLabel: 'Ja',
     falseLabel: 'Nein',
     booleanDefaultValue,
-    options: datatype === 'select' ? field.allowed_values : [],
+    options:
+      datatype === 'select' || datatype === 'multiselect'
+        ? field.allowed_values
+        : [],
     defaultOption:
       datatype === 'select' ? (field.default_value ?? undefined) : undefined,
+    defaultOptions:
+      datatype === 'multiselect'
+        ? parseMultiSelectValue(field.default_value)
+        : [],
+    isMultiSelect: datatype === 'multiselect',
     isRequired: field.is_required,
     defaultValue:
-      datatype === 'boolean' || datatype === 'select'
+      datatype === 'boolean' ||
+      datatype === 'select' ||
+      datatype === 'multiselect'
         ? ''
         : (field.default_value ?? ''),
   };

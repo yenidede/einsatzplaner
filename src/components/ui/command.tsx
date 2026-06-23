@@ -30,8 +30,8 @@ function Command({
 }
 
 function CommandDialog({
-  title = 'Command Palette',
-  description = 'Search for a command to run...',
+  title = 'Befehlspalette',
+  description = 'Nach einem Befehl suchen...',
   children,
   className,
   showCloseButton = true,
@@ -86,7 +86,7 @@ function CommandList({
   return (
     <div
       className={cn(
-        'max-h-[300px] overflow-x-hidden overflow-y-auto scroll-py-1',
+        'max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto',
         className
       )}
       onWheel={(e) => e.stopPropagation()}

@@ -59,7 +59,6 @@ export const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   Organisationsverwaltung: [
     // Einsätze (nur lesen)
     permission('einsaetze', 'read'),
-
     // Users
     permission('users', 'read'),
     permission('users', 'create'),
@@ -87,6 +86,7 @@ export const ROLE_PERMISSION_MAP: Record<string, string[]> = {
 
     // Dashboard
     permission('dashboard', 'read'),
+    permission('analytics', 'read'),
   ],
 
   Einsatzverwaltung: [
@@ -102,6 +102,7 @@ export const ROLE_PERMISSION_MAP: Record<string, string[]> = {
 
     // Dashboard
     permission('dashboard', 'read'),
+    permission('analytics', 'read'),
   ],
 
   Helfer: [
@@ -130,7 +131,7 @@ export async function requireAuth() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    redirect ('/signin');
+    redirect('/signin');
   }
 
   const userId = session.user.id as string;
@@ -172,7 +173,8 @@ export async function requireAuth() {
 export async function hasPermission(
   session: Session,
   permission: PermissionType,
-  orgId?: string
+  orgId?: string,
+  executor?: Parameters<typeof getUserRolesInOrganization>[2]
 ): Promise<boolean> {
   if (!session?.user?.id) return false;
 
@@ -183,7 +185,11 @@ export async function hasPermission(
     return false;
   }
 
-  const roles = await getUserRolesInOrganization(session.user.id, targetOrgId);
+  const roles = await getUserRolesInOrganization(
+    session.user.id,
+    targetOrgId,
+    executor
+  );
 
   if (roles.length === 0) {
     console.warn(`User has no roles in org ${targetOrgId}`);

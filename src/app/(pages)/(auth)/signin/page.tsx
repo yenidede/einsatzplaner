@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveCallbackUrl } from '@/features/auth/callback-url';
 import { Suspense, useState, useEffect } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -16,14 +17,13 @@ function SignInContent() {
   const searchParams = useSearchParams();
 
   const { data: session } = useSession();
+  const callbackUrl = resolveCallbackUrl(searchParams.get('callbackUrl'));
 
   useEffect(() => {
     if (session?.user?.id) {
-      router.push('/');
+      router.push(callbackUrl);
     }
-  }, [session?.user?.id, router]);
-
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  }, [callbackUrl, session?.user?.id, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +34,7 @@ function SignInContent() {
       const result = await signIn('credentials', {
         email,
         password,
+        callbackUrl,
         redirect: false,
       });
 

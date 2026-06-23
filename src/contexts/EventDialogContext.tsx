@@ -11,9 +11,11 @@ import {
   useEffect,
 } from 'react';
 import { EinsatzCreate } from '@/features/einsatz/types';
+import { useSession } from 'next-auth/react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { validateEinsatzIdFromUrl } from '@/utils/einsatzLinkUtils';
 import { toast } from 'sonner';
+import { useActiveOrganizationSwitch } from '@/hooks/use-active-organization-switch';
 
 interface EventDialogContextValue {
   isOpen: boolean;
@@ -43,10 +45,19 @@ interface EventDialogProviderProps {
 
 function EventDialogProviderInner({ children }: EventDialogProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isOrgSwitchPending, setIsOrgSwitchPending] = useState(false);
+  const { data: session } = useSession();
+  const { switchOrganization } = useActiveOrganizationSwitch();
 
   // URL state for einsatz ID (string only)
   const [einsatzFromUrl, setEinsatzFromUrl] = useQueryState(
     'einsatz',
+    parseAsString.withOptions({
+      history: 'push',
+    })
+  );
+  const [orgFromUrl, setOrgFromUrl] = useQueryState(
+    'org',
     parseAsString.withOptions({
       history: 'push',
     })
@@ -71,6 +82,46 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
     }
   }, [einsatzFromUrl, setEinsatzFromUrl]);
 
+  // If URL specifies a different org context, switch first, then allow dialog to open.
+  useEffect(() => {
+    const run = async () => {
+      if (!einsatzFromUrl || !orgFromUrl) {
+        setIsOrgSwitchPending(false);
+        return;
+      }
+
+      const activeOrgId = session?.user.activeOrganization?.id;
+      if (!activeOrgId || orgFromUrl === activeOrgId) {
+        setIsOrgSwitchPending(false);
+        return;
+      }
+
+      const userOrgIds = session?.user.orgIds ?? [];
+      if (!userOrgIds.includes(orgFromUrl)) {
+        setIsOrgSwitchPending(false);
+        return;
+      }
+
+      setIsOrgSwitchPending(true);
+      try {
+        await switchOrganization(orgFromUrl, {
+          showSuccessToast: false,
+          syncSettingsRoute: false,
+        });
+      } finally {
+        setIsOrgSwitchPending(false);
+      }
+    };
+
+    void run();
+  }, [
+    einsatzFromUrl,
+    orgFromUrl,
+    session?.user.activeOrganization?.id,
+    session?.user.orgIds,
+    switchOrganization,
+  ]);
+
   // Compute the actual selectedEinsatz from both URL and local state
   // Only use einsatzFromUrl if it's valid
   const selectedEinsatz = useMemo(() => {
@@ -81,14 +132,42 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
     return localSelectedEvent;
   }, [einsatzFromUrl, localSelectedEvent]);
 
+  const shouldWaitForOrgSwitch = useMemo(() => {
+    if (!einsatzFromUrl || !orgFromUrl) {
+      return false;
+    }
+
+    const activeOrgId = session?.user.activeOrganization?.id;
+    if (!activeOrgId) {
+      return false;
+    }
+
+    if (orgFromUrl === activeOrgId) {
+      return false;
+    }
+
+    const userOrgIds = session?.user.orgIds ?? [];
+    return userOrgIds.includes(orgFromUrl);
+  }, [
+    einsatzFromUrl,
+    orgFromUrl,
+    session?.user.activeOrganization?.id,
+    session?.user.orgIds,
+  ]);
+
   // Auto-open dialog when selectedEinsatz changes to non-null (e.g., from URL navigation).
   // Do not auto-close when selectedEinsatz is null: null means "create new" and the dialog
   // should stay open; closing is handled by closeDialog().
   useEffect(() => {
-    if (selectedEinsatz !== null && !isOpen) {
+    if (
+      selectedEinsatz !== null &&
+      !isOpen &&
+      !isOrgSwitchPending &&
+      !shouldWaitForOrgSwitch
+    ) {
       setIsOpen(true);
     }
-  }, [selectedEinsatz, isOpen]);
+  }, [selectedEinsatz, isOpen, isOrgSwitchPending, shouldWaitForOrgSwitch]);
 
   // Helper function to update einsatz state (URL or local)
   // Returns true on success, false on validation failure
@@ -105,6 +184,7 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
         }
         // Store einsatz ID in URL
         setEinsatzFromUrl(validatedId);
+        setOrgFromUrl(null);
         setLocalSelectedEvent(null);
         return true;
       } else if (event && 'id' in event && event.id) {
@@ -118,16 +198,18 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
         }
         // Store einsatz ID in URL if it exists
         setEinsatzFromUrl(validatedId);
+        setOrgFromUrl(null);
         setLocalSelectedEvent(null);
         return true;
       } else {
         // New einsatz or null - store locally only
         setEinsatzFromUrl(null);
+        setOrgFromUrl(null);
         setLocalSelectedEvent(event);
         return true;
       }
     },
-    [setEinsatzFromUrl, setLocalSelectedEvent]
+    [setEinsatzFromUrl, setLocalSelectedEvent, setOrgFromUrl]
   );
 
   const openDialog = useCallback(
@@ -143,8 +225,9 @@ function EventDialogProviderInner({ children }: EventDialogProviderProps) {
   const closeDialog = useCallback(() => {
     setIsOpen(false);
     setEinsatzFromUrl(null);
+    setOrgFromUrl(null);
     setLocalSelectedEvent(null);
-  }, [setEinsatzFromUrl, setLocalSelectedEvent]);
+  }, [setEinsatzFromUrl, setLocalSelectedEvent, setOrgFromUrl]);
 
   const setEinsatzFunc = useCallback(
     (event: EinsatzCreate | string | null): boolean => {

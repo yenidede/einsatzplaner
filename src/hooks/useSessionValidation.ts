@@ -6,6 +6,7 @@ interface UseSessionValidationOptions {
   checkInterval?: number;
   debug?: boolean;
   onTokenExpired?: () => void;
+  enabled?: boolean;
 }
 
 function formatTimeRemaining(milliseconds: number): string {
@@ -27,13 +28,22 @@ function formatTimeRemaining(milliseconds: number): string {
 export function useSessionValidation(
   options: UseSessionValidationOptions = {}
 ) {
-  const { checkInterval = 60000, debug = false, onTokenExpired } = options;
+  const {
+    checkInterval = 60000,
+    debug = false,
+    onTokenExpired,
+    enabled = true,
+  } = options;
   const { data: session, status } = useSession();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
+    }
+
+    if (!enabled) {
+      return;
     }
 
     if (status === 'authenticated' && session) {
@@ -103,7 +113,7 @@ export function useSessionValidation(
         clearInterval(intervalRef.current);
       }
     };
-  }, [session, status, checkInterval, debug, onTokenExpired]);
+  }, [session, status, checkInterval, debug, onTokenExpired, enabled]);
 
   const tokenInfo = session?.token;
   const now = Date.now();

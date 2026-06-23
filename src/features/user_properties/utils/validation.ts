@@ -1,5 +1,21 @@
 import type { PropertyConfig, ValidationError } from '../types';
 
+const PHONE_E164_REGEX = /^\+[1-9]\d{1,14}$/;
+const TIME_24H_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function isValidDateIso(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return date.toISOString().slice(0, 10) === value;
+}
+
 export function validatePropertyConfig(
   config: PropertyConfig,
   existingNames: string[] = []
@@ -12,6 +28,7 @@ export function validatePropertyConfig(
       message: 'Name der Eigenschaft darf nicht leer sein',
     });
   }
+
   if (
     config.name.trim() &&
     existingNames.includes(config.name.trim().toLowerCase())
@@ -29,6 +46,56 @@ export function validatePropertyConfig(
         message: 'Mindestens eine Auswahloption muss angegeben werden',
       });
     }
+
+    const normalizedOptions = (config.options ?? []).map((option) =>
+      option.trim().toLocaleLowerCase('de-AT')
+    );
+
+    if (normalizedOptions.some((option) => option.length === 0)) {
+      errors.push({
+        field: 'options',
+        message: 'Auswahloptionen dürfen nicht leer sein',
+      });
+    }
+
+    if ((config.options ?? []).some((option) => option.includes(','))) {
+      errors.push({
+        field: 'options',
+        message: 'Auswahloptionen dürfen kein Komma enthalten',
+      });
+    }
+
+    if (new Set(normalizedOptions).size !== normalizedOptions.length) {
+      errors.push({
+        field: 'options',
+        message:
+          'Auswahloptionen dürfen auch bei unterschiedlicher Groß- und Kleinschreibung nicht doppelt vorkommen',
+      });
+    }
+
+    if (
+      config.defaultOption &&
+      (!config.options || !config.options.includes(config.defaultOption))
+    ) {
+      errors.push({
+        field: 'defaultValue',
+        message:
+          'Die Standardoption muss in den Auswahloptionen enthalten sein',
+      });
+    }
+
+    if (
+      config.isMultiSelect &&
+      (config.defaultOptions ?? []).some(
+        (option) => !config.options?.includes(option)
+      )
+    ) {
+      errors.push({
+        field: 'defaultValue',
+        message:
+          'Alle Standardoptionen müssen in den Auswahloptionen enthalten sein',
+      });
+    }
   }
 
   if (config.fieldType === 'number' || config.fieldType === 'currency') {
@@ -42,6 +109,95 @@ export function validatePropertyConfig(
         message: 'Minimalwert darf nicht größer als Maximalwert sein',
       });
     }
+
+    if (config.defaultValue && Number.isNaN(Number(config.defaultValue))) {
+      errors.push({
+        field: 'defaultValue',
+        message: 'Der Standardwert muss eine gültige Zahl sein',
+      });
+    }
+
+    if (
+      config.defaultValue &&
+      !Number.isNaN(Number(config.defaultValue)) &&
+      config.minValue !== undefined &&
+      Number(config.defaultValue) < config.minValue
+    ) {
+      errors.push({
+        field: 'defaultValue',
+        message: 'Der Standardwert darf nicht kleiner als der Minimalwert sein',
+      });
+    }
+
+    if (
+      config.defaultValue &&
+      !Number.isNaN(Number(config.defaultValue)) &&
+      config.maxValue !== undefined &&
+      Number(config.defaultValue) > config.maxValue
+    ) {
+      errors.push({
+        field: 'defaultValue',
+        message: 'Der Standardwert darf nicht größer als der Maximalwert sein',
+      });
+    }
+  }
+
+  if (
+    config.fieldType === 'text' &&
+    config.maxLength !== undefined &&
+    config.defaultValue &&
+    config.defaultValue.length > config.maxLength
+  ) {
+    errors.push({
+      field: 'defaultValue',
+      message: 'Der Standardwert darf die maximale Länge nicht überschreiten',
+    });
+  }
+
+  if (config.fieldType === 'mail' && config.defaultValue) {
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.defaultValue);
+    if (!isEmail) {
+      errors.push({
+        field: 'defaultValue',
+        message: 'Der Standardwert muss eine gültige E-Mail-Adresse sein',
+      });
+    }
+  }
+
+  if (
+    config.fieldType === 'phone' &&
+    config.defaultValue &&
+    !PHONE_E164_REGEX.test(config.defaultValue)
+  ) {
+    errors.push({
+      field: 'defaultValue',
+      message:
+        'Der Standardwert muss eine gültige Telefonnummer im Format +436641234567 sein',
+    });
+  }
+
+  if (
+    config.fieldType === 'date' &&
+    config.defaultValue &&
+    !isValidDateIso(config.defaultValue)
+  ) {
+    errors.push({
+      field: 'defaultValue',
+      message:
+        'Der Standardwert muss ein gültiges Datum im Format JJJJ-MM-TT sein',
+    });
+  }
+
+  if (
+    config.fieldType === 'time' &&
+    config.defaultValue &&
+    !TIME_24H_REGEX.test(config.defaultValue)
+  ) {
+    errors.push({
+      field: 'defaultValue',
+      message:
+        'Der Standardwert muss eine gültige Uhrzeit im Format HH:MM sein',
+    });
   }
 
   return errors;
@@ -54,5 +210,6 @@ export function getRequiredFieldWarning(
   if (isRequired && existingUserCount > 0) {
     return `Diese Eigenschaft ist Pflicht. Bestehende ${existingUserCount} Person(en) ohne Wert müssen nachgetragen werden.`;
   }
+
   return null;
 }

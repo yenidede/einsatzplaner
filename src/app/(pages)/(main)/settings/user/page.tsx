@@ -4,12 +4,11 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Bell, Building2, LogOut, Trash2, Calendar } from 'lucide-react';
+import { Building2, LogOut, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { settingsQueryKeys } from '@/features/settings/queryKeys/queryKey';
 import {
   uploadProfilePictureAction,
-  updateOrgMailNotificationAction,
   removeProfilePictureAction,
 } from '@/features/settings/settings-action';
 import {
@@ -36,7 +35,6 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -61,6 +59,11 @@ import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSet
 import { useSettingsSessionValidation } from '@/components/settings/hooks/useSettingsSessionValidation';
 import { createRoleNameOverrides, RolesList } from '@/components/Roles';
 import { usePermissionGuard } from '@/hooks/use-permission-guard';
+import {
+  NotificationPreferenceForm,
+  type NotificationPreferenceFormHandle,
+  notificationPreferenceQueryKeys,
+} from '@/features/notification-preferences';
 
 export default function SettingsPage() {
   const [showLogos, setShowLogos] = useState<boolean>(true);
@@ -75,6 +78,11 @@ export default function SettingsPage() {
   const [pictureUrl, setPictureUrl] = useState<string | null>(null);
   const [salutationId, setSalutationId] = useState<string>('');
   const [organizations, setOrganizations] = useState<OrganizationBase[]>([]);
+  const [notificationHasUnsavedChanges, setNotificationHasUnsavedChanges] =
+    useState(false);
+  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
+  const notificationPreferenceFormRef =
+    useRef<NotificationPreferenceFormHandle | null>(null);
 
   // Initial values for change detection
   const initialValuesRef = useRef<{
@@ -85,7 +93,6 @@ export default function SettingsPage() {
     pictureUrl: string | null;
     salutationId: string;
     showLogos: boolean;
-    organizations: OrganizationBase[];
   } | null>(null);
 
   const queryClient = useQueryClient();
@@ -136,13 +143,6 @@ export default function SettingsPage() {
         pictureUrl: userData.picture_url,
         salutationId: userData.salutationId,
         showLogos: userData.hasLogoinCalendar ?? true,
-        organizations:
-          userData.organizations && Array.isArray(userData.organizations)
-            ? userData.organizations.map((org) => ({
-                ...org,
-                hasGetMailNotification: org.hasGetMailNotification ?? true,
-              }))
-            : [],
       };
     }
   }, [userData]);
@@ -151,7 +151,7 @@ export default function SettingsPage() {
   const leaveOrgMutation = useLeaveOrganization(session?.user?.id);
 
   // Check for unsaved changes
-  const hasUnsavedChanges = (() => {
+  const hasProfileUnsavedChanges = (() => {
     if (!initialValuesRef.current) return false;
     const initial = initialValuesRef.current;
 
@@ -162,74 +162,59 @@ export default function SettingsPage() {
       lastname !== initial.lastname ||
       pictureUrl !== initial.pictureUrl ||
       salutationId !== initial.salutationId ||
-      showLogos !== initial.showLogos ||
-      JSON.stringify(
-        organizations.map((org) => ({
-          id: org.id,
-          hasGetMailNotification: org.hasGetMailNotification,
-        }))
-      ) !==
-        JSON.stringify(
-          initial.organizations.map((org) => ({
-            id: org.id,
-            hasGetMailNotification: org.hasGetMailNotification,
-          }))
-        )
+      showLogos !== initial.showLogos
     );
   })();
+  const hasUnsavedChanges =
+    hasProfileUnsavedChanges || notificationHasUnsavedChanges;
 
   const handleSave = useCallback(async () => {
     if (!session?.user?.id) return;
 
     try {
-      const finalPictureUrl = pictureUrl;
+      let nextInitialProfileValues: {
+        email: string;
+        phone: string;
+        firstname: string;
+        lastname: string;
+        pictureUrl: string | null;
+        salutationId: string;
+        showLogos: boolean;
+      } | null = null;
 
-      await mutation.mutateAsync({
-        id: session.user.id,
-        email,
-        firstname,
-        lastname,
-        phone,
-        picture_url: finalPictureUrl || undefined,
-        salutationId,
-        hasLogoinCalendar: showLogos,
-        hasGetMailNotification: true,
-      });
+      if (hasProfileUnsavedChanges) {
+        const finalPictureUrl = pictureUrl;
 
-      if (organizations.length > 0) {
-        await Promise.all(
-          organizations.map(async (org) => {
-            await updateOrgMailNotificationAction(
-              org.id,
-              org.hasGetMailNotification ?? true
-            );
-          })
-        );
-      }
-
-      if (session) {
-        await update({
-          user: {
-            ...session.user,
-            firstname,
-            lastname,
-            email,
-            phone,
-            picture_url: finalPictureUrl,
-            hasLogoinCalendar: showLogos,
-          },
+        await mutation.mutateAsync({
+          id: session.user.id,
+          email,
+          firstname,
+          lastname,
+          phone,
+          picture_url: finalPictureUrl || undefined,
+          salutationId,
+          hasLogoinCalendar: showLogos,
         });
-        setPictureUrl(finalPictureUrl);
-      }
 
-      await queryClient.invalidateQueries({
-        queryKey: settingsQueryKeys.user.settings(session?.user.id || ''),
-      });
+        if (session) {
+          await update({
+            user: {
+              ...session.user,
+              firstname,
+              lastname,
+              email,
+              phone,
+              picture_url: finalPictureUrl,
+              hasLogoinCalendar: showLogos,
+            },
+          });
+          setPictureUrl(finalPictureUrl);
+        }
 
-      // Note: Initial values will be updated automatically when userData refetches
-      // But we also update them here immediately to prevent false positives
-      if (initialValuesRef.current) {
-        initialValuesRef.current = {
+        await queryClient.invalidateQueries({
+          queryKey: settingsQueryKeys.user.settings(session?.user.id || ''),
+        });
+        nextInitialProfileValues = {
           email,
           phone,
           firstname,
@@ -237,11 +222,20 @@ export default function SettingsPage() {
           pictureUrl: finalPictureUrl,
           salutationId,
           showLogos,
-          organizations: organizations.map((org) => ({
-            ...org,
-            hasGetMailNotification: org.hasGetMailNotification ?? true,
-          })),
         };
+      }
+
+      if (notificationPreferenceFormRef.current?.hasUnsavedChanges()) {
+        setIsSavingNotifications(true);
+        try {
+          await notificationPreferenceFormRef.current.saveChanges();
+        } finally {
+          setIsSavingNotifications(false);
+        }
+      }
+
+      if (nextInitialProfileValues) {
+        initialValuesRef.current = nextInitialProfileValues;
       }
     } catch (error) {
       toast.error(
@@ -251,6 +245,7 @@ export default function SettingsPage() {
   }, [
     session,
     pictureUrl,
+    hasProfileUnsavedChanges,
     mutation,
     email,
     firstname,
@@ -258,9 +253,9 @@ export default function SettingsPage() {
     phone,
     salutationId,
     showLogos,
-    organizations,
     update,
     queryClient,
+    notificationPreferenceFormRef,
   ]);
 
   // Use unsaved changes hook
@@ -321,7 +316,11 @@ export default function SettingsPage() {
 
     const result = await showDestructive(
       'Organisation verlassen',
-      `Möchten Sie wirklich ${orgName} verlassen? Sie verlieren den Zugriff auf alle Daten dieser Organisation.`
+      `Möchten Sie wirklich ${orgName} verlassen? Sie verlieren den Zugriff auf alle Daten dieser Organisation.`,
+      {
+        confirmText: 'Organisation verlassen',
+        cancelText: 'Abbrechen',
+      }
     );
 
     if (result !== 'success') return;
@@ -332,6 +331,9 @@ export default function SettingsPage() {
         userId: session.user.id,
         organizationId,
       });
+      queryClient.invalidateQueries({
+        queryKey: notificationPreferenceQueryKeys.user.cards(session.user.id),
+      });
       toast.success(`${orgName} erfolgreich verlassen.`, { id: toastId });
     } catch (err) {
       toast.error(
@@ -339,14 +341,6 @@ export default function SettingsPage() {
         { id: toastId }
       );
     }
-  };
-
-  const handleNotificationChange = (orgId: string, checked: boolean) => {
-    setOrganizations((prev) =>
-      prev.map((o) =>
-        o.id === orgId ? { ...o, hasGetMailNotification: checked } : o
-      )
-    );
   };
 
   // Use shared keyboard shortcuts hook
@@ -395,7 +389,7 @@ export default function SettingsPage() {
     <PageHeader
       title="Persönliche Einstellungen"
       onSave={handleSave}
-      isSaving={mutation.isPending}
+      isSaving={mutation.isPending || isSavingNotifications}
       onCancel={() => navigateWithCheck('/')}
     />
   );
@@ -600,50 +594,16 @@ export default function SettingsPage() {
                 Benachrichtigungen
               </CardTitle>
               <CardDescription>
-                Verwalten Sie E-Mail-Benachrichtigungen für Ihre Organisationen
+                Legen Sie fest, wie Sie per E-Mail informiert werden möchten.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {organizations.length > 0 ? (
-                <div className="space-y-4">
-                  {organizations.map((org) => {
-                    const isOn = org.hasGetMailNotification ?? true;
-                    return (
-                      <div
-                        key={org.id}
-                        className="flex items-center justify-between rounded-lg border p-4"
-                      >
-                        <div className="space-y-0.5">
-                          <Label
-                            htmlFor={`notification-${org.id}`}
-                            className="text-base font-medium"
-                          >
-                            {org.name}
-                          </Label>
-                          <p className="text-muted-foreground text-sm">
-                            E-Mail-Benachrichtigungen erhalten
-                          </p>
-                        </div>
-                        <Switch
-                          id={`notification-${org.id}`}
-                          checked={isOn}
-                          onCheckedChange={(checked) =>
-                            handleNotificationChange(org.id, checked)
-                          }
-                          aria-label={`E-Mail-Benachrichtigungen für ${org.name}`}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
-                  <Bell className="text-muted-foreground/50 mb-4 h-12 w-12" />
-                  <p className="text-muted-foreground text-sm">
-                    Sie sind noch keiner Organisation beigetreten.
-                  </p>
-                </div>
-              )}
+              <NotificationPreferenceForm
+                ref={notificationPreferenceFormRef}
+                userId={session?.user?.id}
+                disabled={mutation.isPending || isSavingNotifications}
+                onUnsavedChangesChange={setNotificationHasUnsavedChanges}
+              />
             </CardContent>
           </Card>
         </section>
@@ -658,46 +618,50 @@ export default function SettingsPage() {
         >
           <Card>
             <CardHeader>
-              <CardTitle id="calendar-heading">
-                Kalender-Integrationen
-              </CardTitle>
-              <CardDescription>
-                Abonnieren Sie Kalender Ihrer Organisationen in externen Apps
-                wie Google Calendar, Apple Calendar oder Outlook
-              </CardDescription>
+              <div className="flex flex-col flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle id="calendar-heading">Kalenderexporte</CardTitle>
+                  <CardDescription>
+                    Abonnieren Sie Kalender Ihrer Organisationen in externen
+                    Apps wie Google Calendar, Apple Calendar oder Outlook
+                  </CardDescription>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h4 className="mb-2 text-sm font-medium">
+                    So funktioniert&apos;s
+                  </h4>
+                  <ol className="text-muted-foreground space-y-2 text-sm">
+                    <li className="flex gap-2">
+                      <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                        1
+                      </span>
+                      Kopieren Sie die URL oder klicken Sie auf &quot;In
+                      Kalender öffnen&quot;
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                        2
+                      </span>
+                      Fügen Sie die URL in Ihrer Kalender-App als Abonnement
+                      hinzu
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                        3
+                      </span>
+                      Ihr Kalender synchronisiert automatisch alle Ereignisse
+                    </li>
+                  </ol>
+                </div>
+                {/* <CalendarExportGlobalCreate
+                  activeOrgId={session?.user?.activeOrganization?.id}
+                /> */}
+              </div>
             </CardHeader>
             <CardContent>
               {organizations.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <h4 className="mb-2 text-sm font-medium">
-                      So funktioniert&apos;s
-                    </h4>
-                    <ol className="text-muted-foreground space-y-2 text-sm">
-                      <li className="flex gap-2">
-                        <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                          1
-                        </span>
-                        Kopieren Sie die URL oder klicken Sie auf &quot;In
-                        Kalender öffnen&quot;
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                          2
-                        </span>
-                        Fügen Sie die URL in Ihrer Kalender-App als Abonnement
-                        hinzu
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                          3
-                        </span>
-                        Ihr Kalender synchronisiert automatisch alle Ereignisse
-                      </li>
-                    </ol>
-                  </div>
-
-                  <Separator className="my-6" />
+                  <Separator className="mb-6" />
 
                   {organizations.map((org) => (
                     <CalendarIntegrationCard key={org.id} org={org} />
@@ -744,25 +708,24 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={org.id}
-                        className="flex flex-col gap-4 rounded-lg border p-4 pl-2 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <div className="flex items-center">
-                          <div className="flex w-20 justify-center">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg">
                             {logoUrl ? (
                               <Image
                                 src={logoUrl}
                                 alt={org.name}
-                                width={80}
-                                height={60}
+                                width={40}
+                                height={40}
+                                className="h-full w-full object-contain p-1.5"
                               />
                             ) : (
-                              <div className="bg-muted flex size-10 items-center justify-center rounded-full p-2">
-                                <Building2 className="size-4" />
-                              </div>
+                              <Building2 className="text-muted-foreground h-5 w-5" />
                             )}
                           </div>
                           <div className="space-y-2">
-                            <h3 className="text-lg font-semibold">
+                            <h3 className="leading-none font-medium">
                               {org.name}
                             </h3>
                             <RolesList
@@ -779,7 +742,7 @@ export default function SettingsPage() {
                           onClick={() => handleOrganizationLeave(org.id)}
                           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
+                          <LogOut className="mr-2 h-4 w-4" />
                           Verlassen
                         </Button>
                       </div>

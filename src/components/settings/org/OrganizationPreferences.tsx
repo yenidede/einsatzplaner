@@ -103,7 +103,7 @@ export function OrganizationPreferences({
           </Label>
         </div>
         <p className="text-muted-foreground ml-6 text-sm">
-          Wenn aktiviert, können sich {helperPlural} selbstständig aus{' '}
+          Wenn aktiviert, können sich {helperPlural} selbstständig von{' '}
           {einsatzPlural} austragen, für die sie sich eingetragen haben.
         </p>
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { registerOrganizationSwitchConfirmation } from '../settings-navigation.utils';
 
 interface UseUnsavedChangesOptions<T extends string = string> {
   hasUnsavedChanges: boolean;
@@ -55,7 +56,11 @@ export function useUnsavedChanges<T extends string = string>({
       // Different route - show dialog
       const result = await showDefault(
         'Ungespeicherte Änderungen',
-        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?'
+        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
+        {
+          confirmText: 'Verlassen',
+          cancelText: 'Bleiben',
+        }
       );
 
       if (result === 'success') {
@@ -108,7 +113,11 @@ export function useUnsavedChanges<T extends string = string>({
 
       const result = await showDefault(
         'Ungespeicherte Änderungen',
-        'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich zu einem anderen Bereich wechseln?'
+        'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich zu einem anderen Bereich wechseln?',
+        {
+          confirmText: 'Wechseln',
+          cancelText: 'Bleiben',
+        }
       );
 
       if (result === 'success') {
@@ -117,6 +126,23 @@ export function useUnsavedChanges<T extends string = string>({
     },
     [hasUnsavedChanges, showDefault, onSectionChange]
   );
+
+  const confirmDiscardChanges = useCallback(async () => {
+    if (!hasUnsavedChangesRef.current) {
+      return true;
+    }
+
+    const result = await showDefault(
+      'Ungespeicherte Änderungen',
+      'Sie haben ungespeicherte Änderungen. Möchten Sie die Änderungen verwerfen und die Organisation wechseln?',
+      {
+        confirmText: 'Verwerfen und wechseln',
+        cancelText: 'Abbrechen',
+      }
+    );
+
+    return result === 'success';
+  }, [showDefault]);
 
   // Handle browser back/forward
   useEffect(() => {
@@ -139,7 +165,7 @@ export function useUnsavedChanges<T extends string = string>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (history.state as any) && typeof history.state === 'object'
           ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          { ...(history.state as any), __unsavedChangesGuard: true }
+            { ...(history.state as any), __unsavedChangesGuard: true }
           : { __unsavedChangesGuard: true };
       history.pushState(currentState, '', window.location.href);
       hasHistoryGuardRef.current = true;
@@ -158,7 +184,11 @@ export function useUnsavedChanges<T extends string = string>({
 
       const result = await showDefault(
         'Ungespeicherte Änderungen',
-        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?'
+        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
+        {
+          confirmText: 'Verlassen',
+          cancelText: 'Bleiben',
+        }
       );
 
       if (result === 'success') {
@@ -171,7 +201,7 @@ export function useUnsavedChanges<T extends string = string>({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (history.state as any) && typeof history.state === 'object'
             ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            { ...(history.state as any), __unsavedChangesGuard: true }
+              { ...(history.state as any), __unsavedChangesGuard: true }
             : { __unsavedChangesGuard: true };
         history.pushState(currentState, '', window.location.href);
         hasHistoryGuardRef.current = true;
@@ -186,6 +216,11 @@ export function useUnsavedChanges<T extends string = string>({
     };
   }, [hasUnsavedChanges, showDefault]);
 
+  useEffect(
+    () => registerOrganizationSwitchConfirmation(confirmDiscardChanges),
+    [confirmDiscardChanges]
+  );
+
   // Navigation guard function that can be used to intercept any navigation
   const navigateWithCheck = useCallback(
     async (url: string) => {
@@ -196,7 +231,11 @@ export function useUnsavedChanges<T extends string = string>({
 
       const result = await showDefault(
         'Ungespeicherte Änderungen',
-        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?'
+        'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
+        {
+          confirmText: 'Verlassen',
+          cancelText: 'Bleiben',
+        }
       );
 
       if (result === 'success') {
@@ -214,6 +253,7 @@ export function useUnsavedChanges<T extends string = string>({
   );
 
   return {
+    confirmDiscardChanges,
     handleSectionChangeWithCheck,
     navigateWithCheck,
   };

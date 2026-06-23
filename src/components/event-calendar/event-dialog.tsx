@@ -83,6 +83,14 @@ import { RequiredUserProperties } from './RequiredUserProperties';
 import { Separator } from '../ui/separator';
 import { formatDateToTimeInput, isNormalizedTime } from '@/lib/time-input';
 import { useSettingsKeyboardShortcuts } from '@/components/settings/hooks/useSettingsKeyboardShortcuts';
+import { useUserProfile } from '@/features/settings/hooks/useUserProfile';
+import { hasActiveOrganizationSettingsAccess } from '@/components/settings/settings-navigation.utils';
+import {
+  getConfirmableCriteriaWarnings,
+  getInformationalCreateUserPropertyWarnings,
+  shouldValidateRequiredUserProperties,
+  type EinsatzCriteriaWarning,
+} from './einsatz-warning-handling';
 
 // Defaults for the defaultFormFields (no template loaded yet)
 const DEFAULTFORMDATA: EinsatzFormData = {
@@ -153,6 +161,35 @@ function formatOrgTimeForInput(value: unknown, fallback: string): string {
  */
 function formatTimeForInput(date: Date) {
   return formatDateToTimeInput(date);
+}
+
+/**
+ * Normalize event date values coming from cache/server so the dialog always works with real Date instances.
+ *
+ * Event times should be shown in local wall-clock time. Unlike org default times, UTC ISO strings here
+ * represent concrete instants and therefore must be interpreted locally after parsing.
+ */
+function normalizeEventDateValue(
+  value: Date | string | null | undefined
+): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new Date(value);
+  }
+
+  const parsedDate = new Date(value);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function formatEventTimeForInput(
+  value: Date | string | null | undefined,
+  fallback: string
+): string {
+  const normalizedDate = normalizeEventDateValue(value);
+  return normalizedDate ? formatTimeForInput(normalizedDate) : fallback;
 }
 
 /**
@@ -262,13 +299,13 @@ export const ZodEinsatzFormData = z
       .string()
       .regex(
         /^([01]\d|2[0-3]):([0-5]\d)$/,
-        'Invalid time format. Must be in HH:MM (24-hour) format.'
+        'Bitte geben Sie eine gültige Uhrzeit im Format HH:MM ein.'
       ),
     endTime: z
       .string()
       .regex(
         /^([01]\d|2[0-3]):([0-5]\d)$/,
-        'Invalid time format. Must be in HH:MM (24-hour) format.'
+        'Bitte geben Sie eine gültige Uhrzeit im Format HH:MM ein.'
       ),
     all_day: z.boolean(),
     participantCount: z
@@ -374,6 +411,7 @@ export function EventDialogVerwaltung({
 }: EventDialogProps) {
   const { showDefault, showDestructive } = useConfirmDialog();
   const { data: session } = useSession();
+  const { data: userProfile } = useUserProfile(session?.user?.id);
 
   const activeOrgId = session?.user?.activeOrganization?.id;
   const currentUserId = session?.user?.id;
@@ -435,17 +473,24 @@ export function EventDialogVerwaltung({
     isLoading,
     isFetching,
   } = useDetailedEinsatz(typeof einsatz === 'string' ? einsatz : null, isOpen);
+  const currentEinsatz =
+    typeof einsatz === 'string' ? detailedEinsatz : einsatz;
+  const dialogOrgId = currentEinsatz?.org_id ?? activeOrgId;
 
-  const { data: availableProps } = useUserProperties(activeOrgId);
+  const { data: availableProps } = useUserProperties(dialogOrgId);
 
-  const categoriesQuery = useCategories(activeOrgId);
+  const categoriesQuery = useCategories(dialogOrgId);
 
-  const templatesQuery = useTemplates(activeOrgId);
+  const templatesQuery = useTemplates(dialogOrgId);
 
-  const usersQuery = useUsers(activeOrgId);
+  const usersQuery = useUsers(dialogOrgId);
 
   const { data: organizations } = useOrganizations(session?.user.orgIds);
-  const activeOrg = organizations?.find((org) => org.id === activeOrgId);
+  const activeOrg = organizations?.find((org) => org.id === dialogOrgId);
+  const canManageOrganizationSettings = hasActiveOrganizationSettingsAccess(
+    userProfile?.organizations ?? [],
+    dialogOrgId
+  );
 
   const orgDefaultStartTime = formatOrgTimeForInput(
     activeOrg?.default_starttime,
@@ -457,73 +502,7 @@ export function EventDialogVerwaltung({
   );
 
   const { einsatz_singular, helper_singular, helper_plural } =
-    useOrganizationTerminology(organizations, activeOrgId);
-
-  useEffect(() => {
-    if (!activeOrgId) {
-      setPdfTemplates([]);
-      setSelectedPdfTemplateId(null);
-      return;
-    }
-
-    let cancelled = false;
-    setIsPdfTemplatesLoading(true);
-
-    void Promise.all([
-      getPdfTemplates(activeOrgId),
-      getDefaultOrganizationPdfTemplate(activeOrgId),
-    ])
-      .then(([templates, defaultTemplate]) => {
-        if (cancelled) {
-          return;
-        }
-
-        setPdfTemplates(templates);
-        setSelectedPdfTemplateId((current) => {
-          if (
-            current &&
-            templates.some((template) => template.id === current)
-          ) {
-            return current;
-          }
-
-          if (
-            defaultTemplate?.id &&
-            templates.some((template) => template.id === defaultTemplate.id)
-          ) {
-            return defaultTemplate.id;
-          }
-
-          return templates[0]?.id ?? null;
-        });
-      })
-      .catch((error) => {
-        if (cancelled) {
-          return;
-        }
-
-        setPdfTemplates([]);
-        setSelectedPdfTemplateId(null);
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'PDF-Vorlagen konnten nicht geladen werden.'
-        );
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsPdfTemplatesLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeOrgId]);
-
-  // type string means edit einsatz (uuid)
-  const currentEinsatz =
-    typeof einsatz === 'string' ? detailedEinsatz : einsatz;
+    useOrganizationTerminology(organizations, dialogOrgId);
 
   const handleFormDataChange = useCallback(
     (updates: Partial<EinsatzFormData>) => {
@@ -750,17 +729,25 @@ export function EventDialogVerwaltung({
 
         // Use org defaults once organizations are available so we don't show 09:00/10:00 and only update after close
         const base = getDefaultStaticFormData();
+        const createStart = normalizeEventDateValue(createEinsatz.start);
+        const createEnd = normalizeEventDateValue(createEinsatz.end);
         const createFormData: EinsatzFormData = {
           ...base,
           title: createEinsatz.title ?? '',
           all_day: createEinsatz.all_day ?? false,
-          ...(createEinsatz.start && {
-            startDate: createEinsatz.start,
-            startTime: formatTimeForInput(createEinsatz.start),
+          ...(createStart && {
+            startDate: createStart,
+            startTime: formatEventTimeForInput(
+              createEinsatz.start,
+              orgDefaultStartTime
+            ),
           }),
-          ...(createEinsatz.end && {
-            endDate: createEinsatz.end,
-            endTime: formatTimeForInput(createEinsatz.end),
+          ...(createEnd && {
+            endDate: createEnd,
+            endTime: formatEventTimeForInput(
+              createEinsatz.end,
+              orgDefaultEndTime
+            ),
           }),
         };
         setStaticFormData(createFormData);
@@ -801,14 +788,21 @@ export function EventDialogVerwaltung({
             ? prev
             : currentEinsatz.template_id || null
         );
+        const editStart = normalizeEventDateValue(einsatzDetailed.start);
+        const editEnd = normalizeEventDateValue(einsatzDetailed.end);
         const editFormData: EinsatzFormData = {
           title: einsatzDetailed.title || '',
           all_day: einsatzDetailed.all_day || false,
-          startDate: einsatzDetailed.start || new Date(),
-          startTime:
-            formatTimeForInput(einsatzDetailed.start) || orgDefaultStartTime,
-          endDate: einsatzDetailed.end || new Date(),
-          endTime: formatTimeForInput(einsatzDetailed.end) || orgDefaultEndTime,
+          startDate: editStart ?? new Date(),
+          startTime: formatEventTimeForInput(
+            einsatzDetailed.start,
+            orgDefaultStartTime
+          ),
+          endDate: editEnd ?? new Date(),
+          endTime: formatEventTimeForInput(
+            einsatzDetailed.end,
+            orgDefaultEndTime
+          ),
           participantCount: einsatzDetailed.participant_count || 0,
           pricePerPerson: einsatzDetailed.price_per_person || 0,
           totalPrice: einsatzDetailed.total_price || 0,
@@ -1025,7 +1019,11 @@ export function EventDialogVerwaltung({
     if (checkIfFormIsModified(DEFAULTFORMDATA, staticFormData)) {
       const result = await showDefault(
         `${selectedTemplate?.name || 'Vorlage'} laden?`,
-        'Ausgefüllte Felder werden möglicherweise Überschrieben.'
+        'Ausgefüllte Felder werden möglicherweise überschrieben.',
+        {
+          confirmText: 'Felder überschreiben',
+          cancelText: 'Abbrechen',
+        }
       );
 
       if (result !== 'success') {
@@ -1090,6 +1088,12 @@ export function EventDialogVerwaltung({
       }
       if (selectedTemplate.all_day_default != null) {
         templateUpdates.all_day = selectedTemplate.all_day_default;
+      }
+      if (
+        selectedTemplate.anmerkung_default != null &&
+        selectedTemplate.anmerkung_default.trim() !== ''
+      ) {
+        templateUpdates.anmerkung = selectedTemplate.anmerkung_default.trim();
       }
 
       const finalParticipantCount =
@@ -1193,7 +1197,7 @@ export function EventDialogVerwaltung({
     // Validiere dynamische Felder mit React Hook Form
     const isDynamicFormValid = await dynamicForm.trigger();
     if (!isDynamicFormValid) {
-      toast.error('Bitte korrigieren Sie die Fehler in den Template-Feldern.');
+      toast.error('Bitte korrigieren Sie die Fehler in den Vorlagenfeldern.');
       return;
     }
 
@@ -1202,7 +1206,7 @@ export function EventDialogVerwaltung({
       formErrors: [],
     });
 
-    const warnings: string[] = [];
+    const warnings: EinsatzCriteriaWarning[] = [];
 
     // Warning 1: Max X participants per helper
     if (
@@ -1213,28 +1217,34 @@ export function EventDialogVerwaltung({
         parsedDataStatic.data.participantCount /
         parsedDataStatic.data.helpersNeeded;
       const maxParticipants = organizations?.find(
-        (o) => o.id === activeOrgId
+        (o) => o.id === dialogOrgId
       )?.max_participants_per_helper;
       if (maxParticipants && ratio > maxParticipants) {
-        warnings.push(
-          `Allgemein: Anzahl Teilnehmer:innen pro ${helper_singular} maximal ${
-            organizations?.find((o) => o.id === activeOrgId)
+        warnings.push({
+          kind: 'helperParticipantRatio',
+          message: `Allgemein: Anzahl Teilnehmer:innen pro ${helper_singular} maximal ${
+            organizations?.find((o) => o.id === dialogOrgId)
               ?.max_participants_per_helper
-          } (aktuell: ${Math.round(ratio)})`
-        );
+          } (aktuell: ${Math.round(ratio)})`,
+        });
       }
     }
 
     // Warning 2: Required user properties check
+    const requiredUserProperties =
+      parsedDataStatic.data.requiredUserProperties ?? [];
+
     if (
-      parsedDataStatic.data.requiredUserProperties &&
-      parsedDataStatic.data.requiredUserProperties.length > 0
+      shouldValidateRequiredUserProperties(
+        requiredUserProperties.length,
+        assignedUsers.length
+      )
     ) {
       const assignedUserDetails = usersQuery.data?.filter((user) =>
         assignedUsers.includes(user.id)
       );
 
-      for (const propConfig of parsedDataStatic.data.requiredUserProperties) {
+      for (const propConfig of requiredUserProperties) {
         if (!propConfig.is_required) continue;
 
         const property = availableProps?.find(
@@ -1272,16 +1282,44 @@ export function EventDialogVerwaltung({
             minRequired === -1
               ? `Personeneigenschaften: Alle zugewiesenen ${helper_plural} benötigen '${propName}' (${matchingCount}/${requiredCount} erfüllt)`
               : `Personeneigenschaften: mind. ${minRequired} ${helper_plural} mit '${propName}' benötigt (aktuell: ${matchingCount})`;
-          warnings.push(message);
+          warnings.push({
+            kind: 'userProperties',
+            message,
+          });
         }
       }
     }
-    if (warnings.length > 0) {
+    const isNewEinsatz = !currentEinsatz?.id;
+    const confirmableWarnings = getConfirmableCriteriaWarnings(
+      warnings,
+      isNewEinsatz
+    );
+    const informationalPropertyWarnings =
+      getInformationalCreateUserPropertyWarnings(warnings, isNewEinsatz);
+
+    if (informationalPropertyWarnings.length > 0) {
+      toast.info('Personeneigenschaften nicht vollständig erfüllt', {
+        description: informationalPropertyWarnings
+          .map((warning) => warning.message)
+          .join('\n'),
+      });
+    }
+
+    if (confirmableWarnings.length > 0) {
       const confirmed = await showDestructive(
         'Warnung: Kriterien nicht erfüllt',
-        'Folgende Kriterien sind nicht erfüllt:\n\n' +
-          warnings.map((w) => `• ${w}`).join('\n') +
-          '\n\nTrotzdem speichern?'
+        <div className="flex flex-col gap-3">
+          <p>Folgende Kriterien sind nicht erfüllt:</p>
+          <ul className="text-foreground list-inside list-disc">
+            {confirmableWarnings.map((warning) => (
+              <li key={warning.message}>{warning.message}</li>
+            ))}
+          </ul>
+        </div>,
+        {
+          confirmText: 'Trotzdem speichern',
+          cancelText: 'Abbrechen',
+        }
       );
 
       if (confirmed !== 'success') {
@@ -1346,7 +1384,7 @@ export function EventDialogVerwaltung({
       }
     );
 
-    const org_id = currentEinsatz?.org_id ?? activeOrgId;
+    const org_id = dialogOrgId;
     if (!org_id) {
       toast.error('Organisation konnte nicht zugeordnet werden.');
       return;
@@ -1358,8 +1396,6 @@ export function EventDialogVerwaltung({
     }
 
     //region Activity Change Log
-    const isNewEinsatz = !currentEinsatz?.id;
-
     const previousAssignedUsers =
       currentEinsatz && 'assigned_users' in currentEinsatz
         ? currentEinsatz.assigned_users || []
@@ -1395,14 +1431,23 @@ export function EventDialogVerwaltung({
       const effectiveAffectedUserId =
         changeTypeName === 'E-Erstellt' ? null : affectedUserId;
       if (currentEinsatz?.id && currentUserId) {
-        createChangeLogAuto({
-          einsatzId: currentEinsatz.id,
-          userId: currentUserId,
-          typeId: ChangeTypeIds[changeTypeName],
-          affectedUserId: effectiveAffectedUserId,
-        }).catch((error) => {
-          toast.error('Failed to create activity log: ' + error);
-        });
+        let changeLog = null;
+        try {
+          changeLog = await createChangeLogAuto({
+            einsatzId: currentEinsatz.id,
+            userId: currentUserId,
+            typeId: ChangeTypeIds[changeTypeName],
+            affectedUserId: effectiveAffectedUserId,
+          });
+        } catch (error) {
+          console.error(
+            'Aktivitätsprotokoll konnte nicht erstellt werden:',
+            error
+          );
+        }
+        if (!changeLog) {
+          toast.error('Aktivitätsprotokoll konnte nicht erstellt werden.');
+        }
       }
     }
     const outgoingUserProperties = (
@@ -1576,8 +1621,10 @@ export function EventDialogVerwaltung({
                     : []
                 }
                 activeOrg={
-                  organizations?.find((org) => org.id === activeOrgId) ?? null
+                  organizations?.find((org) => org.id === dialogOrgId) ?? null
                 }
+                areCategoriesLoading={categoriesQuery.isLoading}
+                canManageOrganizationSettings={canManageOrganizationSettings}
               />
               <DynamicFormFields
                 fields={dynamicFormFields}

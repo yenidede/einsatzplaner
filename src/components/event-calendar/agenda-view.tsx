@@ -11,6 +11,7 @@ import { useOrganizationTerminology } from '@/hooks/use-organization-terminology
 import { useOrganizations } from '@/features/organization/hooks/use-organization-queries';
 import { useSession } from 'next-auth/react';
 import { Loader } from 'lucide-react';
+import { spansMultipleDays } from './utils';
 
 interface AgendaViewProps {
   events: CalendarEvent[];
@@ -20,6 +21,9 @@ interface AgendaViewProps {
   mode: CalendarMode;
   onEventConfirm?: (eventId: string) => void;
   pastIndicatorTooltip: string;
+  savingIndicatorTooltip?: string;
+  savingToastMessage?: string;
+  isEventSaving?: (eventId: string) => boolean;
 }
 
 export function AgendaView({
@@ -29,6 +33,9 @@ export function AgendaView({
   mode,
   onEventConfirm,
   pastIndicatorTooltip,
+  savingIndicatorTooltip,
+  savingToastMessage,
+  isEventSaving,
 }: AgendaViewProps) {
   const { data: session } = useSession();
   const activeOrgId = session?.user?.activeOrganization?.id;
@@ -100,7 +107,9 @@ export function AgendaView({
             className="text-muted-foreground/50 mb-2"
           />
           <h3 className="text-lg font-medium">
-            {isEventsLoading ? `Lade ${einsatz_plural}...` : `Keine geplanten ${einsatz_plural}`}
+            {isEventsLoading
+              ? `Lade ${einsatz_plural}...`
+              : `Keine geplanten ${einsatz_plural}`}
           </h3>
           {isEventsLoading && (
             <p className="text-muted-foreground flex items-center gap-2">
@@ -127,7 +136,11 @@ export function AgendaView({
                   event={event}
                   view="agenda"
                   onClick={(e) => handleEventClick(event, e)}
+                  isMultiDay={spansMultipleDays(event)}
                   mode={mode}
+                  isSaving={isEventSaving?.(event.id)}
+                  savingIndicatorTooltip={savingIndicatorTooltip}
+                  savingToastMessage={savingToastMessage}
                   onConfirm={onEventConfirm}
                   pastIndicatorTooltip={pastIndicatorTooltip}
                 />

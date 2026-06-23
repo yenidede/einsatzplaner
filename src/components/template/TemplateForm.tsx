@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
   getFieldTypeDefinition,
+  getFieldTypeLabel,
   isFieldTypeKey,
 } from '@/features/user_properties/field-type-definitions';
 import { PageHeader } from '@/components/settings/PageHeader';
@@ -24,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
 import {
   Card,
   CardAction,
@@ -50,10 +52,13 @@ import { ExistingTemplateFieldSelector } from './ExistingTemplateFieldSelector';
 import { TemplateFieldReuseSuggestions } from './TemplateFieldReuseSuggestions';
 import { normalizeTemplateFieldSearchValue } from './template-field-reuse-utils';
 import {
+  TEMPLATE_DESCRIPTION_MAX_LENGTH,
+  getTemplateDescriptionLength,
   templateFormSchema,
   type TemplateFormValues,
   type TemplateFormInputValues,
 } from './template-form-schema';
+import { InputWithCounter } from '@/components/form/input-with-counter';
 import { FieldTypeSelector } from '@/features/user_properties/components/FieldTypeSelector';
 import { VORLAGE_SELECTABLE_FIELD_TYPES } from '@/features/user_properties/field-type-definitions';
 import { PropertyConfiguration } from '@/features/user_properties/components/PropertyConfiguration';
@@ -135,6 +140,10 @@ function findMatchingReuseCandidates(
   if (!normalizedFieldName || !config.fieldType) {
     return [];
   }
+  const configDatatype =
+    config.fieldType === 'select' && config.isMultiSelect
+      ? 'multiselect'
+      : config.fieldType;
 
   return candidates
     .map((candidate) => {
@@ -143,14 +152,14 @@ function findMatchingReuseCandidates(
         normalizedFieldName,
         candidateName
       );
-      const typeBonus = candidate.datatype === config.fieldType ? 0.15 : 0;
+      const typeBonus = candidate.datatype === configDatatype ? 0.15 : 0;
       return {
         candidate,
         score: nameScore + typeBonus,
       };
     })
     .filter(({ candidate, score }) => {
-      const hasSameType = candidate.datatype === config.fieldType;
+      const hasSameType = candidate.datatype === configDatatype;
       return score >= (hasSameType ? 0.75 : 0.92);
     })
     .sort((left, right) => right.score - left.score)
@@ -226,6 +235,10 @@ export function TemplateForm({
 
   const { register, control, formState, watch, setValue, reset } = form;
   const { errors } = formState;
+  const descriptionValue = watch('description');
+  const descriptionLength = getTemplateDescriptionLength(
+    typeof descriptionValue === 'string' ? descriptionValue : undefined
+  );
 
   const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
   const [customFieldStep, setCustomFieldStep] = useState<
@@ -262,8 +275,7 @@ export function TemplateForm({
     start: null,
     end: null,
   });
-  const timeRangeError =
-    timeRangeFieldErrors.start ?? timeRangeFieldErrors.end;
+  const timeRangeError = timeRangeFieldErrors.start ?? timeRangeFieldErrors.end;
   /** Required user properties for this template (Überprüfungen). */
   const [requiredUserPropertyConfigs, setRequiredUserPropertyConfigs] =
     useState<
@@ -349,7 +361,11 @@ export function TemplateForm({
       isPaused ? 'Vorlage reaktivieren?' : 'Vorlage pausieren?',
       isPaused
         ? 'Die Vorlage wird wieder für neue Einsätze verfügbar gemacht.'
-        : 'Pausierte Vorlagen können nicht für neue Einsätze verwendet werden. Bestehende Einsätze bleiben unverändert.'
+        : 'Pausierte Vorlagen können nicht für neue Einsätze verwendet werden. Bestehende Einsätze bleiben unverändert.',
+      {
+        confirmText: isPaused ? 'Reaktivieren' : 'Pausieren',
+        cancelText: 'Abbrechen',
+      }
     );
     if (result === 'success' && templateId) {
       updateMutation.mutate({ templateId, is_paused: !isPaused });
@@ -473,13 +489,19 @@ export function TemplateForm({
 
   const handleCustomFieldTypeSelect = (type: PropertyConfig['fieldType']) => {
     if (!type) return;
-    setCustomFieldConfig((prev) => ({ ...prev, fieldType: type }));
+    setCustomFieldConfig({ ...INITIAL_CONFIG, fieldType: type });
     setCustomFieldStep('configuration');
   };
 
   const handleCustomFieldConfigChange = (updates: Partial<PropertyConfig>) => {
     setCustomFieldConfig((prev) => ({ ...prev, ...updates }));
   };
+
+  const handleBackToCustomFieldTypeSelection = useCallback(() => {
+    setCustomFieldConfig(INITIAL_CONFIG);
+    setMatchingReuseCandidates([]);
+    setCustomFieldStep('typeSelection');
+  }, []);
 
   const handleOpenCreateField = useCallback(() => {
     setEditingFieldId(null);
@@ -711,7 +733,8 @@ export function TemplateForm({
         if (
           timeRangeFieldErrors.start !== null ||
           timeRangeFieldErrors.end !== null ||
-          (timeRangeStartValue !== '' && !isNormalizedTime(timeRangeStartValue)) ||
+          (timeRangeStartValue !== '' &&
+            !isNormalizedTime(timeRangeStartValue)) ||
           (timeRangeEndValue !== '' && !isNormalizedTime(timeRangeEndValue))
         ) {
           setTimeRangeFieldErrors((prev) => ({
@@ -830,7 +853,11 @@ export function TemplateForm({
       const name = tf?.field?.name ?? 'Feld';
       const result = await showDestructive(
         'Feld von Vorlage entfernen?',
-        `Möchten Sie das Feld "${name}" von dieser Vorlage entfernen? Das Feld wird nur von der Vorlage getrennt. Bestehende Einsätze behalten ihre gespeicherten Werte für dieses Feld.`
+        `Möchten Sie das Feld "${name}" von dieser Vorlage entfernen? Das Feld wird nur von der Vorlage getrennt. Bestehende Einsätze behalten ihre gespeicherten Werte für dieses Feld.`,
+        {
+          confirmText: 'Entfernen',
+          cancelText: 'Abbrechen',
+        }
       );
       if (result === 'success' && templateId) {
         deleteTemplateFieldMutation.mutate({ templateId, fieldId });
@@ -1050,9 +1077,12 @@ export function TemplateForm({
                 <Label htmlFor="template-description">
                   Beschreibung (optional)
                 </Label>
-                <Input
+                <InputWithCounter
                   id="template-description"
                   placeholder="Kurze Beschreibung der Vorlage"
+                  maxLength={TEMPLATE_DESCRIPTION_MAX_LENGTH}
+                  currentLength={descriptionLength}
+                  errorMessage={errors.description?.message}
                   {...register('description')}
                 />
               </div>
@@ -1065,7 +1095,7 @@ export function TemplateForm({
               <CardTitle>Standardfelder</CardTitle>
               <CardDescription>
                 Standardfelder sind in jedem Einsatz dieser Vorlage vorhanden.
-                Du kannst hier nur ihre Standardwerte anpassen, aber keine
+                Sie können hier nur ihre Standardwerte anpassen, aber keine
                 weiteren Standardfelder hinzufügen oder entfernen.
               </CardDescription>
             </CardHeader>
@@ -1137,6 +1167,10 @@ export function TemplateForm({
                     <Label htmlFor="standard-field-default">
                       Standardwert (optional)
                     </Label>
+                    <p className="text-muted-foreground text-sm">
+                      Wird bei neuen Einsätzen automatisch eingetragen und
+                      gespeichert, sofern Sie ihn nicht ändern.
+                    </p>
                     <Input
                       id="standard-field-default"
                       type="text"
@@ -1154,6 +1188,10 @@ export function TemplateForm({
                       <Label htmlFor="standard-field-default">
                         Standardwert (optional)
                       </Label>
+                      <p className="text-muted-foreground text-sm">
+                        Wird bei neuen Einsätzen automatisch eingetragen und
+                        gespeichert, sofern Sie ihn nicht ändern.
+                      </p>
                       <Textarea
                         id="standard-field-default"
                         value={standardFieldDefaultValue}
@@ -1168,6 +1206,10 @@ export function TemplateForm({
                       <Label htmlFor="standard-field-placeholder">
                         Platzhalter (optional)
                       </Label>
+                      <p className="text-muted-foreground text-sm">
+                        Wird nur als Hinweis in einem leeren Feld angezeigt und
+                        nicht gespeichert.
+                      </p>
                       <Textarea
                         id="standard-field-placeholder"
                         value={standardFieldPlaceholderValue}
@@ -1252,6 +1294,10 @@ export function TemplateForm({
                         <Label htmlFor="standard-field-default">
                           Standardwert (optional)
                         </Label>
+                        <p className="text-muted-foreground text-sm">
+                          Wird bei neuen Einsätzen automatisch eingetragen und
+                          gespeichert, sofern Sie ihn nicht ändern.
+                        </p>
                         <Input
                           id="standard-field-default"
                           type={
@@ -1283,6 +1329,10 @@ export function TemplateForm({
                         <Label htmlFor="standard-field-placeholder">
                           Platzhalter (optional)
                         </Label>
+                        <p className="text-muted-foreground text-sm">
+                          Wird nur als Hinweis in einem leeren Feld angezeigt
+                          und nicht gespeichert.
+                        </p>
                         <Input
                           id="standard-field-placeholder"
                           type={
@@ -1391,14 +1441,19 @@ export function TemplateForm({
                 <ul className="space-y-2">
                   {template.template_field.map((tf) => {
                     const datatype = tf.field?.type?.datatype ?? 'text';
-                    const key = isFieldTypeKey(datatype) ? datatype : 'text';
+                    const key =
+                      datatype === 'multiselect'
+                        ? 'select'
+                        : isFieldTypeKey(datatype)
+                          ? datatype
+                          : 'text';
                     const fieldDef = getFieldTypeDefinition(key);
                     const fieldId = tf.field?.id ?? '';
                     return (
                       <TemplateFieldListItem
                         key={fieldId}
                         name={tf.field?.name ?? 'Feld'}
-                        typeLabel={tf.field?.type?.datatype ?? '—'}
+                        typeLabel={getFieldTypeLabel(datatype) ?? '—'}
                         icon={fieldDef?.Icon ?? Type}
                         isPflichtfeld={tf.field?.is_required}
                         onOpen={() => handleOpenEditField(tf)}
@@ -1440,7 +1495,7 @@ export function TemplateForm({
                   isLoading={isReuseCandidatesLoading}
                   isError={isReuseCandidatesError}
                   isConnecting={connectExistingTemplateFieldMutation.isPending}
-                  onBack={() => setCustomFieldStep('typeSelection')}
+                  onBack={handleBackToCustomFieldTypeSelection}
                   onConnect={handleConnectExistingField}
                   onRetry={() => {
                     void refetchReuseCandidates();
@@ -1464,7 +1519,7 @@ export function TemplateForm({
                   onCancel={() =>
                     editingFieldId
                       ? handleCustomFieldDialogClose(false)
-                      : setCustomFieldStep('typeSelection')
+                      : handleBackToCustomFieldTypeSelection()
                   }
                   existingPropertyNames={existingTemplateFieldNamesForDialog}
                   existingUserCount={0}

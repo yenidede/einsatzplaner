@@ -1,12 +1,11 @@
 'use client';
 
-import { SettingsIcon, LogOutIcon, Zap, X, PencilIcon } from 'lucide-react';
+import { SettingsIcon, LogOutIcon, Zap, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { useSessionSync } from '@/hooks/useSessionSync';
 import { JSX, useState } from 'react';
 import Link from 'next/link';
@@ -18,7 +17,6 @@ import { createRoleNameOverrides, RolesList } from '../Roles';
 
 export default function UserMenu(): JSX.Element | null {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
   useSessionSync();
@@ -50,8 +48,17 @@ export default function UserMenu(): JSX.Element | null {
   }
 
   if (session == null || !session.user) {
-    router.push('/signin');
-    return null;
+    return (
+      <Button
+        variant="ghost"
+        className="h-auto p-0 hover:bg-transparent"
+        asChild
+      >
+        <Link href="/signin">
+          <Avatar></Avatar>
+        </Link>
+      </Button>
+    );
   }
 
   const handleLogout = async () => {
@@ -177,31 +184,14 @@ function OrganizationWithRoles({
   const roles = uorRoles?.map((uor) => uor.role) || [];
 
   return (
-    <div className="flex items-end justify-between">
-      <div>
-        <p className="text-muted-foreground mb-2 text-sm">{orgName}</p>
+    <div className="w-full">
+      <p className="text-muted-foreground mb-2 text-sm">{orgName}</p>
+      <div className="w-full">
         <RolesList
           unsortedRoles={roles}
           roleNameOverrides={createRoleNameOverrides(helperNameSingular)}
         />
       </div>
-      {roles.find(
-        (r) => r.name === 'Organisationsverwaltung' || r.name === 'OV'
-      ) && (
-        <Close asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="px-2 py-1 text-sm"
-            asChild
-          >
-            <Link href={`/settings/org/${orgId}#details`}>
-              Bearbeiten{' '}
-              <PencilIcon size={16} aria-hidden="true" className="mr-1" />
-            </Link>
-          </Button>
-        </Close>
-      )}
     </div>
   );
 }

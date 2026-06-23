@@ -23,3 +23,16 @@ export async function getBasicVisualOrganizationsByIds(
     },
   });
 }
+
+export async function getOrganizationAccessState(orgId: string) {
+  return prisma.organization.findUnique({
+    where: { id: orgId },
+    select: {
+      id: true,
+      name: true,
+      subscription_status: true,
+      trial_starts_at: true,
+      trial_ends_at: true,
+    },
+  });
+}

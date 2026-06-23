@@ -1,6 +1,5 @@
 import type {
   einsatz as EinsatzRawDb,
-  einsatz_comment as CommentRawDb,
   change_log as ChangeLogRawDb,
 } from '@/generated/prisma';
 export type Einsatz = EinsatzRawDb;
@@ -67,13 +66,21 @@ export type EinsatzDetailed = EinsatzRawDb & {
   })[];
   categories: string[];
   change_log: (ChangeLogRawDb & {
-    user: { id: string; firstname: string | null; lastname: string | null } | null;
+    user: {
+      id: string;
+      firstname: string | null;
+      lastname: string | null;
+    } | null;
   })[];
   user_properties: EinsatzUserProperty[];
 };
 
+export type EinsatzDetailedWithUiState = EinsatzDetailed & {
+  isLocked?: boolean;
+};
+
 /** Detailed einsatz with category abbreviations for calendar event titles (no extra lookup). */
-export type EinsatzDetailedForCalendar = EinsatzDetailed & {
+export type EinsatzDetailedForCalendar = EinsatzDetailedWithUiState & {
   category_abbreviations: string[];
 };
 

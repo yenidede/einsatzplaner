@@ -1,9 +1,42 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryKey } from '@tanstack/react-query';
-import { addMonths, eachDayOfInterval, format, startOfDay, subMonths } from 'date-fns';
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  format,
+  startOfDay,
+  startOfMonth,
+  subMonths,
+} from 'date-fns';
 import { queryKeys } from '../queryKeys';
 import { activityLogQueryKeys } from '@/features/activity_log/queryKeys';
 import type { CalendarRangeData } from '@/components/event-calendar/utils';
+import { getEinsatzWithDetailsById } from '../dal-einsatz';
+import { parseCalendarDateTimeString } from '@/features/einsatz/datetime';
+import type { CalendarEvent } from '@/components/event-calendar/types';
+import { composeRealtimeEventTitle } from '@/hooks/useSupabaseRealtime.utils';
+import { staticStatusList } from '@/components/event-calendar/utils';
+import type {
+  EinsatzCreate,
+  EinsatzDetailed,
+  EinsatzDetailedWithUiState,
+} from '@/features/einsatz/types';
+import type { einsatz_category as EinsatzCategory } from '@/generated/prisma';
+import {
+  createEinsatz,
+  updateEinsatz,
+  updateEinsatzTime,
+  updateEinsatzStatus,
+  deleteEinsatzById,
+  toggleUserAssignmentToEinsatz,
+  type UserAssignmentIntent,
+  deleteEinsaetzeByIds,
+  type EinsatzConflict,
+} from '../dal-einsatz';
+import { StatusValuePairs } from '@/components/event-calendar/constants';
+import { toast } from 'sonner';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 
 /** If isOverlap is true, returns the 3 monthKeys that overlap the 3-month window centered on the given date. Otherwise, returns the 1 monthKey for the given date. */
 export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
@@ -22,10 +55,55 @@ export function getMonthKeysForDate(date: Date, isOverlap = true): string[] {
 /** Object with start and optional end (Date or ISO string). Used for multi-day event invalidation. */
 type WithStartEnd = { start: Date | string; end?: Date | string };
 
+type CreateEinsatzMutationVariables = {
+  event: EinsatzCreate;
+  disableTimeConflicts?: boolean;
+  tempEventId?: string;
+  previousData?: CalendarCacheSnapshot;
+};
+
+type CreateEinsatzMutationContext = {
+  previousData?: CalendarCacheSnapshot;
+  tempEventId: string;
+};
+type UpdateEinsatzMutationVariables = {
+  event: EinsatzCreate | CalendarEvent;
+  disableTimeConflicts?: boolean;
+  previousDetailedData?: EinsatzDetailedWithUiState | null;
+  previousCalendarData?: CalendarCacheSnapshot;
+};
+type CategoryCacheItem = Pick<EinsatzCategory, 'id' | 'abbreviation'>;
+type OptimisticEventInput = {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  allDay?: boolean;
+  all_day?: boolean;
+  assignedUsers?: string[];
+  helpersNeeded?: number;
+  helpers_needed?: number;
+  status_id?: string;
+  categories?: string[];
+};
+
+function toMutationDate(value: Date | string): Date {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  const parsedWallClock = parseCalendarDateTimeString(value);
+  if (parsedWallClock) {
+    return parsedWallClock;
+  }
+
+  return new Date(value);
+}
+
 /** Returns one Date per calendar day from start through end (inclusive). If end is missing or before start, returns [startOfDay(start)]. */
 function getDatesSpanningEvent(event: WithStartEnd): Date[] {
-  const start = startOfDay(new Date(event.start));
-  const endRaw = event.end != null ? new Date(event.end) : start;
+  const start = startOfDay(toMutationDate(event.start));
+  const endRaw = event.end != null ? toMutationDate(event.end) : start;
   const end = startOfDay(endRaw);
   if (end < start) return [start];
   return eachDayOfInterval({ start, end });
@@ -37,7 +115,9 @@ function invalidateCalendarMonthsForDate(
   dates: Date[]
 ) {
   if (dates.length === 0) return;
-  const monthKeys = Array.from(new Set(dates.flatMap((date) => getMonthKeysForDate(date, false))));
+  const monthKeys = Array.from(
+    new Set(dates.flatMap((date) => getMonthKeysForDate(date, false)))
+  );
   monthKeys.forEach((monthKey) => {
     queryClient.invalidateQueries({
       queryKey: queryKeys.einsaetzeForCalendar(orgId, monthKey),
@@ -63,23 +143,251 @@ function invalidateAgendaForOrg(
   });
 }
 
-function invalidateCalendarSnapshot(
-  queryClient: ReturnType<typeof useQueryClient>,
-  snapshot: CalendarCacheSnapshot
-) {
-  snapshot.forEach(([key]) => {
-    queryClient.invalidateQueries({
-      queryKey: key,
-    });
-  });
-}
-
 function invalidateActivityLogs(
   queryClient: ReturnType<typeof useQueryClient>
 ) {
   queryClient.invalidateQueries({
     queryKey: activityLogQueryKeys.all,
   });
+}
+
+type CalendarQueryDescriptor =
+  | {
+    type: 'agenda';
+    queryKey: QueryKey;
+  }
+  | {
+    type: 'month';
+    monthKey: string;
+    queryKey: QueryKey;
+  };
+
+function sortCalendarEvents(events: CalendarEvent[]): CalendarEvent[] {
+  return [...events].sort(
+    (left, right) =>
+      left.start.getTime() - right.start.getTime() ||
+      left.title.localeCompare(right.title)
+  );
+}
+
+function getCalendarQueryDescriptor(
+  queryKey: QueryKey
+): CalendarQueryDescriptor | null {
+  if (queryKey.length !== 4) {
+    return null;
+  }
+
+  const [, scope, orgId, segment] = queryKey;
+  if (
+    scope !== 'calendar' ||
+    typeof orgId !== 'string' ||
+    typeof segment !== 'string'
+  ) {
+    return null;
+  }
+
+  if (segment === 'agenda') {
+    return { type: 'agenda', queryKey };
+  }
+
+  return {
+    type: 'month',
+    monthKey: segment,
+    queryKey,
+  };
+}
+
+function overlapsRange(
+  start: Date,
+  end: Date,
+  rangeStart: Date,
+  rangeEnd: Date
+): boolean {
+  return start < rangeEnd && end > rangeStart;
+}
+
+function isEventInCalendarQuery(
+  start: Date,
+  end: Date,
+  descriptor: CalendarQueryDescriptor
+): boolean {
+  if (descriptor.type === 'agenda') {
+    const rangeStart = startOfDay(new Date());
+    const rangeEnd = endOfMonth(addMonths(rangeStart, 24));
+    return overlapsRange(start, end, rangeStart, rangeEnd);
+  }
+
+  const focusDate = new Date(`${descriptor.monthKey}-01T00:00:00`);
+  const rangeStart = startOfMonth(subMonths(focusDate, 1));
+  const rangeEnd = endOfMonth(addMonths(focusDate, 1));
+  return overlapsRange(start, end, rangeStart, rangeEnd);
+}
+
+function getCalendarCategoryAbbreviations(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string | undefined,
+  categoryIds: string[] | undefined
+): string[] | undefined {
+  if (categoryIds === undefined) {
+    return undefined;
+  }
+
+  if (!orgId) {
+    return undefined;
+  }
+
+  const categories = queryClient.getQueryData<CategoryCacheItem[]>(
+    queryKeys.categories(orgId)
+  );
+
+  if (!categories) {
+    return undefined;
+  }
+
+  const abbreviationById = new Map(
+    categories.map((category) => [category.id, category.abbreviation?.trim() ?? ''])
+  );
+  const abbreviations: string[] = [];
+
+  for (const categoryId of categoryIds) {
+    const abbreviation = abbreviationById.get(categoryId);
+    if (abbreviation === undefined) {
+      return undefined;
+    }
+    if (abbreviation.length > 0) {
+      abbreviations.push(abbreviation);
+    }
+  }
+
+  return abbreviations;
+}
+
+function getOptimisticCalendarEvent(params: {
+  currentEvent: CalendarEvent | undefined;
+  nextEvent: OptimisticEventInput;
+  categoryAbbreviations: string[] | undefined;
+}): CalendarEvent {
+  const { currentEvent, nextEvent, categoryAbbreviations } = params;
+  return {
+    id: nextEvent.id,
+    title: composeRealtimeEventTitle({
+      existingTitle: currentEvent?.title ?? nextEvent.title,
+      nextBaseTitle: nextEvent.title,
+      categoryAbbreviations,
+    }),
+    start: nextEvent.start,
+    end: nextEvent.end,
+    allDay: nextEvent.all_day ?? nextEvent.allDay ?? currentEvent?.allDay,
+    status: getOptimisticStatus(nextEvent, currentEvent?.status),
+    assignedUsers: nextEvent.assignedUsers ?? currentEvent?.assignedUsers ?? [],
+    helpersNeeded: nextEvent.helpers_needed ?? nextEvent.helpersNeeded ?? currentEvent?.helpersNeeded,
+  };
+}
+
+function getOptimisticStatus(
+  nextEvent: OptimisticEventInput,
+  currentStatus: CalendarEvent['status']
+): CalendarEvent['status'] {
+  if (!nextEvent.status_id) {
+    return currentStatus;
+  }
+
+  return (
+    staticStatusList.find((status) => status.id === nextEvent.status_id) ??
+    currentStatus
+  );
+}
+
+function removeCalendarEventFromCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string | undefined,
+  eventId: string
+) {
+  if (!orgId) {
+    return;
+  }
+
+  const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
+    queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+  });
+
+  calendarQueries.forEach(([queryKey, currentData]) => {
+    if (!currentData) {
+      return;
+    }
+
+    let hasChanges = false;
+    const events = currentData.events.filter((event) => {
+      if (event.id !== eventId) {
+        return true;
+      }
+
+      hasChanges = true;
+      return false;
+    });
+
+    if (!hasChanges) {
+      return;
+    }
+
+    queryClient.setQueryData<CalendarRangeData>(queryKey, {
+      ...currentData,
+      events,
+    });
+  });
+}
+
+function updateCalendarRangeWithOptimisticEvent(
+  data: CalendarRangeData | undefined,
+  einsatzId: string,
+  nextEvent: OptimisticEventInput,
+  categoryAbbreviations: string[] | undefined,
+  queryKey: QueryKey
+): CalendarRangeData | undefined {
+  if (!data) {
+    return data;
+  }
+
+  const descriptor = getCalendarQueryDescriptor(queryKey);
+  if (!descriptor) {
+    return data;
+  }
+
+  const currentEvent = data.events.find((event) => event.id === einsatzId);
+  const isInRange = isEventInCalendarQuery(nextEvent.start, nextEvent.end, descriptor);
+
+  if (!isInRange) {
+    if (!currentEvent) {
+      return data;
+    }
+
+    return {
+      ...data,
+      events: data.events.filter((event) => event.id !== einsatzId),
+    };
+  }
+
+  const optimisticEvent = getOptimisticCalendarEvent({
+    currentEvent,
+    nextEvent,
+    categoryAbbreviations,
+  });
+
+  if (currentEvent) {
+    return {
+      ...data,
+      events: sortCalendarEvents(
+        data.events.map((event) =>
+          event.id === einsatzId ? optimisticEvent : event
+        )
+      ),
+    };
+  }
+
+  return {
+    ...data,
+    events: sortCalendarEvents([...data.events, optimisticEvent]),
+  };
 }
 
 async function cancelEinsatzQueries(
@@ -142,21 +450,187 @@ function invalidateEinsatzQueries(
   }
 }
 
-import {
-  createEinsatz,
-  updateEinsatz,
-  updateEinsatzTime,
-  updateEinsatzStatus,
-  deleteEinsatzById,
-  toggleUserAssignmentToEinsatz,
-  deleteEinsaetzeByIds,
-  type EinsatzConflict,
-} from '../dal-einsatz';
-import { StatusValuePairs } from '@/components/event-calendar/constants';
-import { EinsatzCreate } from '../types';
-import { CalendarEvent } from '@/components/event-calendar/types';
-import { toast } from 'sonner';
-import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+function lockDetailedEinsatzCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string | undefined,
+  einsatzId: string
+) {
+  queryClient.setQueryData<EinsatzDetailedWithUiState | null>(
+    queryKeys.detailedEinsatz(einsatzId),
+    (currentData) =>
+      currentData ? { ...currentData, isLocked: true } : currentData
+  );
+
+  if (!orgId) {
+    return;
+  }
+
+  const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
+    queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+  });
+
+  calendarQueries.forEach(([queryKey, currentData]) => {
+    if (!currentData) {
+      return;
+    }
+
+    let hasChanges = false;
+    const detailedEinsaetze = currentData.detailedEinsaetze.map((entry) => {
+      if (entry.id !== einsatzId) {
+        return entry;
+      }
+
+      hasChanges = true;
+      return {
+        ...entry,
+        isLocked: true,
+      };
+    });
+
+    if (!hasChanges) {
+      return;
+    }
+
+    queryClient.setQueryData<CalendarRangeData>(queryKey, {
+      ...currentData,
+      detailedEinsaetze,
+    });
+  });
+}
+
+function updateDetailedCalendarCaches(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string | undefined,
+  freshEinsatz: EinsatzDetailed
+) {
+  queryClient.setQueryData(queryKeys.detailedEinsatz(freshEinsatz.id), freshEinsatz);
+
+  if (!orgId) {
+    return;
+  }
+
+  const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
+    queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+  });
+
+  calendarQueries.forEach(([queryKey, currentData]) => {
+    if (!currentData) {
+      return;
+    }
+
+    let hasChanges = false;
+    const detailedEinsaetze = currentData.detailedEinsaetze.map((entry) => {
+      if (entry.id !== freshEinsatz.id) {
+        return entry;
+      }
+
+      hasChanges = true;
+      const updatedEntry: CalendarRangeData['detailedEinsaetze'][number] = {
+        ...freshEinsatz,
+        category_abbreviations: entry.category_abbreviations,
+      };
+      return updatedEntry;
+    });
+
+    if (!hasChanges) {
+      return;
+    }
+
+    queryClient.setQueryData<CalendarRangeData>(queryKey, {
+      ...currentData,
+      detailedEinsaetze,
+    });
+  });
+}
+
+function restoreDetailedEinsatzCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string | undefined,
+  einsatzId: string,
+  previousData: EinsatzDetailedWithUiState | null | undefined
+) {
+  if (previousData) {
+    queryClient.setQueryData<EinsatzDetailedWithUiState | null>(
+      queryKeys.detailedEinsatz(einsatzId),
+      previousData
+    );
+  } else {
+    queryClient.removeQueries({
+      queryKey: queryKeys.detailedEinsatz(einsatzId),
+    });
+  }
+
+  if (!orgId) {
+    return;
+  }
+
+  const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
+    queryKey: queryKeys.einsaetzeForCalendarPrefix(orgId),
+  });
+
+  calendarQueries.forEach(([queryKey, currentData]) => {
+    if (!currentData) {
+      return;
+    }
+
+    let hasChanges = false;
+    const detailedEinsaetze = currentData.detailedEinsaetze.map((entry) => {
+      if (entry.id !== einsatzId) {
+        return entry;
+      }
+
+      hasChanges = true;
+
+      if (previousData) {
+        return {
+          ...previousData,
+          category_abbreviations: entry.category_abbreviations,
+        };
+      }
+
+      const next = { ...entry };
+      delete next.isLocked;
+      return next;
+    });
+
+    if (!hasChanges) {
+      return;
+    }
+
+    queryClient.setQueryData<CalendarRangeData>(queryKey, {
+      ...currentData,
+      detailedEinsaetze,
+    });
+  });
+}
+
+async function refreshDetailedEinsatzCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string | undefined,
+  einsatzId: string
+) {
+  const freshEinsatz = await queryClient.fetchQuery({
+    queryKey: queryKeys.detailedEinsatz(einsatzId),
+    staleTime: 0,
+    queryFn: async () => {
+      const result = await getEinsatzWithDetailsById(einsatzId);
+      if (result instanceof Response) {
+        throw new Error(
+          `Einsatz konnte nicht geladen werden: ${result.statusText}`
+        );
+      }
+
+      if (!result) {
+        throw new Error(`Einsatz mit ID ${einsatzId} konnte nicht geladen werden.`);
+      }
+
+      return result;
+    },
+    retry: false,
+  });
+
+  updateDetailedCalendarCaches(queryClient, orgId, freshEinsatz);
+}
 
 /** Snapshot of calendar cache entries for optimistic rollback. */
 type CalendarCacheSnapshot = Array<[QueryKey, CalendarRangeData | undefined]>;
@@ -167,6 +641,17 @@ function rollbackCalendarCache(
 ) {
   snapshot.forEach(([key, data]) => {
     queryClient.setQueryData(key, data);
+  });
+}
+
+function invalidateCalendarSnapshot(
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshot: CalendarCacheSnapshot
+) {
+  snapshot.forEach(([key]) => {
+    queryClient.invalidateQueries({
+      queryKey: key,
+    });
   });
 }
 
@@ -200,80 +685,127 @@ export function useCreateEinsatz(
     mutationFn: async ({
       event,
       disableTimeConflicts = false,
-    }: {
-      event: EinsatzCreate;
-      disableTimeConflicts?: boolean;
-    }) => {
+    }: CreateEinsatzMutationVariables) => {
       return createEinsatz({ data: event, disableTimeConflicts });
     },
-    onMutate: async ({ event }) => {
+    onMutate: async ({
+      event,
+      tempEventId,
+      previousData,
+    }: CreateEinsatzMutationVariables): Promise<CreateEinsatzMutationContext> => {
       await cancelEinsatzQueries(queryClient, activeOrgId);
-      if (!activeOrgId) return {};
-      const dates = getDatesSpanningEvent({
-        start: event.start,
-        end: event.end != null ? event.end : undefined,
-      });
-      const monthKeys = Array.from(
-        new Set(dates.flatMap((d) => getMonthKeysForDate(d, false)))
-      );
-      const optimisticEvent: CalendarEvent = {
-        id: `temp-${Date.now()}`,
+      const optimisticTempEventId =
+        tempEventId ?? `temp-${crypto.randomUUID()}`;
+      if (!activeOrgId) {
+        return { tempEventId: optimisticTempEventId, previousData };
+      }
+      if (tempEventId && previousData) {
+        return { tempEventId: optimisticTempEventId, previousData };
+      }
+      const optimisticEvent: OptimisticEventInput = {
+        id: optimisticTempEventId,
         title: event.title,
-        start: event.start instanceof Date ? event.start : new Date(event.start),
-        end: event.end instanceof Date ? event.end : new Date(event.end),
+        start: toMutationDate(event.start),
+        end: toMutationDate(event.end),
         allDay: event.all_day ?? false,
         assignedUsers: event.assignedUsers ?? [],
         helpersNeeded: event.helpers_needed,
+        categories: event.categories,
       };
-      const previousData: CalendarCacheSnapshot = [];
-      for (const monthKey of monthKeys) {
-        const key = queryKeys.einsaetzeForCalendar(activeOrgId, monthKey);
-        const data = queryClient.getQueryData<CalendarRangeData>(key);
-        if (data) {
-          previousData.push([key, data]);
-          queryClient.setQueryData<CalendarRangeData>(key, {
-            ...data,
-            events: [...data.events, optimisticEvent],
-          });
+      const previousCalendarData: CalendarCacheSnapshot = [];
+      const categoryAbbreviations = getCalendarCategoryAbbreviations(
+        queryClient,
+        activeOrgId,
+        event.categories
+      );
+      const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
+        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
+      });
+
+      calendarQueries.forEach(([queryKey, currentData]) => {
+        const nextData = updateCalendarRangeWithOptimisticEvent(
+          currentData,
+          optimisticTempEventId,
+          optimisticEvent,
+          categoryAbbreviations,
+          queryKey
+        );
+
+        if (nextData !== currentData) {
+          previousCalendarData.push([queryKey, currentData]);
+          queryClient.setQueryData<CalendarRangeData>(queryKey, nextData);
         }
-      }
-      return { previousData };
+      });
+      return { previousData: previousCalendarData, tempEventId: optimisticTempEventId };
     },
     onError: (error, _vars, context) => {
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
+      } else if (context?.tempEventId) {
+        removeCalendarEventFromCache(queryClient, activeOrgId, context.tempEventId);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`${einsatzSingular} konnte nicht erstellt werden: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast.error(
+        `${einsatzSingular} konnte nicht erstellt werden: ${errorMessage}`
+      );
     },
-    onSuccess: async (data, vars) => {
+    onSuccess: async (data, vars, context) => {
       if (data.conflicts && data.conflicts.length > 0) {
         // Show confirmation dialog
         const dialogResult = await showDestructive(
           'Warnung: Zeitkonflikte erkannt',
           'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
-          formatConflictMessages(data.conflicts) +
-          '\n\nMöchten Sie trotzdem fortfahren?'
+          formatConflictMessages(data.conflicts),
+          {
+            confirmText: 'Trotzdem fortfahren',
+            cancelText: 'Abbrechen',
+          }
         );
 
         if (dialogResult === 'success') {
           // User confirmed, retry with conflicts disabled
-          mutation.mutate({ event: vars.event, disableTimeConflicts: true });
+          mutation.mutate({
+            event: vars.event,
+            disableTimeConflicts: true,
+            tempEventId: context?.tempEventId,
+            previousData: context?.previousData,
+          });
         } else {
+          if (context?.previousData) {
+            rollbackCalendarCache(queryClient, context.previousData);
+          } else if (context?.tempEventId) {
+            removeCalendarEventFromCache(queryClient, activeOrgId, context.tempEventId);
+          }
           // User cancelled, open the event dialog if callback provided
           if (onConflictCancel && data.conflicts.length > 0) {
             // Get the first conflicting einsatz ID
-            const conflictingEinsatzId = data.conflicts[0].conflictingEinsatz.id;
+            const conflictingEinsatzId =
+              data.conflicts[0].conflictingEinsatz.id;
             onConflictCancel(conflictingEinsatzId);
           }
         }
       } else if (data.einsatz) {
-        toast.success(`${einsatzSingular} '${vars.event.title}' wurde erstellt.`);
+        try {
+          await refreshDetailedEinsatzCache(
+            queryClient,
+            activeOrgId,
+            data.einsatz.id
+          );
+        } catch {
+          invalidateEinsatzQueries(queryClient, data.einsatz.id);
+        }
+        toast.success(
+          `${einsatzSingular} '${vars.event.title}' wurde erstellt.`
+        );
       }
     },
-    onSettled: (data, _error, vars) => {
+    onSettled: (data, _error, vars, context) => {
+      if (data?.conflicts && data.conflicts.length > 0 && !data.einsatz) {
+        return;
+      }
       const event = data?.einsatz ?? vars?.event;
-      invalidateEinsatzQueries(queryClient, data?.einsatz?.id);
+      invalidateEinsatzQueries(queryClient);
       if (data?.einsatz?.id) {
         invalidateActivityLogs(queryClient);
       }
@@ -287,6 +819,9 @@ export function useCreateEinsatz(
       } else if (activeOrgId) {
         invalidateAgendaForOrg(queryClient, activeOrgId);
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
+      }
+      if (data?.einsatz && context?.previousData) {
+        invalidateCalendarSnapshot(queryClient, context.previousData);
       }
     },
   });
@@ -310,10 +845,7 @@ export function useUpdateEinsatz(
     mutationFn: async ({
       event,
       disableTimeConflicts = false,
-    }: {
-      event: EinsatzCreate | CalendarEvent;
-      disableTimeConflicts?: boolean;
-    }) => {
+    }: UpdateEinsatzMutationVariables) => {
       if ('org_id' in event) {
         return updateEinsatz({ data: event, disableTimeConflicts });
       } else {
@@ -325,60 +857,81 @@ export function useUpdateEinsatz(
         });
       }
     },
-    onMutate: async ({ event }) => {
+    onMutate: async ({
+      event,
+      previousDetailedData,
+      previousCalendarData,
+    }: UpdateEinsatzMutationVariables) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, event.id);
-      if (!activeOrgId) return {};
+      if (!activeOrgId) return { didLock: false };
       const eventId = event.id;
-      if (!eventId) return {};
-      const start =
-        'start' in event && event.start
-          ? event.start instanceof Date
-            ? event.start
-            : new Date(event.start)
-          : null;
-      const previousData: CalendarCacheSnapshot = [];
-      const queries = queryClient.getQueriesData<CalendarRangeData>({
+      if (!eventId) return { didLock: false };
+      const rollbackDetailedData =
+        previousDetailedData !== undefined
+          ? previousDetailedData
+          : queryClient.getQueryData<EinsatzDetailedWithUiState | null>(
+          queryKeys.detailedEinsatz(eventId)
+        );
+      const currentMutationCalendarData: CalendarCacheSnapshot = [];
+      const categoryAbbreviations = getCalendarCategoryAbbreviations(
+        queryClient,
+        activeOrgId,
+        'categories' in event && Array.isArray(event.categories)
+          ? event.categories
+          : undefined
+      );
+      const optimisticEvent: OptimisticEventInput = {
+        ...event,
+        id: eventId,
+      };
+      const calendarQueries = queryClient.getQueriesData<CalendarRangeData>({
         queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
       });
-      for (const [key, data] of queries) {
-        if (!data) continue;
-        const idx = data.events.findIndex((e) => e.id === eventId);
-        if (idx === -1) continue;
-        previousData.push([key, data]);
-        const prev = data.events[idx];
-        const updated: CalendarEvent = {
-          ...prev,
-          ...(start && { start }),
-          ...('end' in event &&
-            event.end !== undefined && {
-            end: event.end instanceof Date ? event.end : new Date(event.end),
-          }),
-        };
-        if ('title' in event && event.title !== undefined) updated.title = event.title;
-        if ('all_day' in event && event.all_day !== undefined) updated.allDay = event.all_day;
-        if ('assignedUsers' in event && event.assignedUsers !== undefined)
-          updated.assignedUsers = event.assignedUsers;
-        if ('helpersNeeded' in event && event.helpersNeeded !== undefined)
-          updated.helpersNeeded = event.helpersNeeded;
-        const newEvents = [...data.events];
-        newEvents[idx] = updated;
-        queryClient.setQueryData<CalendarRangeData>(key, {
-          ...data,
-          events: newEvents,
-        });
-      }
-      return { previousData };
+
+      calendarQueries.forEach(([queryKey, currentData]) => {
+        const nextData = updateCalendarRangeWithOptimisticEvent(
+          currentData,
+          eventId,
+          optimisticEvent,
+          categoryAbbreviations,
+          queryKey
+        );
+
+        if (nextData !== currentData) {
+          if (!previousCalendarData) {
+            currentMutationCalendarData.push([queryKey, currentData]);
+          }
+          queryClient.setQueryData<CalendarRangeData>(queryKey, nextData);
+        }
+      });
+
+      lockDetailedEinsatzCache(queryClient, activeOrgId, eventId);
+      return {
+        didLock: true,
+        eventId,
+        previousDetailedData: rollbackDetailedData,
+        previousCalendarData: previousCalendarData ?? currentMutationCalendarData,
+      };
     },
     onError: (error, _vars, context) => {
-      if (context?.previousData) {
-        rollbackCalendarCache(queryClient, context.previousData);
+      if (context?.didLock && context.eventId) {
+        restoreDetailedEinsatzCache(
+          queryClient,
+          activeOrgId,
+          context.eventId,
+          context.previousDetailedData
+        );
+        if (context.previousCalendarData) {
+          rollbackCalendarCache(queryClient, context.previousCalendarData);
+        }
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       toast.error(
         `${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`
       );
     },
-    onSuccess: async (data, vars) => {
+    onSuccess: async (data, vars, context) => {
       const einsatz = 'einsatz' in data ? data.einsatz : data;
       const conflicts = 'conflicts' in data ? data.conflicts : [];
       const einsatzId = einsatz && 'id' in einsatz ? einsatz.id : undefined;
@@ -389,13 +942,33 @@ export function useUpdateEinsatz(
           'Warnung: Zeitkonflikte erkannt',
           'Folgende Personen haben bereits einen Einsatz in diesem Zeitraum:\n\n' +
           formatConflictMessages(conflicts) +
-          '\n\nMöchten Sie trotzdem fortfahren?'
+          '\n\nMöchten Sie trotzdem fortfahren?',
+          {
+            confirmText: 'Trotzdem fortfahren',
+            cancelText: 'Abbrechen',
+          }
         );
 
         if (dialogResult === 'success') {
           // User confirmed, retry with conflicts disabled
-          mutation.mutate({ event: vars.event, disableTimeConflicts: true });
+          mutation.mutate({
+            event: vars.event,
+            disableTimeConflicts: true,
+            previousDetailedData: context?.previousDetailedData,
+            previousCalendarData: context?.previousCalendarData,
+          });
         } else {
+          if (context?.didLock && context.eventId) {
+            restoreDetailedEinsatzCache(
+              queryClient,
+              activeOrgId,
+              context.eventId,
+              context.previousDetailedData
+            );
+            if (context.previousCalendarData) {
+              rollbackCalendarCache(queryClient, context.previousCalendarData);
+            }
+          }
           // User cancelled, open the event dialog if callback provided
           if (onConflictCancel && conflicts.length > 0) {
             // Get the first conflicting einsatz ID
@@ -404,24 +977,35 @@ export function useUpdateEinsatz(
           }
         }
       } else if (einsatz) {
-        const title = 'title' in vars.event ? vars.event.title : einsatzSingular;
+        if (einsatzId) {
+          try {
+            await refreshDetailedEinsatzCache(
+              queryClient,
+              activeOrgId,
+              einsatzId
+            );
+          } catch {
+          }
+          invalidateEinsatzQueries(queryClient, einsatzId);
+        }
+        const title =
+          'title' in vars.event ? vars.event.title : einsatzSingular;
         toast.success(`${einsatzSingular} '${title}' wurde aktualisiert.`);
-      }
-
-      if (einsatzId) {
-        invalidateEinsatzQueries(queryClient, einsatzId);
-        invalidateActivityLogs(queryClient);
+        if (einsatzId) {
+          invalidateActivityLogs(queryClient);
+        }
       }
     },
-    onSettled: (data, _error, vars, context) => {
-      const event =
-        data && 'einsatz' in data && data.einsatz
-          ? data.einsatz
-          : data && hasDefinedStart(data)
-            ? data
-            : vars?.event && 'start' in vars.event
-              ? vars.event
-              : null;
+    onSettled: (data, _error, vars) => {
+      if (
+        data &&
+        'conflicts' in data &&
+        data.conflicts &&
+        data.conflicts.length > 0 &&
+        !data.einsatz
+      ) {
+        return;
+      }
       const fallbackEinsatzId = vars?.event?.id;
       if (!data && fallbackEinsatzId) {
         invalidateEinsatzQueries(queryClient, fallbackEinsatzId);
@@ -429,37 +1013,20 @@ export function useUpdateEinsatz(
       if (activeOrgId) {
         invalidateAgendaForOrg(queryClient, activeOrgId);
       }
-      if (activeOrgId && context?.previousData?.length) {
-        invalidateCalendarSnapshot(queryClient, context.previousData);
-      } else if (activeOrgId) {
+      if (activeOrgId) {
         invalidateAllCalendarMonthsForOrg(queryClient, activeOrgId);
-      }
-      if (activeOrgId && event && hasDefinedStart(event)) {
-        const dates = getDatesSpanningEvent({
-          start: event.start,
-          end: 'end' in event && event.end != null ? event.end : undefined,
-        });
-        invalidateCalendarMonthsForDate(queryClient, activeOrgId, dates);
       }
     },
   });
 
   return {
     ...mutation,
-    mutate: (event: EinsatzCreate | CalendarEvent) => mutation.mutate({ event }),
+    mutate: (event: EinsatzCreate | CalendarEvent) =>
+      mutation.mutate({ event }),
     mutateAsync: (event: EinsatzCreate | CalendarEvent) =>
       mutation.mutateAsync({ event }),
   };
 }
-
-/** Minimal status shape for optimistic "bestätigt" display (verwalter_text/helper_text for colors). */
-const OPTIMISTIC_BESTAETIGT_STATUS = {
-  id: StatusValuePairs.vergeben,
-  verwalter_text: 'bestätigt',
-  helper_text: 'vergeben',
-  verwalter_color: 'green',
-  helper_color: 'red',
-} as const;
 
 export function useConfirmEinsatz(
   activeOrgId: string | undefined,
@@ -469,50 +1036,43 @@ export function useConfirmEinsatz(
 
   return useMutation({
     mutationFn: async (eventId: string) => {
-      return updateEinsatzStatus(
-        eventId,
-        StatusValuePairs.vergeben_bestaetigt
-      );
+      return updateEinsatzStatus(eventId, StatusValuePairs.vergeben_bestaetigt);
     },
     onMutate: async (eventId) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
-      if (!activeOrgId) return {};
-      const previousData: CalendarCacheSnapshot = [];
-      const queries = queryClient.getQueriesData<CalendarRangeData>({
-        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
-      });
-      for (const [key, data] of queries) {
-        if (!data) continue;
-        const idx = data.events.findIndex((e) => e.id === eventId);
-        if (idx === -1) continue;
-        previousData.push([key, data]);
-        const newEvents = [...data.events];
-        newEvents[idx] = {
-          ...newEvents[idx],
-          status: OPTIMISTIC_BESTAETIGT_STATUS,
-        };
-        queryClient.setQueryData<CalendarRangeData>(key, {
-          ...data,
-          events: newEvents,
-        });
-      }
-      return { previousData };
+      if (!activeOrgId) return { didLock: false };
+      const previousDetailedData = queryClient.getQueryData<EinsatzDetailedWithUiState | null>(
+        queryKeys.detailedEinsatz(eventId)
+      );
+      lockDetailedEinsatzCache(queryClient, activeOrgId, eventId);
+      return { didLock: true, eventId, previousDetailedData };
     },
     onError: (error, _eventId, context) => {
-      if (context?.previousData) {
-        rollbackCalendarCache(queryClient, context.previousData);
+      if (context?.didLock && context.eventId) {
+        restoreDetailedEinsatzCache(
+          queryClient,
+          activeOrgId,
+          context.eventId,
+          context.previousDetailedData
+        );
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       toast.error(
         `${einsatzSingular} konnte nicht bestätigt werden: ${errorMessage}`
       );
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      try {
+        await refreshDetailedEinsatzCache(queryClient, activeOrgId, data.id);
+      } catch {
+        invalidateEinsatzQueries(queryClient, data.id);
+      }
       toast.success(`${einsatzSingular} '${data.title}' wurde bestätigt.`);
     },
-    onSettled: (data, _error, eventId) => {
-      invalidateEinsatzQueries(queryClient, eventId);
-      if (eventId) {
+    onSettled: (data, _error, _eventId) => {
+      invalidateEinsatzQueries(queryClient);
+      if (_eventId) {
         invalidateActivityLogs(queryClient);
       }
       if (activeOrgId && data && hasDefinedStart(data)) {
@@ -538,52 +1098,58 @@ export function useToggleUserAssignment(
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (eventId: string) => {
-      return await toggleUserAssignmentToEinsatz(eventId);
+    mutationFn: async ({
+      eventId,
+      intent,
+    }: {
+      eventId: string;
+      intent: UserAssignmentIntent;
+    }) => {
+      return await toggleUserAssignmentToEinsatz(eventId, intent);
     },
-    onMutate: async (eventId) => {
+    onMutate: async ({ eventId }) => {
       await cancelEinsatzQueries(queryClient, activeOrgId, eventId);
-      if (!activeOrgId || !userId) return {};
-      const previousData: CalendarCacheSnapshot = [];
-      const queries = queryClient.getQueriesData<CalendarRangeData>({
-        queryKey: queryKeys.einsaetzeForCalendarPrefix(activeOrgId),
-      });
-      for (const [key, data] of queries) {
-        if (!data) continue;
-        const idx = data.events.findIndex((e) => e.id === eventId);
-        if (idx === -1) continue;
-        previousData.push([key, data]);
-        const prev = data.events[idx];
-        const isAssigned = prev.assignedUsers?.includes(userId) ?? false;
-        const newAssigned = isAssigned
-          ? (prev.assignedUsers ?? []).filter((id) => id !== userId)
-          : [...(prev.assignedUsers ?? []), userId];
-        const newEvents = [...data.events];
-        newEvents[idx] = { ...prev, assignedUsers: newAssigned };
-        queryClient.setQueryData<CalendarRangeData>(key, {
-          ...data,
-          events: newEvents,
-        });
-      }
-      return { previousData };
+      if (!activeOrgId || !userId) return { didLock: false };
+      const previousDetailedData = queryClient.getQueryData<EinsatzDetailedWithUiState | null>(
+        queryKeys.detailedEinsatz(eventId)
+      );
+      lockDetailedEinsatzCache(queryClient, activeOrgId, eventId);
+      return { didLock: true, eventId, previousDetailedData };
     },
-    onError: (error, _eventId, context) => {
-      if (context?.previousData) {
-        rollbackCalendarCache(queryClient, context.previousData);
-      }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`);
-    },
-    onSuccess: (data) => {
-      if (!Object.hasOwn(data, 'deleted'))
-        toast.success(
-          `Sie haben sich erfolgreich bei '${data.title}' eingetragen`
+    onError: (error, _vars, context) => {
+      if (context?.didLock && context.eventId) {
+        restoreDetailedEinsatzCache(
+          queryClient,
+          activeOrgId,
+          context.eventId,
+          context.previousDetailedData
         );
-      else
-        toast.success(`Sie haben sich erfolgreich von ${data.title} ausgetragen`);
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast.error(
+        `${einsatzSingular} konnte nicht aktualisiert werden: ${errorMessage}`
+      );
+    },
+    onSuccess: async (data, vars) => {
+      try {
+        await refreshDetailedEinsatzCache(queryClient, activeOrgId, data.id);
+      } catch {
+        invalidateEinsatzQueries(queryClient, data.id);
+      }
+      if (vars.intent === 'unassign') {
+        toast.success(
+          `Sie haben sich erfolgreich von ${data.title} ausgetragen`
+        );
+        return;
+      }
+
+      toast.success(
+        `Sie haben sich erfolgreich bei '${data.title}' eingetragen`
+      );
     },
     onSettled: (data) => {
-      invalidateEinsatzQueries(queryClient, data?.id);
+      invalidateEinsatzQueries(queryClient);
       if (data?.id) {
         invalidateActivityLogs(queryClient);
       }
@@ -638,8 +1204,11 @@ export function useDeleteEinsatz(
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast.error(
+        `${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`
+      );
     },
     onSuccess: (_data, vars) => {
       const title = vars.eventTitle || 'Unbenannt';
@@ -693,8 +1262,11 @@ export function useDeleteMultipleEinsaetze(
       if (context?.previousData) {
         rollbackCalendarCache(queryClient, context.previousData);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast.error(
+        `${einsatzSingular} konnte nicht gelöscht werden: ${errorMessage}`
+      );
     },
     onSuccess: (_data, vars) => {
       toast.success(
