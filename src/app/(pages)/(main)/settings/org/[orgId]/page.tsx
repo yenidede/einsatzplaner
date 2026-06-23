@@ -784,20 +784,6 @@ export default function OrganizationManagePage() {
           </Card>
         </section>
 
-        {/* Document Templates Section */}
-        <section
-          id="document-templates"
-          ref={(el) => {
-            sectionRefs.current['document-templates'] = el;
-          }}
-          aria-labelledby="document-templates-heading"
-        >
-          <h2 id="document-templates-heading" className="sr-only">
-            Dokumentvorlagen
-          </h2>
-          <DocumentTemplateManager organizationId={orgId} />
-        </section>
-
         {/* PDF-Export Section */}
         <section
           id="pdf-export"
@@ -829,6 +815,20 @@ export default function OrganizationManagePage() {
             </CardContent>
           </Card>
         </section>
+
+        {/* Document Templates Section */}
+        {/*         <section
+          id="document-templates"
+          ref={(el) => {
+            sectionRefs.current['document-templates'] = el;
+          }}
+          aria-labelledby="document-templates-heading"
+        >
+          <h2 id="document-templates-heading" className="sr-only">
+            Dokumentvorlagen
+          </h2>
+          <DocumentTemplateManager organizationId={orgId} />
+        </section> */}
         {selectedUserId && (
           <UserProfileDialog
             isOpen={isProfileDialogOpen}

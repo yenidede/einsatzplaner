@@ -98,16 +98,6 @@ export function DocumentTemplateEditorStyles() {
         box-sizing: border-box;
       }
 
-      .document-template-overflow-warning {
-        background: hsl(var(--destructive) / 0.08);
-        border: 1px solid hsl(var(--destructive) / 0.35);
-        border-radius: 0.375rem;
-        color: hsl(var(--destructive));
-        font-size: 0.75rem;
-        margin-top: 1rem;
-        padding: 0.5rem 0.75rem;
-      }
-
       .document-field-chip {
         display: inline-flex;
         align-items: center;

@@ -15,9 +15,11 @@ interface OrganizationPdfTemplateManagerProps {
 export function OrganizationPdfTemplateManager({
   organizationId,
 }: OrganizationPdfTemplateManagerProps) {
-  const { data: templates = [], isLoading, error } = useQuery<
-    PdfTemplateListItem[]
-  >({
+  const {
+    data: templates = [],
+    isLoading,
+    error,
+  } = useQuery<PdfTemplateListItem[]>({
     queryKey: pdfTemplateQueryKeys.byOrganization(organizationId),
     queryFn: async () => {
       try {

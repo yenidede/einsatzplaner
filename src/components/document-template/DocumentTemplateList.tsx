@@ -94,7 +94,7 @@ export function DocumentTemplateList({
             Es gibt noch keine Dokumentvorlagen für diese Organisation.
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4">
             {templates.map((template) => (
               <Card key={template.id}>
                 <CardHeader>
@@ -157,9 +157,8 @@ export function DocumentTemplateList({
                           Dokumentvorlage löschen?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Die Vorlage „{template.name}“ wird dauerhaft
-                          gelöscht. Diese Aktion kann nicht rückgängig gemacht
-                          werden.
+                          Die Vorlage „{template.name}“ wird dauerhaft gelöscht.
+                          Diese Aktion kann nicht rückgängig gemacht werden.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

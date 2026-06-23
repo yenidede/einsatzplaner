@@ -163,6 +163,66 @@ type PendingImageInsert = {
   targetArea: EditableArea;
   position: number | null;
 };
+type PageBodyEditorHandle = Editor | null;
+type PaginationTransactionType = 'enter' | 'paste' | 'content';
+type PageBodySelectionSnapshot = {
+  from: number;
+  to: number;
+  nodeIndex: number;
+};
+type PendingPaginationMeasurement = {
+  reason: 'document-change' | 'paste-continuation';
+  transactionType: PaginationTransactionType;
+  oldSelection: PageBodySelectionSnapshot;
+  newSelection: PageBodySelectionSnapshot;
+  maxSteps: number;
+  editRevision: number;
+};
+type PageBodyChange = PendingPaginationMeasurement & {
+  pageIndex: number;
+  document: DocumentTemplateRichTextNode;
+  docChanged: boolean;
+};
+type PageOverflowMeasurement = PendingPaginationMeasurement & {
+  pageIndex: number;
+  overflowDetected: boolean;
+  overflowNodeIndex: number;
+  scrollHeight: number;
+  clientHeight: number;
+  bodyAreaHeightPx: number;
+  measuredAt: number;
+};
+type PageFocusRequest = {
+  pageIndex: number;
+  revision: number;
+  reason: 'pagination' | 'explicit-user-action';
+  editRevision?: number;
+  position: 'start' | 'end';
+};
+type PageDocumentSyncRequest = {
+  pageIndex: number;
+  revision: number;
+  reason: 'pagination';
+  editRevision?: number;
+};
+type PaginationContinuationRequest = {
+  pageIndex: number;
+  revision: number;
+  measurement: PendingPaginationMeasurement;
+};
+type PaginationDebugPayload = {
+  reason: PendingPaginationMeasurement['reason'];
+  transactionType: PaginationTransactionType;
+  pageIndex: number;
+  beforePageCount: number;
+  afterPageCount: number;
+  overflowDetected: boolean;
+  overflowNodeIndex: number;
+  movedNodeCount: number;
+  cursorWasMoved: boolean;
+  oldSelection: PageBodySelectionSnapshot;
+  newSelection: PageBodySelectionSnapshot;
+};
 const TEXT_COLOR_OPTIONS = [
   { label: 'Schwarz', value: '#111827' },
   { label: 'Grau', value: '#6b7280' },
@@ -187,6 +247,12 @@ const SIDEBAR_STORAGE_KEYS = {
   leftCollapsed: 'documentTemplateEditor.leftSidebarCollapsed',
   rightCollapsed: 'documentTemplateEditor.rightSidebarCollapsed',
 };
+const ENTER_PAGINATION_STEP_LIMIT = 1;
+const PASTE_PAGINATION_STEP_LIMIT = 10;
+const DISABLE_PAGINATION_MUTATION_FOR_CURSOR_DEBUG =
+  process.env.NODE_ENV === 'development' && true;
+const DISABLE_PARENT_MERGE_FOR_CURSOR_DEBUG =
+  process.env.NODE_ENV === 'development' && false;
 
 function clampSidebarWidth(side: SidebarResizeSide, value: number): number {
   const limits = SIDEBAR_WIDTH[side];
@@ -222,6 +288,139 @@ function createEmptyRichTextDocument(): DocumentTemplateRichTextNode {
       },
     ],
   };
+}
+
+function createPageBreakNode(): DocumentTemplateRichTextNode {
+  return { type: 'pageBreak' };
+}
+
+function createRichTextDocumentFromNodes(
+  nodes: DocumentTemplateRichTextNode[]
+): DocumentTemplateRichTextNode {
+  return {
+    type: 'doc',
+    content: nodes.length > 0 ? nodes : createEmptyRichTextDocument().content,
+  };
+}
+
+function isEmptyParagraphNode(node: DocumentTemplateRichTextNode): boolean {
+  return (
+    node.type === 'paragraph' &&
+    (!node.content || node.content.length === 0) &&
+    !node.text
+  );
+}
+
+function createSelectionSnapshot(editor: Editor): PageBodySelectionSnapshot {
+  const { selection } = editor.state;
+  return {
+    from: selection.from,
+    to: selection.to,
+    nodeIndex: selection.$from.index(0),
+  };
+}
+
+function emptySelectionSnapshot(): PageBodySelectionSnapshot {
+  return {
+    from: 0,
+    to: 0,
+    nodeIndex: 0,
+  };
+}
+
+function documentPageNodes(
+  document: DocumentTemplateRichTextNode | undefined
+): DocumentTemplateRichTextNode[][] {
+  const pages: DocumentTemplateRichTextNode[][] = [[]];
+
+  for (const node of document?.content ?? []) {
+    if (node.type === 'pageBreak') {
+      pages.push([]);
+      continue;
+    }
+
+    pages[pages.length - 1]?.push(node);
+  }
+
+  return pages.length > 0 ? pages : [[]];
+}
+
+function splitDocumentIntoPages(
+  document: DocumentTemplateRichTextNode | undefined
+): DocumentTemplateRichTextNode[] {
+  return documentPageNodes(document).map(createRichTextDocumentFromNodes);
+}
+
+function mergePageDocuments(
+  pages: DocumentTemplateRichTextNode[]
+): DocumentTemplateRichTextNode {
+  const content: DocumentTemplateRichTextNode[] = [];
+
+  pages.forEach((page, index) => {
+    if (index > 0) {
+      content.push(createPageBreakNode());
+    }
+
+    content.push(
+      ...(page.content ?? createEmptyRichTextDocument().content ?? [])
+    );
+  });
+
+  return createRichTextDocumentFromNodes(content);
+}
+
+function logPaginationMutation(payload: PaginationDebugPayload) {
+  if (process.env.NODE_ENV !== 'development') return;
+
+  console.debug('[pagination]', payload);
+}
+
+function logEditorSetContent(args: {
+  pageIndex: number;
+  reason: PageDocumentSyncRequest['reason'];
+  selectionBefore: unknown;
+}) {
+  if (process.env.NODE_ENV !== 'development') return;
+
+  console.debug('[editor:setContent]', args);
+}
+
+function logEditorFocus(args: {
+  pageIndex: number;
+  reason: PageFocusRequest['reason'];
+  command: string;
+  selectionBefore: unknown;
+  selectionAfter: unknown;
+}) {
+  if (process.env.NODE_ENV !== 'development') return;
+
+  console.debug('[editor:focus]', args);
+}
+
+function logCursorDebug(args: {
+  action: string;
+  reason: string;
+  pageIndex: number;
+  revision?: number;
+  currentRevision?: number;
+  isActivePage?: boolean;
+  hasOverflow?: boolean;
+  overflowNodeIndex?: number;
+  scrollHeight?: number;
+  clientHeight?: number;
+  bodyAreaHeightPx?: number;
+  measuredAt?: number;
+  transactionType?: PaginationTransactionType;
+  transactionDocChanged?: boolean;
+  selectionBefore?: unknown;
+  selectionAfter?: unknown;
+}) {
+  if (process.env.NODE_ENV !== 'development') return;
+
+  console.debug('[cursor-debug]', {
+    ...args,
+    stack: new Error().stack,
+  });
 }
 
 function richTextFromBlockText(
@@ -450,20 +649,468 @@ function createEditorBlockId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
-function countNodesByType(
-  node: JSONContent | DocumentTemplateRichTextNode | undefined,
-  type: string
-): number {
-  if (!node) return 0;
+function PageBodyEditor({
+  pageIndex,
+  document,
+  bodyAreaHeightPx,
+  isActivePage,
+  focusRequest,
+  documentSyncRequest,
+  paginationContinuation,
+  registerEditor,
+  onChange,
+  onFocus,
+  onDocumentSyncApplied,
+  onFocusRequestApplied,
+  onOverflowMeasured,
+}: {
+  pageIndex: number;
+  document: DocumentTemplateRichTextNode;
+  bodyAreaHeightPx: number;
+  isActivePage: boolean;
+  focusRequest: PageFocusRequest | null;
+  documentSyncRequest: PageDocumentSyncRequest | null;
+  paginationContinuation: PaginationContinuationRequest | null;
+  registerEditor: (pageIndex: number, editor: PageBodyEditorHandle) => void;
+  onChange: (change: PageBodyChange) => void;
+  onFocus: () => void;
+  onDocumentSyncApplied: (pageIndex: number, revision: number) => void;
+  onFocusRequestApplied: (revision: number) => void;
+  onOverflowMeasured: (measurement: PageOverflowMeasurement) => void;
+}) {
+  const lastAppliedDocumentRef = useRef(JSON.stringify(document));
+  const measureFrameRef = useRef<number | null>(null);
+  const pageEditorRef = useRef<Editor | null>(null);
+  const pendingPaginationRef = useRef<PendingPaginationMeasurement | null>(
+    null
+  );
+  const nextTransactionTypeRef = useRef<PaginationTransactionType>('content');
+  const previousSelectionRef = useRef<PageBodySelectionSnapshot>(
+    emptySelectionSnapshot()
+  );
+  const editRevisionRef = useRef(0);
+  const appliedDocumentSyncRevisionRef = useRef(0);
+  const appliedFocusRevisionRef = useRef(0);
+  const appliedContinuationRevisionRef = useRef(0);
+  const initialPageIndexRef = useRef(pageIndex);
+  const initialIsActivePageRef = useRef(isActivePage);
 
-  const ownCount = node.type === type ? 1 : 0;
-  const childCount =
-    node.content?.reduce(
-      (sum, child) => sum + countNodesByType(child, type),
-      0
-    ) ?? 0;
+  useEffect(() => {
+    const mountedPageIndex = initialPageIndexRef.current;
+    const mountedIsActivePage = initialIsActivePageRef.current;
 
-  return ownCount + childCount;
+    logCursorDebug({
+      action: 'PageBodyEditor mounted',
+      reason: 'mount',
+      pageIndex: mountedPageIndex,
+      isActivePage: mountedIsActivePage,
+    });
+
+    return () => {
+      logCursorDebug({
+        action: 'PageBodyEditor unmounted',
+        reason: 'unmount',
+        pageIndex: mountedPageIndex,
+        isActivePage: mountedIsActivePage,
+      });
+    };
+  }, []);
+
+  const measureOverflow = useCallback(() => {
+    const pendingPagination = pendingPaginationRef.current;
+    pendingPaginationRef.current = null;
+    if (!pendingPagination) return;
+
+    if (pendingPagination.editRevision !== editRevisionRef.current) {
+      logCursorDebug({
+        action: 'measureOverflow:stale',
+        reason: pendingPagination.reason,
+        pageIndex,
+        revision: pendingPagination.editRevision,
+        currentRevision: editRevisionRef.current,
+        isActivePage,
+      });
+      return;
+    }
+
+    const editorDom = pageEditorRef.current?.view.dom;
+    if (!editorDom) return;
+
+    const availableHeight = Math.max(0, bodyAreaHeightPx - 20);
+    const children = Array.from(editorDom.children);
+    const overflowIndex = children.findIndex(
+      (child) =>
+        child instanceof HTMLElement &&
+        child.offsetTop + child.scrollHeight > availableHeight + 8
+    );
+    const overflowDetected = overflowIndex >= 0;
+    const scrollHeight = editorDom.scrollHeight;
+    const clientHeight = editorDom.clientHeight;
+    const measuredAt = Date.now();
+
+    logCursorDebug({
+      action: 'overflow-result',
+      reason: pendingPagination.reason,
+      transactionType: pendingPagination.transactionType,
+      pageIndex,
+      revision: pendingPagination.editRevision,
+      currentRevision: editRevisionRef.current,
+      isActivePage,
+      hasOverflow: overflowDetected,
+      overflowNodeIndex: overflowIndex,
+      scrollHeight,
+      clientHeight,
+      bodyAreaHeightPx,
+      measuredAt,
+      selectionBefore: pendingPagination.oldSelection,
+      selectionAfter: pendingPagination.newSelection,
+    });
+
+    onOverflowMeasured({
+      ...pendingPagination,
+      pageIndex,
+      overflowDetected,
+      overflowNodeIndex: overflowIndex,
+      scrollHeight,
+      clientHeight,
+      bodyAreaHeightPx,
+      measuredAt,
+    });
+  }, [bodyAreaHeightPx, isActivePage, onOverflowMeasured, pageIndex]);
+
+  const scheduleMeasureOverflow = useCallback(() => {
+    if (measureFrameRef.current !== null) {
+      window.cancelAnimationFrame(measureFrameRef.current);
+    }
+
+    measureFrameRef.current = window.requestAnimationFrame(() => {
+      measureFrameRef.current = null;
+      measureOverflow();
+    });
+  }, [measureOverflow]);
+
+  const pageEditor = useEditor({
+    immediatelyRender: false,
+    extensions: createEditorExtensions(),
+    content: document,
+    editorProps: {
+      attributes: {
+        class:
+          'document-template-prose document-template-body-editor outline-none focus:outline-none',
+      },
+      handleDOMEvents: {
+        focus: () => {
+          onFocus();
+          return false;
+        },
+        keydown: (_, event) => {
+          nextTransactionTypeRef.current =
+            event.key === 'Enter' ? 'enter' : 'content';
+          return false;
+        },
+        paste: () => {
+          nextTransactionTypeRef.current = 'paste';
+          return false;
+        },
+        input: () => {
+          return false;
+        },
+      },
+    },
+    onUpdate: ({ editor, transaction }) => {
+      if (!transaction.docChanged) {
+        return;
+      }
+
+      editRevisionRef.current += 1;
+      const editRevision = editRevisionRef.current;
+      const transactionType = nextTransactionTypeRef.current;
+      nextTransactionTypeRef.current = 'content';
+      const oldSelection = previousSelectionRef.current;
+      const newSelection = createSelectionSnapshot(editor);
+      const nextDocument = toRichTextNode(editor.getJSON());
+      const pendingPagination: PendingPaginationMeasurement = {
+        reason: 'document-change',
+        transactionType,
+        oldSelection,
+        newSelection,
+        maxSteps:
+          transactionType === 'paste'
+            ? PASTE_PAGINATION_STEP_LIMIT
+            : ENTER_PAGINATION_STEP_LIMIT,
+        editRevision,
+      };
+
+      lastAppliedDocumentRef.current = JSON.stringify(nextDocument);
+      pendingPaginationRef.current = pendingPagination;
+      logCursorDebug({
+        action: 'onUpdate',
+        reason: 'document-change',
+        pageIndex,
+        revision: editRevision,
+        currentRevision: editRevisionRef.current,
+        isActivePage,
+        transactionDocChanged: transaction.docChanged,
+        selectionBefore: oldSelection,
+        selectionAfter: newSelection,
+      });
+      onChange({
+        ...pendingPagination,
+        pageIndex,
+        document: nextDocument,
+        docChanged: transaction.docChanged,
+      });
+      scheduleMeasureOverflow();
+    },
+    onSelectionUpdate: ({ editor }) => {
+      previousSelectionRef.current = createSelectionSnapshot(editor);
+      logCursorDebug({
+        action: 'selectionUpdate',
+        reason: 'tiptap-selection',
+        pageIndex,
+        currentRevision: editRevisionRef.current,
+        isActivePage,
+        selectionAfter: editor.state.selection.toJSON(),
+      });
+      onFocus();
+    },
+  });
+
+  useEffect(() => {
+    pageEditorRef.current = pageEditor;
+  }, [pageEditor]);
+
+  useEffect(() => {
+    registerEditor(pageIndex, pageEditor);
+    return () => registerEditor(pageIndex, null);
+  }, [pageEditor, pageIndex, registerEditor]);
+
+  useEffect(() => {
+    logCursorDebug({
+      action: 'PageBodyEditor document prop changed',
+      reason: 'document-prop',
+      pageIndex,
+      currentRevision: editRevisionRef.current,
+      isActivePage,
+      selectionBefore: pageEditor?.state.selection.toJSON(),
+    });
+  }, [document, isActivePage, pageEditor, pageIndex]);
+
+  useEffect(() => {
+    if (documentSyncRequest) {
+      logCursorDebug({
+        action: 'documentSyncRequest',
+        reason: documentSyncRequest.reason,
+        pageIndex,
+        revision: documentSyncRequest.editRevision,
+        currentRevision: editRevisionRef.current,
+        isActivePage,
+        selectionBefore: pageEditor?.state.selection.toJSON(),
+      });
+    }
+  }, [documentSyncRequest, isActivePage, pageEditor, pageIndex]);
+
+  useEffect(() => {
+    if (focusRequest) {
+      logCursorDebug({
+        action: 'focusRequest',
+        reason: focusRequest.reason,
+        pageIndex,
+        revision: focusRequest.editRevision,
+        currentRevision: editRevisionRef.current,
+        isActivePage,
+        selectionBefore: pageEditor?.state.selection.toJSON(),
+      });
+    }
+  }, [focusRequest, isActivePage, pageEditor, pageIndex]);
+
+  useEffect(() => {
+    if (paginationContinuation) {
+      logCursorDebug({
+        action: 'paginationContinuation',
+        reason: paginationContinuation.measurement.reason,
+        pageIndex,
+        revision: paginationContinuation.measurement.editRevision,
+        currentRevision: editRevisionRef.current,
+        isActivePage,
+        selectionBefore: pageEditor?.state.selection.toJSON(),
+      });
+    }
+  }, [isActivePage, pageEditor, pageIndex, paginationContinuation]);
+
+  useEffect(() => {
+    if (
+      !pageEditor ||
+      !documentSyncRequest ||
+      documentSyncRequest.pageIndex !== pageIndex ||
+      documentSyncRequest.revision <= appliedDocumentSyncRevisionRef.current
+    ) {
+      return;
+    }
+
+    if (
+      isActivePage &&
+      documentSyncRequest.editRevision !== undefined &&
+      documentSyncRequest.editRevision !== editRevisionRef.current
+    ) {
+      logCursorDebug({
+        action: 'setContent:blocked-stale-active-page',
+        reason: documentSyncRequest.reason,
+        pageIndex,
+        revision: documentSyncRequest.editRevision,
+        currentRevision: editRevisionRef.current,
+        isActivePage,
+        selectionBefore: pageEditor.state.selection.toJSON(),
+      });
+      appliedDocumentSyncRevisionRef.current = documentSyncRequest.revision;
+      onDocumentSyncApplied(pageIndex, documentSyncRequest.revision);
+      return;
+    }
+
+    appliedDocumentSyncRevisionRef.current = documentSyncRequest.revision;
+    const nextDocument = JSON.stringify(document);
+    const currentEditorDocument = JSON.stringify(
+      toRichTextNode(pageEditor.getJSON())
+    );
+    if (currentEditorDocument === nextDocument) {
+      lastAppliedDocumentRef.current = nextDocument;
+      onDocumentSyncApplied(pageIndex, documentSyncRequest.revision);
+      return;
+    }
+
+    lastAppliedDocumentRef.current = nextDocument;
+    logEditorSetContent({
+      pageIndex,
+      reason: documentSyncRequest.reason,
+      selectionBefore: pageEditor.state.selection.toJSON(),
+    });
+    logCursorDebug({
+      action: 'setContent',
+      reason: documentSyncRequest.reason,
+      pageIndex,
+      revision: documentSyncRequest.editRevision,
+      currentRevision: editRevisionRef.current,
+      isActivePage,
+      selectionBefore: pageEditor.state.selection.toJSON(),
+    });
+    pageEditor.commands.setContent(document, { emitUpdate: false });
+    onDocumentSyncApplied(pageIndex, documentSyncRequest.revision);
+  }, [
+    document,
+    documentSyncRequest,
+    isActivePage,
+    onDocumentSyncApplied,
+    pageEditor,
+    pageIndex,
+  ]);
+
+  useEffect(() => {
+    if (!paginationContinuation) return;
+    if (DISABLE_PAGINATION_MUTATION_FOR_CURSOR_DEBUG) {
+      logCursorDebug({
+        action: 'paginationContinuation:mutation-disabled',
+        reason: paginationContinuation.measurement.reason,
+        pageIndex,
+        revision: paginationContinuation.measurement.editRevision,
+        currentRevision: editRevisionRef.current,
+        isActivePage,
+      });
+      return;
+    }
+    if (
+      paginationContinuation.revision <= appliedContinuationRevisionRef.current
+    ) {
+      return;
+    }
+
+    appliedContinuationRevisionRef.current = paginationContinuation.revision;
+    pendingPaginationRef.current = {
+      ...paginationContinuation.measurement,
+      editRevision: editRevisionRef.current,
+    };
+    scheduleMeasureOverflow();
+  }, [
+    isActivePage,
+    pageIndex,
+    paginationContinuation,
+    scheduleMeasureOverflow,
+  ]);
+
+  useEffect(() => {
+    if (
+      !pageEditor ||
+      !focusRequest ||
+      focusRequest.pageIndex !== pageIndex ||
+      focusRequest.revision <= appliedFocusRevisionRef.current
+    ) {
+      return;
+    }
+
+    if (
+      focusRequest.reason !== 'pagination' &&
+      focusRequest.reason !== 'explicit-user-action'
+    ) {
+      appliedFocusRevisionRef.current = focusRequest.revision;
+      return;
+    }
+
+    if (
+      focusRequest.editRevision !== undefined &&
+      focusRequest.editRevision !== editRevisionRef.current
+    ) {
+      logCursorDebug({
+        action: 'focus:blocked-stale',
+        reason: focusRequest.reason,
+        pageIndex,
+        revision: focusRequest.editRevision,
+        currentRevision: editRevisionRef.current,
+        isActivePage,
+        selectionBefore: pageEditor.state.selection.toJSON(),
+      });
+      appliedFocusRevisionRef.current = focusRequest.revision;
+      onFocusRequestApplied(focusRequest.revision);
+      return;
+    }
+
+    appliedFocusRevisionRef.current = focusRequest.revision;
+    const selectionBefore = pageEditor.state.selection.toJSON();
+    pageEditor.chain().focus(focusRequest.position).run();
+    logEditorFocus({
+      pageIndex,
+      reason: 'pagination',
+      command: `focus(${focusRequest.position})`,
+      selectionBefore,
+      selectionAfter: pageEditor.state.selection.toJSON(),
+    });
+    logCursorDebug({
+      action: 'focus',
+      reason: focusRequest.reason,
+      pageIndex,
+      revision: focusRequest.editRevision,
+      currentRevision: editRevisionRef.current,
+      isActivePage,
+      selectionBefore,
+      selectionAfter: pageEditor.state.selection.toJSON(),
+    });
+    onFocusRequestApplied(focusRequest.revision);
+  }, [
+    focusRequest,
+    isActivePage,
+    onFocusRequestApplied,
+    pageEditor,
+    pageIndex,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (measureFrameRef.current !== null) {
+        window.cancelAnimationFrame(measureFrameRef.current);
+      }
+    },
+    []
+  );
+
+  return <EditorContent editor={pageEditor} />;
 }
 
 export function DocumentTemplateEditor({
@@ -522,12 +1169,18 @@ export function DocumentTemplateEditor({
     useState(false);
   const [imagePropertiesDialogOpen, setImagePropertiesDialogOpen] =
     useState(false);
-  const [measuredBodyHeight, setMeasuredBodyHeight] = useState(0);
+  const [activeBodyPageIndex, setActiveBodyPageIndex] = useState(0);
+  const [bodyFocusRequest, setBodyFocusRequest] =
+    useState<PageFocusRequest | null>(null);
+  const [bodyDocumentSyncRequests, setBodyDocumentSyncRequests] = useState<
+    Record<number, PageDocumentSyncRequest>
+  >({});
+  const [paginationContinuationRequest, setPaginationContinuationRequest] =
+    useState<PaginationContinuationRequest | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const bodyMeasureRef = useRef<HTMLDivElement | null>(null);
+  const bodyEditorsRef = useRef<Map<number, PageBodyEditorHandle>>(new Map());
   const sidebarResizeRef = useRef<SidebarResizeState | null>(null);
   const overflowWarningShownRef = useRef(false);
-  const bodyUserInteractionRef = useRef(false);
 
   const previewFields = useMemo(() => {
     const resolvedFields = createSampleResolvedFields(fields);
@@ -573,44 +1226,35 @@ export function DocumentTemplateEditor({
     },
     []
   );
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: createEditorExtensions(),
-    content:
-      content.document ?? createDefaultDocumentTemplateContent().document,
-    editorProps: {
-      attributes: {
-        class:
-          'document-template-prose document-template-body-editor outline-none focus:outline-none',
-      },
-      handleDOMEvents: {
-        focus: () => {
-          setActiveArea('body');
-          return false;
-        },
-        keydown: () => {
-          bodyUserInteractionRef.current = true;
-          return false;
-        },
-        input: () => {
-          bodyUserInteractionRef.current = true;
-          return false;
-        },
-      },
+  const registerBodyEditor = useCallback(
+    (pageIndex: number, editor: PageBodyEditorHandle) => {
+      if (editor) {
+        bodyEditorsRef.current.set(pageIndex, editor);
+        return;
+      }
+
+      bodyEditorsRef.current.delete(pageIndex);
     },
-    onUpdate: ({ editor }) => {
-      markDirty();
-      setContent((current) => ({
-        ...current,
-        document: toRichTextNode(editor.getJSON()),
-      }));
+    []
+  );
+  const clearBodyFocusRequest = useCallback((revision: number) => {
+    setBodyFocusRequest((current) =>
+      current?.revision === revision ? null : current
+    );
+  }, []);
+  const clearBodyDocumentSyncRequest = useCallback(
+    (pageIndex: number, revision: number) => {
+      setBodyDocumentSyncRequests((current) => {
+        const request = current[pageIndex];
+        if (!request || request.revision !== revision) return current;
+
+        const next = { ...current };
+        delete next[pageIndex];
+        return next;
+      });
     },
-    onSelectionUpdate: ({ editor }) => {
-      setActiveArea('body');
-      setSelectionRevision((current) => current + 1);
-      updateSelectedDynamicField(editor, 'body');
-    },
-  });
+    []
+  );
   const headerEditor = useEditor({
     immediatelyRender: false,
     extensions: createEditorExtensions(),
@@ -701,7 +1345,7 @@ export function DocumentTemplateEditor({
       ? headerEditor
       : activeArea === 'footer'
         ? footerEditor
-        : editor;
+        : (bodyEditorsRef.current.get(activeBodyPageIndex) ?? null);
 
   useEffect(() => {
     setLeftSidebarWidth(
@@ -845,7 +1489,7 @@ export function DocumentTemplateEditor({
     return {
       ...content,
       meta: { ...content.meta, description },
-      document: editor ? toRichTextNode(editor.getJSON()) : content.document,
+      document: content.document,
       page: {
         ...content.page,
         header: {
@@ -866,6 +1510,289 @@ export function DocumentTemplateEditor({
         },
       },
     };
+  }
+
+  function handleBodyPageChange(change: PageBodyChange) {
+    if (!change.docChanged) return;
+
+    markDirty();
+    logCursorDebug({
+      action: 'handleBodyPageChange',
+      reason: change.reason,
+      pageIndex: change.pageIndex,
+      revision: change.editRevision,
+      transactionDocChanged: change.docChanged,
+      selectionBefore: change.oldSelection,
+      selectionAfter: change.newSelection,
+    });
+
+    if (DISABLE_PARENT_MERGE_FOR_CURSOR_DEBUG) {
+      logCursorDebug({
+        action: 'handleBodyPageChange:parent-merge-disabled',
+        reason: change.reason,
+        pageIndex: change.pageIndex,
+        revision: change.editRevision,
+        transactionDocChanged: change.docChanged,
+        selectionBefore: change.oldSelection,
+        selectionAfter: change.newSelection,
+      });
+      return;
+    }
+
+    setContent((current) => {
+      const pages = splitDocumentIntoPages(current.document);
+      while (pages.length <= change.pageIndex) {
+        pages.push(createEmptyRichTextDocument());
+      }
+
+      pages[change.pageIndex] = change.document;
+      logCursorDebug({
+        action: 'mergePageDocuments',
+        reason: change.reason,
+        pageIndex: change.pageIndex,
+        revision: change.editRevision,
+        transactionDocChanged: change.docChanged,
+        selectionBefore: change.oldSelection,
+        selectionAfter: change.newSelection,
+      });
+
+      return {
+        ...current,
+        document: mergePageDocuments(pages),
+      };
+    });
+  }
+
+  function handleBodyPageFocus(pageIndex: number, pageEditor: Editor | null) {
+    setActiveArea('body');
+    logCursorDebug({
+      action: 'setActiveBodyPageIndex',
+      reason: 'body-focus',
+      pageIndex,
+      isActivePage: activeBodyPageIndex === pageIndex,
+      selectionBefore: pageEditor?.state.selection.toJSON(),
+    });
+    setActiveBodyPageIndex(pageIndex);
+    setSelectionRevision((current) => current + 1);
+    updateSelectedDynamicField(pageEditor, 'body');
+  }
+
+  function handleBodyOverflowMeasurement(measurement: PageOverflowMeasurement) {
+    logCursorDebug({
+      action: 'handleBodyOverflow',
+      reason: measurement.reason,
+      transactionType: measurement.transactionType,
+      pageIndex: measurement.pageIndex,
+      revision: measurement.editRevision,
+      hasOverflow: measurement.overflowDetected,
+      overflowNodeIndex: measurement.overflowNodeIndex,
+      scrollHeight: measurement.scrollHeight,
+      clientHeight: measurement.clientHeight,
+      bodyAreaHeightPx: measurement.bodyAreaHeightPx,
+      measuredAt: measurement.measuredAt,
+      selectionBefore: measurement.oldSelection,
+      selectionAfter: measurement.newSelection,
+    });
+    if (!measurement.overflowDetected) {
+      logCursorDebug({
+        action: 'handleBodyOverflow:no-overflow',
+        reason: measurement.reason,
+        transactionType: measurement.transactionType,
+        pageIndex: measurement.pageIndex,
+        revision: measurement.editRevision,
+        hasOverflow: false,
+        overflowNodeIndex: measurement.overflowNodeIndex,
+        scrollHeight: measurement.scrollHeight,
+        clientHeight: measurement.clientHeight,
+        bodyAreaHeightPx: measurement.bodyAreaHeightPx,
+        measuredAt: measurement.measuredAt,
+        selectionBefore: measurement.oldSelection,
+        selectionAfter: measurement.newSelection,
+      });
+      return;
+    }
+
+    if (DISABLE_PAGINATION_MUTATION_FOR_CURSOR_DEBUG) {
+      logCursorDebug({
+        action: 'handleBodyOverflow:mutation-disabled',
+        reason: measurement.reason,
+        transactionType: measurement.transactionType,
+        pageIndex: measurement.pageIndex,
+        revision: measurement.editRevision,
+        hasOverflow: measurement.overflowDetected,
+        overflowNodeIndex: measurement.overflowNodeIndex,
+        scrollHeight: measurement.scrollHeight,
+        clientHeight: measurement.clientHeight,
+        bodyAreaHeightPx: measurement.bodyAreaHeightPx,
+        measuredAt: measurement.measuredAt,
+        selectionBefore: measurement.oldSelection,
+        selectionAfter: measurement.newSelection,
+      });
+      return;
+    }
+
+    setPaginationContinuationRequest(null);
+
+    let nextFocusPageIndex: number | null = null;
+    let nextContinuationRequest: PaginationContinuationRequest | null = null;
+    let didPaginate = false;
+    setContent((current) => {
+      const pageNodes = documentPageNodes(current.document);
+      const beforePageCount = pageNodes.length;
+      const sourceNodes = pageNodes[measurement.pageIndex] ?? [];
+
+      if (
+        measurement.overflowNodeIndex <= 0 &&
+        sourceNodes.length <= 1 &&
+        !overflowWarningShownRef.current
+      ) {
+        overflowWarningShownRef.current = true;
+        toast.info('Dieser Inhalt ist zu groß für eine Seite.');
+        return current;
+      }
+
+      if (
+        measurement.overflowNodeIndex < 0 ||
+        measurement.overflowNodeIndex >= sourceNodes.length
+      ) {
+        return current;
+      }
+
+      const nextPageIndex = measurement.pageIndex + 1;
+      while (pageNodes.length <= nextPageIndex) {
+        pageNodes.push([]);
+      }
+
+      const movedNodes = sourceNodes.slice(measurement.overflowNodeIndex);
+      if (movedNodes.length === 0) return current;
+
+      const keptNodes = sourceNodes.slice(0, measurement.overflowNodeIndex);
+      const nextNodes = pageNodes[nextPageIndex] ?? [];
+      const normalizedNextNodes =
+        nextNodes.length === 1 && isEmptyParagraphNode(nextNodes[0])
+          ? []
+          : nextNodes;
+
+      pageNodes[measurement.pageIndex] =
+        keptNodes.length > 0
+          ? keptNodes
+          : (createEmptyRichTextDocument().content ?? []);
+      pageNodes[nextPageIndex] = [...movedNodes, ...normalizedNextNodes];
+      didPaginate = true;
+      overflowWarningShownRef.current = false;
+      const cursorWasMoved =
+        measurement.newSelection.nodeIndex >= measurement.overflowNodeIndex;
+      const afterPageCount = pageNodes.length;
+
+      if (cursorWasMoved) {
+        nextFocusPageIndex = nextPageIndex;
+      }
+
+      if (measurement.transactionType === 'paste' && measurement.maxSteps > 1) {
+        nextContinuationRequest = {
+          pageIndex: nextPageIndex,
+          revision: Date.now(),
+          measurement: {
+            reason: 'paste-continuation',
+            transactionType: 'paste',
+            oldSelection: measurement.oldSelection,
+            newSelection: measurement.newSelection,
+            maxSteps: measurement.maxSteps - 1,
+            editRevision: measurement.editRevision,
+          },
+        };
+      } else if (
+        measurement.transactionType === 'paste' &&
+        measurement.maxSteps <= 1
+      ) {
+        toast.info(
+          'Die automatische Seitenaufteilung wurde begrenzt. Prüfen Sie den eingefügten Inhalt.'
+        );
+      }
+
+      logPaginationMutation({
+        reason: measurement.reason,
+        transactionType: measurement.transactionType,
+        pageIndex: measurement.pageIndex,
+        beforePageCount,
+        afterPageCount,
+        overflowDetected: measurement.overflowDetected,
+        overflowNodeIndex: measurement.overflowNodeIndex,
+        movedNodeCount: movedNodes.length,
+        cursorWasMoved,
+        oldSelection: measurement.oldSelection,
+        newSelection: measurement.newSelection,
+      });
+
+      return {
+        ...current,
+        document: mergePageDocuments(
+          pageNodes.map(createRichTextDocumentFromNodes)
+        ),
+      };
+    });
+
+    if (!didPaginate) return;
+
+    if (nextFocusPageIndex !== null) {
+      logCursorDebug({
+        action: 'setActiveBodyPageIndex',
+        reason: 'pagination',
+        pageIndex: nextFocusPageIndex,
+        revision: measurement.editRevision,
+        hasOverflow: true,
+      });
+      setActiveBodyPageIndex(nextFocusPageIndex);
+      logCursorDebug({
+        action: 'focusRequest:set',
+        reason: 'pagination',
+        transactionType: measurement.transactionType,
+        pageIndex: nextFocusPageIndex,
+        revision: measurement.editRevision,
+        hasOverflow: true,
+        overflowNodeIndex: measurement.overflowNodeIndex,
+        selectionBefore: measurement.oldSelection,
+        selectionAfter: measurement.newSelection,
+      });
+      setBodyFocusRequest({
+        pageIndex: nextFocusPageIndex,
+        revision: Date.now(),
+        reason: 'pagination',
+        editRevision: measurement.editRevision,
+        position: 'start',
+      });
+    }
+
+    const syncRevision = Date.now();
+    logCursorDebug({
+      action: 'documentSyncRequest:set',
+      reason: 'pagination',
+      transactionType: measurement.transactionType,
+      pageIndex: measurement.pageIndex,
+      revision: measurement.editRevision,
+      hasOverflow: true,
+      overflowNodeIndex: measurement.overflowNodeIndex,
+      selectionBefore: measurement.oldSelection,
+      selectionAfter: measurement.newSelection,
+    });
+    setBodyDocumentSyncRequests((current) => ({
+      ...current,
+      [measurement.pageIndex]: {
+        pageIndex: measurement.pageIndex,
+        revision: syncRevision,
+        reason: 'pagination',
+        editRevision: measurement.editRevision,
+      },
+      [measurement.pageIndex + 1]: {
+        pageIndex: measurement.pageIndex + 1,
+        revision: syncRevision,
+        reason: 'pagination',
+      },
+    }));
+
+    if (nextContinuationRequest) {
+      setPaginationContinuationRequest(nextContinuationRequest);
+    }
   }
 
   function updateCurrentBlockSpacing(
@@ -1093,9 +2020,14 @@ export function DocumentTemplateEditor({
   }
 
   function insertBlock(kind: string) {
-    if (!editor) return;
+    if (kind === 'pageBreak') {
+      addManualPage();
+      return;
+    }
 
-    const chain = editor.chain().focus();
+    if (!activeEditor) return;
+
+    const chain = activeEditor.chain().focus();
     switch (kind) {
       case 'heading':
         chain
@@ -1141,7 +2073,7 @@ export function DocumentTemplateEditor({
           .run();
         return;
       case 'table':
-        editor
+        activeEditor
           .chain()
           .focus()
           .insertTable({ rows: 3, cols: 2, withHeaderRow: true })
@@ -1230,13 +2162,6 @@ export function DocumentTemplateEditor({
           })
           .run();
         return;
-      case 'pageBreak':
-        chain
-          .insertContent({
-            type: 'pageBreak',
-          })
-          .run();
-        return;
     }
   }
 
@@ -1266,7 +2191,7 @@ export function DocumentTemplateEditor({
       ? headerEditor
       : targetArea === 'footer'
         ? footerEditor
-        : editor;
+        : (bodyEditorsRef.current.get(activeBodyPageIndex) ?? null);
   }
 
   function contentForDroppedBlock(kind: string): JSONContent | null {
@@ -1417,7 +2342,7 @@ export function DocumentTemplateEditor({
         ? headerEditor
         : args.targetArea === 'footer'
           ? footerEditor
-          : editor;
+          : (bodyEditorsRef.current.get(activeBodyPageIndex) ?? null);
 
     if (!targetEditor) {
       toast.info(
@@ -1685,7 +2610,7 @@ export function DocumentTemplateEditor({
         ? headerEditor
         : targetArea === 'footer'
           ? footerEditor
-          : editor;
+          : (bodyEditorsRef.current.get(activeBodyPageIndex) ?? null);
 
     if (!field || !targetEditor) {
       toast.info(
@@ -1722,11 +2647,30 @@ export function DocumentTemplateEditor({
   }
 
   function addManualPage() {
-    if (!editor) return;
-
+    const nextPageIndex = splitDocumentIntoPages(content.document).length;
+    markDirty();
     setActiveArea('body');
-    editor.chain().focus('end').insertContent({ type: 'pageBreak' }).run();
-    bodyUserInteractionRef.current = false;
+    setContent((current) => {
+      const pages = splitDocumentIntoPages(current.document);
+      pages.push(createEmptyRichTextDocument());
+
+      return {
+        ...current,
+        document: mergePageDocuments(pages),
+      };
+    });
+    logCursorDebug({
+      action: 'setActiveBodyPageIndex',
+      reason: 'explicit-user-action',
+      pageIndex: nextPageIndex,
+    });
+    setActiveBodyPageIndex(nextPageIndex);
+    setBodyFocusRequest({
+      pageIndex: nextPageIndex,
+      revision: Date.now(),
+      reason: 'explicit-user-action',
+      position: 'start',
+    });
     toast.success('Neue Seite wurde hinzugefügt.');
   }
 
@@ -1808,20 +2752,6 @@ export function DocumentTemplateEditor({
     return () => window.removeEventListener('keydown', handleKeyDown);
   });
 
-  useEffect(() => {
-    const node = bodyMeasureRef.current;
-    if (!node) return;
-
-    const updateMeasuredHeight = () => {
-      setMeasuredBodyHeight(node.scrollHeight);
-    };
-    updateMeasuredHeight();
-
-    const observer = new ResizeObserver(updateMeasuredHeight);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [editor, content.page]);
-
   const pageTitle = template
     ? 'Dokumentvorlage bearbeiten'
     : 'Neue Dokumentvorlage';
@@ -1897,30 +2827,8 @@ export function DocumentTemplateEditor({
       headerHeightPx -
       footerHeightPx
   );
-  const logicalPageCount = countNodesByType(content.document, 'pageBreak') + 1;
-  const measuredBodyOverflowPx = Math.max(
-    0,
-    measuredBodyHeight - bodyAreaHeightPx * logicalPageCount
-  );
-  const pageCount = Math.max(
-    logicalPageCount,
-    Math.ceil(Math.max(measuredBodyHeight, bodyAreaHeightPx) / bodyAreaHeightPx)
-  );
-  useEffect(() => {
-    if (measuredBodyOverflowPx <= 12) {
-      overflowWarningShownRef.current = false;
-      return;
-    }
-
-    if (!bodyUserInteractionRef.current || overflowWarningShownRef.current) {
-      return;
-    }
-
-    overflowWarningShownRef.current = true;
-    toast.info(
-      'Der Inhalt überschreitet die Seite. Bitte fügen Sie eine neue Seite hinzu.'
-    );
-  }, [measuredBodyOverflowPx]);
+  const bodyPageDocuments = splitDocumentIntoPages(content.document);
+  const pageCount = bodyPageDocuments.length;
   const pageIndexes = Array.from({ length: pageCount }, (_, index) => index);
   const saveStatusLabel =
     saveStatus === 'saving'
@@ -2799,21 +3707,47 @@ export function DocumentTemplateEditor({
                             <span className="text-muted-foreground absolute top-1 left-1 text-[10px] font-medium uppercase">
                               Dokumentinhalt
                             </span>
-                            {pageIndex === 0 ? (
-                              <div
-                                ref={bodyMeasureRef}
-                                className="document-template-body-measure min-w-0 pt-5"
-                              >
-                                <EditorContent editor={editor} />
-                                {measuredBodyOverflowPx > 12 ? (
-                                  <div className="document-template-overflow-warning">
-                                    Der Inhalt überschreitet den verfügbaren
-                                    Seitenbereich. Fügen Sie eine neue Seite
-                                    hinzu.
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : null}
+                            <div className="document-template-body-measure min-w-0 pt-5">
+                              <PageBodyEditor
+                                pageIndex={pageIndex}
+                                document={
+                                  bodyPageDocuments[pageIndex] ??
+                                  createEmptyRichTextDocument()
+                                }
+                                bodyAreaHeightPx={bodyAreaHeightPx}
+                                isActivePage={activeBodyPageIndex === pageIndex}
+                                focusRequest={
+                                  activeBodyPageIndex === pageIndex
+                                    ? bodyFocusRequest
+                                    : null
+                                }
+                                documentSyncRequest={
+                                  bodyDocumentSyncRequests[pageIndex] ?? null
+                                }
+                                paginationContinuation={
+                                  paginationContinuationRequest?.pageIndex ===
+                                  pageIndex
+                                    ? paginationContinuationRequest
+                                    : null
+                                }
+                                registerEditor={registerBodyEditor}
+                                onChange={handleBodyPageChange}
+                                onFocus={() =>
+                                  handleBodyPageFocus(
+                                    pageIndex,
+                                    bodyEditorsRef.current.get(pageIndex) ??
+                                      null
+                                  )
+                                }
+                                onDocumentSyncApplied={
+                                  clearBodyDocumentSyncRequest
+                                }
+                                onFocusRequestApplied={clearBodyFocusRequest}
+                                onOverflowMeasured={
+                                  handleBodyOverflowMeasurement
+                                }
+                              />
+                            </div>
                           </div>
 
                           {content.page.footer.enabled ? (

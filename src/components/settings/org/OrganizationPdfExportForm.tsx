@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { OrganizationAddresses } from '@/components/settings/org/OrganizationAddresses';
 import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
 import { OrganizationPdfTemplateManager } from './OrganizationPdfTemplateManager';
+import { DocumentTemplateManager } from '@/components/document-template/DocumentTemplateManager';
 
 interface OrganizationPdfExportFormProps {
   organizationId: string;
@@ -148,8 +149,7 @@ export function OrganizationPdfExportForm({
         isSuperadmin={isSuperadmin}
       />
 
-      <div className="space-y-4 rounded-lg border border-dashed border-slate-300 p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      {/*         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="font-medium">
               PDF-Vorlagen für Einsatz-Buchungsbestätigungen
@@ -165,10 +165,9 @@ export function OrganizationPdfExportForm({
           >
             <Button variant="secondary">Vollansicht öffnen</Button>
           </Link>
-        </div>
-
-        <OrganizationPdfTemplateManager organizationId={organizationId} />
-      </div>
+        </div> */}
+      <DocumentTemplateManager organizationId={organizationId} />
+      {/* <OrganizationPdfTemplateManager organizationId={organizationId} /> */}
     </div>
   );
 }
