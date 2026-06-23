@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { MultiSelect } from '@/components/form/multi-select';
 import { TimeTextInput } from '@/components/form/TimeTextInput';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -43,6 +44,7 @@ import {
   type CalendarExportEligibility,
 } from '@/features/calendar-subscription/hooks/useCalendarSubscription';
 import { cn } from '@/lib/utils';
+import { getPreviewDurationTag } from './CalendarExportDialog.utils';
 
 const formSchema = z.object({
   orgId: z.string().uuid(),
@@ -846,14 +848,29 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
                   </p>
                 ) : previewQuery.data?.previewEvents.length ? (
                   <div className="divide-y">
-                    {previewQuery.data.previewEvents.map((event) => (
-                      <div key={event.id} className="py-2 first:pt-0 last:pb-0">
-                        <p className="font-medium">{event.title}</p>
-                        <p className="text-muted-foreground text-sm">
-                          {formatPreviewDate(event)}
-                        </p>
-                      </div>
-                    ))}
+                    {previewQuery.data.previewEvents.map((event) => {
+                      const durationTag = getPreviewDurationTag(event);
+
+                      return (
+                        <div
+                          key={event.id}
+                          className="relative py-2 pr-24 first:pt-0 last:pb-0"
+                        >
+                          <p className="font-medium">{event.title}</p>
+                          <p className="text-muted-foreground text-sm">
+                            {formatPreviewDate(event)}
+                          </p>
+                          {durationTag ? (
+                            <Badge
+                              variant="secondary"
+                              className="absolute top-2 right-0"
+                            >
+                              {durationTag}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-muted-foreground text-sm">
