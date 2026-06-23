@@ -3,7 +3,10 @@ import type { CalendarExportConfig } from './config';
 export function composeCalendarExportEventTitle(input: {
   title: string;
   categoryAbbreviations: string[];
-  assignedHelperFirstNames: string[];
+  assignedHelperNames: Array<{
+    firstname: string;
+    lastname: string;
+  }>;
   assignedHelpers: number;
   helpersNeeded: number;
   config: CalendarExportConfig;
@@ -12,10 +15,13 @@ export function composeCalendarExportEventTitle(input: {
   const additions: string[] = [];
 
   if (input.config.titleAdditions.assignedHelperNames) {
-    const helperNames = input.assignedHelperFirstNames
-      .map((name) => name.trim())
+    const helperNames = input.assignedHelperNames
+      .map((helper) => helper.firstname.trim() || helper.lastname.trim())
       .filter(Boolean);
-    const openPositions = Math.max(input.helpersNeeded - helperNames.length, 0);
+    const openPositions = Math.max(
+      input.helpersNeeded - input.assignedHelpers,
+      0
+    );
     if (helperNames.length > 0) {
       const helperNameText =
         openPositions > 0

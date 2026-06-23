@@ -515,6 +515,7 @@ export async function getCalendarExportPreviewAction(
           user: {
             select: {
               firstname: true,
+              lastname: true,
             },
           },
         },
@@ -538,9 +539,10 @@ export async function getCalendarExportPreviewAction(
         categoryAbbreviations: event.einsatz_to_category
           .map((category) => category.einsatz_category.abbreviation)
           .filter((abbreviation) => abbreviation !== ''),
-        assignedHelperFirstNames: event.einsatz_helper.map(
-          (helper) => helper.user.firstname
-        ),
+        assignedHelperNames: event.einsatz_helper.map((helper) => ({
+          firstname: helper.user.firstname,
+          lastname: helper.user.lastname,
+        })),
         assignedHelpers: event.einsatz_helper.length,
         helpersNeeded: event.helpers_needed,
         config: parsedConfig,

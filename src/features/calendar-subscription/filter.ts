@@ -19,6 +19,7 @@ export type CalendarExportFilterEvent = {
     user?: {
       id?: string;
       firstname?: string;
+      lastname?: string;
     };
   }>;
 };

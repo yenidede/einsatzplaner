@@ -2,13 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { defaultCalendarExportConfig } from './config';
 import { composeCalendarExportEventTitle } from './title';
 
+function helper(firstname: string, lastname = 'Muster') {
+  return { firstname, lastname };
+}
+
 describe('composeCalendarExportEventTitle', () => {
   it('joins categories and helper count in one bracket group', () => {
     expect(
       composeCalendarExportEventTitle({
         title: 'Führung',
         categoryAbbreviations: ['DA', 'VA'],
-        assignedHelperFirstNames: ['Erika'],
+        assignedHelperNames: [helper('Erika')],
         assignedHelpers: 1,
         helpersNeeded: 2,
         config: defaultCalendarExportConfig,
@@ -21,7 +25,7 @@ describe('composeCalendarExportEventTitle', () => {
       composeCalendarExportEventTitle({
         title: 'Führung',
         categoryAbbreviations: ['DA'],
-        assignedHelperFirstNames: [],
+        assignedHelperNames: [],
         assignedHelpers: 0,
         helpersNeeded: 0,
         config: defaultCalendarExportConfig,
@@ -34,7 +38,7 @@ describe('composeCalendarExportEventTitle', () => {
       composeCalendarExportEventTitle({
         title: 'Führung',
         categoryAbbreviations: ['DA'],
-        assignedHelperFirstNames: ['Erika'],
+        assignedHelperNames: [helper('Erika')],
         assignedHelpers: 1,
         helpersNeeded: 2,
         config: {
@@ -55,7 +59,7 @@ describe('composeCalendarExportEventTitle', () => {
       composeCalendarExportEventTitle({
         title: 'Kassa/Café',
         categoryAbbreviations: [],
-        assignedHelperFirstNames: ['Raphael'],
+        assignedHelperNames: [helper('Raphael')],
         assignedHelpers: 1,
         helpersNeeded: 2,
         config: {
@@ -74,7 +78,7 @@ describe('composeCalendarExportEventTitle', () => {
       composeCalendarExportEventTitle({
         title: 'Kassa/Café',
         categoryAbbreviations: [],
-        assignedHelperFirstNames: [],
+        assignedHelperNames: [],
         assignedHelpers: 0,
         helpersNeeded: 2,
         config: {
@@ -95,7 +99,7 @@ describe('composeCalendarExportEventTitle', () => {
       composeCalendarExportEventTitle({
         title: 'Kassa/Café',
         categoryAbbreviations: [],
-        assignedHelperFirstNames: ['Luca'],
+        assignedHelperNames: [helper('Luca')],
         assignedHelpers: 1,
         helpersNeeded: 4,
         config: {
@@ -116,7 +120,7 @@ describe('composeCalendarExportEventTitle', () => {
       composeCalendarExportEventTitle({
         title: 'Kassa/Café',
         categoryAbbreviations: [],
-        assignedHelperFirstNames: ['Raphael', 'Luca'],
+        assignedHelperNames: [helper('Raphael'), helper('Luca')],
         assignedHelpers: 2,
         helpersNeeded: 3,
         config: {
@@ -137,7 +141,7 @@ describe('composeCalendarExportEventTitle', () => {
       composeCalendarExportEventTitle({
         title: 'Kassa/Café',
         categoryAbbreviations: [],
-        assignedHelperFirstNames: ['Raphael', 'Luca', 'Anna'],
+        assignedHelperNames: [helper('Raphael'), helper('Luca'), helper('Anna')],
         assignedHelpers: 3,
         helpersNeeded: 2,
         config: {
@@ -156,7 +160,7 @@ describe('composeCalendarExportEventTitle', () => {
       composeCalendarExportEventTitle({
         title: 'Kassa/Café',
         categoryAbbreviations: ['CA'],
-        assignedHelperFirstNames: ['Raphael'],
+        assignedHelperNames: [helper('Raphael')],
         assignedHelpers: 1,
         helpersNeeded: 2,
         config: {
@@ -170,5 +174,26 @@ describe('composeCalendarExportEventTitle', () => {
         },
       })
     ).toBe('Kassa/Café');
+  });
+
+  it('uses the last name when the first name is blank', () => {
+    expect(
+      composeCalendarExportEventTitle({
+        title: 'Kassa/Café',
+        categoryAbbreviations: [],
+        assignedHelperNames: [helper('Raphael'), helper(' ', 'Huber')],
+        assignedHelpers: 2,
+        helpersNeeded: 2,
+        config: {
+          ...defaultCalendarExportConfig,
+          titleAdditions: {
+            eventTitle: false,
+            assignedHelperNames: true,
+            categories: false,
+            helperCount: false,
+          },
+        },
+      })
+    ).toBe('Raphael, Huber');
   });
 });

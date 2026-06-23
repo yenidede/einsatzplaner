@@ -352,8 +352,9 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
 
   const save = async (values: FormValues) => {
     if (props.mode === 'personal' && props.onSavePersonal) {
+      let result: SavedExport | void;
       try {
-        await props.onSavePersonal({
+        result = await props.onSavePersonal({
           id: props.exportToEdit?.id,
           orgId: values.orgId,
           name: values.name,
@@ -363,6 +364,10 @@ export function CalendarExportDialog(props: CalendarExportDialogProps) {
         return;
       }
       form.reset(values);
+      if (result && !props.exportToEdit) {
+        setSavedExport(result);
+        return;
+      }
       props.onOpenChange(false);
       return;
     }

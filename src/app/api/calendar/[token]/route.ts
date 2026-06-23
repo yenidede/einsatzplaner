@@ -381,9 +381,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
       summary: composeCalendarExportEventTitle({
         title: einsatz.title,
         categoryAbbreviations,
-        assignedHelperFirstNames: einsatz.einsatz_helper.map(
-          (helper) => helper.user.firstname
-        ),
+        assignedHelperNames: einsatz.einsatz_helper.map((helper) => ({
+          firstname: helper.user.firstname,
+          lastname: helper.user.lastname,
+        })),
         assignedHelpers: einsatz.einsatz_helper.length,
         helpersNeeded: einsatz.helpers_needed,
         config: exportConfig,
