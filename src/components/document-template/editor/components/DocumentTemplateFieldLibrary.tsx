@@ -2,6 +2,11 @@ import { Search } from 'lucide-react';
 import type { DocumentTemplateFieldDefinition } from '@/features/document-template/types';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const documentFieldDragMime = 'application/document-template-field';
 
@@ -65,23 +70,29 @@ export function DocumentTemplateFieldLibrary({
             <p className="text-muted-foreground text-xs font-medium">{label}</p>
             <div className="flex flex-wrap gap-2">
               {groupFields.map((field) => (
-                <button
-                  key={field.key}
-                  type="button"
-                  draggable
-                  className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex cursor-grab items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-normal"
-                  title={field.description}
-                  onDragStart={(event) => {
-                    event.dataTransfer.effectAllowed = 'copy';
-                    event.dataTransfer.setData(documentFieldDragMime, field.key);
-                  }}
-                  onClick={() => onInsert(field)}
-                >
-                  <span>{field.label}</span>
-                  <Badge variant="outline" className="h-4 px-1 text-[10px]">
-                    {fieldTypeLabels[field.dataType]}
-                  </Badge>
-                </button>
+                <Tooltip key={field.key}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      draggable
+                      className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex cursor-grab items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-normal"
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = 'copy';
+                        event.dataTransfer.setData(
+                          documentFieldDragMime,
+                          field.key
+                        );
+                      }}
+                      onClick={() => onInsert(field)}
+                    >
+                      <span>{field.label}</span>
+                      <Badge variant="outline" className="h-4 px-1 text-[10px]">
+                        {fieldTypeLabels[field.dataType]}
+                      </Badge>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{field.description}</TooltipContent>
+                </Tooltip>
               ))}
             </div>
           </div>

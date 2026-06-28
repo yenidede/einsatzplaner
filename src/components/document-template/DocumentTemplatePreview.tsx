@@ -17,12 +17,16 @@ import {
   extractTemplateTextParts,
   resolveTemplateText,
 } from '@/features/document-template/lib/document-template-renderer';
+import {
+  DOCUMENT_PAGE_HEIGHT_PX,
+  DOCUMENT_PAGE_WIDTH_PX,
+} from '@/features/document-template/lib/document-page-geometry';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
-const A4_WIDTH_PX = 794;
-const A4_HEIGHT_PX = 1123;
+const A4_WIDTH_PX = DOCUMENT_PAGE_WIDTH_PX;
+const A4_HEIGHT_PX = DOCUMENT_PAGE_HEIGHT_PX;
 const MM_TO_PX = A4_WIDTH_PX / 210;
 
 function mm(value: number): number {
@@ -101,26 +105,26 @@ function PreviewBlock({
   switch (block.type) {
     case 'heading':
       return (
-        <h2 className="text-2xl font-semibold">
+        <h2 className="text-[24px] font-semibold">
           <InlineText text={block.text} fields={fields} />
         </h2>
       );
     case 'infoBox':
       return (
-        <div className="bg-muted/30 rounded-md border p-4">
-          <p className="mb-2 text-sm font-medium">
+        <div className="bg-muted/30 rounded-[6px] border p-[16px]">
+          <p className="mb-[8px] text-[14px] font-medium">
             {block.title ?? 'Information'}
           </p>
-          <p className="text-sm leading-6">
+          <p className="text-[14px] leading-[24px]">
             <InlineText text={block.text} fields={fields} />
           </p>
         </div>
       );
     case 'dataTable':
       return (
-        <div className="overflow-hidden rounded-md border">
+        <div className="overflow-hidden rounded-[6px] border">
           {block.title ? (
-            <div className="bg-muted/40 border-b px-3 py-2 text-sm font-medium">
+            <div className="bg-muted/40 border-b px-[12px] py-[8px] text-[14px] font-medium">
               {block.title}
             </div>
           ) : null}
@@ -129,10 +133,10 @@ function PreviewBlock({
               key={row.id}
               className="grid grid-cols-[180px_1fr] border-b last:border-b-0"
             >
-              <div className="bg-muted/30 px-3 py-2 text-sm font-medium">
+              <div className="bg-muted/30 px-[12px] py-[8px] text-[14px] font-medium">
                 {row.label}
               </div>
-              <div className="px-3 py-2 text-sm">
+              <div className="px-[12px] py-[8px] text-[14px]">
                 {resolveTemplateText(row.value, fields)}
               </div>
             </div>
@@ -143,13 +147,13 @@ function PreviewBlock({
       return <Separator />;
     case 'signature':
       return (
-        <p className="pt-4 text-sm leading-6">
+        <p className="pt-[16px] text-[14px] leading-[24px]">
           <InlineText text={block.text} fields={fields} />
         </p>
       );
     case 'pageBreak':
       return (
-        <div className="text-muted-foreground flex items-center gap-3 text-xs">
+        <div className="text-muted-foreground flex items-center gap-[12px] text-[12px]">
           <Separator className="flex-1" />
           Seitenumbruch
           <Separator className="flex-1" />
@@ -163,43 +167,42 @@ function PreviewBlock({
             : '—'}
         </Badge>
       );
-    case 'image':
-      {
-        const imageUrl = resolveTemplateText(block.imageUrl, fields);
-        const showImage = imageUrl && imageUrl !== '—';
-        return (
-          <div
-            className={cn('flex flex-col gap-1', alignmentClass(block.align))}
-          >
-            {showImage ? (
-              <Image
-                src={imageUrl}
-                alt={block.title ?? 'Logo'}
-                width={mm(block.width ?? 42)}
-                height={mm(block.height ?? 18)}
-                unoptimized
-                className="object-contain"
-                style={{
-                  width: mm(block.width ?? 42),
-                  height: mm(block.height ?? 18),
-                }}
-              />
-            ) : (
-              <div
-                className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs"
-                style={{
-                  width: mm(block.width ?? 42),
-                  height: mm(block.height ?? 18),
-                }}
-              >
-                {block.imageUrl === '{{organizationLogoUrl}}'
-                  ? 'Kein Organisationslogo hinterlegt.'
-                  : 'Bild nicht verfügbar'}
-              </div>
-            )}
-          </div>
-        );
-      }
+    case 'image': {
+      const imageUrl = resolveTemplateText(block.imageUrl, fields);
+      const showImage = imageUrl && imageUrl !== '—';
+      return (
+        <div
+          className={cn('flex flex-col gap-[4px]', alignmentClass(block.align))}
+        >
+          {showImage ? (
+            <Image
+              src={imageUrl}
+              alt={block.title ?? 'Logo'}
+              width={mm(block.width ?? 42)}
+              height={mm(block.height ?? 18)}
+              unoptimized
+              className="object-contain"
+              style={{
+                width: mm(block.width ?? 42),
+                height: mm(block.height ?? 18),
+              }}
+            />
+          ) : (
+            <div
+              className="text-muted-foreground rounded-[6px] border border-dashed px-[12px] py-[8px] text-[12px]"
+              style={{
+                width: mm(block.width ?? 42),
+                height: mm(block.height ?? 18),
+              }}
+            >
+              {block.imageUrl === '{{organizationLogoUrl}}'
+                ? 'Kein Organisationslogo hinterlegt.'
+                : 'Bild nicht verfügbar'}
+            </div>
+          )}
+        </div>
+      );
+    }
     case 'header':
     case 'footer':
     case 'paragraph':
@@ -207,9 +210,10 @@ function PreviewBlock({
       return (
         <p
           className={cn(
-            'text-sm leading-6',
-            block.type === 'header' && 'text-muted-foreground border-b pb-2',
-            block.type === 'footer' && 'text-muted-foreground border-t pt-2'
+            'text-[14px] leading-[24px]',
+            block.type === 'header' &&
+              'text-muted-foreground border-b pb-[8px]',
+            block.type === 'footer' && 'text-muted-foreground border-t pt-[8px]'
           )}
         >
           <InlineText text={block.text} fields={fields} />
@@ -300,8 +304,8 @@ function RichTextPreviewNode({
       return (
         <div
           className={cn(
-            'text-muted-foreground inline-flex rounded-md border border-dashed px-3 py-2 text-xs',
-            mode === 'inline' && 'my-2'
+            'text-muted-foreground inline-flex rounded-[6px] border border-dashed px-[12px] py-[8px] text-[12px]',
+            mode === 'inline' && 'my-[8px]'
           )}
           style={
             mode === 'free'
@@ -325,7 +329,7 @@ function RichTextPreviewNode({
     return (
       <div
         className={cn(
-          mode === 'inline' && 'my-2 flex',
+          mode === 'inline' && 'my-[8px] flex',
           mode === 'free' && 'absolute',
           align === 'center' && 'justify-center',
           align === 'right' && 'justify-end'
@@ -355,21 +359,31 @@ function RichTextPreviewNode({
   }
 
   if (node.type === 'heading') {
-    const level = node.attrs?.level === 2 ? 'text-xl' : 'text-2xl';
+    const isSecondLevel = node.attrs?.level === 2;
     return (
-      <h2 className={`mb-5 font-semibold ${level}`} style={richNodeStyle(node)}>
+      <h2
+        className="font-semibold"
+        style={{
+          ...richNodeStyle(node),
+          fontSize: isSecondLevel ? 23.2 : 32,
+          lineHeight: isSecondLevel ? 1.25 : 1.2,
+          marginBottom: numericAttr(node, 'spacingBottom') ?? 20,
+          overflowWrap: 'normal',
+          wordBreak: 'normal',
+        }}
+      >
         <InlineRichText nodes={node.content} fields={fields} />
       </h2>
     );
   }
 
   if (node.type === 'horizontalRule') {
-    return <Separator className="my-6" />;
+    return <Separator className="my-[24px]" />;
   }
 
   if (node.type === 'pageBreak') {
     return (
-      <div className="text-muted-foreground my-8 flex items-center gap-3 text-xs">
+      <div className="text-muted-foreground my-[32px] flex items-center gap-[12px] text-[12px]">
         <Separator className="flex-1" />
         Seitenumbruch
         <Separator className="flex-1" />
@@ -380,8 +394,11 @@ function RichTextPreviewNode({
   if (node.type === 'infoBox') {
     return (
       <div
-        className="bg-muted/50 mb-5 rounded-md p-4"
-        style={richNodeStyle(node)}
+        className="bg-muted/50 rounded-[6px] p-[16px]"
+        style={{
+          ...richNodeStyle(node),
+          marginBottom: numericAttr(node, 'spacingBottom') ?? 20,
+        }}
       >
         {node.content?.map((child, index) => (
           <RichTextPreviewNode key={index} node={child} fields={fields} />
@@ -393,7 +410,7 @@ function RichTextPreviewNode({
   if (node.type === 'bulletList' || node.type === 'orderedList') {
     const ListTag = node.type === 'bulletList' ? 'ul' : 'ol';
     return (
-      <ListTag className="mb-4 ml-6 list-outside">
+      <ListTag className="mb-[16px] ml-[24px] list-outside">
         {node.content?.map((item, index) => (
           <li key={index}>
             <InlineRichText
@@ -408,12 +425,12 @@ function RichTextPreviewNode({
 
   if (node.type === 'table') {
     return (
-      <table className="mb-5 w-full border-collapse text-sm">
+      <table className="mb-[20px] w-full border-collapse text-[14px]">
         <tbody>
           {node.content?.map((row, rowIndex) => (
             <tr key={rowIndex}>
               {row.content?.map((cell, cellIndex) => (
-                <td key={cellIndex} className="border px-3 py-2">
+                <td key={cellIndex} className="border px-[12px] py-[8px]">
                   <InlineRichText
                     nodes={cell.content?.flatMap(
                       (child) => child.content ?? []
@@ -430,7 +447,13 @@ function RichTextPreviewNode({
   }
 
   return (
-    <p className="mb-4 leading-7" style={richNodeStyle(node)}>
+    <p
+      className="leading-[28px]"
+      style={{
+        ...richNodeStyle(node),
+        marginBottom: numericAttr(node, 'spacingBottom') ?? 16,
+      }}
+    >
       <InlineRichText nodes={node.content} fields={fields} />
     </p>
   );
@@ -452,6 +475,8 @@ export function DocumentTemplatePreview({
   const pagePaddingRightPx = mm(page.margins.right);
   const pagePaddingBottomPx = mm(page.margins.bottom);
   const pagePaddingLeftPx = mm(page.margins.left);
+  const pageContentWidthPx =
+    A4_WIDTH_PX - pagePaddingLeftPx - pagePaddingRightPx;
   const bodyHeightPx = Math.max(
     360,
     A4_HEIGHT_PX -
@@ -463,10 +488,14 @@ export function DocumentTemplatePreview({
 
   return (
     <div
-      className="bg-background mx-auto grid max-w-full overflow-hidden shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-black/5"
+      className="bg-background mx-auto grid overflow-hidden shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-black/5"
       style={{
         width: A4_WIDTH_PX,
+        minWidth: A4_WIDTH_PX,
+        maxWidth: A4_WIDTH_PX,
         height: A4_HEIGHT_PX,
+        minHeight: A4_HEIGHT_PX,
+        maxHeight: A4_HEIGHT_PX,
         paddingTop: pagePaddingTopPx,
         paddingRight: pagePaddingRightPx,
         paddingBottom: pagePaddingBottomPx,
@@ -477,16 +506,25 @@ export function DocumentTemplatePreview({
       {page.header.enabled ? (
         <div
           className={cn(
-            'relative box-border flex min-w-0 flex-col justify-center gap-1 overflow-hidden',
-            showAreaLabels && 'bg-muted/20 outline outline-1 outline-dashed outline-border'
+            'relative box-border flex min-w-0 flex-col justify-center gap-[4px] overflow-hidden',
+            showAreaLabels &&
+              'border-border bg-muted/20 border-x border-t border-dashed'
           )}
+          style={{
+            width: pageContentWidthPx,
+            minWidth: pageContentWidthPx,
+            maxWidth: pageContentWidthPx,
+            height: headerHeightPx,
+            minHeight: headerHeightPx,
+            maxHeight: headerHeightPx,
+          }}
         >
           {showAreaLabels ? (
             <span className="text-muted-foreground absolute top-1 left-1 text-[10px] font-medium uppercase">
               Kopfbereich
             </span>
           ) : null}
-          <div className="flex min-w-0 items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center justify-between gap-[16px]">
             {page.header.blocks.map((block) => (
               <div
                 key={block.id}
@@ -496,24 +534,35 @@ export function DocumentTemplatePreview({
               </div>
             ))}
           </div>
-          {page.header.blocks.some((block) => block.showDivider) ? (
-            <Separator className="absolute right-0 bottom-0 left-0" />
-          ) : null}
         </div>
       ) : null}
 
       <div
         className={cn(
           'relative box-border min-w-0 overflow-hidden',
-          showAreaLabels && 'bg-background outline outline-1 outline-dashed outline-border'
+          showAreaLabels &&
+            'border-border bg-background border-x border-dashed'
         )}
+        style={{
+          width: pageContentWidthPx,
+          minWidth: pageContentWidthPx,
+          maxWidth: pageContentWidthPx,
+          height: bodyHeightPx,
+          minHeight: bodyHeightPx,
+          maxHeight: bodyHeightPx,
+        }}
       >
         {showAreaLabels ? (
           <span className="text-muted-foreground absolute top-1 left-1 text-[10px] font-medium uppercase">
             Dokumentinhalt
           </span>
         ) : null}
-        <div className={cn('flex min-w-0 flex-col gap-5', showAreaLabels && 'pt-5')}>
+        <div
+          className={cn(
+            'flex min-w-0 flex-col gap-[20px]',
+            showAreaLabels && 'pt-[20px]'
+          )}
+        >
           {content.document
             ? content.document.content?.map((node, index) => (
                 <RichTextPreviewNode key={index} node={node} fields={fields} />
@@ -528,8 +577,17 @@ export function DocumentTemplatePreview({
         <div
           className={cn(
             'relative box-border flex min-w-0 flex-col justify-center overflow-hidden',
-            showAreaLabels && 'bg-muted/20 outline outline-1 outline-dashed outline-border'
+            showAreaLabels &&
+              'bg-muted/20 outline-border outline outline-1 outline-dashed'
           )}
+          style={{
+            width: pageContentWidthPx,
+            minWidth: pageContentWidthPx,
+            maxWidth: pageContentWidthPx,
+            height: footerHeightPx,
+            minHeight: footerHeightPx,
+            maxHeight: footerHeightPx,
+          }}
         >
           {page.footer.blocks.some((block) => block.showDivider) ? (
             <Separator className="absolute top-0 right-0 left-0" />
@@ -540,10 +598,15 @@ export function DocumentTemplatePreview({
             </span>
           ) : null}
           {page.footer.blocks.map((block) => (
-            <div key={block.id} className={cn('min-w-0', alignmentClass(block.align))}>
+            <div
+              key={block.id}
+              className={cn('min-w-0', alignmentClass(block.align))}
+            >
               <PreviewBlock block={block} fields={fields} />
               {block.showPageNumber ? (
-                <p className="text-muted-foreground mt-1 text-xs">Seite 1</p>
+                <p className="text-muted-foreground mt-[4px] text-[12px]">
+                  Seite 1
+                </p>
               ) : null}
             </div>
           ))}

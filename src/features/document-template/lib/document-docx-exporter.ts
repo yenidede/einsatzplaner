@@ -3,15 +3,16 @@ import {
   BorderStyle,
   Document,
   Footer,
-  HeadingLevel,
   Header,
   HorizontalPositionRelativeFrom,
   ImageRun,
+  LevelFormat,
   Packer,
   PageNumber,
   PageOrientation,
   PageBreak,
   Paragraph,
+  ShadingType,
   Table,
   TableCell,
   TableRow,
@@ -22,6 +23,7 @@ import {
   WidthType,
   convertMillimetersToTwip,
 } from 'docx';
+import type { IRunOptions } from 'docx';
 import type {
   DocumentTemplateBlock,
   DocumentTemplateContent,
@@ -31,17 +33,56 @@ import type {
 } from '@/features/document-template/types';
 import {
   blockToPlainText,
+  missingTemplateValue,
+  normalizeTemplateText,
   resolveTemplateText,
 } from './document-template-renderer';
 import { getMarkAttr, hasMark } from './document-rich-text';
 
-function textParagraph(text: string) {
-  const lines = text.split('\n');
+const FONT_FAMILY = 'Arial';
+const BODY_FONT_SIZE_PX = 16;
+const BODY_LINE_HEIGHT_PX = 27;
+const BODY_COLOR = '111827';
+const MUTED_COLOR = '475569';
+const BORDER_COLOR = 'D4D4D8';
+const INFO_BOX_FILL = 'F4F4F5';
+const DEFAULT_PARAGRAPH_SPACING_BOTTOM_PX = 16;
+const DEFAULT_HEADER_FOOTER_FONT_SIZE_PX = 12;
+
+type DocxChild = Paragraph | Table;
+type ImageType = 'png' | 'jpg' | 'gif' | 'bmp';
+
+function textParagraph(text: string, fontSizePx = BODY_FONT_SIZE_PX) {
+  const lines = normalizeTemplateText(text).split('\n');
   return new Paragraph({
     children: lines.flatMap((line, index) => [
       ...(index > 0 ? [new TextRun({ text: '', break: 1 })] : []),
-      new TextRun(line),
+      run({ text: line, fontSizePx }),
     ]),
+    spacing: paragraphSpacing({
+      spacingBottom: DEFAULT_PARAGRAPH_SPACING_BOTTOM_PX,
+    }),
+  });
+}
+
+function run(args: {
+  text?: string;
+  fontSizePx?: number;
+  bold?: boolean;
+  italics?: boolean;
+  underline?: boolean;
+  color?: string;
+  children?: IRunOptions['children'];
+}) {
+  return new TextRun({
+    text: args.text ? normalizeTemplateText(args.text) : args.text,
+    children: args.children,
+    font: FONT_FAMILY,
+    size: pxToHalfPoints(args.fontSizePx ?? BODY_FONT_SIZE_PX),
+    color: args.color ?? BODY_COLOR,
+    bold: args.bold,
+    italics: args.italics,
+    underline: args.underline ? {} : undefined,
   });
 }
 
@@ -51,13 +92,75 @@ function docxAlignment(align: DocumentTemplateHorizontalAlignment | undefined) {
   return AlignmentType.LEFT;
 }
 
+function pxToHalfPoints(value: number): number {
+  return Math.round(value * 1.5);
+}
+
+function pxToTwip(value: number): number {
+  return Math.round(value * 15);
+}
+
 function pxToEmu(value: number): number {
   return Math.round(value * 9525);
 }
 
+function mmToPx(value: number): number {
+  return Math.round((value * 794) / 210);
+}
+
+function numberAttr(
+  node: DocumentTemplateRichTextNode,
+  attr: string
+): number | undefined {
+  const value = node.attrs?.[attr];
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function paragraphSpacing(
+  nodeOrSpacing:
+    | DocumentTemplateRichTextNode
+    | { spacingTop?: number; spacingBottom?: number },
+  fallbackBottomPx?: number
+) {
+  const spacingTop =
+    'type' in nodeOrSpacing
+      ? numberAttr(nodeOrSpacing, 'spacingTop')
+      : nodeOrSpacing.spacingTop;
+  const spacingBottom =
+    'type' in nodeOrSpacing
+      ? numberAttr(nodeOrSpacing, 'spacingBottom')
+      : nodeOrSpacing.spacingBottom;
+  const before =
+    typeof spacingTop === 'number' ? pxToTwip(spacingTop) : undefined;
+  const after =
+    typeof spacingBottom === 'number'
+      ? pxToTwip(spacingBottom)
+      : typeof fallbackBottomPx === 'number'
+        ? pxToTwip(fallbackBottomPx)
+        : undefined;
+
+  return before || after
+    ? { before, after, line: pxToTwip(BODY_LINE_HEIGHT_PX) }
+    : { line: pxToTwip(BODY_LINE_HEIGHT_PX) };
+}
+
+function indentFromNode(node: DocumentTemplateRichTextNode) {
+  const indent = numberAttr(node, 'indent');
+  return typeof indent === 'number' ? { left: pxToTwip(indent) } : undefined;
+}
+
+function alignmentFromNode(node: DocumentTemplateRichTextNode) {
+  const textAlign = node.attrs?.textAlign;
+  if (textAlign === 'center') return AlignmentType.CENTER;
+  if (textAlign === 'right') return AlignmentType.RIGHT;
+  return AlignmentType.LEFT;
+}
+
 function dataUrlToImage(value: string): {
   data: Uint8Array;
-  type: 'png' | 'jpg' | 'gif' | 'bmp';
+  type: ImageType;
 } | null {
   const match = /^data:image\/(png|jpeg|jpg|gif|bmp);base64,(.+)$/i.exec(value);
 
@@ -81,9 +184,7 @@ function dataUrlToImage(value: string): {
   };
 }
 
-function imageTypeFromContentType(
-  value: string | null
-): 'png' | 'jpg' | 'gif' | 'bmp' | null {
+function imageTypeFromContentType(value: string | null): ImageType | null {
   if (!value) {
     return null;
   }
@@ -95,7 +196,7 @@ function imageTypeFromContentType(
   return null;
 }
 
-function imageTypeFromUrl(value: string): 'png' | 'jpg' | 'gif' | 'bmp' | null {
+function imageTypeFromUrl(value: string): ImageType | null {
   const lowerValue = value.toLowerCase();
   if (lowerValue.includes('.png')) return 'png';
   if (lowerValue.includes('.jpeg') || lowerValue.includes('.jpg')) return 'jpg';
@@ -106,26 +207,30 @@ function imageTypeFromUrl(value: string): 'png' | 'jpg' | 'gif' | 'bmp' | null {
 
 async function resolveImageData(value: string): Promise<{
   data: Uint8Array;
-  type: 'png' | 'jpg' | 'gif' | 'bmp';
+  type: ImageType;
 } | null> {
-  const dataUrlImage = dataUrlToImage(value);
+  const normalizedValue = normalizeTemplateText(value);
+  const dataUrlImage = dataUrlToImage(normalizedValue);
   if (dataUrlImage) {
     return dataUrlImage;
   }
 
-  if (!value.startsWith('http://') && !value.startsWith('https://')) {
+  if (
+    !normalizedValue.startsWith('http://') &&
+    !normalizedValue.startsWith('https://')
+  ) {
     return null;
   }
 
   try {
-    const response = await fetch(value);
+    const response = await fetch(normalizedValue);
     if (!response.ok) {
       return null;
     }
 
     const type =
       imageTypeFromContentType(response.headers.get('content-type')) ??
-      imageTypeFromUrl(value);
+      imageTypeFromUrl(normalizedValue);
 
     if (!type) {
       return null;
@@ -155,34 +260,33 @@ async function imageNodeToParagraph(
       : 'left';
 
   if (!image) {
-    return new Paragraph('');
+    return new Paragraph({
+      children: [],
+      spacing: paragraphSpacing({ spacingBottom: 8 }),
+    });
   }
+
+  const width = numberAttr(node, 'width') ?? 160;
+  const height = numberAttr(node, 'height') ?? 80;
 
   return new Paragraph({
     alignment: docxAlignment(align),
+    spacing: paragraphSpacing({ spacingTop: 8, spacingBottom: 8 }),
     children: [
       new ImageRun({
         data: image.data,
         type: image.type,
-        transformation: {
-          width: typeof node.attrs?.width === 'number' ? node.attrs.width : 160,
-          height:
-            typeof node.attrs?.height === 'number' ? node.attrs.height : 80,
-        },
+        transformation: { width, height },
         floating:
           node.attrs?.mode === 'free'
             ? {
                 horizontalPosition: {
                   relative: HorizontalPositionRelativeFrom.MARGIN,
-                  offset: pxToEmu(
-                    typeof node.attrs.x === 'number' ? node.attrs.x : 0
-                  ),
+                  offset: pxToEmu(numberAttr(node, 'x') ?? 0),
                 },
                 verticalPosition: {
                   relative: VerticalPositionRelativeFrom.PARAGRAPH,
-                  offset: pxToEmu(
-                    typeof node.attrs.y === 'number' ? node.attrs.y : 0
-                  ),
+                  offset: pxToEmu(numberAttr(node, 'y') ?? 0),
                 },
                 allowOverlap: true,
                 wrap: { type: TextWrappingType.NONE },
@@ -193,53 +297,79 @@ async function imageNodeToParagraph(
   });
 }
 
+async function legacyImageBlockToParagraph(
+  block: DocumentTemplateBlock,
+  fields: ResolvedDocumentTemplateFields
+): Promise<Paragraph | null> {
+  const imageUrl = resolveTemplateText(block.imageUrl, fields);
+  const image = await resolveImageData(imageUrl);
+
+  if (!image) {
+    return null;
+  }
+
+  return new Paragraph({
+    alignment: docxAlignment(block.align),
+    spacing: paragraphSpacing({ spacingTop: 8, spacingBottom: 8 }),
+    children: [
+      new ImageRun({
+        data: image.data,
+        type: image.type,
+        transformation: {
+          width: mmToPx(block.width ?? 42),
+          height: mmToPx(block.height ?? 18),
+        },
+      }),
+    ],
+  });
+}
+
 async function fixedAreaBlockToChildren(
   block: DocumentTemplateBlock,
   fields: ResolvedDocumentTemplateFields
-): Promise<Array<Paragraph | Table>> {
+): Promise<DocxChild[]> {
   if (block.richText) {
-    return richTextDocToDocxChildren(block.richText, fields);
+    return richTextDocToDocxChildren(block.richText, fields, {
+      defaultFontSizePx: DEFAULT_HEADER_FOOTER_FONT_SIZE_PX,
+      defaultColor: MUTED_COLOR,
+      fallbackSpacingBottomPx: 0,
+    });
   }
 
   if (block.type === 'image') {
-    const imageUrl = resolveTemplateText(block.imageUrl, fields);
-    const image = await resolveImageData(imageUrl);
-
-    if (image) {
-      return [
-        new Paragraph({
-          alignment: docxAlignment(block.align),
-          children: [
-            new ImageRun({
-              data: image.data,
-              type: image.type,
-              transformation: {
-                width: Math.round((block.width ?? 42) * 3.78),
-                height: Math.round((block.height ?? 18) * 3.78),
-              },
-            }),
-          ],
-        }),
-      ];
-    }
+    const image = await legacyImageBlockToParagraph(block, fields);
+    return image ? [image] : [];
   }
 
   return [
     new Paragraph({
       alignment: docxAlignment(block.align),
       children: [
-        new TextRun(blockToPlainText(block, fields)),
+        run({
+          text: blockToPlainText(block, fields),
+          fontSizePx: DEFAULT_HEADER_FOOTER_FONT_SIZE_PX,
+          color: MUTED_COLOR,
+        }),
         ...(block.showPageNumber
           ? [
-              new TextRun(' · Seite '),
-              new TextRun({ children: [PageNumber.CURRENT] }),
+              run({
+                text: ' · Seite ',
+                fontSizePx: DEFAULT_HEADER_FOOTER_FONT_SIZE_PX,
+                color: MUTED_COLOR,
+              }),
+              run({
+                children: [PageNumber.CURRENT],
+                fontSizePx: DEFAULT_HEADER_FOOTER_FONT_SIZE_PX,
+                color: MUTED_COLOR,
+              }),
             ]
           : []),
       ],
+      spacing: paragraphSpacing({ spacingBottom: 0 }),
       border: block.showDivider
         ? {
-            top: {
-              color: 'A1A1AA',
+            bottom: {
+              color: BORDER_COLOR,
               space: 1,
               style: BorderStyle.SINGLE,
               size: 6,
@@ -250,34 +380,83 @@ async function fixedAreaBlockToChildren(
   ];
 }
 
-function createHeader(
+async function fixedAreaToChildren(
+  blocks: DocumentTemplateBlock[],
+  fields: ResolvedDocumentTemplateFields
+): Promise<DocxChild[]> {
+  if (blocks.length <= 1) {
+    return (
+      await Promise.all(
+        blocks.map((block) => fixedAreaBlockToChildren(block, fields))
+      )
+    ).flat();
+  }
+
+  const cells = await Promise.all(
+    blocks.map(async (block) => {
+      const children = await fixedAreaBlockToChildren(block, fields);
+      return new TableCell({
+        children: children.length > 0 ? children : [new Paragraph('')],
+        width: {
+          size: Math.round(100 / blocks.length),
+          type: WidthType.PERCENTAGE,
+        },
+        borders: {
+          top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+        },
+      });
+    })
+  );
+
+  return [
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+        bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+        left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+        right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+        insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+        insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      },
+      rows: [new TableRow({ children: cells })],
+    }),
+  ];
+}
+
+async function createHeader(
   content: DocumentTemplateContent,
   fields: ResolvedDocumentTemplateFields
 ): Promise<Header | undefined> {
   if (!content.page.header.enabled) {
-    return Promise.resolve(undefined);
+    return undefined;
   }
 
-  return Promise.all(
-    content.page.header.blocks.map((block) =>
-      fixedAreaBlockToChildren(block, fields)
-    )
-  ).then((children) => new Header({ children: children.flat() }));
+  return new Header({
+    children: await fixedAreaToChildren(
+      content.page.header.blocks.map((block) => ({
+        ...block,
+        showDivider: false,
+      })),
+      fields
+    ),
+  });
 }
 
-function createFooter(
+async function createFooter(
   content: DocumentTemplateContent,
   fields: ResolvedDocumentTemplateFields
 ): Promise<Footer | undefined> {
   if (!content.page.footer.enabled) {
-    return Promise.resolve(undefined);
+    return undefined;
   }
 
-  return Promise.all(
-    content.page.footer.blocks.map((block) =>
-      fixedAreaBlockToChildren(block, fields)
-    )
-  ).then((children) => new Footer({ children: children.flat() }));
+  return new Footer({
+    children: await fixedAreaToChildren(content.page.footer.blocks, fields),
+  });
 }
 
 export async function renderDocumentTemplateDocx(args: {
@@ -287,90 +466,7 @@ export async function renderDocumentTemplateDocx(args: {
 }): Promise<Buffer> {
   const children = args.content.document
     ? await richTextDocToDocxChildren(args.content.document, args.fields)
-    : args.content.blocks.flatMap((block) => {
-        switch (block.type) {
-          case 'heading':
-            return [
-              new Paragraph({
-                text: blockToPlainText(block, args.fields),
-                heading: HeadingLevel.HEADING_1,
-              }),
-            ];
-          case 'infoBox':
-            return [
-              new Paragraph({
-                text: block.title ?? 'Information',
-                heading: HeadingLevel.HEADING_3,
-              }),
-              textParagraph(blockToPlainText(block, args.fields)),
-            ];
-          case 'dataTable':
-            return [
-              new Table({
-                width: {
-                  size: 100,
-                  type: WidthType.PERCENTAGE,
-                },
-                rows:
-                  block.rows?.map(
-                    (row) =>
-                      new TableRow({
-                        children: [
-                          new TableCell({
-                            children: [new Paragraph(row.label)],
-                          }),
-                          new TableCell({
-                            children: [
-                              new Paragraph(
-                                blockToPlainText(
-                                  {
-                                    id: row.id,
-                                    type: 'paragraph',
-                                    text: row.value,
-                                  },
-                                  args.fields
-                                )
-                              ),
-                            ],
-                          }),
-                        ],
-                      })
-                  ) ?? [],
-              }),
-            ];
-          case 'divider':
-            return [
-              new Paragraph({
-                border: {
-                  bottom: {
-                    color: 'A1A1AA',
-                    space: 1,
-                    style: BorderStyle.SINGLE,
-                    size: 6,
-                  },
-                },
-              }),
-            ];
-          case 'signature':
-            return [
-              new Paragraph({
-                children: [
-                  new TextRun({ text: blockToPlainText(block, args.fields) }),
-                ],
-                spacing: { before: 360 },
-              }),
-            ];
-          case 'pageBreak':
-            return [new Paragraph({ children: [new PageBreak()] })];
-          case 'field':
-          case 'paragraph':
-          case 'header':
-          case 'footer':
-          case 'image':
-          default:
-            return [textParagraph(blockToPlainText(block, args.fields))];
-        }
-      });
+    : await legacyBlocksToDocxChildren(args.content.blocks, args.fields);
 
   const defaultHeader =
     args.content.page.header.showOn === 'allPages'
@@ -390,7 +486,43 @@ export async function renderDocumentTemplateDocx(args: {
       : undefined;
 
   const document = new Document({
-    title: args.templateName,
+    title: normalizeTemplateText(args.templateName),
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: FONT_FAMILY,
+            size: pxToHalfPoints(BODY_FONT_SIZE_PX),
+            color: BODY_COLOR,
+          },
+          paragraph: {
+            spacing: paragraphSpacing({
+              spacingBottom: DEFAULT_PARAGRAPH_SPACING_BOTTOM_PX,
+            }),
+          },
+        },
+      },
+    },
+    numbering: {
+      config: [
+        {
+          reference: 'default-numbering',
+          levels: [
+            {
+              level: 0,
+              format: LevelFormat.DECIMAL,
+              text: '%1.',
+              alignment: AlignmentType.LEFT,
+              style: {
+                paragraph: {
+                  indent: { left: 720, hanging: 360 },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
     sections: [
       {
         properties: {
@@ -434,14 +566,7 @@ export async function renderDocumentTemplateDocx(args: {
           default: defaultFooter,
           first: firstFooter,
         },
-        children: [
-          new Paragraph({
-            text: args.templateName,
-            heading: HeadingLevel.TITLE,
-            alignment: AlignmentType.LEFT,
-          }),
-          ...children,
-        ],
+        children,
       },
     ],
   });
@@ -449,9 +574,176 @@ export async function renderDocumentTemplateDocx(args: {
   return Packer.toBuffer(document);
 }
 
+async function legacyBlocksToDocxChildren(
+  blocks: DocumentTemplateBlock[],
+  fields: ResolvedDocumentTemplateFields
+): Promise<DocxChild[]> {
+  const children: DocxChild[] = [];
+
+  for (const block of blocks) {
+    if (block.richText) {
+      children.push(
+        ...(await richTextDocToDocxChildren(block.richText, fields))
+      );
+      continue;
+    }
+
+    switch (block.type) {
+      case 'heading':
+        children.push(
+          new Paragraph({
+            children: [
+              run({
+                text: blockToPlainText(block, fields),
+                fontSizePx: block.fontSize ?? 32,
+                bold: true,
+              }),
+            ],
+            alignment: docxAlignment(block.align),
+            spacing: paragraphSpacing({
+              spacingTop: block.spacingTop,
+              spacingBottom: block.spacingBottom ?? 20,
+            }),
+          })
+        );
+        break;
+      case 'infoBox':
+        children.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    shading: { fill: INFO_BOX_FILL, type: ShadingType.CLEAR },
+                    margins: {
+                      top: 180,
+                      bottom: 180,
+                      left: 180,
+                      right: 180,
+                    },
+                    children: [
+                      new Paragraph({
+                        children: [
+                          run({
+                            text: block.title ?? 'Information',
+                            fontSizePx: 14,
+                            bold: true,
+                          }),
+                        ],
+                        spacing: paragraphSpacing({ spacingBottom: 8 }),
+                      }),
+                      textParagraph(blockToPlainText(block, fields)),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          })
+        );
+        break;
+      case 'dataTable':
+        children.push(dataTableBlockToTable(block, fields));
+        break;
+      case 'divider':
+        children.push(dividerParagraph());
+        break;
+      case 'signature':
+        children.push(
+          new Paragraph({
+            children: [run({ text: blockToPlainText(block, fields) })],
+            spacing: paragraphSpacing({
+              spacingTop: block.spacingTop ?? 24,
+              spacingBottom: block.spacingBottom ?? 0,
+            }),
+          })
+        );
+        break;
+      case 'pageBreak':
+        children.push(new Paragraph({ children: [new PageBreak()] }));
+        break;
+      case 'image': {
+        const image = await legacyImageBlockToParagraph(block, fields);
+        if (image) {
+          children.push(image);
+        }
+        break;
+      }
+      case 'field':
+      case 'paragraph':
+      case 'header':
+      case 'footer':
+      default:
+        children.push(textParagraph(blockToPlainText(block, fields)));
+        break;
+    }
+  }
+
+  return children;
+}
+
+function dataTableBlockToTable(
+  block: DocumentTemplateBlock,
+  fields: ResolvedDocumentTemplateFields
+) {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows:
+      block.rows?.map(
+        (row) =>
+          new TableRow({
+            children: [
+              new TableCell({
+                shading: { fill: INFO_BOX_FILL, type: ShadingType.CLEAR },
+                width: { size: 36, type: WidthType.PERCENTAGE },
+                margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                children: [
+                  new Paragraph({
+                    children: [run({ text: row.label, bold: true })],
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 64, type: WidthType.PERCENTAGE },
+                margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                children: [
+                  new Paragraph({
+                    children: [
+                      run({
+                        text: resolveTemplateText(row.value, fields),
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          })
+      ) ?? [],
+  });
+}
+
+function dividerParagraph() {
+  return new Paragraph({
+    border: {
+      bottom: {
+        color: BORDER_COLOR,
+        space: 1,
+        style: BorderStyle.SINGLE,
+        size: 6,
+      },
+    },
+    spacing: paragraphSpacing({ spacingTop: 24, spacingBottom: 24 }),
+  });
+}
+
 function inlineNodesToRuns(
   nodes: DocumentTemplateRichTextNode[] | undefined,
-  fields: ResolvedDocumentTemplateFields
+  fields: ResolvedDocumentTemplateFields,
+  options: {
+    defaultFontSizePx: number;
+    defaultColor: string;
+    bold?: boolean;
+  }
 ): TextRun[] {
   return (
     nodes?.flatMap((node) => {
@@ -464,19 +756,21 @@ function inlineNodesToRuns(
             : undefined;
         const parsedColor =
           typeof color === 'string' ? color.replace('#', '') : undefined;
-        const textParts = (node.text ?? '').split('\t');
+        const textParts = normalizeTemplateText(node.text ?? '').split('\t');
 
         return textParts.flatMap((part, partIndex) => [
-          ...(partIndex > 0 ? [new TextRun({ children: [new Tab()] })] : []),
+          ...(partIndex > 0
+            ? [run({ children: [new Tab()], ...options })]
+            : []),
           ...(part
             ? [
-                new TextRun({
+                run({
                   text: part,
-                  bold: hasMark(node.marks, 'bold'),
+                  bold: options.bold || hasMark(node.marks, 'bold'),
                   italics: hasMark(node.marks, 'italic'),
-                  underline: hasMark(node.marks, 'underline') ? {} : undefined,
-                  size: parsedFontSize ? parsedFontSize * 2 : undefined,
-                  color: parsedColor,
+                  underline: hasMark(node.marks, 'underline'),
+                  fontSizePx: parsedFontSize || options.defaultFontSizePx,
+                  color: parsedColor || options.defaultColor,
                 }),
               ]
             : []),
@@ -484,61 +778,131 @@ function inlineNodesToRuns(
       }
 
       if (node.type === 'hardBreak') {
-        return [new TextRun({ text: '', break: 1 })];
+        return [
+          new TextRun({
+            text: '',
+            break: 1,
+            font: FONT_FAMILY,
+            size: pxToHalfPoints(options.defaultFontSizePx),
+            color: options.defaultColor,
+          }),
+        ];
       }
 
       if (node.type === 'dynamicField') {
         const fieldKey = node.attrs?.fieldKey;
         if (fieldKey === 'pageNumber') {
-          return [new TextRun({ children: [PageNumber.CURRENT] })];
+          return [
+            run({
+              children: [PageNumber.CURRENT],
+              fontSizePx: options.defaultFontSizePx,
+              color: options.defaultColor,
+            }),
+          ];
         }
 
         return [
-          new TextRun({
+          run({
             text:
               typeof fieldKey === 'string'
-                ? (fields[fieldKey]?.formattedValue ?? '—')
-                : '—',
+                ? (fields[fieldKey]?.formattedValue ?? missingTemplateValue())
+                : missingTemplateValue(),
+            fontSizePx: options.defaultFontSizePx,
+            color: options.defaultColor,
           }),
         ];
       }
 
-      return inlineNodesToRuns(node.content, fields);
+      return inlineNodesToRuns(node.content, fields, options);
     }) ?? []
   );
 }
 
-function alignmentFromNode(node: DocumentTemplateRichTextNode) {
-  const textAlign = node.attrs?.textAlign;
-  if (textAlign === 'center') return AlignmentType.CENTER;
-  if (textAlign === 'right') return AlignmentType.RIGHT;
-  return AlignmentType.LEFT;
+function paragraphFromInlineNode(
+  node: DocumentTemplateRichTextNode,
+  fields: ResolvedDocumentTemplateFields,
+  options: {
+    defaultFontSizePx: number;
+    defaultColor: string;
+    fallbackSpacingBottomPx: number;
+    bold?: boolean;
+  }
+) {
+  return new Paragraph({
+    children: inlineNodesToRuns(node.content, fields, options),
+    alignment: alignmentFromNode(node),
+    spacing: paragraphSpacing(node, options.fallbackSpacingBottomPx),
+    indent: indentFromNode(node),
+  });
 }
 
-function spacingFromNode(node: DocumentTemplateRichTextNode) {
-  const before =
-    typeof node.attrs?.spacingTop === 'number'
-      ? Math.round(node.attrs.spacingTop * 15)
-      : undefined;
-  const after =
-    typeof node.attrs?.spacingBottom === 'number'
-      ? Math.round(node.attrs.spacingBottom * 15)
-      : undefined;
+function tableCellToChildren(
+  cell: DocumentTemplateRichTextNode,
+  fields: ResolvedDocumentTemplateFields
+): DocxChild[] {
+  const children =
+    cell.content?.flatMap((child) =>
+      child.type === 'paragraph' || child.type === 'heading'
+        ? [
+            paragraphFromInlineNode(child, fields, {
+              defaultFontSizePx: BODY_FONT_SIZE_PX,
+              defaultColor: BODY_COLOR,
+              fallbackSpacingBottomPx: 4,
+              bold: child.type === 'heading',
+            }),
+          ]
+        : []
+    ) ?? [];
 
-  return before || after ? { before, after } : undefined;
+  return children.length > 0 ? children : [new Paragraph('')];
 }
 
-function indentFromNode(node: DocumentTemplateRichTextNode) {
-  return typeof node.attrs?.indent === 'number'
-    ? { left: Math.round(node.attrs.indent * 15) }
-    : undefined;
+function richTableNodeToTable(
+  node: DocumentTemplateRichTextNode,
+  fields: ResolvedDocumentTemplateFields
+) {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows:
+      node.content?.map(
+        (row) =>
+          new TableRow({
+            children:
+              row.content?.map(
+                (cell) =>
+                  new TableCell({
+                    shading:
+                      cell.type === 'tableHeader'
+                        ? { fill: INFO_BOX_FILL, type: ShadingType.CLEAR }
+                        : undefined,
+                    margins: {
+                      top: 120,
+                      bottom: 120,
+                      left: 120,
+                      right: 120,
+                    },
+                    children: tableCellToChildren(cell, fields),
+                  })
+              ) ?? [],
+          })
+      ) ?? [],
+  });
 }
 
 async function richTextDocToDocxChildren(
   document: DocumentTemplateRichTextNode,
-  fields: ResolvedDocumentTemplateFields
-): Promise<Array<Paragraph | Table>> {
-  const children: Array<Paragraph | Table> = [];
+  fields: ResolvedDocumentTemplateFields,
+  options: {
+    defaultFontSizePx: number;
+    defaultColor: string;
+    fallbackSpacingBottomPx: number;
+  } = {
+    defaultFontSizePx: BODY_FONT_SIZE_PX,
+    defaultColor: BODY_COLOR,
+    fallbackSpacingBottomPx: DEFAULT_PARAGRAPH_SPACING_BOTTOM_PX,
+  }
+): Promise<DocxChild[]> {
+  const children: DocxChild[] = [];
 
   for (const node of document.content ?? []) {
     if (node.type === 'templateImage') {
@@ -547,17 +911,13 @@ async function richTextDocToDocxChildren(
     }
 
     if (node.type === 'heading') {
-      const level =
-        node.attrs?.level === 2
-          ? HeadingLevel.HEADING_2
-          : HeadingLevel.HEADING_1;
+      const fontSizePx = node.attrs?.level === 2 ? 23 : 32;
       children.push(
-        new Paragraph({
-          children: inlineNodesToRuns(node.content, fields),
-          heading: level,
-          alignment: alignmentFromNode(node),
-          spacing: spacingFromNode(node),
-          indent: indentFromNode(node),
+        paragraphFromInlineNode(node, fields, {
+          ...options,
+          defaultFontSizePx: fontSizePx,
+          fallbackSpacingBottomPx: node.attrs?.level === 2 ? 16 : 20,
+          bold: true,
         })
       );
       continue;
@@ -570,12 +930,20 @@ async function richTextDocToDocxChildren(
             item.content?.map(
               (paragraph) =>
                 new Paragraph({
-                  children: inlineNodesToRuns(paragraph.content, fields),
+                  children: inlineNodesToRuns(
+                    paragraph.content,
+                    fields,
+                    options
+                  ),
                   bullet: node.type === 'bulletList' ? { level: 0 } : undefined,
                   numbering:
                     node.type === 'orderedList'
                       ? { reference: 'default-numbering', level: 0 }
                       : undefined,
+                  spacing: paragraphSpacing(
+                    paragraph,
+                    options.fallbackSpacingBottomPx / 2
+                  ),
                 })
             ) ?? []
         ) ?? [])
@@ -584,18 +952,7 @@ async function richTextDocToDocxChildren(
     }
 
     if (node.type === 'horizontalRule') {
-      children.push(
-        new Paragraph({
-          border: {
-            bottom: {
-              color: 'A1A1AA',
-              space: 1,
-              style: BorderStyle.SINGLE,
-              size: 6,
-            },
-          },
-        })
-      );
+      children.push(dividerParagraph());
       continue;
     }
 
@@ -606,31 +963,54 @@ async function richTextDocToDocxChildren(
 
     if (node.type === 'infoBox') {
       children.push(
-        new Paragraph({
-          children: inlineNodesToRuns(node.content?.[0]?.content, fields),
-          shading: { fill: 'F4F4F5' },
-          spacing: spacingFromNode(node) ?? { before: 160, after: 160 },
-          indent: indentFromNode(node),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  shading: { fill: INFO_BOX_FILL, type: ShadingType.CLEAR },
+                  margins: {
+                    top: 240,
+                    bottom: 240,
+                    left: 240,
+                    right: 240,
+                  },
+                  children: node.content?.flatMap((child) =>
+                    child.type === 'templateImage'
+                      ? []
+                      : [
+                          paragraphFromInlineNode(child, fields, {
+                            ...options,
+                            fallbackSpacingBottomPx: 10,
+                          }),
+                        ]
+                  ) ?? [new Paragraph('')],
+                }),
+              ],
+            }),
+          ],
         })
       );
       continue;
     }
 
+    if (node.type === 'table') {
+      children.push(richTableNodeToTable(node, fields));
+      continue;
+    }
+
     if (node.type === 'paragraph') {
-      children.push(
-        new Paragraph({
-          children: inlineNodesToRuns(node.content, fields),
-          alignment: alignmentFromNode(node),
-          spacing: spacingFromNode(node),
-          indent: indentFromNode(node),
-        })
-      );
+      children.push(paragraphFromInlineNode(node, fields, options));
       continue;
     }
 
     children.push(
       new Paragraph({
-        children: inlineNodesToRuns(node.content, fields),
+        children: inlineNodesToRuns(node.content, fields, options),
+        spacing: paragraphSpacing({
+          spacingBottom: options.fallbackSpacingBottomPx,
+        }),
       })
     );
   }

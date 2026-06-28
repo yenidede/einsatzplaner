@@ -476,9 +476,6 @@ export async function renderDocumentTemplatePdf(args: {
                 </View>
               ))}
             </View>
-            {page.header.blocks.some((block) => block.showDivider) ? (
-              <View style={[styles.fixedDivider, { marginTop: 4 }]} />
-            ) : null}
           </View>
         ) : null}
 

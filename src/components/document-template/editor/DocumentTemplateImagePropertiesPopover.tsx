@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ImageIcon, RotateCcw, Trash2 } from 'lucide-react';
+import { HelpCircle, ImageIcon, RotateCcw, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +55,66 @@ function normalizeNumber(value: number, fallback: number, min: number) {
   return Number.isFinite(value) ? Math.max(min, Math.round(value)) : fallback;
 }
 
+function FieldHelp({ children }: { children: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="size-6"
+          aria-label={children}
+        >
+          <HelpCircle />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{children}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function NumberWithUnitInput({
+  id,
+  label,
+  help,
+  min,
+  max,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  help: string;
+  min: number;
+  max?: number;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor={id}>{label}</Label>
+        <FieldHelp>{help}</FieldHelp>
+      </div>
+      <div className="relative">
+        <Input
+          id={id}
+          type="number"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="pr-10"
+        />
+        <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs">
+          px
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function DocumentTemplateImagePropertiesPopover({
   values,
   onApply,
@@ -94,10 +154,11 @@ export function DocumentTemplateImagePropertiesPopover({
       </div>
 
       <div className="flex flex-col gap-2">
-        <p className="text-xs font-medium text-muted-foreground">Allgemein</p>
+        <p className="text-muted-foreground text-xs font-medium">Allgemein</p>
         <div className="flex flex-col gap-1.5">
-          <Label>Alternativtext</Label>
+          <Label htmlFor="image-alt-text">Alternativtext</Label>
           <Input
+            id="image-alt-text"
             value={draft.alt}
             onChange={(event) => updateDraft({ alt: event.target.value })}
           />
@@ -105,7 +166,7 @@ export function DocumentTemplateImagePropertiesPopover({
       </div>
 
       <div className="flex flex-col gap-2">
-        <p className="text-xs font-medium text-muted-foreground">
+        <p className="text-muted-foreground text-xs font-medium">
           Positionierung
         </p>
         <div className="flex flex-col gap-1.5">
@@ -147,59 +208,47 @@ export function DocumentTemplateImagePropertiesPopover({
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col gap-1.5">
-              <Label>X</Label>
-              <Input
-                type="number"
-                min={0}
-                value={draft.x}
-                onChange={(event) =>
-                  updateDraft({ x: Number(event.target.value) })
-                }
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Y</Label>
-              <Input
-                type="number"
-                min={0}
-                value={draft.y}
-                onChange={(event) =>
-                  updateDraft({ y: Number(event.target.value) })
-                }
-              />
-            </div>
+            <NumberWithUnitInput
+              id="image-x-position"
+              label="X-Position"
+              help="X = Abstand vom linken Rand des aktuellen Bereichs"
+              min={0}
+              value={draft.x}
+              onChange={(value) => updateDraft({ x: value })}
+            />
+            <NumberWithUnitInput
+              id="image-y-position"
+              label="Y-Position"
+              help="Y = Abstand vom oberen Rand des aktuellen Bereichs"
+              min={0}
+              value={draft.y}
+              onChange={(value) => updateDraft({ y: value })}
+            />
           </div>
         )}
       </div>
 
       <div className="flex flex-col gap-2">
-        <p className="text-xs font-medium text-muted-foreground">Größe</p>
+        <p className="text-muted-foreground text-xs font-medium">Größe</p>
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1.5">
-            <Label>Breite</Label>
-            <Input
-              type="number"
-              min={24}
-              max={640}
-              value={draft.width}
-              onChange={(event) =>
-                updateDraft({ width: Number(event.target.value) })
-              }
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Höhe</Label>
-            <Input
-              type="number"
-              min={16}
-              max={480}
-              value={draft.height}
-              onChange={(event) =>
-                updateDraft({ height: Number(event.target.value) })
-              }
-            />
-          </div>
+          <NumberWithUnitInput
+            id="image-width"
+            label="Breite"
+            help="Breite = sichtbare Bildbreite"
+            min={24}
+            max={640}
+            value={draft.width}
+            onChange={(value) => updateDraft({ width: value })}
+          />
+          <NumberWithUnitInput
+            id="image-height"
+            label="Höhe"
+            help="Höhe = sichtbare Bildhöhe"
+            min={16}
+            max={480}
+            value={draft.height}
+            onChange={(value) => updateDraft({ height: value })}
+          />
         </div>
         <div className="flex items-center justify-between gap-3">
           <Label>Seitenverhältnis beibehalten</Label>

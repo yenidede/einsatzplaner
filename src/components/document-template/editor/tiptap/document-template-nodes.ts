@@ -1,4 +1,10 @@
-import { Extension, isNodeSelection, mergeAttributes, Node } from '@tiptap/core';
+import {
+  Extension,
+  isNodeSelection,
+  mergeAttributes,
+  Node,
+  type Editor,
+} from '@tiptap/core';
 
 function spacingStyleFromAttributes(
   attributes: Record<string, unknown>
@@ -16,6 +22,24 @@ function spacingStyleFromAttributes(
   ].filter((style): style is string => Boolean(style));
 
   return styles.length > 0 ? styles.join('; ') : undefined;
+}
+
+function supportsTextSelectionCreate(
+  value: unknown
+): value is {
+  create: (
+    document: Editor['state']['doc'],
+    anchor: number
+  ) => Editor['state']['selection'];
+} {
+  if (
+    value === null ||
+    (typeof value !== 'object' && typeof value !== 'function')
+  ) {
+    return false;
+  }
+
+  return 'create' in value && typeof value.create === 'function';
 }
 
 export const DocumentBlockStyleExtension = Extension.create({
@@ -177,6 +201,57 @@ export const DynamicFieldNode = Node.create({
     };
   },
 });
+
+export function insertParagraphAfterInfoBoxAtEnd(editor: Editor): boolean {
+  const { selection } = editor.state;
+  const { $from } = selection;
+
+  if (
+    !selection.empty ||
+    !$from.parent.isTextblock ||
+    $from.parentOffset !== $from.parent.content.size
+  ) {
+    return false;
+  }
+
+  let infoBoxDepth: number | null = null;
+  for (let depth = $from.depth - 1; depth > 0; depth -= 1) {
+    if ($from.node(depth).type.name === 'infoBox') {
+      infoBoxDepth = depth;
+      break;
+    }
+  }
+
+  if (infoBoxDepth === null) {
+    return false;
+  }
+
+  const infoBox = $from.node(infoBoxDepth);
+  if ($from.index(infoBoxDepth) !== infoBox.childCount - 1) {
+    return false;
+  }
+
+  const paragraph = editor.schema.nodes.paragraph;
+  if (!paragraph) {
+    return false;
+  }
+
+  const insertPosition = $from.after(infoBoxDepth);
+  const selectionConstructor: unknown = editor.state.selection.constructor;
+  if (!supportsTextSelectionCreate(selectionConstructor)) {
+    return false;
+  }
+
+  const transaction = editor.state.tr.insert(
+    insertPosition,
+    paragraph.create()
+  );
+  transaction.setSelection(
+    selectionConstructor.create(transaction.doc, insertPosition + 1)
+  );
+  editor.view.dispatch(transaction.scrollIntoView());
+  return true;
+}
 
 export const InfoBoxNode = Node.create({
   name: 'infoBox',

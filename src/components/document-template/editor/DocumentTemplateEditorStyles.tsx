@@ -4,6 +4,7 @@ export function DocumentTemplateEditorStyles() {
       .document-template-page .ProseMirror {
         box-sizing: border-box;
         min-height: 0;
+        max-width: none;
         outline: none;
         color: hsl(var(--foreground));
         font-size: 16px;
@@ -27,7 +28,7 @@ export function DocumentTemplateEditorStyles() {
       }
 
       .document-template-page .ProseMirror p {
-        margin: 0 0 1rem;
+        margin: 0 0 16px;
       }
 
       .document-template-page .document-template-area-editor p {
@@ -36,17 +37,21 @@ export function DocumentTemplateEditorStyles() {
       }
 
       .document-template-page .ProseMirror h1 {
-        font-size: 2rem;
+        font-size: 32px;
         line-height: 1.2;
-        margin: 0 0 1.25rem;
+        margin: 0 0 20px;
         font-weight: 650;
+        overflow-wrap: normal;
+        word-break: normal;
       }
 
       .document-template-page .ProseMirror h2 {
-        font-size: 1.45rem;
+        font-size: 23.2px;
         line-height: 1.25;
-        margin: 0 0 1rem;
+        margin: 0 0 16px;
         font-weight: 620;
+        overflow-wrap: normal;
+        word-break: normal;
       }
 
       .document-template-page .ProseMirror p:hover,
@@ -59,26 +64,26 @@ export function DocumentTemplateEditorStyles() {
 
       .document-template-page .ProseMirror ul,
       .document-template-page .ProseMirror ol {
-        margin: 0 0 1rem 1.4rem;
+        margin: 0 0 16px 22.4px;
         padding: 0;
       }
 
       .document-template-page .ProseMirror hr {
         border: 0;
         border-top: 1px solid hsl(var(--border));
-        margin: 1.5rem 0;
+        margin: 24px 0;
       }
 
       .document-template-page .ProseMirror table {
         border-collapse: collapse;
-        margin: 1rem 0;
+        margin: 16px 0;
         width: 100%;
       }
 
       .document-template-page .ProseMirror td,
       .document-template-page .ProseMirror th {
         border: 1px solid hsl(var(--border));
-        padding: 0.5rem 0.65rem;
+        padding: 8px 10.4px;
         vertical-align: top;
       }
 
@@ -89,9 +94,9 @@ export function DocumentTemplateEditorStyles() {
 
       .document-info-box {
         background: hsl(var(--muted) / 0.55);
-        border-radius: 0.5rem;
-        margin: 1rem 0;
-        padding: 1rem;
+        border-radius: 8px;
+        margin: 16px 0;
+        padding: 16px;
       }
 
       .document-template-body-measure {
@@ -101,13 +106,13 @@ export function DocumentTemplateEditorStyles() {
       .document-field-chip {
         display: inline-flex;
         align-items: center;
-        border-radius: 0.375rem;
+        border-radius: 6px;
         background: hsl(var(--secondary));
         color: hsl(var(--secondary-foreground));
         cursor: pointer;
         font-size: 0.875em;
         line-height: 1;
-        padding: 0.18rem 0.42rem;
+        padding: 2.88px 6.72px;
         user-select: none;
         white-space: nowrap;
       }
@@ -123,9 +128,9 @@ export function DocumentTemplateEditorStyles() {
         align-items: center;
         color: hsl(var(--muted-foreground));
         display: flex;
-        font-size: 0.75rem;
-        gap: 0.75rem;
-        margin: 2rem 0;
+        font-size: 12px;
+        gap: 12px;
+        margin: 32px 0;
         min-height: 680px;
       }
 
@@ -139,7 +144,7 @@ export function DocumentTemplateEditorStyles() {
 
       .document-template-image-wrapper {
         display: flex;
-        margin: 0.5rem 0;
+        margin: 8px 0;
       }
 
       .document-template-image-wrapper-free {
@@ -180,12 +185,12 @@ export function DocumentTemplateEditorStyles() {
       .document-template-image-placeholder {
         align-items: center;
         border: 1px dashed hsl(var(--border));
-        border-radius: 0.375rem;
+        border-radius: 6px;
         color: hsl(var(--muted-foreground));
         display: inline-flex;
-        font-size: 0.75rem;
+        font-size: 12px;
         justify-content: center;
-        padding: 0.35rem 0.6rem;
+        padding: 5.6px 9.6px;
         text-align: center;
       }
 

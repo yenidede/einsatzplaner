@@ -192,8 +192,9 @@ function normalizePageArea(
     return fallback;
   }
 
-  const blocks = Array.isArray(value.blocks)
-    ? value.blocks
+  const storedBlocks = Array.isArray(value.blocks) ? value.blocks : null;
+  const blocks = storedBlocks
+    ? storedBlocks
         .map(normalizeBlock)
         .filter((block): block is DocumentTemplateBlock => Boolean(block))
     : fallback.blocks;
@@ -253,8 +254,9 @@ export function normalizeDocumentTemplateContent(
   }
 
   const meta = isRecord(value.meta) ? value.meta : {};
-  const blocks = Array.isArray(value.blocks)
-    ? value.blocks
+  const storedBlocks = Array.isArray(value.blocks) ? value.blocks : null;
+  const blocks = storedBlocks
+    ? storedBlocks
         .map(normalizeBlock)
         .filter((block): block is DocumentTemplateBlock => Boolean(block))
     : [];
@@ -273,10 +275,9 @@ export function normalizeDocumentTemplateContent(
         typeof meta.sampleEinsatzId === 'string' ? meta.sampleEinsatzId : null,
     },
     page: normalizePageSettings(value.page),
-    blocks:
-      blocks.length > 0
-        ? blocks
-        : createDefaultDocumentTemplateContent().blocks,
+    blocks: storedBlocks
+      ? blocks
+      : createDefaultDocumentTemplateContent().blocks,
     document:
       normalizeRichTextNode(value.document) ??
       createDefaultDocumentTemplateContent().document,

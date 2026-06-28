@@ -10,54 +10,6 @@ function createBlockId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
-function richTextParagraph(
-  content: DocumentTemplateRichTextNode[],
-  textAlign: 'left' | 'center' | 'right' = 'left'
-): DocumentTemplateRichTextNode {
-  return {
-    type: 'doc',
-    content: [
-      {
-        type: 'paragraph',
-        attrs: { textAlign, spacingBottom: 0 },
-        content,
-      },
-    ],
-  };
-}
-
-function dynamicField(
-  fieldKey: string,
-  label: string
-): DocumentTemplateRichTextNode {
-  return {
-    type: 'dynamicField',
-    attrs: { fieldKey, label },
-  };
-}
-
-function text(value: string): DocumentTemplateRichTextNode {
-  return { type: 'text', text: value };
-}
-
-function hardBreak(): DocumentTemplateRichTextNode {
-  return { type: 'hardBreak' };
-}
-
-function paragraph(
-  content: DocumentTemplateRichTextNode[],
-  attrs: Record<string, string | number | boolean | null> = {
-    textAlign: 'left',
-    spacingBottom: 14,
-  }
-): DocumentTemplateRichTextNode {
-  return {
-    type: 'paragraph',
-    attrs,
-    content,
-  };
-}
-
 export function createDocumentTemplateBlock(
   type: DocumentTemplateBlock['type']
 ): DocumentTemplateBlock {
@@ -154,52 +106,16 @@ export function createDefaultDocumentTemplatePageSettings(): DocumentTemplatePag
       left: 20,
     },
     header: {
-      enabled: true,
+      enabled: false,
       height: 18,
       showOn: 'allPages',
-      blocks: [
-        {
-          id: createBlockId('header-organization'),
-          type: 'header',
-          text: '{{organizationName}}',
-          richText: richTextParagraph(
-            [
-              dynamicField('organizationName', 'Organisation'),
-              text(' · Buchungsbestätigung'),
-            ],
-            'right'
-          ),
-          align: 'right',
-          showOrganizationName: true,
-          showContactInfo: false,
-          showDivider: true,
-        },
-      ],
+      blocks: [],
     },
     footer: {
-      enabled: true,
+      enabled: false,
       height: 14,
       showOn: 'allPages',
-      blocks: [
-        {
-          id: createBlockId('footer-contact'),
-          type: 'footer',
-          text: '{{organizationEmail}} · {{organizationPhone}} · Seite {{pageNumber}}',
-          richText: richTextParagraph(
-            [
-              dynamicField('organizationEmail', 'Organisation E-Mail'),
-              text(' · '),
-              dynamicField('organizationPhone', 'Organisation Telefon'),
-              text(' · Seite '),
-              dynamicField('pageNumber', 'Seitenzahl'),
-            ],
-            'center'
-          ),
-          align: 'center',
-          showDivider: true,
-          showPageNumber: false,
-        },
-      ],
+      blocks: [],
     },
   };
 }
@@ -216,115 +132,13 @@ export function createDefaultDocumentTemplateContent(): DocumentTemplateContent 
     },
     page: createDefaultDocumentTemplatePageSettings(),
     document: createDefaultDocumentTemplateDocument(),
-    blocks: [
-      createDocumentTemplateBlock('heading'),
-      createDocumentTemplateBlock('paragraph'),
-      createDocumentTemplateBlock('infoBox'),
-      createDocumentTemplateBlock('signature'),
-    ],
+    blocks: [],
   };
 }
 
 export function createDefaultDocumentTemplateDocument(): DocumentTemplateRichTextNode {
   return {
     type: 'doc',
-    content: [
-      {
-        type: 'heading',
-        attrs: { level: 1, textAlign: 'left', spacingBottom: 18 },
-        content: [text('Buchungsbestätigung')],
-      },
-      paragraph(
-        [
-          text('Sehr geehrte/r '),
-          dynamicField('contactPerson', 'Kontaktperson'),
-          text(','),
-          hardBreak(),
-          hardBreak(),
-          text(
-            'vielen Dank für Ihre Buchung. Wir bestätigen Ihnen hiermit verbindlich den folgenden Termin:'
-          ),
-        ],
-        { textAlign: 'left', spacingBottom: 16 }
-      ),
-      {
-        type: 'infoBox',
-        attrs: { spacingTop: 8, spacingBottom: 20 },
-        content: [
-          paragraph(
-            [
-              text('Datum'),
-              hardBreak(),
-              dynamicField('assignmentDate', 'Datum'),
-            ],
-            { spacingBottom: 10 }
-          ),
-          paragraph(
-            [
-              text('Uhrzeit'),
-              hardBreak(),
-              dynamicField('assignmentStartTime', 'Beginnzeit'),
-              text(' bis '),
-              dynamicField('assignmentEndTime', 'Endzeit'),
-            ],
-            { spacingBottom: 10 }
-          ),
-          paragraph(
-            [text('Ort'), hardBreak(), dynamicField('location', 'Ort')],
-            { spacingBottom: 10 }
-          ),
-          paragraph(
-            [
-              text('Programm / Einsatz'),
-              hardBreak(),
-              dynamicField('programName', 'Führungsprogramm'),
-            ],
-            { spacingBottom: 10 }
-          ),
-          paragraph(
-            [
-              text('Teilnehmer:innenzahl'),
-              hardBreak(),
-              dynamicField('participantCount', 'Teilnehmeranzahl'),
-            ],
-            { spacingBottom: 10 }
-          ),
-          paragraph(
-            [
-              text('Gesamtpreis'),
-              hardBreak(),
-              dynamicField('totalPrice', 'Gesamtpreis'),
-            ],
-            { spacingBottom: 0 }
-          ),
-        ],
-      },
-      paragraph(
-        [
-          text(
-            'Bitte prüfen Sie die Angaben und melden Sie sich bei Rückfragen oder Änderungen rechtzeitig bei uns.'
-          ),
-        ],
-        { textAlign: 'left', spacingBottom: 14 }
-      ),
-      paragraph(
-        [
-          text(
-            'Wir freuen uns auf Ihren Besuch und stehen Ihnen für weitere Informationen gerne zur Verfügung.'
-          ),
-        ],
-        { textAlign: 'left', spacingBottom: 22 }
-      ),
-      paragraph(
-        [
-          text('Mit herzlichem Gruß'),
-          hardBreak(),
-          dynamicField('administrationName', 'Verwaltung Name'),
-          hardBreak(),
-          dynamicField('administrationFunction', 'Verwaltung Funktion'),
-        ],
-        { textAlign: 'left', spacingTop: 12, spacingBottom: 0 }
-      ),
-    ],
+    content: [{ type: 'paragraph', content: [] }],
   };
 }

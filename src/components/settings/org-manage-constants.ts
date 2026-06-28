@@ -24,8 +24,7 @@ export const ORG_MANAGE_NAV_ITEMS = [
   },
   { id: 'user-properties', label: 'Personeneigenschaften', icon: FileText },
   { id: 'users', label: 'Benutzer', icon: Users },
-  { id: 'document-templates', label: 'Dokumentvorlagen', icon: FileText },
-  { id: 'pdf-export', label: 'PDF-Export', icon: FileDown },
+  { id: 'dokument-vorlagen', label: 'Dokumentvorlagen', icon: FileDown },
 ] as const;
 
 export type OrgManageSectionId = (typeof ORG_MANAGE_NAV_ITEMS)[number]['id'];
