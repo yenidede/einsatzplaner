@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
-import { FileDown } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -56,9 +55,9 @@ import {
   calcTotal,
   calcPricePerPersonFromTotal,
 } from '../form/utils';
-import TooltipCustom from '../tooltip-custom';
-
-import { usePdfGenerator } from '@/features/pdf/hooks/usePdfGenerator';
+import TooltipCustom from '@/components/tooltip-custom';
+import { GenerateBookingConfirmationButton } from '@/features/pdf-template/components/dialogs/GenerateBookingConfirmationDialog';
+import { GenerateDocumentTemplateButtons } from '@/components/document-template/GenerateDocumentTemplateButtons';
 import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
 import { toast } from 'sonner';
@@ -68,8 +67,17 @@ import {
   detectChangeTypes,
   getAffectedUserId,
 } from '@/features/activity_log/utils';
-import { Select, SelectContent, SelectItem } from '../ui/select';
-import { SelectTrigger } from '@radix-ui/react-select';
+import {
+  getDefaultOrganizationPdfTemplate,
+  getPdfTemplates,
+} from '@/features/pdf-template/server/pdf-template.actions';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import { EinsatzActivityLog } from '@/features/activity_log/components/ActivityLogWrapperEinsatzDialog';
 import { RequiredUserProperties } from './RequiredUserProperties';
 import { Separator } from '../ui/separator';
@@ -409,7 +417,13 @@ export function EventDialogVerwaltung({
   const currentUserId = session?.user?.id;
 
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const { generatePdf } = usePdfGenerator();
+  const [pdfTemplates, setPdfTemplates] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [selectedPdfTemplateId, setSelectedPdfTemplateId] = useState<
+    string | null
+  >(null);
+  const [isPdfTemplatesLoading, setIsPdfTemplatesLoading] = useState(false);
   const [staticFormData, setStaticFormData] =
     useState<EinsatzFormData>(DEFAULTFORMDATA);
   // state for validation on dynamic form data - generated once after template was selected
@@ -1498,7 +1512,7 @@ export function EventDialogVerwaltung({
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="flex max-h-[90vh] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden sm:max-w-220">
-          <DialogHeader className="sticky top-0 z-10 shrink-0 border-b pb-4">
+          <DialogHeader className="sticky top-0 z-50 shrink-0 border-b pb-4">
             <DialogTitle className="bg-background mr-8 wrap-break-word">
               {isLoading
                 ? 'Laden...'
@@ -1563,13 +1577,7 @@ export function EventDialogVerwaltung({
                       onValueChange={handleTemplateSelect}
                     >
                       <SelectTrigger className="w-full sm:w-auto">
-                        <Button
-                          asChild
-                          variant="outline"
-                          className="w-full sm:w-auto"
-                        >
-                          <div className="truncate">Aktive Vorlage ändern</div>
-                        </Button>
+                        <SelectValue placeholder="Aktive Vorlage ändern" />
                       </SelectTrigger>
                       <SelectContent>
                         {templatesQuery.data
@@ -1641,12 +1649,13 @@ export function EventDialogVerwaltung({
             </div>
           </div>
 
-          <DialogFooter className="bg-background sticky bottom-0 z-10 shrink-0 flex-row border-t pt-4 sm:justify-between">
+          <DialogFooter className="bg-background sticky bottom-0 z-50 shrink-0 flex-row border-t pt-4 sm:justify-between">
             {
               <TooltipCustom text={einsatz_singular + ' löschen'}>
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-9 w-9"
                   onClick={() =>
                     handleDelete(
                       einsatz_singular,
@@ -1667,25 +1676,19 @@ export function EventDialogVerwaltung({
                 </Button>
               </TooltipCustom>
             }
-            <TooltipCustom text="PDF-Bestätigung drucken">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() =>
-                  handlePdfGenerate(
-                    einsatz_singular,
-                    {
-                      id: currentEinsatz?.id,
-                      title: currentEinsatz?.title ?? staticFormData.title,
-                    },
-                    generatePdf
-                  )
-                }
-                aria-label="PDF-Bestätigung drucken"
-              >
-                <FileDown size={16} aria-hidden="true" />
-              </Button>
-            </TooltipCustom>
+            <div className="flex flex-wrap items-center gap-3">
+              <GenerateBookingConfirmationButton
+                assignmentId={currentEinsatz?.id}
+                templateId={selectedPdfTemplateId}
+                templates={pdfTemplates}
+                onTemplateChange={setSelectedPdfTemplateId}
+                isLoading={isPdfTemplatesLoading}
+              />
+              <GenerateDocumentTemplateButtons
+                assignmentId={currentEinsatz?.id}
+                organizationId={activeOrgId}
+              />
+            </div>
             <div className="flex flex-1 flex-wrap items-center justify-end gap-4">
               {staticFormData.helpersNeeded > 0 &&
                 staticFormData.assignedUsers.length >=

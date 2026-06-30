@@ -1,12 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import {
   criticalFieldLabel,
   criticalFieldClass,
 } from '@/features/settings/utils/criticalFieldUtils';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { OrganizationAddresses } from '@/components/settings/org/OrganizationAddresses';
 import { OrganizationBankAccounts } from '@/components/settings/org/OrganizationBankAccounts';
+import { OrganizationPdfTemplateManager } from './OrganizationPdfTemplateManager';
+import { DocumentTemplateManager } from '@/components/document-template/DocumentTemplateManager';
 
 interface OrganizationPdfExportFormProps {
   organizationId: string;
@@ -144,6 +148,26 @@ export function OrganizationPdfExportForm({
         organizationId={organizationId}
         isSuperadmin={isSuperadmin}
       />
+
+      {/*         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-medium">
+              PDF-Vorlagen für Einsatz-Buchungsbestätigungen
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Vorlagen können direkt hier für diese Organisation erstellt und
+              verwaltet werden.
+            </p>
+          </div>
+          <Link
+            href={`/settings/org/${organizationId}/pdf-templates`}
+            className="inline-block"
+          >
+            <Button variant="secondary">Vollansicht öffnen</Button>
+          </Link>
+        </div> */}
+      <DocumentTemplateManager organizationId={organizationId} />
+      {/* <OrganizationPdfTemplateManager organizationId={organizationId} /> */}
     </div>
   );
 }
