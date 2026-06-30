@@ -72,12 +72,13 @@ function run(args: {
   italics?: boolean;
   underline?: boolean;
   color?: string;
+  fontFamily?: string;
   children?: IRunOptions['children'];
 }) {
   return new TextRun({
     text: args.text ? normalizeTemplateText(args.text) : args.text,
     children: args.children,
-    font: FONT_FAMILY,
+    font: args.fontFamily ?? FONT_FAMILY,
     size: pxToHalfPoints(args.fontSizePx ?? BODY_FONT_SIZE_PX),
     color: args.color ?? BODY_COLOR,
     bold: args.bold,
@@ -140,10 +141,16 @@ function paragraphSpacing(
       : typeof fallbackBottomPx === 'number'
         ? pxToTwip(fallbackBottomPx)
         : undefined;
+  const lineHeight =
+    'type' in nodeOrSpacing
+      ? numberAttr(nodeOrSpacing, 'lineHeight')
+      : undefined;
+  const line =
+    typeof lineHeight === 'number'
+      ? Math.round(lineHeight * 240)
+      : pxToTwip(BODY_LINE_HEIGHT_PX);
 
-  return before || after
-    ? { before, after, line: pxToTwip(BODY_LINE_HEIGHT_PX) }
-    : { line: pxToTwip(BODY_LINE_HEIGHT_PX) };
+  return before || after ? { before, after, line } : { line };
 }
 
 function indentFromNode(node: DocumentTemplateRichTextNode) {
@@ -750,6 +757,7 @@ function inlineNodesToRuns(
       if (node.type === 'text') {
         const fontSize = getMarkAttr(node.marks, 'textStyle', 'fontSize');
         const color = getMarkAttr(node.marks, 'textStyle', 'color');
+        const fontFamily = getMarkAttr(node.marks, 'textStyle', 'fontFamily');
         const parsedFontSize =
           typeof fontSize === 'string'
             ? Number(fontSize.replace('px', ''))
@@ -771,6 +779,8 @@ function inlineNodesToRuns(
                   underline: hasMark(node.marks, 'underline'),
                   fontSizePx: parsedFontSize || options.defaultFontSizePx,
                   color: parsedColor || options.defaultColor,
+                  fontFamily:
+                    typeof fontFamily === 'string' ? fontFamily : undefined,
                 }),
               ]
             : []),
@@ -791,12 +801,28 @@ function inlineNodesToRuns(
 
       if (node.type === 'dynamicField') {
         const fieldKey = node.attrs?.fieldKey;
+        const fontSize = getMarkAttr(node.marks, 'textStyle', 'fontSize');
+        const color = getMarkAttr(node.marks, 'textStyle', 'color');
+        const fontFamily = getMarkAttr(node.marks, 'textStyle', 'fontFamily');
+        const parsedFontSize =
+          typeof fontSize === 'string'
+            ? Number(fontSize.replace('px', ''))
+            : options.defaultFontSizePx;
+        const parsedColor =
+          typeof color === 'string'
+            ? color.replace('#', '')
+            : options.defaultColor;
         if (fieldKey === 'pageNumber') {
           return [
             run({
               children: [PageNumber.CURRENT],
-              fontSizePx: options.defaultFontSizePx,
-              color: options.defaultColor,
+              fontSizePx: parsedFontSize,
+              color: parsedColor,
+              bold: hasMark(node.marks, 'bold'),
+              italics: hasMark(node.marks, 'italic'),
+              underline: hasMark(node.marks, 'underline'),
+              fontFamily:
+                typeof fontFamily === 'string' ? fontFamily : undefined,
             }),
           ];
         }
@@ -807,8 +833,12 @@ function inlineNodesToRuns(
               typeof fieldKey === 'string'
                 ? (fields[fieldKey]?.formattedValue ?? missingTemplateValue())
                 : missingTemplateValue(),
-            fontSizePx: options.defaultFontSizePx,
-            color: options.defaultColor,
+            fontSizePx: parsedFontSize,
+            color: parsedColor,
+            bold: hasMark(node.marks, 'bold'),
+            italics: hasMark(node.marks, 'italic'),
+            underline: hasMark(node.marks, 'underline'),
+            fontFamily: typeof fontFamily === 'string' ? fontFamily : undefined,
           }),
         ];
       }

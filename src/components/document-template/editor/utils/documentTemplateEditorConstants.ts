@@ -6,6 +6,22 @@ export const TEXT_COLOR_OPTIONS = [
   { label: 'Grün', value: '#166534' },
 ];
 
+export const FONT_FAMILY_OPTIONS = [
+  { label: 'Arial', value: 'Arial' },
+  { label: 'Calibri', value: 'Calibri' },
+  { label: 'Times New Roman', value: 'Times New Roman' },
+  { label: 'Georgia', value: 'Georgia' },
+  { label: 'Verdana', value: 'Verdana' },
+  { label: 'Courier New', value: 'Courier New' },
+];
+
+export const LINE_HEIGHT_OPTIONS = [
+  { label: '1,0', value: '1' },
+  { label: '1,15', value: '1.15' },
+  { label: '1,5', value: '1.5' },
+  { label: '2,0', value: '2' },
+];
+
 export const DOCUMENT_FIELD_DRAG_MIME = 'application/document-template-field';
 export const DOCUMENT_BLOCK_DRAG_MIME = 'application/document-template-block';
 export const AUTO_PAGINATION_ENABLED = true;

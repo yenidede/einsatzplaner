@@ -11,6 +11,22 @@ type ImageSize = {
   width: number;
   height: number;
 };
+type ImageFrame = ImageSize & {
+  x: number;
+  y: number;
+};
+type ResizeDirection = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
+
+const RESIZE_DIRECTIONS: ResizeDirection[] = [
+  'nw',
+  'n',
+  'ne',
+  'e',
+  'se',
+  's',
+  'sw',
+  'w',
+];
 
 const MIN_IMAGE_WIDTH = 24;
 const MIN_IMAGE_HEIGHT = 16;
@@ -32,13 +48,94 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function resizeDirection(value: string | undefined): ResizeDirection | null {
+  return RESIZE_DIRECTIONS.find((direction) => direction === value) ?? null;
+}
+
+export function calculateResizedImageFrame({
+  direction,
+  deltaX,
+  deltaY,
+  preserveAspectRatio,
+  originFrame,
+  bounds,
+}: {
+  direction: ResizeDirection;
+  deltaX: number;
+  deltaY: number;
+  preserveAspectRatio: boolean;
+  originFrame: ImageFrame;
+  bounds: ImageSize;
+}): ImageFrame {
+  const changesLeft = direction.includes('w');
+  const changesRight = direction.includes('e');
+  const changesTop = direction.includes('n');
+  const changesBottom = direction.includes('s');
+  const changesWidth = changesLeft || changesRight;
+  const changesHeight = changesTop || changesBottom;
+  const maxWidth = changesLeft
+    ? originFrame.x + originFrame.width
+    : bounds.width - originFrame.x;
+  const maxHeight = changesTop
+    ? originFrame.y + originFrame.height
+    : bounds.height - originFrame.y;
+  let width = changesWidth
+    ? originFrame.width + (changesLeft ? -deltaX : deltaX)
+    : originFrame.width;
+  let height = changesHeight
+    ? originFrame.height + (changesTop ? -deltaY : deltaY)
+    : originFrame.height;
+
+  if (preserveAspectRatio) {
+    const widthScale = width / originFrame.width;
+    const heightScale = height / originFrame.height;
+    const requestedScale = !changesHeight
+      ? widthScale
+      : !changesWidth
+        ? heightScale
+        : Math.abs(widthScale - 1) >= Math.abs(heightScale - 1)
+          ? widthScale
+          : heightScale;
+    const minimumScale = Math.max(
+      MIN_IMAGE_WIDTH / originFrame.width,
+      MIN_IMAGE_HEIGHT / originFrame.height
+    );
+    const maximumScale = Math.min(
+      maxWidth / originFrame.width,
+      maxHeight / originFrame.height
+    );
+    const scale = clamp(requestedScale, minimumScale, maximumScale);
+    width = originFrame.width * scale;
+    height = originFrame.height * scale;
+  } else {
+    width = clamp(width, MIN_IMAGE_WIDTH, maxWidth);
+    height = clamp(height, MIN_IMAGE_HEIGHT, maxHeight);
+  }
+
+  const roundedWidth = Math.round(width);
+  const roundedHeight = Math.round(height);
+
+  return {
+    width: roundedWidth,
+    height: roundedHeight,
+    x: changesLeft
+      ? Math.round(originFrame.x + originFrame.width - roundedWidth)
+      : originFrame.x,
+    y: changesTop
+      ? Math.round(originFrame.y + originFrame.height - roundedHeight)
+      : originFrame.y,
+  };
+}
+
 function imageLayoutMetrics(wrapper: HTMLElement): ImageLayoutMetrics | null {
   const editorElement = wrapper.closest('.ProseMirror');
   if (!(editorElement instanceof HTMLElement)) return null;
 
   const bounds = editorElement.getBoundingClientRect();
   const scale =
-    editorElement.offsetWidth > 0 ? bounds.width / editorElement.offsetWidth : 1;
+    editorElement.offsetWidth > 0
+      ? bounds.width / editorElement.offsetWidth
+      : 1;
   const safeScale = scale > 0 ? scale : 1;
 
   return {
@@ -116,9 +213,20 @@ export const TemplateImageNode = Node.create({
       const content = document.createElement('div');
       const image = document.createElement('img');
       const placeholder = document.createElement('span');
-      const resizeHandle = document.createElement('span');
+      const resizeHandles = RESIZE_DIRECTIONS.map((direction) => {
+        const handle = document.createElement('span');
+        handle.className = 'document-template-image-resize-handle';
+        handle.dataset.resizeDirection = direction;
+        handle.setAttribute('aria-label', `Bildgröße ${direction} ändern`);
+        handle.setAttribute('role', 'button');
+        handle.setAttribute('title', 'Bildgröße ziehen');
+        return handle;
+      });
+      let imageIsSelected = false;
+      let imageIsHovered = false;
+      let imageIsResizing = false;
 
-      const selectNode = () => {
+      const selectImageNode = () => {
         const position = typeof getPos === 'function' ? getPos() : undefined;
         if (typeof position !== 'number') return;
 
@@ -145,24 +253,35 @@ export const TemplateImageNode = Node.create({
           .run();
       };
 
-      const applyVisualSize = (width: number, height: number) => {
-        if (imageMode(currentNode.attrs.mode) === 'free') {
-          wrapper.style.width = `${width}px`;
-          wrapper.style.height = `${height}px`;
-        }
-
-        content.style.width = `${width}px`;
-        content.style.height = `${height}px`;
-        image.style.width = `${width}px`;
-        image.style.height = `${height}px`;
-        placeholder.style.width = `${width}px`;
-        placeholder.style.minHeight = `${Math.min(height, 80)}px`;
+      const updateResizeHandleVisibility = () => {
+        const visible = imageIsSelected || imageIsHovered || imageIsResizing;
+        resizeHandles.forEach((handle) => {
+          handle.style.opacity = visible ? '1' : '0';
+          handle.style.pointerEvents = visible ? 'auto' : 'none';
+        });
       };
 
-      const ensureResizeHandle = () => {
-        resizeHandle.className = 'document-template-image-resize-handle';
-        resizeHandle.setAttribute('aria-hidden', 'true');
-        if (!resizeHandle.parentElement) content.append(resizeHandle);
+      const applyVisualFrame = (frame: ImageFrame) => {
+        if (imageMode(currentNode.attrs.mode) === 'free') {
+          wrapper.style.left = `${frame.x}px`;
+          wrapper.style.top = `${frame.y}px`;
+          wrapper.style.width = `${frame.width}px`;
+          wrapper.style.height = `${frame.height}px`;
+        }
+
+        content.style.width = `${frame.width}px`;
+        content.style.height = `${frame.height}px`;
+        image.style.width = `${frame.width}px`;
+        image.style.height = `${frame.height}px`;
+        placeholder.style.width = `${frame.width}px`;
+        placeholder.style.minHeight = `${Math.min(frame.height, 80)}px`;
+      };
+
+      const ensureResizeHandles = () => {
+        resizeHandles.forEach((handle) => {
+          if (!handle.parentElement) content.append(handle);
+        });
+        updateResizeHandleVisibility();
       };
 
       const updateDom = () => {
@@ -188,7 +307,7 @@ export const TemplateImageNode = Node.create({
         wrapper.style.height = mode === 'free' ? `${height}px` : '';
 
         content.className = 'document-template-image-content';
-        applyVisualSize(width, height);
+        applyVisualFrame({ width, height, x, y });
 
         if (src.startsWith('{{')) {
           placeholder.className = 'document-template-image-placeholder';
@@ -200,7 +319,7 @@ export const TemplateImageNode = Node.create({
                 : 'Bild';
           image.remove();
           if (!placeholder.parentElement) content.append(placeholder);
-          ensureResizeHandle();
+          ensureResizeHandles();
           return;
         }
 
@@ -211,13 +330,16 @@ export const TemplateImageNode = Node.create({
         image.style.objectFit = 'contain';
         placeholder.remove();
         if (!image.parentElement) content.append(image);
-        ensureResizeHandle();
+        ensureResizeHandles();
       };
 
       const handlePointerDown = (event: PointerEvent) => {
-        selectNode();
+        selectImageNode();
 
-        if (event.target === resizeHandle) {
+        if (
+          event.target instanceof HTMLElement &&
+          resizeDirection(event.target.dataset.resizeDirection)
+        ) {
           return;
         }
 
@@ -283,76 +405,14 @@ export const TemplateImageNode = Node.create({
         wrapper.addEventListener('pointercancel', stopDrag);
       };
 
-      const calculateResizedImage = (
-        clientX: number,
-        clientY: number,
-        startX: number,
-        startY: number,
-        metrics: ImageLayoutMetrics,
-        originSize: ImageSize,
-        originPosition: { x: number; y: number }
-      ): ImageSize => {
-        const mode = imageMode(currentNode.attrs.mode);
-        const keepAspectRatio = currentNode.attrs.keepAspectRatio !== false;
-        const maxWidth =
-          mode === 'free'
-            ? Math.max(MIN_IMAGE_WIDTH, metrics.logicalWidth - originPosition.x)
-            : Math.max(MIN_IMAGE_WIDTH, metrics.logicalWidth);
-        const maxHeight =
-          mode === 'free'
-            ? Math.max(
-                MIN_IMAGE_HEIGHT,
-                metrics.logicalHeight - originPosition.y
-              )
-            : Math.max(MIN_IMAGE_HEIGHT, metrics.logicalHeight);
-        const deltaX = (clientX - startX) / metrics.safeScale;
-        const deltaY = (clientY - startY) / metrics.safeScale;
-
-        if (!keepAspectRatio) {
-          return {
-            width: Math.round(
-              clamp(originSize.width + deltaX, MIN_IMAGE_WIDTH, maxWidth)
-            ),
-            height: Math.round(
-              clamp(originSize.height + deltaY, MIN_IMAGE_HEIGHT, maxHeight)
-            ),
-          };
-        }
-
-        const aspectRatio =
-          originSize.width > 0 && originSize.height > 0
-            ? originSize.width / originSize.height
-            : 1;
-        const widthDriven = Math.abs(deltaX) >= Math.abs(deltaY);
-        let nextWidth = widthDriven
-          ? clamp(originSize.width + deltaX, MIN_IMAGE_WIDTH, maxWidth)
-          : clamp(
-              (originSize.height + deltaY) * aspectRatio,
-              MIN_IMAGE_WIDTH,
-              maxWidth
-            );
-        let nextHeight = nextWidth / aspectRatio;
-
-        if (nextHeight > maxHeight) {
-          nextHeight = maxHeight;
-          nextWidth = nextHeight * aspectRatio;
-        }
-
-        if (nextHeight < MIN_IMAGE_HEIGHT) {
-          nextHeight = MIN_IMAGE_HEIGHT;
-          nextWidth = nextHeight * aspectRatio;
-        }
-
-        return {
-          width: Math.round(clamp(nextWidth, MIN_IMAGE_WIDTH, maxWidth)),
-          height: Math.round(clamp(nextHeight, MIN_IMAGE_HEIGHT, maxHeight)),
-        };
-      };
-
       const handleResizePointerDown = (event: PointerEvent) => {
+        if (!(event.target instanceof HTMLElement)) return;
+        const direction = resizeDirection(event.target.dataset.resizeDirection);
+        if (!direction) return;
+
         event.preventDefault();
         event.stopPropagation();
-        selectNode();
+        selectImageNode();
 
         const metrics = imageLayoutMetrics(wrapper);
         if (!metrics) return;
@@ -360,29 +420,45 @@ export const TemplateImageNode = Node.create({
         const pointerId = event.pointerId;
         const startX = event.clientX;
         const startY = event.clientY;
-        const originSize = {
+        const mode = imageMode(currentNode.attrs.mode);
+        const originFrame = {
           width: numberAttr(currentNode.attrs.width, 160),
           height: numberAttr(currentNode.attrs.height, 80),
-        };
-        const originPosition = {
           x: numberAttr(currentNode.attrs.x, 0),
           y: numberAttr(currentNode.attrs.y, 0),
         };
+        const bounds = {
+          width: metrics.logicalWidth,
+          height: metrics.logicalHeight,
+        };
+        const inlineOriginFrame = {
+          ...originFrame,
+          x: direction.includes('w')
+            ? metrics.logicalWidth - originFrame.width
+            : 0,
+          y: direction.includes('n')
+            ? metrics.logicalHeight - originFrame.height
+            : 0,
+        };
+        const resizeHandle = event.target;
 
+        const resizedFrame = (pointerEvent: PointerEvent) =>
+          calculateResizedImageFrame({
+            direction,
+            deltaX: (pointerEvent.clientX - startX) / metrics.safeScale,
+            deltaY: (pointerEvent.clientY - startY) / metrics.safeScale,
+            preserveAspectRatio: pointerEvent.shiftKey,
+            originFrame: mode === 'free' ? originFrame : inlineOriginFrame,
+            bounds,
+          });
+
+        imageIsResizing = true;
+        content.dataset.resizing = 'true';
+        updateResizeHandleVisibility();
         resizeHandle.setPointerCapture(pointerId);
 
         const handlePointerMove = (moveEvent: PointerEvent) => {
-          const nextSize = calculateResizedImage(
-            moveEvent.clientX,
-            moveEvent.clientY,
-            startX,
-            startY,
-            metrics,
-            originSize,
-            originPosition
-          );
-
-          applyVisualSize(nextSize.width, nextSize.height);
+          applyVisualFrame(resizedFrame(moveEvent));
         };
 
         const stopResize = (upEvent: PointerEvent) => {
@@ -392,18 +468,16 @@ export const TemplateImageNode = Node.create({
           resizeHandle.removeEventListener('pointermove', handlePointerMove);
           resizeHandle.removeEventListener('pointerup', stopResize);
           resizeHandle.removeEventListener('pointercancel', stopResize);
+          delete content.dataset.resizing;
+          imageIsResizing = false;
+          updateResizeHandleVisibility();
 
-          const nextSize = calculateResizedImage(
-            upEvent.clientX,
-            upEvent.clientY,
-            startX,
-            startY,
-            metrics,
-            originSize,
-            originPosition
+          const nextFrame = resizedFrame(upEvent);
+          updateNodeAttrs(
+            mode === 'free'
+              ? nextFrame
+              : { width: nextFrame.width, height: nextFrame.height }
           );
-
-          updateNodeAttrs(nextSize);
         };
 
         resizeHandle.addEventListener('pointermove', handlePointerMove);
@@ -411,14 +485,36 @@ export const TemplateImageNode = Node.create({
         resizeHandle.addEventListener('pointercancel', stopResize);
       };
 
+      const handlePointerEnter = () => {
+        imageIsHovered = true;
+        updateResizeHandleVisibility();
+      };
+
+      const handlePointerLeave = () => {
+        imageIsHovered = false;
+        updateResizeHandleVisibility();
+      };
+
       wrapper.append(content);
       updateDom();
       wrapper.addEventListener('pointerdown', handlePointerDown);
-      wrapper.addEventListener('contextmenu', selectNode);
-      resizeHandle.addEventListener('pointerdown', handleResizePointerDown);
+      wrapper.addEventListener('pointerenter', handlePointerEnter);
+      wrapper.addEventListener('pointerleave', handlePointerLeave);
+      wrapper.addEventListener('contextmenu', selectImageNode);
+      content.addEventListener('pointerdown', handleResizePointerDown);
 
       return {
         dom: wrapper,
+        selectNode: () => {
+          imageIsSelected = true;
+          wrapper.classList.add('ProseMirror-selectednode');
+          updateResizeHandleVisibility();
+        },
+        deselectNode: () => {
+          imageIsSelected = false;
+          wrapper.classList.remove('ProseMirror-selectednode');
+          updateResizeHandleVisibility();
+        },
         update: (updatedNode) => {
           if (updatedNode.type.name !== currentNode.type.name) return false;
           currentNode = updatedNode;
@@ -427,11 +523,10 @@ export const TemplateImageNode = Node.create({
         },
         destroy: () => {
           wrapper.removeEventListener('pointerdown', handlePointerDown);
-          wrapper.removeEventListener('contextmenu', selectNode);
-          resizeHandle.removeEventListener(
-            'pointerdown',
-            handleResizePointerDown
-          );
+          wrapper.removeEventListener('pointerenter', handlePointerEnter);
+          wrapper.removeEventListener('pointerleave', handlePointerLeave);
+          wrapper.removeEventListener('contextmenu', selectImageNode);
+          content.removeEventListener('pointerdown', handleResizePointerDown);
         },
       };
     };

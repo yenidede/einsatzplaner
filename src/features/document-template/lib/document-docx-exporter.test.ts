@@ -230,7 +230,7 @@ describe('renderDocumentTemplateDocx', () => {
           },
           {
             type: 'paragraph',
-            attrs: { spacingBottom: 14 },
+            attrs: { spacingBottom: 14, lineHeight: 1.15 },
             content: [
               {
                 type: 'text',
@@ -240,7 +240,11 @@ describe('renderDocumentTemplateDocx', () => {
                 marks: [
                   {
                     type: 'textStyle',
-                    attrs: { fontSize: '18px', color: '#2563eb' },
+                    attrs: {
+                      fontSize: '18px',
+                      color: '#2563eb',
+                      fontFamily: 'Times New Roman',
+                    },
                   },
                 ],
               },
@@ -323,6 +327,8 @@ describe('renderDocumentTemplateDocx', () => {
     expect(documentXml).not.toContain(mojibake('fü').slice(0, 2));
     expect(documentXml).toContain('w:sz w:val="48"');
     expect(documentXml).toContain('w:sz w:val="27"');
+    expect(documentXml).toContain('Times New Roman');
+    expect(documentXml).toContain('w:line="276"');
     expect(documentXml).toContain('wp:extent cx="2286000" cy="914400"');
     expect(headerXml).toContain('Organisation Ö');
     expect(headerXml).toContain('Buchungsbestätigung');

@@ -19,14 +19,15 @@ function spacingStyleFromAttributes(
     typeof attributes.indent === 'number'
       ? `margin-left: ${attributes.indent}px`
       : null,
+    typeof attributes.lineHeight === 'number'
+      ? `line-height: ${attributes.lineHeight}`
+      : null,
   ].filter((style): style is string => Boolean(style));
 
   return styles.length > 0 ? styles.join('; ') : undefined;
 }
 
-function supportsTextSelectionCreate(
-  value: unknown
-): value is {
+function supportsTextSelectionCreate(value: unknown): value is {
   create: (
     document: Editor['state']['doc'],
     anchor: number
@@ -80,6 +81,17 @@ export const DocumentBlockStyleExtension = Extension.create({
             },
             renderHTML: (attributes) => ({
               'data-indent': attributes.indent,
+              style: spacingStyleFromAttributes(attributes),
+            }),
+          },
+          lineHeight: {
+            default: null,
+            parseHTML: (element) => {
+              const value = element.getAttribute('data-line-height');
+              return value ? Number(value) : null;
+            },
+            renderHTML: (attributes) => ({
+              'data-line-height': attributes.lineHeight,
               style: spacingStyleFromAttributes(attributes),
             }),
           },

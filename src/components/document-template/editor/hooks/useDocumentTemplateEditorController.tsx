@@ -47,6 +47,7 @@ import {
   groupLabels,
   richTextFromBlockText,
   toRichTextNode,
+  upsertAreaTextBlock,
 } from '../utils/documentTemplateEditorUtils';
 import { useDocumentTemplateExport } from './useDocumentTemplateExport';
 import { useDocumentTemplateEditorState } from './useDocumentTemplateEditorState';
@@ -84,8 +85,12 @@ export function useDocumentTemplateEditorController({
     setBlockSearch,
     fontSize,
     setFontSize,
+    fontFamily,
+    setFontFamily,
     textColor,
     setTextColor,
+    lineHeight,
+    setLineHeight,
     spacingTop,
     setSpacingTop,
     spacingBottom,
@@ -110,6 +115,7 @@ export function useDocumentTemplateEditorController({
     setSelectedDynamicField,
     contextMenuTarget,
     setContextMenuTarget,
+    selectionRevision,
     setSelectionRevision,
     organizationLogoUrl,
     setOrganizationLogoUrl,
@@ -209,10 +215,10 @@ export function useDocumentTemplateEditorController({
           ...current.page,
           header: {
             ...current.page.header,
-            blocks: current.page.header.blocks.map((block) =>
-              block.id === headerTextBlock.id
-                ? { ...block, richText: nextRichText }
-                : block
+            blocks: upsertAreaTextBlock(
+              current.page.header.blocks,
+              headerTextBlock,
+              nextRichText
             ),
           },
         },
@@ -251,10 +257,10 @@ export function useDocumentTemplateEditorController({
           ...current.page,
           footer: {
             ...current.page.footer,
-            blocks: current.page.footer.blocks.map((block) =>
-              block.id === footerTextBlock.id
-                ? { ...block, richText: nextRichText }
-                : block
+            blocks: upsertAreaTextBlock(
+              current.page.footer.blocks,
+              footerTextBlock,
+              nextRichText
             ),
           },
         },
@@ -273,6 +279,55 @@ export function useDocumentTemplateEditorController({
       : activeArea === 'footer'
         ? footerEditor
         : (bodyEditorsRef.current.get(activeBodyPageIndex) ?? null);
+
+  useEffect(() => {
+    if (!activeEditor) return;
+
+    const textStyle = activeEditor.getAttributes('textStyle');
+    if (typeof textStyle.fontSize === 'string') {
+      setFontSize(textStyle.fontSize.replace('px', ''));
+    }
+    if (typeof textStyle.fontFamily === 'string') {
+      setFontFamily(textStyle.fontFamily);
+    }
+    if (typeof textStyle.color === 'string') {
+      setTextColor(textStyle.color);
+    }
+
+    const { $from } = activeEditor.state.selection;
+    for (let depth = $from.depth; depth > 0; depth -= 1) {
+      const node = $from.node(depth);
+      if (!['paragraph', 'heading', 'infoBox'].includes(node.type.name)) {
+        continue;
+      }
+
+      setSpacingTop(
+        typeof node.attrs.spacingTop === 'number'
+          ? String(node.attrs.spacingTop)
+          : '0'
+      );
+      setSpacingBottom(
+        typeof node.attrs.spacingBottom === 'number'
+          ? String(node.attrs.spacingBottom)
+          : '16'
+      );
+      setLineHeight(
+        typeof node.attrs.lineHeight === 'number'
+          ? String(node.attrs.lineHeight)
+          : '1.5'
+      );
+      break;
+    }
+  }, [
+    activeEditor,
+    selectionRevision,
+    setFontFamily,
+    setFontSize,
+    setLineHeight,
+    setSpacingBottom,
+    setSpacingTop,
+    setTextColor,
+  ]);
 
   useEffect(() => {
     setLeftSidebarWidth(
@@ -421,28 +476,27 @@ export function useDocumentTemplateEditorController({
         ...content.page,
         header: {
           ...content.page.header,
-          blocks: content.page.header.blocks.map((block) =>
-            block.id === headerTextBlock.id && headerEditor
-              ? { ...block, richText: toRichTextNode(headerEditor.getJSON()) }
-              : block
-          ),
+          blocks: headerEditor
+            ? upsertAreaTextBlock(
+                content.page.header.blocks,
+                headerTextBlock,
+                toRichTextNode(headerEditor.getJSON())
+              )
+            : content.page.header.blocks,
         },
         footer: {
           ...content.page.footer,
-          blocks: content.page.footer.blocks.map((block) =>
-            block.id === footerTextBlock.id && footerEditor
-              ? { ...block, richText: toRichTextNode(footerEditor.getJSON()) }
-              : block
-          ),
+          blocks: footerEditor
+            ? upsertAreaTextBlock(
+                content.page.footer.blocks,
+                footerTextBlock,
+                toRichTextNode(footerEditor.getJSON())
+              )
+            : content.page.footer.blocks,
         },
       },
     };
   }
-
-
-
-
-
 
   const pageTitle = template
     ? 'Dokumentvorlage bearbeiten'
@@ -561,7 +615,9 @@ export function useDocumentTemplateEditorController({
     setReplaceSelectedImageAfterUpload,
   });
   const {
+    applyFontFamily,
     applyFontSize,
+    applyLineHeight,
     applyTextColor,
     deleteCurrentBlock,
     deleteSelectedDynamicField,
@@ -584,7 +640,9 @@ export function useDocumentTemplateEditorController({
     selectedDynamicField,
     setContent,
     setContextMenuTarget,
+    setFontFamily,
     setFontSize,
+    setLineHeight,
     setSelectedDynamicField,
     setSpacingBottom,
     setSpacingTop,
@@ -622,7 +680,9 @@ export function useDocumentTemplateEditorController({
   }`;
 
   return {
+    applyFontFamily,
     applyFontSize,
+    applyLineHeight,
     applyTextColor,
     deleteCurrentBlock,
     deleteSelectedDynamicField,
@@ -667,6 +727,7 @@ export function useDocumentTemplateEditorController({
     fields,
     filteredBlockGroups,
     fontSize,
+    fontFamily,
     footerEditor,
     footerHeightPx,
     footerTextBlock,
@@ -720,6 +781,7 @@ export function useDocumentTemplateEditorController({
     setZoom,
     spacingBottom,
     spacingTop,
+    lineHeight,
     startSidebarResize,
     template,
     textColor,

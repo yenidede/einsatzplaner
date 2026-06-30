@@ -143,6 +143,8 @@ import {
   DOCUMENT_BLOCK_DRAG_MIME,
   DOCUMENT_FIELD_DRAG_MIME,
   ENTER_PAGINATION_STEP_LIMIT,
+  FONT_FAMILY_OPTIONS,
+  LINE_HEIGHT_OPTIONS,
   MINIMAL_TIPTAP_FOR_ENTER_DEBUG,
   PASTE_PAGINATION_STEP_LIMIT,
   TEXT_COLOR_OPTIONS,
@@ -193,6 +195,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -266,7 +269,9 @@ export function DocumentTemplateToolbar({
   controller: DocumentTemplateEditorControllerModel;
 }) {
   const {
+    applyFontFamily,
     applyFontSize,
+    applyLineHeight,
     applyTextColor,
     deleteCurrentBlock,
     duplicateCurrentBlock,
@@ -278,6 +283,7 @@ export function DocumentTemplateToolbar({
     activeEditor,
     content,
     fontSize,
+    fontFamily,
     footerTextBlock,
     hasSelectedImage,
     mode,
@@ -285,6 +291,7 @@ export function DocumentTemplateToolbar({
     setZoom,
     spacingBottom,
     spacingTop,
+    lineHeight,
     textColor,
     zoom,
   } = controller;
@@ -359,16 +366,39 @@ export function DocumentTemplateToolbar({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="paragraph">Normaler Text</SelectItem>
-                <SelectItem value="heading1">Überschrift 1</SelectItem>
-                <SelectItem value="heading2">Überschrift 2</SelectItem>
+                <SelectGroup>
+                  <SelectItem value="paragraph">Normaler Text</SelectItem>
+                  <SelectItem value="heading1">Überschrift 1</SelectItem>
+                  <SelectItem value="heading2">Überschrift 2</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Select value={fontFamily} onValueChange={applyFontFamily}>
+              <SelectTrigger
+                className="h-8 w-[160px]"
+                aria-label="Schriftart ändern"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {FONT_FAMILY_OPTIONS.map((font) => (
+                    <SelectItem
+                      key={font.value}
+                      value={font.value}
+                      style={{ fontFamily: font.value }}
+                    >
+                      {font.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
             <ToolbarTooltip label="Schriftgröße">
               <Input
                 type="number"
-                min={10}
-                max={36}
+                min={6}
+                max={96}
                 value={fontSize}
                 onChange={(event) => applyFontSize(event.target.value)}
                 className="h-8 w-20"
@@ -471,10 +501,38 @@ export function DocumentTemplateToolbar({
                     {color.label}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                  <Input
+                    type="color"
+                    value={textColor}
+                    onChange={(event) => applyTextColor(event.target.value)}
+                    className="size-7 p-1"
+                    aria-label="Eigene Textfarbe wählen"
+                  />
+                  Eigene Farbe
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Separator orientation="vertical" className="h-6" />
-            <ToolbarTooltip label="Abstand oben">
+            <Select value={lineHeight} onValueChange={applyLineHeight}>
+              <SelectTrigger
+                className="h-8 w-[84px]"
+                aria-label="Zeilenabstand ändern"
+                title="Zeilenabstand"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {LINE_HEIGHT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <ToolbarTooltip label="Absatzabstand davor">
               <Input
                 type="number"
                 min={0}
@@ -484,10 +542,10 @@ export function DocumentTemplateToolbar({
                   setBlockSpacing('spacingTop')(event.target.value)
                 }
                 className="h-8 w-20"
-                aria-label="Abstand oben"
+                aria-label="Absatzabstand davor"
               />
             </ToolbarTooltip>
-            <ToolbarTooltip label="Abstand unten">
+            <ToolbarTooltip label="Absatzabstand danach">
               <Input
                 type="number"
                 min={0}
@@ -497,7 +555,7 @@ export function DocumentTemplateToolbar({
                   setBlockSpacing('spacingBottom')(event.target.value)
                 }
                 className="h-8 w-20"
-                aria-label="Abstand unten"
+                aria-label="Absatzabstand danach"
               />
             </ToolbarTooltip>
             <Separator orientation="vertical" className="h-6" />

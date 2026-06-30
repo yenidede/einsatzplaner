@@ -7,6 +7,7 @@ export function DocumentTemplateEditorStyles() {
         max-width: none;
         outline: none;
         color: hsl(var(--foreground));
+        font-family: Arial, sans-serif;
         font-size: 16px;
         line-height: 1.7;
         overflow-wrap: anywhere;
@@ -34,6 +35,11 @@ export function DocumentTemplateEditorStyles() {
       .document-template-page .document-template-area-editor p {
         margin: 0;
         overflow-wrap: anywhere;
+      }
+
+      .document-template-page .document-template-area-editor,
+      .document-template-page .document-template-area-editor .ProseMirror {
+        min-height: 100%;
       }
 
       .document-template-page .ProseMirror h1 {
@@ -108,10 +114,11 @@ export function DocumentTemplateEditorStyles() {
         align-items: center;
         border-radius: 6px;
         background: hsl(var(--secondary));
-        color: hsl(var(--secondary-foreground));
+        color: inherit;
         cursor: pointer;
-        font-size: 0.875em;
-        line-height: 1;
+        font-family: inherit;
+        font-size: inherit;
+        line-height: inherit;
         padding: 2.88px 6.72px;
         user-select: none;
         white-space: nowrap;
@@ -197,16 +204,69 @@ export function DocumentTemplateEditorStyles() {
       .document-template-image-resize-handle {
         background: hsl(var(--background));
         border: 2px solid hsl(var(--ring));
-        border-radius: 999px;
-        bottom: -7px;
+        border-radius: 2px;
         box-shadow: 0 1px 4px hsl(var(--foreground) / 0.18);
-        cursor: nwse-resize;
-        display: none;
-        height: 14px;
+        display: block;
+        height: 12px;
+        opacity: 0;
+        pointer-events: none;
         position: absolute;
-        right: -7px;
         touch-action: none;
-        width: 14px;
+        transition: opacity 120ms ease;
+        width: 12px;
+        z-index: 2;
+      }
+
+      .document-template-image-resize-handle[data-resize-direction='nw'] {
+        cursor: nwse-resize;
+        left: -6px;
+        top: -6px;
+      }
+
+      .document-template-image-resize-handle[data-resize-direction='n'] {
+        cursor: ns-resize;
+        left: 50%;
+        top: -6px;
+        transform: translateX(-50%);
+      }
+
+      .document-template-image-resize-handle[data-resize-direction='ne'] {
+        cursor: nesw-resize;
+        right: -6px;
+        top: -6px;
+      }
+
+      .document-template-image-resize-handle[data-resize-direction='e'] {
+        cursor: ew-resize;
+        right: -6px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      .document-template-image-resize-handle[data-resize-direction='se'] {
+        bottom: -6px;
+        cursor: nwse-resize;
+        right: -6px;
+      }
+
+      .document-template-image-resize-handle[data-resize-direction='s'] {
+        bottom: -6px;
+        cursor: ns-resize;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .document-template-image-resize-handle[data-resize-direction='sw'] {
+        bottom: -6px;
+        cursor: nesw-resize;
+        left: -6px;
+      }
+
+      .document-template-image-resize-handle[data-resize-direction='w'] {
+        cursor: ew-resize;
+        left: -6px;
+        top: 50%;
+        transform: translateY(-50%);
       }
 
       .ProseMirror-selectednode .document-template-image,
@@ -217,8 +277,15 @@ export function DocumentTemplateEditorStyles() {
         outline-offset: 3px;
       }
 
+      .document-template-image-content:hover
+        .document-template-image-resize-handle,
+      .document-template-image-content[data-resizing='true']
+        .document-template-image-resize-handle,
+      .document-template-image-wrapper.ProseMirror-selectednode
+        .document-template-image-resize-handle,
       .ProseMirror-selectednode .document-template-image-resize-handle {
-        display: block;
+        opacity: 1;
+        pointer-events: auto;
       }
     `}</style>
   );

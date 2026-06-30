@@ -54,10 +54,23 @@ function richNodeStyle(node: DocumentTemplateRichTextNode): CSSProperties {
     marginTop: numericAttr(node, 'spacingTop'),
     marginBottom: numericAttr(node, 'spacingBottom'),
     marginLeft: numericAttr(node, 'indent'),
+    lineHeight: numericAttr(node, 'lineHeight'),
     textAlign:
       node.attrs?.textAlign === 'center' || node.attrs?.textAlign === 'right'
         ? node.attrs.textAlign
         : undefined,
+  };
+}
+
+function inlineNodeStyle(node: DocumentTemplateRichTextNode): CSSProperties {
+  const fontSize = getMarkAttr(node.marks, 'textStyle', 'fontSize');
+  const color = getMarkAttr(node.marks, 'textStyle', 'color');
+  const fontFamily = getMarkAttr(node.marks, 'textStyle', 'fontFamily');
+
+  return {
+    fontSize: typeof fontSize === 'string' ? fontSize : undefined,
+    color: typeof color === 'string' ? color : undefined,
+    fontFamily: typeof fontFamily === 'string' ? fontFamily : undefined,
   };
 }
 
@@ -233,17 +246,16 @@ function InlineRichText({
     <>
       {nodes?.map((node, index) => {
         if (node.type === 'text') {
-          const fontSize = getMarkAttr(node.marks, 'textStyle', 'fontSize');
           return (
             <span
               key={index}
               style={{
+                ...inlineNodeStyle(node),
                 fontWeight: hasMark(node.marks, 'bold') ? 700 : undefined,
                 fontStyle: hasMark(node.marks, 'italic') ? 'italic' : undefined,
                 textDecoration: hasMark(node.marks, 'underline')
                   ? 'underline'
                   : undefined,
-                fontSize: typeof fontSize === 'string' ? fontSize : undefined,
                 tabSize: 4,
                 whiteSpace: 'pre-wrap',
               }}
@@ -260,7 +272,17 @@ function InlineRichText({
         if (node.type === 'dynamicField') {
           const fieldKey = node.attrs?.fieldKey;
           return (
-            <span key={index}>
+            <span
+              key={index}
+              style={{
+                ...inlineNodeStyle(node),
+                fontWeight: hasMark(node.marks, 'bold') ? 700 : undefined,
+                fontStyle: hasMark(node.marks, 'italic') ? 'italic' : undefined,
+                textDecoration: hasMark(node.marks, 'underline')
+                  ? 'underline'
+                  : undefined,
+              }}
+            >
               {typeof fieldKey === 'string'
                 ? (fields[fieldKey]?.formattedValue ?? '—')
                 : '—'}
@@ -540,8 +562,7 @@ export function DocumentTemplatePreview({
       <div
         className={cn(
           'relative box-border min-w-0 overflow-hidden',
-          showAreaLabels &&
-            'border-border bg-background border-x border-dashed'
+          showAreaLabels && 'border-border bg-background border-x border-dashed'
         )}
         style={{
           width: pageContentWidthPx,

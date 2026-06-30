@@ -12,6 +12,7 @@ import type {
   ContextMenuTarget,
   SelectedDynamicField,
 } from '../types/documentTemplateEditorTypes';
+import { updateNearestDocumentBlockAttributes } from '../utils/documentTemplateEditorUtils';
 
 export function useDocumentTemplateFormatting({
   activeEditor,
@@ -23,7 +24,9 @@ export function useDocumentTemplateFormatting({
   selectedDynamicField,
   setContent,
   setContextMenuTarget,
+  setFontFamily,
   setFontSize,
+  setLineHeight,
   setSelectedDynamicField,
   setSpacingBottom,
   setSpacingTop,
@@ -38,8 +41,12 @@ export function useDocumentTemplateFormatting({
   selectedDynamicField: SelectedDynamicField | null;
   setContent: Dispatch<SetStateAction<DocumentTemplateContent>>;
   setContextMenuTarget: Dispatch<SetStateAction<ContextMenuTarget>>;
+  setFontFamily: Dispatch<SetStateAction<string>>;
   setFontSize: Dispatch<SetStateAction<string>>;
-  setSelectedDynamicField: Dispatch<SetStateAction<SelectedDynamicField | null>>;
+  setLineHeight: Dispatch<SetStateAction<string>>;
+  setSelectedDynamicField: Dispatch<
+    SetStateAction<SelectedDynamicField | null>
+  >;
   setSpacingBottom: Dispatch<SetStateAction<string>>;
   setSpacingTop: Dispatch<SetStateAction<string>>;
   setTextColor: Dispatch<SetStateAction<string>>;
@@ -51,13 +58,11 @@ export function useDocumentTemplateFormatting({
     const numericValue = Number(value);
     const nextValue = Number.isFinite(numericValue) ? numericValue : 0;
 
-    activeEditor
-      ?.chain()
-      .focus()
-      .updateAttributes('paragraph', { [attribute]: nextValue })
-      .updateAttributes('heading', { [attribute]: nextValue })
-      .updateAttributes('infoBox', { [attribute]: nextValue })
-      .run();
+    if (activeEditor) {
+      updateNearestDocumentBlockAttributes(activeEditor, {
+        [attribute]: nextValue,
+      });
+    }
   }
 
   function deleteSelectedDynamicField() {
@@ -169,16 +174,30 @@ export function useDocumentTemplateFormatting({
 
   function applyFontSize(value: string) {
     setFontSize(value);
-    activeEditor
-      ?.chain()
-      .focus()
-      .setMark('textStyle', { fontSize: `${value}px` })
-      .run();
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue) || numericValue < 6) return;
+
+    activeEditor?.chain().focus().setFontSize(`${numericValue}px`).run();
   }
 
   function applyTextColor(value: string) {
     setTextColor(value);
-    activeEditor?.chain().focus().setMark('textStyle', { color: value }).run();
+    activeEditor?.chain().focus().setColor(value).run();
+  }
+
+  function applyFontFamily(value: string) {
+    setFontFamily(value);
+    activeEditor?.chain().focus().setFontFamily(value).run();
+  }
+
+  function applyLineHeight(value: string) {
+    setLineHeight(value);
+    const numericValue = Number(value);
+    if (!activeEditor || !Number.isFinite(numericValue)) return;
+
+    updateNearestDocumentBlockAttributes(activeEditor, {
+      lineHeight: numericValue,
+    });
   }
 
   function isCursorInTextBlock() {
@@ -408,7 +427,9 @@ export function useDocumentTemplateFormatting({
   }
 
   return {
+    applyFontFamily,
     applyFontSize,
+    applyLineHeight,
     applyTextColor,
     deleteCurrentBlock,
     deleteSelectedDynamicField,

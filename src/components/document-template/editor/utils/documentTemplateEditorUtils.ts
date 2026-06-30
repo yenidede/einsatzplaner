@@ -1,9 +1,8 @@
 import { isNodeSelection } from '@tiptap/core';
 import type { Editor, JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle } from '@tiptap/extension-text-style';
+import { TextStyleKit } from '@tiptap/extension-text-style';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
@@ -11,6 +10,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import type {
   DocumentTemplateContent,
+  DocumentTemplateBlock,
   DocumentTemplateFieldDefinition,
   DocumentTemplateRichTextNode,
   ResolvedDocumentTemplateFields,
@@ -91,13 +91,91 @@ export function getAreaTextBlock(
   );
 }
 
+export function upsertAreaTextBlock(
+  blocks: DocumentTemplateBlock[],
+  textBlock: DocumentTemplateBlock,
+  richText: DocumentTemplateRichTextNode
+): DocumentTemplateBlock[] {
+  const nextBlock = { ...textBlock, richText };
+  const blockExists = blocks.some((block) => block.id === textBlock.id);
+
+  return blockExists
+    ? blocks.map((block) =>
+        block.id === textBlock.id ? { ...block, richText } : block
+      )
+    : [...blocks, nextBlock];
+}
+
+export function updateNearestDocumentBlockAttributes(
+  editor: Editor,
+  attributes: Record<string, string | number | null>
+): boolean {
+  const { $from } = editor.state.selection;
+  const supportedNodeTypes = new Set(['paragraph', 'heading', 'infoBox']);
+
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (!supportedNodeTypes.has(node.type.name)) {
+      continue;
+    }
+
+    const position = $from.before(depth);
+    editor.view.dispatch(
+      editor.state.tr.setNodeMarkup(position, undefined, {
+        ...node.attrs,
+        ...attributes,
+      })
+    );
+    editor.view.focus();
+    return true;
+  }
+
+  return false;
+}
+
+export function horizontalAlignmentFromPosition(
+  clientX: number,
+  left: number,
+  width: number
+): 'left' | 'center' | 'right' {
+  const relativePosition = width > 0 ? (clientX - left) / width : 0;
+
+  if (relativePosition < 1 / 3) return 'left';
+  if (relativePosition < 2 / 3) return 'center';
+  return 'right';
+}
+
+export function placeCursorInFixedArea(
+  editor: Editor,
+  textAlign: 'left' | 'center' | 'right'
+): boolean {
+  const lastNode = editor.state.doc.lastChild;
+  const lastNodeIsEmptyTextBlock =
+    lastNode?.isTextblock === true && lastNode.content.size === 0;
+
+  if (lastNodeIsEmptyTextBlock) {
+    return editor.chain().focus('end').setTextAlign(textAlign).run();
+  }
+
+  return editor
+    .chain()
+    .insertContentAt(editor.state.doc.content.size, {
+      type: 'paragraph',
+      attrs: { textAlign, spacingBottom: 0 },
+    })
+    .focus('end')
+    .run();
+}
+
 export function createEditorExtensions() {
   const baseExtensions = [
     StarterKit.configure({
       horizontalRule: {},
     }),
-    Underline,
-    TextStyle,
+    TextStyleKit.configure({
+      backgroundColor: false,
+      lineHeight: false,
+    }),
     TextAlign.configure({
       types: ['heading', 'paragraph'],
     }),

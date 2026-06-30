@@ -12,7 +12,11 @@ import type {
   SidebarResizeSide,
   SidebarResizeState,
 } from '../types/documentTemplateEditorTypes';
-import { TEXT_COLOR_OPTIONS } from '../utils/documentTemplateEditorConstants';
+import {
+  FONT_FAMILY_OPTIONS,
+  LINE_HEIGHT_OPTIONS,
+  TEXT_COLOR_OPTIONS,
+} from '../utils/documentTemplateEditorConstants';
 import { SIDEBAR_WIDTH } from '../utils/documentTemplateLayoutUtils';
 
 export function useDocumentTemplateEditorState(
@@ -28,7 +32,9 @@ export function useDocumentTemplateEditorState(
   const [fieldSearch, setFieldSearch] = useState('');
   const [blockSearch, setBlockSearch] = useState('');
   const [fontSize, setFontSize] = useState('16');
+  const [fontFamily, setFontFamily] = useState(FONT_FAMILY_OPTIONS[0].value);
   const [textColor, setTextColor] = useState(TEXT_COLOR_OPTIONS[0].value);
+  const [lineHeight, setLineHeight] = useState(LINE_HEIGHT_OPTIONS[2].value);
   const [spacingTop, setSpacingTop] = useState('0');
   const [spacingBottom, setSpacingBottom] = useState('16');
   const [zoom, setZoom] = useState(100);
@@ -48,7 +54,7 @@ export function useDocumentTemplateEditorState(
     useState<SelectedDynamicField | null>(null);
   const [contextMenuTarget, setContextMenuTarget] =
     useState<ContextMenuTarget>('editor');
-  const [, setSelectionRevision] = useState(0);
+  const [selectionRevision, setSelectionRevision] = useState(0);
   const [organizationLogoUrl, setOrganizationLogoUrl] = useState<string | null>(
     null
   );
@@ -77,8 +83,12 @@ export function useDocumentTemplateEditorState(
     setBlockSearch,
     fontSize,
     setFontSize,
+    fontFamily,
+    setFontFamily,
     textColor,
     setTextColor,
+    lineHeight,
+    setLineHeight,
     spacingTop,
     setSpacingTop,
     spacingBottom,
@@ -103,6 +113,7 @@ export function useDocumentTemplateEditorState(
     setSelectedDynamicField,
     contextMenuTarget,
     setContextMenuTarget,
+    selectionRevision,
     setSelectionRevision,
     organizationLogoUrl,
     setOrganizationLogoUrl,
@@ -117,4 +128,3 @@ export function useDocumentTemplateEditorState(
     sidebarResizeRef,
   };
 }
-

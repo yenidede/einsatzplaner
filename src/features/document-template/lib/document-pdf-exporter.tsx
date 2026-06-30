@@ -22,6 +22,48 @@ import {
 } from './document-template-renderer';
 import { getMarkAttr, hasMark } from './document-rich-text';
 
+export function millimetersToPdfPoints(value: number): number {
+  return (value * 72) / 25.4;
+}
+
+export function documentFontFamilyToPdfFont(
+  fontFamily: string | undefined,
+  bold = false,
+  italic = false
+): string | undefined {
+  switch (fontFamily) {
+    case 'Times New Roman':
+    case 'Georgia':
+      return bold && italic
+        ? 'Times-BoldItalic'
+        : bold
+          ? 'Times-Bold'
+          : italic
+            ? 'Times-Italic'
+            : 'Times-Roman';
+    case 'Courier New':
+      return bold && italic
+        ? 'Courier-BoldOblique'
+        : bold
+          ? 'Courier-Bold'
+          : italic
+            ? 'Courier-Oblique'
+            : 'Courier';
+    case 'Arial':
+    case 'Calibri':
+    case 'Verdana':
+      return bold && italic
+        ? 'Helvetica-BoldOblique'
+        : bold
+          ? 'Helvetica-Bold'
+          : italic
+            ? 'Helvetica-Oblique'
+            : 'Helvetica';
+    default:
+      return undefined;
+  }
+}
+
 const styles = StyleSheet.create({
   page: {
     fontSize: 11,
@@ -99,6 +141,7 @@ type PdfSpacingStyle = {
   marginTop?: number;
   marginBottom?: number;
   marginLeft?: number;
+  lineHeight?: number;
   textAlign?: 'center' | 'right';
 };
 
@@ -231,22 +274,40 @@ function inlineNodeToPdfText(
   if (node.type === 'text') {
     const fontSize = getMarkAttr(node.marks, 'textStyle', 'fontSize');
     const color = getMarkAttr(node.marks, 'textStyle', 'color');
+    const fontFamily = getMarkAttr(node.marks, 'textStyle', 'fontFamily');
     const parsedFontSize =
       typeof fontSize === 'string'
         ? Number(fontSize.replace('px', ''))
         : undefined;
+    const bold = hasMark(node.marks, 'bold');
+    const italic = hasMark(node.marks, 'italic');
+    const resolvedFontFamily = documentFontFamilyToPdfFont(
+      typeof fontFamily === 'string' ? fontFamily : undefined,
+      bold,
+      italic
+    );
+    const resolvedFontStyle: 'normal' | 'italic' = resolvedFontFamily
+      ? 'normal'
+      : italic
+        ? 'italic'
+        : 'normal';
+    const textDecoration: 'underline' | 'none' = hasMark(
+      node.marks,
+      'underline'
+    )
+      ? 'underline'
+      : 'none';
 
     return (
       <Text
         key={index}
         style={{
-          fontWeight: hasMark(node.marks, 'bold') ? 700 : 400,
-          fontStyle: hasMark(node.marks, 'italic') ? 'italic' : 'normal',
-          textDecoration: hasMark(node.marks, 'underline')
-            ? 'underline'
-            : 'none',
+          fontWeight: resolvedFontFamily ? 400 : bold ? 700 : 400,
+          fontStyle: resolvedFontStyle,
+          textDecoration,
           fontSize: parsedFontSize,
           color: typeof color === 'string' ? color : undefined,
+          fontFamily: resolvedFontFamily,
         }}
       >
         {(node.text ?? '').replaceAll('\t', '    ')}
@@ -260,14 +321,51 @@ function inlineNodeToPdfText(
 
   if (node.type === 'dynamicField') {
     const fieldKey = node.attrs?.fieldKey;
+    const fontSize = getMarkAttr(node.marks, 'textStyle', 'fontSize');
+    const color = getMarkAttr(node.marks, 'textStyle', 'color');
+    const fontFamily = getMarkAttr(node.marks, 'textStyle', 'fontFamily');
+    const parsedFontSize =
+      typeof fontSize === 'string'
+        ? Number(fontSize.replace('px', ''))
+        : undefined;
+    const bold = hasMark(node.marks, 'bold');
+    const italic = hasMark(node.marks, 'italic');
+    const resolvedFontFamily = documentFontFamilyToPdfFont(
+      typeof fontFamily === 'string' ? fontFamily : undefined,
+      bold,
+      italic
+    );
+    const resolvedFontStyle: 'normal' | 'italic' = resolvedFontFamily
+      ? 'normal'
+      : italic
+        ? 'italic'
+        : 'normal';
+    const textDecoration: 'underline' | 'none' = hasMark(
+      node.marks,
+      'underline'
+    )
+      ? 'underline'
+      : 'none';
+    const style = {
+      fontSize: parsedFontSize,
+      color: typeof color === 'string' ? color : undefined,
+      fontFamily: resolvedFontFamily,
+      fontWeight: resolvedFontFamily ? 400 : bold ? 700 : 400,
+      fontStyle: resolvedFontStyle,
+      textDecoration,
+    };
     if (fieldKey === 'pageNumber') {
       return (
-        <Text key={index} render={({ pageNumber }) => String(pageNumber)} />
+        <Text
+          key={index}
+          style={style}
+          render={({ pageNumber }) => String(pageNumber)}
+        />
       );
     }
 
     return (
-      <Text key={index}>
+      <Text key={index} style={style}>
         {typeof fieldKey === 'string'
           ? (fields[fieldKey]?.formattedValue ?? '—')
           : '—'}
@@ -319,8 +417,7 @@ function imageNodeToPdfBlock(
               : 'flex-start',
         marginBottom: node.attrs?.mode === 'free' ? 0 : 8,
         width: typeof node.attrs?.width === 'number' ? node.attrs.width : 160,
-        height:
-          typeof node.attrs?.height === 'number' ? node.attrs.height : 80,
+        height: typeof node.attrs?.height === 'number' ? node.attrs.height : 80,
       }}
     >
       {/* @react-pdf/renderer Image has no alt prop; this is not a DOM image. */}
@@ -357,6 +454,10 @@ function spacingStyleFromNode(
         : undefined,
     marginLeft:
       typeof node.attrs?.indent === 'number' ? node.attrs.indent : undefined,
+    lineHeight:
+      typeof node.attrs?.lineHeight === 'number'
+        ? node.attrs.lineHeight
+        : undefined,
     textAlign,
   };
 }
@@ -436,10 +537,14 @@ export async function renderDocumentTemplatePdf(args: {
 }): Promise<Buffer> {
   const { page } = args.content;
   const pageSize = page.orientation === 'landscape' ? 'A4' : 'A4';
-  const bodyPaddingTop =
-    page.margins.top + (page.header.enabled ? page.header.height : 0);
-  const bodyPaddingBottom =
-    page.margins.bottom + (page.footer.enabled ? page.footer.height : 0);
+  const bodyPaddingTop = millimetersToPdfPoints(
+    page.margins.top + (page.header.enabled ? page.header.height : 0)
+  );
+  const bodyPaddingBottom = millimetersToPdfPoints(
+    page.margins.bottom + (page.footer.enabled ? page.footer.height : 0)
+  );
+  const pageMarginLeft = millimetersToPdfPoints(page.margins.left);
+  const pageMarginRight = millimetersToPdfPoints(page.margins.right);
 
   return renderToBuffer(
     <Document>
@@ -450,9 +555,9 @@ export async function renderDocumentTemplatePdf(args: {
           styles.page,
           {
             paddingTop: bodyPaddingTop,
-            paddingRight: page.margins.right,
+            paddingRight: pageMarginRight,
             paddingBottom: bodyPaddingBottom,
-            paddingLeft: page.margins.left,
+            paddingLeft: pageMarginLeft,
           },
         ]}
       >
@@ -461,10 +566,10 @@ export async function renderDocumentTemplatePdf(args: {
             fixed={page.header.showOn === 'allPages'}
             style={{
               position: 'absolute',
-              top: page.margins.top,
-              left: page.margins.left,
-              right: page.margins.right,
-              height: page.header.height,
+              top: millimetersToPdfPoints(page.margins.top),
+              left: pageMarginLeft,
+              right: pageMarginRight,
+              height: millimetersToPdfPoints(page.header.height),
               justifyContent: 'center',
               overflow: 'hidden',
             }}
@@ -492,10 +597,10 @@ export async function renderDocumentTemplatePdf(args: {
             fixed={page.footer.showOn === 'allPages'}
             style={{
               position: 'absolute',
-              right: page.margins.right,
-              bottom: page.margins.bottom,
-              left: page.margins.left,
-              height: page.footer.height,
+              right: pageMarginRight,
+              bottom: millimetersToPdfPoints(page.margins.bottom),
+              left: pageMarginLeft,
+              height: millimetersToPdfPoints(page.footer.height),
               justifyContent: 'center',
               overflow: 'hidden',
             }}
