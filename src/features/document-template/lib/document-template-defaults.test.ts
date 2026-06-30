@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createDefaultDocumentTemplateContent } from './document-template-defaults';
+import {
+  createDefaultDocumentTemplateContent,
+  createDocumentTemplateBlock,
+} from './document-template-defaults';
 import { normalizeDocumentTemplateContent } from './document-template-storage';
 
 describe('Dokument-Standardvorlage', () => {
@@ -21,5 +24,12 @@ describe('Dokument-Standardvorlage', () => {
 
     expect(normalized.blocks).toEqual([]);
     expect(normalized.document).toEqual(content.document);
+  });
+
+  it('erzeugt den Signaturbaustein ohne nicht verfügbare Datenbankfelder', () => {
+    const signature = createDocumentTemplateBlock('signature');
+
+    expect(signature.text).toBe('Mit freundlichen Grüßen');
+    expect(signature.text).not.toContain('{{administration');
   });
 });

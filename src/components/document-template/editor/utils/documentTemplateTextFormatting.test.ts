@@ -6,6 +6,7 @@ import {
   createEditorExtensions,
   horizontalAlignmentFromPosition,
   placeCursorInFixedArea,
+  setEditorFontSize,
   updateNearestDocumentBlockAttributes,
 } from './documentTemplateEditorUtils';
 
@@ -77,6 +78,27 @@ describe('Dokumentformatierung', () => {
     expect(html).toContain('color: rgb(185, 28, 28)');
     expect(html).toContain('font-family:');
     expect(html).toContain('Times New Roman');
+  });
+
+  it('wendet die Schriftgröße auf anschließend eingegebenen Text an', () => {
+    editor = new Editor({
+      extensions: createEditorExtensions(),
+      content: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [] }],
+      },
+    });
+    editor.commands.setTextSelection(1);
+
+    expect(setEditorFontSize(editor, '28px')).toBe(true);
+    expect(
+      editor.state.storedMarks?.find((mark) => mark.type.name === 'textStyle')
+        ?.attrs.fontSize
+    ).toBe('28px');
+
+    editor.commands.insertContent('Neuer Text');
+
+    expect(editor.getHTML()).toContain('font-size: 28px');
   });
 
   it('ändert bei einem dynamischen Feld den umgebenden Absatz', () => {

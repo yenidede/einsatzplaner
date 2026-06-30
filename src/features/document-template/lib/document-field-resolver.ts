@@ -296,10 +296,8 @@ export async function resolveDocumentTemplateFields(args: {
         contactPhone: contactPhone ?? einsatz.organization.phone ?? '—',
         contactEmail: contactEmail ?? einsatz.organization.email ?? '—',
         organizationName: einsatz.organization.name,
-        programName:
-          einsatz.einsatz_template?.name ??
-          joinText(categories) ??
-          einsatz.title,
+        programName: einsatz.einsatz_template?.name ?? '—',
+        categories: joinText(categories),
         location:
           findLikelyFieldValue(einsatz.einsatz_field, ['ort', 'location']) ??
           '—',

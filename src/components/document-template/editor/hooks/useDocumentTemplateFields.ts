@@ -1,4 +1,9 @@
-import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
+import {
+  useCallback,
+  useMemo,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import type { Editor } from '@tiptap/react';
 import type { DocumentTemplateFieldDefinition } from '@/features/document-template/types';
 import { documentTemplateBlockGroups } from '../document-template-block-groups';
@@ -14,13 +19,13 @@ import {
 
 export function useDocumentTemplateFields({
   blockSearch,
-  einsatzNameSingular,
+  einsatzNamePlural,
   fields,
   organizationLogoUrl,
   setSelectedDynamicField,
 }: {
   blockSearch: string;
-  einsatzNameSingular?: string | null;
+  einsatzNamePlural?: string | null;
   fields: DocumentTemplateFieldDefinition[];
   organizationLogoUrl: string | null;
   setSelectedDynamicField: Dispatch<
@@ -49,9 +54,9 @@ export function useDocumentTemplateFields({
   const effectiveGroupLabels = useMemo(
     () => ({
       ...groupLabels,
-      event: einsatzNameSingular?.trim() || 'Einsatz',
+      event: einsatzNamePlural?.trim() || 'Einsätze',
     }),
-    [einsatzNameSingular]
+    [einsatzNamePlural]
   );
   const filteredBlockGroups = useMemo(() => {
     const normalizedQuery = blockSearch.trim().toLocaleLowerCase('de-AT');

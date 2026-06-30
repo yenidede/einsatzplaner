@@ -42,10 +42,12 @@ export function DocumentTemplateFieldLibrary({
   onQueryChange: (value: string) => void;
   onInsert: (field: DocumentTemplateFieldDefinition) => void;
 }) {
-  const filteredFields = fields.filter((field) =>
-    `${field.label} ${field.description} ${field.key}`
-      .toLowerCase()
-      .includes(query.toLowerCase())
+  const filteredFields = fields.filter(
+    (field) =>
+      field.availableInLibrary !== false &&
+      `${field.label} ${field.description} ${field.key}`
+        .toLocaleLowerCase('de-AT')
+        .includes(query.toLocaleLowerCase('de-AT'))
   );
 
   return (

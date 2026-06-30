@@ -1475,12 +1475,14 @@ export function EditorLayout({
     const confirmWithDialog = async (message: string): Promise<boolean> => {
       const result = await showDestructive(
         'Seite entfernen?',
-        message || 'Sind Sie sicher, dass Sie diese Seite entfernen möchten?'
+        message || 'Sind Sie sicher, dass Sie diese Seite entfernen möchten?',
+        {
+          confirmText: 'Entfernen',
+          cancelText: 'Abbrechen',
+        }
       );
-
       return result === 'success';
     };
-
     window.__PDFME_UI_CONFIRM__ = confirmWithDialog;
 
     return () => {

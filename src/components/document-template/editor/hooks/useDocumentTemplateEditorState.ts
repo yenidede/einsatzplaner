@@ -65,6 +65,7 @@ export function useDocumentTemplateEditorState(
   const [imagePropertiesDialogOpen, setImagePropertiesDialogOpen] =
     useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const canvasViewportRef = useRef<HTMLElement | null>(null);
   const pageStackRef = useRef<HTMLDivElement | null>(null);
   const sidebarResizeRef = useRef<SidebarResizeState | null>(null);
 
@@ -124,6 +125,7 @@ export function useDocumentTemplateEditorState(
     imagePropertiesDialogOpen,
     setImagePropertiesDialogOpen,
     imageInputRef,
+    canvasViewportRef,
     pageStackRef,
     sidebarResizeRef,
   };

@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
   type DragEvent,
+  type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -282,6 +284,7 @@ export function DocumentTemplateToolbar({
     activeArea,
     activeEditor,
     content,
+    fitPageWidth,
     fontSize,
     fontFamily,
     footerTextBlock,
@@ -295,6 +298,28 @@ export function DocumentTemplateToolbar({
     textColor,
     zoom,
   } = controller;
+
+  const applyFontSizeAfterToolbar = (value: string) => {
+    window.requestAnimationFrame(() => applyFontSize(value));
+  };
+
+  const handleFontSizeBlur = (event: ReactFocusEvent<HTMLInputElement>) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Element && nextTarget.closest('.ProseMirror')) {
+      applyFontSizeAfterToolbar(event.currentTarget.value);
+    }
+  };
+
+  const handleFontSizeKeyDown = (
+    event: ReactKeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key !== 'Enter') return;
+
+    event.preventDefault();
+    const value = event.currentTarget.value;
+    event.currentTarget.blur();
+    applyFontSizeAfterToolbar(value);
+  };
 
   return (
     <>
@@ -362,9 +387,14 @@ export function DocumentTemplateToolbar({
                 activeEditor?.chain().focus().setParagraph().run();
               }}
             >
-              <SelectTrigger className="h-8 w-[170px]">
-                <SelectValue />
-              </SelectTrigger>
+              <ToolbarTooltip label="Absatzformat">
+                <SelectTrigger
+                  className="h-8 w-[170px]"
+                  aria-label="Absatzformat ändern"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+              </ToolbarTooltip>
               <SelectContent>
                 <SelectGroup>
                   <SelectItem value="paragraph">Normaler Text</SelectItem>
@@ -374,12 +404,14 @@ export function DocumentTemplateToolbar({
               </SelectContent>
             </Select>
             <Select value={fontFamily} onValueChange={applyFontFamily}>
-              <SelectTrigger
-                className="h-8 w-[160px]"
-                aria-label="Schriftart ändern"
-              >
-                <SelectValue />
-              </SelectTrigger>
+              <ToolbarTooltip label="Schriftart">
+                <SelectTrigger
+                  className="h-8 w-[160px]"
+                  aria-label="Schriftart ändern"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+              </ToolbarTooltip>
               <SelectContent>
                 <SelectGroup>
                   {FONT_FAMILY_OPTIONS.map((font) => (
@@ -401,7 +433,9 @@ export function DocumentTemplateToolbar({
                 max={96}
                 value={fontSize}
                 onChange={(event) => applyFontSize(event.target.value)}
-                className="h-8 w-20"
+                onBlur={handleFontSizeBlur}
+                onKeyDown={handleFontSizeKeyDown}
+                className="h-8 w-20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 aria-label="Schriftgröße ändern"
               />
             </ToolbarTooltip>
@@ -515,13 +549,14 @@ export function DocumentTemplateToolbar({
             </DropdownMenu>
             <Separator orientation="vertical" className="h-6" />
             <Select value={lineHeight} onValueChange={applyLineHeight}>
-              <SelectTrigger
-                className="h-8 w-[84px]"
-                aria-label="Zeilenabstand ändern"
-                title="Zeilenabstand"
-              >
-                <SelectValue />
-              </SelectTrigger>
+              <ToolbarTooltip label="Zeilenabstand">
+                <SelectTrigger
+                  className="h-8 w-[104px]"
+                  aria-label="Zeilenabstand ändern"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+              </ToolbarTooltip>
               <SelectContent>
                 <SelectGroup>
                   {LINE_HEIGHT_OPTIONS.map((option) => (
@@ -532,7 +567,7 @@ export function DocumentTemplateToolbar({
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <ToolbarTooltip label="Absatzabstand davor">
+            <ToolbarTooltip label="Absatzabstand davor (px)">
               <Input
                 type="number"
                 min={0}
@@ -541,11 +576,11 @@ export function DocumentTemplateToolbar({
                 onChange={(event) =>
                   setBlockSpacing('spacingTop')(event.target.value)
                 }
-                className="h-8 w-20"
+                className="h-8 w-24 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 aria-label="Absatzabstand davor"
               />
             </ToolbarTooltip>
-            <ToolbarTooltip label="Absatzabstand danach">
+            <ToolbarTooltip label="Absatzabstand danach (px)">
               <Input
                 type="number"
                 min={0}
@@ -554,7 +589,7 @@ export function DocumentTemplateToolbar({
                 onChange={(event) =>
                   setBlockSpacing('spacingBottom')(event.target.value)
                 }
-                className="h-8 w-20"
+                className="h-8 w-24 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 aria-label="Absatzabstand danach"
               />
             </ToolbarTooltip>
@@ -755,7 +790,12 @@ export function DocumentTemplateToolbar({
               </Button>
             </ToolbarTooltip>
             <ToolbarTooltip label="Auf Seitenbreite zoomen">
-              <Button size="sm" variant="outline" onClick={() => setZoom(100)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={fitPageWidth}
+                aria-label="Zoom an Seitenbreite anpassen"
+              >
                 Seitenbreite
               </Button>
             </ToolbarTooltip>

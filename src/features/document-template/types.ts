@@ -44,6 +44,7 @@ export interface DocumentTemplateFieldDefinition {
   description: string;
   source: 'standard' | 'custom_field' | 'preference';
   sourceFieldId?: string;
+  availableInLibrary?: boolean;
   dataType:
     | 'text'
     | 'number'

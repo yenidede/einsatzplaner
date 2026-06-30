@@ -11,18 +11,18 @@ export function DocumentTemplateEditor({
   organizationId,
   template,
   fields,
-  einsatzNameSingular,
+  einsatzNamePlural,
 }: {
   organizationId: string;
   template?: DocumentTemplateRecord | null;
   fields: DocumentTemplateFieldDefinition[];
-  einsatzNameSingular?: string;
+  einsatzNamePlural?: string;
 }) {
   const controller = useDocumentTemplateEditorController({
     organizationId,
     template,
     fields,
-    einsatzNameSingular,
+    einsatzNamePlural,
   });
 
   return <DocumentTemplateEditorView controller={controller} />;

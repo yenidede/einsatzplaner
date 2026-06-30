@@ -63,12 +63,12 @@ export function useDocumentTemplateEditorController({
   organizationId,
   template,
   fields,
-  einsatzNameSingular = 'Einsatz',
+  einsatzNamePlural = 'Einsätze',
 }: {
   organizationId: string;
   template?: DocumentTemplateRecord | null;
   fields: DocumentTemplateFieldDefinition[];
-  einsatzNameSingular?: string | null;
+  einsatzNamePlural?: string | null;
 }) {
   const {
     mode,
@@ -126,6 +126,7 @@ export function useDocumentTemplateEditorController({
     imagePropertiesDialogOpen,
     setImagePropertiesDialogOpen,
     imageInputRef,
+    canvasViewportRef,
     pageStackRef,
     sidebarResizeRef,
   } = useDocumentTemplateEditorState(template);
@@ -138,7 +139,7 @@ export function useDocumentTemplateEditorController({
     updateSelectedDynamicField,
   } = useDocumentTemplateFields({
     blockSearch,
-    einsatzNameSingular,
+    einsatzNamePlural,
     fields,
     organizationLogoUrl,
     setSelectedDynamicField,
@@ -648,10 +649,12 @@ export function useDocumentTemplateEditorController({
     setSpacingTop,
     setTextColor,
   });
-  const { pageScaleStyle, pageScaleViewportStyle } = useDocumentTemplateZoom({
-    setZoom,
-    zoom,
-  });
+  const { fitPageWidth, pageScaleStyle, pageScaleViewportStyle } =
+    useDocumentTemplateZoom({
+      canvasViewportRef,
+      setZoom,
+      zoom,
+    });
 
   useDocumentTemplateDebug({
     bodyAreaHeightPx,
@@ -725,6 +728,7 @@ export function useDocumentTemplateEditorController({
     exportingFormat,
     fieldSearch,
     fields,
+    fitPageWidth,
     filteredBlockGroups,
     fontSize,
     fontFamily,
@@ -755,6 +759,7 @@ export function useDocumentTemplateEditorController({
     pagePaddingLeftPx,
     pagePaddingRightPx,
     pagePaddingTopPx,
+    canvasViewportRef,
     pageStackRef,
     pageTitle,
     pageToDelete,

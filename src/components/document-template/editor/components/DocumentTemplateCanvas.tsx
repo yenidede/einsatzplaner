@@ -274,6 +274,7 @@ export function DocumentTemplateCanvas({
     clearBodyDocumentSyncRequest,
     clearBodyFocusRequest,
     content,
+    canvasViewportRef,
     contextMenuTarget,
     currentContent,
     deletePage,
@@ -314,6 +315,7 @@ export function DocumentTemplateCanvas({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <main
+            ref={canvasViewportRef}
             className="min-h-0 overflow-auto rounded-md bg-[#e3e6ea]"
             onContextMenu={handleEditorContextMenu}
           >

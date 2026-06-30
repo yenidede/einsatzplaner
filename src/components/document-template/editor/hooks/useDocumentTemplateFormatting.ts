@@ -12,7 +12,10 @@ import type {
   ContextMenuTarget,
   SelectedDynamicField,
 } from '../types/documentTemplateEditorTypes';
-import { updateNearestDocumentBlockAttributes } from '../utils/documentTemplateEditorUtils';
+import {
+  setEditorFontSize,
+  updateNearestDocumentBlockAttributes,
+} from '../utils/documentTemplateEditorUtils';
 
 export function useDocumentTemplateFormatting({
   activeEditor,
@@ -177,7 +180,9 @@ export function useDocumentTemplateFormatting({
     const numericValue = Number(value);
     if (!Number.isFinite(numericValue) || numericValue < 6) return;
 
-    activeEditor?.chain().focus().setFontSize(`${numericValue}px`).run();
+    if (activeEditor) {
+      setEditorFontSize(activeEditor, `${numericValue}px`);
+    }
   }
 
   function applyTextColor(value: string) {

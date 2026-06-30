@@ -98,10 +98,17 @@ const standardFields: DocumentTemplateFieldDefinition[] = [
   ),
   standardField(
     'programName',
-    'Führungsprogramm',
+    'Ausgewählte Vorlage',
     'event',
     'text',
-    'Ausgeschriebener Name der Vorlage oder Kategorie'
+    'Name der beim Erstellen ausgewählten Vorlage'
+  ),
+  standardField(
+    'categories',
+    'Kategorien',
+    'event',
+    'list',
+    'Ausgewählte Kategorien'
   ),
   standardField(
     'location',
@@ -250,32 +257,45 @@ function mapDatatype(
 export async function getDocumentTemplateFieldDefinitions(
   organizationId: string
 ): Promise<DocumentTemplateFieldDefinition[]> {
-  const templateFields = await prisma.template_field.findMany({
-    where: {
-      einsatz_template: {
-        org_id: organizationId,
+  const [templateFields, organization] = await Promise.all([
+    prisma.template_field.findMany({
+      where: {
+        einsatz_template: {
+          org_id: organizationId,
+        },
       },
-    },
-    select: {
-      field: {
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          type: {
-            select: {
-              datatype: true,
+      select: {
+        field: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            type: {
+              select: {
+                datatype: true,
+              },
             },
           },
         },
       },
-    },
-    orderBy: {
-      field: {
-        name: 'asc',
+      orderBy: {
+        field: {
+          name: 'asc',
+        },
       },
-    },
-  });
+    }),
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        einsatz_name_singular: true,
+        einsatz_name_plural: true,
+        helper_name_plural: true,
+        email: true,
+        phone: true,
+        _count: { select: { organization_address: true } },
+      },
+    }),
+  ]);
 
   const uniqueTemplateFields = Array.from(
     new Map(
@@ -284,7 +304,75 @@ export async function getDocumentTemplateFieldDefinitions(
         .map((entry) => [entry.field.id, entry])
     ).values()
   );
-  const usedKeys = new Set(standardFields.map((field) => field.key));
+  const einsatzNameSingular =
+    organization?.einsatz_name_singular.trim() || 'Einsatz';
+  const helperNamePlural =
+    organization?.helper_name_plural?.trim() || 'Vermittler:innen';
+  const organizationStandardFields = standardFields.map(
+    (field): DocumentTemplateFieldDefinition => {
+      switch (field.key) {
+        case 'assignmentName':
+          return {
+            ...field,
+            label: einsatzNameSingular,
+            description: `Titel für ${einsatzNameSingular}`,
+          };
+        case 'guides':
+          return {
+            ...field,
+            label: helperNamePlural,
+            availableInLibrary: false,
+          };
+        case 'helpers':
+          return {
+            ...field,
+            label: helperNamePlural,
+            description: `Zugewiesene ${helperNamePlural}`,
+          };
+        case 'contactPerson':
+        case 'contactPhone':
+        case 'contactEmail':
+        case 'location':
+          return { ...field, availableInLibrary: false };
+        case 'organizationName':
+          return {
+            ...field,
+            label: 'Organisationsname',
+            group: 'administration',
+            description: 'Name Ihrer Organisation',
+          };
+        case 'programName':
+          return {
+            ...field,
+            label: 'Ausgewählte Vorlage',
+            description: `Beim Erstellen von ${einsatzNameSingular} ausgewählte Vorlage`,
+          };
+        case 'administrationName':
+        case 'administrationFunction':
+          return { ...field, availableInLibrary: false };
+        case 'organizationLogoUrl':
+          return {
+            ...field,
+            availableInLibrary: false,
+          };
+        case 'organizationEmail':
+          return { ...field, availableInLibrary: Boolean(organization?.email) };
+        case 'organizationPhone':
+          return { ...field, availableInLibrary: Boolean(organization?.phone) };
+        case 'organizationAddress':
+          return {
+            ...field,
+            availableInLibrary:
+              (organization?._count.organization_address ?? 0) > 0,
+          };
+        default:
+          return field;
+      }
+    }
+  );
+  const usedKeys = new Set(
+    organizationStandardFields.map((field) => field.key)
+  );
   const customFields = uniqueTemplateFields.map(
     (entry): DocumentTemplateFieldDefinition => {
       const label = entry.field.name ?? 'Eigenes Feld';
@@ -310,7 +398,7 @@ export async function getDocumentTemplateFieldDefinitions(
 
   return Array.from(
     new Map(
-      [...standardFields, ...customFields].map((field) => [
+      [...organizationStandardFields, ...customFields].map((field) => [
         field.sourceFieldId ?? field.key,
         field,
       ])

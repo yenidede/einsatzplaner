@@ -133,6 +133,26 @@ export function updateNearestDocumentBlockAttributes(
   return false;
 }
 
+export function setEditorFontSize(editor: Editor, fontSize: string): boolean {
+  const applied = editor.chain().focus().setFontSize(fontSize).run();
+  if (!applied || !editor.state.selection.empty) return applied;
+
+  const textStyle = editor.schema.marks.textStyle;
+  if (!textStyle) return applied;
+
+  const attributes = editor.getAttributes('textStyle');
+  editor.view.dispatch(
+    editor.state.tr.addStoredMark(
+      textStyle.create({
+        ...attributes,
+        fontSize,
+      })
+    )
+  );
+  editor.view.focus();
+  return true;
+}
+
 export function horizontalAlignmentFromPosition(
   clientX: number,
   left: number,

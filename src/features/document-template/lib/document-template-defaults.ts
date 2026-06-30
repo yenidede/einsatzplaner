@@ -35,7 +35,7 @@ export function createDocumentTemplateBlock(
         rows: [
           {
             id: createBlockId('row'),
-            label: 'Programm / Einsatz',
+            label: 'Ausgewählte Vorlage',
             value: '{{programName}}',
           },
           {
@@ -56,7 +56,7 @@ export function createDocumentTemplateBlock(
       return {
         id: createBlockId(type),
         type,
-        text: 'Mit herzlichem Gruß\n{{administrationName}}\n{{administrationFunction}}',
+        text: 'Mit freundlichen Grüßen',
       };
     case 'field':
       return {

@@ -27,7 +27,7 @@ export default async function EditDocumentTemplatePage({
     getDocumentTemplateFields(orgId),
     prisma.organization.findUnique({
       where: { id: orgId },
-      select: { einsatz_name_singular: true },
+      select: { einsatz_name_plural: true },
     }),
   ]);
 
@@ -40,7 +40,7 @@ export default async function EditDocumentTemplatePage({
       organizationId={orgId}
       template={template}
       fields={fields}
-      einsatzNameSingular={organization?.einsatz_name_singular ?? 'Einsatz'}
+      einsatzNamePlural={organization?.einsatz_name_plural ?? 'Einsätze'}
     />
   );
 }
