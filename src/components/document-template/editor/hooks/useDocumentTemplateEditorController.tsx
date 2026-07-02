@@ -13,10 +13,12 @@ import type {
   DocumentTemplateContent,
   DocumentTemplateFieldDefinition,
   DocumentTemplateRecord,
+  DocumentTemplateRichTextNode,
 } from '@/features/document-template/types';
 import { getOrganizationDocumentTemplateLogoUrl } from '@/features/document-template/server/document-template.actions';
 import { createDefaultDocumentTemplateContent } from '@/features/document-template/lib/document-template-defaults';
 import type { TemplateImageProperties } from '../DocumentTemplateImagePropertiesPopover';
+import { resolveTemplateImageLayout } from '@/features/document-template/lib/document-template-image-layout';
 import { documentTemplateBlockGroups } from '../document-template-block-groups';
 import type {
   ContextMenuTarget,
@@ -71,8 +73,6 @@ export function useDocumentTemplateEditorController({
   einsatzNamePlural?: string | null;
 }) {
   const {
-    mode,
-    setMode,
     name,
     setName,
     description,
@@ -280,6 +280,19 @@ export function useDocumentTemplateEditorController({
       : activeArea === 'footer'
         ? footerEditor
         : (bodyEditorsRef.current.get(activeBodyPageIndex) ?? null);
+
+  function insertTextBlock(document: DocumentTemplateRichTextNode) {
+    if (!activeEditor || !document.content?.length) return;
+    activeEditor.chain().focus().insertContent(document.content).run();
+  }
+
+  function selectedTextBlockDocument(): DocumentTemplateRichTextNode | null {
+    if (!activeEditor || activeEditor.state.selection.empty) return null;
+    const selectedContent = activeEditor.state.selection
+      .content()
+      .content.toJSON();
+    return toRichTextNode({ type: 'doc', content: selectedContent });
+  }
 
   useEffect(() => {
     if (!activeEditor) return;
@@ -510,6 +523,7 @@ export function useDocumentTemplateEditorController({
     height: 80,
     align: 'left',
     keepAspectRatio: true,
+    layout: 'block',
     mode: 'inline',
     x: 0,
     y: 0,
@@ -536,8 +550,9 @@ export function useDocumentTemplateEditorController({
     selectedImageAttributes.align === 'right'
       ? selectedImageAttributes.align
       : 'left';
-  const selectedImageMode: TemplateImageProperties['mode'] =
-    selectedImageAttributes.mode === 'free' ? 'free' : 'inline';
+  const selectedImageLayout = resolveTemplateImageLayout(
+    selectedImageAttributes
+  );
   const selectedImageX =
     typeof selectedImageAttributes.x === 'number'
       ? selectedImageAttributes.x
@@ -552,7 +567,7 @@ export function useDocumentTemplateEditorController({
     height: selectedImageHeight,
     align: selectedImageAlign,
     keepAspectRatio: selectedImageKeepAspectRatio,
-    mode: selectedImageMode,
+    layout: selectedImageLayout,
     x: selectedImageX,
     y: selectedImageY,
   };
@@ -694,6 +709,7 @@ export function useDocumentTemplateEditorController({
     handleBodyOverflowMeasurement,
     handleEditorContextMenu,
     insertBlock,
+    insertTextBlock,
     insertField,
     moveCurrentBlock,
     pageScaleStyle,
@@ -749,8 +765,8 @@ export function useDocumentTemplateEditorController({
     isSaving,
     leftSidebarCollapsed,
     markDirty,
-    mode,
     name,
+    organizationId,
     openSelectedImageProperties,
     pageContentWidthPx,
     pageCount,
@@ -771,7 +787,8 @@ export function useDocumentTemplateEditorController({
     saveStatus,
     saveStatusLabel,
     selectedDynamicField,
-    selectedImageMode,
+    selectedTextBlockDocument,
+    selectedImageLayout,
     selectedImageProperties,
     setActiveArea,
     setBlockSearch,
@@ -779,7 +796,6 @@ export function useDocumentTemplateEditorController({
     setFieldSearch,
     setImagePropertiesDialogOpen,
     setLeftSidebarCollapsed,
-    setMode,
     setName,
     setPageToDelete,
     setRightSidebarCollapsed,

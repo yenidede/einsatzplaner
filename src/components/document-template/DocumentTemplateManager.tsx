@@ -7,6 +7,8 @@ import { getDocumentTemplatesByOrganization } from '@/features/document-template
 import { documentTemplateQueryKeys } from '@/features/document-template/queryKeys';
 import type { DocumentTemplateListItem } from '@/features/document-template/types';
 import { DocumentTemplateList } from './DocumentTemplateList';
+import { DocumentTextBlockManager } from './text-blocks/DocumentTextBlockManager';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function DocumentTemplateManager({
   organizationId,
@@ -47,9 +49,25 @@ export function DocumentTemplateManager({
   }
 
   return (
-    <DocumentTemplateList
-      organizationId={organizationId}
-      templates={templates}
-    />
+    <section className="flex flex-col gap-4">
+      <header>
+        <h2 className="text-xl font-semibold">Dokumentvorlagen</h2>
+        <p className="text-muted-foreground text-sm">
+          Erstellen und verwalten Sie Vorlagen und Textbausteine, die für Word und PDF verwendet werden können.
+        </p>
+      </header>
+      <Tabs defaultValue="templates">
+        <TabsList>
+          <TabsTrigger value="templates">Vorlagen</TabsTrigger>
+          <TabsTrigger value="text-blocks">Textbausteine</TabsTrigger>
+        </TabsList>
+        <TabsContent value="templates">
+          <DocumentTemplateList organizationId={organizationId} templates={templates} />
+        </TabsContent>
+        <TabsContent value="text-blocks">
+          <DocumentTextBlockManager organizationId={organizationId} />
+        </TabsContent>
+      </Tabs>
+    </section>
   );
 }

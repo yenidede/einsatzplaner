@@ -22,7 +22,6 @@ import { SIDEBAR_WIDTH } from '../utils/documentTemplateLayoutUtils';
 export function useDocumentTemplateEditorState(
   template?: DocumentTemplateRecord | null
 ) {
-  const [mode, setMode] = useState<'edit' | 'preview'>('edit');
   const [name, setName] = useState(template?.name ?? 'Neue Dokumentvorlage');
   const [description, setDescription] = useState(template?.description ?? '');
   const initialContent =
@@ -70,8 +69,6 @@ export function useDocumentTemplateEditorState(
   const sidebarResizeRef = useRef<SidebarResizeState | null>(null);
 
   return {
-    mode,
-    setMode,
     name,
     setName,
     description,

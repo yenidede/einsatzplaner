@@ -4,6 +4,7 @@ import {
   Document,
   Footer,
   Header,
+  HorizontalPositionAlign,
   HorizontalPositionRelativeFrom,
   ImageRun,
   LevelFormat,
@@ -19,6 +20,7 @@ import {
   Tab,
   TextRun,
   TextWrappingType,
+  TextWrappingSide,
   VerticalPositionRelativeFrom,
   WidthType,
   convertMillimetersToTwip,
@@ -38,6 +40,7 @@ import {
   resolveTemplateText,
 } from './document-template-renderer';
 import { getMarkAttr, hasMark } from './document-rich-text';
+import { resolveTemplateImageLayout } from './document-template-image-layout';
 
 const FONT_FAMILY = 'Arial';
 const BODY_FONT_SIZE_PX = 16;
@@ -261,10 +264,13 @@ async function imageNodeToParagraph(
       ? resolveTemplateText(node.attrs.src, fields)
       : '';
   const image = await resolveImageData(src);
+  const layout = resolveTemplateImageLayout(node.attrs);
   const align =
-    node.attrs?.align === 'center' || node.attrs?.align === 'right'
-      ? node.attrs.align
-      : 'left';
+    layout === 'center'
+      ? 'center'
+      : layout === 'float-right'
+        ? 'right'
+        : 'left';
 
   if (!image) {
     return new Paragraph({
@@ -275,6 +281,44 @@ async function imageNodeToParagraph(
 
   const width = numberAttr(node, 'width') ?? 160;
   const height = numberAttr(node, 'height') ?? 80;
+  const floating =
+    layout === 'absolute'
+      ? {
+          horizontalPosition: {
+            relative: HorizontalPositionRelativeFrom.MARGIN,
+            offset: pxToEmu(numberAttr(node, 'x') ?? 0),
+          },
+          verticalPosition: {
+            relative: VerticalPositionRelativeFrom.PARAGRAPH,
+            offset: pxToEmu(numberAttr(node, 'y') ?? 0),
+          },
+          allowOverlap: true,
+          wrap: { type: TextWrappingType.NONE },
+        }
+      : layout === 'float-left' || layout === 'float-right'
+        ? {
+            horizontalPosition: {
+              relative: HorizontalPositionRelativeFrom.MARGIN,
+              align:
+                layout === 'float-left'
+                  ? HorizontalPositionAlign.LEFT
+                  : HorizontalPositionAlign.RIGHT,
+            },
+            verticalPosition: {
+              relative: VerticalPositionRelativeFrom.PARAGRAPH,
+              offset: 0,
+            },
+            allowOverlap: false,
+            wrap: {
+              type: TextWrappingType.SQUARE,
+              side: TextWrappingSide.BOTH_SIDES,
+              margins: {
+                distL: layout === 'float-right' ? pxToEmu(12) : 0,
+                distR: layout === 'float-left' ? pxToEmu(12) : 0,
+              },
+            },
+          }
+        : undefined;
 
   return new Paragraph({
     alignment: docxAlignment(align),
@@ -284,21 +328,7 @@ async function imageNodeToParagraph(
         data: image.data,
         type: image.type,
         transformation: { width, height },
-        floating:
-          node.attrs?.mode === 'free'
-            ? {
-                horizontalPosition: {
-                  relative: HorizontalPositionRelativeFrom.MARGIN,
-                  offset: pxToEmu(numberAttr(node, 'x') ?? 0),
-                },
-                verticalPosition: {
-                  relative: VerticalPositionRelativeFrom.PARAGRAPH,
-                  offset: pxToEmu(numberAttr(node, 'y') ?? 0),
-                },
-                allowOverlap: true,
-                wrap: { type: TextWrappingType.NONE },
-              }
-            : undefined,
+        floating,
       }),
     ],
   });

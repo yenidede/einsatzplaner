@@ -38,10 +38,10 @@ import {
   ArrowUp,
   Bold,
   ChevronDown,
+  ChevronUp,
   Copy,
   Download,
   EyeOff,
-  Eye,
   FileText,
   ImageIcon,
   Italic,
@@ -71,7 +71,6 @@ import type {
 } from '@/features/document-template/types';
 import {
   createDocumentTemplate,
-  exportDocumentTemplatePreview,
   uploadDocumentTemplateImage,
   updateDocumentTemplate,
   getOrganizationDocumentTemplateLogoUrl,
@@ -90,7 +89,6 @@ import {
   mergePageDocuments,
   splitDocumentIntoPages as splitDocumentIntoPagesBase,
 } from '@/features/document-template/lib/document-template-pages';
-import { DocumentTemplatePreview } from '../../DocumentTemplatePreview';
 import { DocumentKeyboardShortcutsExtension } from '../DocumentKeyboardShortcutsExtension';
 import { DocumentTemplateEditorStyles } from '../DocumentTemplateEditorStyles';
 import { PageBodyEditor } from '../components/DocumentTemplatePageBodyEditor';
@@ -250,6 +248,7 @@ import {
 
 import type { DocumentTemplateEditorControllerModel } from '../hooks/useDocumentTemplateEditorController';
 import { DocumentTemplatePageSettingsDialog } from './DocumentTemplatePageSettingsDialog';
+import { TEMPLATE_IMAGE_LAYOUT_OPTIONS } from '@/features/document-template/lib/document-template-image-layout';
 
 function ToolbarTooltip({
   label,
@@ -267,8 +266,10 @@ function ToolbarTooltip({
 }
 export function DocumentTemplateToolbar({
   controller,
+  onHide,
 }: {
   controller: DocumentTemplateEditorControllerModel;
+  onHide: () => void;
 }) {
   const {
     applyFontFamily,
@@ -289,7 +290,9 @@ export function DocumentTemplateToolbar({
     fontFamily,
     footerTextBlock,
     hasSelectedImage,
-    mode,
+    selectedImageLayout,
+    updateSelectedImageAttribute,
+    deleteSelectedImage,
     openSelectedImageProperties,
     setZoom,
     spacingBottom,
@@ -322,486 +325,507 @@ export function DocumentTemplateToolbar({
   };
 
   return (
-    <>
-      {mode === 'edit' ? (
-        <div className="bg-background border-b px-4 py-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <ToolbarTooltip label="Fett">
-              <Button
-                size="sm"
-                variant={activeEditor?.isActive('bold') ? 'secondary' : 'ghost'}
-                onClick={() => activeEditor?.chain().focus().toggleBold().run()}
-                aria-label="Fett"
-              >
-                <Bold />
-              </Button>
-            </ToolbarTooltip>
-            <ToolbarTooltip label="Kursiv">
-              <Button
-                size="sm"
-                variant={
-                  activeEditor?.isActive('italic') ? 'secondary' : 'ghost'
-                }
-                onClick={() =>
-                  activeEditor?.chain().focus().toggleItalic().run()
-                }
-                aria-label="Kursiv"
-              >
-                <Italic />
-              </Button>
-            </ToolbarTooltip>
-            <ToolbarTooltip label="Unterstrichen">
-              <Button
-                size="sm"
-                variant={
-                  activeEditor?.isActive('underline') ? 'secondary' : 'ghost'
-                }
-                onClick={() =>
-                  activeEditor?.chain().focus().toggleUnderline().run()
-                }
-                aria-label="Unterstrichen"
-              >
-                <UnderlineIcon />
-              </Button>
-            </ToolbarTooltip>
-            <Separator orientation="vertical" className="h-6" />
-            <Select
-              value={
-                activeEditor?.isActive('heading', { level: 1 })
-                  ? 'heading1'
-                  : activeEditor?.isActive('heading', { level: 2 })
-                    ? 'heading2'
-                    : 'paragraph'
-              }
-              onValueChange={(value) => {
-                if (value === 'heading1') {
-                  activeEditor?.chain().focus().setHeading({ level: 1 }).run();
-                  return;
-                }
+    <div className="bg-background border-b px-4 py-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <ToolbarTooltip label="Fett">
+          <Button
+            size="sm"
+            variant={activeEditor?.isActive('bold') ? 'secondary' : 'ghost'}
+            onClick={() => activeEditor?.chain().focus().toggleBold().run()}
+            aria-label="Fett"
+          >
+            <Bold />
+          </Button>
+        </ToolbarTooltip>
+        <ToolbarTooltip label="Kursiv">
+          <Button
+            size="sm"
+            variant={activeEditor?.isActive('italic') ? 'secondary' : 'ghost'}
+            onClick={() => activeEditor?.chain().focus().toggleItalic().run()}
+            aria-label="Kursiv"
+          >
+            <Italic />
+          </Button>
+        </ToolbarTooltip>
+        <ToolbarTooltip label="Unterstrichen">
+          <Button
+            size="sm"
+            variant={
+              activeEditor?.isActive('underline') ? 'secondary' : 'ghost'
+            }
+            onClick={() =>
+              activeEditor?.chain().focus().toggleUnderline().run()
+            }
+            aria-label="Unterstrichen"
+          >
+            <UnderlineIcon />
+          </Button>
+        </ToolbarTooltip>
+        <Separator orientation="vertical" className="h-6" />
+        <Select
+          value={
+            activeEditor?.isActive('heading', { level: 1 })
+              ? 'heading1'
+              : activeEditor?.isActive('heading', { level: 2 })
+                ? 'heading2'
+                : 'paragraph'
+          }
+          onValueChange={(value) => {
+            if (value === 'heading1') {
+              activeEditor?.chain().focus().setHeading({ level: 1 }).run();
+              return;
+            }
 
-                if (value === 'heading2') {
-                  activeEditor?.chain().focus().setHeading({ level: 2 }).run();
-                  return;
-                }
+            if (value === 'heading2') {
+              activeEditor?.chain().focus().setHeading({ level: 2 }).run();
+              return;
+            }
 
-                activeEditor?.chain().focus().setParagraph().run();
-              }}
+            activeEditor?.chain().focus().setParagraph().run();
+          }}
+        >
+          <ToolbarTooltip label="Absatzformat">
+            <SelectTrigger
+              className="h-8 w-[170px]"
+              aria-label="Absatzformat ändern"
             >
-              <ToolbarTooltip label="Absatzformat">
-                <SelectTrigger
-                  className="h-8 w-[170px]"
-                  aria-label="Absatzformat ändern"
+              <SelectValue />
+            </SelectTrigger>
+          </ToolbarTooltip>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="paragraph">Normaler Text</SelectItem>
+              <SelectItem value="heading1">Überschrift 1</SelectItem>
+              <SelectItem value="heading2">Überschrift 2</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <Select value={fontFamily} onValueChange={applyFontFamily}>
+          <ToolbarTooltip label="Schriftart">
+            <SelectTrigger
+              className="h-8 w-[160px]"
+              aria-label="Schriftart ändern"
+            >
+              <SelectValue />
+            </SelectTrigger>
+          </ToolbarTooltip>
+          <SelectContent>
+            <SelectGroup>
+              {FONT_FAMILY_OPTIONS.map((font) => (
+                <SelectItem
+                  key={font.value}
+                  value={font.value}
+                  style={{ fontFamily: font.value }}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-              </ToolbarTooltip>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="paragraph">Normaler Text</SelectItem>
-                  <SelectItem value="heading1">Überschrift 1</SelectItem>
-                  <SelectItem value="heading2">Überschrift 2</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <Select value={fontFamily} onValueChange={applyFontFamily}>
-              <ToolbarTooltip label="Schriftart">
-                <SelectTrigger
-                  className="h-8 w-[160px]"
-                  aria-label="Schriftart ändern"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-              </ToolbarTooltip>
-              <SelectContent>
-                <SelectGroup>
-                  {FONT_FAMILY_OPTIONS.map((font) => (
-                    <SelectItem
-                      key={font.value}
-                      value={font.value}
-                      style={{ fontFamily: font.value }}
-                    >
-                      {font.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <ToolbarTooltip label="Schriftgröße">
+                  {font.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <ToolbarTooltip label="Schriftgröße">
+          <Input
+            type="number"
+            min={6}
+            max={96}
+            value={fontSize}
+            onChange={(event) => applyFontSize(event.target.value)}
+            onBlur={handleFontSizeBlur}
+            onKeyDown={handleFontSizeKeyDown}
+            className="h-8 w-20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            aria-label="Schriftgröße ändern"
+          />
+        </ToolbarTooltip>
+        <Separator orientation="vertical" className="h-6" />
+        <DropdownMenu>
+          <ToolbarTooltip label="Ausrichtung">
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" aria-label="Ausrichtung ändern">
+                <AlignLeft />
+              </Button>
+            </DropdownMenuTrigger>
+          </ToolbarTooltip>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              onClick={() =>
+                activeEditor?.chain().focus().setTextAlign('left').run()
+              }
+            >
+              <AlignLeft data-icon="inline-start" />
+              Linksbündig
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                activeEditor?.chain().focus().setTextAlign('center').run()
+              }
+            >
+              <AlignCenter data-icon="inline-start" />
+              Zentriert
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                activeEditor?.chain().focus().setTextAlign('right').run()
+              }
+            >
+              <AlignRight data-icon="inline-start" />
+              Rechtsbündig
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <ToolbarTooltip label="Liste einfügen">
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" aria-label="Liste einfügen">
+                <List />
+              </Button>
+            </DropdownMenuTrigger>
+          </ToolbarTooltip>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              onClick={() =>
+                activeEditor?.chain().focus().toggleBulletList().run()
+              }
+            >
+              <List data-icon="inline-start" />
+              Aufzählung
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                activeEditor?.chain().focus().toggleOrderedList().run()
+              }
+            >
+              <ListOrdered data-icon="inline-start" />
+              Nummerierte Liste
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <ToolbarTooltip label="Textfarbe">
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" aria-label="Textfarbe ändern">
+                <span
+                  className="size-3 rounded-full border"
+                  style={{ backgroundColor: textColor }}
+                />
+                Farbe
+              </Button>
+            </DropdownMenuTrigger>
+          </ToolbarTooltip>
+          <DropdownMenuContent align="start">
+            {TEXT_COLOR_OPTIONS.map((color) => (
+              <DropdownMenuItem
+                key={color.value}
+                onClick={() => applyTextColor(color.value)}
+              >
+                <span
+                  className="size-3 rounded-full border"
+                  style={{ backgroundColor: color.value }}
+                />
+                {color.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
               <Input
-                type="number"
-                min={6}
-                max={96}
-                value={fontSize}
-                onChange={(event) => applyFontSize(event.target.value)}
-                onBlur={handleFontSizeBlur}
-                onKeyDown={handleFontSizeKeyDown}
-                className="h-8 w-20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                aria-label="Schriftgröße ändern"
+                type="color"
+                value={textColor}
+                onChange={(event) => applyTextColor(event.target.value)}
+                className="size-7 p-1"
+                aria-label="Eigene Textfarbe wählen"
               />
-            </ToolbarTooltip>
-            <Separator orientation="vertical" className="h-6" />
+              Eigene Farbe
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Separator orientation="vertical" className="h-6" />
+        <Select value={lineHeight} onValueChange={applyLineHeight}>
+          <ToolbarTooltip label="Zeilenabstand">
+            <SelectTrigger
+              className="h-8 w-[104px]"
+              aria-label="Zeilenabstand ändern"
+            >
+              <SelectValue />
+            </SelectTrigger>
+          </ToolbarTooltip>
+          <SelectContent>
+            <SelectGroup>
+              {LINE_HEIGHT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <ToolbarTooltip label="Absatzabstand davor (px)">
+          <Input
+            type="number"
+            min={0}
+            max={96}
+            value={spacingTop}
+            onChange={(event) =>
+              setBlockSpacing('spacingTop')(event.target.value)
+            }
+            className="h-8 w-24 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            aria-label="Absatzabstand davor"
+          />
+        </ToolbarTooltip>
+        <ToolbarTooltip label="Absatzabstand danach (px)">
+          <Input
+            type="number"
+            min={0}
+            max={96}
+            value={spacingBottom}
+            onChange={(event) =>
+              setBlockSpacing('spacingBottom')(event.target.value)
+            }
+            className="h-8 w-24 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            aria-label="Absatzabstand danach"
+          />
+        </ToolbarTooltip>
+        <Separator orientation="vertical" className="h-6" />
+        <DropdownMenu>
+          <ToolbarTooltip label="Weitere Aktionen">
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" aria-label="Weitere Aktionen">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+          </ToolbarTooltip>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => moveCurrentBlock('up')}>
+              <ArrowUp data-icon="inline-start" />
+              Nach oben
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => moveCurrentBlock('down')}>
+              <ArrowDown data-icon="inline-start" />
+              Nach unten
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={duplicateCurrentBlock}>
+              <Copy data-icon="inline-start" />
+              Duplizieren
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={deleteCurrentBlock}>
+              <Trash2 data-icon="inline-start" />
+              Löschen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Separator orientation="vertical" className="h-6" />
+        {hasSelectedImage ? (
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={openSelectedImageProperties}
+            >
+              <ImageIcon data-icon="inline-start" />
+              Bild bearbeiten / Größe
+            </Button>
             <DropdownMenu>
-              <ToolbarTooltip label="Ausrichtung">
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label="Ausrichtung ändern"
-                  >
-                    <AlignLeft />
-                  </Button>
-                </DropdownMenuTrigger>
-              </ToolbarTooltip>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" size="sm" variant="outline">
+                  Layout
+                  <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onClick={() =>
-                    activeEditor?.chain().focus().setTextAlign('left').run()
-                  }
-                >
-                  <AlignLeft data-icon="inline-start" />
-                  Linksbündig
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    activeEditor?.chain().focus().setTextAlign('center').run()
-                  }
-                >
-                  <AlignCenter data-icon="inline-start" />
-                  Zentriert
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    activeEditor?.chain().focus().setTextAlign('right').run()
-                  }
-                >
-                  <AlignRight data-icon="inline-start" />
-                  Rechtsbündig
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <ToolbarTooltip label="Liste einfügen">
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" aria-label="Liste einfügen">
-                    <List />
-                  </Button>
-                </DropdownMenuTrigger>
-              </ToolbarTooltip>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onClick={() =>
-                    activeEditor?.chain().focus().toggleBulletList().run()
-                  }
-                >
-                  <List data-icon="inline-start" />
-                  Aufzählung
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    activeEditor?.chain().focus().toggleOrderedList().run()
-                  }
-                >
-                  <ListOrdered data-icon="inline-start" />
-                  Nummerierte Liste
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <ToolbarTooltip label="Textfarbe">
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label="Textfarbe ändern"
-                  >
-                    <span
-                      className="size-3 rounded-full border"
-                      style={{ backgroundColor: textColor }}
-                    />
-                    Farbe
-                  </Button>
-                </DropdownMenuTrigger>
-              </ToolbarTooltip>
-              <DropdownMenuContent align="start">
-                {TEXT_COLOR_OPTIONS.map((color) => (
+                {TEMPLATE_IMAGE_LAYOUT_OPTIONS.map((option) => (
                   <DropdownMenuItem
-                    key={color.value}
-                    onClick={() => applyTextColor(color.value)}
+                    key={option.value}
+                    onClick={() =>
+                      updateSelectedImageAttribute({ layout: option.value })
+                    }
                   >
-                    <span
-                      className="size-3 rounded-full border"
-                      style={{ backgroundColor: color.value }}
-                    />
-                    {color.label}
+                    {option.label}
+                    {selectedImageLayout === option.value ? ' ✓' : ''}
                   </DropdownMenuItem>
                 ))}
-                <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
-                  <Input
-                    type="color"
-                    value={textColor}
-                    onChange={(event) => applyTextColor(event.target.value)}
-                    className="size-7 p-1"
-                    aria-label="Eigene Textfarbe wählen"
-                  />
-                  Eigene Farbe
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Separator orientation="vertical" className="h-6" />
-            <Select value={lineHeight} onValueChange={applyLineHeight}>
-              <ToolbarTooltip label="Zeilenabstand">
-                <SelectTrigger
-                  className="h-8 w-[104px]"
-                  aria-label="Zeilenabstand ändern"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-              </ToolbarTooltip>
-              <SelectContent>
-                <SelectGroup>
-                  {LINE_HEIGHT_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <ToolbarTooltip label="Absatzabstand davor (px)">
-              <Input
-                type="number"
-                min={0}
-                max={96}
-                value={spacingTop}
-                onChange={(event) =>
-                  setBlockSpacing('spacingTop')(event.target.value)
-                }
-                className="h-8 w-24 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                aria-label="Absatzabstand davor"
-              />
-            </ToolbarTooltip>
-            <ToolbarTooltip label="Absatzabstand danach (px)">
-              <Input
-                type="number"
-                min={0}
-                max={96}
-                value={spacingBottom}
-                onChange={(event) =>
-                  setBlockSpacing('spacingBottom')(event.target.value)
-                }
-                className="h-8 w-24 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                aria-label="Absatzabstand danach"
-              />
-            </ToolbarTooltip>
-            <Separator orientation="vertical" className="h-6" />
-            <DropdownMenu>
-              <ToolbarTooltip label="Weitere Aktionen">
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label="Weitere Aktionen"
-                  >
-                    <MoreHorizontal />
-                  </Button>
-                </DropdownMenuTrigger>
-              </ToolbarTooltip>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => moveCurrentBlock('up')}>
-                  <ArrowUp data-icon="inline-start" />
-                  Nach oben
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => moveCurrentBlock('down')}>
-                  <ArrowDown data-icon="inline-start" />
-                  Nach unten
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={duplicateCurrentBlock}>
-                  <Copy data-icon="inline-start" />
-                  Duplizieren
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={deleteCurrentBlock}>
-                  <Trash2 data-icon="inline-start" />
-                  Löschen
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Separator orientation="vertical" className="h-6" />
-            {hasSelectedImage ? (
+            <ToolbarTooltip label="Bild löschen">
               <Button
                 type="button"
-                size="sm"
-                variant="outline"
-                onClick={openSelectedImageProperties}
-              >
-                <ImageIcon data-icon="inline-start" />
-                Bild bearbeiten
-              </Button>
-            ) : null}
-            {activeArea === 'header' || activeArea === 'footer' ? (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline">
-                    <MoreHorizontal data-icon="inline-start" />
-                    {activeArea === 'header' ? 'Kopfbereich' : 'Fußbereich'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-80">
-                  <div className="flex flex-col gap-3">
-                    <p className="text-sm font-medium">
-                      {activeArea === 'header' ? 'Kopfbereich' : 'Fußbereich'}
-                    </p>
-                    <div className="grid grid-cols-[1fr_110px] gap-2">
-                      <div className="flex flex-col gap-1.5">
-                        <Label>Anzeige</Label>
-                        <Select
-                          value={
-                            activeArea === 'header'
-                              ? content.page.header.showOn
-                              : content.page.footer.showOn
-                          }
-                          onValueChange={(value) => {
-                            if (value !== 'firstPage' && value !== 'allPages') {
-                              return;
-                            }
-
-                            updatePageSettings((page) =>
-                              activeArea === 'header'
-                                ? {
-                                    ...page,
-                                    header: {
-                                      ...page.header,
-                                      showOn: value,
-                                    },
-                                  }
-                                : {
-                                    ...page,
-                                    footer: {
-                                      ...page.footer,
-                                      showOn: value,
-                                    },
-                                  }
-                            );
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="firstPage">
-                              Erste Seite
-                            </SelectItem>
-                            <SelectItem value="allPages">
-                              Alle Seiten
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <Label>Höhe</Label>
-                        <Input
-                          type="number"
-                          min={12}
-                          max={80}
-                          value={
-                            activeArea === 'header'
-                              ? content.page.header.height
-                              : content.page.footer.height
-                          }
-                          onChange={(event) => {
-                            const height = Number(event.target.value);
-                            updatePageSettings((page) =>
-                              activeArea === 'header'
-                                ? {
-                                    ...page,
-                                    header: { ...page.header, height },
-                                  }
-                                : {
-                                    ...page,
-                                    footer: { ...page.footer, height },
-                                  }
-                            );
-                          }}
-                        />
-                      </div>
-                    </div>
-                    {activeArea === 'footer' ? (
-                      <div className="flex items-center justify-between gap-3">
-                        <Label>Seitenzahl anzeigen</Label>
-                        <Switch
-                          checked={footerTextBlock.showPageNumber ?? false}
-                          onCheckedChange={(checked) =>
-                            updateFooterBlock(
-                              footerTextBlock.id,
-                              (currentBlock) => ({
-                                ...currentBlock,
-                                showPageNumber: checked,
-                              })
-                            )
-                          }
-                        />
-                      </div>
-                    ) : null}
-                    {activeArea === 'footer' ? (
-                      <div className="flex items-center justify-between gap-3">
-                        <Label>Trennlinie anzeigen</Label>
-                        <Switch
-                          checked={footerTextBlock.showDivider ?? false}
-                          onCheckedChange={(checked) =>
-                            updateFooterBlock(
-                              footerTextBlock.id,
-                              (currentBlock) => ({
-                                ...currentBlock,
-                                showDivider: checked,
-                              })
-                            )
-                          }
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            ) : null}
-            <DocumentTemplatePageSettingsDialog controller={controller} />
-            <Separator orientation="vertical" className="h-6" />
-            <ToolbarTooltip label="Verkleinern">
-              <Button
-                size="sm"
+                size="icon-xs"
                 variant="ghost"
-                onClick={() => setZoom((current) => Math.max(50, current - 10))}
-                aria-label="Verkleinern"
+                aria-label="Bild löschen"
+                onClick={deleteSelectedImage}
               >
-                <Minus />
-              </Button>
-            </ToolbarTooltip>
-            <span className="text-muted-foreground min-w-14 text-center text-sm">
-              {zoom} %
-            </span>
-            <ToolbarTooltip label="Vergrößern">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() =>
-                  setZoom((current) => Math.min(150, current + 10))
-                }
-                aria-label="Vergrößern"
-              >
-                <Plus />
-              </Button>
-            </ToolbarTooltip>
-            <ToolbarTooltip label="Auf Seitenbreite zoomen">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={fitPageWidth}
-                aria-label="Zoom an Seitenbreite anpassen"
-              >
-                Seitenbreite
+                <Trash2 />
               </Button>
             </ToolbarTooltip>
           </div>
+        ) : null}
+        {activeArea === 'header' || activeArea === 'footer' ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline">
+                <MoreHorizontal data-icon="inline-start" />
+                {activeArea === 'header' ? 'Kopfbereich' : 'Fußbereich'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80">
+              <div className="flex flex-col gap-3">
+                <p className="text-sm font-medium">
+                  {activeArea === 'header' ? 'Kopfbereich' : 'Fußbereich'}
+                </p>
+                <div className="grid grid-cols-[1fr_110px] gap-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Anzeige</Label>
+                    <Select
+                      value={
+                        activeArea === 'header'
+                          ? content.page.header.showOn
+                          : content.page.footer.showOn
+                      }
+                      onValueChange={(value) => {
+                        if (value !== 'firstPage' && value !== 'allPages') {
+                          return;
+                        }
+
+                        updatePageSettings((page) =>
+                          activeArea === 'header'
+                            ? {
+                                ...page,
+                                header: {
+                                  ...page.header,
+                                  showOn: value,
+                                },
+                              }
+                            : {
+                                ...page,
+                                footer: {
+                                  ...page.footer,
+                                  showOn: value,
+                                },
+                              }
+                        );
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="firstPage">Erste Seite</SelectItem>
+                        <SelectItem value="allPages">Alle Seiten</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Höhe</Label>
+                    <Input
+                      type="number"
+                      min={12}
+                      max={80}
+                      value={
+                        activeArea === 'header'
+                          ? content.page.header.height
+                          : content.page.footer.height
+                      }
+                      onChange={(event) => {
+                        const height = Number(event.target.value);
+                        updatePageSettings((page) =>
+                          activeArea === 'header'
+                            ? {
+                                ...page,
+                                header: { ...page.header, height },
+                              }
+                            : {
+                                ...page,
+                                footer: { ...page.footer, height },
+                              }
+                        );
+                      }}
+                    />
+                  </div>
+                </div>
+                {activeArea === 'footer' ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <Label>Seitenzahl anzeigen</Label>
+                    <Switch
+                      checked={footerTextBlock.showPageNumber ?? false}
+                      onCheckedChange={(checked) =>
+                        updateFooterBlock(
+                          footerTextBlock.id,
+                          (currentBlock) => ({
+                            ...currentBlock,
+                            showPageNumber: checked,
+                          })
+                        )
+                      }
+                    />
+                  </div>
+                ) : null}
+                {activeArea === 'footer' ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <Label>Trennlinie anzeigen</Label>
+                    <Switch
+                      checked={footerTextBlock.showDivider ?? false}
+                      onCheckedChange={(checked) =>
+                        updateFooterBlock(
+                          footerTextBlock.id,
+                          (currentBlock) => ({
+                            ...currentBlock,
+                            showDivider: checked,
+                          })
+                        )
+                      }
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </PopoverContent>
+          </Popover>
+        ) : null}
+        <DocumentTemplatePageSettingsDialog controller={controller} />
+        <Separator orientation="vertical" className="h-6" />
+        <ToolbarTooltip label="Verkleinern">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setZoom((current) => Math.max(50, current - 10))}
+            aria-label="Verkleinern"
+          >
+            <Minus />
+          </Button>
+        </ToolbarTooltip>
+        <span className="text-muted-foreground min-w-14 text-center text-sm">
+          {zoom} %
+        </span>
+        <ToolbarTooltip label="Vergrößern">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setZoom((current) => Math.min(150, current + 10))}
+            aria-label="Vergrößern"
+          >
+            <Plus />
+          </Button>
+        </ToolbarTooltip>
+        <ToolbarTooltip label="Auf Seitenbreite zoomen">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={fitPageWidth}
+            aria-label="Zoom an Seitenbreite anpassen"
+          >
+            Seitenbreite
+          </Button>
+        </ToolbarTooltip>
+        <div className="ml-auto">
+          <ToolbarTooltip label="Formatleiste ausblenden">
+            <Button
+              type="button"
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Formatleiste ausblenden"
+              onClick={onHide}
+            >
+              <ChevronUp />
+            </Button>
+          </ToolbarTooltip>
         </div>
-      ) : null}
-    </>
+      </div>
+    </div>
   );
 }

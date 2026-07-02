@@ -21,6 +21,7 @@ import {
   DOCUMENT_PAGE_HEIGHT_PX,
   DOCUMENT_PAGE_WIDTH_PX,
 } from '@/features/document-template/lib/document-page-geometry';
+import { resolveTemplateImageLayout } from '@/features/document-template/lib/document-template-image-layout';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -310,15 +311,11 @@ function RichTextPreviewNode({
       typeof node.attrs?.src === 'string'
         ? resolveTemplateText(node.attrs.src, fields)
         : '';
-    const align =
-      node.attrs?.align === 'center' || node.attrs?.align === 'right'
-        ? node.attrs.align
-        : 'left';
     const width =
       typeof node.attrs?.width === 'number' ? node.attrs.width : 160;
     const height =
       typeof node.attrs?.height === 'number' ? node.attrs.height : 80;
-    const mode = node.attrs?.mode === 'free' ? 'free' : 'inline';
+    const layout = resolveTemplateImageLayout(node.attrs);
     const x = typeof node.attrs?.x === 'number' ? node.attrs.x : 0;
     const y = typeof node.attrs?.y === 'number' ? node.attrs.y : 0;
 
@@ -327,10 +324,10 @@ function RichTextPreviewNode({
         <div
           className={cn(
             'text-muted-foreground inline-flex rounded-[6px] border border-dashed px-[12px] py-[8px] text-[12px]',
-            mode === 'inline' && 'my-[8px]'
+            layout !== 'absolute' && 'my-[8px]'
           )}
           style={
-            mode === 'free'
+            layout === 'absolute'
               ? {
                   position: 'absolute',
                   left: x,
@@ -351,13 +348,15 @@ function RichTextPreviewNode({
     return (
       <div
         className={cn(
-          mode === 'inline' && 'my-[8px] flex',
-          mode === 'free' && 'absolute',
-          align === 'center' && 'justify-center',
-          align === 'right' && 'justify-end'
+          layout === 'inline' && 'mx-[8px] inline-flex align-middle',
+          layout === 'block' && 'clear-both my-[8px] flex justify-start',
+          layout === 'center' && 'clear-both my-[8px] flex justify-center',
+          layout === 'float-left' && 'float-left mr-[12px] mb-[8px]',
+          layout === 'float-right' && 'float-right mb-[8px] ml-[12px]',
+          layout === 'absolute' && 'absolute'
         )}
         style={
-          mode === 'free'
+          layout === 'absolute'
             ? {
                 left: x,
                 top: y,

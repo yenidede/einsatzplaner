@@ -5,69 +5,55 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
 } from '@/components/ui/context-menu';
-import type {
-  TemplateImageAlign,
-  TemplateImageMode,
-} from './DocumentTemplateImagePropertiesPopover';
+import {
+  TEMPLATE_IMAGE_LAYOUT_OPTIONS,
+  type TemplateImageLayout,
+} from '@/features/document-template/lib/document-template-image-layout';
 
 type DocumentTemplateImageContextMenuProps = {
-  mode: TemplateImageMode;
+  layout: TemplateImageLayout;
   onEdit: () => void;
   onReplace: () => void;
   onDuplicate: () => void;
-  onSetMode: (mode: TemplateImageMode) => void;
-  onSetAlign: (align: TemplateImageAlign) => void;
+  onSetLayout: (layout: TemplateImageLayout) => void;
   onDelete: () => void;
 };
 
-const alignmentOptions: TemplateImageAlign[] = ['left', 'center', 'right'];
-
 export function DocumentTemplateImageContextMenu({
-  mode,
+  layout,
   onEdit,
   onReplace,
   onDuplicate,
-  onSetMode,
-  onSetAlign,
+  onSetLayout,
   onDelete,
 }: DocumentTemplateImageContextMenuProps) {
   return (
     <>
-      <ContextMenuItem onClick={onEdit}>Bild bearbeiten</ContextMenuItem>
+      <ContextMenuItem onClick={onEdit}>
+        Bild bearbeiten / Größe
+      </ContextMenuItem>
       <ContextMenuItem onClick={onReplace}>Bild ersetzen</ContextMenuItem>
       <ContextMenuItem onClick={onDuplicate}>Duplizieren</ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuSub>
-        <ContextMenuSubTrigger>Positionierung</ContextMenuSubTrigger>
+        <ContextMenuSubTrigger>Layout</ContextMenuSubTrigger>
         <ContextMenuSubContent>
-          <ContextMenuItem onClick={() => onSetMode('inline')}>
-            Im Textfluss
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => onSetMode('free')}>
-            Frei positioniert
-          </ContextMenuItem>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
-      <ContextMenuSub>
-        <ContextMenuSubTrigger disabled={mode !== 'inline'}>
-          Ausrichtung
-        </ContextMenuSubTrigger>
-        <ContextMenuSubContent>
-          {alignmentOptions.map((align) => (
+          {TEMPLATE_IMAGE_LAYOUT_OPTIONS.map((option) => (
             <ContextMenuItem
-              key={align}
-              disabled={mode !== 'inline'}
-              onClick={() => onSetAlign(align)}
+              key={option.value}
+              onClick={() => onSetLayout(option.value)}
             >
-              {align === 'left'
-                ? 'Links'
-                : align === 'center'
-                  ? 'Mitte'
-                  : 'Rechts'}
+              {option.label}
+              {layout === option.value ? ' ✓' : ''}
             </ContextMenuItem>
           ))}
         </ContextMenuSubContent>
       </ContextMenuSub>
+      {layout === 'absolute' ? (
+        <ContextMenuItem disabled>
+          Dieses Bild kann Text überdecken.
+        </ContextMenuItem>
+      ) : null}
       <ContextMenuSeparator />
       <ContextMenuItem variant="destructive" onClick={onDelete}>
         Bild löschen

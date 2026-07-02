@@ -12,4 +12,12 @@ describe('DocumentTemplateEditorStyles', () => {
     expect(markup).toContain('overflow-wrap: normal');
     expect(markup).toContain('word-break: normal');
   });
+
+  it('verwendet für Bildauswahl und Resize-Griffe gültige OKLCH-Farbvariablen', () => {
+    const markup = renderToStaticMarkup(<DocumentTemplateEditorStyles />);
+
+    expect(markup).toContain('border: 2px solid var(--ring)');
+    expect(markup).toContain('outline: 2px solid var(--ring)');
+    expect(markup).not.toContain('hsl(var(--ring))');
+  });
 });

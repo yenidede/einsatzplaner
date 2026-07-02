@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   calculateResizedImageFrame,
+  shouldPreserveImageAspectRatio,
   TemplateImageNode,
 } from './TemplateImageNode';
 
@@ -47,6 +48,9 @@ describe('TemplateImageNode', () => {
       '.document-template-image-resize-handle'
     );
     expect(wrapper?.classList.contains('ProseMirror-selectednode')).toBe(false);
+    expect(
+      wrapper?.classList.contains('document-template-image-layout-block')
+    ).toBe(true);
     wrapper?.dispatchEvent(new Event('pointerenter'));
     expect(handles[0]?.getAttribute('style')).toContain('opacity: 1');
     wrapper?.dispatchEvent(new Event('pointerleave'));
@@ -85,6 +89,12 @@ describe('TemplateImageNode', () => {
         bounds: { width: 500, height: 500 },
       })
     ).toEqual({ x: 100, y: 100, width: 200, height: 100 });
+  });
+
+  it('behält das Seitenverhältnis standardmäßig bei und erlaubt Shift als temporäre Umkehrung', () => {
+    expect(shouldPreserveImageAspectRatio(true, false)).toBe(true);
+    expect(shouldPreserveImageAspectRatio(true, true)).toBe(false);
+    expect(shouldPreserveImageAspectRatio(false, true)).toBe(true);
   });
 
   it('hält beim Ziehen links oben die gegenüberliegenden Kanten fest', () => {

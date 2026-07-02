@@ -16,6 +16,7 @@ import type {
   DocumentTemplateRichTextNode,
   ResolvedDocumentTemplateFields,
 } from '@/features/document-template/types';
+import { resolveTemplateImageLayout } from './document-template-image-layout';
 import {
   blockToPlainText,
   resolveTemplateText,
@@ -24,6 +25,10 @@ import { getMarkAttr, hasMark } from './document-rich-text';
 
 export function millimetersToPdfPoints(value: number): number {
   return (value * 72) / 25.4;
+}
+
+export function pixelsToPdfPoints(value: number): number {
+  return (value * 72) / 96;
 }
 
 export function documentFontFamilyToPdfFont(
@@ -222,9 +227,7 @@ function FixedAreaBlock({
   if (block.richText) {
     return (
       <>
-        {block.richText.content?.map((node, index) =>
-          richNodeToPdfBlock(node, fields, index)
-        )}
+        {richNodesToPdfBlocks(block.richText.content, fields)}
       </>
     );
   }
@@ -387,27 +390,37 @@ function imageNodeToPdfBlock(
     typeof node.attrs?.src === 'string'
       ? resolveTemplateText(node.attrs.src, fields)
       : '';
+  const layout = resolveTemplateImageLayout(node.attrs);
   const align =
-    node.attrs?.align === 'center' || node.attrs?.align === 'right'
-      ? node.attrs.align
-      : 'left';
+    layout === 'center'
+      ? 'center'
+      : layout === 'float-right'
+        ? 'right'
+        : 'left';
 
   if (!src || src === '—') {
     return null;
   }
 
+  const width = pixelsToPdfPoints(
+    typeof node.attrs?.width === 'number' ? node.attrs.width : 160
+  );
+  const height = pixelsToPdfPoints(
+    typeof node.attrs?.height === 'number' ? node.attrs.height : 80
+  );
+
   return (
     <View
       key={index}
       style={{
-        position: node.attrs?.mode === 'free' ? 'absolute' : undefined,
+        position: layout === 'absolute' ? 'absolute' : undefined,
         left:
-          node.attrs?.mode === 'free' && typeof node.attrs.x === 'number'
-            ? node.attrs.x
+          layout === 'absolute' && typeof node.attrs?.x === 'number'
+            ? pixelsToPdfPoints(node.attrs.x)
             : undefined,
         top:
-          node.attrs?.mode === 'free' && typeof node.attrs.y === 'number'
-            ? node.attrs.y
+          layout === 'absolute' && typeof node.attrs?.y === 'number'
+            ? pixelsToPdfPoints(node.attrs.y)
             : undefined,
         alignItems:
           align === 'center'
@@ -415,9 +428,9 @@ function imageNodeToPdfBlock(
             : align === 'right'
               ? 'flex-end'
               : 'flex-start',
-        marginBottom: node.attrs?.mode === 'free' ? 0 : 8,
-        width: typeof node.attrs?.width === 'number' ? node.attrs.width : 160,
-        height: typeof node.attrs?.height === 'number' ? node.attrs.height : 80,
+        marginBottom: layout === 'absolute' ? 0 : 8,
+        width,
+        height,
       }}
     >
       {/* @react-pdf/renderer Image has no alt prop; this is not a DOM image. */}
@@ -425,9 +438,8 @@ function imageNodeToPdfBlock(
       <Image
         src={src}
         style={{
-          width: typeof node.attrs?.width === 'number' ? node.attrs.width : 160,
-          height:
-            typeof node.attrs?.height === 'number' ? node.attrs.height : 80,
+          width,
+          height,
           objectFit: 'contain',
         }}
       />
@@ -531,6 +543,53 @@ function richNodeToPdfBlock(
   );
 }
 
+function richNodesToPdfBlocks(
+  nodes: DocumentTemplateRichTextNode[] | undefined,
+  fields: ResolvedDocumentTemplateFields
+): ReactNode[] {
+  const rendered: ReactNode[] = [];
+
+  for (let index = 0; index < (nodes?.length ?? 0); index += 1) {
+    const node = nodes?.[index];
+    if (!node) continue;
+    const layout =
+      node.type === 'templateImage'
+        ? resolveTemplateImageLayout(node.attrs)
+        : null;
+    const followingNode = nodes?.[index + 1];
+
+    if (
+      (layout === 'float-left' || layout === 'float-right') &&
+      followingNode &&
+      followingNode.type !== 'templateImage' &&
+      followingNode.type !== 'pageBreak'
+    ) {
+      const image = imageNodeToPdfBlock(node, fields, index);
+      const text = richNodeToPdfBlock(followingNode, fields, index + 1);
+      rendered.push(
+        <View
+          key={`float-${index}`}
+          style={{
+            flexDirection: layout === 'float-left' ? 'row' : 'row-reverse',
+            gap: pixelsToPdfPoints(12),
+            alignItems: 'flex-start',
+            marginBottom: 8,
+          }}
+        >
+          {image}
+          <View style={{ flexGrow: 1, flexBasis: 0 }}>{text}</View>
+        </View>
+      );
+      index += 1;
+      continue;
+    }
+
+    rendered.push(richNodeToPdfBlock(node, fields, index));
+  }
+
+  return rendered;
+}
+
 export async function renderDocumentTemplatePdf(args: {
   content: DocumentTemplateContent;
   fields: ResolvedDocumentTemplateFields;
@@ -585,9 +644,7 @@ export async function renderDocumentTemplatePdf(args: {
         ) : null}
 
         {args.content.document
-          ? args.content.document.content?.map((node, index) =>
-              richNodeToPdfBlock(node, args.fields, index)
-            )
+          ? richNodesToPdfBlocks(args.content.document.content, args.fields)
           : args.content.blocks.map((block) => (
               <PdfBlock key={block.id} block={block} fields={args.fields} />
             ))}

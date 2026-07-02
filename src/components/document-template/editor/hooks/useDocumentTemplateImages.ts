@@ -18,8 +18,11 @@ import type {
 import {
   DOCUMENT_BLOCK_DRAG_MIME,
   DOCUMENT_FIELD_DRAG_MIME,
+  DOCUMENT_TEXT_BLOCK_DRAG_MIME,
 } from '../utils/documentTemplateEditorConstants';
 import { A4_EDITOR_WIDTH_PX } from '../utils/documentTemplateLayoutUtils';
+import { createPracticalBlockContent } from '../utils/documentTemplatePracticalBlocks';
+import { resolveTemplateImageLayout } from '@/features/document-template/lib/document-template-image-layout';
 
 export function useDocumentTemplateImages({
   activeArea,
@@ -71,7 +74,9 @@ export function useDocumentTemplateImages({
   setReplaceSelectedImageAfterUpload: Dispatch<SetStateAction<boolean>>;
 }) {
   function updatePageSettings(
-    updater: (page: DocumentTemplatePageSettings) => DocumentTemplatePageSettings
+    updater: (
+      page: DocumentTemplatePageSettings
+    ) => DocumentTemplatePageSettings
   ) {
     setContent((current) => ({
       ...current,
@@ -112,7 +117,14 @@ export function useDocumentTemplateImages({
         : (bodyEditorsRef.current.get(activeBodyPageIndex) ?? null);
   }
 
-  function contentForDroppedBlock(kind: string): JSONContent | null {
+  function contentForDroppedBlock(
+    kind: string
+  ): JSONContent | JSONContent[] | null {
+    const practicalContent = createPracticalBlockContent(kind, fieldByKey);
+    if (practicalContent) {
+      return practicalContent;
+    }
+
     switch (kind) {
       case 'heading':
         return {
@@ -218,6 +230,21 @@ export function useDocumentTemplateImages({
       targetArea = 'body';
     }
 
+    if (kind === 'pageNumber') {
+      updatePageSettings((page) => ({
+        ...page,
+        footer: {
+          ...page.footer,
+          enabled: true,
+          blocks: page.footer.blocks.map((block, index) =>
+            index === 0 ? { ...block, showPageNumber: true } : block
+          ),
+        },
+      }));
+      toast.success('Seitenzahl wurde im Fußbereich aktiviert.');
+      return;
+    }
+
     if (kind === 'image') {
       setActiveArea(targetArea);
       setPendingImageInsert({ targetArea, position });
@@ -305,6 +332,7 @@ export function useDocumentTemplateImages({
         height: args.height ?? (args.targetArea === 'body' ? 120 : 48),
         align: args.align ?? 'left',
         keepAspectRatio: true,
+        layout: 'block',
       },
     };
 
@@ -419,7 +447,17 @@ export function useDocumentTemplateImages({
       );
     }
 
-    if (attrs.mode === 'free') {
+    if (attrs.layout) {
+      nextAttrs.align =
+        attrs.layout === 'center'
+          ? 'center'
+          : attrs.layout === 'float-right'
+            ? 'right'
+            : 'left';
+    }
+
+    const nextLayout = attrs.layout ?? resolveTemplateImageLayout(currentAttrs);
+    if (nextLayout === 'absolute') {
       const areaWidth =
         A4_EDITOR_WIDTH_PX - pagePaddingLeftPx - pagePaddingRightPx;
       const areaHeight =
@@ -436,19 +474,31 @@ export function useDocumentTemplateImages({
         currentAttrs.align === 'center' || currentAttrs.align === 'right'
           ? currentAttrs.align
           : 'left';
-      const wasFree = currentAttrs.mode === 'free';
-      nextAttrs.x =
-        wasFree && typeof currentAttrs.x === 'number'
-          ? currentAttrs.x
-          : align === 'center'
-            ? Math.max(0, Math.round((areaWidth - nextWidth) / 2))
-            : align === 'right'
-              ? Math.max(0, areaWidth - nextWidth)
-              : 0;
-      nextAttrs.y =
-        wasFree && typeof currentAttrs.y === 'number'
-          ? currentAttrs.y
-          : Math.max(0, Math.round((areaHeight - nextHeight) / 2));
+      const wasFree = resolveTemplateImageLayout(currentAttrs) === 'absolute';
+      const requestedX =
+        typeof attrs.x === 'number'
+          ? attrs.x
+          : wasFree && typeof currentAttrs.x === 'number'
+            ? currentAttrs.x
+            : align === 'center'
+              ? Math.round((areaWidth - nextWidth) / 2)
+              : align === 'right'
+                ? areaWidth - nextWidth
+                : 0;
+      const requestedY =
+        typeof attrs.y === 'number'
+          ? attrs.y
+          : wasFree && typeof currentAttrs.y === 'number'
+            ? currentAttrs.y
+            : Math.round((areaHeight - nextHeight) / 2);
+      nextAttrs.x = Math.min(
+        Math.max(0, requestedX),
+        Math.max(0, areaWidth - nextWidth)
+      );
+      nextAttrs.y = Math.min(
+        Math.max(0, requestedY),
+        Math.max(0, areaHeight - nextHeight)
+      );
     }
 
     activeEditor
@@ -517,6 +567,40 @@ export function useDocumentTemplateImages({
     event: DragEvent<HTMLDivElement>,
     targetArea: EditableArea
   ) {
+    const serializedTextBlock = event.dataTransfer.getData(
+      DOCUMENT_TEXT_BLOCK_DRAG_MIME
+    );
+    if (serializedTextBlock) {
+      event.preventDefault();
+      const targetEditor = targetEditorForArea(targetArea);
+      const position =
+        targetEditor?.view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        }) ?? null;
+
+      if (!targetEditor || !position) {
+        toast.info(
+          'Legen Sie den Textbaustein direkt in einem Textbereich, Kopfbereich oder Fußbereich ab.'
+        );
+        return;
+      }
+
+      try {
+        const content: unknown = JSON.parse(serializedTextBlock);
+        if (!Array.isArray(content)) return;
+
+        targetEditor
+          .chain()
+          .focus()
+          .insertContentAt(position.pos, content)
+          .run();
+      } catch {
+        toast.error('Der Textbaustein konnte nicht eingefügt werden.');
+      }
+      return;
+    }
+
     const blockKind = event.dataTransfer.getData(DOCUMENT_BLOCK_DRAG_MIME);
     if (blockKind) {
       event.preventDefault();

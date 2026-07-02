@@ -1,6 +1,9 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import {
+  resolveTemplateImageLayout,
+  type TemplateImageLayout,
+} from '@/features/document-template/lib/document-template-image-layout';
 
-type ImageMode = 'inline' | 'free';
 type ImageAlign = 'left' | 'center' | 'right';
 type ImageLayoutMetrics = {
   safeScale: number;
@@ -31,10 +34,6 @@ const RESIZE_DIRECTIONS: ResizeDirection[] = [
 const MIN_IMAGE_WIDTH = 24;
 const MIN_IMAGE_HEIGHT = 16;
 
-function imageMode(value: unknown): ImageMode {
-  return value === 'free' ? 'free' : 'inline';
-}
-
 function imageAlign(value: unknown): ImageAlign {
   if (value === 'center' || value === 'right') return value;
   return 'left';
@@ -50,6 +49,13 @@ function clamp(value: number, min: number, max: number): number {
 
 function resizeDirection(value: string | undefined): ResizeDirection | null {
   return RESIZE_DIRECTIONS.find((direction) => direction === value) ?? null;
+}
+
+export function shouldPreserveImageAspectRatio(
+  keepAspectRatio: unknown,
+  shiftKey: boolean
+): boolean {
+  return Boolean(keepAspectRatio) !== shiftKey;
 }
 
 export function calculateResizedImageFrame({
@@ -146,11 +152,11 @@ function imageLayoutMetrics(wrapper: HTMLElement): ImageLayoutMetrics | null {
 }
 
 function renderImageStyle(attributes: Record<string, unknown>): string {
-  const mode = imageMode(attributes.mode);
+  const layout = resolveTemplateImageLayout(attributes);
   const width = numberAttr(attributes.width, 160);
   const height = numberAttr(attributes.height, 80);
 
-  if (mode === 'free') {
+  if (layout === 'absolute') {
     const x = numberAttr(attributes.x, 0);
     const y = numberAttr(attributes.y, 0);
     return [
@@ -164,6 +170,10 @@ function renderImageStyle(attributes: Record<string, unknown>): string {
   }
 
   return `width: ${width}px; height: ${height}px; object-fit: contain;`;
+}
+
+function wrapperClass(layout: TemplateImageLayout): string {
+  return `document-template-image-wrapper document-template-image-layout-${layout}`;
 }
 
 export const TemplateImageNode = Node.create({
@@ -180,6 +190,7 @@ export const TemplateImageNode = Node.create({
       height: { default: 80 },
       align: { default: 'left' },
       keepAspectRatio: { default: true },
+      layout: { default: null },
       mode: { default: 'inline' },
       x: { default: 0 },
       y: { default: 0 },
@@ -195,7 +206,7 @@ export const TemplateImageNode = Node.create({
       'img',
       mergeAttributes(HTMLAttributes, {
         'data-template-image': 'true',
-        'data-image-mode': imageMode(HTMLAttributes.mode),
+        'data-image-layout': resolveTemplateImageLayout(HTMLAttributes),
         src: HTMLAttributes.src,
         alt: HTMLAttributes.alt,
         class: `document-template-image document-template-image-${imageAlign(
@@ -262,7 +273,7 @@ export const TemplateImageNode = Node.create({
       };
 
       const applyVisualFrame = (frame: ImageFrame) => {
-        if (imageMode(currentNode.attrs.mode) === 'free') {
+        if (resolveTemplateImageLayout(currentNode.attrs) === 'absolute') {
           wrapper.style.left = `${frame.x}px`;
           wrapper.style.top = `${frame.y}px`;
           wrapper.style.width = `${frame.width}px`;
@@ -287,17 +298,15 @@ export const TemplateImageNode = Node.create({
       const updateDom = () => {
         const attrs = currentNode.attrs;
         const align = imageAlign(attrs.align);
-        const mode = imageMode(attrs.mode);
+        const layout = resolveTemplateImageLayout(attrs);
+        const mode = layout === 'absolute' ? 'free' : 'inline';
         const src = typeof attrs.src === 'string' ? attrs.src : '';
         const width = numberAttr(attrs.width, 160);
         const height = numberAttr(attrs.height, 80);
         const x = numberAttr(attrs.x, 0);
         const y = numberAttr(attrs.y, 0);
 
-        wrapper.className =
-          mode === 'free'
-            ? 'document-template-image-wrapper document-template-image-wrapper-free'
-            : `document-template-image-wrapper document-template-image-wrapper-${align}`;
+        wrapper.className = wrapperClass(layout);
         wrapper.dataset.imageMode = mode;
         wrapper.dataset.templateImageNode = 'true';
         wrapper.contentEditable = 'false';
@@ -343,7 +352,7 @@ export const TemplateImageNode = Node.create({
           return;
         }
 
-        if (imageMode(currentNode.attrs.mode) !== 'free') {
+        if (resolveTemplateImageLayout(currentNode.attrs) !== 'absolute') {
           return;
         }
 
@@ -420,7 +429,10 @@ export const TemplateImageNode = Node.create({
         const pointerId = event.pointerId;
         const startX = event.clientX;
         const startY = event.clientY;
-        const mode = imageMode(currentNode.attrs.mode);
+        const mode =
+          resolveTemplateImageLayout(currentNode.attrs) === 'absolute'
+            ? 'free'
+            : 'inline';
         const originFrame = {
           width: numberAttr(currentNode.attrs.width, 160),
           height: numberAttr(currentNode.attrs.height, 80),
@@ -447,7 +459,10 @@ export const TemplateImageNode = Node.create({
             direction,
             deltaX: (pointerEvent.clientX - startX) / metrics.safeScale,
             deltaY: (pointerEvent.clientY - startY) / metrics.safeScale,
-            preserveAspectRatio: pointerEvent.shiftKey,
+            preserveAspectRatio: shouldPreserveImageAspectRatio(
+              currentNode.attrs.keepAspectRatio,
+              pointerEvent.shiftKey
+            ),
             originFrame: mode === 'free' ? originFrame : inlineOriginFrame,
             bounds,
           });

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   documentFontFamilyToPdfFont,
   millimetersToPdfPoints,
+  pixelsToPdfPoints,
 } from './document-pdf-exporter';
 
 describe('millimetersToPdfPoints', () => {
@@ -9,6 +10,13 @@ describe('millimetersToPdfPoints', () => {
     expect(millimetersToPdfPoints(25.4)).toBeCloseTo(72);
     expect(millimetersToPdfPoints(20)).toBeCloseTo(56.69, 2);
     expect(millimetersToPdfPoints(18)).toBeCloseTo(51.02, 2);
+  });
+});
+
+describe('pixelsToPdfPoints', () => {
+  it('hält die physische Bildgröße zwischen CSS-Pixeln und PDF-Punkten konsistent', () => {
+    expect(pixelsToPdfPoints(96)).toBe(72);
+    expect(pixelsToPdfPoints(240)).toBe(180);
   });
 });
 

@@ -24,6 +24,8 @@ export const LINE_HEIGHT_OPTIONS = [
 
 export const DOCUMENT_FIELD_DRAG_MIME = 'application/document-template-field';
 export const DOCUMENT_BLOCK_DRAG_MIME = 'application/document-template-block';
+export const DOCUMENT_TEXT_BLOCK_DRAG_MIME =
+  'application/document-template-text-block';
 export const AUTO_PAGINATION_ENABLED = true;
 export const DISABLE_PARENT_MERGE_FOR_ENTER_DEBUG = false;
 export const DISABLE_HEADER_FOOTER_FOR_LAYOUT_DEBUG = false;

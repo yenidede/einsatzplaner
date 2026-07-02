@@ -38,8 +38,6 @@ import {
   ChevronDown,
   Copy,
   Download,
-  EyeOff,
-  Eye,
   FileText,
   ImageIcon,
   Italic,
@@ -53,7 +51,6 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Plus,
-  Save,
   Search,
   Trash2,
   UnderlineIcon,
@@ -69,7 +66,6 @@ import type {
 } from '@/features/document-template/types';
 import {
   createDocumentTemplate,
-  exportDocumentTemplatePreview,
   uploadDocumentTemplateImage,
   updateDocumentTemplate,
   getOrganizationDocumentTemplateLogoUrl,
@@ -88,7 +84,6 @@ import {
   mergePageDocuments,
   splitDocumentIntoPages as splitDocumentIntoPagesBase,
 } from '@/features/document-template/lib/document-template-pages';
-import { DocumentTemplatePreview } from '../../DocumentTemplatePreview';
 import { DocumentKeyboardShortcutsExtension } from '../DocumentKeyboardShortcutsExtension';
 import { DocumentTemplateEditorStyles } from '../DocumentTemplateEditorStyles';
 import { PageBodyEditor } from '../components/DocumentTemplatePageBodyEditor';
@@ -179,6 +174,7 @@ import {
   toRichTextNode,
 } from '../utils/documentTemplateEditorUtils';
 import { Button } from '@/components/ui/button';
+import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import {
   Card,
   CardContent,
@@ -271,6 +267,9 @@ export function DocumentTemplateEditorView({
 }: {
   controller: DocumentTemplateEditorControllerModel;
 }) {
+  const router = useRouter();
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [formatToolbarVisible, setFormatToolbarVisible] = useState(true);
   const {
     applyFontSize,
     applyTextColor,
@@ -334,8 +333,8 @@ export function DocumentTemplateEditorView({
     isSaving,
     leftSidebarCollapsed,
     markDirty,
-    mode,
     name,
+    organizationId,
     openSelectedImageProperties,
     pageContentWidthPx,
     pageCount,
@@ -353,9 +352,7 @@ export function DocumentTemplateEditorView({
     replaceSelectedImage,
     rightSidebarCollapsed,
     saveStatus,
-    saveStatusLabel,
     selectedDynamicField,
-    selectedImageMode,
     selectedImageProperties,
     setActiveArea,
     setBlockSearch,
@@ -363,7 +360,6 @@ export function DocumentTemplateEditorView({
     setFieldSearch,
     setImagePropertiesDialogOpen,
     setLeftSidebarCollapsed,
-    setMode,
     setName,
     setPageToDelete,
     setRightSidebarCollapsed,
@@ -377,6 +373,45 @@ export function DocumentTemplateEditorView({
     zoom,
   } = controller;
 
+  const settingsPath = `/settings/org/${organizationId}#vorlagen`;
+
+  useEffect(() => {
+    setFormatToolbarVisible(
+      readStoredBoolean(SIDEBAR_STORAGE_KEYS.formatToolbarVisible, true)
+    );
+  }, []);
+
+  function toggleFormatToolbar() {
+    setFormatToolbarVisible((current) => {
+      const next = !current;
+      window.localStorage.setItem(
+        SIDEBAR_STORAGE_KEYS.formatToolbarVisible,
+        String(next)
+      );
+      return next;
+    });
+  }
+
+  const returnToSettings = useCallback(() => {
+    if (saveStatus === 'dirty') {
+      setLeaveDialogOpen(true);
+      return;
+    }
+
+    router.push(settingsPath);
+  }, [router, saveStatus, settingsPath]);
+
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape' || leaveDialogOpen) return;
+      event.preventDefault();
+      returnToSettings();
+    }
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [leaveDialogOpen, returnToSettings]);
+
   return (
     <TooltipProvider>
       <div className="flex h-[calc(100dvh-6rem)] min-h-0 flex-col bg-[#eef0f3]">
@@ -388,10 +423,10 @@ export function DocumentTemplateEditorView({
           onChange={(event) => void handleImageUpload(event.target.files?.[0])}
         />
         <DocumentTemplateImageDialog controller={controller} />
-        <header className="bg-background border-b px-4 py-3">
+        <header className="bg-background sticky top-0 z-30 border-b px-4 py-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-[280px]">
-              <p className="text-muted-foreground text-sm">{pageTitle}</p>
+              <p className="text-muted-foreground mb-1 text-xs">{pageTitle}</p>
               <div className="grid gap-2 md:grid-cols-[minmax(220px,320px)_minmax(260px,420px)]">
                 <Input
                   value={name}
@@ -400,7 +435,7 @@ export function DocumentTemplateEditorView({
                     setName(event.target.value);
                   }}
                   aria-label="Name der Dokumentvorlage"
-                  className="font-medium"
+                  className="h-8 font-medium"
                 />
                 <Input
                   value={description}
@@ -410,47 +445,85 @@ export function DocumentTemplateEditorView({
                   }}
                   aria-label="Beschreibung der Dokumentvorlage"
                   placeholder="Beschreibung"
+                  className="h-8"
                 />
               </div>
-              <p
-                className={`mt-1 text-xs ${
-                  saveStatus === 'dirty'
-                    ? 'text-amber-700'
-                    : 'text-muted-foreground'
-                }`}
-              >
-                {saveStatusLabel}
-              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="bg-muted flex rounded-md p-1">
+              <DocumentTemplateExportDropdown controller={controller} />
+              <div className="flex items-center gap-2">
                 <Button
+                  type="button"
                   size="sm"
-                  variant={mode === 'edit' ? 'secondary' : 'ghost'}
-                  onClick={() => setMode('edit')}
+                  variant="ghost"
+                  className="min-h-9 px-3 text-sm"
+                  onClick={returnToSettings}
+                  disabled={isSaving}
                 >
-                  <EyeOff data-icon="inline-start" />
-                  Bearbeiten
+                  Zurück
+                  <span className="ml-2 hidden sm:inline">
+                    <Kbd>ESC</Kbd>
+                  </span>
                 </Button>
                 <Button
+                  type="button"
                   size="sm"
-                  variant={mode === 'preview' ? 'secondary' : 'ghost'}
-                  onClick={() => setMode('preview')}
+                  className="min-h-9 px-3 text-sm"
+                  onClick={() => void handleSave()}
+                  disabled={isSaving}
                 >
-                  <Eye data-icon="inline-start" />
-                  Vorschau
+                  {isSaving ? 'Speichert...' : 'Speichern'}
+                  <KbdGroup className="ml-2 hidden sm:flex">
+                    <Kbd>⌘</Kbd>
+                    <Kbd>S</Kbd>
+                  </KbdGroup>
                 </Button>
               </div>
-              <DocumentTemplateExportDropdown controller={controller} />
-              <Button onClick={() => void handleSave()} disabled={isSaving}>
-                <Save data-icon="inline-start" />
-                Speichern
-              </Button>
             </div>
           </div>
         </header>
 
-        <DocumentTemplateToolbar controller={controller} />
+        <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Bearbeitung abbrechen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Ihre ungespeicherten Änderungen gehen verloren, wenn Sie zu den
+                Einstellungen zurückkehren.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Weiter bearbeiten</AlertDialogCancel>
+              <AlertDialogAction onClick={() => router.push(settingsPath)}>
+                Änderungen verwerfen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {formatToolbarVisible ? (
+          <DocumentTemplateToolbar
+            controller={controller}
+            onHide={toggleFormatToolbar}
+          />
+        ) : (
+          <div className="bg-background flex justify-end border-b px-4 py-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon-xs"
+                  variant="ghost"
+                  aria-label="Formatleiste anzeigen"
+                  onClick={toggleFormatToolbar}
+                >
+                  <ChevronDown />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Formatleiste anzeigen</TooltipContent>
+            </Tooltip>
+          </div>
+        )}
 
         <div
           className="grid min-h-0 flex-1 gap-4 p-4"

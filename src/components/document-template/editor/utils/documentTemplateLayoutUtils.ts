@@ -17,6 +17,7 @@ export const SIDEBAR_STORAGE_KEYS = {
   rightWidth: 'documentTemplateEditor.rightSidebarWidth',
   leftCollapsed: 'documentTemplateEditor.leftSidebarCollapsed',
   rightCollapsed: 'documentTemplateEditor.rightSidebarCollapsed',
+  formatToolbarVisible: 'documentTemplateEditor.formatToolbarVisible',
 };
 
 export function clampSidebarWidth(

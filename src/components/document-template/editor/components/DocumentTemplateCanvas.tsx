@@ -39,7 +39,6 @@ import {
   Copy,
   Download,
   EyeOff,
-  Eye,
   FileText,
   ImageIcon,
   Italic,
@@ -69,7 +68,6 @@ import type {
 } from '@/features/document-template/types';
 import {
   createDocumentTemplate,
-  exportDocumentTemplatePreview,
   uploadDocumentTemplateImage,
   updateDocumentTemplate,
   getOrganizationDocumentTemplateLogoUrl,
@@ -88,7 +86,6 @@ import {
   mergePageDocuments,
   splitDocumentIntoPages as splitDocumentIntoPagesBase,
 } from '@/features/document-template/lib/document-template-pages';
-import { DocumentTemplatePreview } from '../../DocumentTemplatePreview';
 import { DocumentKeyboardShortcutsExtension } from '../DocumentKeyboardShortcutsExtension';
 import { DocumentTemplateEditorStyles } from '../DocumentTemplateEditorStyles';
 import { PageBodyEditor } from '../components/DocumentTemplatePageBodyEditor';
@@ -247,6 +244,10 @@ import type { DocumentTemplateEditorControllerModel } from '../hooks/useDocument
 import { DocumentTemplatePage } from './DocumentTemplatePage';
 import { DocumentTemplatePageDeleteDialog } from './DocumentTemplatePageDeleteDialog';
 import { DocumentTemplateToolbar } from './DocumentTemplateToolbar';
+import { useQueryClient } from '@tanstack/react-query';
+import { createDocumentTextBlock } from '@/features/document-text-block/server/document-text-block.actions';
+import { documentTextBlockQueryKeys } from '@/features/document-text-block/queryKeys';
+import { DocumentTextBlockDialog } from '../../text-blocks/DocumentTextBlockDialog';
 export function DocumentTemplateCanvas({
   controller,
 }: {
@@ -260,8 +261,6 @@ export function DocumentTemplateCanvas({
     handleBodyOverflowMeasurement,
     handleEditorContextMenu,
     moveCurrentBlock,
-    pageScaleStyle,
-    pageScaleViewportStyle,
     showSelectedDynamicFieldInformation,
     activeBodyPageIndex,
     activeEditor,
@@ -276,7 +275,6 @@ export function DocumentTemplateCanvas({
     content,
     canvasViewportRef,
     contextMenuTarget,
-    currentContent,
     deletePage,
     deleteSelectedImage,
     duplicateSelectedImage,
@@ -287,7 +285,6 @@ export function DocumentTemplateCanvas({
     handleFieldDrop,
     headerEditor,
     headerHeightPx,
-    mode,
     openSelectedImageProperties,
     pageContentWidthPx,
     pageCount,
@@ -299,16 +296,21 @@ export function DocumentTemplateCanvas({
     pageStackRef,
     pageToDelete,
     paginationContinuationRequest,
-    previewFields,
     registerBodyEditor,
     replaceSelectedImage,
     selectedDynamicField,
-    selectedImageMode,
+    selectedTextBlockDocument,
+    selectedImageLayout,
     setActiveArea,
     setPageToDelete,
     template,
     updateSelectedImageAttribute,
   } = controller;
+  const queryClient = useQueryClient();
+  const [saveTextBlockOpen, setSaveTextBlockOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] =
+    useState<DocumentTemplateRichTextNode | null>(null);
+  const hasTextSelection = selectedTextBlockDocument() !== null;
 
   return (
     <>
@@ -320,52 +322,40 @@ export function DocumentTemplateCanvas({
             onContextMenu={handleEditorContextMenu}
           >
             <div className="flex min-h-full min-w-max justify-center px-6 py-8">
-              {mode === 'preview' ? (
-                <div style={pageScaleViewportStyle()}>
-                  <div style={pageScaleStyle()}>
-                    <DocumentTemplatePreview
-                      content={currentContent()}
-                      fields={previewFields}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div
-                  ref={pageStackRef}
-                  className="document-template-page-stack flex flex-col gap-8"
+              <div
+                ref={pageStackRef}
+                className="document-template-page-stack flex flex-col gap-8"
+              >
+                {pageIndexes.map((pageIndex) => (
+                  <DocumentTemplatePage
+                    key={pageIndex}
+                    controller={controller}
+                    pageIndex={pageIndex}
+                  />
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="bg-background self-center shadow-sm"
+                  onClick={addManualPage}
+                  aria-label="Neue Seite hinzufügen"
                 >
-                  {pageIndexes.map((pageIndex) => (
-                    <DocumentTemplatePage
-                      key={pageIndex}
-                      controller={controller}
-                      pageIndex={pageIndex}
-                    />
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="bg-background self-center shadow-sm"
-                    onClick={addManualPage}
-                    aria-label="Neue Seite hinzufügen"
-                  >
-                    <Plus data-icon="inline-start" />
-                    Seite hinzufügen
-                  </Button>
-                  <DocumentTemplatePageDeleteDialog controller={controller} />
-                </div>
-              )}
+                  <Plus data-icon="inline-start" />
+                  Seite hinzufügen
+                </Button>
+                <DocumentTemplatePageDeleteDialog controller={controller} />
+              </div>
             </div>
           </main>
         </ContextMenuTrigger>
         <ContextMenuContent>
           {contextMenuTarget === 'image' ? (
             <DocumentTemplateImageContextMenu
-              mode={selectedImageMode}
+              layout={selectedImageLayout}
               onEdit={openSelectedImageProperties}
               onReplace={replaceSelectedImage}
               onDuplicate={duplicateSelectedImage}
-              onSetMode={(mode) => updateSelectedImageAttribute({ mode })}
-              onSetAlign={(align) => updateSelectedImageAttribute({ align })}
+              onSetLayout={(layout) => updateSelectedImageAttribute({ layout })}
               onDelete={deleteSelectedImage}
             />
           ) : contextMenuTarget === 'dynamicField' && selectedDynamicField ? (
@@ -383,6 +373,18 @@ export function DocumentTemplateCanvas({
             </>
           ) : (
             <>
+              <ContextMenuItem
+                disabled={!hasTextSelection}
+                onSelect={() => {
+                  const document = selectedTextBlockDocument();
+                  if (!document) return;
+                  setSelectedDocument(document);
+                  setSaveTextBlockOpen(true);
+                }}
+              >
+                Als Textbaustein speichern
+              </ContextMenuItem>
+              <ContextMenuSeparator />
               <ContextMenuItem onClick={duplicateCurrentBlock}>
                 Duplizieren
               </ContextMenuItem>
@@ -429,6 +431,25 @@ export function DocumentTemplateCanvas({
           )}
         </ContextMenuContent>
       </ContextMenu>
+      <DocumentTextBlockDialog
+        open={saveTextBlockOpen}
+        initialDocument={selectedDocument}
+        title="Textbaustein speichern"
+        onOpenChange={setSaveTextBlockOpen}
+        onSubmit={async (values) => {
+          await createDocumentTextBlock({
+            organizationId: controller.organizationId,
+            ...values,
+          });
+          await queryClient.invalidateQueries({
+            queryKey: documentTextBlockQueryKeys.byOrganization(
+              controller.organizationId
+            ),
+          });
+          toast.success('Textbaustein gespeichert');
+          setSaveTextBlockOpen(false);
+        }}
+      />
     </>
   );
 }

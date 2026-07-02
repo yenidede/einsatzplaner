@@ -246,13 +246,33 @@ import {
 import type { DocumentTemplateEditorControllerModel } from '../hooks/useDocumentTemplateEditorController';
 import { DocumentTemplateBlockLibrary } from './DocumentTemplateBlockLibrary';
 import { DocumentTemplateToolbar } from './DocumentTemplateToolbar';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  createDocumentTextBlock,
+  deleteDocumentTextBlock,
+  duplicateDocumentTextBlock,
+  getDocumentTextBlocks,
+  updateDocumentTextBlock,
+} from '@/features/document-text-block/server/document-text-block.actions';
+import { documentTextBlockQueryKeys } from '@/features/document-text-block/queryKeys';
+import type { DocumentTextBlock } from '@/features/document-text-block/types';
+import {
+  DocumentTextBlockInsertList,
+  type StandardDocumentTextBlock,
+} from '../../text-blocks/DocumentTextBlockInsertList';
+import { DocumentTextBlockDialog } from '../../text-blocks/DocumentTextBlockDialog';
+import { createPracticalBlockContent } from '../utils/documentTemplatePracticalBlocks';
 export function DocumentTemplateLeftSidebar({
   controller,
 }: {
   controller: DocumentTemplateEditorControllerModel;
 }) {
+  const queryClient = useQueryClient();
+  const [textBlockToEdit, setTextBlockToEdit] =
+    useState<DocumentTextBlock | null>(null);
   const {
     insertBlock,
+    insertTextBlock,
     blockSearch,
     description,
     filteredBlockGroups,
@@ -261,6 +281,77 @@ export function DocumentTemplateLeftSidebar({
     setLeftSidebarCollapsed,
     startSidebarResize,
   } = controller;
+  const { data: textBlocks = [] } = useQuery({
+    queryKey: documentTextBlockQueryKeys.byOrganization(
+      controller.organizationId
+    ),
+    queryFn: () => getDocumentTextBlocks(controller.organizationId),
+  });
+  const normalizedSearch = blockSearch.trim().toLocaleLowerCase('de-AT');
+  const filteredTextBlocks = normalizedSearch
+    ? textBlocks.filter((block) =>
+        [block.name, block.category, block.description, block.plainText]
+          .join(' ')
+          .toLocaleLowerCase('de-AT')
+          .includes(normalizedSearch)
+      )
+    : textBlocks;
+  const textBlockGroups = filteredBlockGroups.filter(
+    (group) => group.label === 'Text'
+  );
+  const remainingBlockGroups = filteredBlockGroups.filter(
+    (group) => group.label !== 'Text'
+  );
+  const standardTextBlocks = useMemo<StandardDocumentTextBlock[]>(() => {
+    const fieldByKey = new Map(
+      controller.fields.map((field) => [field.key, field])
+    );
+    const definitions = [
+      {
+        id: 'standard-contact-block',
+        kind: 'contactBlock',
+        name: 'Kontaktblock',
+        description: 'Organisation, Ansprechperson und Kontaktdaten',
+      },
+      {
+        id: 'standard-assignment-block',
+        kind: 'assignmentBlock',
+        name: 'Einsatz-/Terminblock',
+        description: 'Datum, Zeiten, Ort, Kategorie und Status',
+      },
+      {
+        id: 'standard-price-block',
+        kind: 'priceBlock',
+        name: 'Preisblock',
+        description: 'Teilnehmeranzahl, Einzelpreis und Gesamtpreis',
+      },
+      {
+        id: 'standard-staff-block',
+        kind: 'staffBlock',
+        name: 'Personalblock',
+        description: 'Zuständige und eingeteilte Personen',
+      },
+    ];
+
+    return definitions.map((definition) => ({
+      id: definition.id,
+      name: definition.name,
+      description: definition.description,
+      plainText: definition.description,
+      document: toRichTextNode({
+        type: 'doc',
+        content: createPracticalBlockContent(definition.kind, fieldByKey) ?? [],
+      }),
+    }));
+  }, [controller.fields]);
+
+  async function refreshTextBlocks() {
+    await queryClient.invalidateQueries({
+      queryKey: documentTextBlockQueryKeys.byOrganization(
+        controller.organizationId
+      ),
+    });
+  }
 
   return (
     <>
@@ -308,7 +399,54 @@ export function DocumentTemplateLeftSidebar({
               />
             </div>
             <DocumentTemplateBlockLibrary
-              groups={filteredBlockGroups}
+              groups={textBlockGroups}
+              onInsert={insertBlock}
+            />
+            <DocumentTextBlockInsertList
+              standardTemplates={standardTextBlocks}
+              textBlocks={filteredTextBlocks}
+              onInsert={(block) => insertTextBlock(block.document)}
+              onCopyStandard={(block) => {
+                void (async () => {
+                  await createDocumentTextBlock({
+                    organizationId: controller.organizationId,
+                    name: `${block.name} (Kopie)`,
+                    description: block.description,
+                    category: 'Einsatzplaner',
+                    document: block.document,
+                  });
+                  toast.success(
+                    'Standardvorlage wurde als eigene Vorlage kopiert.'
+                  );
+                  await refreshTextBlocks();
+                })();
+              }}
+              onEdit={setTextBlockToEdit}
+              onDuplicate={(block) => {
+                void (async () => {
+                  await duplicateDocumentTextBlock(block.id);
+                  toast.success('Textbaustein wurde dupliziert.');
+                  await refreshTextBlocks();
+                })();
+              }}
+              onDelete={(block) => {
+                if (
+                  !window.confirm(
+                    `Textbaustein „${block.name}“ wirklich löschen?`
+                  )
+                ) {
+                  return;
+                }
+                void (async () => {
+                  await deleteDocumentTextBlock(block.id);
+                  toast.success('Textbaustein wurde gelöscht.');
+                  await refreshTextBlocks();
+                })();
+              }}
+            />
+            <Separator />
+            <DocumentTemplateBlockLibrary
+              groups={remainingBlockGroups}
               onInsert={insertBlock}
             />
           </CardContent>
@@ -330,6 +468,23 @@ export function DocumentTemplateLeftSidebar({
           </Tooltip>
         </Card>
       )}
+      <DocumentTextBlockDialog
+        open={textBlockToEdit !== null}
+        textBlock={textBlockToEdit}
+        onOpenChange={(open) => {
+          if (!open) setTextBlockToEdit(null);
+        }}
+        onSubmit={async (values) => {
+          if (!textBlockToEdit) return;
+          await updateDocumentTextBlock({
+            id: textBlockToEdit.id,
+            ...values,
+          });
+          toast.success('Textbaustein wurde aktualisiert.');
+          setTextBlockToEdit(null);
+          await refreshTextBlocks();
+        }}
+      />
     </>
   );
 }

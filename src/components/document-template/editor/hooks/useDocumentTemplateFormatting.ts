@@ -16,6 +16,7 @@ import {
   setEditorFontSize,
   updateNearestDocumentBlockAttributes,
 } from '../utils/documentTemplateEditorUtils';
+import { createPracticalBlockContent } from '../utils/documentTemplatePracticalBlocks';
 
 export function useDocumentTemplateFormatting({
   activeEditor,
@@ -294,6 +295,12 @@ export function useDocumentTemplateFormatting({
     if (!activeEditor) return;
 
     const chain = activeEditor.chain().focus();
+    const practicalContent = createPracticalBlockContent(kind, fieldByKey);
+    if (practicalContent) {
+      chain.insertContent(practicalContent).run();
+      return;
+    }
+
     switch (kind) {
       case 'heading':
         chain

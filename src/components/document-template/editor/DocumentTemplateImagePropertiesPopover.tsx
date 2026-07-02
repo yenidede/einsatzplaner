@@ -26,8 +26,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  TEMPLATE_IMAGE_LAYOUT_OPTIONS,
+  isTemplateImageLayout,
+  type TemplateImageLayout,
+} from '@/features/document-template/lib/document-template-image-layout';
 
-export type TemplateImageMode = 'inline' | 'free';
 export type TemplateImageAlign = 'left' | 'center' | 'right';
 
 export type TemplateImageProperties = {
@@ -36,7 +40,7 @@ export type TemplateImageProperties = {
   height: number;
   align: TemplateImageAlign;
   keepAspectRatio: boolean;
-  mode: TemplateImageMode;
+  layout: TemplateImageLayout;
   x: number;
   y: number;
 };
@@ -48,8 +52,6 @@ type DocumentTemplateImagePropertiesPopoverProps = {
   onReplace: () => void;
   onDelete: () => void;
 };
-
-const alignmentOptions: TemplateImageAlign[] = ['left', 'center', 'right'];
 
 function normalizeNumber(value: number, fallback: number, min: number) {
   return Number.isFinite(value) ? Math.max(min, Math.round(value)) : fallback;
@@ -170,62 +172,52 @@ export function DocumentTemplateImagePropertiesPopover({
           Positionierung
         </p>
         <div className="flex flex-col gap-1.5">
-          <Label>Modus</Label>
+          <Label>Layout</Label>
           <Select
-            value={draft.mode}
+            value={draft.layout}
             onValueChange={(value) => {
-              if (value !== 'inline' && value !== 'free') return;
-              updateDraft({ mode: value });
+              if (!isTemplateImageLayout(value)) return;
+              updateDraft({ layout: value });
             }}
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="inline">Im Textfluss</SelectItem>
-              <SelectItem value="free">Frei positioniert</SelectItem>
+              {TEMPLATE_IMAGE_LAYOUT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
-        {draft.mode === 'inline' ? (
-          <div className="grid grid-cols-3 gap-2">
-            {alignmentOptions.map((align) => (
-              <Button
-                key={align}
-                type="button"
-                size="sm"
-                variant={draft.align === align ? 'secondary' : 'outline'}
-                onClick={() => updateDraft({ align })}
-              >
-                {align === 'left'
-                  ? 'Links'
-                  : align === 'center'
-                    ? 'Mitte'
-                    : 'Rechts'}
-              </Button>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            <NumberWithUnitInput
-              id="image-x-position"
-              label="X-Position"
-              help="X = Abstand vom linken Rand des aktuellen Bereichs"
-              min={0}
-              value={draft.x}
-              onChange={(value) => updateDraft({ x: value })}
-            />
-            <NumberWithUnitInput
-              id="image-y-position"
-              label="Y-Position"
-              help="Y = Abstand vom oberen Rand des aktuellen Bereichs"
-              min={0}
-              value={draft.y}
-              onChange={(value) => updateDraft({ y: value })}
-            />
-          </div>
-        )}
+        {draft.layout === 'absolute' ? (
+          <>
+            <p className="text-xs text-amber-700">
+              Dieses Bild kann Text überdecken.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <NumberWithUnitInput
+                id="image-x-position"
+                label="X-Position"
+                help="X = Abstand vom linken Rand des aktuellen Bereichs"
+                min={0}
+                value={draft.x}
+                onChange={(value) => updateDraft({ x: value })}
+              />
+              <NumberWithUnitInput
+                id="image-y-position"
+                label="Y-Position"
+                help="Y = Abstand vom oberen Rand des aktuellen Bereichs"
+                min={0}
+                value={draft.y}
+                onChange={(value) => updateDraft({ y: value })}
+              />
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-2">

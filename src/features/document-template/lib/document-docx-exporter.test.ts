@@ -179,6 +179,7 @@ describe('renderDocumentTemplateDocx', () => {
               width: 240,
               height: 96,
               align: 'left',
+              layout: 'float-left',
               mode: 'inline',
             },
           },
@@ -319,6 +320,10 @@ describe('renderDocumentTemplateDocx', () => {
     expect(documentXml).toContain('Uhrzeit');
     expect(documentXml).toContain('10:00 Uhr');
     expect(documentXml).toContain('12:00 Uhr');
+    expect(documentXml).toContain('<wp:anchor');
+    expect(documentXml).toContain('<wp:wrapSquare');
+    expect(documentXml).toContain('<wp:align>left</wp:align>');
+    expect(documentXml).toMatch(/<wp:extent cx="2286000" cy="914400"/);
     expect(documentXml).toContain('Ort / Programm');
     expect(documentXml).toContain('Wien');
     expect(documentXml).toContain('Programm / Einsatz');

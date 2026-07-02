@@ -64,7 +64,7 @@ export function DocumentTemplateEditorStyles() {
       .document-template-page .ProseMirror h1:hover,
       .document-template-page .ProseMirror h2:hover,
       .document-info-box:hover {
-        outline: 1px solid hsl(var(--ring) / 0.25);
+        outline: 1px solid color-mix(in oklch, var(--ring) 25%, transparent);
         outline-offset: 4px;
       }
 
@@ -127,7 +127,7 @@ export function DocumentTemplateEditorStyles() {
       .document-template-page .ProseMirror-selectednode.document-field-chip {
         background: hsl(var(--primary));
         color: hsl(var(--primary-foreground));
-        outline: 2px solid hsl(var(--ring));
+        outline: 2px solid var(--ring);
         outline-offset: 2px;
       }
 
@@ -154,7 +154,36 @@ export function DocumentTemplateEditorStyles() {
         margin: 8px 0;
       }
 
-      .document-template-image-wrapper-free {
+      .document-template-image-layout-inline {
+        clear: none;
+        display: inline-flex;
+        margin: 0 8px;
+        vertical-align: middle;
+      }
+
+      .document-template-image-layout-block {
+        clear: both;
+        justify-content: flex-start;
+      }
+
+      .document-template-image-layout-center {
+        clear: both;
+        justify-content: center;
+      }
+
+      .document-template-image-layout-float-left {
+        display: block;
+        float: left;
+        margin: 8px 12px 8px 0;
+      }
+
+      .document-template-image-layout-float-right {
+        display: block;
+        float: right;
+        margin: 8px 0 8px 12px;
+      }
+
+      .document-template-image-layout-absolute {
         cursor: grab;
         display: block;
         margin: 0;
@@ -162,7 +191,7 @@ export function DocumentTemplateEditorStyles() {
         z-index: 5;
       }
 
-      .document-template-image-wrapper-free:active {
+      .document-template-image-layout-absolute:active {
         cursor: grabbing;
       }
 
@@ -173,27 +202,15 @@ export function DocumentTemplateEditorStyles() {
         position: relative;
       }
 
-      .document-template-image-wrapper-left {
-        justify-content: flex-start;
-      }
-
-      .document-template-image-wrapper-center {
-        justify-content: center;
-      }
-
-      .document-template-image-wrapper-right {
-        justify-content: flex-end;
-      }
-
       .document-template-image {
         max-width: 100%;
       }
 
       .document-template-image-placeholder {
         align-items: center;
-        border: 1px dashed hsl(var(--border));
+        border: 1px dashed var(--border);
         border-radius: 6px;
-        color: hsl(var(--muted-foreground));
+        color: var(--muted-foreground);
         display: inline-flex;
         font-size: 12px;
         justify-content: center;
@@ -202,10 +219,11 @@ export function DocumentTemplateEditorStyles() {
       }
 
       .document-template-image-resize-handle {
-        background: hsl(var(--background));
-        border: 2px solid hsl(var(--ring));
+        background: var(--background);
+        border: 2px solid var(--ring);
         border-radius: 2px;
-        box-shadow: 0 1px 4px hsl(var(--foreground) / 0.18);
+        box-shadow: 0 1px 4px
+          color-mix(in oklch, var(--foreground) 18%, transparent);
         display: block;
         height: 12px;
         opacity: 0;
@@ -214,7 +232,7 @@ export function DocumentTemplateEditorStyles() {
         touch-action: none;
         transition: opacity 120ms ease;
         width: 12px;
-        z-index: 2;
+        z-index: 20;
       }
 
       .document-template-image-resize-handle[data-resize-direction='nw'] {
@@ -273,7 +291,7 @@ export function DocumentTemplateEditorStyles() {
       .ProseMirror-selectednode.document-template-image,
       .ProseMirror-selectednode.document-template-image-wrapper,
       .ProseMirror-selectednode .document-template-image-content {
-        outline: 2px solid hsl(var(--ring));
+        outline: 2px solid var(--ring);
         outline-offset: 3px;
       }
 
