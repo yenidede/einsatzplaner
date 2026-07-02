@@ -7,6 +7,7 @@ import type {
 import { DOCUMENT_TEMPLATE_CONTENT_KIND } from '@/features/document-template/types';
 import { renderDocumentTemplateDocx } from './document-docx-exporter';
 import { normalizeTemplateText } from './document-template-renderer';
+import { convertMillimetersToTwip } from 'docx';
 
 const transparentPng =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
@@ -339,5 +340,54 @@ describe('renderDocumentTemplateDocx', () => {
     expect(headerXml).toContain('Buchungsbestätigung');
     expect(footerXml).toContain('office@example.org');
     expect(footerXml).toContain('Seite');
+  });
+
+  it('verwendet DOCX-Seitenränder ohne header/footer-Höhe hinzuzufügen', async () => {
+    const content: DocumentTemplateContent = {
+      kind: DOCUMENT_TEMPLATE_CONTENT_KIND,
+      version: 1,
+      meta: {
+        description: '',
+        defaultFormat: 'docx',
+        isDefault: false,
+        sampleEinsatzId: null,
+      },
+      page: {
+        format: 'A4',
+        orientation: 'portrait',
+        margins: { top: 18, right: 20, bottom: 18, left: 20 },
+        header: {
+          enabled: true,
+          height: 18,
+          showOn: 'allPages',
+          blocks: [],
+        },
+        footer: {
+          enabled: true,
+          height: 14,
+          showOn: 'allPages',
+          blocks: [],
+        },
+      },
+      document: {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Test' }] },
+        ],
+      },
+      blocks: [],
+    };
+
+    const buffer = await renderDocumentTemplateDocx({
+      templateName: 'Test',
+      content,
+      fields: {},
+    });
+
+    const documentXml = await readDocxPart(buffer, 'word/document.xml');
+    expect(documentXml).toContain(`w:top="${convertMillimetersToTwip(18)}"`);
+    expect(documentXml).toContain(`w:bottom="${convertMillimetersToTwip(18)}"`);
+    expect(documentXml).toContain(`w:header="${convertMillimetersToTwip(18)}"`);
+    expect(documentXml).toContain(`w:footer="${convertMillimetersToTwip(18)}"`);
   });
 });

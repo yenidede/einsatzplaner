@@ -1,12 +1,13 @@
 import {
   DOCUMENT_PAGE_HEIGHT_PX,
   DOCUMENT_PAGE_WIDTH_PX,
+  MM_TO_EDITOR_PX,
 } from '@/features/document-template/lib/document-page-geometry';
 import type { SidebarResizeSide } from '../types/documentTemplateEditorTypes';
 
 export const A4_EDITOR_WIDTH_PX = DOCUMENT_PAGE_WIDTH_PX;
 export const A4_EDITOR_HEIGHT_PX = DOCUMENT_PAGE_HEIGHT_PX;
-export const MM_TO_EDITOR_PX = A4_EDITOR_WIDTH_PX / 210;
+export { MM_TO_EDITOR_PX };
 export const COLLAPSED_SIDEBAR_WIDTH_PX = 48;
 export const SIDEBAR_WIDTH = {
   left: { min: 240, default: 300, max: 420 },

@@ -41,6 +41,7 @@ import {
 } from './document-template-renderer';
 import { getMarkAttr, hasMark } from './document-rich-text';
 import { resolveTemplateImageLayout } from './document-template-image-layout';
+import { mmToPx } from './document-page-geometry';
 
 const FONT_FAMILY = 'Arial';
 const BODY_FONT_SIZE_PX = 16;
@@ -106,10 +107,6 @@ function pxToTwip(value: number): number {
 
 function pxToEmu(value: number): number {
   return Math.round(value * 9525);
-}
-
-function mmToPx(value: number): number {
-  return Math.round((value * 794) / 210);
 }
 
 function numberAttr(
@@ -574,18 +571,10 @@ export async function renderDocumentTemplateDocx(args: {
                   : PageOrientation.PORTRAIT,
             },
             margin: {
-              top: convertMillimetersToTwip(
-                args.content.page.margins.top +
-                  (args.content.page.header.enabled
-                    ? args.content.page.header.height
-                    : 0)
-              ),
+              top: convertMillimetersToTwip(args.content.page.margins.top),
               right: convertMillimetersToTwip(args.content.page.margins.right),
               bottom: convertMillimetersToTwip(
-                args.content.page.margins.bottom +
-                  (args.content.page.footer.enabled
-                    ? args.content.page.footer.height
-                    : 0)
+                args.content.page.margins.bottom
               ),
               left: convertMillimetersToTwip(args.content.page.margins.left),
               header: convertMillimetersToTwip(args.content.page.margins.top),

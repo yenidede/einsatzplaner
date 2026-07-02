@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { documentFontFamilyToPdfFont } from './document-pdf-exporter';
 import {
-  documentFontFamilyToPdfFont,
   millimetersToPdfPoints,
   pixelsToPdfPoints,
-} from './document-pdf-exporter';
+} from './document-page-geometry';
 
 describe('millimetersToPdfPoints', () => {
   it('rechnet Seiteneinstellungen von Millimetern in PDF-Punkte um', () => {

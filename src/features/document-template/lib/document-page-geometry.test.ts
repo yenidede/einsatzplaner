@@ -3,6 +3,7 @@ import {
   DOCUMENT_PAGE_HEIGHT_PX,
   DOCUMENT_PAGE_WIDTH_PX,
   getDocumentPageViewport,
+  mmToPx,
 } from './document-page-geometry';
 
 describe('getDocumentPageViewport', () => {
@@ -18,5 +19,12 @@ describe('getDocumentPageViewport', () => {
     });
     expect(DOCUMENT_PAGE_WIDTH_PX).toBe(794);
     expect(DOCUMENT_PAGE_HEIGHT_PX).toBe(1123);
+  });
+});
+
+describe('mmToPx', () => {
+  it('konvertiert Millimeter zu Editor-Pixeln anhand der A4-Breite', () => {
+    expect(mmToPx(210)).toBe(DOCUMENT_PAGE_WIDTH_PX);
+    expect(mmToPx(42)).toBe(Math.round((42 * DOCUMENT_PAGE_WIDTH_PX) / 210));
   });
 });

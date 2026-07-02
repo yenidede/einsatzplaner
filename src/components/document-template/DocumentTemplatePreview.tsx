@@ -20,6 +20,7 @@ import {
 import {
   DOCUMENT_PAGE_HEIGHT_PX,
   DOCUMENT_PAGE_WIDTH_PX,
+  mmToPx,
 } from '@/features/document-template/lib/document-page-geometry';
 import { resolveTemplateImageLayout } from '@/features/document-template/lib/document-template-image-layout';
 import { Badge } from '@/components/ui/badge';
@@ -28,10 +29,9 @@ import { cn } from '@/lib/utils';
 
 const A4_WIDTH_PX = DOCUMENT_PAGE_WIDTH_PX;
 const A4_HEIGHT_PX = DOCUMENT_PAGE_HEIGHT_PX;
-const MM_TO_PX = A4_WIDTH_PX / 210;
 
 function mm(value: number): number {
-  return Math.round(value * MM_TO_PX);
+  return mmToPx(value);
 }
 
 function alignmentClass(
@@ -192,8 +192,8 @@ function PreviewBlock({
             <Image
               src={imageUrl}
               alt={block.title ?? 'Logo'}
-              width={mm(block.width ?? 42)}
-              height={mm(block.height ?? 18)}
+              width={mmToPx(block.width ?? 42)}
+              height={mmToPx(block.height ?? 18)}
               unoptimized
               className="object-contain"
               style={{

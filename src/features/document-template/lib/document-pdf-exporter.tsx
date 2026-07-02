@@ -22,14 +22,10 @@ import {
   resolveTemplateText,
 } from './document-template-renderer';
 import { getMarkAttr, hasMark } from './document-rich-text';
-
-export function millimetersToPdfPoints(value: number): number {
-  return (value * 72) / 25.4;
-}
-
-export function pixelsToPdfPoints(value: number): number {
-  return (value * 72) / 96;
-}
+import {
+  millimetersToPdfPoints,
+  pixelsToPdfPoints,
+} from './document-page-geometry';
 
 export function documentFontFamilyToPdfFont(
   fontFamily: string | undefined,
@@ -195,11 +191,12 @@ function PdfBlock({
       );
     case 'pageBreak':
       return <Text break />;
+    case 'image':
+      return <FixedAreaBlock block={block} fields={fields} />;
     case 'field':
     case 'paragraph':
     case 'header':
     case 'footer':
-    case 'image':
     default:
       return (
         <Text style={styles.paragraph}>{blockToPlainText(block, fields)}</Text>
@@ -225,11 +222,7 @@ function FixedAreaBlock({
   fields: ResolvedDocumentTemplateFields;
 }) {
   if (block.richText) {
-    return (
-      <>
-        {richNodesToPdfBlocks(block.richText.content, fields)}
-      </>
-    );
+    return <>{richNodesToPdfBlocks(block.richText.content, fields)}</>;
   }
 
   if (block.type === 'image') {
@@ -238,14 +231,17 @@ function FixedAreaBlock({
       return null;
     }
 
+    const width = millimetersToPdfPoints(block.width ?? 42);
+    const height = millimetersToPdfPoints(block.height ?? 18);
+
     return (
       // @react-pdf/renderer Image has no alt prop; this is not a DOM image.
       // eslint-disable-next-line jsx-a11y/alt-text
       <Image
         src={imageUrl}
         style={{
-          width: block.width ?? 42,
-          height: block.height ?? 18,
+          width,
+          height,
           objectFit: 'contain',
           marginLeft:
             block.align === 'center'
