@@ -60,10 +60,16 @@ export function DocumentTemplateEditorStyles() {
         word-break: normal;
       }
 
-      .document-template-page .ProseMirror p:hover,
-      .document-template-page .ProseMirror h1:hover,
-      .document-template-page .ProseMirror h2:hover,
-      .document-info-box:hover {
+      .document-template-page .ProseMirror p,
+      .document-template-page .ProseMirror h1,
+      .document-template-page .ProseMirror h2 {
+        outline: none;
+        border: none;
+        box-shadow: none;
+        background: transparent;
+      }
+
+      .document-template-page .document-info-box:hover {
         outline: 1px solid color-mix(in oklch, var(--ring) 25%, transparent);
         outline-offset: 4px;
       }
