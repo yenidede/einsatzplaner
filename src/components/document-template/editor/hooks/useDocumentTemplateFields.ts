@@ -49,7 +49,15 @@ export function useDocumentTemplateFields({
     () => new Map(fields.map((field) => [field.key, field])),
     [fields]
   );
-  const effectiveGroupLabels = groupLabels;
+  const effectiveGroupLabels = useMemo(
+    () => ({
+      ...groupLabels,
+      event:
+        fields.find((field) => field.key === 'assignmentName')?.label ??
+        'Einsatz',
+    }),
+    [fields]
+  );
   const filteredBlockGroups = useMemo(() => {
     const normalizedQuery = blockSearch.trim().toLocaleLowerCase('de-AT');
     if (!normalizedQuery) return documentTemplateBlockGroups;

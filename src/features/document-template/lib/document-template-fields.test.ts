@@ -32,6 +32,7 @@ describe('Dokumentvorlagen-Felder', () => {
     ).toMatchObject({ label: 'Führung' });
     expect(fields.find((field) => field.key === 'helpers')).toMatchObject({
       label: 'Vermittler:innen',
+      group: 'event',
     });
     expect(fields.find((field) => field.key === 'guides')).toMatchObject({
       availableInLibrary: false,
@@ -61,7 +62,7 @@ describe('Dokumentvorlagen-Felder', () => {
       fields.find((field) => field.key === 'responsiblePerson')
     ).toMatchObject({
       label: 'Erstellt von',
-      group: 'staff',
+      group: 'event',
     });
     expect(
       fields.find((field) => field.key === 'organizationLogoUrl')

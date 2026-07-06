@@ -148,21 +148,21 @@ const standardFields: DocumentTemplateFieldDefinition[] = [
   standardField(
     'guides',
     'Vermittler:innen',
-    'staff',
+    'event',
     'list',
     'Zugewiesene Vermittler:innen'
   ),
   standardField(
     'helpers',
     'Helfer:innen',
-    'staff',
+    'event',
     'list',
     'Zugewiesene Helfer:innen'
   ),
   standardField(
     'responsiblePerson',
     'Erstellt von',
-    'staff',
+    'event',
     'person',
     'Person, die den Einsatz erstellt hat'
   ),
