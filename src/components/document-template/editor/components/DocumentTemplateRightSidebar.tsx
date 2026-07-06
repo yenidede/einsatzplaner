@@ -278,14 +278,14 @@ export function DocumentTemplateRightSidebar({
         </div>
       ) : (
         <div className="relative h-full min-h-0">
-          <Card className="flex h-full min-h-0 flex-col overflow-visible border-0 shadow-sm">
+          <Card className="flex h-full min-h-0 flex-col overflow-hidden border-0 shadow-sm">
           <Tooltip>
             <TooltipTrigger asChild>
               <div
                 role="separator"
                 aria-orientation="vertical"
                 aria-label="Breite der rechten Seitenleiste ändern"
-                className="group absolute top-0 left-[-10px] z-20 flex h-full w-4 cursor-col-resize items-center justify-center"
+                className="group absolute top-0 left-0 z-20 flex h-full w-4 cursor-col-resize items-center justify-center"
                 onPointerDown={(event) => startSidebarResize('right', event)}
               >
                 <span className="bg-border group-hover:bg-ring h-12 w-1 rounded-full transition-colors" />
