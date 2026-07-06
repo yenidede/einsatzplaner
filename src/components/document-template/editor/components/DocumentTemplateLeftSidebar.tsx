@@ -319,7 +319,8 @@ export function DocumentTemplateLeftSidebar({
           </Button>
         </div>
       ) : (
-        <Card className="relative flex h-full min-h-0 flex-col overflow-hidden border-0 shadow-sm">
+        <div className="relative h-full min-h-0">
+          <Card className="flex h-full min-h-0 flex-col overflow-hidden border-0 shadow-sm">
           <CardHeader className="flex shrink-0 flex-row items-start justify-between gap-2">
             <div>
               <CardTitle>Bausteine</CardTitle>
@@ -386,6 +387,7 @@ export function DocumentTemplateLeftSidebar({
               onInsert={insertBlock}
             />
           </CardContent>
+          </Card>
           <Tooltip>
             <TooltipTrigger asChild>
               <div
@@ -402,7 +404,7 @@ export function DocumentTemplateLeftSidebar({
               Breite der linken Seitenleiste ändern
             </TooltipContent>
           </Tooltip>
-        </Card>
+        </div>
       )}
       <DocumentTextBlockDialog
         open={textBlockToEdit !== null}

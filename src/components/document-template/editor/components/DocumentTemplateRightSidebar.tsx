@@ -277,7 +277,8 @@ export function DocumentTemplateRightSidebar({
           </Button>
         </div>
       ) : (
-        <Card className="relative flex h-full min-h-0 flex-col overflow-hidden border-0 shadow-sm">
+        <div className="relative h-full min-h-0">
+          <Card className="flex h-full min-h-0 flex-col overflow-visible border-0 shadow-sm">
           <Tooltip>
             <TooltipTrigger asChild>
               <div
@@ -320,7 +321,8 @@ export function DocumentTemplateRightSidebar({
               onInsert={insertField}
             />
           </CardContent>
-        </Card>
+          </Card>
+        </div>
       )}
     </>
   );
