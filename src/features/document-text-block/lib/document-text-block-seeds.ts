@@ -1,11 +1,20 @@
-import type { JSONContent } from '@tiptap/react';
-import type { DocumentTemplateFieldDefinition } from '@/features/document-template/types';
+import type {
+  DocumentTemplateFieldDefinition,
+  DocumentTemplateRichTextNode,
+} from '@/features/document-template/types';
+
+export type DocumentTextBlockSeed = {
+  seedKey: string;
+  name: string;
+  description: string;
+  document: DocumentTemplateRichTextNode;
+};
 
 function fieldNode(
   fields: Map<string, DocumentTemplateFieldDefinition>,
   fieldKey: string,
   fallbackLabel: string
-): JSONContent {
+): DocumentTemplateRichTextNode {
   return {
     type: 'dynamicField',
     attrs: {
@@ -20,7 +29,7 @@ function fieldLine(
   label: string,
   fieldKey: string,
   fallbackLabel: string
-): JSONContent {
+): DocumentTemplateRichTextNode {
   return {
     type: 'paragraph',
     content: [
@@ -30,38 +39,34 @@ function fieldLine(
   };
 }
 
-function section(title: string, content: JSONContent[]): JSONContent[] {
-  return [
-    {
-      type: 'heading',
-      attrs: { level: 2 },
-      content: [{ type: 'text', text: title }],
-    },
-    ...content,
-  ];
+function documentWithSection(
+  title: string,
+  content: DocumentTemplateRichTextNode[]
+): DocumentTemplateRichTextNode {
+  return {
+    type: 'doc',
+    content: [
+      {
+        type: 'heading',
+        attrs: { level: 2 },
+        content: [{ type: 'text', text: title }],
+      },
+      ...content,
+    ],
+  };
 }
 
-export function createPracticalBlockContent(
-  kind: string,
-  fields: Map<string, DocumentTemplateFieldDefinition>
-): JSONContent[] | null {
-  switch (kind) {
-    case 'spacer':
-      return [
-        {
-          type: 'paragraph',
-          attrs: { spacingTop: 20, spacingBottom: 20 },
-        },
-      ];
-    case 'dataOverview':
-      return section('Datenübersicht', [
-        fieldLine(fields, 'Datum', 'assignmentDate', 'Datum'),
-        fieldLine(fields, 'Beginn', 'assignmentStartTime', 'Beginnzeit'),
-        fieldLine(fields, 'Ende', 'assignmentEndTime', 'Endzeit'),
-        fieldLine(fields, 'Ort', 'location', 'Ort'),
-      ]);
-    case 'contactBlock':
-      return section('Kontakt', [
+export function createInitialDocumentTextBlockSeeds(
+  fieldDefinitions: DocumentTemplateFieldDefinition[]
+): DocumentTextBlockSeed[] {
+  const fields = new Map(fieldDefinitions.map((field) => [field.key, field]));
+
+  return [
+    {
+      seedKey: 'contact-block',
+      name: 'Kontaktblock',
+      description: 'Organisation, Ansprechperson und Kontaktdaten',
+      document: documentWithSection('Kontakt', [
         fieldLine(
           fields,
           'Organisation / Schule / Gruppe',
@@ -72,9 +77,13 @@ export function createPracticalBlockContent(
         fieldLine(fields, 'E-Mail', 'contactEmail', 'E-Mail'),
         fieldLine(fields, 'Telefon', 'contactPhone', 'Telefon'),
         fieldLine(fields, 'Adresse', 'organizationAddress', 'Adresse'),
-      ]);
-    case 'assignmentBlock':
-      return section('Einsatz / Termin', [
+      ]),
+    },
+    {
+      seedKey: 'assignment-block',
+      name: 'Einsatz-/Terminblock',
+      description: 'Datum, Zeiten, Ort, Kategorie und Status',
+      document: documentWithSection('Einsatz / Termin', [
         fieldLine(fields, 'Datum', 'assignmentDate', 'Datum'),
         fieldLine(fields, 'Beginn', 'assignmentStartTime', 'Beginnzeit'),
         fieldLine(fields, 'Ende', 'assignmentEndTime', 'Endzeit'),
@@ -82,9 +91,13 @@ export function createPracticalBlockContent(
         fieldLine(fields, 'Ort', 'location', 'Ort'),
         fieldLine(fields, 'Kategorie', 'categories', 'Kategorien'),
         fieldLine(fields, 'Status', 'assignmentStatus', 'Status'),
-      ]);
-    case 'priceBlock':
-      return section('Preis', [
+      ]),
+    },
+    {
+      seedKey: 'price-block',
+      name: 'Preisblock',
+      description: 'Teilnehmeranzahl, Einzelpreis und Gesamtpreis',
+      document: documentWithSection('Preis', [
         fieldLine(
           fields,
           'Teilnehmeranzahl',
@@ -94,9 +107,13 @@ export function createPracticalBlockContent(
         fieldLine(fields, 'Einzelpreis', 'pricePerPerson', 'Einzelpreis'),
         fieldLine(fields, 'Gesamtpreis', 'totalPrice', 'Gesamtpreis'),
         fieldLine(fields, 'Anmerkung', 'note', 'Anmerkung'),
-      ]);
-    case 'staffBlock':
-      return section('Personal', [
+      ]),
+    },
+    {
+      seedKey: 'staff-block',
+      name: 'Personalblock',
+      description: 'Zuständige und eingeteilte Personen',
+      document: documentWithSection('Personal', [
         fieldLine(
           fields,
           'Erstellt von',
@@ -109,8 +126,7 @@ export function createPracticalBlockContent(
           'helpers',
           'Eingeteilte Personen'
         ),
-      ]);
-    default:
-      return null;
-  }
+      ]),
+    },
+  ];
 }

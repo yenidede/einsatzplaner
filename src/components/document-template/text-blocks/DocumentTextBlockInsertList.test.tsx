@@ -31,11 +31,11 @@ describe('DocumentTextBlockInsertList', () => {
     const setData = vi.fn();
     render(
       <DocumentTextBlockInsertList
-        standardTemplates={[]}
         textBlocks={[textBlock]}
         onInsert={vi.fn()}
-        onEditStandard={vi.fn()}
-        onDuplicateStandard={vi.fn()}
+        onEdit={vi.fn()}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
       />
     );
 
@@ -56,11 +56,11 @@ describe('DocumentTextBlockInsertList', () => {
     const onInsert = vi.fn();
     render(
       <DocumentTextBlockInsertList
-        standardTemplates={[]}
         textBlocks={[textBlock]}
         onInsert={onInsert}
-        onEditStandard={vi.fn()}
-        onDuplicateStandard={vi.fn()}
+        onEdit={vi.fn()}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
       />
     );
 
@@ -76,11 +76,8 @@ describe('DocumentTextBlockInsertList', () => {
   it('zeigt für eigene Textbausteine nur die einheitlichen Aktionen', async () => {
     render(
       <DocumentTextBlockInsertList
-        standardTemplates={[]}
         textBlocks={[textBlock]}
         onInsert={vi.fn()}
-        onEditStandard={vi.fn()}
-        onDuplicateStandard={vi.fn()}
         onEdit={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
@@ -100,68 +97,30 @@ describe('DocumentTextBlockInsertList', () => {
     expect(screen.queryByRole('menuitem', { name: 'Umbenennen' })).toBeNull();
   });
 
-  it('bietet Standardvorlagen zum Bearbeiten und Duplizieren, aber nicht zum Löschen an', async () => {
-    const onEditStandard = vi.fn();
-    const onDuplicateStandard = vi.fn();
-    const standardTemplate = {
-      id: 'standard-contact',
+  it('zeigt initiale und weitere Textbausteine ohne Herkunftslabels', () => {
+    const initialTextBlock: DocumentTextBlock = {
+      ...textBlock,
+      id: 'initial-contact',
       name: 'Kontaktblock',
-      description: 'Kontaktdaten',
-      plainText: 'Kontaktdaten',
-      document: textBlock.document,
+      category: '',
+      seedKey: 'contact-block',
     };
     render(
       <DocumentTextBlockInsertList
-        standardTemplates={[standardTemplate]}
-        textBlocks={[]}
+        textBlocks={[initialTextBlock, textBlock]}
         onInsert={vi.fn()}
-        onEditStandard={onEditStandard}
-        onDuplicateStandard={onDuplicateStandard}
-      />
-    );
-
-    fireEvent.pointerDown(
-      screen.getByRole('button', { name: 'Aktionen für Kontaktblock' })
-    );
-    const editItem = await screen.findByRole('menuitem', {
-      name: 'Bearbeiten',
-    });
-    expect(screen.getByRole('menuitem', { name: 'Duplizieren' })).toBeDefined();
-    expect(screen.queryByRole('menuitem', { name: 'Umbenennen' })).toBeNull();
-    expect(
-      screen.queryByRole('menuitem', {
-        name: 'Als eigenen Textbaustein kopieren',
-      })
-    ).toBeNull();
-    expect(screen.queryByRole('menuitem', { name: 'Löschen' })).toBeNull();
-    fireEvent.click(editItem);
-    expect(onEditStandard).toHaveBeenCalledWith(standardTemplate);
-  });
-
-  it('zeigt Standard- und eigene Textbausteine in einer gemeinsamen Gruppe ohne Herkunftslabels', () => {
-    render(
-      <DocumentTextBlockInsertList
-        standardTemplates={[
-          {
-            id: 'standard-contact',
-            name: 'Kontaktblock',
-            description: 'Kontaktdaten',
-            plainText: 'Kontaktdaten',
-            document: textBlock.document,
-          },
-        ]}
-        textBlocks={[textBlock]}
-        onInsert={vi.fn()}
-        onEditStandard={vi.fn()}
-        onDuplicateStandard={vi.fn()}
+        onEdit={vi.fn()}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
       />
     );
 
     expect(screen.getByRole('heading', { name: 'Textbausteine' })).toBeDefined();
     expect(screen.getByText('Kontaktblock')).toBeDefined();
     expect(screen.getByText('Begrüßung')).toBeDefined();
-    expect(screen.queryByText('Standardvorlagen')).toBeNull();
-    expect(screen.queryByText('Eigene Textbausteine')).toBeNull();
+    expect(screen.queryByText('Standard')).toBeNull();
+    expect(screen.queryByText('Eigen')).toBeNull();
+    expect(screen.queryByText('System')).toBeNull();
     expect(screen.queryByText('Allgemein')).toBeNull();
   });
 });

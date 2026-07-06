@@ -63,12 +63,10 @@ export function useDocumentTemplateEditorController({
   organizationId,
   template,
   fields,
-  einsatzNamePlural = 'Einsätze',
 }: {
   organizationId: string;
   template?: DocumentTemplateRecord | null;
   fields: DocumentTemplateFieldDefinition[];
-  einsatzNamePlural?: string | null;
 }) {
   const {
     name,
@@ -137,7 +135,6 @@ export function useDocumentTemplateEditorController({
     updateSelectedDynamicField,
   } = useDocumentTemplateFields({
     blockSearch,
-    einsatzNamePlural,
     fields,
     organizationLogoUrl,
     setSelectedDynamicField,

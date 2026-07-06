@@ -21,6 +21,8 @@ describe('fachliche Dokumentbausteine', () => {
     const content = createPracticalBlockContent('staffBlock', fields);
 
     expect(JSON.stringify(content)).toContain('Kulturvermittler:innen');
+    expect(JSON.stringify(content)).toContain('Erstellt von');
+    expect(JSON.stringify(content)).not.toContain('administrationFunction');
   });
 
   it('bereitet einen kontrollierten Abstand ohne leere Textzeichen vor', () => {

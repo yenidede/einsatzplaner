@@ -21,10 +21,6 @@ describe('Dokumentvorlagen-Felder', () => {
       einsatz_name_singular: 'Führung',
       einsatz_name_plural: 'Führungen',
       helper_name_plural: 'Vermittler:innen',
-      logo_url: null,
-      email: 'museum@example.org',
-      phone: null,
-      _count: { organization_address: 1 },
     });
   });
 
@@ -57,7 +53,16 @@ describe('Dokumentvorlagen-Felder', () => {
     ).toMatchObject({ label: 'Organisationsname', group: 'administration' });
     expect(
       fields.find((field) => field.key === 'administrationName')
-    ).toMatchObject({ availableInLibrary: false });
+    ).toBeUndefined();
+    expect(
+      fields.find((field) => field.key === 'administrationFunction')
+    ).toBeUndefined();
+    expect(
+      fields.find((field) => field.key === 'responsiblePerson')
+    ).toMatchObject({
+      label: 'Erstellt von',
+      group: 'staff',
+    });
     expect(
       fields.find((field) => field.key === 'organizationLogoUrl')
     ).toMatchObject({ availableInLibrary: false });
@@ -66,6 +71,9 @@ describe('Dokumentvorlagen-Felder', () => {
     ).not.toMatchObject({ availableInLibrary: false });
     expect(
       fields.find((field) => field.key === 'organizationAddress')
+    ).not.toMatchObject({ availableInLibrary: false });
+    expect(
+      fields.find((field) => field.key === 'organizationPhone')
     ).not.toMatchObject({ availableInLibrary: false });
   });
 

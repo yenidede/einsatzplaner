@@ -231,7 +231,7 @@ export const groupLabels: Record<
 > = {
   general: 'Allgemein',
   contact: 'Kontakt',
-  event: 'Führung / Veranstaltung',
+  event: 'Einsatz / Führung',
   staff: 'Personal',
   administration: 'Verwaltung',
   custom: 'Eigene Felder',

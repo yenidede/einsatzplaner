@@ -63,11 +63,10 @@ describe('Bibliothek für dynamische Felder', () => {
       </TooltipProvider>
     );
 
-    expect(
-      screen.getAllByRole('button', { name: /FührungText/ })
-    ).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /FührungText/ })).toBeDefined();
     expect(screen.getByText(/Führungen \(1\)/)).toBeDefined();
     expect(screen.queryByText('Verwaltung Name')).toBeNull();
+    expect(screen.queryByText('Häufig verwendet')).toBeNull();
   });
 
   it('zeigt organisationsspezifische Namen unverändert und sucht nach Typ und Gruppe', () => {

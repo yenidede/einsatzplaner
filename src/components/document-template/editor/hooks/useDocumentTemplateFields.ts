@@ -19,13 +19,11 @@ import {
 
 export function useDocumentTemplateFields({
   blockSearch,
-  einsatzNamePlural,
   fields,
   organizationLogoUrl,
   setSelectedDynamicField,
 }: {
   blockSearch: string;
-  einsatzNamePlural?: string | null;
   fields: DocumentTemplateFieldDefinition[];
   organizationLogoUrl: string | null;
   setSelectedDynamicField: Dispatch<
@@ -51,13 +49,7 @@ export function useDocumentTemplateFields({
     () => new Map(fields.map((field) => [field.key, field])),
     [fields]
   );
-  const effectiveGroupLabels = useMemo(
-    () => ({
-      ...groupLabels,
-      event: einsatzNamePlural?.trim() || 'Einsätze',
-    }),
-    [einsatzNamePlural]
-  );
+  const effectiveGroupLabels = groupLabels;
   const filteredBlockGroups = useMemo(() => {
     const normalizedQuery = blockSearch.trim().toLocaleLowerCase('de-AT');
     if (!normalizedQuery) return documentTemplateBlockGroups;

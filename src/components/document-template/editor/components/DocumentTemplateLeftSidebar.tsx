@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -176,7 +175,6 @@ import {
   groupLabels,
   normalizeAttrs,
   richTextFromBlockText,
-  toRichTextNode,
 } from '../utils/documentTemplateEditorUtils';
 import { Button } from '@/components/ui/button';
 import {
@@ -248,7 +246,6 @@ import { DocumentTemplateBlockLibrary } from './DocumentTemplateBlockLibrary';
 import { DocumentTemplateToolbar } from './DocumentTemplateToolbar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createDocumentTextBlock,
   deleteDocumentTextBlock,
   duplicateDocumentTextBlock,
   getDocumentTextBlocks,
@@ -256,12 +253,8 @@ import {
 } from '@/features/document-text-block/server/document-text-block.actions';
 import { documentTextBlockQueryKeys } from '@/features/document-text-block/queryKeys';
 import type { DocumentTextBlock } from '@/features/document-text-block/types';
-import {
-  DocumentTextBlockInsertList,
-  type StandardDocumentTextBlock,
-} from '../../text-blocks/DocumentTextBlockInsertList';
+import { DocumentTextBlockInsertList } from '../../text-blocks/DocumentTextBlockInsertList';
 import { DocumentTextBlockDialog } from '../../text-blocks/DocumentTextBlockDialog';
-import { createPracticalBlockContent } from '../utils/documentTemplatePracticalBlocks';
 export function DocumentTemplateLeftSidebar({
   controller,
 }: {
@@ -302,67 +295,11 @@ export function DocumentTemplateLeftSidebar({
   const remainingBlockGroups = filteredBlockGroups.filter(
     (group) => group.label !== 'Text'
   );
-  const standardTextBlocks = useMemo<StandardDocumentTextBlock[]>(() => {
-    const fieldByKey = new Map(
-      controller.fields.map((field) => [field.key, field])
-    );
-    const definitions = [
-      {
-        id: 'standard-contact-block',
-        kind: 'contactBlock',
-        name: 'Kontaktblock',
-        description: 'Organisation, Ansprechperson und Kontaktdaten',
-      },
-      {
-        id: 'standard-assignment-block',
-        kind: 'assignmentBlock',
-        name: 'Einsatz-/Terminblock',
-        description: 'Datum, Zeiten, Ort, Kategorie und Status',
-      },
-      {
-        id: 'standard-price-block',
-        kind: 'priceBlock',
-        name: 'Preisblock',
-        description: 'Teilnehmeranzahl, Einzelpreis und Gesamtpreis',
-      },
-      {
-        id: 'standard-staff-block',
-        kind: 'staffBlock',
-        name: 'Personalblock',
-        description: 'Zuständige und eingeteilte Personen',
-      },
-    ];
-
-    return definitions.map((definition) => ({
-      id: definition.id,
-      name: definition.name,
-      description: definition.description,
-      plainText: definition.description,
-      document: toRichTextNode({
-        type: 'doc',
-        content: createPracticalBlockContent(definition.kind, fieldByKey) ?? [],
-      }),
-    }));
-  }, [controller.fields]);
-
   async function refreshTextBlocks() {
     await queryClient.invalidateQueries({
       queryKey: documentTextBlockQueryKeys.byOrganization(
         controller.organizationId
       ),
-    });
-  }
-
-  async function createStandardTextBlockCopy(
-    block: StandardDocumentTextBlock,
-    name: string
-  ) {
-    return createDocumentTextBlock({
-      organizationId: controller.organizationId,
-      name,
-      description: block.description,
-      category: '',
-      document: block.document,
     });
   }
 
@@ -416,32 +353,8 @@ export function DocumentTemplateLeftSidebar({
               onInsert={insertBlock}
             />
             <DocumentTextBlockInsertList
-              standardTemplates={standardTextBlocks}
               textBlocks={filteredTextBlocks}
               onInsert={(block) => insertTextBlock(block.document)}
-              onEditStandard={(block) => {
-                void (async () => {
-                  const copy = await createStandardTextBlockCopy(
-                    block,
-                    block.name
-                  );
-                  toast.success(
-                    'Diese Standardvorlage wird als eigener Textbaustein gespeichert.'
-                  );
-                  setTextBlockToEdit(copy);
-                  await refreshTextBlocks();
-                })();
-              }}
-              onDuplicateStandard={(block) => {
-                void (async () => {
-                  await createStandardTextBlockCopy(
-                    block,
-                    `${block.name} (Kopie)`
-                  );
-                  toast.success('Textbaustein wurde dupliziert.');
-                  await refreshTextBlocks();
-                })();
-              }}
               onEdit={setTextBlockToEdit}
               onDuplicate={(block) => {
                 void (async () => {

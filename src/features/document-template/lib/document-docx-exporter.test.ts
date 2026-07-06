@@ -226,6 +226,8 @@ describe('renderDocumentTemplateDocx', () => {
                   { type: 'dynamicField', attrs: { fieldKey: 'location' } },
                   { type: 'text', text: ' · ' },
                   { type: 'dynamicField', attrs: { fieldKey: 'programName' } },
+                  { type: 'hardBreak' },
+                  { type: 'text', text: 'Textfluss\tmit Tabstopp' },
                 ],
               },
             ],
@@ -326,6 +328,10 @@ describe('renderDocumentTemplateDocx', () => {
     expect(documentXml).toContain('<wp:align>left</wp:align>');
     expect(documentXml).toMatch(/<wp:extent cx="2286000" cy="914400"/);
     expect(documentXml).toContain('Ort / Programm');
+    expect(documentXml).toContain('Textfluss');
+    expect(documentXml).toContain('mit Tabstopp');
+    expect(documentXml).toContain('<w:tab/>');
+    expect(documentXml).toContain('w:tab w:val="left" w:pos="720"');
     expect(documentXml).toContain('Wien');
     expect(documentXml).toContain('Programm / Einsatz');
     expect(documentXml).toContain('Führung Spezial');
@@ -336,6 +342,9 @@ describe('renderDocumentTemplateDocx', () => {
     expect(documentXml).toContain('Times New Roman');
     expect(documentXml).toContain('w:color w:val="166534"');
     expect(documentXml).toContain('w:line="276"');
+    expect(documentXml).toContain('w:after="0" w:before="0"');
+    expect(documentXml).toContain('w:lineRule="auto"');
+    expect(documentXml).toContain('wp:positionH relativeFrom="column"');
     expect(documentXml).toContain('wp:extent cx="2286000" cy="914400"');
     expect(headerXml).toContain('Organisation Ö');
     expect(headerXml).toContain('Buchungsbestätigung');
@@ -392,5 +401,31 @@ describe('renderDocumentTemplateDocx', () => {
     expect(documentXml).toContain(`w:bottom="${convertMillimetersToTwip(24)}"`);
     expect(documentXml).toContain(`w:header="${convertMillimetersToTwip(10)}"`);
     expect(documentXml).toContain(`w:footer="${convertMillimetersToTwip(10)}"`);
+
+    const disabledBuffer = await renderDocumentTemplateDocx({
+      templateName: 'Test ohne feste Bereiche',
+      content: {
+        ...content,
+        page: {
+          ...content.page,
+          header: { ...content.page.header, enabled: false },
+          footer: { ...content.page.footer, enabled: false },
+        },
+      },
+      fields: {},
+    });
+    const disabledDocumentXml = await readDocxPart(
+      disabledBuffer,
+      'word/document.xml'
+    );
+
+    expect(disabledDocumentXml).toContain(
+      `w:top="${convertMillimetersToTwip(10)}"`
+    );
+    expect(disabledDocumentXml).toContain(
+      `w:bottom="${convertMillimetersToTwip(10)}"`
+    );
+    expect(disabledDocumentXml).not.toContain('w:headerReference');
+    expect(disabledDocumentXml).not.toContain('w:footerReference');
   });
 });

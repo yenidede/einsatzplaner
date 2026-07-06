@@ -29,6 +29,7 @@ describe('document-text-block-storage', () => {
       category: 'Hinweis',
       plainText: documentText(document),
       document,
+      seedKey: 'contact-block',
     });
 
     expect(normalizeDocumentTextBlockContent(serialized)).toEqual({
@@ -38,6 +39,7 @@ describe('document-text-block-storage', () => {
       category: 'Hinweis',
       plainText: 'Termin {{date}}',
       document,
+      seedKey: 'contact-block',
     });
   });
 

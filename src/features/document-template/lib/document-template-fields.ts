@@ -161,24 +161,10 @@ const standardFields: DocumentTemplateFieldDefinition[] = [
   ),
   standardField(
     'responsiblePerson',
-    'Zuständige Person',
+    'Erstellt von',
     'staff',
     'person',
-    'Person, die den Einsatz angelegt hat'
-  ),
-  standardField(
-    'administrationName',
-    'Verwaltung Name',
-    'administration',
-    'text',
-    'Empfohlenes DB-Feld; aktuell nicht gespeichert'
-  ),
-  standardField(
-    'administrationFunction',
-    'Verwaltung Funktion',
-    'administration',
-    'text',
-    'Empfohlenes DB-Feld; aktuell nicht gespeichert'
+    'Person, die den Einsatz erstellt hat'
   ),
   standardField(
     'organizationLogoUrl',
@@ -290,9 +276,6 @@ export async function getDocumentTemplateFieldDefinitions(
         einsatz_name_singular: true,
         einsatz_name_plural: true,
         helper_name_plural: true,
-        email: true,
-        phone: true,
-        _count: { select: { organization_address: true } },
       },
     }),
   ]);
@@ -347,23 +330,10 @@ export async function getDocumentTemplateFieldDefinitions(
             label: 'Ausgewählte Vorlage',
             description: `Beim Erstellen von ${einsatzNameSingular} ausgewählte Vorlage`,
           };
-        case 'administrationName':
-        case 'administrationFunction':
-          return { ...field, availableInLibrary: false };
         case 'organizationLogoUrl':
           return {
             ...field,
             availableInLibrary: false,
-          };
-        case 'organizationEmail':
-          return { ...field, availableInLibrary: Boolean(organization?.email) };
-        case 'organizationPhone':
-          return { ...field, availableInLibrary: Boolean(organization?.phone) };
-        case 'organizationAddress':
-          return {
-            ...field,
-            availableInLibrary:
-              (organization?._count.organization_address ?? 0) > 0,
           };
         default:
           return field;

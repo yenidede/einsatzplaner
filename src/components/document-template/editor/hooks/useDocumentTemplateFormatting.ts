@@ -413,25 +413,7 @@ export function useDocumentTemplateFormatting({
         chain
           .insertContent({
             type: 'paragraph',
-            content: [
-              { type: 'text', text: 'Mit herzlichem Gruß' },
-              { type: 'hardBreak' },
-              {
-                type: 'dynamicField',
-                attrs: {
-                  fieldKey: 'administrationName',
-                  label: 'Verwaltung Name',
-                },
-              },
-              { type: 'hardBreak' },
-              {
-                type: 'dynamicField',
-                attrs: {
-                  fieldKey: 'administrationFunction',
-                  label: 'Verwaltung Funktion',
-                },
-              },
-            ],
+            content: [{ type: 'text', text: 'Mit herzlichem Gruß' }],
           })
           .run();
         return;

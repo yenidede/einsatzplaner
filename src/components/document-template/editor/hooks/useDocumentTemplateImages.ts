@@ -170,25 +170,7 @@ export function useDocumentTemplateImages({
       case 'signature':
         return {
           type: 'paragraph',
-          content: [
-            { type: 'text', text: 'Mit herzlichem Gruß' },
-            { type: 'hardBreak' },
-            {
-              type: 'dynamicField',
-              attrs: {
-                fieldKey: 'administrationName',
-                label: 'Verwaltung Name',
-              },
-            },
-            { type: 'hardBreak' },
-            {
-              type: 'dynamicField',
-              attrs: {
-                fieldKey: 'administrationFunction',
-                label: 'Verwaltung Funktion',
-              },
-            },
-          ],
+          content: [{ type: 'text', text: 'Mit herzlichem Gruß' }],
         };
       case 'pageBreak':
         return { type: 'pageBreak' };

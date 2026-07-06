@@ -362,44 +362,6 @@ export function DocumentTemplateToolbar({
           </Button>
         </ToolbarTooltip>
         <Separator orientation="vertical" className="h-6" />
-        <Select
-          value={
-            activeEditor?.isActive('heading', { level: 1 })
-              ? 'heading1'
-              : activeEditor?.isActive('heading', { level: 2 })
-                ? 'heading2'
-                : 'paragraph'
-          }
-          onValueChange={(value) => {
-            if (value === 'heading1') {
-              activeEditor?.chain().focus().setHeading({ level: 1 }).run();
-              return;
-            }
-
-            if (value === 'heading2') {
-              activeEditor?.chain().focus().setHeading({ level: 2 }).run();
-              return;
-            }
-
-            activeEditor?.chain().focus().setParagraph().run();
-          }}
-        >
-          <ToolbarTooltip label="Absatzformat">
-            <SelectTrigger
-              className="h-8 w-[170px]"
-              aria-label="Absatzformat ändern"
-            >
-              <SelectValue />
-            </SelectTrigger>
-          </ToolbarTooltip>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="paragraph">Normaler Text</SelectItem>
-              <SelectItem value="heading1">Überschrift 1</SelectItem>
-              <SelectItem value="heading2">Überschrift 2</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
         <Select value={fontFamily} onValueChange={applyFontFamily}>
           <ToolbarTooltip label="Schriftart">
             <SelectTrigger

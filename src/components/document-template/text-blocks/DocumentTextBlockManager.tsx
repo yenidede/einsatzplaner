@@ -13,7 +13,6 @@ import {
   getDocumentTextBlocks,
   updateDocumentTextBlock,
 } from '@/features/document-text-block/server/document-text-block.actions';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -110,9 +109,6 @@ export function DocumentTextBlockManager({
                         {block.description || 'Keine Beschreibung'}
                       </CardDescription>
                     </div>
-                    {block.category ? (
-                      <Badge variant="secondary">{block.category}</Badge>
-                    ) : null}
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 px-4 text-sm">

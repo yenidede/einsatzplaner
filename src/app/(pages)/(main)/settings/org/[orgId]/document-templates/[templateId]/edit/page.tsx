@@ -6,7 +6,6 @@ import {
   getDocumentTemplateById,
   getDocumentTemplateFields,
 } from '@/features/document-template/server/document-template.actions';
-import prisma from '@/lib/prisma';
 
 interface EditDocumentTemplatePageProps {
   params: Promise<{ orgId: string; templateId: string }>;
@@ -22,13 +21,9 @@ export default async function EditDocumentTemplatePage({
     notFound();
   }
 
-  const [template, fields, organization] = await Promise.all([
+  const [template, fields] = await Promise.all([
     getDocumentTemplateById(templateId),
     getDocumentTemplateFields(orgId),
-    prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { einsatz_name_plural: true },
-    }),
   ]);
 
   if (!template || template.organizationId !== orgId) {
@@ -40,7 +35,6 @@ export default async function EditDocumentTemplatePage({
       organizationId={orgId}
       template={template}
       fields={fields}
-      einsatzNamePlural={organization?.einsatz_name_plural ?? 'Einsätze'}
     />
   );
 }

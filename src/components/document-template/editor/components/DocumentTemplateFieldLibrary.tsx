@@ -29,15 +29,6 @@ const fieldTypeLabels: Record<
   rich_text: 'Rich Text',
 };
 
-const frequentFieldKeys = new Set([
-  'assignmentName',
-  'assignmentDate',
-  'assignmentStartTime',
-  'assignmentEndTime',
-  'participantCount',
-  'totalPrice',
-]);
-
 function FieldChip({
   field,
   onInsert,
@@ -113,10 +104,6 @@ export function DocumentTemplateFieldLibrary({
     });
   }, [fields, groupLabels, query]);
 
-  const frequentFields = query.trim()
-    ? []
-    : filteredFields.filter((field) => frequentFieldKeys.has(field.key));
-
   return (
     <div className="flex flex-col gap-4">
       <div className="relative">
@@ -129,22 +116,6 @@ export function DocumentTemplateFieldLibrary({
           aria-label="Dynamische Felder suchen"
         />
       </div>
-      {frequentFields.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-muted-foreground text-xs font-medium">
-            Häufig verwendet
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {frequentFields.map((field) => (
-              <FieldChip
-                key={`frequent-${field.key}`}
-                field={field}
-                onInsert={onInsert}
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
       {Object.entries(groupLabels).map(([group, label]) => {
         const groupFields = filteredFields.filter(
           (field) => field.group === group

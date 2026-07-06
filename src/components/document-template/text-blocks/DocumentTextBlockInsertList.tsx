@@ -1,7 +1,6 @@
 'use client';
 
 import { Copy, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { DocumentTemplateRichTextNode } from '@/features/document-template/types';
 import type { DocumentTextBlock } from '@/features/document-text-block/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,26 +12,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DOCUMENT_TEXT_BLOCK_DRAG_MIME } from '../editor/utils/documentTemplateEditorConstants';
 
-export interface StandardDocumentTextBlock {
-  id: string;
-  name: string;
-  description: string;
-  plainText: string;
-  document: DocumentTemplateRichTextNode;
-}
-
 type TextBlockItemProps = {
-  block: StandardDocumentTextBlock | DocumentTextBlock;
-  isStandard: boolean;
+  block: DocumentTextBlock;
   onInsert: () => void;
-  onEdit?: () => void;
-  onDuplicate?: () => void;
-  onDelete?: () => void;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
 };
 
 function TextBlockItem({
   block,
-  isStandard,
   onInsert,
   onEdit,
   onDuplicate,
@@ -86,27 +75,19 @@ function TextBlockItem({
             <Plus data-icon="inline-start" />
             Einfügen
           </DropdownMenuItem>
-          {onEdit ? (
-            <DropdownMenuItem onClick={onEdit}>
-              <Pencil data-icon="inline-start" />
-              Bearbeiten
-            </DropdownMenuItem>
-          ) : null}
-          {onDuplicate ? (
-            <DropdownMenuItem onClick={onDuplicate}>
-              <Copy data-icon="inline-start" />
-              Duplizieren
-            </DropdownMenuItem>
-          ) : null}
-          {!isStandard && onDelete ? (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2 data-icon="inline-start" />
-                Löschen
-              </DropdownMenuItem>
-            </>
-          ) : null}
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil data-icon="inline-start" />
+            Bearbeiten
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onDuplicate}>
+            <Copy data-icon="inline-start" />
+            Duplizieren
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onClick={onDelete}>
+            <Trash2 data-icon="inline-start" />
+            Löschen
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -114,39 +95,23 @@ function TextBlockItem({
 }
 
 export function DocumentTextBlockInsertList({
-  standardTemplates,
   textBlocks,
   onInsert,
-  onEditStandard,
-  onDuplicateStandard,
   onEdit,
   onDuplicate,
   onDelete,
 }: {
-  standardTemplates: StandardDocumentTextBlock[];
   textBlocks: DocumentTextBlock[];
-  onInsert: (textBlock: StandardDocumentTextBlock | DocumentTextBlock) => void;
-  onEditStandard: (textBlock: StandardDocumentTextBlock) => void;
-  onDuplicateStandard: (textBlock: StandardDocumentTextBlock) => void;
-  onEdit?: (textBlock: DocumentTextBlock) => void;
-  onDuplicate?: (textBlock: DocumentTextBlock) => void;
-  onDelete?: (textBlock: DocumentTextBlock) => void;
+  onInsert: (textBlock: DocumentTextBlock) => void;
+  onEdit: (textBlock: DocumentTextBlock) => void;
+  onDuplicate: (textBlock: DocumentTextBlock) => void;
+  onDelete: (textBlock: DocumentTextBlock) => void;
 }) {
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-sm font-medium">Textbausteine</h3>
       <div className="flex flex-col gap-1">
-        {standardTemplates.map((block) => (
-          <TextBlockItem
-            key={block.id}
-            block={block}
-            isStandard
-            onInsert={() => onInsert(block)}
-            onEdit={() => onEditStandard(block)}
-            onDuplicate={() => onDuplicateStandard(block)}
-          />
-        ))}
-        {standardTemplates.length === 0 && textBlocks.length === 0 ? (
+        {textBlocks.length === 0 ? (
           <p className="text-muted-foreground rounded-md border border-dashed px-3 py-4 text-xs">
             Noch keine passenden Textbausteine vorhanden.
           </p>
@@ -155,11 +120,10 @@ export function DocumentTextBlockInsertList({
             <TextBlockItem
               key={block.id}
               block={block}
-              isStandard={false}
               onInsert={() => onInsert(block)}
-              onEdit={onEdit ? () => onEdit(block) : undefined}
-              onDuplicate={onDuplicate ? () => onDuplicate(block) : undefined}
-              onDelete={onDelete ? () => onDelete(block) : undefined}
+              onEdit={() => onEdit(block)}
+              onDuplicate={() => onDuplicate(block)}
+              onDelete={() => onDelete(block)}
             />
           ))
         )}

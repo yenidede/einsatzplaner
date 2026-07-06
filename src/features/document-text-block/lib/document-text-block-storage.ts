@@ -83,6 +83,7 @@ export function normalizeDocumentTextBlockContent(
     category: typeof value.category === 'string' ? value.category : '',
     plainText: typeof value.plainText === 'string' ? value.plainText : '',
     document,
+    ...(typeof value.seedKey === 'string' ? { seedKey: value.seedKey } : {}),
   };
 }
 
@@ -96,6 +97,7 @@ export function serializeDocumentTextBlockContent(
     category: content.category,
     plainText: content.plainText,
     document: serializeNode(content.document),
+    ...(content.seedKey ? { seedKey: content.seedKey } : {}),
   };
 }
 
@@ -108,6 +110,7 @@ export function documentText(node: DocumentTemplateRichTextNode): string {
     .map(documentText)
     .filter(Boolean)
     .join(node.type === 'doc' ? '\n' : ' ')
+    .replace(/[ \t]+/g, ' ')
     .replace(/\s+\n/g, '\n')
     .replace(/\n\s+/g, '\n')
     .trim();

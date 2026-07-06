@@ -22,7 +22,11 @@ import {
   findDocumentTextBlockById,
   findDocumentTextBlocksByOrganization,
   updateDocumentTextBlockRecord,
+  initializeDocumentTextBlockRecords,
+  hasDocumentTextBlockSeedMarker,
 } from './document-text-block.dal';
+import { getDocumentTemplateFieldDefinitions } from '@/features/document-template/lib/document-template-fields';
+import { createInitialDocumentTextBlockSeeds } from '../lib/document-text-block-seeds';
 
 const metadataSchema = z.object({
   name: z.string().trim().min(1, 'Bitte geben Sie einen Namen ein.').max(120),
@@ -51,6 +55,7 @@ function mapRow(row: PrismaDocumentTextBlock): DocumentTextBlock {
     category: content.category,
     plainText: content.plainText,
     document: content.document,
+    seedKey: content.seedKey,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -71,6 +76,28 @@ export async function getDocumentTextBlocks(
   organizationId: string
 ): Promise<DocumentTextBlock[]> {
   await assertPermission(organizationId, 'templates:read');
+  if (!(await hasDocumentTextBlockSeedMarker(organizationId))) {
+    const fieldDefinitions = await getDocumentTemplateFieldDefinitions(
+      organizationId
+    );
+    const seeds = createInitialDocumentTextBlockSeeds(fieldDefinitions);
+    await initializeDocumentTextBlockRecords(
+      organizationId,
+      seeds.map((seed) => ({
+        seedKey: seed.seedKey,
+        name: seed.name,
+        contentJson: serializeDocumentTextBlockContent({
+          kind: DOCUMENT_TEXT_BLOCK_CONTENT_KIND,
+          version: 1,
+          description: seed.description,
+          category: '',
+          plainText: documentText(seed.document),
+          document: seed.document,
+          seedKey: seed.seedKey,
+        }),
+      }))
+    );
+  }
   const rows = await findDocumentTextBlocksByOrganization(organizationId);
   return rows.map(mapRow);
 }
@@ -113,6 +140,7 @@ export async function updateDocumentTextBlock(data: {
   await assertPermission(existing.organizationId, 'templates:update');
   const metadata = metadataSchema.parse(data);
   validateDocument(data.document);
+  const current = mapRow(existing);
   const row = await updateDocumentTextBlockRecord(data.id, {
     name: metadata.name,
     contentJson: serializeDocumentTextBlockContent({
@@ -122,6 +150,7 @@ export async function updateDocumentTextBlock(data: {
       category: metadata.category,
       plainText: documentText(data.document),
       document: data.document,
+      seedKey: current.seedKey,
     }),
   });
   revalidate(existing.organizationId);

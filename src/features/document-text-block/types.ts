@@ -11,6 +11,7 @@ export interface DocumentTextBlockContent {
   category: string;
   plainText: string;
   document: DocumentTemplateRichTextNode;
+  seedKey?: string;
 }
 
 export interface DocumentTextBlock {
@@ -21,6 +22,7 @@ export interface DocumentTextBlock {
   category: string;
   plainText: string;
   document: DocumentTemplateRichTextNode;
+  seedKey?: string;
   createdAt: Date;
   updatedAt: Date;
 }

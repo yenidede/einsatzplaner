@@ -8,6 +8,7 @@ import {
   HorizontalPositionRelativeFrom,
   ImageRun,
   LevelFormat,
+  LineRuleType,
   Packer,
   PageNumber,
   PageOrientation,
@@ -18,6 +19,7 @@ import {
   TableCell,
   TableRow,
   Tab,
+  TabStopType,
   TextRun,
   TextWrappingType,
   TextWrappingSide,
@@ -69,6 +71,9 @@ function textParagraph(text: string, fontSizePx = BODY_FONT_SIZE_PX) {
     spacing: paragraphSpacing({
       spacingBottom: DEFAULT_PARAGRAPH_SPACING_BOTTOM_PX,
     }),
+    alignment: AlignmentType.LEFT,
+    indent: { left: 0, right: 0 },
+    tabStops: DEFAULT_DOCUMENT_TAB_STOPS,
   });
 }
 
@@ -200,13 +205,35 @@ function paragraphSpacing(
       ? Math.round(lineHeight * 240)
       : pxToTwip(BODY_LINE_HEIGHT_PX);
 
-  return before || after ? { before, after, line } : { line };
+  return {
+    before: before ?? 0,
+    after: after ?? 0,
+    line,
+    lineRule: LineRuleType.AUTO,
+  };
 }
 
 function indentFromNode(node: DocumentTemplateRichTextNode) {
   const indent = numberAttr(node, 'indent');
-  return typeof indent === 'number' ? { left: pxToTwip(indent) } : undefined;
+  return {
+    left: typeof indent === 'number' ? pxToTwip(indent) : 0,
+    right: 0,
+  };
 }
+
+function documentTabStops(contentWidthMm: number) {
+  const tabWidth = pxToTwip(48);
+  const contentWidth = convertMillimetersToTwip(contentWidthMm);
+  const stops = [];
+
+  for (let position = tabWidth; position < contentWidth; position += tabWidth) {
+    stops.push({ type: TabStopType.LEFT, position });
+  }
+
+  return stops;
+}
+
+const DEFAULT_DOCUMENT_TAB_STOPS = documentTabStops(180);
 
 function alignmentFromNode(node: DocumentTemplateRichTextNode) {
   const textAlign = node.attrs?.textAlign;
@@ -332,7 +359,7 @@ async function imageNodeToParagraph(
     layout === 'absolute'
       ? {
           horizontalPosition: {
-            relative: HorizontalPositionRelativeFrom.MARGIN,
+            relative: HorizontalPositionRelativeFrom.COLUMN,
             offset: pxToEmu(numberAttr(node, 'x') ?? 0),
           },
           verticalPosition: {
@@ -345,7 +372,7 @@ async function imageNodeToParagraph(
       : layout === 'float-left' || layout === 'float-right'
         ? {
             horizontalPosition: {
-              relative: HorizontalPositionRelativeFrom.MARGIN,
+              relative: HorizontalPositionRelativeFrom.COLUMN,
               align:
                 layout === 'float-left'
                   ? HorizontalPositionAlign.LEFT
@@ -549,8 +576,17 @@ export async function renderDocumentTemplateDocx(args: {
   fields: ResolvedDocumentTemplateFields;
 }): Promise<Buffer> {
   const activeAreas = getActivePageAreaHeights(args.content.page);
+  const contentWidthMm = Math.max(
+    0,
+    210 - args.content.page.margins.left - args.content.page.margins.right
+  );
   const children = args.content.document
-    ? await richTextDocToDocxChildren(args.content.document, args.fields)
+    ? await richTextDocToDocxChildren(args.content.document, args.fields, {
+        defaultFontSizePx: BODY_FONT_SIZE_PX,
+        defaultColor: BODY_COLOR,
+        fallbackSpacingBottomPx: DEFAULT_PARAGRAPH_SPACING_BOTTOM_PX,
+        tabStops: documentTabStops(contentWidthMm),
+      })
     : await legacyBlocksToDocxChildren(args.content.blocks, args.fields);
 
   const defaultHeader =
@@ -584,6 +620,8 @@ export async function renderDocumentTemplateDocx(args: {
             spacing: paragraphSpacing({
               spacingBottom: DEFAULT_PARAGRAPH_SPACING_BOTTOM_PX,
             }),
+            alignment: AlignmentType.LEFT,
+            indent: { left: 0, right: 0 },
           },
         },
       },
@@ -930,6 +968,7 @@ function paragraphFromInlineNode(
     defaultColor: string;
     fallbackSpacingBottomPx: number;
     bold?: boolean;
+    tabStops?: ReturnType<typeof documentTabStops>;
   }
 ) {
   return new Paragraph({
@@ -937,6 +976,7 @@ function paragraphFromInlineNode(
     alignment: alignmentFromNode(node),
     spacing: paragraphSpacing(node, options.fallbackSpacingBottomPx),
     indent: indentFromNode(node),
+    tabStops: options.tabStops ?? DEFAULT_DOCUMENT_TAB_STOPS,
   });
 }
 
@@ -1000,10 +1040,12 @@ async function richTextDocToDocxChildren(
     defaultFontSizePx: number;
     defaultColor: string;
     fallbackSpacingBottomPx: number;
+    tabStops?: ReturnType<typeof documentTabStops>;
   } = {
     defaultFontSizePx: BODY_FONT_SIZE_PX,
     defaultColor: BODY_COLOR,
     fallbackSpacingBottomPx: DEFAULT_PARAGRAPH_SPACING_BOTTOM_PX,
+    tabStops: DEFAULT_DOCUMENT_TAB_STOPS,
   }
 ): Promise<DocxChild[]> {
   const children: DocxChild[] = [];
@@ -1048,6 +1090,8 @@ async function richTextDocToDocxChildren(
                     paragraph,
                     options.fallbackSpacingBottomPx / 2
                   ),
+                  alignment: alignmentFromNode(paragraph),
+                  tabStops: options.tabStops ?? DEFAULT_DOCUMENT_TAB_STOPS,
                 })
             ) ?? []
         ) ?? [])

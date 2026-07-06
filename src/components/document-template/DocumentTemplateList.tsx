@@ -118,7 +118,7 @@ export function DocumentTemplateList({
                   Aktualisiert am{' '}
                   {template.updatedAt.toLocaleDateString('de-AT')}
                 </CardContent>
-                <CardFooter className="grid grid-cols-2 gap-2 p-4 pt-3 [&_[data-slot=button]]:h-9 [&_[data-slot=button]]:w-full">
+                <CardFooter className="grid grid-cols-2 gap-2 p-4 pt-3 **:data-[slot=button]:h-9 **:data-[slot=button]:w-full">
                   <Button asChild size="sm" variant="outline">
                     <Link
                       href={`/settings/org/${organizationId}/document-templates/${template.id}/edit`}

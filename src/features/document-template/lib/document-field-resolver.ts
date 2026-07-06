@@ -311,8 +311,6 @@ export async function resolveDocumentTemplateFields(args: {
         guides: helperNames.join(', ') || '—',
         helpers: helperNames.join(', ') || '—',
         responsiblePerson: formatPerson(einsatz.user),
-        administrationName: '—',
-        administrationFunction: '—',
         organizationLogoUrl: einsatz.organization.logo_url ?? '—',
         organizationEmail: einsatz.organization.email ?? '—',
         organizationPhone: einsatz.organization.phone ?? '—',
