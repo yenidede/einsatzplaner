@@ -31,7 +31,6 @@ import { UsersManagementSection } from '@/components/settings/org/UserManagement
 import { UserProperties } from '@/features/user_properties/components/UserProperties';
 import { TemplatesOverviewSection } from '@/components/template/TemplatesOverviewSection';
 import { OrganizationPdfExportForm } from '@/components/settings/org/OrganizationPdfExportForm';
-import { DocumentTemplateManager } from '@/components/document-template/DocumentTemplateManager';
 import { OrganizationCalendarExportTemplates } from '@/components/settings/org/OrganizationCalendarExportTemplates';
 import { PageHeader } from '@/components/settings/PageHeader';
 import {
@@ -1238,19 +1237,6 @@ export default function OrganizationManagePage() {
           </Card>
         </section>
 
-        {/* Document Templates Section */}
-        {/*         <section
-          id="document-templates"
-          ref={(el) => {
-            sectionRefs.current['document-templates'] = el;
-          }}
-          aria-labelledby="document-templates-heading"
-        >
-          <h2 id="document-templates-heading" className="sr-only">
-            Dokumentvorlagen
-          </h2>
-          <DocumentTemplateManager organizationId={orgId} />
-        </section> */}
         {selectedUserId && (
           <UserProfileDialog
             isOpen={isProfileDialogOpen}

@@ -56,7 +56,6 @@ import {
   calcPricePerPersonFromTotal,
 } from '../form/utils';
 import TooltipCustom from '@/components/tooltip-custom';
-import { GenerateBookingConfirmationButton } from '@/features/pdf-template/components/dialogs/GenerateBookingConfirmationDialog';
 import { GenerateDocumentTemplateButtons } from '@/components/document-template/GenerateDocumentTemplateButtons';
 import { useSession } from 'next-auth/react';
 import { useOrganizationTerminology } from '@/hooks/use-organization-terminology';
@@ -67,10 +66,6 @@ import {
   detectChangeTypes,
   getAffectedUserId,
 } from '@/features/activity_log/utils';
-import {
-  getDefaultOrganizationPdfTemplate,
-  getPdfTemplates,
-} from '@/features/pdf-template/server/pdf-template.actions';
 import {
   Select,
   SelectContent,
@@ -417,13 +412,6 @@ export function EventDialogVerwaltung({
   const currentUserId = session?.user?.id;
 
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const [pdfTemplates, setPdfTemplates] = useState<
-    Array<{ id: string; name: string }>
-  >([]);
-  const [selectedPdfTemplateId, setSelectedPdfTemplateId] = useState<
-    string | null
-  >(null);
-  const [isPdfTemplatesLoading, setIsPdfTemplatesLoading] = useState(false);
   const [staticFormData, setStaticFormData] =
     useState<EinsatzFormData>(DEFAULTFORMDATA);
   // state for validation on dynamic form data - generated once after template was selected
@@ -1677,13 +1665,6 @@ export function EventDialogVerwaltung({
               </TooltipCustom>
             }
             <div className="flex flex-wrap items-center gap-3">
-              <GenerateBookingConfirmationButton
-                assignmentId={currentEinsatz?.id}
-                templateId={selectedPdfTemplateId}
-                templates={pdfTemplates}
-                onTemplateChange={setSelectedPdfTemplateId}
-                isLoading={isPdfTemplatesLoading}
-              />
               <GenerateDocumentTemplateButtons
                 assignmentId={currentEinsatz?.id}
                 organizationId={activeOrgId}
