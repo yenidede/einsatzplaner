@@ -57,8 +57,8 @@ export const DocumentKeyboardShortcutsExtension = Extension.create({
 
           return editor
             .chain()
-            .deleteRange({ from: $from.start(), to: $from.pos })
             .updateAttributes($from.parent.type.name, { indent })
+            .deleteRange({ from: $from.start(), to: $from.pos })
             .run();
         }
       }
