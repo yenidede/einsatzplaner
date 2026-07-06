@@ -125,19 +125,18 @@ export function GenerateDocumentTemplateButtons({
       <DialogTrigger asChild>
         <Button variant="outline">
           <Download data-icon="inline-start" />
-          Dokumentvorlage exportieren
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-140">
         <DialogHeader>
-          <DialogTitle>Dokumentvorlage exportieren</DialogTitle>
+          <DialogTitle>Dokument erstellen</DialogTitle>
           <DialogDescription>
-            Wählen Sie eine neue Dokumentvorlage und das gewünschte Dateiformat.
+            Wählen Sie eine Dokumentvorlage und das gewünschte Dateiformat.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">Vorlage</label>
+            <label className="text-sm font-medium">Dokumentvorlage</label>
             <Select
               value={effectiveTemplateId ?? ''}
               onValueChange={(value) => setSelectedTemplateId(value)}
@@ -155,7 +154,7 @@ export function GenerateDocumentTemplateButtons({
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">Format</label>
+            <label className="text-sm font-medium">Dateiformat</label>
             <Select
               value={selectedFormat}
               onValueChange={(value) => {
@@ -164,7 +163,7 @@ export function GenerateDocumentTemplateButtons({
                 }
               }}
             >
-              <SelectTrigger aria-label="Format">
+              <SelectTrigger aria-label="Dateiformat">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -178,7 +177,7 @@ export function GenerateDocumentTemplateButtons({
             disabled={exportingFormat !== null}
           >
             <Download data-icon="inline-start" />
-            Datei erstellen
+            Dokument erstellen
           </Button>
         </div>
       </DialogContent>

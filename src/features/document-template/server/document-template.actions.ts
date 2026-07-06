@@ -28,6 +28,10 @@ import { getDocumentTemplateFieldDefinitions } from '@/features/document-templat
 import { resolveDocumentTemplateFields } from '@/features/document-template/lib/document-field-resolver';
 import { renderDocumentTemplateDocx } from '@/features/document-template/lib/document-docx-exporter';
 import { renderDocumentTemplatePdf } from '@/features/document-template/lib/document-pdf-exporter';
+import {
+  createAssignmentDocumentFilename,
+  filenamePart,
+} from '@/features/document-template/lib/document-template-filename';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -104,13 +108,6 @@ function revalidateDocumentTemplatePaths(organizationId: string, id?: string) {
       `/settings/org/${organizationId}/document-templates/${id}/edit`
     );
   }
-}
-
-function filenamePart(value: string) {
-  return value
-    .replace(/[^a-zA-Z0-9-_]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 80);
 }
 
 export async function getDocumentTemplatesByOrganization(
@@ -392,14 +389,16 @@ export async function exportDocumentTemplateForAssignment(args: {
             fields,
           });
     const date = assignment.start.toISOString().slice(0, 10);
-    const baseName = filenamePart(template.name || assignment.title);
-    const extension = args.format;
 
     return {
       success: true,
       data: {
         file: buffer.toString('base64'),
-        filename: `${baseName || 'dokument'}_${date}.${extension}`,
+        filename: createAssignmentDocumentFilename({
+          assignmentName: assignment.title,
+          date,
+          format: args.format,
+        }),
         mimeType:
           args.format === 'docx'
             ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
