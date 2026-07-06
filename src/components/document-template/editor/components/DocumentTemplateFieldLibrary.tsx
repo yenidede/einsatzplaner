@@ -45,8 +45,6 @@ function FieldChip({
   field: DocumentTemplateFieldDefinition;
   onInsert: (field: DocumentTemplateFieldDefinition) => void;
 }) {
-  const isCustomField = field.source === 'custom_field';
-
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -75,7 +73,6 @@ function FieldChip({
           <p>{field.description}</p>
           <p className="text-xs opacity-80">
             Typ: {fieldTypeLabels[field.dataType]}
-            {isCustomField ? ' · Herkunft: Eigenes Feld' : ''}
           </p>
         </div>
       </TooltipContent>
@@ -108,7 +105,6 @@ export function DocumentTemplateFieldLibrary({
         field.key,
         fieldTypeLabels[field.dataType],
         groupLabels[field.group],
-        field.source === 'custom_field' ? 'Eigenes Feld' : 'Standardfeld',
       ]
         .join(' ')
         .toLocaleLowerCase('de-AT');
@@ -128,7 +124,7 @@ export function DocumentTemplateFieldLibrary({
         <Input
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Name, Typ oder Gruppe suchen"
+          placeholder="Feld suchen..."
           className="pl-9"
           aria-label="Dynamische Felder suchen"
         />

@@ -17,6 +17,7 @@ import type {
 } from '@/features/document-template/types';
 import { getOrganizationDocumentTemplateLogoUrl } from '@/features/document-template/server/document-template.actions';
 import { createDefaultDocumentTemplateContent } from '@/features/document-template/lib/document-template-defaults';
+import { getDocumentPageLayout } from '@/features/document-template/lib/document-page-geometry';
 import type { TemplateImageProperties } from '../DocumentTemplateImagePropertiesPopover';
 import { resolveTemplateImageLayout } from '@/features/document-template/lib/document-template-image-layout';
 import { documentTemplateBlockGroups } from '../document-template-block-groups';
@@ -29,11 +30,8 @@ import type {
   SidebarResizeState,
 } from '../types/documentTemplateEditorTypes';
 import {
-  A4_EDITOR_HEIGHT_PX,
-  A4_EDITOR_WIDTH_PX,
   clampSidebarWidth,
   COLLAPSED_SIDEBAR_WIDTH_PX,
-  mmToPx,
   readStoredBoolean,
   readStoredNumber,
   SIDEBAR_STORAGE_KEYS,
@@ -571,26 +569,15 @@ export function useDocumentTemplateEditorController({
     x: selectedImageX,
     y: selectedImageY,
   };
-  const headerHeightPx = content.page.header.enabled
-    ? mmToPx(content.page.header.height)
-    : 0;
-  const footerHeightPx = content.page.footer.enabled
-    ? mmToPx(content.page.footer.height)
-    : 0;
-  const pagePaddingTopPx = mmToPx(content.page.margins.top);
-  const pagePaddingRightPx = mmToPx(content.page.margins.right);
-  const pagePaddingBottomPx = mmToPx(content.page.margins.bottom);
-  const pagePaddingLeftPx = mmToPx(content.page.margins.left);
-  const pageContentWidthPx =
-    A4_EDITOR_WIDTH_PX - pagePaddingLeftPx - pagePaddingRightPx;
-  const bodyAreaHeightPx = Math.max(
-    360,
-    A4_EDITOR_HEIGHT_PX -
-      pagePaddingTopPx -
-      pagePaddingBottomPx -
-      headerHeightPx -
-      footerHeightPx
-  );
+  const pageLayout = getDocumentPageLayout(content.page);
+  const headerHeightPx = pageLayout.headerHeight;
+  const footerHeightPx = pageLayout.footerHeight;
+  const pagePaddingTopPx = pageLayout.marginTop;
+  const pagePaddingRightPx = pageLayout.marginRight;
+  const pagePaddingBottomPx = pageLayout.marginBottom;
+  const pagePaddingLeftPx = pageLayout.marginLeft;
+  const pageContentWidthPx = pageLayout.contentWidth;
+  const bodyAreaHeightPx = pageLayout.contentHeight;
   const bodyPageDocuments = splitDocumentIntoPages(content.document);
   const pageCount = bodyPageDocuments.length;
   const pageIndexes = Array.from({ length: pageCount }, (_, index) => index);

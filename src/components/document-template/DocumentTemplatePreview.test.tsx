@@ -19,7 +19,7 @@ const content: DocumentTemplateContent = {
   page: {
     format: 'A4',
     orientation: 'portrait',
-    margins: { top: 18, right: 20, bottom: 18, left: 20 },
+    margins: { top: 10, right: 15, bottom: 10, left: 15 },
     header: {
       enabled: true,
       height: 18,
@@ -69,9 +69,9 @@ describe('DocumentTemplatePreview', () => {
     expect(page.classList.contains('max-w-full')).toBe(false);
 
     const body = screen.getByText('Dokumentinhalt').parentElement;
-    expect(body?.style.width).toBe('642px');
-    expect(body?.style.minWidth).toBe('642px');
-    expect(body?.style.maxWidth).toBe('642px');
+    expect(body?.style.width).toBe('680px');
+    expect(body?.style.minWidth).toBe('680px');
+    expect(body?.style.maxWidth).toBe('680px');
 
     const heading = screen.getByText('Buchungsbestätigung').closest('h2');
     expect(heading?.style.fontSize).toBe('32px');

@@ -44,7 +44,7 @@ export function DocumentTemplatePageSettingsDialog({ controller }: { controller:
           </div>
           <div className="grid grid-cols-4 gap-2">
             <div className="flex flex-col gap-1.5">
-              <Label>Oben</Label>
+              <Label>Oben (mm)</Label>
               <Input
                 type="number"
                 min={0}
@@ -62,7 +62,7 @@ export function DocumentTemplatePageSettingsDialog({ controller }: { controller:
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Rechts</Label>
+              <Label>Rechts (mm)</Label>
               <Input
                 type="number"
                 min={0}
@@ -80,7 +80,7 @@ export function DocumentTemplatePageSettingsDialog({ controller }: { controller:
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Unten</Label>
+              <Label>Unten (mm)</Label>
               <Input
                 type="number"
                 min={0}
@@ -98,7 +98,7 @@ export function DocumentTemplatePageSettingsDialog({ controller }: { controller:
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Links</Label>
+              <Label>Links (mm)</Label>
               <Input
                 type="number"
                 min={0}
@@ -131,7 +131,7 @@ export function DocumentTemplatePageSettingsDialog({ controller }: { controller:
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Header-Höhe</Label>
+                <Label>Kopfbereich-Höhe (mm)</Label>
                 <Input
                   type="number"
                   min={12}
@@ -163,7 +163,7 @@ export function DocumentTemplatePageSettingsDialog({ controller }: { controller:
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Footer-Höhe</Label>
+                <Label>Fußbereich-Höhe (mm)</Label>
                 <Input
                   type="number"
                   min={12}

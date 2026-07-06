@@ -41,7 +41,10 @@ import {
 } from './document-template-renderer';
 import { getMarkAttr, hasMark } from './document-rich-text';
 import { resolveTemplateImageLayout } from './document-template-image-layout';
-import { mmToPx } from './document-page-geometry';
+import {
+  getActivePageAreaHeights,
+  mmToPx,
+} from './document-page-geometry';
 
 const FONT_FAMILY = 'Arial';
 const BODY_FONT_SIZE_PX = 16;
@@ -69,6 +72,53 @@ function textParagraph(text: string, fontSizePx = BODY_FONT_SIZE_PX) {
   });
 }
 
+export function normalizeDocxColor(
+  value: string | undefined
+): string | undefined {
+  if (!value) return undefined;
+
+  const normalized = value.trim();
+  const longHex = /^#?([\da-f]{6})(?:[\da-f]{2})?$/i.exec(normalized);
+  if (longHex?.[1]) return longHex[1].toUpperCase();
+
+  const shortHex = /^#?([\da-f])([\da-f])([\da-f])(?:[\da-f])?$/i.exec(
+    normalized
+  );
+  if (shortHex?.[1] && shortHex[2] && shortHex[3]) {
+    return `${shortHex[1]}${shortHex[1]}${shortHex[2]}${shortHex[2]}${shortHex[3]}${shortHex[3]}`.toUpperCase();
+  }
+
+  const rgb = /^rgba?\((.+)\)$/i.exec(normalized);
+  if (!rgb?.[1]) return undefined;
+
+  const channels = rgb[1]
+    .split('/')[0]
+    ?.replaceAll(',', ' ')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 3);
+  if (!channels || channels.length !== 3) return undefined;
+
+  const parsedChannels = channels.map((channel) => {
+    const numericValue = Number.parseFloat(channel);
+    if (!Number.isFinite(numericValue)) return null;
+    const valueInRange = channel.endsWith('%')
+      ? (numericValue / 100) * 255
+      : numericValue;
+    return Math.min(255, Math.max(0, Math.round(valueInRange)));
+  });
+  const [red, green, blue] = parsedChannels;
+  if (red === null || green === null || blue === null) return undefined;
+  if (red === undefined || green === undefined || blue === undefined) {
+    return undefined;
+  }
+
+  return [red, green, blue]
+    .map((channel) => channel.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+}
+
 function run(args: {
   text?: string;
   fontSizePx?: number;
@@ -84,7 +134,7 @@ function run(args: {
     children: args.children,
     font: args.fontFamily ?? FONT_FAMILY,
     size: pxToHalfPoints(args.fontSizePx ?? BODY_FONT_SIZE_PX),
-    color: args.color ?? BODY_COLOR,
+    color: normalizeDocxColor(args.color) ?? BODY_COLOR,
     bold: args.bold,
     italics: args.italics,
     underline: args.underline ? {} : undefined,
@@ -498,6 +548,7 @@ export async function renderDocumentTemplateDocx(args: {
   content: DocumentTemplateContent;
   fields: ResolvedDocumentTemplateFields;
 }): Promise<Buffer> {
+  const activeAreas = getActivePageAreaHeights(args.content.page);
   const children = args.content.document
     ? await richTextDocToDocxChildren(args.content.document, args.fields)
     : await legacyBlocksToDocxChildren(args.content.blocks, args.fields);
@@ -565,16 +616,20 @@ export async function renderDocumentTemplateDocx(args: {
             args.content.page.footer.showOn === 'firstPage',
           page: {
             size: {
+              width: convertMillimetersToTwip(210),
+              height: convertMillimetersToTwip(297),
               orientation:
                 args.content.page.orientation === 'landscape'
                   ? PageOrientation.LANDSCAPE
                   : PageOrientation.PORTRAIT,
             },
             margin: {
-              top: convertMillimetersToTwip(args.content.page.margins.top),
+              top: convertMillimetersToTwip(
+                args.content.page.margins.top + activeAreas.headerHeight
+              ),
               right: convertMillimetersToTwip(args.content.page.margins.right),
               bottom: convertMillimetersToTwip(
-                args.content.page.margins.bottom
+                args.content.page.margins.bottom + activeAreas.footerHeight
               ),
               left: convertMillimetersToTwip(args.content.page.margins.left),
               header: convertMillimetersToTwip(args.content.page.margins.top),

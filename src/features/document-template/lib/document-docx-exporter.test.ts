@@ -116,7 +116,7 @@ describe('renderDocumentTemplateDocx', () => {
       page: {
         format: 'A4',
         orientation: 'portrait',
-        margins: { top: 18, right: 20, bottom: 18, left: 20 },
+        margins: { top: 10, right: 15, bottom: 10, left: 15 },
         header: {
           enabled: true,
           height: 18,
@@ -244,7 +244,7 @@ describe('renderDocumentTemplateDocx', () => {
                     type: 'textStyle',
                     attrs: {
                       fontSize: '18px',
-                      color: '#2563eb',
+                      color: 'rgb(22, 101, 52)',
                       fontFamily: 'Times New Roman',
                     },
                   },
@@ -334,6 +334,7 @@ describe('renderDocumentTemplateDocx', () => {
     expect(documentXml).toContain('w:sz w:val="48"');
     expect(documentXml).toContain('w:sz w:val="27"');
     expect(documentXml).toContain('Times New Roman');
+    expect(documentXml).toContain('w:color w:val="166534"');
     expect(documentXml).toContain('w:line="276"');
     expect(documentXml).toContain('wp:extent cx="2286000" cy="914400"');
     expect(headerXml).toContain('Organisation Ö');
@@ -342,7 +343,7 @@ describe('renderDocumentTemplateDocx', () => {
     expect(footerXml).toContain('Seite');
   });
 
-  it('verwendet DOCX-Seitenränder ohne header/footer-Höhe hinzuzufügen', async () => {
+  it('reserviert in DOCX die aktivierte Kopf- und Fußbereichshöhe genau einmal', async () => {
     const content: DocumentTemplateContent = {
       kind: DOCUMENT_TEMPLATE_CONTENT_KIND,
       version: 1,
@@ -355,7 +356,7 @@ describe('renderDocumentTemplateDocx', () => {
       page: {
         format: 'A4',
         orientation: 'portrait',
-        margins: { top: 18, right: 20, bottom: 18, left: 20 },
+        margins: { top: 10, right: 15, bottom: 10, left: 15 },
         header: {
           enabled: true,
           height: 18,
@@ -385,9 +386,11 @@ describe('renderDocumentTemplateDocx', () => {
     });
 
     const documentXml = await readDocxPart(buffer, 'word/document.xml');
-    expect(documentXml).toContain(`w:top="${convertMillimetersToTwip(18)}"`);
-    expect(documentXml).toContain(`w:bottom="${convertMillimetersToTwip(18)}"`);
-    expect(documentXml).toContain(`w:header="${convertMillimetersToTwip(18)}"`);
-    expect(documentXml).toContain(`w:footer="${convertMillimetersToTwip(18)}"`);
+    expect(documentXml).toContain(`w:w="${convertMillimetersToTwip(210)}"`);
+    expect(documentXml).toContain(`w:h="${convertMillimetersToTwip(297)}"`);
+    expect(documentXml).toContain(`w:top="${convertMillimetersToTwip(28)}"`);
+    expect(documentXml).toContain(`w:bottom="${convertMillimetersToTwip(24)}"`);
+    expect(documentXml).toContain(`w:header="${convertMillimetersToTwip(10)}"`);
+    expect(documentXml).toContain(`w:footer="${convertMillimetersToTwip(10)}"`);
   });
 });

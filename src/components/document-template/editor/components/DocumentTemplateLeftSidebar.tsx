@@ -353,6 +353,19 @@ export function DocumentTemplateLeftSidebar({
     });
   }
 
+  async function createStandardTextBlockCopy(
+    block: StandardDocumentTextBlock,
+    name: string
+  ) {
+    return createDocumentTextBlock({
+      organizationId: controller.organizationId,
+      name,
+      description: block.description,
+      category: '',
+      document: block.document,
+    });
+  }
+
   return (
     <>
       {leftSidebarCollapsed ? (
@@ -406,18 +419,26 @@ export function DocumentTemplateLeftSidebar({
               standardTemplates={standardTextBlocks}
               textBlocks={filteredTextBlocks}
               onInsert={(block) => insertTextBlock(block.document)}
-              onCopyStandard={(block) => {
+              onEditStandard={(block) => {
                 void (async () => {
-                  await createDocumentTextBlock({
-                    organizationId: controller.organizationId,
-                    name: `${block.name} (Kopie)`,
-                    description: block.description,
-                    category: 'Einsatzplaner',
-                    document: block.document,
-                  });
-                  toast.success(
-                    'Standardvorlage wurde als eigene Vorlage kopiert.'
+                  const copy = await createStandardTextBlockCopy(
+                    block,
+                    block.name
                   );
+                  toast.success(
+                    'Diese Standardvorlage wird als eigener Textbaustein gespeichert.'
+                  );
+                  setTextBlockToEdit(copy);
+                  await refreshTextBlocks();
+                })();
+              }}
+              onDuplicateStandard={(block) => {
+                void (async () => {
+                  await createStandardTextBlockCopy(
+                    block,
+                    `${block.name} (Kopie)`
+                  );
+                  toast.success('Textbaustein wurde dupliziert.');
                   await refreshTextBlocks();
                 })();
               }}

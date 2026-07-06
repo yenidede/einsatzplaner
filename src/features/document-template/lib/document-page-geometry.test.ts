@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   DOCUMENT_PAGE_HEIGHT_PX,
   DOCUMENT_PAGE_WIDTH_PX,
+  getAvailableContentHeightMm,
+  getActivePageAreaHeights,
   getDocumentPageViewport,
+  getDocumentPageLayout,
   mmToPx,
 } from './document-page-geometry';
 
@@ -19,6 +22,51 @@ describe('getDocumentPageViewport', () => {
     });
     expect(DOCUMENT_PAGE_WIDTH_PX).toBe(794);
     expect(DOCUMENT_PAGE_HEIGHT_PX).toBe(1123);
+  });
+});
+
+describe('getDocumentPageLayout', () => {
+  it('zieht Ränder sowie nur aktivierte Kopf- und Fußbereiche einmal ab', () => {
+    const layout = getDocumentPageLayout({
+      format: 'A4',
+      orientation: 'portrait',
+      margins: { top: 10, right: 15, bottom: 10, left: 15 },
+      header: { enabled: true, height: 18, showOn: 'allPages', blocks: [] },
+      footer: { enabled: false, height: 14, showOn: 'allPages', blocks: [] },
+    });
+
+    expect(layout.contentWidth).toBe(
+      DOCUMENT_PAGE_WIDTH_PX - mmToPx(15) - mmToPx(15)
+    );
+    expect(layout.contentHeight).toBe(mmToPx(259));
+    expect(layout.footerHeight).toBe(0);
+  });
+
+  it('reserviert für deaktivierte Kopf- und Fußbereiche keinen Platz', () => {
+    const page = {
+      format: 'A4' as const,
+      orientation: 'portrait' as const,
+      margins: { top: 10, right: 15, bottom: 10, left: 15 },
+      header: {
+        enabled: false,
+        height: 18,
+        showOn: 'allPages' as const,
+        blocks: [],
+      },
+      footer: {
+        enabled: false,
+        height: 14,
+        showOn: 'allPages' as const,
+        blocks: [],
+      },
+    };
+
+    expect(getActivePageAreaHeights(page)).toEqual({
+      headerHeight: 0,
+      footerHeight: 0,
+    });
+    expect(getAvailableContentHeightMm(page)).toBe(277);
+    expect(getDocumentPageLayout(page).contentHeight).toBe(mmToPx(277));
   });
 });
 

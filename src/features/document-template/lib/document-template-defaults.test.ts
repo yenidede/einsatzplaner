@@ -9,13 +9,42 @@ describe('Dokument-Standardvorlage', () => {
   it('erstellt eine leere Seite ohne Kopf- und Fußbereich', () => {
     const content = createDefaultDocumentTemplateContent();
 
-    expect(content.page.header).toMatchObject({ enabled: false, blocks: [] });
-    expect(content.page.footer).toMatchObject({ enabled: false, blocks: [] });
+    expect(content.page.header).toMatchObject({
+      enabled: false,
+      height: 8,
+      blocks: [],
+    });
+    expect(content.page.footer).toMatchObject({
+      enabled: false,
+      height: 8,
+      blocks: [],
+    });
+    expect(content.page.margins).toEqual({
+      top: 10,
+      right: 15,
+      bottom: 10,
+      left: 15,
+    });
     expect(content.blocks).toEqual([]);
     expect(content.document).toEqual({
       type: 'doc',
       content: [{ type: 'paragraph', content: [] }],
     });
+  });
+
+  it('erhält gespeicherte Kopf- und Fußbereichshöhen', () => {
+    const content = createDefaultDocumentTemplateContent();
+    const normalized = normalizeDocumentTemplateContent({
+      ...content,
+      page: {
+        ...content.page,
+        header: { ...content.page.header, height: 18 },
+        footer: { ...content.page.footer, height: 14 },
+      },
+    });
+
+    expect(normalized.page.header.height).toBe(18);
+    expect(normalized.page.footer.height).toBe(14);
   });
 
   it('füllt eine ausdrücklich leere Vorlage bei der Normalisierung nicht auf', () => {

@@ -20,6 +20,7 @@ import {
 import {
   DOCUMENT_PAGE_HEIGHT_PX,
   DOCUMENT_PAGE_WIDTH_PX,
+  getDocumentPageLayout,
   mmToPx,
 } from '@/features/document-template/lib/document-page-geometry';
 import { resolveTemplateImageLayout } from '@/features/document-template/lib/document-template-image-layout';
@@ -490,22 +491,15 @@ export function DocumentTemplatePreview({
   showAreaLabels?: boolean;
 }) {
   const page = content.page;
-  const headerHeightPx = page.header.enabled ? mm(page.header.height) : 0;
-  const footerHeightPx = page.footer.enabled ? mm(page.footer.height) : 0;
-  const pagePaddingTopPx = mm(page.margins.top);
-  const pagePaddingRightPx = mm(page.margins.right);
-  const pagePaddingBottomPx = mm(page.margins.bottom);
-  const pagePaddingLeftPx = mm(page.margins.left);
-  const pageContentWidthPx =
-    A4_WIDTH_PX - pagePaddingLeftPx - pagePaddingRightPx;
-  const bodyHeightPx = Math.max(
-    360,
-    A4_HEIGHT_PX -
-      pagePaddingTopPx -
-      pagePaddingBottomPx -
-      headerHeightPx -
-      footerHeightPx
-  );
+  const layout = getDocumentPageLayout(page);
+  const headerHeightPx = layout.headerHeight;
+  const footerHeightPx = layout.footerHeight;
+  const pagePaddingTopPx = layout.marginTop;
+  const pagePaddingRightPx = layout.marginRight;
+  const pagePaddingBottomPx = layout.marginBottom;
+  const pagePaddingLeftPx = layout.marginLeft;
+  const pageContentWidthPx = layout.contentWidth;
+  const bodyHeightPx = layout.contentHeight;
 
   return (
     <div

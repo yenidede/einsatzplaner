@@ -3,7 +3,6 @@
 import { Copy, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { DocumentTemplateRichTextNode } from '@/features/document-template/types';
 import type { DocumentTextBlock } from '@/features/document-text-block/types';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -26,7 +25,6 @@ type TextBlockItemProps = {
   block: StandardDocumentTextBlock | DocumentTextBlock;
   isStandard: boolean;
   onInsert: () => void;
-  onCopy?: () => void;
   onEdit?: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
@@ -36,14 +34,11 @@ function TextBlockItem({
   block,
   isStandard,
   onInsert,
-  onCopy,
   onEdit,
   onDuplicate,
   onDelete,
 }: TextBlockItemProps) {
   const updatedAt = 'updatedAt' in block ? block.updatedAt : null;
-  const category = 'category' in block ? block.category : null;
-
   return (
     <div className="hover:bg-muted/60 group flex items-center rounded-md">
       <Button
@@ -73,11 +68,6 @@ function TextBlockItem({
             </span>
           ) : null}
         </span>
-        {category ? (
-          <Badge variant="secondary" className="max-w-24 truncate">
-            {category}
-          </Badge>
-        ) : null}
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -96,19 +86,13 @@ function TextBlockItem({
             <Plus data-icon="inline-start" />
             Einfügen
           </DropdownMenuItem>
-          {isStandard && onCopy ? (
-            <DropdownMenuItem onClick={onCopy}>
-              <Copy data-icon="inline-start" />
-              Als eigene Vorlage kopieren
-            </DropdownMenuItem>
-          ) : null}
-          {!isStandard && onEdit ? (
+          {onEdit ? (
             <DropdownMenuItem onClick={onEdit}>
               <Pencil data-icon="inline-start" />
-              Bearbeiten / Umbenennen
+              Bearbeiten
             </DropdownMenuItem>
           ) : null}
-          {!isStandard && onDuplicate ? (
+          {onDuplicate ? (
             <DropdownMenuItem onClick={onDuplicate}>
               <Copy data-icon="inline-start" />
               Duplizieren
@@ -133,7 +117,8 @@ export function DocumentTextBlockInsertList({
   standardTemplates,
   textBlocks,
   onInsert,
-  onCopyStandard,
+  onEditStandard,
+  onDuplicateStandard,
   onEdit,
   onDuplicate,
   onDelete,
@@ -141,40 +126,29 @@ export function DocumentTextBlockInsertList({
   standardTemplates: StandardDocumentTextBlock[];
   textBlocks: DocumentTextBlock[];
   onInsert: (textBlock: StandardDocumentTextBlock | DocumentTextBlock) => void;
-  onCopyStandard: (textBlock: StandardDocumentTextBlock) => void;
+  onEditStandard: (textBlock: StandardDocumentTextBlock) => void;
+  onDuplicateStandard: (textBlock: StandardDocumentTextBlock) => void;
   onEdit?: (textBlock: DocumentTextBlock) => void;
   onDuplicate?: (textBlock: DocumentTextBlock) => void;
   onDelete?: (textBlock: DocumentTextBlock) => void;
 }) {
   return (
-    <section className="flex flex-col gap-3">
-      <h3 className="text-sm font-medium">Gespeicherte Textbausteine</h3>
+    <section className="flex flex-col gap-2">
+      <h3 className="text-sm font-medium">Textbausteine</h3>
       <div className="flex flex-col gap-1">
-        <p className="text-muted-foreground text-xs font-medium">
-          Standardvorlagen
-        </p>
         {standardTemplates.map((block) => (
           <TextBlockItem
             key={block.id}
             block={block}
             isStandard
             onInsert={() => onInsert(block)}
-            onCopy={() => onCopyStandard(block)}
+            onEdit={() => onEditStandard(block)}
+            onDuplicate={() => onDuplicateStandard(block)}
           />
         ))}
-      </div>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-muted-foreground text-xs font-medium">
-            Eigene Textbausteine
-          </p>
-          <Badge variant="secondary" className="text-[10px]">
-            {textBlocks.length}
-          </Badge>
-        </div>
-        {textBlocks.length === 0 ? (
+        {standardTemplates.length === 0 && textBlocks.length === 0 ? (
           <p className="text-muted-foreground rounded-md border border-dashed px-3 py-4 text-xs">
-            Noch keine passenden eigenen Textbausteine gespeichert.
+            Noch keine passenden Textbausteine vorhanden.
           </p>
         ) : (
           textBlocks.map((block) => (

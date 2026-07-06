@@ -23,6 +23,7 @@ import {
 } from './document-template-renderer';
 import { getMarkAttr, hasMark } from './document-rich-text';
 import {
+  getActivePageAreaHeights,
   millimetersToPdfPoints,
   pixelsToPdfPoints,
 } from './document-page-geometry';
@@ -591,12 +592,13 @@ export async function renderDocumentTemplatePdf(args: {
   fields: ResolvedDocumentTemplateFields;
 }): Promise<Buffer> {
   const { page } = args.content;
+  const activeAreas = getActivePageAreaHeights(page);
   const pageSize = page.orientation === 'landscape' ? 'A4' : 'A4';
   const bodyPaddingTop = millimetersToPdfPoints(
-    page.margins.top + (page.header.enabled ? page.header.height : 0)
+    page.margins.top + activeAreas.headerHeight
   );
   const bodyPaddingBottom = millimetersToPdfPoints(
-    page.margins.bottom + (page.footer.enabled ? page.footer.height : 0)
+    page.margins.bottom + activeAreas.footerHeight
   );
   const pageMarginLeft = millimetersToPdfPoints(page.margins.left);
   const pageMarginRight = millimetersToPdfPoints(page.margins.right);

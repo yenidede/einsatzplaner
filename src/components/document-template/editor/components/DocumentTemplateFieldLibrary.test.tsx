@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { DocumentTemplateFieldDefinition } from '@/features/document-template/types';
@@ -32,6 +32,14 @@ const fields: DocumentTemplateFieldDefinition[] = [
     source: 'standard',
     dataType: 'text',
   },
+  {
+    key: 'custom-unusual-name',
+    label: 'Wetter_Test Österreich',
+    group: 'custom',
+    description: 'Organisationsspezifisches Feld',
+    source: 'custom_field',
+    dataType: 'date',
+  },
 ];
 
 describe('Bibliothek für dynamische Felder', () => {
@@ -55,8 +63,39 @@ describe('Bibliothek für dynamische Felder', () => {
       </TooltipProvider>
     );
 
-    expect(screen.getByRole('button', { name: /FührungText/ })).toBeDefined();
-    expect(screen.getByText('Führungen')).toBeDefined();
+    expect(
+      screen.getAllByRole('button', { name: /FührungText/ })
+    ).toHaveLength(2);
+    expect(screen.getByText(/Führungen \(1\)/)).toBeDefined();
     expect(screen.queryByText('Verwaltung Name')).toBeNull();
+  });
+
+  it('zeigt organisationsspezifische Namen unverändert und sucht nach Typ und Gruppe', () => {
+    const onQueryChange = vi.fn();
+    render(
+      <TooltipProvider>
+        <DocumentTemplateFieldLibrary
+          fields={fields}
+          groupLabels={{
+            general: 'Allgemein',
+            contact: 'Kontakt',
+            event: 'Führungen',
+            staff: 'Personal',
+            administration: 'Verwaltung',
+            custom: 'Eigene Felder',
+          }}
+          query="Datum"
+          onQueryChange={onQueryChange}
+          onInsert={vi.fn()}
+        />
+      </TooltipProvider>
+    );
+
+    expect(screen.getByText('Wetter_Test Österreich')).toBeDefined();
+    expect(screen.queryByText('Eigenes Feld')).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText('Feld suchen...'), {
+      target: { value: 'Eigene Felder' },
+    });
+    expect(onQueryChange).toHaveBeenCalledWith('Eigene Felder');
   });
 });
