@@ -306,7 +306,7 @@ export function DocumentTemplateLeftSidebar({
   return (
     <>
       {leftSidebarCollapsed ? (
-        <div className="bg-background flex min-h-0 flex-col items-center overflow-hidden rounded-md border-0 py-2 shadow-sm">
+        <div className="bg-background flex h-full min-h-0 flex-col items-center overflow-hidden rounded-md border-0 py-2 shadow-sm">
           <Button
             type="button"
             size="icon"
@@ -319,8 +319,8 @@ export function DocumentTemplateLeftSidebar({
           </Button>
         </div>
       ) : (
-        <Card className="relative min-h-0 border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-start justify-between gap-2">
+        <Card className="relative flex h-full min-h-0 flex-col overflow-hidden border-0 shadow-sm">
+          <CardHeader className="flex shrink-0 flex-row items-start justify-between gap-2">
             <div>
               <CardTitle>Bausteine</CardTitle>
               <CardDescription>
@@ -337,16 +337,18 @@ export function DocumentTemplateLeftSidebar({
               <PanelLeftClose />
             </Button>
           </CardHeader>
-          <CardContent className="flex min-h-0 flex-col gap-4 overflow-auto pr-6">
-            <div className="relative">
-              <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
-              <Input
-                value={blockSearch}
-                onChange={(event) => setBlockSearch(event.target.value)}
-                placeholder="Bausteine suchen..."
-                className="pl-9"
-                aria-label="Bausteine suchen"
-              />
+          <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain pr-6">
+            <div className="bg-card sticky top-0 z-10 -mx-1 px-1 pb-1">
+              <div className="relative">
+                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
+                <Input
+                  value={blockSearch}
+                  onChange={(event) => setBlockSearch(event.target.value)}
+                  placeholder="Bausteine suchen..."
+                  className="pl-9"
+                  aria-label="Bausteine suchen"
+                />
+              </div>
             </div>
             <DocumentTemplateBlockLibrary
               groups={textBlockGroups}

@@ -106,15 +106,17 @@ export function DocumentTemplateFieldLibrary({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="relative">
-        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
-        <Input
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Feld suchen..."
-          className="pl-9"
-          aria-label="Dynamische Felder suchen"
-        />
+      <div className="bg-card sticky top-0 z-10 -mx-1 px-1 pb-1">
+        <div className="relative">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
+          <Input
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder="Feld suchen..."
+            className="pl-9"
+            aria-label="Dynamische Felder suchen"
+          />
+        </div>
       </div>
       {Object.entries(groupLabels).map(([group, label]) => {
         const groupFields = filteredFields.filter(

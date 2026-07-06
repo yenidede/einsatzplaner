@@ -414,7 +414,7 @@ export function DocumentTemplateEditorView({
 
   return (
     <TooltipProvider>
-      <div className="flex h-[calc(100dvh-6rem)] min-h-0 flex-col bg-[#eef0f3]">
+      <div className="fixed inset-x-4 top-16 bottom-0 flex min-h-0 flex-col overflow-hidden bg-[#eef0f3] md:inset-x-6">
         <input
           ref={imageInputRef}
           type="file"
@@ -526,7 +526,7 @@ export function DocumentTemplateEditorView({
         )}
 
         <div
-          className="grid min-h-0 flex-1 gap-4 p-4"
+          className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4"
           style={{ gridTemplateColumns: editorGridColumns }}
         >
           <DocumentTemplateLeftSidebar controller={controller} />

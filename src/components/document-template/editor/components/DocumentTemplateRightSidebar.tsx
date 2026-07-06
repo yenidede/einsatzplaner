@@ -264,7 +264,7 @@ export function DocumentTemplateRightSidebar({
   return (
     <>
       {rightSidebarCollapsed ? (
-        <div className="bg-background flex min-h-0 flex-col items-center overflow-hidden rounded-md border-0 py-2 shadow-sm">
+        <div className="bg-background flex h-full min-h-0 flex-col items-center overflow-hidden rounded-md border-0 py-2 shadow-sm">
           <Button
             type="button"
             size="icon"
@@ -277,7 +277,7 @@ export function DocumentTemplateRightSidebar({
           </Button>
         </div>
       ) : (
-        <Card className="relative min-h-0 border-0 shadow-sm">
+        <Card className="relative flex h-full min-h-0 flex-col overflow-hidden border-0 shadow-sm">
           <Tooltip>
             <TooltipTrigger asChild>
               <div
@@ -294,7 +294,7 @@ export function DocumentTemplateRightSidebar({
               Breite der rechten Seitenleiste ändern
             </TooltipContent>
           </Tooltip>
-          <CardHeader className="flex flex-row items-start justify-between gap-2">
+          <CardHeader className="flex shrink-0 flex-row items-start justify-between gap-2">
             <div>
               <CardTitle>Dynamische Felder</CardTitle>
               <CardDescription>
@@ -311,7 +311,7 @@ export function DocumentTemplateRightSidebar({
               <PanelRightClose />
             </Button>
           </CardHeader>
-          <CardContent className="flex min-h-0 flex-col overflow-auto">
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
             <DocumentTemplateFieldLibrary
               fields={fields}
               groupLabels={effectiveGroupLabels}

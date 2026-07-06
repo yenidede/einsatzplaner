@@ -318,7 +318,7 @@ export function DocumentTemplateCanvas({
         <ContextMenuTrigger asChild>
           <main
             ref={canvasViewportRef}
-            className="min-h-0 overflow-auto rounded-md bg-[#e3e6ea]"
+            className="h-full min-h-0 overflow-auto overscroll-contain rounded-md bg-[#e3e6ea]"
             onContextMenu={handleEditorContextMenu}
           >
             <div className="flex min-h-full min-w-max justify-center px-6 py-8">
