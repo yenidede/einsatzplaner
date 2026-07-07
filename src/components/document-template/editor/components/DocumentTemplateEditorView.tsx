@@ -373,7 +373,7 @@ export function DocumentTemplateEditorView({
     zoom,
   } = controller;
 
-  const settingsPath = `/settings/org/${organizationId}#vorlagen`;
+  const settingsPath = `/settings/org/${organizationId}#dokument-vorlagen`;
 
   useEffect(() => {
     setFormatToolbarVisible(

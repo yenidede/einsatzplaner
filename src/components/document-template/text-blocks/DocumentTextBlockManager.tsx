@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { DocumentTextBlockDialog } from './DocumentTextBlockDialog';
 
 export function DocumentTextBlockManager({
@@ -31,6 +32,7 @@ export function DocumentTextBlockManager({
   organizationId: string;
 }) {
   const queryClient = useQueryClient();
+  const { showDestructive } = useConfirmDialog();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<DocumentTextBlock | null>(null);
@@ -149,12 +151,16 @@ export function DocumentTextBlockManager({
                     size="sm"
                     variant="outline"
                     onClick={async () => {
-                      if (
-                        !window.confirm(
-                          `Textbaustein „${block.name}“ wirklich löschen?`
-                        )
-                      )
-                        return;
+                      const result = await showDestructive(
+                        'Textbaustein löschen?',
+                        `Möchten Sie den Textbaustein „${block.name}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
+                        {
+                          confirmText: 'Löschen',
+                          cancelText: 'Abbrechen',
+                        }
+                      );
+                      if (result !== 'success') return;
+
                       await deleteDocumentTextBlock(block.id);
                       toast.success('Textbaustein wurde gelöscht.');
                       await refresh();

@@ -252,6 +252,7 @@ import {
   updateDocumentTextBlock,
 } from '@/features/document-text-block/server/document-text-block.actions';
 import { documentTextBlockQueryKeys } from '@/features/document-text-block/queryKeys';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import type { DocumentTextBlock } from '@/features/document-text-block/types';
 import { DocumentTextBlockInsertList } from '../../text-blocks/DocumentTextBlockInsertList';
 import { DocumentTextBlockDialog } from '../../text-blocks/DocumentTextBlockDialog';
@@ -261,6 +262,7 @@ export function DocumentTemplateLeftSidebar({
   controller: DocumentTemplateEditorControllerModel;
 }) {
   const queryClient = useQueryClient();
+  const { showDestructive } = useConfirmDialog();
   const [textBlockToEdit, setTextBlockToEdit] =
     useState<DocumentTextBlock | null>(null);
   const {
@@ -367,14 +369,17 @@ export function DocumentTemplateLeftSidebar({
                 })();
               }}
               onDelete={(block) => {
-                if (
-                  !window.confirm(
-                    `Textbaustein „${block.name}“ wirklich löschen?`
-                  )
-                ) {
-                  return;
-                }
                 void (async () => {
+                  const result = await showDestructive(
+                    'Textbaustein löschen?',
+                    `Möchten Sie den Textbaustein „${block.name}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
+                    {
+                      confirmText: 'Löschen',
+                      cancelText: 'Abbrechen',
+                    }
+                  );
+                  if (result !== 'success') return;
+
                   await deleteDocumentTextBlock(block.id);
                   toast.success('Textbaustein wurde gelöscht.');
                   await refreshTextBlocks();

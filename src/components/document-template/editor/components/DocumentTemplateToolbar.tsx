@@ -434,7 +434,8 @@ export function DocumentTemplateToolbar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <DropdownMenu>
+        {/* TODO (ÖMER): Add lists back in when there is a solution for this 
+                 <DropdownMenu>
           <ToolbarTooltip label="Liste einfügen">
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="ghost" aria-label="Liste einfügen">
@@ -460,7 +461,7 @@ export function DocumentTemplateToolbar({
               Nummerierte Liste
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu> */}
         <DropdownMenu>
           <ToolbarTooltip label="Textfarbe">
             <DropdownMenuTrigger asChild>
