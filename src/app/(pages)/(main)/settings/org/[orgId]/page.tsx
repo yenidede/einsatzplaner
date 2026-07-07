@@ -1205,17 +1205,19 @@ export default function OrganizationManagePage() {
 
         {/* PDF-Export Section */}
         <section
-          id="pdf-export"
+          id="dokument-vorlagen"
           ref={(el) => {
-            sectionRefs.current['pdf-export'] = el;
+            sectionRefs.current['dokument-vorlagen'] = el;
           }}
-          aria-labelledby="pdf-export-heading"
+          aria-labelledby="dokument-vorlagen-heading"
         >
           <Card>
             <CardHeader>
-              <CardTitle id="pdf-export-heading">PDF-Export</CardTitle>
+              <CardTitle id="dokument-vorlagen-heading">
+                Dokumentvorlagen
+              </CardTitle>
               <CardDescription>
-                Einstellungen für den PDF-Export Ihrer Organisation
+                Verwalten Sie Ihre Dokumentvorlagen für den Export.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1234,6 +1236,7 @@ export default function OrganizationManagePage() {
             </CardContent>
           </Card>
         </section>
+
         {selectedUserId && (
           <UserProfileDialog
             isOpen={isProfileDialogOpen}

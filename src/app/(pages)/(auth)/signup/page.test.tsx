@@ -7,8 +7,12 @@ import type { ImgHTMLAttributes } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import SignupPage from './page';
 
+type MockImageProps = ImgHTMLAttributes<HTMLImageElement> & {
+  priority?: boolean;
+};
+
 vi.mock('next/image', () => ({
-  default: (props: ImgHTMLAttributes<HTMLImageElement>) => (
+  default: ({ priority: _priority, ...props }: MockImageProps) => (
     <img {...props} alt={props.alt ?? ''} />
   ),
 }));
