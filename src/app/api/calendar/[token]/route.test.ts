@@ -168,6 +168,28 @@ describe('GET /api/calendar/[token]', () => {
     );
   });
 
+  it.each([
+    ['Sommerzeit', '2026-07-08T07:00:00.000Z', '2026-07-08T08:00:00.000Z'],
+    ['Winterzeit', '2026-01-08T08:00:00.000Z', '2026-01-08T09:00:00.000Z'],
+  ])(
+    'erhält den korrekten Zeitpunkt für die %s im ICS-Export',
+    async (_label, start, end) => {
+      const einsatz = (await mockFindEinsaetze())[0];
+      mockFindEinsaetze.mockResolvedValue([
+        { ...einsatz, start: new Date(start), end: new Date(end) },
+      ]);
+
+      await GET(
+        new NextRequest('https://einsatzplaner.example/api/calendar/token'),
+        { params: Promise.resolve({ token: 'token' }) }
+      );
+
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ start: new Date(start), end: new Date(end) })
+      );
+    }
+  );
+
   it('exportiert eingeteilte Personen und offene Plätze im Summary', async () => {
     mockFindSubscription.mockResolvedValue({
       user_id: 'user-1',

@@ -1,23 +1,26 @@
 import type { AssignedUser } from '../types/types';
+import { createViennaDateFormatter } from '@/lib/vienna-date-time';
+
+const longDateFormatter = createViennaDateFormatter({
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+const timeFormatter = createViennaDateFormatter({
+  hour: '2-digit',
+  minute: '2-digit',
+});
 
 export function formatDate(date: Date | string): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return dateObj.toLocaleDateString('de-DE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return longDateFormatter.format(dateObj);
 }
 
 export function formatTime(date: Date | string): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return (
-    dateObj.toLocaleTimeString('de-DE', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }) + ' Uhr'
-  );
+  return timeFormatter.format(dateObj) + ' Uhr';
 }
 
 export function formatAssignedUserNames(assignedUsers: AssignedUser[]): string {
