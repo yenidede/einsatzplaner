@@ -6,17 +6,13 @@ import { ForbiddenError, NotFoundError } from '@/lib/errors';
 import type { PdfTemplateInput } from '../types';
 import { getPdfTemplateFieldDefinitions } from '../lib/pdf-template-fields';
 import { slugifyPdfFieldKey } from '../lib/pdf-template-helpers';
+import {
+  viennaDocumentDateFormatter,
+  viennaDocumentTimeFormatter,
+} from '@/lib/vienna-date-time';
 
-const dateFormatter = new Intl.DateTimeFormat('de-AT', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-});
-
-const timeFormatter = new Intl.DateTimeFormat('de-AT', {
-  hour: '2-digit',
-  minute: '2-digit',
-});
+const dateFormatter = viennaDocumentDateFormatter;
+const timeFormatter = viennaDocumentTimeFormatter;
 
 const currencyFormatter = new Intl.NumberFormat('de-AT', {
   style: 'currency',
@@ -38,10 +34,14 @@ function formatTime(value: Date | null | undefined): string {
 }
 
 function joinText(values: Array<string | null | undefined>): string {
-  return values.filter((value): value is string => Boolean(value?.trim())).join(', ');
+  return values
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(', ');
 }
 
-function toStringValue(value: string | number | boolean | null | undefined): string {
+function toStringValue(
+  value: string | number | boolean | null | undefined
+): string {
   if (value === null || value === undefined) {
     return '';
   }
@@ -73,7 +73,9 @@ function isJpeg(bytes: Uint8Array): boolean {
   );
 }
 
-async function normalizeImageForPdf(value: string | null | undefined): Promise<string> {
+async function normalizeImageForPdf(
+  value: string | null | undefined
+): Promise<string> {
   const source = value?.trim() ?? '';
 
   if (!source) {
@@ -152,12 +154,17 @@ async function normalizeImageForPdf(value: string | null | undefined): Promise<s
       return '';
     }
 
-    const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
-    const mimeType = contentType.includes('png') || isPng(bytes)
-      ? 'image/png'
-      : contentType.includes('jpeg') || contentType.includes('jpg') || isJpeg(bytes)
-        ? 'image/jpeg'
-        : null;
+    const contentType = (
+      response.headers.get('content-type') ?? ''
+    ).toLowerCase();
+    const mimeType =
+      contentType.includes('png') || isPng(bytes)
+        ? 'image/png'
+        : contentType.includes('jpeg') ||
+            contentType.includes('jpg') ||
+            isJpeg(bytes)
+          ? 'image/jpeg'
+          : null;
 
     if (!mimeType) {
       return '';
@@ -360,7 +367,8 @@ export async function buildBookingConfirmationPdfInput(
     fieldDefinitions
       .filter(
         (field): field is typeof field & { sourceFieldId: string } =>
-          field.source === 'dynamic_field' && typeof field.sourceFieldId === 'string'
+          field.source === 'dynamic_field' &&
+          typeof field.sourceFieldId === 'string'
       )
       .map((field) => [field.sourceFieldId, field.key])
   );
@@ -368,7 +376,8 @@ export async function buildBookingConfirmationPdfInput(
     fieldDefinitions
       .filter(
         (field): field is typeof field & { sourceFieldId: string } =>
-          field.source === 'user_property' && typeof field.sourceFieldId === 'string'
+          field.source === 'user_property' &&
+          typeof field.sourceFieldId === 'string'
       )
       .map((field) => [field.sourceFieldId, field.key])
   );
@@ -381,16 +390,20 @@ export async function buildBookingConfirmationPdfInput(
     helper.user.phone ?? '',
   ]);
 
-  const addressRows = einsatz.organization.organization_address.map((address) => [
-    address.label ?? '',
-    joinText([address.street, `${address.postal_code} ${address.city}`, address.country]),
-  ]);
+  const addressRows = einsatz.organization.organization_address.map(
+    (address) => [
+      address.label ?? '',
+      joinText([
+        address.street,
+        `${address.postal_code} ${address.city}`,
+        address.country,
+      ]),
+    ]
+  );
 
-  const bankRows = einsatz.organization.organization_bank_account.map((bank) => [
-    bank.bank_name,
-    bank.iban,
-    bank.bic,
-  ]);
+  const bankRows = einsatz.organization.organization_bank_account.map(
+    (bank) => [bank.bank_name, bank.iban, bank.bic]
+  );
 
   const input: PdfTemplateInput = {
     organisation_name: einsatz.organization.name,
@@ -424,7 +437,9 @@ export async function buildBookingConfirmationPdfInput(
     ]).replace(', ', ' - '),
     einsatz_start_uhrzeit: formatTime(einsatz.start),
     einsatz_ende_uhrzeit: formatTime(einsatz.end),
-    einsatz_preis_pro_person_formatiert: formatCurrency(einsatz.price_per_person),
+    einsatz_preis_pro_person_formatiert: formatCurrency(
+      einsatz.price_per_person
+    ),
     einsatz_preis_gesamt_formatiert: formatCurrency(einsatz.total_price),
     einsatz_teilnehmer_anzahl:
       typeof einsatz.participant_count === 'number'
@@ -454,7 +469,10 @@ export async function buildBookingConfirmationPdfInput(
       return;
     }
 
-    const fallbackKey = slugifyPdfFieldKey(label, `feld_${fieldValue.field.id.slice(0, 8)}`);
+    const fallbackKey = slugifyPdfFieldKey(
+      label,
+      `feld_${fieldValue.field.id.slice(0, 8)}`
+    );
     const key = dynamicFieldKeys.get(fieldValue.field.id) ?? fallbackKey;
     input[key] = toStringValue(fieldValue.value);
   });
@@ -476,4 +494,3 @@ export async function buildBookingConfirmationPdfInput(
 
   return input;
 }
-

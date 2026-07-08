@@ -5,17 +5,13 @@ import type {
   ResolvedDocumentTemplateFields,
 } from '@/features/document-template/types';
 import { getDocumentTemplateFieldDefinitions } from './document-template-fields';
+import {
+  viennaDocumentDateFormatter,
+  viennaDocumentTimeFormatter,
+} from '@/lib/vienna-date-time';
 
-const dateFormatter = new Intl.DateTimeFormat('de-AT', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-});
-
-const timeFormatter = new Intl.DateTimeFormat('de-AT', {
-  hour: '2-digit',
-  minute: '2-digit',
-});
+const dateFormatter = viennaDocumentDateFormatter;
+const timeFormatter = viennaDocumentTimeFormatter;
 
 const currencyFormatter = new Intl.NumberFormat('de-AT', {
   style: 'currency',

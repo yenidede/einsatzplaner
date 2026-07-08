@@ -95,9 +95,7 @@ describe('Resolver für sichtbare dynamische Felder', () => {
           },
         },
       ],
-      einsatz_to_category: [
-        { einsatz_category: { value: 'Führung' } },
-      ],
+      einsatz_to_category: [{ einsatz_category: { value: 'Führung' } }],
       einsatz_field: [],
     });
   });
@@ -116,6 +114,29 @@ describe('Resolver für sichtbare dynamische Felder', () => {
       'Museumstraße 1, 1010 Wien, Österreich'
     );
   });
+
+  it.each([
+    ['Sommerzeit', '2026-07-08T07:00:00.000Z', '2026-07-08T08:00:00.000Z'],
+    ['Winterzeit', '2026-01-08T08:00:00.000Z', '2026-01-08T09:00:00.000Z'],
+  ])(
+    'formatiert Einsatzzeiten in der %s für Europe/Vienna',
+    async (_label, start, end) => {
+      const einsatz = await mocks.findEinsatz();
+      mocks.findEinsatz.mockResolvedValue({
+        ...einsatz,
+        start: new Date(start),
+        end: new Date(end),
+      });
+
+      const resolved = await resolveDocumentTemplateFields({
+        organizationId: 'organization-1',
+        einsatzId: 'einsatz-1',
+      });
+
+      expect(resolved.assignmentStartTime?.formattedValue).toBe('09:00 Uhr');
+      expect(resolved.assignmentEndTime?.formattedValue).toBe('10:00 Uhr');
+    }
+  );
 
   it('behält eigene Feldnamen und löst deren Wert über field_id auf', async () => {
     const customField: DocumentTemplateFieldDefinition = {
